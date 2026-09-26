@@ -277,6 +277,51 @@
       ]
     },
     {
+      "id": "sf.render.helios-arclight.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.0607389,
+        0.052285,
+        -0.007726,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        14
+      ],
+      "parentNodeId": "sf.render.helios-arclight.node.socket-tether-massline",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.0607389,
+        0.052285,
+        -0.007726,
+        1
+      ]
+    },
+    {
       "id": "sf.render.helios-arclight.anchor.socket-trail-main",
       "kind": "socket",
       "localTransform": [
@@ -427,7 +472,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1d36937e8312a944ea151213ab0d27017c8f097d109dc732e733443586133f3d",
+  "contentHash": "0d8ed2550bad4ca970c7824c44425d0505e9b62dc78bfbd8777ef2bb736bc6f4",
   "dynamicGroups": [
     {
       "id": "sf.render.helios-arclight.node.lod0-hook-drive-core.dynamic",
@@ -504,7 +549,7 @@
       "id": "sf.render.helios-arclight.node.lod0-gun-assembly.primitive.0",
       "indexCount": 156,
       "indexed": true,
-      "materialHash": "a6a1a1dbcf194cd61f0a9eebb425613ccca2b2228b5185ea3cbbeb1f26ff4202",
+      "materialHash": "498a4ac9657e3b69e47b0214c1406651ce19cd5b19e705c141f97543a48fca6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Gun_Assembly",
       "nodeId": "sf.render.helios-arclight.node.lod0-gun-assembly",
@@ -529,7 +574,7 @@
       "id": "sf.render.helios-arclight.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 456,
       "indexed": true,
-      "materialHash": "1c4481ed0fa051462c607bbcd43a3d61061ed83d07beaf76b2fe4f9c9bd18c81",
+      "materialHash": "8d56de9c5c21ab98d43e01a9abb044cd8fca7c39f8fab7e1843423f47ed6ce5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_DRIVE_CORE",
       "nodeId": "sf.render.helios-arclight.node.lod0-hook-drive-core",
@@ -554,7 +599,7 @@
       "id": "sf.render.helios-arclight.node.lod0-hook-drive-fan.primitive.0",
       "indexCount": 504,
       "indexed": true,
-      "materialHash": "a6a1a1dbcf194cd61f0a9eebb425613ccca2b2228b5185ea3cbbeb1f26ff4202",
+      "materialHash": "498a4ac9657e3b69e47b0214c1406651ce19cd5b19e705c141f97543a48fca6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_DRIVE_FAN",
       "nodeId": "sf.render.helios-arclight.node.lod0-hook-drive-fan",
@@ -579,7 +624,7 @@
       "id": "sf.render.helios-arclight.node.lod0-merged-material-cyan.primitive.0",
       "indexCount": 1536,
       "indexed": true,
-      "materialHash": "1c4481ed0fa051462c607bbcd43a3d61061ed83d07beaf76b2fe4f9c9bd18c81",
+      "materialHash": "8d56de9c5c21ab98d43e01a9abb044cd8fca7c39f8fab7e1843423f47ed6ce5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Cyan",
       "nodeId": "sf.render.helios-arclight.node.lod0-merged-material-cyan",
@@ -629,7 +674,7 @@
       "id": "sf.render.helios-arclight.node.lod0-merged-material-hull.primitive.0",
       "indexCount": 22197,
       "indexed": true,
-      "materialHash": "4a0ae36d5ce70ebc2cf4d7191a1afd5a2daf13a0b7fd84a8e92bf803b12da13a",
+      "materialHash": "3ab2670a3fe85f2df88f101050b2b68b86e82ba9e754527b6e7f93514e9d67da",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Hull",
       "nodeId": "sf.render.helios-arclight.node.lod0-merged-material-hull",
@@ -654,7 +699,7 @@
       "id": "sf.render.helios-arclight.node.lod0-merged-material-mechanical.primitive.0",
       "indexCount": 11340,
       "indexed": true,
-      "materialHash": "a6a1a1dbcf194cd61f0a9eebb425613ccca2b2228b5185ea3cbbeb1f26ff4202",
+      "materialHash": "498a4ac9657e3b69e47b0214c1406651ce19cd5b19e705c141f97543a48fca6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Mechanical",
       "nodeId": "sf.render.helios-arclight.node.lod0-merged-material-mechanical",
@@ -679,7 +724,7 @@
       "id": "sf.render.helios-arclight.node.lod0-merged-material-warm.primitive.0",
       "indexCount": 468,
       "indexed": true,
-      "materialHash": "95db8a59ca7ea372e42a6ee5675042c1e17aa2786b82b08c27ff1036c982f9fd",
+      "materialHash": "a7dfe84315f46839ef40ad0252bf76a89aea6ca74832350afa4e18b744138ea7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Warm",
       "nodeId": "sf.render.helios-arclight.node.lod0-merged-material-warm",
@@ -704,7 +749,7 @@
       "id": "sf.render.helios-arclight.node.lod0-remaster-material-brushedmetal-remasternickel.primitive.0",
       "indexCount": 24528,
       "indexed": true,
-      "materialHash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
+      "materialHash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_Arclight_DorsalCoaming",
       "nodeId": "sf.render.helios-arclight.node.lod0-remaster-material-brushedmetal-remasternickel",
@@ -754,7 +799,7 @@
       "id": "sf.render.helios-arclight.node.lod0-remaster-material-engineceramic-remasterglazed.primitive.0",
       "indexCount": 264,
       "indexed": true,
-      "materialHash": "dd71cd991f0355687d548b9e7a54ba92d30b68ab6e85814bd730402c8e167a35",
+      "materialHash": "85cd1cc6ee3ad65354a3709fac5c848c14ae790418aab5d8cd12d12774f849e0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_Arclight_PressureAccumulator",
       "nodeId": "sf.render.helios-arclight.node.lod0-remaster-material-engineceramic-remasterglazed",
@@ -779,7 +824,7 @@
       "id": "sf.render.helios-arclight.node.lod0-remaster-material-glass-remasteroptical.primitive.0",
       "indexCount": 1320,
       "indexed": true,
-      "materialHash": "92d3bd83e3ee165cf2d4464f888be56b92a41200451c8693a79ed83d0b701c95",
+      "materialHash": "74cd926c5ac36d0bf9998f9bff8f4ed46d44238cd4df279382199ac72a9fa6b7",
       "materialPipelineKey": "blend",
       "meshName": "LOD0_Remaster_Arclight_BridgeSideGlazing",
       "nodeId": "sf.render.helios-arclight.node.lod0-remaster-material-glass-remasteroptical",
@@ -804,7 +849,7 @@
       "id": "sf.render.helios-arclight.node.lod0-remaster-material-hull-remasterseaenamel.primitive.0",
       "indexCount": 3240,
       "indexed": true,
-      "materialHash": "300f88db8479baa7f984d0fb88743961ddc08edadedbf4c77bea2bd76565d28d",
+      "materialHash": "9671a9f444f21b52473bccf004175dc556633716e0d3c3fd1d8410d4f115e7cc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_Arclight_AftReactorCowl",
       "nodeId": "sf.render.helios-arclight.node.lod0-remaster-material-hull-remasterseaenamel",
@@ -829,7 +874,7 @@
       "id": "sf.render.helios-arclight.node.lod0-remaster-material-mechanical-remasterheatcopper.primitive.0",
       "indexCount": 720,
       "indexed": true,
-      "materialHash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
+      "materialHash": "e2c2872893bc0866953560229c31637afcfe3e27a902cc96c1a08afec4e3142d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_Arclight_RecessedServiceConduit",
       "nodeId": "sf.render.helios-arclight.node.lod0-remaster-material-mechanical-remasterheatcopper",
@@ -854,7 +899,7 @@
       "id": "sf.render.helios-arclight.node.lod0-remaster-material-mechanical-remasteroxidized.primitive.0",
       "indexCount": 2892,
       "indexed": true,
-      "materialHash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
+      "materialHash": "696124402638cc23b4c1165321f8c0fe5461aab6e62c9713410ab671dfecd7d5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_Arclight_ServiceDeck",
       "nodeId": "sf.render.helios-arclight.node.lod0-remaster-material-mechanical-remasteroxidized",
@@ -879,7 +924,7 @@
       "id": "sf.render.helios-arclight.node.lod1-gun-assembly.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "a6a1a1dbcf194cd61f0a9eebb425613ccca2b2228b5185ea3cbbeb1f26ff4202",
+      "materialHash": "498a4ac9657e3b69e47b0214c1406651ce19cd5b19e705c141f97543a48fca6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Gun_Assembly",
       "nodeId": "sf.render.helios-arclight.node.lod1-gun-assembly",
@@ -904,7 +949,7 @@
       "id": "sf.render.helios-arclight.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "1c4481ed0fa051462c607bbcd43a3d61061ed83d07beaf76b2fe4f9c9bd18c81",
+      "materialHash": "8d56de9c5c21ab98d43e01a9abb044cd8fca7c39f8fab7e1843423f47ed6ce5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_DRIVE_CORE",
       "nodeId": "sf.render.helios-arclight.node.lod1-hook-drive-core",
@@ -929,7 +974,7 @@
       "id": "sf.render.helios-arclight.node.lod1-hook-drive-fan.primitive.0",
       "indexCount": 198,
       "indexed": true,
-      "materialHash": "a6a1a1dbcf194cd61f0a9eebb425613ccca2b2228b5185ea3cbbeb1f26ff4202",
+      "materialHash": "498a4ac9657e3b69e47b0214c1406651ce19cd5b19e705c141f97543a48fca6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_DRIVE_FAN",
       "nodeId": "sf.render.helios-arclight.node.lod1-hook-drive-fan",
@@ -954,7 +999,7 @@
       "id": "sf.render.helios-arclight.node.lod1-merged-material-cyan.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "1c4481ed0fa051462c607bbcd43a3d61061ed83d07beaf76b2fe4f9c9bd18c81",
+      "materialHash": "8d56de9c5c21ab98d43e01a9abb044cd8fca7c39f8fab7e1843423f47ed6ce5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Cyan",
       "nodeId": "sf.render.helios-arclight.node.lod1-merged-material-cyan",
@@ -1004,7 +1049,7 @@
       "id": "sf.render.helios-arclight.node.lod1-merged-material-hull.primitive.0",
       "indexCount": 9108,
       "indexed": true,
-      "materialHash": "4a0ae36d5ce70ebc2cf4d7191a1afd5a2daf13a0b7fd84a8e92bf803b12da13a",
+      "materialHash": "3ab2670a3fe85f2df88f101050b2b68b86e82ba9e754527b6e7f93514e9d67da",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Hull",
       "nodeId": "sf.render.helios-arclight.node.lod1-merged-material-hull",
@@ -1029,7 +1074,7 @@
       "id": "sf.render.helios-arclight.node.lod1-merged-material-mechanical.primitive.0",
       "indexCount": 4470,
       "indexed": true,
-      "materialHash": "a6a1a1dbcf194cd61f0a9eebb425613ccca2b2228b5185ea3cbbeb1f26ff4202",
+      "materialHash": "498a4ac9657e3b69e47b0214c1406651ce19cd5b19e705c141f97543a48fca6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Mechanical",
       "nodeId": "sf.render.helios-arclight.node.lod1-merged-material-mechanical",
@@ -1054,7 +1099,7 @@
       "id": "sf.render.helios-arclight.node.lod1-merged-material-warm.primitive.0",
       "indexCount": 96,
       "indexed": true,
-      "materialHash": "95db8a59ca7ea372e42a6ee5675042c1e17aa2786b82b08c27ff1036c982f9fd",
+      "materialHash": "a7dfe84315f46839ef40ad0252bf76a89aea6ca74832350afa4e18b744138ea7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Warm",
       "nodeId": "sf.render.helios-arclight.node.lod1-merged-material-warm",
@@ -1104,7 +1149,7 @@
       "id": "sf.render.helios-arclight.node.lod1-remaster-material-hull-remasterseaenamel.primitive.0",
       "indexCount": 1512,
       "indexed": true,
-      "materialHash": "300f88db8479baa7f984d0fb88743961ddc08edadedbf4c77bea2bd76565d28d",
+      "materialHash": "9671a9f444f21b52473bccf004175dc556633716e0d3c3fd1d8410d4f115e7cc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Remaster_Arclight_AftReactorCowl",
       "nodeId": "sf.render.helios-arclight.node.lod1-remaster-material-hull-remasterseaenamel",
@@ -1129,7 +1174,7 @@
       "id": "sf.render.helios-arclight.node.lod1-remaster-material-mechanical.primitive.0",
       "indexCount": 7740,
       "indexed": true,
-      "materialHash": "a6a1a1dbcf194cd61f0a9eebb425613ccca2b2228b5185ea3cbbeb1f26ff4202",
+      "materialHash": "498a4ac9657e3b69e47b0214c1406651ce19cd5b19e705c141f97543a48fca6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Remaster_Arclight_ServiceDeck",
       "nodeId": "sf.render.helios-arclight.node.lod1-remaster-material-mechanical",
@@ -1154,7 +1199,7 @@
       "id": "sf.render.helios-arclight.node.lod2-gun-assembly.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "a6a1a1dbcf194cd61f0a9eebb425613ccca2b2228b5185ea3cbbeb1f26ff4202",
+      "materialHash": "498a4ac9657e3b69e47b0214c1406651ce19cd5b19e705c141f97543a48fca6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Gun_Assembly",
       "nodeId": "sf.render.helios-arclight.node.lod2-gun-assembly",
@@ -1179,7 +1224,7 @@
       "id": "sf.render.helios-arclight.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "1c4481ed0fa051462c607bbcd43a3d61061ed83d07beaf76b2fe4f9c9bd18c81",
+      "materialHash": "8d56de9c5c21ab98d43e01a9abb044cd8fca7c39f8fab7e1843423f47ed6ce5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_CORE",
       "nodeId": "sf.render.helios-arclight.node.lod2-hook-drive-core",
@@ -1204,7 +1249,7 @@
       "id": "sf.render.helios-arclight.node.lod2-hook-drive-fan.primitive.0",
       "indexCount": 78,
       "indexed": true,
-      "materialHash": "a6a1a1dbcf194cd61f0a9eebb425613ccca2b2228b5185ea3cbbeb1f26ff4202",
+      "materialHash": "498a4ac9657e3b69e47b0214c1406651ce19cd5b19e705c141f97543a48fca6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_FAN",
       "nodeId": "sf.render.helios-arclight.node.lod2-hook-drive-fan",
@@ -1229,7 +1274,7 @@
       "id": "sf.render.helios-arclight.node.lod2-merged-material-cyan.primitive.0",
       "indexCount": 234,
       "indexed": true,
-      "materialHash": "1c4481ed0fa051462c607bbcd43a3d61061ed83d07beaf76b2fe4f9c9bd18c81",
+      "materialHash": "8d56de9c5c21ab98d43e01a9abb044cd8fca7c39f8fab7e1843423f47ed6ce5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Cyan",
       "nodeId": "sf.render.helios-arclight.node.lod2-merged-material-cyan",
@@ -1279,7 +1324,7 @@
       "id": "sf.render.helios-arclight.node.lod2-merged-material-hull.primitive.0",
       "indexCount": 3498,
       "indexed": true,
-      "materialHash": "4a0ae36d5ce70ebc2cf4d7191a1afd5a2daf13a0b7fd84a8e92bf803b12da13a",
+      "materialHash": "3ab2670a3fe85f2df88f101050b2b68b86e82ba9e754527b6e7f93514e9d67da",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Hull",
       "nodeId": "sf.render.helios-arclight.node.lod2-merged-material-hull",
@@ -1304,7 +1349,7 @@
       "id": "sf.render.helios-arclight.node.lod2-merged-material-mechanical.primitive.0",
       "indexCount": 2118,
       "indexed": true,
-      "materialHash": "a6a1a1dbcf194cd61f0a9eebb425613ccca2b2228b5185ea3cbbeb1f26ff4202",
+      "materialHash": "498a4ac9657e3b69e47b0214c1406651ce19cd5b19e705c141f97543a48fca6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Mechanical",
       "nodeId": "sf.render.helios-arclight.node.lod2-merged-material-mechanical",
@@ -1329,7 +1374,7 @@
       "id": "sf.render.helios-arclight.node.lod2-merged-material-warm.primitive.0",
       "indexCount": 21,
       "indexed": true,
-      "materialHash": "95db8a59ca7ea372e42a6ee5675042c1e17aa2786b82b08c27ff1036c982f9fd",
+      "materialHash": "a7dfe84315f46839ef40ad0252bf76a89aea6ca74832350afa4e18b744138ea7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Warm",
       "nodeId": "sf.render.helios-arclight.node.lod2-merged-material-warm",
@@ -1379,7 +1424,7 @@
       "id": "sf.render.helios-arclight.node.lod2-remaster-material-hull-remasterseaenamel.primitive.0",
       "indexCount": 396,
       "indexed": true,
-      "materialHash": "300f88db8479baa7f984d0fb88743961ddc08edadedbf4c77bea2bd76565d28d",
+      "materialHash": "9671a9f444f21b52473bccf004175dc556633716e0d3c3fd1d8410d4f115e7cc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Remaster_Arclight_AftReactorCowl",
       "nodeId": "sf.render.helios-arclight.node.lod2-remaster-material-hull-remasterseaenamel",
@@ -1404,7 +1449,7 @@
       "id": "sf.render.helios-arclight.node.lod2-remaster-material-mechanical.primitive.0",
       "indexCount": 1656,
       "indexed": true,
-      "materialHash": "a6a1a1dbcf194cd61f0a9eebb425613ccca2b2228b5185ea3cbbeb1f26ff4202",
+      "materialHash": "498a4ac9657e3b69e47b0214c1406651ce19cd5b19e705c141f97543a48fca6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Remaster_Arclight_ServiceDeck",
       "nodeId": "sf.render.helios-arclight.node.lod2-remaster-material-mechanical",
@@ -1417,49 +1462,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1c4481ed0fa051462c607bbcd43a3d61061ed83d07beaf76b2fe4f9c9bd18c81",
-      "id": "material:1c4481ed0fa051462c607bbc",
-      "name": "Material_Cyan",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "cyan_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "cyan_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "cyan_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "cyan_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "300f88db8479baa7f984d0fb88743961ddc08edadedbf4c77bea2bd76565d28d",
-      "id": "material:300f88db8479baa7f984d0fb",
-      "name": "Material_Hull_RemasterSeaEnamel",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "4a0ae36d5ce70ebc2cf4d7191a1afd5a2daf13a0b7fd84a8e92bf803b12da13a",
-      "id": "material:4a0ae36d5ce70ebc2cf4d719",
+      "hash": "3ab2670a3fe85f2df88f101050b2b68b86e82ba9e754527b6e7f93514e9d67da",
+      "id": "material:3ab2670a3fe85f2df88f1010",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1488,63 +1494,10 @@
       ]
     },
     {
-      "hash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
-      "id": "material:8ab96250fdee6299bd749485",
-      "name": "Material_Mechanical_RemasterHeatCopper",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "92d3bd83e3ee165cf2d4464f888be56b92a41200451c8693a79ed83d0b701c95",
-      "id": "material:92d3bd83e3ee165cf2d4464f",
-      "name": "Material_Glass_RemasterOptical",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "95db8a59ca7ea372e42a6ee5675042c1e17aa2786b82b08c27ff1036c982f9fd",
-      "id": "material:95db8a59ca7ea372e42a6ee5",
-      "name": "Material_Warm",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "warm_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "warm_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "warm_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "warm_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "9e34bc73984fd7ba87a3c1b84ac523f51ed250574554741b9bf879f43bea6ac2",
-      "id": "material:9e34bc73984fd7ba87a3c1b8",
-      "name": "Material_Emissive_Warm_RemasterRecess",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "a6a1a1dbcf194cd61f0a9eebb425613ccca2b2228b5185ea3cbbeb1f26ff4202",
-      "id": "material:a6a1a1dbcf194cd61f0a9eeb",
+      "hash": "498a4ac9657e3b69e47b0214c1406651ce19cd5b19e705c141f97543a48fca6d",
+      "id": "material:498a4ac9657e3b69e47b0214",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1573,17 +1526,116 @@
       ]
     },
     {
-      "hash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
-      "id": "material:bc5362fa29283f47ae662c67",
-      "name": "Material_BrushedMetal_RemasterNickel",
+      "hash": "696124402638cc23b4c1165321f8c0fe5461aab6e62c9713410ab671dfecd7d5",
+      "id": "material:696124402638cc23b4c11653",
+      "name": "Material_Mechanical_RemasterOxidized",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "74cd926c5ac36d0bf9998f9bff8f4ed46d44238cd4df279382199ac72a9fa6b7",
+      "id": "material:74cd926c5ac36d0bf9998f9b",
+      "name": "Material_Glass_RemasterOptical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "85cd1cc6ee3ad65354a3709fac5c848c14ae790418aab5d8cd12d12774f849e0",
+      "id": "material:85cd1cc6ee3ad65354a3709f",
+      "name": "Material_EngineCeramic_RemasterGlazed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "8d56de9c5c21ab98d43e01a9abb044cd8fca7c39f8fab7e1843423f47ed6ce5e",
+      "id": "material:8d56de9c5c21ab98d43e01a9",
+      "name": "Material_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "cyan_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "cyan_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "cyan_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "cyan_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9671a9f444f21b52473bccf004175dc556633716e0d3c3fd1d8410d4f115e7cc",
+      "id": "material:9671a9f444f21b52473bccf0",
+      "name": "Material_Hull_RemasterSeaEnamel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "9e34bc73984fd7ba87a3c1b84ac523f51ed250574554741b9bf879f43bea6ac2",
+      "id": "material:9e34bc73984fd7ba87a3c1b8",
+      "name": "Material_Emissive_Warm_RemasterRecess",
       "pipelineKey": "opaque:double",
       "textures": []
     },
     {
-      "hash": "dd71cd991f0355687d548b9e7a54ba92d30b68ab6e85814bd730402c8e167a35",
-      "id": "material:dd71cd991f0355687d548b9e",
-      "name": "Material_EngineCeramic_RemasterGlazed",
-      "pipelineKey": "opaque:double",
+      "hash": "a7dfe84315f46839ef40ad0252bf76a89aea6ca74832350afa4e18b744138ea7",
+      "id": "material:a7dfe84315f46839ef40ad02",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "warm_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
+      "id": "material:afa0d31269441b13f937c930",
+      "name": "Material_BrushedMetal_RemasterNickel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "e2c2872893bc0866953560229c31637afcfe3e27a902cc96c1a08afec4e3142d",
+      "id": "material:e2c2872893bc086695356022",
+      "name": "Material_Mechanical_RemasterHeatCopper",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -1617,13 +1669,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
-      "id": "material:eed6e8ec396ecaf2032f9016",
-      "name": "Material_Mechanical_RemasterOxidized",
-      "pipelineKey": "opaque:double",
-      "textures": []
     }
   ],
   "nodes": [
@@ -3819,6 +3864,54 @@
       ]
     },
     {
+      "id": "sf.render.helios-arclight.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.0607389,
+        0.052285,
+        -0.007726,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        14
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-arclight.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.0607389,
+        0.052285,
+        -0.007726,
+        1
+      ]
+    },
+    {
       "id": "sf.render.helios-arclight.node.socket-trail-main",
       "localTransform": [
         1,
@@ -3968,22 +4061,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "159fcf27bdaf2a3b43aad967a48ba5d8c7026c6d3ccbb559203d25c8c1ef5a5d"
+      "sha256": "dc7b89441db8c6c8d3550ba211f8682bde04c758e285787538377438a287114f"
     },
     "sourceGlb": {
-      "bytes": 6994896,
-      "sha256": "84a8933bc697b66200098a5ef1f78ecb45c46020e516c662bd96e59320355563",
+      "bytes": 6994988,
+      "sha256": "109d67993cc86ee0a63405c67aa44a37e67b15dda110830376fdb0d3b7207cff",
       "uri": "helios_arclight.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 7775580,
-    "sha256": "45db3f56c267fe876e1c6d452821f2ccbbfb2cf69b80684858724f4e0b7dab22",
+    "bytes": 7775732,
+    "sha256": "2b4f8ca5b101abbccae501a35197ec6693c06a983e4da3e5235fa0b14c2b6eb3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4535,6 +4628,43 @@
             "schema": "spaceface.renderPackageSemantic.v1"
           }
         }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.0607389,
+          0.052285,
+          -0.007726,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 49,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.helios-arclight.anchor.socket-tether-massline",
+              "sf.render.helios-arclight.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
       }
     ],
     "materialProfileRoles": {
@@ -4736,7 +4866,7 @@
         "role": "signal"
       }
     ],
-    "nodeCount": 49,
+    "nodeCount": 50,
     "primitives": [
       {
         "canopy": false,
@@ -5904,7 +6034,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_arclight.glb"
   },
-  "runtimeHash": "b6b762f10e9ebebc96e51ac3383d50bcff8bd534cfcf33a2ce87769e829374fa",
+  "runtimeHash": "b1ddbcd18b3b801512d4dd619509af6c11fdb1e06510c47869952da52bd5384d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -5967,6 +6097,7 @@
         "sf.render.helios-arclight.node.socket-mining-front",
         "sf.render.helios-arclight.node.socket-rcs-port",
         "sf.render.helios-arclight.node.socket-rcs-starboard",
+        "sf.render.helios-arclight.node.socket-tether-massline",
         "sf.render.helios-arclight.node.socket-trail-main",
         "sf.render.helios-arclight.node.socket-utility-dorsal",
         "sf.render.helios-arclight.node.socket-weapon-front"

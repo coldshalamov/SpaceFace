@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "33659c31028d8a9cedeb3aaca808a10189d55de48f08f143cfdf4dbbdc57b513",
+  "contentHash": "cd7e38c010c595feb5eccaccd1b6f3591bbc025631ee3da1183eac45caf562ee",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -170,7 +170,7 @@
       "id": "sf.render.ore-sorter.mesh.chute0.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.043",
       "nodeId": "sf.render.ore-sorter.mesh.chute0",
@@ -195,7 +195,7 @@
       "id": "sf.render.ore-sorter.mesh.chute1.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.044",
       "nodeId": "sf.render.ore-sorter.mesh.chute1",
@@ -220,7 +220,7 @@
       "id": "sf.render.ore-sorter.mesh.chute2.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.ore-sorter.mesh.chute2",
@@ -245,7 +245,7 @@
       "id": "sf.render.ore-sorter.mesh.feed-0.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "e88c4831fbeeb8866e7cac72078068a9f595adb3e56023420bf323357204efc5",
+      "materialHash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.003",
       "nodeId": "sf.render.ore-sorter.mesh.feed-0",
@@ -270,7 +270,7 @@
       "id": "sf.render.ore-sorter.mesh.feed-1.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "e88c4831fbeeb8866e7cac72078068a9f595adb3e56023420bf323357204efc5",
+      "materialHash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.004",
       "nodeId": "sf.render.ore-sorter.mesh.feed-1",
@@ -295,7 +295,7 @@
       "id": "sf.render.ore-sorter.mesh.feed-2.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "e88c4831fbeeb8866e7cac72078068a9f595adb3e56023420bf323357204efc5",
+      "materialHash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.001",
       "nodeId": "sf.render.ore-sorter.mesh.feed-2",
@@ -395,7 +395,7 @@
       "id": "sf.render.ore-sorter.mesh.hopper0.primitive.0",
       "indexCount": 156,
       "indexed": true,
-      "materialHash": "1d7c6efa6307449b139dd83feb923de6447203cd647f651c6a4e6bdbe12d049f",
+      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
       "materialPipelineKey": "opaque",
       "meshName": "Cone.003",
       "nodeId": "sf.render.ore-sorter.mesh.hopper0",
@@ -420,7 +420,7 @@
       "id": "sf.render.ore-sorter.mesh.hopper1.primitive.0",
       "indexCount": 156,
       "indexed": true,
-      "materialHash": "1d7c6efa6307449b139dd83feb923de6447203cd647f651c6a4e6bdbe12d049f",
+      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
       "materialPipelineKey": "opaque",
       "meshName": "Cone.004",
       "nodeId": "sf.render.ore-sorter.mesh.hopper1",
@@ -445,7 +445,7 @@
       "id": "sf.render.ore-sorter.mesh.hopper2.primitive.0",
       "indexCount": 156,
       "indexed": true,
-      "materialHash": "1d7c6efa6307449b139dd83feb923de6447203cd647f651c6a4e6bdbe12d049f",
+      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
       "materialPipelineKey": "opaque",
       "meshName": "Cone.001",
       "nodeId": "sf.render.ore-sorter.mesh.hopper2",
@@ -470,7 +470,7 @@
       "id": "sf.render.ore-sorter.mesh.leg-3.primitive.0",
       "indexCount": 480,
       "indexed": true,
-      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialHash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.ore-sorter.mesh.leg-3",
@@ -495,7 +495,7 @@
       "id": "sf.render.ore-sorter.mesh.leg-3b.primitive.0",
       "indexCount": 480,
       "indexed": true,
-      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialHash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.027",
       "nodeId": "sf.render.ore-sorter.mesh.leg-3b",
@@ -520,7 +520,7 @@
       "id": "sf.render.ore-sorter.mesh.leg4.primitive.0",
       "indexCount": 720,
       "indexed": true,
-      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialHash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.035",
       "nodeId": "sf.render.ore-sorter.mesh.leg4",
@@ -545,7 +545,7 @@
       "id": "sf.render.ore-sorter.mesh.leg4b.primitive.0",
       "indexCount": 720,
       "indexed": true,
-      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialHash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.003",
       "nodeId": "sf.render.ore-sorter.mesh.leg4b",
@@ -570,7 +570,7 @@
       "id": "sf.render.ore-sorter.mesh.screen-rail-p.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1d7c6efa6307449b139dd83feb923de6447203cd647f651c6a4e6bdbe12d049f",
+      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
       "nodeId": "sf.render.ore-sorter.mesh.screen-rail-p",
@@ -595,7 +595,7 @@
       "id": "sf.render.ore-sorter.mesh.screen-rail-s.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1d7c6efa6307449b139dd83feb923de6447203cd647f651c6a4e6bdbe12d049f",
+      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.ore-sorter.mesh.screen-rail-s",
@@ -620,7 +620,7 @@
       "id": "sf.render.ore-sorter.mesh.screen.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.ore-sorter.mesh.screen",
@@ -633,44 +633,44 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1d7c6efa6307449b139dd83feb923de6447203cd647f651c6a4e6bdbe12d049f",
-      "id": "material:1d7c6efa6307449b139dd83f",
-      "name": "esk_paint_industrial_ochre",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
-      "id": "material:2b5f9fd026bc45c1c843ea55",
-      "name": "esk_truss_galv",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
-      "id": "material:6dfd2f8b3a36135cb14fa123",
+      "hash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
+      "id": "material:01f412e3f0fdec2e47df3503",
       "name": "esk_scorch",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
-      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "hash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
+      "id": "material:11ee3508b0192ad7582dd7fa",
+      "name": "esk_truss_galv",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "id": "material:143624083cd581b0939afdce",
       "name": "esk_bare_steel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
+      "id": "material:695c76668ce8672d176ef9f0",
+      "name": "esk_paint_industrial_ochre",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
+      "id": "material:b3f07a16d4766efd3b9f9cbd",
+      "name": "esk_ore_raw",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
       "hash": "e798a9eeac4b3e2fa59949aaf0e5c453b2f3c8e21279ee6ffd627f53d2468dd4",
       "id": "material:e798a9eeac4b3e2fa59949aa",
       "name": "esk_light_mining",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "e88c4831fbeeb8866e7cac72078068a9f595adb3e56023420bf323357204efc5",
-      "id": "material:e88c4831fbeeb8866e7cac72",
-      "name": "esk_ore_raw",
       "pipelineKey": "opaque:double",
       "textures": []
     }
@@ -1759,19 +1759,19 @@
       "sha256": "c1a5378fcfb0e055b7e4cbf25e412ebcfc8b504242b27cf22d6755098afe96e8"
     },
     "sourceGlb": {
-      "bytes": 29000,
-      "sha256": "3efb752677a90d4d0c621278ed3e1631ffaef3e569399c7558839d81e4f7457d",
+      "bytes": 29008,
+      "sha256": "a4cbe2ef4f93caa3f41c7e18bd6e57c4052e7dc5872206ba424bc43d9d30f50d",
       "uri": "place_ore_sorter.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 68792,
-    "sha256": "e19cdcb0a3820b6ecba55f7defbb7d126950d623bf4c0b3629c51d07412e8d2e",
+    "bytes": 68696,
+    "sha256": "f671da972429669703197884603ffe5d571ad0e2840cd17fc82f53a96e06f139",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2560,7 +2560,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ore_sorter.glb"
   },
-  "runtimeHash": "1e8a2661c084dab5eb4e6c2a8c76b98bd2f8402c233d2559e8488d2d981c4790",
+  "runtimeHash": "04315e9b8183726169cf4e172acd26455b47b097180a31ef879b668cfdd87e89",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -3746,6 +3746,20 @@ export const audio = {
     try { param.setTargetAtTime(target, t, tc); } catch (_) {}
   },
 
+  /**
+   * Same write-on-change gate as `_mineParam`, for the non-mine continuous beds
+   * (engine hum, slipstream, grind, ducking). `setTargetAtTime` is memoryless, so
+   * skipping a re-issue of an unchanged target is provably a no-op on the signal;
+   * without the gate these paths insert ~10 automation events every rAF frame.
+   */
+  _setParam(param, target, t, tc) {
+    if (!param) return;
+    const last = param._sfParamLast;
+    if (last !== undefined && Math.abs(last - target) < 1e-4) return;
+    param._sfParamLast = target;
+    try { param.setTargetAtTime(target, t, tc); } catch (_) {}
+  },
+
   /** Deterministic-enough presentation RNG (LCG). Never touches sim state. */
   _mineRand() {
     const rt = this.rt;
@@ -4214,13 +4228,13 @@ export const audio = {
     }
 
     const now = ctx.currentTime;
-    try { voice.gain.gain.setTargetAtTime(mix.gain, now, 0.045); } catch (_) {}
+    this._setParam(voice.gain.gain, mix.gain, now, 0.045);
     if (voice.filter) {
-      try { voice.filter.frequency.setTargetAtTime(mix.filterHz, now, 0.04); } catch (_) {}
+      this._setParam(voice.filter.frequency, mix.filterHz, now, 0.04);
     }
     for (const source of voice.sources || []) {
       if (!source.playbackRate) continue;
-      try { source.playbackRate.setTargetAtTime(mix.rate, now, 0.05); } catch (_) {}
+      this._setParam(source.playbackRate, mix.rate, now, 0.05);
     }
   },
 
@@ -5974,17 +5988,17 @@ export const audio = {
     const gainTc = rising ? CUE_GAIN.riseTau : CUE_GAIN.fallTau;
     rt._engineHumCmd = humG;
     try {
-      rt.engineOsc1.type = familyVoice.osc1;
-      rt.engineOsc2.type = familyVoice.osc2;
-      rt.engineOsc1.frequency.setTargetAtTime(f1 * slowPitch, t, tc);
-      rt.engineOsc2.frequency.setTargetAtTime(f2 * slowPitch, t, tc);
-      rt.engineOsc2.detune.setTargetAtTime(d2, t, tc);
-      if (rt.engineSub) rt.engineSub.frequency.setTargetAtTime(f1 * 0.5 * slowPitch, t, tc);
-      if (rt.engineSubGain) rt.engineSubGain.gain.setTargetAtTime(subG, t, 0.12);
-      rt.engineNoiseGain.gain.setTargetAtTime(noiseG * duck, t, 0.15);
-      if (rt.engineNoiseFilter) rt.engineNoiseFilter.frequency.setTargetAtTime(noiseHz, t, 0.12);
-      if (rt.engineHumGain) rt.engineHumGain.gain.setTargetAtTime(Math.max(0, humG), t, gainTc);
+      if (rt.engineOsc1.type !== familyVoice.osc1) rt.engineOsc1.type = familyVoice.osc1;
+      if (rt.engineOsc2.type !== familyVoice.osc2) rt.engineOsc2.type = familyVoice.osc2;
     } catch (_) {}
+    this._setParam(rt.engineOsc1.frequency, f1 * slowPitch, t, tc);
+    this._setParam(rt.engineOsc2.frequency, f2 * slowPitch, t, tc);
+    this._setParam(rt.engineOsc2.detune, d2, t, tc);
+    if (rt.engineSub) this._setParam(rt.engineSub.frequency, f1 * 0.5 * slowPitch, t, tc);
+    if (rt.engineSubGain) this._setParam(rt.engineSubGain.gain, subG, t, 0.12);
+    this._setParam(rt.engineNoiseGain.gain, noiseG * duck, t, 0.15);
+    if (rt.engineNoiseFilter) this._setParam(rt.engineNoiseFilter.frequency, noiseHz, t, 0.12);
+    if (rt.engineHumGain) this._setParam(rt.engineHumGain.gain, Math.max(0, humG), t, gainTc);
 
     // Mutate a stable telemetry object for harness/evidence traces (no per-frame allocation).
     const telemetry = rt._engineTelemetry;
@@ -6051,8 +6065,8 @@ export const audio = {
     }
     const intensity = Math.max(0, Math.min(1, Number(slip.intensity) || 0));
     const targetGain = 0.03 + 0.1 * intensity;
-    if (voice.gain && voice.gain.gain && typeof voice.gain.gain.setTargetAtTime === 'function') {
-      try { voice.gain.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.06); } catch (_) {}
+    if (voice.gain && voice.gain.gain) {
+      this._setParam(voice.gain.gain, targetGain, ctx.currentTime, 0.06);
     }
   },
 
@@ -6248,9 +6262,7 @@ export const audio = {
           || (v.busName === 'combat' && v.loop);
         if (!isWeaponLoop) continue;
         const base = v._baseGain != null ? v._baseGain : (v.callGain != null ? v.callGain : 0.5);
-        try {
-          v.gain.gain.setTargetAtTime(Math.max(0.0001, base * wDuck), rt.ctx.currentTime, 0.04);
-        } catch (_) {}
+        this._setParam(v.gain.gain, Math.max(0.0001, base * wDuck), rt.ctx.currentTime, 0.04);
       }
     }
   },

@@ -182,6 +182,8 @@ export function classifyHitchFrame(sample = {}, options = {}) {
     simSystemTotalMs: Number.isFinite(simSystemTotalMs) ? simSystemTotalMs : 0,
     simStepCount: safeSimStepCount,
     simMeasuredStepCount: safeSimMeasuredStepCount,
+    simStepMs: Array.isArray(sample.simStepMs) ? sample.simStepMs : null,
+    simStepMeasured: Array.isArray(sample.simStepMeasured) ? sample.simStepMeasured : null,
     simFullyMeasured: safeSimStepCount > 0 && safeSimMeasuredStepCount === safeSimStepCount,
     residualMs,
     residualKnown,

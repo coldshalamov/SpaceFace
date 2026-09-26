@@ -75,6 +75,7 @@ export function createBandHud(ctx, options = {}) {
   let lastDataSilence = null;
   let lastAriaLabel = null;
   let lastEffectiveChannel = null;
+  let lastSig = null;
   const unsubscribers = [];
   const onClick = (event) => {
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
@@ -100,11 +101,19 @@ export function createBandHud(ctx, options = {}) {
     const silence = !!(status && status.silence) || sourceId === 'planet_hush';
     const hidden = !(state.mode === 'flight' && !(state.ui && state.ui.docked));
 
+    // Strength is published at 5 Hz but renders in four threshold buckets — compare the
+    // scalar projection inputs before any of the string formatting runs at all.
+    const census = sourceId === 'landmark_quiessence' ? quiessenceCensusProgress(state) : null;
+    const bandKeyLabel = (BINDINGS.band && BINDINGS.band.label) || 'Shift+O';
+    const sig = `${channelId}|${effectiveId}|${sourceId}|${strength >= 0.72 ? 3 : strength >= 0.38 ? 2 : strength >= 0.08 ? 1 : 0}`
+      + `|${silence ? 1 : 0}|${hidden ? 1 : 0}|${census ? census.scanned + '/' + census.total : ''}|${bandKeyLabel}`;
+    if (sig === lastSig) return;
+    lastSig = sig;
+
     const channel = channelId && BAND_CHANNEL_BY_ID[channelId];
     const label = sourceId === 'planet_hush' ? 'RF VOID'
       : sourceId === 'landmark_quiessence' ? 'QUIET MEMORIAL'
         : channel && channel.label || 'OFF';
-    const census = sourceId === 'landmark_quiessence' ? quiessenceCensusProgress(state) : null;
     const censusText = census ? `  CENSUS ${census.scanned}/${census.total}` : '';
     const meter = channelId ? signalMeter(strength, silence) : '';   // off: no dashed placeholder, the word says it
     const text = `BAND  ${label}${censusText}${meter ? `  ${meter}` : ''}`;
@@ -133,9 +142,8 @@ export function createBandHud(ctx, options = {}) {
     button.setAttribute('data-silence', dataSilence);
     button.setAttribute('aria-label', ariaLabel);
     // Key label comes from the binding table, not a hardcode — a rebind makes "Shift+O" a lie.
-    const bandLabel = (BINDINGS.band && BINDINGS.band.label) || 'Shift+O';
-    button.setAttribute('aria-keyshortcuts', bandLabel);
-    button.setAttribute('title', `[ ${bandLabel} ] Cycle Band channel`);
+    button.setAttribute('aria-keyshortcuts', bandKeyLabel);
+    button.setAttribute('title', `[ ${bandKeyLabel} ] Cycle Band channel`);
     button.setAttribute('data-effective-channel', effectiveChannel);
   }
 

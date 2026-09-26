@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "cb032d4aeb6dbc6d8025c965dc47342ea5fdedf232571809aaf8aee8a5050d08",
+  "contentHash": "52e3d53b0d432c68f635101d6082ef8c71deedaff1b764dc267a3cad4c031a93",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.utility-module.mesh.band.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3557f0fcc5846051d68533b6cb563b7a947a1f79777f797c960a94bec1f609d8",
+      "materialHash": "e7b6d4f2887c2d8cee4620fc022e1af88f84e9b4e675c4380234f068736d7ed7",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.015",
       "nodeId": "sf.render.utility-module.mesh.band",
@@ -99,7 +99,7 @@
       "id": "sf.render.utility-module.mesh.body.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.utility-module.mesh.body",
@@ -124,7 +124,7 @@
       "id": "sf.render.utility-module.mesh.hatch-a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.016",
       "nodeId": "sf.render.utility-module.mesh.hatch-a",
@@ -149,7 +149,7 @@
       "id": "sf.render.utility-module.mesh.hatch-b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.utility-module.mesh.hatch-b",
@@ -174,7 +174,7 @@
       "id": "sf.render.utility-module.mesh.lugs.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.utility-module.mesh.lugs",
@@ -199,7 +199,7 @@
       "id": "sf.render.utility-module.mesh.pipe-side.primitive.0",
       "indexCount": 120,
       "indexed": true,
-      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialHash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.004",
       "nodeId": "sf.render.utility-module.mesh.pipe-side",
@@ -224,7 +224,7 @@
       "id": "sf.render.utility-module.mesh.pipe-top.primitive.0",
       "indexCount": 168,
       "indexed": true,
-      "materialHash": "9fa79dff52bb40d2527e0c9a22f3a7510d7c6b5dbfe66621d475cee0294170d8",
+      "materialHash": "24cfb942863d6bf8bae9e9a85be11a75478625949273ba3f3f974ad0c3ab0793",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.005",
       "nodeId": "sf.render.utility-module.mesh.pipe-top",
@@ -249,7 +249,7 @@
       "id": "sf.render.utility-module.mesh.plate.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
+      "materialHash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
       "nodeId": "sf.render.utility-module.mesh.plate",
@@ -274,7 +274,7 @@
       "id": "sf.render.utility-module.mesh.radfin-a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "bbb53e65a6036da42c05b90eb0ec8bb992d3a644fd64f77e6c66ad5a85385ec9",
+      "materialHash": "6c55db37a0352026e716da349ee59bc3b7c312b1c5ba232279b67042c4d0ef86",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.014",
       "nodeId": "sf.render.utility-module.mesh.radfin-a",
@@ -299,7 +299,7 @@
       "id": "sf.render.utility-module.mesh.radfin-b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "bbb53e65a6036da42c05b90eb0ec8bb992d3a644fd64f77e6c66ad5a85385ec9",
+      "materialHash": "6c55db37a0352026e716da349ee59bc3b7c312b1c5ba232279b67042c4d0ef86",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.utility-module.mesh.radfin-b",
@@ -324,7 +324,7 @@
       "id": "sf.render.utility-module.mesh.rib-a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.008",
       "nodeId": "sf.render.utility-module.mesh.rib-a",
@@ -349,7 +349,7 @@
       "id": "sf.render.utility-module.mesh.rib-f.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.utility-module.mesh.rib-f",
@@ -399,7 +399,7 @@
       "id": "sf.render.utility-module.mesh.vent.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "89aa455ad9dafe2ba6454b2eca9192f2b9a6bd659ab628f286fbd1304ad11a8a",
+      "materialHash": "f7b4b4e644b409cbcb6304cd02f6aed938041962775c5e0e438c8a154483182b",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.013",
       "nodeId": "sf.render.utility-module.mesh.vent",
@@ -412,24 +412,31 @@
   "lods": [],
   "materials": [
     {
-      "hash": "3557f0fcc5846051d68533b6cb563b7a947a1f79777f797c960a94bec1f609d8",
-      "id": "material:3557f0fcc5846051d68533b6",
-      "name": "esk_paint_logistics_teal",
-      "pipelineKey": "opaque:double",
+      "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "id": "material:143624083cd581b0939afdce",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
-      "id": "material:5fe8bb7367a585546306a7e0",
-      "name": "esk_pipe_steel",
-      "pipelineKey": "opaque:double",
+      "hash": "24cfb942863d6bf8bae9e9a85be11a75478625949273ba3f3f974ad0c3ab0793",
+      "id": "material:24cfb942863d6bf8bae9e9a8",
+      "name": "esk_tank_insulation",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
-      "id": "material:66a89e4576e5df116e40f4c3",
-      "name": "esk_struct_alloy",
-      "pipelineKey": "opaque:double",
+      "hash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
+      "id": "material:2df5fe4085e82053eaa20e31",
+      "name": "esk_paint_civic_bone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6c55db37a0352026e716da349ee59bc3b7c312b1c5ba232279b67042c4d0ef86",
+      "id": "material:6c55db37a0352026e716da34",
+      "name": "esk_armor_plate",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -440,52 +447,45 @@
       "textures": []
     },
     {
-      "hash": "89aa455ad9dafe2ba6454b2eca9192f2b9a6bd659ab628f286fbd1304ad11a8a",
-      "id": "material:89aa455ad9dafe2ba6454b2e",
-      "name": "esk_deck_grate",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
-      "id": "material:9538e2a870a6b542509db5ad",
-      "name": "esk_paint_service_blue",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
-      "id": "material:9dfc701728dc33faaa6f1ce7",
-      "name": "esk_bare_steel",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "9fa79dff52bb40d2527e0c9a22f3a7510d7c6b5dbfe66621d475cee0294170d8",
-      "id": "material:9fa79dff52bb40d2527e0c9a",
-      "name": "esk_tank_insulation",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "bbb53e65a6036da42c05b90eb0ec8bb992d3a644fd64f77e6c66ad5a85385ec9",
-      "id": "material:bbb53e65a6036da42c05b90e",
-      "name": "esk_armor_plate",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
-      "id": "material:e6f069a3dc5923ebcb0ed51c",
+      "hash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
+      "id": "material:be22fc38209109d7bc12285f",
       "name": "esk_id_plate",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
-      "id": "material:fcaae752dff7f4d8d2acc92d",
-      "name": "esk_paint_civic_bone",
-      "pipelineKey": "opaque:double",
+      "hash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
+      "id": "material:c4d232af0c91939b2fe36a45",
+      "name": "esk_paint_service_blue",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "e7b6d4f2887c2d8cee4620fc022e1af88f84e9b4e675c4380234f068736d7ed7",
+      "id": "material:e7b6d4f2887c2d8cee4620fc",
+      "name": "esk_paint_logistics_teal",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "id": "material:ef83aaa905288b1ffc8a4f70",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
+      "id": "material:f6ac19da4caa1b500dda88b0",
+      "name": "esk_pipe_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f7b4b4e644b409cbcb6304cd02f6aed938041962775c5e0e438c8a154483182b",
+      "id": "material:f7b4b4e644b409cbcb6304cd",
+      "name": "esk_deck_grate",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -1230,19 +1230,19 @@
       "sha256": "aa24650d99763b09d9d24859ba1b1865a341c6a76a9e4759f921b9f05b4eb1af"
     },
     "sourceGlb": {
-      "bytes": 20180,
-      "sha256": "2e2e16c460328011497d8edfb7a5e2c934ae3212144963202ff6c4e9dc271686",
+      "bytes": 20188,
+      "sha256": "4fb29967042d11a4ccbdbc6b2576b7439073cd5035add181c3bbb700e71234b0",
       "uri": "place_utility_module.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 30564,
-    "sha256": "f45b67af76d32a9815043a2322ce0c5a00299c6417794695b9933afa5eb983a1",
+    "bytes": 30372,
+    "sha256": "5b8a0c573a6f62802d34a4eefc6e4760b4f94228c729587c8e1fdff003b99114",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1772,7 +1772,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_utility_module.glb"
   },
-  "runtimeHash": "dbbfc3f4804587c03060c06ff779d1b2885c12ddf23e95167c64cccf52c3ce99",
+  "runtimeHash": "0393e8d20b3f9fef981a2681dbc732b875ba5f6844de81854803b272a4bcca6f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

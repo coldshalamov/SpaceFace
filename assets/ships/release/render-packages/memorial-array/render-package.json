@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "770c2110a0036effe3a3cc8818bdcd2a882ff5ff75b9537f25e93a69be9d7267",
+  "contentHash": "3759f336993b1c267548e2e49ea12c2c7793e23b3e5955aabf5f585209977c2c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -80,7 +80,7 @@
       "id": "sf.render.memorial-array.node.lod0-memorial-candle-optic.primitive.0",
       "indexCount": 2016,
       "indexed": true,
-      "materialHash": "05d1eec7f8974417c57532b2879ceb77fbdd1bbb64fe3da2d29a2f718cfca316",
+      "materialHash": "2c77450294a117413331ace127aa540a329695e7e3f85c244e57eba83ba6c1ac",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Memorial_Candle_Optic_Mesh",
       "nodeId": "sf.render.memorial-array.node.lod0-memorial-candle-optic",
@@ -105,7 +105,7 @@
       "id": "sf.render.memorial-array.node.lod0-memorial-frame-coat.primitive.0",
       "indexCount": 2982,
       "indexed": true,
-      "materialHash": "cac42454e8b734eeedbca6eb0567a3fc9b7fe4eed2aa38f64801f70c533462dc",
+      "materialHash": "0f1d61f773a697f7c2722f559f6a9e492e298516bde3ab10101ce09cf73f3343",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Memorial_Frame_Coat_Mesh.001",
       "nodeId": "sf.render.memorial-array.node.lod0-memorial-frame-coat",
@@ -130,7 +130,7 @@
       "id": "sf.render.memorial-array.node.lod0-memorial-frame-coat.primitive.1",
       "indexCount": 30,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Memorial_Frame_Coat_Mesh.001",
       "nodeId": "sf.render.memorial-array.node.lod0-memorial-frame-coat",
@@ -155,7 +155,7 @@
       "id": "sf.render.memorial-array.node.lod0-memorial-inscribed-bronze.primitive.0",
       "indexCount": 396,
       "indexed": true,
-      "materialHash": "e172637ed663ccc452f8e196b7d4bd6348719c1ab951831f970d9fa12562d44a",
+      "materialHash": "5ec031b327b57f05b67025c2914cf1c2035cc589555922f8e2b4c452ff4ae4af",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Memorial_Inscribed_Bronze_Mesh",
       "nodeId": "sf.render.memorial-array.node.lod0-memorial-inscribed-bronze",
@@ -180,7 +180,7 @@
       "id": "sf.render.memorial-array.node.lod0-memorial-recovered-hull.primitive.0",
       "indexCount": 216,
       "indexed": true,
-      "materialHash": "6e725cadfa4b72e69ed2c0fcd7f91ee7b9f26c52779ffeacf6cc593d16cbfbfc",
+      "materialHash": "4eb8de40c1f4edd81a898ce977929652df3a6d4ed3517eee7c96f7f5e635a316",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Memorial_Recovered_Hull_Mesh.001",
       "nodeId": "sf.render.memorial-array.node.lod0-memorial-recovered-hull",
@@ -205,7 +205,7 @@
       "id": "sf.render.memorial-array.node.lod0-memorial-recovered-hull.primitive.1",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Memorial_Recovered_Hull_Mesh.001",
       "nodeId": "sf.render.memorial-array.node.lod0-memorial-recovered-hull",
@@ -230,7 +230,7 @@
       "id": "sf.render.memorial-array.node.lod0-memorial-service-alloy.primitive.0",
       "indexCount": 2988,
       "indexed": true,
-      "materialHash": "db82563004d5b7e191fec6abc466efeed11d99b959db308d71b1534ea51d2267",
+      "materialHash": "54bc226f8f13998c818235be7305ebbf7d021f9a180aa3d8d7d1d7a98bcfeb60",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Memorial_Service_Alloy_Mesh",
       "nodeId": "sf.render.memorial-array.node.lod0-memorial-service-alloy",
@@ -255,7 +255,7 @@
       "id": "sf.render.memorial-array.node.lod0-remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 1944,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_MemorialRegisterLeaf0",
       "nodeId": "sf.render.memorial-array.node.lod0-remaster-material-mechanical-brushednickel",
@@ -280,7 +280,7 @@
       "id": "sf.render.memorial-array.node.lod0-remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 828,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_EngravedRegisterRule",
       "nodeId": "sf.render.memorial-array.node.lod0-remaster-material-mechanical-shadowenamel",
@@ -305,7 +305,7 @@
       "id": "sf.render.memorial-array.node.lod1-memorial-candle-optic.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "05d1eec7f8974417c57532b2879ceb77fbdd1bbb64fe3da2d29a2f718cfca316",
+      "materialHash": "2c77450294a117413331ace127aa540a329695e7e3f85c244e57eba83ba6c1ac",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Memorial_Candle_Optic_Mesh",
       "nodeId": "sf.render.memorial-array.node.lod1-memorial-candle-optic",
@@ -330,7 +330,7 @@
       "id": "sf.render.memorial-array.node.lod1-memorial-frame-coat.primitive.0",
       "indexCount": 1188,
       "indexed": true,
-      "materialHash": "cac42454e8b734eeedbca6eb0567a3fc9b7fe4eed2aa38f64801f70c533462dc",
+      "materialHash": "0f1d61f773a697f7c2722f559f6a9e492e298516bde3ab10101ce09cf73f3343",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Memorial_Frame_Coat_Mesh",
       "nodeId": "sf.render.memorial-array.node.lod1-memorial-frame-coat",
@@ -355,7 +355,7 @@
       "id": "sf.render.memorial-array.node.lod1-memorial-inscribed-bronze.primitive.0",
       "indexCount": 204,
       "indexed": true,
-      "materialHash": "e172637ed663ccc452f8e196b7d4bd6348719c1ab951831f970d9fa12562d44a",
+      "materialHash": "5ec031b327b57f05b67025c2914cf1c2035cc589555922f8e2b4c452ff4ae4af",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Memorial_Inscribed_Bronze_Mesh",
       "nodeId": "sf.render.memorial-array.node.lod1-memorial-inscribed-bronze",
@@ -380,7 +380,7 @@
       "id": "sf.render.memorial-array.node.lod1-memorial-recovered-hull.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "6e725cadfa4b72e69ed2c0fcd7f91ee7b9f26c52779ffeacf6cc593d16cbfbfc",
+      "materialHash": "4eb8de40c1f4edd81a898ce977929652df3a6d4ed3517eee7c96f7f5e635a316",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Memorial_Recovered_Hull_Mesh",
       "nodeId": "sf.render.memorial-array.node.lod1-memorial-recovered-hull",
@@ -405,7 +405,7 @@
       "id": "sf.render.memorial-array.node.lod1-memorial-service-alloy.primitive.0",
       "indexCount": 1128,
       "indexed": true,
-      "materialHash": "db82563004d5b7e191fec6abc466efeed11d99b959db308d71b1534ea51d2267",
+      "materialHash": "54bc226f8f13998c818235be7305ebbf7d021f9a180aa3d8d7d1d7a98bcfeb60",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Memorial_Service_Alloy_Mesh",
       "nodeId": "sf.render.memorial-array.node.lod1-memorial-service-alloy",
@@ -430,7 +430,7 @@
       "id": "sf.render.memorial-array.node.lod1-remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 1944,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_MemorialRegisterLeaf0.001",
       "nodeId": "sf.render.memorial-array.node.lod1-remaster-material-mechanical-brushednickel",
@@ -455,7 +455,7 @@
       "id": "sf.render.memorial-array.node.lod1-remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 828,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_EngravedRegisterRule.018",
       "nodeId": "sf.render.memorial-array.node.lod1-remaster-material-mechanical-shadowenamel",
@@ -480,7 +480,7 @@
       "id": "sf.render.memorial-array.node.lod2-memorial-candle-optic.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "05d1eec7f8974417c57532b2879ceb77fbdd1bbb64fe3da2d29a2f718cfca316",
+      "materialHash": "2c77450294a117413331ace127aa540a329695e7e3f85c244e57eba83ba6c1ac",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Memorial_Candle_Optic_Mesh",
       "nodeId": "sf.render.memorial-array.node.lod2-memorial-candle-optic",
@@ -505,7 +505,7 @@
       "id": "sf.render.memorial-array.node.lod2-memorial-frame-coat.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "cac42454e8b734eeedbca6eb0567a3fc9b7fe4eed2aa38f64801f70c533462dc",
+      "materialHash": "0f1d61f773a697f7c2722f559f6a9e492e298516bde3ab10101ce09cf73f3343",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Memorial_Frame_Coat_Mesh",
       "nodeId": "sf.render.memorial-array.node.lod2-memorial-frame-coat",
@@ -530,7 +530,7 @@
       "id": "sf.render.memorial-array.node.lod2-memorial-inscribed-bronze.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "e172637ed663ccc452f8e196b7d4bd6348719c1ab951831f970d9fa12562d44a",
+      "materialHash": "5ec031b327b57f05b67025c2914cf1c2035cc589555922f8e2b4c452ff4ae4af",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Memorial_Inscribed_Bronze_Mesh",
       "nodeId": "sf.render.memorial-array.node.lod2-memorial-inscribed-bronze",
@@ -555,7 +555,7 @@
       "id": "sf.render.memorial-array.node.lod2-memorial-recovered-hull.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "6e725cadfa4b72e69ed2c0fcd7f91ee7b9f26c52779ffeacf6cc593d16cbfbfc",
+      "materialHash": "4eb8de40c1f4edd81a898ce977929652df3a6d4ed3517eee7c96f7f5e635a316",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Memorial_Recovered_Hull_Mesh",
       "nodeId": "sf.render.memorial-array.node.lod2-memorial-recovered-hull",
@@ -580,7 +580,7 @@
       "id": "sf.render.memorial-array.node.lod2-memorial-service-alloy.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "db82563004d5b7e191fec6abc466efeed11d99b959db308d71b1534ea51d2267",
+      "materialHash": "54bc226f8f13998c818235be7305ebbf7d021f9a180aa3d8d7d1d7a98bcfeb60",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Memorial_Service_Alloy_Mesh",
       "nodeId": "sf.render.memorial-array.node.lod2-memorial-service-alloy",
@@ -605,7 +605,7 @@
       "id": "sf.render.memorial-array.node.lod2-remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 1944,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_MemorialRegisterLeaf0.002",
       "nodeId": "sf.render.memorial-array.node.lod2-remaster-material-mechanical-brushednickel",
@@ -630,7 +630,7 @@
       "id": "sf.render.memorial-array.node.lod2-remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 828,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_EngravedRegisterRule.019",
       "nodeId": "sf.render.memorial-array.node.lod2-remaster-material-mechanical-shadowenamel",
@@ -643,106 +643,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "05d1eec7f8974417c57532b2879ceb77fbdd1bbb64fe3da2d29a2f718cfca316",
-      "id": "material:05d1eec7f8974417c57532b2",
-      "name": "Memorial_Candle_Optic",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "warm_recessed_candle_optic_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "warm_recessed_candle_optic_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "warm_recessed_candle_optic_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "warm_recessed_candle_optic_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
-      "id": "material:09306e58ed6387f8ee509fc5",
-      "name": "Material_Mechanical_BrushedNickel",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_BrushedNickel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "6e725cadfa4b72e69ed2c0fcd7f91ee7b9f26c52779ffeacf6cc593d16cbfbfc",
-      "id": "material:6e725cadfa4b72e69ed2c0fc",
-      "name": "Memorial_Recovered_Hull",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "dark_recovered_convoy_hull_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "dark_recovered_convoy_hull_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "dark_recovered_convoy_hull_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "dark_recovered_convoy_hull_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "cac42454e8b734eeedbca6eb0567a3fc9b7fe4eed2aa38f64801f70c533462dc",
-      "id": "material:cac42454e8b734eeedbca6eb",
+      "hash": "0f1d61f773a697f7c2722f559f6a9e492e298516bde3ab10101ce09cf73f3343",
+      "id": "material:0f1d61f773a697f7c2722f55",
       "name": "Memorial_Frame_Coat",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -771,42 +675,74 @@
       ]
     },
     {
-      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
-      "id": "material:d543b5ad38ffaf4a55e27bfe",
-      "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:double",
+      "hash": "2c77450294a117413331ace127aa540a329695e7e3f85c244e57eba83ba6c1ac",
+      "id": "material:2c77450294a117413331ace1",
+      "name": "Memorial_Candle_Optic",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "Material_Mechanical_ShadowEnamel_base",
+          "name": "warm_recessed_candle_optic_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "name": "warm_recessed_candle_optic_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "name": "warm_recessed_candle_optic_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "name": "warm_recessed_candle_optic_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "db82563004d5b7e191fec6abc466efeed11d99b959db308d71b1534ea51d2267",
-      "id": "material:db82563004d5b7e191fec6ab",
+      "hash": "4eb8de40c1f4edd81a898ce977929652df3a6d4ed3517eee7c96f7f5e635a316",
+      "id": "material:4eb8de40c1f4edd81a898ce9",
+      "name": "Memorial_Recovered_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "dark_recovered_convoy_hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "dark_recovered_convoy_hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "dark_recovered_convoy_hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "dark_recovered_convoy_hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "54bc226f8f13998c818235be7305ebbf7d021f9a180aa3d8d7d1d7a98bcfeb60",
+      "id": "material:54bc226f8f13998c818235be",
       "name": "Memorial_Service_Alloy",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -835,10 +771,10 @@
       ]
     },
     {
-      "hash": "e172637ed663ccc452f8e196b7d4bd6348719c1ab951831f970d9fa12562d44a",
-      "id": "material:e172637ed663ccc452f8e196",
+      "hash": "5ec031b327b57f05b67025c2914cf1c2035cc589555922f8e2b4c452ff4ae4af",
+      "id": "material:5ec031b327b57f05b67025c2",
       "name": "Memorial_Inscribed_Bronze",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -861,6 +797,70 @@
         {
           "colorSpace": "linear",
           "name": "aged_registry_bronze_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "id": "material:a3835271b1d8aa0e92a83e88",
+      "name": "Material_Mechanical_ShadowEnamel",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
+      "id": "material:ffe807b15567637e0a14ecd2",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "occlusion",
           "uri": null
         }
@@ -2043,19 +2043,19 @@
       "sha256": "b5ba575ffb45bbe91c9af85967c81a2045cb175fc417813983adcaa8bc6902d2"
     },
     "sourceGlb": {
-      "bytes": 375204,
-      "sha256": "c42863d4ed25b718e46e726f75016aaedaedd9f93e9b280b7af493b5a11f669a",
+      "bytes": 375212,
+      "sha256": "931d0d394b566b046ce5476e49d2674f8889c8c58d01efd6d9a9ed27c1cb8a70",
       "uri": "place_memorial_array.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 583044,
-    "sha256": "b2e849775fd9599bd58156338feacd147697f33cdf34710b713e4eca98792d39",
+    "bytes": 582912,
+    "sha256": "dec7045fa3878d8652443a0594b02390e431a9c37fa6ad5d142b53a33b7817b1",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2933,7 +2933,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_memorial_array.glb"
   },
-  "runtimeHash": "dee3303f74e89e1e11ac9d6e423929dac90a274bf6cfcab6b21c6dac3ceedd0c",
+  "runtimeHash": "feb484df2b553afbfc28b0874015a49176a77b0477c576fe2f6323338ca740c9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4c333e164ad195a83280fe868a0c3c2f3132aa14c27ed972bd85e89617262495",
+  "contentHash": "ad8c2ca87607738b1671e6406f4170ff32d0431ea97ebc75047e1e7a3a6f6d7c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1078,8 +1078,8 @@
       "uri": "hull_gunship.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
@@ -1734,7 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_gunship.glb"
   },
-  "runtimeHash": "0d5b94ad2b54613bb7087f341c20454571099bced955f5f5ed17f6491e3541da",
+  "runtimeHash": "2a5749100514a0d951943f8619af97f04a9d6cc349c7b51fab2a66da4be559ff",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

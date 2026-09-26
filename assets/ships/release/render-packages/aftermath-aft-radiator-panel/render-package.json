@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "450bb33a839d2225c4cd783f19b9cd515e27f8e1b8786b2146712b49849a38f3",
+  "contentHash": "f5fbe71d9a3e79e57f3241aebd32ad16e56c2599e800cb7a3316837a069efb5b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-header-a.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-header-a",
@@ -99,7 +99,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-header-b.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-header-b",
@@ -124,7 +124,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-panel.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialHash": "04b25837d69193ba9433d3594783f5984cd6f657ca7f242a20faa48597023653",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-panel",
@@ -149,7 +149,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-0",
@@ -174,7 +174,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-1",
@@ -199,7 +199,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-2",
@@ -224,7 +224,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.ar-rib-3",
@@ -249,7 +249,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.crack-crack-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialHash": "332786644a4fc6083022f490e9b1bf4a359e8b0de092327eeb6c6bc20ecf81d5",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.crack-crack-0",
@@ -274,7 +274,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.crack-crack-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialHash": "332786644a4fc6083022f490e9b1bf4a359e8b0de092327eeb6c6bc20ecf81d5",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.003",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.crack-crack-1",
@@ -299,7 +299,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-0",
@@ -324,7 +324,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-1",
@@ -349,7 +349,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-2",
@@ -374,7 +374,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.008",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-3",
@@ -399,7 +399,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-4",
@@ -424,7 +424,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.010",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-5",
@@ -449,7 +449,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-6.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.011",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-6",
@@ -474,7 +474,7 @@
       "id": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-7.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.012",
       "nodeId": "sf.render.aftermath-aft-radiator-panel.mesh.tear-root-tear-7",
@@ -487,38 +487,38 @@
   "lods": [],
   "materials": [
     {
-      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "id": "material:3d43233b1e4b6f8b5f438e39",
-      "name": "wrk_torn_edge",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
-      "id": "material:6ba64bc230e8b6c479bb16ed",
-      "name": "wrk_hot_deep_red",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
-      "id": "material:8c682904cd449a1872aaaa7a",
-      "name": "wrk_frame_steel",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
-      "id": "material:bfaa9a8470a29a0d44afaeea",
-      "name": "wrk_pipe",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
-      "id": "material:e4ff96995aa92d7316acce8e",
+      "hash": "04b25837d69193ba9433d3594783f5984cd6f657ca7f242a20faa48597023653",
+      "id": "material:04b25837d69193ba9433d359",
       "name": "wrk_scorch_edge",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
+      "id": "material:22fb5bdfdbdcd9d19625effa",
+      "name": "wrk_torn_edge",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "332786644a4fc6083022f490e9b1bf4a359e8b0de092327eeb6c6bc20ecf81d5",
+      "id": "material:332786644a4fc6083022f490",
+      "name": "wrk_hot_deep_red",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "id": "material:cd6123b380f546013af23403",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
+      "id": "material:f3523d8806199d6eff1110c0",
+      "name": "wrk_pipe",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -1410,19 +1410,19 @@
       "sha256": "6832241bc75955092b1419db958758933c5824cdfde249e5af81f52011e92af5"
     },
     "sourceGlb": {
-      "bytes": 20476,
-      "sha256": "809d2af999538a9f8571a79a371e81ddc0d0420e4adccc9d2bd46ca2f9ed1334",
+      "bytes": 20480,
+      "sha256": "9f6d7021eaf9449335c582648108a04b91b58a87bc2342deee567ee7d3e42254",
       "uri": "place_aftermath_aft_radiator_panel.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 41988,
-    "sha256": "7236a7398e3dc5cd7210e8e3c6ad5e1667bb4021d47e072cc290ac01f046c65d",
+    "bytes": 41892,
+    "sha256": "1d0985077185027f7027f2b78e116895f4bc8878bc3cf9dd8d5a021c298ceb1d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2047,7 +2047,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_radiator_panel.glb"
   },
-  "runtimeHash": "9873169ba14b83fa80e90f7dc2666a47372aa9c22d8ab4214fc903da0a177df2",
+  "runtimeHash": "cf3fd91bbd14b691f2cf471a2b5e6c2b356a3cb54029ce16240f04f05234d6fb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

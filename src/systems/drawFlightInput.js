@@ -15,6 +15,13 @@ export function emptyDrawFlightGesture() {
 }
 const valid = (p) => Number.isFinite(p?.x) && Number.isFinite(p?.z);
 
+// Retained scratch for the per-gesture worldToScreen/raycastToPlane probes — results are
+// snapshot to scalars before the next cast, so single objects are safe (see below).
+const _dfiWorld = { x: 0, y: 0, z: 0 };
+const _dfiScreen = { x: 0, y: 0, onScreen: false };
+const _dfiNdc = { x: 0, y: 0 };
+const _dfiHit = { x: 0, z: 0 };
+
 /** Record one non-duplicated DOM mouse delta, using the caller's simulation clock. */
 export function recordDrawFlightGesture(host, dx, dy, now, width, height) {
   const state = host.state, inp = state?.input;
@@ -26,10 +33,14 @@ export function recordDrawFlightGesture(host, dx, dy, now, width, height) {
   if (Math.hypot(dx, dy) > Math.max(width, height) * 4) return false;
   const raycast = host.helpers?.raycastToPlane;
   if (typeof raycast !== 'function') return false;
-  const screen = host.helpers?.worldToScreen?.({ ...player.pos, y: 0 });
+  _dfiWorld.x = player.pos.x; _dfiWorld.y = 0; _dfiWorld.z = player.pos.z;
+  const screen = host.helpers?.worldToScreen?.(_dfiWorld, _dfiScreen);
   const sx = Number.isFinite(screen?.x) ? screen.x : width * 0.5;
   const sy = Number.isFinite(screen?.y) ? screen.y : height * 0.5;
-  const at = (x, y) => raycast({ x: x / width * 2 - 1, y: 1 - y / height * 2 });
+  const at = (x, y) => {
+    _dfiNdc.x = x / width * 2 - 1; _dfiNdc.y = 1 - y / height * 2;
+    return raycast(_dfiNdc, _dfiHit);
+  };
   // The production frame membrane returns a shared _rayGlobalXZ scratch object.
   // Snapshot scalar components BEFORE the next cast; retaining three result references
   // would alias them all to `down` and silently turn every mouse delta into zero.

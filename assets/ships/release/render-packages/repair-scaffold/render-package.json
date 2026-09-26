@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7f2bbc050c1a842ca12f81724f058d8d1ec2fe14ba426ad9c6e0a758fb0afb2b",
+  "contentHash": "6bcf10dc93b9d21d2ca673b165c74e698e6ac396571d0baa3e6ab9dc1918b4de",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.repair-scaffold.mesh.basket-hanger.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.021",
       "nodeId": "sf.render.repair-scaffold.mesh.basket-hanger",
@@ -99,7 +99,7 @@
       "id": "sf.render.repair-scaffold.mesh.basket.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.repair-scaffold.mesh.basket",
@@ -124,7 +124,7 @@
       "id": "sf.render.repair-scaffold.mesh.clamparm0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.020",
       "nodeId": "sf.render.repair-scaffold.mesh.clamparm0",
@@ -149,7 +149,7 @@
       "id": "sf.render.repair-scaffold.mesh.clamparm1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.018",
       "nodeId": "sf.render.repair-scaffold.mesh.clamparm1",
@@ -174,7 +174,7 @@
       "id": "sf.render.repair-scaffold.mesh.clampjaw0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.repair-scaffold.mesh.clampjaw0",
@@ -199,7 +199,7 @@
       "id": "sf.render.repair-scaffold.mesh.clampjaw1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.repair-scaffold.mesh.clampjaw1",
@@ -224,7 +224,7 @@
       "id": "sf.render.repair-scaffold.mesh.deck-a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "89aa455ad9dafe2ba6454b2eca9192f2b9a6bd659ab628f286fbd1304ad11a8a",
+      "materialHash": "f7b4b4e644b409cbcb6304cd02f6aed938041962775c5e0e438c8a154483182b",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.repair-scaffold.mesh.deck-a",
@@ -249,7 +249,7 @@
       "id": "sf.render.repair-scaffold.mesh.deck-b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "89aa455ad9dafe2ba6454b2eca9192f2b9a6bd659ab628f286fbd1304ad11a8a",
+      "materialHash": "f7b4b4e644b409cbcb6304cd02f6aed938041962775c5e0e438c8a154483182b",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.008",
       "nodeId": "sf.render.repair-scaffold.mesh.deck-b",
@@ -324,7 +324,7 @@
       "id": "sf.render.repair-scaffold.mesh.post0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.019",
       "nodeId": "sf.render.repair-scaffold.mesh.post0",
@@ -349,7 +349,7 @@
       "id": "sf.render.repair-scaffold.mesh.post1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.022",
       "nodeId": "sf.render.repair-scaffold.mesh.post1",
@@ -374,7 +374,7 @@
       "id": "sf.render.repair-scaffold.mesh.post2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.repair-scaffold.mesh.post2",
@@ -399,7 +399,7 @@
       "id": "sf.render.repair-scaffold.mesh.post3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.repair-scaffold.mesh.post3",
@@ -424,7 +424,7 @@
       "id": "sf.render.repair-scaffold.mesh.rails.primitive.0",
       "indexCount": 840,
       "indexed": true,
-      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.003",
       "nodeId": "sf.render.repair-scaffold.mesh.rails",
@@ -437,6 +437,13 @@
   "lods": [],
   "materials": [
     {
+      "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "id": "material:143624083cd581b0939afdce",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "30a1b3664c52d6456d2dd72abd1fded5a26c5ed6d695b8679899c02ea2ffd521",
       "id": "material:30a1b3664c52d6456d2dd72a",
       "name": "esk_light_repair",
@@ -444,24 +451,17 @@
       "textures": []
     },
     {
-      "hash": "89aa455ad9dafe2ba6454b2eca9192f2b9a6bd659ab628f286fbd1304ad11a8a",
-      "id": "material:89aa455ad9dafe2ba6454b2e",
-      "name": "esk_deck_grate",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
-      "id": "material:9538e2a870a6b542509db5ad",
+      "hash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
+      "id": "material:c4d232af0c91939b2fe36a45",
       "name": "esk_paint_service_blue",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
-      "id": "material:9dfc701728dc33faaa6f1ce7",
-      "name": "esk_bare_steel",
-      "pipelineKey": "opaque:double",
+      "hash": "f7b4b4e644b409cbcb6304cd02f6aed938041962775c5e0e438c8a154483182b",
+      "id": "material:f7b4b4e644b409cbcb6304cd",
+      "name": "esk_deck_grate",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -1256,18 +1256,18 @@
     },
     "sourceGlb": {
       "bytes": 19512,
-      "sha256": "494783c455c0a6c2941d7fc966ed457b4ed143ab5b87a9bf9bab29a99e6716ac",
+      "sha256": "a1104bfd148988a292a678e1559c8d02cbcde24f2fcdd9fdb988087ec0383d60",
       "uri": "place_repair_scaffold.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 35504,
-    "sha256": "bde694f5501b6008e24902a2d78504757f0be4a244c907abd5155b96534047cc",
+    "bytes": 35444,
+    "sha256": "06fccea6efb71c82b37c853f27e68398458df4daf34c426382d7e801aec04643",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1827,7 +1827,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_repair_scaffold.glb"
   },
-  "runtimeHash": "208ce47ad1f61309b85c886d8ca84b28f1136c13d038ea4c4611386c4c3374fb",
+  "runtimeHash": "ea29303d86d6b5ae0fb516736b9f4985b2b75a9aeef0e5c352b0c292ec3505c6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "24796e4159ab5eee12b447e665fa8823d74a5f2ee700681c2a39c1c922e4b3b6",
+  "contentHash": "d62f743ab660dc410ea72157c00dcc54e59fba81a96ddecd490ca77b6f075b09",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.fr-rib-0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
       "nodeId": "sf.render.aftermath-frag-rib-cluster.mesh.fr-rib-0",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.fr-rib-1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.aftermath-frag-rib-cluster.mesh.fr-rib-1",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.fr-rib-2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.aftermath-frag-rib-cluster.mesh.fr-rib-2",
@@ -102,7 +102,7 @@
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.fr-rib-3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.003",
       "nodeId": "sf.render.aftermath-frag-rib-cluster.mesh.fr-rib-3",
@@ -127,7 +127,7 @@
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.fr-rib-4.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.004",
       "nodeId": "sf.render.aftermath-frag-rib-cluster.mesh.fr-rib-4",
@@ -152,7 +152,7 @@
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.fr-skin.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.aftermath-frag-rib-cluster.mesh.fr-skin",
@@ -165,17 +165,17 @@
   "lods": [],
   "materials": [
     {
-      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "id": "material:3d43233b1e4b6f8b5f438e39",
+      "hash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
+      "id": "material:22fb5bdfdbdcd9d19625effa",
       "name": "wrk_torn_edge",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
-      "id": "material:8c682904cd449a1872aaaa7a",
+      "hash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "id": "material:cd6123b380f546013af23403",
       "name": "wrk_frame_steel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -528,19 +528,19 @@
       "sha256": "c4d45358a41848ff48e7961e0c86085f6de12033038ca89f75b6c2b105c21787"
     },
     "sourceGlb": {
-      "bytes": 11944,
-      "sha256": "7988bdadd26103a44a5f69fb6527dd735d3506465f4b1e78586ced261e27a728",
+      "bytes": 11948,
+      "sha256": "80d4bcbdfffca7bafe115d72a94ddbfb30f25c28ad793cd8482d4b5aa35bd0d3",
       "uri": "place_aftermath_frag_rib_cluster.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 18284,
-    "sha256": "8457612ad9dae9992af10f2d689b250f83cdd60cfd5acadeb89637a4e17a969e",
+    "bytes": 18248,
+    "sha256": "a3676e6ccc4ad464baead9a8751d3b10cef83da18091a2c4dde453c98ee1bc81",
     "uri": "render.glb"
   },
   "runtime": {
@@ -773,7 +773,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_rib_cluster.glb"
   },
-  "runtimeHash": "9050f6458384128a6f653315834e32ee73a798e50ff03addf2eece3069bcdc26",
+  "runtimeHash": "f372e68bfc69e42ee999bd177c63b92f24115c974af77c8d18f88e4380d30d61",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

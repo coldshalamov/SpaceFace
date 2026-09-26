@@ -64,6 +64,10 @@ export function attachStationHlod(root, entity) {
   };
   root.userData.updateLod = function updateStationStableLod(level) {
     if (typeof innerUpdateLod === 'function') innerUpdateLod(level);
+    // Stations hold one LOD for seconds-to-minutes; the detail-hide traverse + per-node regex
+    // only pays off when the level actually changes.
+    if (level === root.userData.hlod.lastDetailLevel) return;
+    root.userData.hlod.lastDetailLevel = level;
     const hidden = applyProjectedDetailLod(root, level);
     root.userData.hlod.farDetailHidden = hidden;
     root.userData.hlod.detailedVisible = level === 'lod2' ? 0 : 1;

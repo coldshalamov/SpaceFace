@@ -335,7 +335,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ae551e5f50fe6013856ae2e4e82f06ea296eb0a36530c7d0638b8b8c1cc07abd",
+  "contentHash": "8feab458384c98f99d92700b7ca0fbc36d8ecd232ef942fbbb99f384af2998e6",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -356,7 +356,7 @@
       "id": "sf.render.claim-outpost-base.mesh.collision-hull.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
       "materialPipelineKey": "non-render",
       "meshName": "Cube.065",
       "nodeId": "sf.render.claim-outpost-base.mesh.collision-hull",
@@ -381,7 +381,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod0-station-material-accent.primitive.0",
       "indexCount": 18336,
       "indexed": true,
-      "materialHash": "62755305e9e3e17d366710f678632d316cd8b99f4603bb228b971b4a4be22af6",
+      "materialHash": "2ec7142f6c2f0ec932e4f3c5254cb1ec1484d772edffd4052ba6a4fba54a3845",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.001",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod0-station-material-accent",
@@ -406,7 +406,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod0-station-material-glass.primitive.0",
       "indexCount": 3948,
       "indexed": true,
-      "materialHash": "a44cdccbc617e8e1aeace035e5a680e95c4777f62814c0dfd0831c6ccfd95625",
+      "materialHash": "a5ef9adcb6e60b9456ac2b29859a0ebbdf168d1c7ba992cea194f520510dcc44",
       "materialPipelineKey": "blend",
       "meshName": "Cube.003",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod0-station-material-glass",
@@ -431,7 +431,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod0-station-material-hull.primitive.0",
       "indexCount": 4968,
       "indexed": true,
-      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialHash": "cce76db423f4b9772db1c2dd607ef2ae163878dd8ccf4dc09cdc4fea330adec3",
       "materialPipelineKey": "opaque",
       "meshName": "Icosphere",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod0-station-material-hull",
@@ -456,7 +456,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod0-station-material-mechanical.primitive.0",
       "indexCount": 16644,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
       "materialPipelineKey": "opaque",
       "meshName": "Torus",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod0-station-material-mechanical",
@@ -481,7 +481,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod0-station-material-warm.primitive.0",
       "indexCount": 2256,
       "indexed": true,
-      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialHash": "544dbd8f0b5f8d3f1459abfcd7e9a198342288013f5db1d897029901b176e205",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.010",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod0-station-material-warm",
@@ -506,7 +506,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod1-station-material-accent.primitive.0",
       "indexCount": 6000,
       "indexed": true,
-      "materialHash": "62755305e9e3e17d366710f678632d316cd8b99f4603bb228b971b4a4be22af6",
+      "materialHash": "2ec7142f6c2f0ec932e4f3c5254cb1ec1484d772edffd4052ba6a4fba54a3845",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.003",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod1-station-material-accent",
@@ -531,7 +531,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod1-station-material-glass.primitive.0",
       "indexCount": 2268,
       "indexed": true,
-      "materialHash": "a44cdccbc617e8e1aeace035e5a680e95c4777f62814c0dfd0831c6ccfd95625",
+      "materialHash": "a5ef9adcb6e60b9456ac2b29859a0ebbdf168d1c7ba992cea194f520510dcc44",
       "materialPipelineKey": "blend",
       "meshName": "Cube.029",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod1-station-material-glass",
@@ -556,7 +556,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod1-station-material-hull.primitive.0",
       "indexCount": 1608,
       "indexed": true,
-      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialHash": "cce76db423f4b9772db1c2dd607ef2ae163878dd8ccf4dc09cdc4fea330adec3",
       "materialPipelineKey": "opaque",
       "meshName": "Icosphere.001",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod1-station-material-hull",
@@ -581,7 +581,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod1-station-material-mechanical.primitive.0",
       "indexCount": 6324,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.002",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod1-station-material-mechanical",
@@ -606,7 +606,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod1-station-material-warm.primitive.0",
       "indexCount": 1296,
       "indexed": true,
-      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialHash": "544dbd8f0b5f8d3f1459abfcd7e9a198342288013f5db1d897029901b176e205",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.036",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod1-station-material-warm",
@@ -631,7 +631,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod2-station-material-accent.primitive.0",
       "indexCount": 1872,
       "indexed": true,
-      "materialHash": "62755305e9e3e17d366710f678632d316cd8b99f4603bb228b971b4a4be22af6",
+      "materialHash": "2ec7142f6c2f0ec932e4f3c5254cb1ec1484d772edffd4052ba6a4fba54a3845",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.005",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod2-station-material-accent",
@@ -656,7 +656,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod2-station-material-glass.primitive.0",
       "indexCount": 264,
       "indexed": true,
-      "materialHash": "a44cdccbc617e8e1aeace035e5a680e95c4777f62814c0dfd0831c6ccfd95625",
+      "materialHash": "a5ef9adcb6e60b9456ac2b29859a0ebbdf168d1c7ba992cea194f520510dcc44",
       "materialPipelineKey": "blend",
       "meshName": "Cube.051",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod2-station-material-glass",
@@ -681,7 +681,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod2-station-material-hull.primitive.0",
       "indexCount": 504,
       "indexed": true,
-      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialHash": "cce76db423f4b9772db1c2dd607ef2ae163878dd8ccf4dc09cdc4fea330adec3",
       "materialPipelineKey": "opaque",
       "meshName": "Icosphere.002",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod2-station-material-hull",
@@ -706,7 +706,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod2-station-material-mechanical.primitive.0",
       "indexCount": 2004,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.004",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod2-station-material-mechanical",
@@ -731,7 +731,7 @@
       "id": "sf.render.claim-outpost-base.mesh.lod2-station-material-warm.primitive.0",
       "indexCount": 528,
       "indexed": true,
-      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialHash": "544dbd8f0b5f8d3f1459abfcd7e9a198342288013f5db1d897029901b176e205",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.053",
       "nodeId": "sf.render.claim-outpost-base.mesh.lod2-station-material-warm",
@@ -744,10 +744,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
-      "id": "material:0c11502fea9d740108140ae7",
+      "hash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
+      "id": "material:1f757966d28ec956d41e8d60",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -776,42 +776,10 @@
       ]
     },
     {
-      "hash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
-      "id": "material:14f398d34f8381a8c902dea8",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hull_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "62755305e9e3e17d366710f678632d316cd8b99f4603bb228b971b4a4be22af6",
-      "id": "material:62755305e9e3e17d366710f6",
+      "hash": "2ec7142f6c2f0ec932e4f3c5254cb1ec1484d772edffd4052ba6a4fba54a3845",
+      "id": "material:2ec7142f6c2f0ec932e4f3c5",
       "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -840,10 +808,42 @@
       ]
     },
     {
-      "hash": "a44cdccbc617e8e1aeace035e5a680e95c4777f62814c0dfd0831c6ccfd95625",
-      "id": "material:a44cdccbc617e8e1aeace035",
+      "hash": "544dbd8f0b5f8d3f1459abfcd7e9a198342288013f5db1d897029901b176e205",
+      "id": "material:544dbd8f0b5f8d3f1459abfc",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "warm_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a5ef9adcb6e60b9456ac2b29859a0ebbdf168d1c7ba992cea194f520510dcc44",
+      "id": "material:a5ef9adcb6e60b9456ac2b29",
       "name": "Material_Glass",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -872,32 +872,32 @@
       ]
     },
     {
-      "hash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
-      "id": "material:ecd2c66c154b2ddeed6f95a9",
-      "name": "Material_Warm",
-      "pipelineKey": "opaque:double",
+      "hash": "cce76db423f4b9772db1c2dd607ef2ae163878dd8ccf4dc09cdc4fea330adec3",
+      "id": "material:cce76db423f4b9772db1c2dd",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "warm_basecolor",
+          "name": "hull_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "warm_orm",
+          "name": "hull_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "warm_normal",
+          "name": "hull_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "warm_orm",
+          "name": "hull_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1743,19 +1743,19 @@
       "sha256": "8941f60d80fc4ba87cd80bf9ae1e7e6234163de1f8432b715198f1821a23a793"
     },
     "sourceGlb": {
-      "bytes": 7113496,
-      "sha256": "6dab7e40086ddd6c0041977fac879069875d99a1aed52f2cb37962352658b4f0",
+      "bytes": 7113500,
+      "sha256": "d08e4d868caf74b52bcb25c3a599c8ad8e6b17470e649dfd6e759d21816fdb35",
       "uri": "place_claim_outpost_base.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 7623332,
-    "sha256": "6cc20ef2f4f6e376639a2bb897fbd21601f7ddc12284a60c1b04e012ee8b9f9d",
+    "bytes": 7623236,
+    "sha256": "b7e180ed3b18adfd868c15e87dcfde53a4bfc853856b6c0dc66e9cb2882aae82",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2577,7 +2577,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_base.glb"
   },
-  "runtimeHash": "0652ac9bab6c9bc4a345bc497f375911c81db20720d39df1cb0bb88a721e52e2",
+  "runtimeHash": "52a67b03e003bc362065371cd974ea373fc0f5ad732c2ea10dfaa6ee0f46de27",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

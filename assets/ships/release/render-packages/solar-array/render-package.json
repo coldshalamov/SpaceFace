@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "779fca0b8719913853d2382c6300319ecd80771393b24eaffb846e8c922b4d4e",
+  "contentHash": "615ec2ff1e464dc9d7aa9c98b0f16c7f97dc838163c4fab299a3d651f0ba1e32",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
       "id": "sf.render.solar-array.mesh.base.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.011",
       "nodeId": "sf.render.solar-array.mesh.base",
@@ -145,7 +145,7 @@
       "id": "sf.render.solar-array.mesh.hub.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.038",
       "nodeId": "sf.render.solar-array.mesh.hub",
@@ -170,7 +170,7 @@
       "id": "sf.render.solar-array.mesh.junction.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.012",
       "nodeId": "sf.render.solar-array.mesh.junction",
@@ -195,7 +195,7 @@
       "id": "sf.render.solar-array.mesh.panel-p0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
       "nodeId": "sf.render.solar-array.mesh.panel-p0",
@@ -220,7 +220,7 @@
       "id": "sf.render.solar-array.mesh.panel-p1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.solar-array.mesh.panel-p1",
@@ -245,7 +245,7 @@
       "id": "sf.render.solar-array.mesh.panel-p2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.solar-array.mesh.panel-p2",
@@ -270,7 +270,7 @@
       "id": "sf.render.solar-array.mesh.panel-p3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.solar-array.mesh.panel-p3",
@@ -295,7 +295,7 @@
       "id": "sf.render.solar-array.mesh.panel-s0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.solar-array.mesh.panel-s0",
@@ -320,7 +320,7 @@
       "id": "sf.render.solar-array.mesh.panel-s1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.solar-array.mesh.panel-s1",
@@ -345,7 +345,7 @@
       "id": "sf.render.solar-array.mesh.panel-s2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.solar-array.mesh.panel-s2",
@@ -370,7 +370,7 @@
       "id": "sf.render.solar-array.mesh.panel-s3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.solar-array.mesh.panel-s3",
@@ -395,7 +395,7 @@
       "id": "sf.render.solar-array.mesh.spine-p.primitive.0",
       "indexCount": 1080,
       "indexed": true,
-      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialHash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.solar-array.mesh.spine-p",
@@ -420,7 +420,7 @@
       "id": "sf.render.solar-array.mesh.spine-s.primitive.0",
       "indexCount": 1080,
       "indexed": true,
-      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialHash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.solar-array.mesh.spine-s",
@@ -520,7 +520,7 @@
       "id": "sf.render.solar-array.mesh.tracker.primitive.0",
       "indexCount": 156,
       "indexed": true,
-      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.020",
       "nodeId": "sf.render.solar-array.mesh.tracker",
@@ -533,30 +533,37 @@
   "lods": [],
   "materials": [
     {
-      "hash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
-      "id": "material:004d84593ded3a8b8bc566c1",
-      "name": "esk_solar_cell",
-      "pipelineKey": "opaque:double",
+      "hash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
+      "id": "material:11ee3508b0192ad7582dd7fa",
+      "name": "esk_truss_galv",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
-      "id": "material:2b5f9fd026bc45c1c843ea55",
-      "name": "esk_truss_galv",
-      "pipelineKey": "opaque:double",
+      "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "id": "material:143624083cd581b0939afdce",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
+      "id": "material:2df5fe4085e82053eaa20e31",
+      "name": "esk_paint_civic_bone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
+      "id": "material:321a5c429af61691d4cf07a3",
+      "name": "esk_solar_cell",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
       "hash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
       "id": "material:53eb4ca876098f910744724d",
       "name": "esk_light_nav_red",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
-      "id": "material:66a89e4576e5df116e40f4c3",
-      "name": "esk_struct_alloy",
       "pipelineKey": "opaque:double",
       "textures": []
     },
@@ -568,13 +575,6 @@
       "textures": []
     },
     {
-      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
-      "id": "material:9dfc701728dc33faaa6f1ce7",
-      "name": "esk_bare_steel",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
       "id": "material:a090cc581cc4edd9c4d71310",
       "name": "esk_light_nav_green",
@@ -582,10 +582,10 @@
       "textures": []
     },
     {
-      "hash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
-      "id": "material:fcaae752dff7f4d8d2acc92d",
-      "name": "esk_paint_civic_bone",
-      "pipelineKey": "opaque:double",
+      "hash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "id": "material:ef83aaa905288b1ffc8a4f70",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -1477,19 +1477,19 @@
       "sha256": "e04c86d7edb1b28b1792560bbc3baff5ad63105df1f9ae84a8c6eb0546c5ca59"
     },
     "sourceGlb": {
-      "bytes": 28220,
-      "sha256": "050873377723a6dfc3f3d7bd3d55224a638a11a11582649d718803e3e9f8b024",
+      "bytes": 28224,
+      "sha256": "251b7097793ed78a1a6db348bcb07e7d37d194f79e055cd69bdf5e7ae5e4f290",
       "uri": "place_solar_array.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 55912,
-    "sha256": "7f2f49d5804221fe8d046f8f6d60c57c2e3322c4be3e5cf007cd459d5c3aa5f8",
+    "bytes": 55820,
+    "sha256": "a82444bb94951d747afe71b3d1230aead3bfb91829ad4a376ea83c1c819fe6f6",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2151,7 +2151,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_solar_array.glb"
   },
-  "runtimeHash": "ff1b6ff34d74e7d8e300fee2f8f0ba664d2fbeeac390a07ff6111dcc3febc7c9",
+  "runtimeHash": "ec86488c4e75dc9b7396d08cc8da6a4c843cdeb4dd4e2d5702470d1aaeb98da0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

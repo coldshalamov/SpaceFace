@@ -23,6 +23,7 @@ const LAYER_CUES = Object.freeze({
 // INF-049 — close-shave tick. Not damage: a neutral dash on the side the round crossed,
 // brightness following proximity, gone in half a second. Muted audio or reduced motion
 // still leaves this tick — a failed crack is quiet, never absent.
+
 const NEAR_MISS_CUE = Object.freeze({
   layer: 'nearmiss',
   glyph: '\u2013',
@@ -150,6 +151,8 @@ export function createDamageIndicators() {
   root.className = 'sf-dmgind-root';
   root.setAttribute('aria-hidden', 'true');
 
+  // Retained worldToScreen scratch — projection results are consumed synchronously.
+  const _diScreen = { x: 0, y: 0, onScreen: false };
   const markers = [];
   for (let index = 0; index < MAX_MARKERS; index++) {
     const element = document.createElement('div');
@@ -282,7 +285,7 @@ export function createDamageIndicators() {
 
       marker.sourcePoint.x = player.pos.x + Math.cos(marker.angle) * 600;
       marker.sourcePoint.z = player.pos.z - Math.sin(marker.angle) * 600;
-      const projected = worldToScreen(marker.sourcePoint);
+      const projected = worldToScreen(marker.sourcePoint, _diScreen);
       let dx = (Number(projected && projected.x) || width * 0.5) - width * 0.5;
       let dy = (Number(projected && projected.y) || height * 0.5) - height * 0.5;
       const length = Math.hypot(dx, dy) || 1;

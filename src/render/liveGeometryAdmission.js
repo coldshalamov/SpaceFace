@@ -34,6 +34,17 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
   // a per-frame storm), then latch as before for genuinely broken uploads.
   const retryCounts = new WeakMap();
   const MAX_ADMISSION_RETRIES = 4;
+  // Past the retry budget the latch used to hold the root invisible forever — a
+  // transient GL failure (context pressure, a dropped upload) became a permanent
+  // hole. Keep deduping but reopen one retry every cooldown window instead: a
+  // broken upload costs a single slow-cadence attempt, not a per-frame loop and
+  // not an invisible-forever mesh.
+  const retryCooldownUntil = new WeakMap();
+  const RETRY_COOLDOWN_MS = 4000;
+  const nowMsRetry = () => (
+    typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now());
   // Two drain lanes: the ambient lane keeps its compile-before-show contract
   // (a real program link can take seconds, and off-glass roots can wait for it),
   // but that wait must not hold the queue while on-glass roots sit invisible —
@@ -238,7 +249,11 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
       // the retry budget; past that, keep the latch.
       const retries = (retryCounts.get(item.root) || 0) + 1;
       retryCounts.set(item.root, retries);
-      if (retries < MAX_ADMISSION_RETRIES) admissions.delete(item.root);
+      if (retries < MAX_ADMISSION_RETRIES) {
+        admissions.delete(item.root);
+      } else {
+        retryCooldownUntil.set(item.root, nowMsRetry() + RETRY_COOLDOWN_MS);
+      }
       // Resolve BEFORE the reporting calls: a throwing isActive/onError must
       // never strand the rest of the batch un-resolved and still deduped.
       item.resolve(false);
@@ -303,7 +318,11 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
         } catch (error) {
           const retries = (retryCounts.get(entry.root) || 0) + 1;
           retryCounts.set(entry.root, retries);
-          if (retries < MAX_ADMISSION_RETRIES) admissions.delete(entry.root);
+          if (retries < MAX_ADMISSION_RETRIES) {
+            admissions.delete(entry.root);
+          } else {
+            retryCooldownUntil.set(entry.root, nowMsRetry() + RETRY_COOLDOWN_MS);
+          }
           entry.resolve(false);
           try {
             if (entry.active()) onError(error, entry.entity);
@@ -326,11 +345,19 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
   return {
     enqueue(entity, root) {
       if (admissions.has(root)) {
-        dedupedTotal++;
-        // A deduped entry may be stranded in `pending` if it arrived while its
-        // lane was exiting — keep driving the drain on re-offers.
-        drain();
-        return admissions.get(root);
+        // Past-budget latch: reopen once the cooldown expires so a transient
+        // upload failure heals instead of leaving the mesh invisible forever.
+        const cooldown = retryCooldownUntil.get(root);
+        if (cooldown != null && nowMsRetry() >= cooldown) {
+          retryCooldownUntil.delete(root);
+          admissions.delete(root);
+        } else {
+          dedupedTotal++;
+          // A deduped entry may be stranded in `pending` if it arrived while its
+          // lane was exiting — keep driving the drain on re-offers.
+          drain();
+          return admissions.get(root);
+        }
       }
       enqueuedTotal++;
       let resolve;

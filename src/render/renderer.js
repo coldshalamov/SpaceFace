@@ -361,6 +361,16 @@ const _cullLocalXZ = { x: 0, z: 0 };
 const _shadowLocalXZ = { x: 0, z: 0 };
 const _w2sLocalXZ = { x: 0, z: 0 };
 const _rayGlobalXZ = { x: 0, z: 0 };
+const _rayLocalXZ = { x: 0, z: 0 };
+
+function writePlaneXZ(out, x, z) {
+  if (out && typeof out === 'object') {
+    out.x = x;
+    out.z = z;
+    return out;
+  }
+  return { x, z };
+}
 
 function writeScreenProjection(out, x, y, onScreen) {
   if (out && typeof out === 'object') {
@@ -391,8 +401,29 @@ const _craftMicroMotionOptions = {
 // none retains the object — same contract as _craftMicroMotionOptions. All fields a callee can
 // read are rewritten at each call site so a stale flag can never leak from the previous entity.
 const _protectedRootOptions = { isPlayer: false, forceRender: false, neverCull: false };
-// NOTE: shouldSubmitEntityMesh's call sites stay literal — entity-mesh-visibility.test.mjs
-// asserts that exact call shape. The scratches cover everything around it.
+// shouldSubmitEntityMesh options: shared scratch, every field rewritten at each call site
+// so a stale flag can never leak from the previous entity. Fields the helper does not read
+// today (middleBand/type/projectedPx/allowShadowCast) stay written for contract parity.
+const _submitVisibilityOptions = {
+  isPlayer: false,
+  forceRender: false,
+  neverCull: false,
+  hidden: false,
+  snapshotMissing: false,
+  pipelinesPending: false,
+  authoredPending: false,
+  resolvingMarker: false,
+  geometryPending: false,
+  activityFrame: null,
+  entityId: null,
+  ledgerRow: false,
+  presentationTier: null,
+  middleBand: false,
+  type: null,
+  projectedPx: 0,
+  allowShadowCast: false,
+  onLiveGlass: false,
+};
 const _viewBandOptions = {
   isPlayer: false,
   dx: 0,
@@ -1448,10 +1479,16 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   }
   if (owner._meshReconcileDirty) {
     owner.reconcileMeshes();
+    // A reconcile frame used to return before draining, so every poll cadence spent
+    // a whole build budget on bookkeeping and queued work waited a frame per poll.
+    // The drain is budgeted and the late-present gate already throttles it on heavy
+    // frames, so fold the drain into the same frame instead of stranding it.
+    if (owner._meshBuildQueueHead < owner._meshBuildQueue.length) owner._drainPendingMeshBuilds();
     return 'full';
   }
   if (pollDue) {
     owner.reconcileMeshResidency();
+    if (owner._meshBuildQueueHead < owner._meshBuildQueue.length) owner._drainPendingMeshBuilds();
     return 'poll';
   }
   if (owner._meshBuildQueueHead < owner._meshBuildQueue.length) {
@@ -13302,24 +13339,26 @@ export const render = {
       // A protected root keeps its prior visibility when the latest fence has no pose for it.
       // Ordinary stale identities still fail closed and leave the submit list immediately.
       syncResolvingMarker(mesh);
-      // NB: the options literal here is pinned by entity-mesh-visibility.test.mjs's source
-      // contract — the hidden-boundary call shape must stay literal.
+      _submitVisibilityOptions.isPlayer = isPlayer;
+      _submitVisibilityOptions.forceRender = forceRender;
+      _submitVisibilityOptions.neverCull = neverCull;
+      _submitVisibilityOptions.hidden = true;
+      _submitVisibilityOptions.snapshotMissing = !posed;
+      _submitVisibilityOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
+      _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState);
+      _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
+      _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
+      _submitVisibilityOptions.activityFrame = this._activityFrame;
+      _submitVisibilityOptions.entityId = entityId;
+      _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
+      _submitVisibilityOptions.presentationTier = entity && entity.activity && entity.activity.presentationTier;
+      _submitVisibilityOptions.middleBand = false;
+      _submitVisibilityOptions.type = null;
+      _submitVisibilityOptions.projectedPx = 0;
+      _submitVisibilityOptions.allowShadowCast = false;
+      _submitVisibilityOptions.onLiveGlass = false;
       const visibilityChanged = !(!posed && protectedRoot)
-        && applyEntityMeshVisibility(mesh, posed && shouldSubmitEntityMesh({
-          isPlayer,
-          forceRender,
-          neverCull,
-          hidden: true,
-          snapshotMissing: !posed,
-          pipelinesPending: !!(mesh.userData && mesh.userData.pipelinesPending),
-          authoredPending: isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState),
-          resolvingMarker: !!(mesh.userData && mesh.userData.authoredResolvingMarker),
-          geometryPending: !!(mesh.userData && mesh.userData.geometryPending),
-          activityFrame: this._activityFrame,
-          entityId,
-          ledgerRow: !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity),
-          presentationTier: entity && entity.activity && entity.activity.presentationTier,
-        }));
+        && applyEntityMeshVisibility(mesh, posed && shouldSubmitEntityMesh(_submitVisibilityOptions));
       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
       if (mesh.userData && mesh.userData.asteroidInstanceBody) {
         mesh.userData.asteroidInstanceViewCulled = true;
@@ -13464,29 +13503,26 @@ export const render = {
         userData.onGlassPendingSince = null;
       }
       syncResolvingMarker(mesh);
-      // Same pinned literal contract as the hidden loop above — the submit-options object
-      // is intentionally a literal at both call sites.
+      _submitVisibilityOptions.isPlayer = isPlayer;
+      _submitVisibilityOptions.forceRender = forceRender;
+      _submitVisibilityOptions.neverCull = neverCull;
+      _submitVisibilityOptions.hidden = false;
+      _submitVisibilityOptions.middleBand = viewBand === 'middle';
+      _submitVisibilityOptions.type = typeName;
+      _submitVisibilityOptions.projectedPx = projectedPx;
+      _submitVisibilityOptions.allowShadowCast = false;
+      _submitVisibilityOptions.snapshotMissing = !posed;
+      _submitVisibilityOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
+      _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState);
+      _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
+      _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
+      _submitVisibilityOptions.activityFrame = this._activityFrame;
+      _submitVisibilityOptions.entityId = entityId;
+      _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
+      _submitVisibilityOptions.presentationTier = entity && entity.activity && entity.activity.presentationTier;
+      _submitVisibilityOptions.onLiveGlass = onLiveGlass;
       const visibilityChanged = !(!posed && protectedRoot)
-        && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
-          isPlayer,
-          forceRender,
-          neverCull,
-          hidden: false,
-          middleBand: viewBand === 'middle',
-          type: typeName,
-          projectedPx,
-          allowShadowCast: false,
-          snapshotMissing: !posed,
-          pipelinesPending: !!(mesh.userData && mesh.userData.pipelinesPending),
-          authoredPending: isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState),
-          resolvingMarker: !!(mesh.userData && mesh.userData.authoredResolvingMarker),
-          geometryPending: !!(mesh.userData && mesh.userData.geometryPending),
-          activityFrame: this._activityFrame,
-          entityId,
-          ledgerRow: !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity),
-          presentationTier: entity && entity.activity && entity.activity.presentationTier,
-          onLiveGlass,
-        }));
+        && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh(_submitVisibilityOptions));
       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
       if (typeName === 'ship' || typeName === 'station') {
         _shadowCasterPoseOptions.visualRadius = lodRadius;
@@ -15226,16 +15262,21 @@ export const render = {
   },
 
   // Plane pick returns authoritative galactic-global XZ (input systems keep global aimWorld).
-  raycastToPlane(ndc) {
+  // `out` is an optional caller-owned {x,z} scratch; results are consumed synchronously so a
+  // retained object is safe (membrane path already returns the shared _rayGlobalXZ scratch).
+  raycastToPlane(ndc, out) {
     const cam = this.cam && this.cam.obj;
-    if (!cam || !ndc || !Number.isFinite(ndc.x) || !Number.isFinite(ndc.y)) return { x: 0, z: 0 };
+    if (!cam || !ndc || !Number.isFinite(ndc.x) || !Number.isFinite(ndc.y)) return writePlaneXZ(out, 0, 0);
     _v2.set(ndc.x, ndc.y);
     _ray.setFromCamera(_v2, cam);
     const hit = _ray.ray.intersectPlane(_plane, _pt);
-    if (!hit) return { x: 0, z: 0 };
+    if (!hit) return writePlaneXZ(out, 0, 0);
     const membrane = this._frameMembrane;
-    if (!membrane) return { x: hit.x, z: hit.z };
-    return membrane.toGlobal({ x: hit.x, z: hit.z }, _rayGlobalXZ);
+    if (!membrane) return writePlaneXZ(out, hit.x, hit.z);
+    _rayLocalXZ.x = hit.x;
+    _rayLocalXZ.z = hit.z;
+    const g = membrane.toGlobal(_rayLocalXZ, _rayGlobalXZ);
+    return out ? writePlaneXZ(out, g.x, g.z) : g;
   },
 
   // World XZ of a named attachment socket on an entity's mesh, or null if the entity has no mesh or no

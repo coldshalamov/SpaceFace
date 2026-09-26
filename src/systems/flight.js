@@ -420,15 +420,15 @@ export const flight = {
     const neutralAssistBrake = frame && frame.neutralCounterThrust && frame.mode === 'assisted' && !manual && speed > 1.2;
     const brake = !!(input && input.brake) || throttle < -0.025 || neutralAssistBrake;
     if (!manual && !brake && !(e.flags && e.flags.boosting)) return;
-    this.bus.emit('ship:thrust', {
-      id: e.id,
-      shipId: e.id,
-      throttle: Math.max(0, throttle),
-      reverse: brake ? Math.max(0.25, Math.min(1, speed / Math.max(30, (e.maxSpeed || 120) * 0.5))) : 0,
-      strafe,
-      boost: !!(e.flags && e.flags.boosting),
-      nozzles: thrustNozzles(throttle, strafe, brake),
-    });
+    const P = _thrustPayload;
+    P.id = e.id;
+    P.shipId = e.id;
+    P.throttle = Math.max(0, throttle);
+    P.reverse = brake ? Math.max(0.25, Math.min(1, speed / Math.max(30, (e.maxSpeed || 120) * 0.5))) : 0;
+    P.strafe = strafe;
+    P.boost = !!(e.flags && e.flags.boosting);
+    thrustNozzles(throttle, strafe, brake, P.nozzles, _thrustNozzlePool);
+    this.bus.emit('ship:thrust', P);
   },
 };
 
@@ -558,16 +558,22 @@ function counterVelocityInput(player) {
   };
 }
 
-function thrustNozzles(throttle, strafe, brake) {
-  const nozzles = [];
-  if (throttle > 0.025) nozzles.push({ role: 'main', strength: Math.min(1, throttle), angle: 0 });
+// Retained emit payload — all ship:thrust subscribers read synchronously during emit.
+const _thrustPayload = { id: null, shipId: null, throttle: 0, reverse: 0, strafe: 0, boost: false, nozzles: [] };
+const _thrustNozzlePool = Array.from({ length: 4 }, () => ({ role: '', strength: 0, angle: 0 }));
+
+function thrustNozzles(throttle, strafe, brake, out, pool) {
+  let n = 0;
+  const write = (role, strength, angle) => { const o = pool[n++]; o.role = role; o.strength = strength; o.angle = angle; };
+  if (throttle > 0.025) write('main', Math.min(1, throttle), 0);
   if (brake) {
-    nozzles.push({ role: 'reverse-left', strength: 1, angle: Math.PI * 0.75 });
-    nozzles.push({ role: 'reverse-right', strength: 1, angle: -Math.PI * 0.75 });
+    write('reverse-left', 1, Math.PI * 0.75);
+    write('reverse-right', 1, -Math.PI * 0.75);
   }
-  if (strafe > 0.025) nozzles.push({ role: 'strafe-right', strength: Math.min(1, strafe), angle: -Math.PI / 2 });
-  else if (strafe < -0.025) nozzles.push({ role: 'strafe-left', strength: Math.min(1, -strafe), angle: Math.PI / 2 });
-  return nozzles;
+  if (strafe > 0.025) write('strafe-right', Math.min(1, strafe), -Math.PI / 2);
+  else if (strafe < -0.025) write('strafe-left', Math.min(1, -strafe), Math.PI / 2);
+  out.length = n;
+  return out;
 }
 
 function clampUnit(value) {

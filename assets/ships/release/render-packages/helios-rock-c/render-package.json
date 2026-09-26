@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "36d35830aa3b4c79da8f06a948df541ac3953ec46a78c401b2c3bf467e726283",
+  "contentHash": "8931ae80ec4c1a0b3d9f579d56aba3063257623bdca729d97f8d5b9376da5ebf",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.helios-rock-c.mesh.lod0-merged-material-mechanical.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "336703837c894d16f67fd3589c4a6d7b35ec38bd61a94d30245674cfa689ea18",
+      "materialHash": "f721b95671b78e7a5ebacc9a39e5f1da850af628f69b8cb5a3dcfb6345d890f3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Mechanical",
       "nodeId": "sf.render.helios-rock-c.mesh.lod0-merged-material-mechanical",
@@ -99,7 +99,7 @@
       "id": "sf.render.helios-rock-c.mesh.lod0-merged-material-rock.primitive.0",
       "indexCount": 5952,
       "indexed": true,
-      "materialHash": "da8e64c0d439b9b32e593caf68860dc4f78ebe4bcac9a9a6ce25c6fbd4f62c45",
+      "materialHash": "a1e92f571c09a79f5aebd519d88cddc87c756fba41dfa8696b430c6174b8e92d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Rock",
       "nodeId": "sf.render.helios-rock-c.mesh.lod0-merged-material-rock",
@@ -124,7 +124,7 @@
       "id": "sf.render.helios-rock-c.mesh.lod0-merged-material-warm.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e9d935252b92690a2cef815018b15dfe1dfbfa4e6bf888f70c15678576906ba",
+      "materialHash": "fd8f9c4c82a7d63592a3c91e37b15664a6376e6c3542d16f82f715604d37dcfc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Warm",
       "nodeId": "sf.render.helios-rock-c.mesh.lod0-merged-material-warm",
@@ -149,7 +149,7 @@
       "id": "sf.render.helios-rock-c.mesh.lod1-merged-material-mechanical.primitive.0",
       "indexCount": 42,
       "indexed": true,
-      "materialHash": "336703837c894d16f67fd3589c4a6d7b35ec38bd61a94d30245674cfa689ea18",
+      "materialHash": "f721b95671b78e7a5ebacc9a39e5f1da850af628f69b8cb5a3dcfb6345d890f3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Mechanical",
       "nodeId": "sf.render.helios-rock-c.mesh.lod1-merged-material-mechanical",
@@ -174,7 +174,7 @@
       "id": "sf.render.helios-rock-c.mesh.lod1-merged-material-rock.primitive.0",
       "indexCount": 2496,
       "indexed": true,
-      "materialHash": "da8e64c0d439b9b32e593caf68860dc4f78ebe4bcac9a9a6ce25c6fbd4f62c45",
+      "materialHash": "a1e92f571c09a79f5aebd519d88cddc87c756fba41dfa8696b430c6174b8e92d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Rock",
       "nodeId": "sf.render.helios-rock-c.mesh.lod1-merged-material-rock",
@@ -199,7 +199,7 @@
       "id": "sf.render.helios-rock-c.mesh.lod2-merged-material-mechanical.primitive.0",
       "indexCount": 18,
       "indexed": true,
-      "materialHash": "336703837c894d16f67fd3589c4a6d7b35ec38bd61a94d30245674cfa689ea18",
+      "materialHash": "f721b95671b78e7a5ebacc9a39e5f1da850af628f69b8cb5a3dcfb6345d890f3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Mechanical",
       "nodeId": "sf.render.helios-rock-c.mesh.lod2-merged-material-mechanical",
@@ -224,7 +224,7 @@
       "id": "sf.render.helios-rock-c.mesh.lod2-merged-material-rock.primitive.0",
       "indexCount": 1065,
       "indexed": true,
-      "materialHash": "da8e64c0d439b9b32e593caf68860dc4f78ebe4bcac9a9a6ce25c6fbd4f62c45",
+      "materialHash": "a1e92f571c09a79f5aebd519d88cddc87c756fba41dfa8696b430c6174b8e92d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Rock",
       "nodeId": "sf.render.helios-rock-c.mesh.lod2-merged-material-rock",
@@ -237,10 +237,42 @@
   "lods": [],
   "materials": [
     {
-      "hash": "336703837c894d16f67fd3589c4a6d7b35ec38bd61a94d30245674cfa689ea18",
-      "id": "material:336703837c894d16f67fd358",
+      "hash": "a1e92f571c09a79f5aebd519d88cddc87c756fba41dfa8696b430c6174b8e92d",
+      "id": "material:a1e92f571c09a79f5aebd519",
+      "name": "Material_Rock",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "rock_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "rock_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "rock_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "rock_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f721b95671b78e7a5ebacc9a39e5f1da850af628f69b8cb5a3dcfb6345d890f3",
+      "id": "material:f721b95671b78e7a5ebacc9a",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -269,10 +301,10 @@
       ]
     },
     {
-      "hash": "8e9d935252b92690a2cef815018b15dfe1dfbfa4e6bf888f70c15678576906ba",
-      "id": "material:8e9d935252b92690a2cef815",
+      "hash": "fd8f9c4c82a7d63592a3c91e37b15664a6376e6c3542d16f82f715604d37dcfc",
+      "id": "material:fd8f9c4c82a7d63592a3c91e",
       "name": "Material_Warm",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -295,38 +327,6 @@
         {
           "colorSpace": "linear",
           "name": "warm_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "da8e64c0d439b9b32e593caf68860dc4f78ebe4bcac9a9a6ce25c6fbd4f62c45",
-      "id": "material:da8e64c0d439b9b32e593caf",
-      "name": "Material_Rock",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "rock_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "rock_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "rock_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "rock_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -731,19 +731,19 @@
       "sha256": "746503c9a88181299f29fb68105e574ee3bfe8fd9a785cd3849df65b7ac40b3a"
     },
     "sourceGlb": {
-      "bytes": 4127180,
-      "sha256": "6e6d96ad5f75fb1908236204171462329fb491de5a14ee3ac0c29ba98fe42752",
+      "bytes": 4127184,
+      "sha256": "7be571bcc01643be5fffe5d283aaa39d43afe8f190815874d24e20d48075b1a5",
       "uri": "place_asteroid_rock_c.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 4187932,
-    "sha256": "cf913bb3f3cb4cbd02e98a1402c3e4bcf82c0cc4221c77774767840168f5a38e",
+    "bytes": 4187872,
+    "sha256": "14e29c4f8c1299f2516df9a8ecda5d8fa10c1350c17912aba7f5d2da82f6d9e1",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1084,7 +1084,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_rock_c.glb"
   },
-  "runtimeHash": "cf20cc8a4918a59296d8dc1cac54fafdb085d732400356dd9f9cd297f8af288d",
+  "runtimeHash": "b352903c76c9ff156e707b6a6898a733c369753c878da313edbe9fd5270dbfb4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

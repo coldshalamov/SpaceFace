@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "03cded05f09c056e4840bf472e6ff56bf0eff711ed41df38d283fc91599d9996",
+  "contentHash": "4d2a6598221f0931a9aca9bc71f74fe7a212f0fd8d1e56b37a9343ca105db2cb",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-deck.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "d6a50e6ee7951288218a67547cd35c882c53483de1a3594b30b7c3a6308fcfcb",
+      "materialHash": "b48e82aeb2b405ad07a775391fb40e42e04ed4e9516f5ebf60081dbc110e968f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-deck",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-drum.primitive.0",
       "indexCount": 156,
       "indexed": true,
-      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialHash": "274ecadf5d0c83c2764165ffc1c69253de9e1491067770da685411dc1310702b",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-drum",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-ring.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barb-ring",
@@ -102,7 +102,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-0",
@@ -127,7 +127,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-1",
@@ -152,7 +152,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-2",
@@ -177,7 +177,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.cut-deck-cut-3",
@@ -202,7 +202,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-0a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-0a",
@@ -227,7 +227,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-0b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.003",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-0b",
@@ -252,7 +252,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-1a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.004",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-1a",
@@ -277,7 +277,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-1b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.005",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-1b",
@@ -302,7 +302,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-2a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.006",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-2a",
@@ -327,7 +327,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-2b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.007",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-2b",
@@ -352,7 +352,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-3a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.008",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-3a",
@@ -377,7 +377,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-3b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.009",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.stub-feed-cbl-3b",
@@ -390,38 +390,38 @@
   "lods": [],
   "materials": [
     {
-      "hash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
-      "id": "material:14bf611974b680d78643d866",
-      "name": "wrk_cut_edge",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
-      "id": "material:22334c862d743f3b681c8a34",
+      "hash": "274ecadf5d0c83c2764165ffc1c69253de9e1491067770da685411dc1310702b",
+      "id": "material:274ecadf5d0c83c2764165ff",
       "name": "wrk_armor",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
-      "id": "material:2ecdc2543581ee905a24eaa8",
+      "hash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "id": "material:5aaf41e5bfb89546b316c457",
       "name": "wrk_cable",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
-      "id": "material:8c682904cd449a1872aaaa7a",
-      "name": "wrk_frame_steel",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "d6a50e6ee7951288218a67547cd35c882c53483de1a3594b30b7c3a6308fcfcb",
-      "id": "material:d6a50e6ee7951288218a6754",
+      "hash": "b48e82aeb2b405ad07a775391fb40e42e04ed4e9516f5ebf60081dbc110e968f",
+      "id": "material:b48e82aeb2b405ad07a77539",
       "name": "wrk_paint_navy_concord",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "id": "material:cd6123b380f546013af23403",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
+      "id": "material:f7df8b61adf293d3c6c14176",
+      "name": "wrk_cut_edge",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -1215,19 +1215,19 @@
       "sha256": "74de9c12fa4c13dd4a80014bf33f87525f0cb46e187342be161fa3208f233d63"
     },
     "sourceGlb": {
-      "bytes": 20512,
-      "sha256": "a1426fc6c088b899b26ba10e0bcbcaa71b21060deaa544ae084fa3b3d61ec636",
+      "bytes": 20516,
+      "sha256": "c4201e58cab83ebcf97fe36c7553f0ece5edea63903695513be1ce188df70480",
       "uri": "place_aftermath_deb_corvette_barbette_ring.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 37780,
-    "sha256": "a210d7787b3714da4327d4dfa6f028e08112232bf20325158c8b2f0a0b845270",
+    "bytes": 37684,
+    "sha256": "5819e3d80334c834603f18f66e27c813b7cf9d1e115337d5c99a9ac7e0db7592",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1748,7 +1748,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_corvette_barbette_ring.glb"
   },
-  "runtimeHash": "e7193079a70cf4a49c7b8773b1f57655158cdd1245743c5e0b1b3463846d1af7",
+  "runtimeHash": "1d0faff3f83663c4705dd23dbd62007f77f801f17059b9f38e8d7f0d0d74aa71",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

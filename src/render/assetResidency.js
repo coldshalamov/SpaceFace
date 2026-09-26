@@ -73,6 +73,9 @@ export function createAssetResidencyRegistry(options = {}) {
   let abandonedResources = 0;
   let evictedAssets = 0;
   let cacheSweepCount = 0;
+  let diagnosticsEpoch = 0;
+  let canonicalDiagnosticsCache = null;
+  let canonicalDiagnosticsEpoch = -1;
   // `null` disables each inline soft cap (decode adapters/tests that want explicit sweep control
   // can pass `maxPackageCacheOnlyBytes: null` / `maxSoftResidentBytes: null`).
   const packageCacheOnlyMaxBytes = options.maxPackageCacheOnlyBytes === null
@@ -97,6 +100,9 @@ export function createAssetResidencyRegistry(options = {}) {
     const event = Object.freeze({ sequence: ++eventSequence, type, atMs: now(), ...detail });
     events.push(event);
     if (events.length > maxEvents) events.splice(0, events.length - maxEvents);
+    // Every state mutation that can change a diagnostics snapshot ends in an emit, so this
+    // counter is the cache epoch for canonicalDiagnostics below.
+    diagnosticsEpoch++;
     if (typeof options.onEvent === 'function') options.onEvent(event);
     return event;
   }
@@ -527,6 +533,7 @@ export function createAssetResidencyRegistry(options = {}) {
    */
   function releaseUnreferencedCacheOwners(reason = 'cache-only-residency-cleanup', options = {}) {
     cacheSweepCount++;
+    diagnosticsEpoch++;
     packageCacheBudgetDepth++;
     try {
       return releaseUnreferencedCacheOwnersPass(reason, options);
@@ -815,10 +822,10 @@ export function createAssetResidencyRegistry(options = {}) {
         unaccountedResources,
         unaccountedBytes: unaccountedResources > 0 ? null : 0,
         gpuAccountingAuthoritative: unaccountedResources === 0,
-        roles: [...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.role).filter(Boolean))].sort(),
-        presentationTiers: [...new Set([...entry.owners.values()]
-          .map((metadata) => metadata && metadata.presentationTier).filter(Boolean))].sort(),
-        sectors: [...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.sectorId).filter(Boolean).map(String))].sort(),
+        roles: Object.freeze([...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.role).filter(Boolean))].sort()),
+        presentationTiers: Object.freeze([...new Set([...entry.owners.values()]
+          .map((metadata) => metadata && metadata.presentationTier).filter(Boolean))].sort()),
+        sectors: Object.freeze([...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.sectorId).filter(Boolean).map(String))].sort()),
       };
       if (!canonical) row.generation = entry.generation;
       return Object.freeze(row);
@@ -870,7 +877,14 @@ export function createAssetResidencyRegistry(options = {}) {
   }
 
   function canonicalDiagnostics() {
-    return diagnostics({ canonical: true, includeEvents: false });
+    // The canonical snapshot is rebuilt on every seam call (mesh reconcile, residency service,
+    // the 0.25 s readiness poll) — an O(assets) frozen-row sort each time. The registry only
+    // changes through emit-bearing mutations, so reuse the frozen snapshot until the next one.
+    if (canonicalDiagnosticsEpoch !== diagnosticsEpoch) {
+      canonicalDiagnosticsCache = diagnostics({ canonical: true, includeEvents: false });
+      canonicalDiagnosticsEpoch = diagnosticsEpoch;
+    }
+    return canonicalDiagnosticsCache;
   }
 
   function has(key) {

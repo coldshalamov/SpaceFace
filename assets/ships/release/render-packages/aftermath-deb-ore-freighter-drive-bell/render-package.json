@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "74e870c4e60abbe12b115ac1e5927bea0ab3ef120a01ed64886fb4ef3830730c",
+  "contentHash": "a16f9026109a0908f540524b74f22c3de14566470a59cc67b8a01d465ef5f427",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bell-mount.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bell-mount",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bell-ring.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bell-ring",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bell.primitive.0",
       "indexCount": 156,
       "indexed": true,
-      "materialHash": "5a08f6356737023df8d0b8c200b3cddba90c6179f5beaeccf9db2e4c227b9b15",
+      "materialHash": "0f57980100b6f1b770239d21a2e1ce04b40a7e5e63eabce512691fcfb9d6f104",
       "materialPipelineKey": "opaque",
       "meshName": "Cone",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bell",
@@ -102,7 +102,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.cut-mount-cut-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.cut-mount-cut-0",
@@ -127,7 +127,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.cut-mount-cut-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.cut-mount-cut-1",
@@ -152,7 +152,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.cut-mount-cut-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.cut-mount-cut-2",
@@ -177,7 +177,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.cut-mount-cut-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialHash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.cut-mount-cut-3",
@@ -202,7 +202,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-0a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-0a",
@@ -227,7 +227,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-0b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-0b",
@@ -252,7 +252,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-1a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.003",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-1a",
@@ -277,7 +277,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-1b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.004",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-1b",
@@ -302,7 +302,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-2a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.005",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-2a",
@@ -327,7 +327,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-2b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.006",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-2b",
@@ -352,7 +352,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-3a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.007",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-3a",
@@ -377,7 +377,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-3b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.008",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.stub-feed-cbl-3b",
@@ -390,31 +390,31 @@
   "lods": [],
   "materials": [
     {
-      "hash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
-      "id": "material:14bf611974b680d78643d866",
-      "name": "wrk_cut_edge",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
-      "id": "material:2ecdc2543581ee905a24eaa8",
-      "name": "wrk_cable",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "5a08f6356737023df8d0b8c200b3cddba90c6179f5beaeccf9db2e4c227b9b15",
-      "id": "material:5a08f6356737023df8d0b8c2",
+      "hash": "0f57980100b6f1b770239d21a2e1ce04b40a7e5e63eabce512691fcfb9d6f104",
+      "id": "material:0f57980100b6f1b770239d21",
       "name": "wrk_hull_bare",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
-      "id": "material:8c682904cd449a1872aaaa7a",
+      "hash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "id": "material:5aaf41e5bfb89546b316c457",
+      "name": "wrk_cable",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "id": "material:cd6123b380f546013af23403",
       "name": "wrk_frame_steel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f7df8b61adf293d3c6c14176d88f2a06e1dcd2538495bb3f44a86297c0384d03",
+      "id": "material:f7df8b61adf293d3c6c14176",
+      "name": "wrk_cut_edge",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -1208,19 +1208,19 @@
       "sha256": "ab57d54a1e9f7d3905287519a5c3de7ff1a4c5996e2739ad8ecaaeff31a7d684"
     },
     "sourceGlb": {
-      "bytes": 21148,
-      "sha256": "80d8bd08139ca4cd73adba68df56f31c9faa933e503cbae6bb317fbd7b5702e9",
+      "bytes": 21152,
+      "sha256": "1fb8840a169ae6ed95b18908e6c4c08c7a4da766c46f72698a95b884b138faf3",
       "uri": "place_aftermath_deb_ore_freighter_drive_bell.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 38436,
-    "sha256": "96ce5bc9daa63036496caa26c0efe5db22231ca629548889171e71b597587562",
+    "bytes": 38360,
+    "sha256": "944ca9986337c7ed09f3b951c1410d0abfc9ad1dab6ce62770b13c7608e198a5",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1742,7 +1742,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_drive_bell.glb"
   },
-  "runtimeHash": "4926a438acc64481112de7927b034db1471b2718857bf09e96332b8197d312bf",
+  "runtimeHash": "97871e5c22f21316561ea0baf3191c67aac900a038b0bfc13bf1310325d48e5e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

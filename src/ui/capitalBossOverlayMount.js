@@ -53,13 +53,20 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   // The repo's worldToScreen reports window CSS pixels for authoritative global XZ; the adapter
   // draws in canvas-local CSS pixels. The overlay canvas covers the window at (0,0), so the
   // coordinates are the same space — only the unused onScreen flag is dropped.
+  const _projWorld = { x: 0, y: 0, z: 0 };
+  const _projScreen = { x: 0, y: 0, onScreen: false };
+  const _projOut = { x: -1e6, y: -1e6 };
   const project = (p) => {
+    _projWorld.x = p.x; _projWorld.z = p.z;
     const out = helpers && typeof helpers.worldToScreen === 'function'
-      ? helpers.worldToScreen({ x: p.x, y: 0, z: p.z })
+      ? helpers.worldToScreen(_projWorld, _projScreen)
       : null;
-    return out && Number.isFinite(out.x) && Number.isFinite(out.y)
-      ? { x: out.x, y: out.y }
-      : { x: -1e6, y: -1e6 };
+    if (out && Number.isFinite(out.x) && Number.isFinite(out.y)) {
+      _projOut.x = out.x; _projOut.y = out.y;
+    } else {
+      _projOut.x = -1e6; _projOut.y = -1e6;
+    }
+    return _projOut;
   };
   const clockForFight = (fightId) => {
     const fights = state && state.capitalBossEncounters && state.capitalBossEncounters.fights;

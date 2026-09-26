@@ -87,6 +87,16 @@ const WHOLE_SHIP_FILES = [
   'massline_express_liner_v1_lod2.glb',
 ];
 const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
+// A part's lodFamily siblings (lod1/lod2/…) are independent release files the distance selector
+// loads on demand. They are not top-level part rows, so without this expansion a manifest part can
+// ship a compressed lod0 while its lod1/lod2 siblings drift into release/ as raw byte-copies.
+const manifestLodSiblingFiles = new Set();
+for (const part of partManifest.parts || []) {
+  if (part.status === 'blocked' || !part.lodFamily) continue;
+  for (const file of Object.values(part.lodFamily)) {
+    if (file !== part.file && !manifestPartFiles.has(file)) manifestLodSiblingFiles.add(file);
+  }
+}
 const allAssets = [
   {
     id: 'ship_kestrel_reference',
@@ -102,7 +112,14 @@ const allAssets = [
       source: `assets/ships/parts/${part.file}`,
       release: `assets/ships/release/parts/${part.file}`,
     })),
-  ...WHOLE_SHIP_FILES.filter((file) => !manifestPartFiles.has(`wholeships/${file}`)).map((file) => ({
+  ...[...manifestLodSiblingFiles].map((file) => ({
+    id: `wholeship_${file.replace(/^wholeships\//, '').replace(/\.glb$/, '')}`,
+    kind: 'part:wholeships',
+    source: `assets/ships/parts/${file}`,
+    release: `assets/ships/release/parts/${file}`,
+  })),
+  ...WHOLE_SHIP_FILES.filter((file) =>
+    !manifestPartFiles.has(`wholeships/${file}`) && !manifestLodSiblingFiles.has(`wholeships/${file}`)).map((file) => ({
     id: `wholeship_${file.replace(/\.glb$/, '')}`,
     kind: 'part:wholeships',
     source: `assets/ships/parts/wholeships/${file}`,

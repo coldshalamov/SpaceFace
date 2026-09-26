@@ -35,6 +35,9 @@ const BT_REQUEST = Object.freeze({ scale: BT_SCALE });
 // held bullet-time meter (no drain, no engage floor, no require-release latch).
 export const MOMENT_EVENT = 'moment:holyShit';
 const MOMENT_TIME_SOURCE = 'moment:slow-mo';
+// Retained worldToScreen scratch — projection results are consumed synchronously.
+const _btScreenA = { x: 0, y: 0, onScreen: false };
+const _btScreenB = { x: 0, y: 0, onScreen: false };
 export const MOMENT_THRESHOLD = 3.6;
 export const MOMENT_SLOWMO_SCALE = 0.80;  // moment pulse bound (shallower than the held 0.35)
 export const MOMENT_SLOWMO_DUR_S = 0.20;  // pulse length in SIM seconds (deterministic)
@@ -277,22 +280,25 @@ export const bulletTime = {
       this.bus.emit('audio:cue', { id: MOMENT_AUDIO_CUE, importance: 0.9, duck: true });
     }
     // Arm (or extend) the pulse only outside the cooldown — inside it the running pulse and
-    // the bus record already carry the burst.
+    // the bus record already carry the burst. Go through the edge latch so _updateMomentPulse
+    // still clears the request on the next tick if the live condition isn't met.
     if (!motionReduced(state) && stuntAssistProfile(state)==='cinematic' && this.timeEffects) {
       this.timeEffects.set(MOMENT_TIME_SOURCE, { scale: MOMENT_SLOWMO_SCALE });
+      this._momentPulseLive = true;
     }
   },
 
   _visibleMoment(trick) {
     const project=this.helpers?.worldToScreen;if(typeof project!=='function')return false;
+    const scratchA=_btScreenA,scratchB=_btScreenB;
     const player=this.state.entities?.get(this.state.playerId);
-    if(!player?.pos||!project(player.pos)?.onScreen)return false;
+    if(!player?.pos||!project(player.pos,scratchA)?.onScreen)return false;
     const target=this.state.entities?.get(trick.targetId),terminal=target?.pos??trick.terminalPos;
-    if(!terminal||!project(terminal)?.onScreen)return false;
+    if(!terminal||!project(terminal,scratchA)?.onScreen)return false;
     const source=this.state.entities?.get(trick.secondaryIds?.[0]);
     const pos=source?.pos??trick.causeChain?.find(n=>n.pos)?.pos;
     if(!pos)return false;
-    const center=project(pos),edge=project({x:pos.x+(source?.radius??trick.sourceRadius??0),z:pos.z});
+    const center=project(pos,scratchA),edge=project({x:pos.x+(source?.radius??trick.sourceRadius??0),z:pos.z},scratchB);
     return center?.onScreen===true&&edge&&Math.hypot(edge.x-center.x,edge.y-center.y)>=3;
   },
   _framingSafe(trick) {
@@ -301,7 +307,7 @@ export const bulletTime = {
     if(Math.hypot(player?.vel?.x??0,player?.vel?.z??0)>=1.25*(trick.metrics?.referenceCruise??0))return false;
     const w=window.innerWidth,h=window.innerHeight;
     for(const e of this.state.entities.values())if(e?.pos&&e.collides!==false&&e.alive!==false){
-      const p=this.helpers.worldToScreen(e.pos);
+      const p=this.helpers.worldToScreen(e.pos,_btScreenA);
       if(p?.onScreen&&(p.x<w*.08||p.x>w*.92||p.y<h*.08||p.y>h*.92))return false;
     }
     return true;
@@ -313,12 +319,16 @@ export const bulletTime = {
   _updateMomentPulse(state) {
     const moment = ensureMoment(state);
     const now = Math.max(0, finiteNum(state && state.simTime));
-    if (state && state.mode === 'flight' && now < moment.pulseUntil && !motionReduced(state) && stuntAssistProfile(state)==='cinematic') {
-      if (this.timeEffects) this.timeEffects.set(MOMENT_TIME_SOURCE, { scale: MOMENT_SLOWMO_SCALE });
-    } else if (this.timeEffects) {
-      this.timeEffects.clear(MOMENT_TIME_SOURCE);
-      if (!(now < moment.pulseUntil)) moment.pulseUntil = 0;
+    const live = !!(state && state.mode === 'flight' && now < moment.pulseUntil
+      && !motionReduced(state) && stuntAssistProfile(state)==='cinematic');
+    // Edge-triggered: set/clear once per transition — per-tick clear() was a Map delete +
+    // applyMinimum forEach every sim tick for a request that almost never exists.
+    if (this.timeEffects && live !== this._momentPulseLive) {
+      if (live) this.timeEffects.set(MOMENT_TIME_SOURCE, { scale: MOMENT_SLOWMO_SCALE });
+      else this.timeEffects.clear(MOMENT_TIME_SOURCE);
+      this._momentPulseLive = live;
     }
+    if (!live && !(now < moment.pulseUntil)) moment.pulseUntil = 0;
   },
 
   _clearMoment(resetHistory) {
@@ -334,6 +344,7 @@ export const bulletTime = {
       }
     }
     if (this.timeEffects) this.timeEffects.clear(MOMENT_TIME_SOURCE);
+    this._momentPulseLive = false;
   },
 };
 

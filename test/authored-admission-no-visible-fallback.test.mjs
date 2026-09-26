@@ -248,7 +248,9 @@ test('authored geology uses the place boundary only with an explicit radius-matc
   assert.equal(boundary.userData.placeTargetRadius, explicit.radius);
   assert.equal(boundary.userData.authoredGeologySkin, true);
   assert.equal(boundary.userData.authoredAssetState, 'awaiting-authored-admission');
-  assert.equal(boundary.children[0].visible, false);
+  // Radius-matched geology skins share the authored body's envelope, so the procedural fallback
+  // stays drawn for the whole admission window instead of blanking the rock until commit swaps it.
+  assert.equal(boundary.children[0].visible, true);
 
   for (const data of [
     { placeId: 'place_asteroid_rock_a', placeTargetRadius: 15 },

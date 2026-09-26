@@ -26,7 +26,7 @@
         0,
         22
       ],
-      "parentNodeId": "sf.render.salvage-cutter.root",
+      "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
         1,
         0,
@@ -72,7 +72,7 @@
         0,
         23
       ],
-      "parentNodeId": "sf.render.salvage-cutter.root",
+      "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
         1,
         0,
@@ -118,7 +118,7 @@
         0,
         24
       ],
-      "parentNodeId": "sf.render.salvage-cutter.root",
+      "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
         1,
         0,
@@ -134,6 +134,186 @@
         0,
         -9.85,
         0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.700564,
+        0.554897,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        2
+      ],
+      "parentNodeId": "sf.render.salvage-cutter.node.socket-mining-front",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.700564,
+        0.554897,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.300282,
+        0.554897,
+        -3.67004,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        3
+      ],
+      "parentNodeId": "sf.render.salvage-cutter.node.socket-rcs-port",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.300282,
+        0.554897,
+        -3.67004,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.300282,
+        0.554897,
+        3.67004,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        4
+      ],
+      "parentNodeId": "sf.render.salvage-cutter.node.socket-rcs-starboard",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.300282,
+        0.554897,
+        3.67004,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.37984445,
+        0.554897,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        5
+      ],
+      "parentNodeId": "sf.render.salvage-cutter.node.socket-tether-massline",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.37984445,
+        0.554897,
         0,
         1
       ]
@@ -164,7 +344,7 @@
         0,
         25
       ],
-      "parentNodeId": "sf.render.salvage-cutter.root",
+      "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
         1,
         0,
@@ -210,7 +390,7 @@
         0,
         26
       ],
-      "parentNodeId": "sf.render.salvage-cutter.root",
+      "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
         1,
         0,
@@ -256,7 +436,7 @@
         0,
         27
       ],
-      "parentNodeId": "sf.render.salvage-cutter.root",
+      "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
         1,
         0,
@@ -272,6 +452,51 @@
         0,
         -10.3,
         0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.700564,
+        0.554897,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        1
+      ],
+      "parentNodeId": "sf.render.salvage-cutter.node.socket-weapon-front",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.700564,
+        0.554897,
         0,
         1
       ]
@@ -302,7 +527,7 @@
         0,
         28
       ],
-      "parentNodeId": "sf.render.salvage-cutter.root",
+      "parentNodeId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "worldTransform": [
         1,
         0,
@@ -327,7 +552,7 @@
   "collisions": [
     {
       "id": "sf.render.salvage-cutter.collision",
-      "nodeId": "sf.render.salvage-cutter.mesh.collision-hull",
+      "nodeId": "sf.render.salvage-cutter.node.collision-hull",
       "reference": "COLLISION_HULL"
     }
   ],
@@ -335,37 +560,37 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bfbfc5cb5cb2f708fd1d13a772db05486567360a49f67bb3d75e16c8314ea916",
+  "contentHash": "41d11c4799dbea100500893971b3a2e337d4097b9b373c44468cca5d3a4f3f89",
   "dynamicGroups": [
     {
-      "id": "sf.render.salvage-cutter.mesh.lod0-hook-drive-core.dynamic",
+      "id": "sf.render.salvage-cutter.node.lod0-hook-drive-core.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod0-hook-drive-core"
+      "nodeId": "sf.render.salvage-cutter.node.lod0-hook-drive-core"
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod0-hook-drive-fan.dynamic",
+      "id": "sf.render.salvage-cutter.node.lod0-hook-drive-fan.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod0-hook-drive-fan"
+      "nodeId": "sf.render.salvage-cutter.node.lod0-hook-drive-fan"
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod1-hook-drive-core.dynamic",
+      "id": "sf.render.salvage-cutter.node.lod1-hook-drive-core.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod1-hook-drive-core"
+      "nodeId": "sf.render.salvage-cutter.node.lod1-hook-drive-core"
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod1-hook-drive-fan.dynamic",
+      "id": "sf.render.salvage-cutter.node.lod1-hook-drive-fan.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod1-hook-drive-fan"
+      "nodeId": "sf.render.salvage-cutter.node.lod1-hook-drive-fan"
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod2-hook-drive-core.dynamic",
+      "id": "sf.render.salvage-cutter.node.lod2-hook-drive-core.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod2-hook-drive-core"
+      "nodeId": "sf.render.salvage-cutter.node.lod2-hook-drive-core"
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod2-hook-drive-fan.dynamic",
+      "id": "sf.render.salvage-cutter.node.lod2-hook-drive-fan.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod2-hook-drive-fan"
+      "nodeId": "sf.render.salvage-cutter.node.lod2-hook-drive-fan"
     }
   ],
   "geometry": [
@@ -384,13 +609,13 @@
       },
       "drawMode": 4,
       "geometryHash": "d768a3097c6734c7b8a46b3f1b7cda9a2e1afd4042461c2f11463a2818a29d25",
-      "id": "sf.render.salvage-cutter.mesh.collision-hull.primitive.0",
+      "id": "sf.render.salvage-cutter.node.collision-hull.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialHash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
       "materialPipelineKey": "non-render",
       "meshName": "Cube",
-      "nodeId": "sf.render.salvage-cutter.mesh.collision-hull",
+      "nodeId": "sf.render.salvage-cutter.node.collision-hull",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -409,13 +634,13 @@
       },
       "drawMode": 4,
       "geometryHash": "9f9962a6d0ebf17dade923f1e6ad34028d035705f0753e259d1ffda2c8f15894",
-      "id": "sf.render.salvage-cutter.mesh.lod0-hook-drive-core.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 360,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_DRIVE_CORE.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod0-hook-drive-core",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-hook-drive-core",
       "primitiveIndex": 0,
       "vertexCount": 144
     },
@@ -434,13 +659,13 @@
       },
       "drawMode": 4,
       "geometryHash": "09fc2eaaebaec8c8b29744138f29cd07465a5cd57249e0a8dbc46a56fd39b527",
-      "id": "sf.render.salvage-cutter.mesh.lod0-hook-drive-fan.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod0-hook-drive-fan.primitive.0",
       "indexCount": 720,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_DRIVE_FAN.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod0-hook-drive-fan",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-hook-drive-fan",
       "primitiveIndex": 0,
       "vertexCount": 288
     },
@@ -459,13 +684,13 @@
       },
       "drawMode": 4,
       "geometryHash": "59ad7691f0b79ca55caf980fdb63193ccfa907d5e87c032decb4210bba2285ab",
-      "id": "sf.render.salvage-cutter.mesh.lod0-merged-material-cyan.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod0-merged-material-cyan.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Cyan",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod0-merged-material-cyan",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-merged-material-cyan",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -484,13 +709,13 @@
       },
       "drawMode": 4,
       "geometryHash": "dc9367414da6c86d885c31f3c3d4ac94201a153221fb84b289da86481e518887",
-      "id": "sf.render.salvage-cutter.mesh.lod0-merged-material-glass.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod0-merged-material-glass.primitive.0",
       "indexCount": 672,
       "indexed": true,
       "materialHash": "ac9c4edc38b0c17c39b75c63ab801fbbf3e9779b9c1ab2abf8c5d18a93d85044",
       "materialPipelineKey": "blend",
       "meshName": "LOD0_Merged_Material_Glass.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod0-merged-material-glass",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-merged-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 175
     },
@@ -509,13 +734,13 @@
       },
       "drawMode": 4,
       "geometryHash": "38d66a02141ce543deb690da93e1dccd167593bcf93974bde6a880cb54ffd607",
-      "id": "sf.render.salvage-cutter.mesh.lod0-merged-material-hull.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod0-merged-material-hull.primitive.0",
       "indexCount": 6582,
       "indexed": true,
-      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialHash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Hull.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod0-merged-material-hull",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-merged-material-hull",
       "primitiveIndex": 0,
       "vertexCount": 1996
     },
@@ -534,13 +759,13 @@
       },
       "drawMode": 4,
       "geometryHash": "71ae51ffc0fbac56114030f153ee6869a36c8ce3f47213300ac4963e0cdf521d",
-      "id": "sf.render.salvage-cutter.mesh.lod0-merged-material-mechanical.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod0-merged-material-mechanical.primitive.0",
       "indexCount": 9564,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Mechanical.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod0-merged-material-mechanical",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-merged-material-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 3200
     },
@@ -559,13 +784,13 @@
       },
       "drawMode": 4,
       "geometryHash": "1d8a5571bd8b85246658dceb2c2928aad361d5d1848aa49e92865996b649ffc8",
-      "id": "sf.render.salvage-cutter.mesh.lod0-merged-material-warm.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod0-merged-material-warm.primitive.0",
       "indexCount": 4200,
       "indexed": true,
-      "materialHash": "9ff66786ab2abc538bd4e728dc6adb0c4f7adc6404bdd48cfb19bd2fd97d569c",
+      "materialHash": "e4fdcdb4d237e70ede6949bb1b93de4f042a07ed5e265c6d910aab5f9227eadd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Warm.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod0-merged-material-warm",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-merged-material-warm",
       "primitiveIndex": 0,
       "vertexCount": 1364
     },
@@ -584,13 +809,13 @@
       },
       "drawMode": 4,
       "geometryHash": "093a8d514d2d40fffbd8a5d466cda6981b304f6a968bf31cb4b0ef4fd2c937ee",
-      "id": "sf.render.salvage-cutter.mesh.lod1-hook-drive-core.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 162,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_DRIVE_CORE.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod1-hook-drive-core",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-hook-drive-core",
       "primitiveIndex": 0,
       "vertexCount": 74
     },
@@ -609,13 +834,13 @@
       },
       "drawMode": 4,
       "geometryHash": "53ce1f388ff5fe41ee53cc19772d4e570b71921801194ca550e46bf7a39ff54d",
-      "id": "sf.render.salvage-cutter.mesh.lod1-hook-drive-fan.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod1-hook-drive-fan.primitive.0",
       "indexCount": 330,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_DRIVE_FAN.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod1-hook-drive-fan",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-hook-drive-fan",
       "primitiveIndex": 0,
       "vertexCount": 158
     },
@@ -634,13 +859,13 @@
       },
       "drawMode": 4,
       "geometryHash": "e83802117896e0585e789872132ce938efc051dcaab24cb719fba8a3e282fcef",
-      "id": "sf.render.salvage-cutter.mesh.lod1-merged-material-cyan.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod1-merged-material-cyan.primitive.0",
       "indexCount": 198,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Cyan",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod1-merged-material-cyan",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-merged-material-cyan",
       "primitiveIndex": 0,
       "vertexCount": 67
     },
@@ -659,13 +884,13 @@
       },
       "drawMode": 4,
       "geometryHash": "2147515e922f5a94acb8fbdf26bb1f9279032c3c7d34caab5afb7526ef3c1234",
-      "id": "sf.render.salvage-cutter.mesh.lod1-merged-material-glass.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod1-merged-material-glass.primitive.0",
       "indexCount": 414,
       "indexed": true,
       "materialHash": "ac9c4edc38b0c17c39b75c63ab801fbbf3e9779b9c1ab2abf8c5d18a93d85044",
       "materialPipelineKey": "blend",
       "meshName": "LOD1_Merged_Material_Glass.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod1-merged-material-glass",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-merged-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 117
     },
@@ -684,13 +909,13 @@
       },
       "drawMode": 4,
       "geometryHash": "2e14f15094142dcd391eb230e381a0ac24ab4139a048c875821312815ecd2369",
-      "id": "sf.render.salvage-cutter.mesh.lod1-merged-material-hull.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod1-merged-material-hull.primitive.0",
       "indexCount": 4080,
       "indexed": true,
-      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialHash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Hull.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod1-merged-material-hull",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-merged-material-hull",
       "primitiveIndex": 0,
       "vertexCount": 1435
     },
@@ -709,13 +934,13 @@
       },
       "drawMode": 4,
       "geometryHash": "99c93fdc0796a798ac6e89fe64580d2f702ec078598b09f8fe0fe8d7c619b628",
-      "id": "sf.render.salvage-cutter.mesh.lod1-merged-material-mechanical.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod1-merged-material-mechanical.primitive.0",
       "indexCount": 5928,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Mechanical.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod1-merged-material-mechanical",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-merged-material-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 2299
     },
@@ -734,13 +959,13 @@
       },
       "drawMode": 4,
       "geometryHash": "b9298a5bad76a5f75923dc254e6f25c74ad4dcf5edce18cc1f682a5dbd9c6f07",
-      "id": "sf.render.salvage-cutter.mesh.lod1-merged-material-warm.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod1-merged-material-warm.primitive.0",
       "indexCount": 2604,
       "indexed": true,
-      "materialHash": "9ff66786ab2abc538bd4e728dc6adb0c4f7adc6404bdd48cfb19bd2fd97d569c",
+      "materialHash": "e4fdcdb4d237e70ede6949bb1b93de4f042a07ed5e265c6d910aab5f9227eadd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Warm",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod1-merged-material-warm",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-merged-material-warm",
       "primitiveIndex": 0,
       "vertexCount": 968
     },
@@ -759,13 +984,13 @@
       },
       "drawMode": 4,
       "geometryHash": "3ab090312fbaa5d15b0938048e273ad4c74819c69df5a764d8866d8d7b5211f2",
-      "id": "sf.render.salvage-cutter.mesh.lod2-hook-drive-core.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 78,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_CORE.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod2-hook-drive-core",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-hook-drive-core",
       "primitiveIndex": 0,
       "vertexCount": 46
     },
@@ -784,13 +1009,13 @@
       },
       "drawMode": 4,
       "geometryHash": "960bb299ea090143faffc61e181bd55d221e85c552a2cc65f4756484d9e39a63",
-      "id": "sf.render.salvage-cutter.mesh.lod2-hook-drive-fan.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod2-hook-drive-fan.primitive.0",
       "indexCount": 162,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_FAN.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod2-hook-drive-fan",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-hook-drive-fan",
       "primitiveIndex": 0,
       "vertexCount": 102
     },
@@ -809,13 +1034,13 @@
       },
       "drawMode": 4,
       "geometryHash": "346557c5a5684ea75ef33036431039bd2e4e885fd57292a447f0e811688da549",
-      "id": "sf.render.salvage-cutter.mesh.lod2-merged-material-cyan.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod2-merged-material-cyan.primitive.0",
       "indexCount": 96,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Cyan",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod2-merged-material-cyan",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-merged-material-cyan",
       "primitiveIndex": 0,
       "vertexCount": 44
     },
@@ -834,13 +1059,13 @@
       },
       "drawMode": 4,
       "geometryHash": "4e901b94b11ad952655048fe08158e90e3020d91ffd1ebd7205f558f494d9436",
-      "id": "sf.render.salvage-cutter.mesh.lod2-merged-material-glass.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod2-merged-material-glass.primitive.0",
       "indexCount": 198,
       "indexed": true,
       "materialHash": "ac9c4edc38b0c17c39b75c63ab801fbbf3e9779b9c1ab2abf8c5d18a93d85044",
       "materialPipelineKey": "blend",
       "meshName": "LOD2_Merged_Material_Glass.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod2-merged-material-glass",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-merged-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 69
     },
@@ -859,13 +1084,13 @@
       },
       "drawMode": 4,
       "geometryHash": "76abcbcecac6ffd873d57396989ae9f972cfdc9733a985c1e61051054c0d65e2",
-      "id": "sf.render.salvage-cutter.mesh.lod2-merged-material-hull.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod2-merged-material-hull.primitive.0",
       "indexCount": 1974,
       "indexed": true,
-      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialHash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Hull.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod2-merged-material-hull",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-merged-material-hull",
       "primitiveIndex": 0,
       "vertexCount": 866
     },
@@ -884,13 +1109,13 @@
       },
       "drawMode": 4,
       "geometryHash": "10376dcbeb13abf2e4f0ced25598f257050120cf7a5479929584ff9665497a2e",
-      "id": "sf.render.salvage-cutter.mesh.lod2-merged-material-mechanical.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod2-merged-material-mechanical.primitive.0",
       "indexCount": 2454,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Mechanical.001",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod2-merged-material-mechanical",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-merged-material-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 1186
     },
@@ -909,13 +1134,13 @@
       },
       "drawMode": 4,
       "geometryHash": "f23a47f929bba6137ac6e005c7e6a7bec89679abb5362ade24c9a364abb15bc6",
-      "id": "sf.render.salvage-cutter.mesh.lod2-merged-material-warm.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod2-merged-material-warm.primitive.0",
       "indexCount": 756,
       "indexed": true,
-      "materialHash": "9ff66786ab2abc538bd4e728dc6adb0c4f7adc6404bdd48cfb19bd2fd97d569c",
+      "materialHash": "e4fdcdb4d237e70ede6949bb1b93de4f042a07ed5e265c6d910aab5f9227eadd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Warm",
-      "nodeId": "sf.render.salvage-cutter.mesh.lod2-merged-material-warm",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-merged-material-warm",
       "primitiveIndex": 0,
       "vertexCount": 331
     }
@@ -925,10 +1150,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
-      "id": "material:2c37d87500caaa70babb7ae3",
+      "hash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
+      "id": "material:67471fe62bfae5dc53b55a4f",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -957,74 +1182,10 @@
       ]
     },
     {
-      "hash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
-      "id": "material:3f4c7f68a654fe0c5b30f2bf",
-      "name": "Material_Cyan",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Cyan_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Cyan_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Cyan_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Cyan_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "9ff66786ab2abc538bd4e728dc6adb0c4f7adc6404bdd48cfb19bd2fd97d569c",
-      "id": "material:9ff66786ab2abc538bd4e728",
-      "name": "Material_Warm",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Warm_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Warm_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Warm_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Warm_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
-      "id": "material:a9c0f1569d0d5917e18ea3f0",
+      "hash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
+      "id": "material:8957a41c3b54913d8396bc8a",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1083,11 +1244,75 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
+      "id": "material:d2b32c6674246b497763a429",
+      "name": "Material_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Cyan_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e4fdcdb4d237e70ede6949bb1b93de4f042a07ed5e265c6d910aab5f9227eadd",
+      "id": "material:e4fdcdb4d237e70ede6949bb",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Warm_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.salvage-cutter.mesh.collision-hull",
+      "id": "sf.render.salvage-cutter.node.collision-hull",
       "localTransform": [
         1,
         0,
@@ -1113,7 +1338,7 @@
         0,
         0
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1136,7 +1361,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod0-hook-drive-core",
+      "id": "sf.render.salvage-cutter.node.lod0-hook-drive-core",
       "localTransform": [
         1.4251999855041504,
         0,
@@ -1162,7 +1387,7 @@
         0,
         1
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1185,7 +1410,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod0-hook-drive-fan",
+      "id": "sf.render.salvage-cutter.node.lod0-hook-drive-fan",
       "localTransform": [
         1.7288000583648682,
         0,
@@ -1211,7 +1436,7 @@
         0,
         2
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1234,7 +1459,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod0-merged-material-cyan",
+      "id": "sf.render.salvage-cutter.node.lod0-merged-material-cyan",
       "localTransform": [
         1,
         0,
@@ -1260,7 +1485,7 @@
         0,
         3
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1283,7 +1508,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod0-merged-material-glass",
+      "id": "sf.render.salvage-cutter.node.lod0-merged-material-glass",
       "localTransform": [
         1,
         0,
@@ -1309,7 +1534,7 @@
         0,
         4
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1332,7 +1557,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod0-merged-material-hull",
+      "id": "sf.render.salvage-cutter.node.lod0-merged-material-hull",
       "localTransform": [
         1,
         0,
@@ -1358,7 +1583,7 @@
         0,
         5
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1381,7 +1606,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod0-merged-material-mechanical",
+      "id": "sf.render.salvage-cutter.node.lod0-merged-material-mechanical",
       "localTransform": [
         1,
         0,
@@ -1407,7 +1632,7 @@
         0,
         6
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1430,7 +1655,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod0-merged-material-warm",
+      "id": "sf.render.salvage-cutter.node.lod0-merged-material-warm",
       "localTransform": [
         1,
         0,
@@ -1456,7 +1681,7 @@
         0,
         7
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1479,7 +1704,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod1-hook-drive-core",
+      "id": "sf.render.salvage-cutter.node.lod1-hook-drive-core",
       "localTransform": [
         1.4199336767196655,
         0,
@@ -1505,7 +1730,7 @@
         0,
         8
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1528,7 +1753,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod1-hook-drive-fan",
+      "id": "sf.render.salvage-cutter.node.lod1-hook-drive-fan",
       "localTransform": [
         1.7632890939712524,
         0,
@@ -1554,7 +1779,7 @@
         0,
         9
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1577,7 +1802,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod1-merged-material-cyan",
+      "id": "sf.render.salvage-cutter.node.lod1-merged-material-cyan",
       "localTransform": [
         1,
         0,
@@ -1603,7 +1828,7 @@
         0,
         10
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1626,7 +1851,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod1-merged-material-glass",
+      "id": "sf.render.salvage-cutter.node.lod1-merged-material-glass",
       "localTransform": [
         1,
         0,
@@ -1652,7 +1877,7 @@
         0,
         11
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1675,7 +1900,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod1-merged-material-hull",
+      "id": "sf.render.salvage-cutter.node.lod1-merged-material-hull",
       "localTransform": [
         1,
         0,
@@ -1701,7 +1926,7 @@
         0,
         12
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1724,7 +1949,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod1-merged-material-mechanical",
+      "id": "sf.render.salvage-cutter.node.lod1-merged-material-mechanical",
       "localTransform": [
         1,
         0,
@@ -1750,7 +1975,7 @@
         0,
         13
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1773,7 +1998,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod1-merged-material-warm",
+      "id": "sf.render.salvage-cutter.node.lod1-merged-material-warm",
       "localTransform": [
         1,
         0,
@@ -1799,7 +2024,7 @@
         0,
         14
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1822,7 +2047,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod2-hook-drive-core",
+      "id": "sf.render.salvage-cutter.node.lod2-hook-drive-core",
       "localTransform": [
         1.3614073991775513,
         0,
@@ -1848,7 +2073,7 @@
         0,
         15
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1871,7 +2096,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod2-hook-drive-fan",
+      "id": "sf.render.salvage-cutter.node.lod2-hook-drive-fan",
       "localTransform": [
         1.7427691221237183,
         0,
@@ -1897,7 +2122,7 @@
         0,
         16
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1920,7 +2145,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod2-merged-material-cyan",
+      "id": "sf.render.salvage-cutter.node.lod2-merged-material-cyan",
       "localTransform": [
         1,
         0,
@@ -1946,7 +2171,7 @@
         0,
         17
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -1969,7 +2194,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod2-merged-material-glass",
+      "id": "sf.render.salvage-cutter.node.lod2-merged-material-glass",
       "localTransform": [
         1,
         0,
@@ -1995,7 +2220,7 @@
         0,
         18
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -2018,7 +2243,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod2-merged-material-hull",
+      "id": "sf.render.salvage-cutter.node.lod2-merged-material-hull",
       "localTransform": [
         1,
         0,
@@ -2044,7 +2269,7 @@
         0,
         19
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -2067,7 +2292,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod2-merged-material-mechanical",
+      "id": "sf.render.salvage-cutter.node.lod2-merged-material-mechanical",
       "localTransform": [
         1,
         0,
@@ -2093,7 +2318,7 @@
         0,
         20
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -2116,7 +2341,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.mesh.lod2-merged-material-warm",
+      "id": "sf.render.salvage-cutter.node.lod2-merged-material-warm",
       "localTransform": [
         1,
         0,
@@ -2142,7 +2367,7 @@
         0,
         21
       ],
-      "parentId": "sf.render.salvage-cutter.root",
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-cutter.body",
       "worldTransform": [
@@ -2165,7 +2390,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.root",
+      "id": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
       "localTransform": [
         1,
         0,
@@ -2185,7 +2410,7 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "SF_NPCWORK_SALVAGE_CUTTER_ROOT",
       "nodeName": "SF_NPCWORK_SALVAGE_CUTTER_ROOT",
       "nodePath": [
         0
@@ -2211,26 +2436,609 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.9,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.9,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.socket-cargo-aft",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.4,
+        1.9,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Cargo_Aft",
+      "nodeName": "SOCKET_Cargo_Aft",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.4,
+        1.9,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.85,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.85,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.socket-mining-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.700564,
+        0.554897,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mining_Front",
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.700564,
+        0.554897,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.socket-rcs-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.300282,
+        0.554897,
+        -3.67004,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Port",
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        3
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.300282,
+        0.554897,
+        -3.67004,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.socket-rcs-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.300282,
+        0.554897,
+        3.67004,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Starboard",
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        4
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.300282,
+        0.554897,
+        3.67004,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.37984445,
+        0.554897,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        5
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.37984445,
+        0.554897,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.socket-tether-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2,
+        -0.4,
+        -3.9,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Port",
+      "nodeName": "SOCKET_Tether_Port",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2,
+        -0.4,
+        -3.9,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.socket-tether-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2,
+        -0.4,
+        3.9,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Starboard",
+      "nodeName": "SOCKET_Tether_Starboard",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2,
+        -0.4,
+        3.9,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.3,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.3,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.socket-weapon-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.700564,
+        0.554897,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Weapon_Front",
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.700564,
+        0.554897,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-cutter.node.socket-work-boom",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.6,
+        0.3,
+        2.5,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Work_Boom",
+      "nodeName": "SOCKET_Work_Boom",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.6,
+        0.3,
+        2.5,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "eb15499f5f344060a9175267c0d91bd733de831c439796d0caf385e22ffc14aa"
+      "sha256": "3bcbd5bfbeda2607c41218b6eb9ad0786bd98b3018ae411cd195f4fa158178ab"
     },
     "sourceGlb": {
-      "bytes": 2809244,
-      "sha256": "3f55f415924da314e0913bb8875403221a8698595bfca027a8f2d55de3985514",
+      "bytes": 2809616,
+      "sha256": "6b635e3dfa797875757fa28500f17183e23eab5246ffa418c1a87d0105351e75",
       "uri": "salvage_cutter.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3111916,
-    "sha256": "1ee2c02b1184a18a7b55e950e35402f76dabadce690b1996932b5268f0ef3bdb",
+    "bytes": 3113840,
+    "sha256": "d3afd5f75da7bd52a9749513dba16e430b878412146818d5d3f7978889f81987",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2313,7 +3121,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Camera_Focus",
             "recordIds": [
-              "sf.render.salvage-cutter.anchor.socket-camera-focus"
+              "sf.render.salvage-cutter.anchor.socket-camera-focus",
+              "sf.render.salvage-cutter.node.socket-camera-focus"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2371,7 +3180,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Cargo_Aft",
             "recordIds": [
-              "sf.render.salvage-cutter.anchor.socket-cargo-aft"
+              "sf.render.salvage-cutter.anchor.socket-cargo-aft",
+              "sf.render.salvage-cutter.node.socket-cargo-aft"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2429,7 +3239,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Engine_Main",
             "recordIds": [
-              "sf.render.salvage-cutter.anchor.socket-engine-main"
+              "sf.render.salvage-cutter.anchor.socket-engine-main",
+              "sf.render.salvage-cutter.node.socket-engine-main"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2487,7 +3298,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Tether_Port",
             "recordIds": [
-              "sf.render.salvage-cutter.anchor.socket-tether-port"
+              "sf.render.salvage-cutter.anchor.socket-tether-port",
+              "sf.render.salvage-cutter.node.socket-tether-port"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2545,7 +3357,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Tether_Starboard",
             "recordIds": [
-              "sf.render.salvage-cutter.anchor.socket-tether-starboard"
+              "sf.render.salvage-cutter.anchor.socket-tether-starboard",
+              "sf.render.salvage-cutter.node.socket-tether-starboard"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2603,7 +3416,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Main",
             "recordIds": [
-              "sf.render.salvage-cutter.anchor.socket-trail-main"
+              "sf.render.salvage-cutter.anchor.socket-trail-main",
+              "sf.render.salvage-cutter.node.socket-trail-main"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2661,7 +3475,193 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Work_Boom",
             "recordIds": [
-              "sf.render.salvage-cutter.anchor.socket-work-boom"
+              "sf.render.salvage-cutter.anchor.socket-work-boom",
+              "sf.render.salvage-cutter.node.socket-work-boom"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          10.700564,
+          0.554897,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 31,
+        "tags": {
+          "socket": true,
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.salvage-cutter.anchor.socket-weapon-front",
+              "sf.render.salvage-cutter.node.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          10.700564,
+          0.554897,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 32,
+        "tags": {
+          "socket": true,
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.salvage-cutter.anchor.socket-mining-front",
+              "sf.render.salvage-cutter.node.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.300282,
+          0.554897,
+          -3.67004,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 33,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.salvage-cutter.anchor.socket-rcs-port",
+              "sf.render.salvage-cutter.node.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.300282,
+          0.554897,
+          3.67004,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 34,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.salvage-cutter.anchor.socket-rcs-starboard",
+              "sf.render.salvage-cutter.node.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.37984445,
+          0.554897,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 35,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.salvage-cutter.anchor.socket-tether-massline",
+              "sf.render.salvage-cutter.node.socket-tether-massline"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2786,7 +3786,7 @@
         "role": "signal"
       }
     ],
-    "nodeCount": 31,
+    "nodeCount": 36,
     "primitives": [
       {
         "canopy": false,
@@ -3549,7 +4549,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/salvage_cutter.glb"
   },
-  "runtimeHash": "7ecdfb417db78c26ad8bb6aa7b5662bd12d62e563c9542b52327dd838ce37c63",
+  "runtimeHash": "df5ae24da8954b119afc6d7799652cd9ca592aa1237eaca68fade5b6b6137a75",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3567,29 +4567,41 @@
       },
       "id": "sf.render.salvage-cutter.body",
       "nodeIds": [
-        "sf.render.salvage-cutter.mesh.collision-hull",
-        "sf.render.salvage-cutter.mesh.lod0-hook-drive-core",
-        "sf.render.salvage-cutter.mesh.lod0-hook-drive-fan",
-        "sf.render.salvage-cutter.mesh.lod0-merged-material-cyan",
-        "sf.render.salvage-cutter.mesh.lod0-merged-material-glass",
-        "sf.render.salvage-cutter.mesh.lod0-merged-material-hull",
-        "sf.render.salvage-cutter.mesh.lod0-merged-material-mechanical",
-        "sf.render.salvage-cutter.mesh.lod0-merged-material-warm",
-        "sf.render.salvage-cutter.mesh.lod1-hook-drive-core",
-        "sf.render.salvage-cutter.mesh.lod1-hook-drive-fan",
-        "sf.render.salvage-cutter.mesh.lod1-merged-material-cyan",
-        "sf.render.salvage-cutter.mesh.lod1-merged-material-glass",
-        "sf.render.salvage-cutter.mesh.lod1-merged-material-hull",
-        "sf.render.salvage-cutter.mesh.lod1-merged-material-mechanical",
-        "sf.render.salvage-cutter.mesh.lod1-merged-material-warm",
-        "sf.render.salvage-cutter.mesh.lod2-hook-drive-core",
-        "sf.render.salvage-cutter.mesh.lod2-hook-drive-fan",
-        "sf.render.salvage-cutter.mesh.lod2-merged-material-cyan",
-        "sf.render.salvage-cutter.mesh.lod2-merged-material-glass",
-        "sf.render.salvage-cutter.mesh.lod2-merged-material-hull",
-        "sf.render.salvage-cutter.mesh.lod2-merged-material-mechanical",
-        "sf.render.salvage-cutter.mesh.lod2-merged-material-warm",
-        "sf.render.salvage-cutter.root"
+        "sf.render.salvage-cutter.node.collision-hull",
+        "sf.render.salvage-cutter.node.lod0-hook-drive-core",
+        "sf.render.salvage-cutter.node.lod0-hook-drive-fan",
+        "sf.render.salvage-cutter.node.lod0-merged-material-cyan",
+        "sf.render.salvage-cutter.node.lod0-merged-material-glass",
+        "sf.render.salvage-cutter.node.lod0-merged-material-hull",
+        "sf.render.salvage-cutter.node.lod0-merged-material-mechanical",
+        "sf.render.salvage-cutter.node.lod0-merged-material-warm",
+        "sf.render.salvage-cutter.node.lod1-hook-drive-core",
+        "sf.render.salvage-cutter.node.lod1-hook-drive-fan",
+        "sf.render.salvage-cutter.node.lod1-merged-material-cyan",
+        "sf.render.salvage-cutter.node.lod1-merged-material-glass",
+        "sf.render.salvage-cutter.node.lod1-merged-material-hull",
+        "sf.render.salvage-cutter.node.lod1-merged-material-mechanical",
+        "sf.render.salvage-cutter.node.lod1-merged-material-warm",
+        "sf.render.salvage-cutter.node.lod2-hook-drive-core",
+        "sf.render.salvage-cutter.node.lod2-hook-drive-fan",
+        "sf.render.salvage-cutter.node.lod2-merged-material-cyan",
+        "sf.render.salvage-cutter.node.lod2-merged-material-glass",
+        "sf.render.salvage-cutter.node.lod2-merged-material-hull",
+        "sf.render.salvage-cutter.node.lod2-merged-material-mechanical",
+        "sf.render.salvage-cutter.node.lod2-merged-material-warm",
+        "sf.render.salvage-cutter.node.sf-npcwork-salvage-cutter-root",
+        "sf.render.salvage-cutter.node.socket-camera-focus",
+        "sf.render.salvage-cutter.node.socket-cargo-aft",
+        "sf.render.salvage-cutter.node.socket-engine-main",
+        "sf.render.salvage-cutter.node.socket-mining-front",
+        "sf.render.salvage-cutter.node.socket-rcs-port",
+        "sf.render.salvage-cutter.node.socket-rcs-starboard",
+        "sf.render.salvage-cutter.node.socket-tether-massline",
+        "sf.render.salvage-cutter.node.socket-tether-port",
+        "sf.render.salvage-cutter.node.socket-tether-starboard",
+        "sf.render.salvage-cutter.node.socket-trail-main",
+        "sf.render.salvage-cutter.node.socket-weapon-front",
+        "sf.render.salvage-cutter.node.socket-work-boom"
       ]
     }
   ]

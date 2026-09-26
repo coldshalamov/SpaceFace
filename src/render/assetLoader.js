@@ -14,7 +14,7 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
-import { createRenderPackageLoader } from './renderPackageLoader.js';
+import { createRenderPackageLoader, startMeshoptWorkerPool } from './renderPackageLoader.js';
 import {
   renderPackagePilotForAssetId,
   renderPackagePilotForSourceUrl,
@@ -1053,6 +1053,7 @@ async function attachRuntimeDecoders(gltf, renderer, decoders, disposableDecoder
   if (typeof gltf.setMeshoptDecoder === 'function') {
     try {
       const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+      startMeshoptWorkerPool(MeshoptDecoder);
       gltf.setMeshoptDecoder(MeshoptDecoder);
       decoders.meshopt = !!MeshoptDecoder;
     } catch (error) {

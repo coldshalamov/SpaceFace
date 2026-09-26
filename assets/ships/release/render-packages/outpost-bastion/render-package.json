@@ -335,7 +335,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b755cf2ee762a3041e02891d3a307f1e87d33ff6d1a04f274732f2ce249808be",
+  "contentHash": "c3bbfde0b643e10fda1df613d0cbe9afc3fb2c839e1fd0a7f8de84c6d36bd5a0",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -356,7 +356,7 @@
       "id": "sf.render.outpost-bastion.mesh.collision-hull.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
       "materialPipelineKey": "non-render",
       "meshName": "Cube.101",
       "nodeId": "sf.render.outpost-bastion.mesh.collision-hull",
@@ -381,7 +381,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod0-station-material-accent.primitive.0",
       "indexCount": 50496,
       "indexed": true,
-      "materialHash": "b86a05eac9cdbc7f8e7af0b5c66003c4cac2d8a1b4ecdbdbcf656624222ffd09",
+      "materialHash": "88864fed9ca75021ac6180251f9c894e4a3bc4bbae71a6085e8f45741e77bf86",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.001",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-station-material-accent",
@@ -406,7 +406,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod0-station-material-glass.primitive.0",
       "indexCount": 3948,
       "indexed": true,
-      "materialHash": "a44cdccbc617e8e1aeace035e5a680e95c4777f62814c0dfd0831c6ccfd95625",
+      "materialHash": "a5ef9adcb6e60b9456ac2b29859a0ebbdf168d1c7ba992cea194f520510dcc44",
       "materialPipelineKey": "blend",
       "meshName": "Cube.003",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-station-material-glass",
@@ -431,7 +431,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod0-station-material-hull.primitive.0",
       "indexCount": 7644,
       "indexed": true,
-      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialHash": "cce76db423f4b9772db1c2dd607ef2ae163878dd8ccf4dc09cdc4fea330adec3",
       "materialPipelineKey": "opaque",
       "meshName": "Icosphere",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-station-material-hull",
@@ -456,7 +456,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod0-station-material-mechanical.primitive.0",
       "indexCount": 35292,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
       "materialPipelineKey": "opaque",
       "meshName": "Torus",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-station-material-mechanical",
@@ -481,7 +481,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod0-station-material-warm.primitive.0",
       "indexCount": 2256,
       "indexed": true,
-      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialHash": "544dbd8f0b5f8d3f1459abfcd7e9a198342288013f5db1d897029901b176e205",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.010",
       "nodeId": "sf.render.outpost-bastion.mesh.lod0-station-material-warm",
@@ -506,7 +506,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod1-station-material-accent.primitive.0",
       "indexCount": 18672,
       "indexed": true,
-      "materialHash": "b86a05eac9cdbc7f8e7af0b5c66003c4cac2d8a1b4ecdbdbcf656624222ffd09",
+      "materialHash": "88864fed9ca75021ac6180251f9c894e4a3bc4bbae71a6085e8f45741e77bf86",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.004",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-station-material-accent",
@@ -531,7 +531,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod1-station-material-glass.primitive.0",
       "indexCount": 2268,
       "indexed": true,
-      "materialHash": "a44cdccbc617e8e1aeace035e5a680e95c4777f62814c0dfd0831c6ccfd95625",
+      "materialHash": "a5ef9adcb6e60b9456ac2b29859a0ebbdf168d1c7ba992cea194f520510dcc44",
       "materialPipelineKey": "blend",
       "meshName": "Cube.045",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-station-material-glass",
@@ -556,7 +556,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod1-station-material-hull.primitive.0",
       "indexCount": 3144,
       "indexed": true,
-      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialHash": "cce76db423f4b9772db1c2dd607ef2ae163878dd8ccf4dc09cdc4fea330adec3",
       "materialPipelineKey": "opaque",
       "meshName": "Icosphere.001",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-station-material-hull",
@@ -581,7 +581,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod1-station-material-mechanical.primitive.0",
       "indexCount": 13488,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.003",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-station-material-mechanical",
@@ -606,7 +606,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod1-station-material-warm.primitive.0",
       "indexCount": 1296,
       "indexed": true,
-      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialHash": "544dbd8f0b5f8d3f1459abfcd7e9a198342288013f5db1d897029901b176e205",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.052",
       "nodeId": "sf.render.outpost-bastion.mesh.lod1-station-material-warm",
@@ -631,7 +631,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod2-station-material-accent.primitive.0",
       "indexCount": 4512,
       "indexed": true,
-      "materialHash": "b86a05eac9cdbc7f8e7af0b5c66003c4cac2d8a1b4ecdbdbcf656624222ffd09",
+      "materialHash": "88864fed9ca75021ac6180251f9c894e4a3bc4bbae71a6085e8f45741e77bf86",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.007",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-station-material-accent",
@@ -656,7 +656,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod2-station-material-glass.primitive.0",
       "indexCount": 264,
       "indexed": true,
-      "materialHash": "a44cdccbc617e8e1aeace035e5a680e95c4777f62814c0dfd0831c6ccfd95625",
+      "materialHash": "a5ef9adcb6e60b9456ac2b29859a0ebbdf168d1c7ba992cea194f520510dcc44",
       "materialPipelineKey": "blend",
       "meshName": "Cube.077",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-station-material-glass",
@@ -681,7 +681,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod2-station-material-hull.primitive.0",
       "indexCount": 1128,
       "indexed": true,
-      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialHash": "cce76db423f4b9772db1c2dd607ef2ae163878dd8ccf4dc09cdc4fea330adec3",
       "materialPipelineKey": "opaque",
       "meshName": "Icosphere.002",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-station-material-hull",
@@ -706,7 +706,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod2-station-material-mechanical.primitive.0",
       "indexCount": 4512,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.006",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-station-material-mechanical",
@@ -731,7 +731,7 @@
       "id": "sf.render.outpost-bastion.mesh.lod2-station-material-warm.primitive.0",
       "indexCount": 528,
       "indexed": true,
-      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialHash": "544dbd8f0b5f8d3f1459abfcd7e9a198342288013f5db1d897029901b176e205",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.079",
       "nodeId": "sf.render.outpost-bastion.mesh.lod2-station-material-warm",
@@ -744,10 +744,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
-      "id": "material:0c11502fea9d740108140ae7",
+      "hash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
+      "id": "material:1f757966d28ec956d41e8d60",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -776,74 +776,42 @@
       ]
     },
     {
-      "hash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
-      "id": "material:14f398d34f8381a8c902dea8",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "hash": "544dbd8f0b5f8d3f1459abfcd7e9a198342288013f5db1d897029901b176e205",
+      "id": "material:544dbd8f0b5f8d3f1459abfc",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "hull_basecolor",
+          "name": "warm_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hull_orm",
+          "name": "warm_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hull_normal",
+          "name": "warm_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hull_orm",
+          "name": "warm_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "a44cdccbc617e8e1aeace035e5a680e95c4777f62814c0dfd0831c6ccfd95625",
-      "id": "material:a44cdccbc617e8e1aeace035",
-      "name": "Material_Glass",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "glass_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "glass_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "glass_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "glass_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "b86a05eac9cdbc7f8e7af0b5c66003c4cac2d8a1b4ecdbdbcf656624222ffd09",
-      "id": "material:b86a05eac9cdbc7f8e7af0b5",
+      "hash": "88864fed9ca75021ac6180251f9c894e4a3bc4bbae71a6085e8f45741e77bf86",
+      "id": "material:88864fed9ca75021ac618025",
       "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -872,32 +840,64 @@
       ]
     },
     {
-      "hash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
-      "id": "material:ecd2c66c154b2ddeed6f95a9",
-      "name": "Material_Warm",
-      "pipelineKey": "opaque:double",
+      "hash": "a5ef9adcb6e60b9456ac2b29859a0ebbdf168d1c7ba992cea194f520510dcc44",
+      "id": "material:a5ef9adcb6e60b9456ac2b29",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "warm_basecolor",
+          "name": "glass_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "warm_orm",
+          "name": "glass_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "warm_normal",
+          "name": "glass_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "warm_orm",
+          "name": "glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cce76db423f4b9772db1c2dd607ef2ae163878dd8ccf4dc09cdc4fea330adec3",
+      "id": "material:cce76db423f4b9772db1c2dd",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1743,19 +1743,19 @@
       "sha256": "c19306eee7b63ef37fed43c6cc305aba8cabc9e2d6b433a2553291d04e78b8f0"
     },
     "sourceGlb": {
-      "bytes": 7686812,
-      "sha256": "bfb256d3eb1a78564011d60abd50480c1af97ab4d2358d5db5d89e08c3097eff",
+      "bytes": 7686820,
+      "sha256": "2bb15b0599e3c934fc43ae8f7639260053ae174c5dee2da7aeea4c3a6268758d",
       "uri": "place_claim_outpost_bastion.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 8776664,
-    "sha256": "ed8e9631b17457823b0dcd1aad228082aba0b4ce4cd9715e845c0809db5afe22",
+    "bytes": 8776568,
+    "sha256": "e69529e8ea037e8d140a85758af364bfc85f9a0d150880d0eaef18941172b42a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2577,7 +2577,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_bastion.glb"
   },
-  "runtimeHash": "cddd72572898d00b904226b94c24e4f3221d9d028f283ff16894f9f8aafbc828",
+  "runtimeHash": "479b5f18c772281b83752044b92c3ad6781184f7244179cbb864c6a06eb71388",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -104,6 +104,9 @@ try {
       '--disable-background-timer-throttling',
       '--disable-backgrounding-occluded-windows',
       '--window-size=1600,900',
+      // Probe-only: expose window.gc() so the boot window's garbage can be dropped
+      // before frame measurement instead of landing inside it as a stray GC pause.
+      '--js-flags=--expose-gc',
     ],
   });
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
@@ -179,6 +182,11 @@ try {
       const ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
       return ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : null;
     } catch (_) { return null; }
+  });
+  // Boot-admission GC out of the measured window: collect once (twice covers the
+  // second-order nursery) before the sampler starts counting frame gaps.
+  await page.evaluate(() => {
+    if (typeof window.gc === 'function') { window.gc(); window.gc(); }
   });
   await page.evaluate(installFrameSolidSampler);
   let cdp = null;

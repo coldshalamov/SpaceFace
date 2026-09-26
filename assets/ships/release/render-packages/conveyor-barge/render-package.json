@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fe3da80a6ddf51898c70eefbd2f57e3a2a41de4cde18e66504527a070fa49b97",
+  "contentHash": "7d5f1631492e3cafa2ac23aa5ad8df7a3df3e84766be9b488c370c1e5c74dd88",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod0-barge-material-accent.primitive.0",
       "indexCount": 312,
       "indexed": true,
-      "materialHash": "e4de24a7e631b00d8e7c1b83c2b32a360e3cf84a6c186202953cc0424e663a9d",
+      "materialHash": "94b1429bccbd9c78ae7985ee076a6ad93a594faead2195b591b40315bdd406ac",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.044",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-barge-material-accent",
@@ -99,7 +99,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod0-barge-material-container.primitive.0",
       "indexCount": 3996,
       "indexed": true,
-      "materialHash": "0c408b086789f8131476fa9d3dc698916d1f4c636b6809ecf53a40d7f643f8f0",
+      "materialHash": "d529d5cec2d3c0c429c463402921949178355a2f56d549fee6cafe74b325f1af",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.106",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-barge-material-container",
@@ -124,7 +124,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod0-barge-material-deck.primitive.0",
       "indexCount": 1620,
       "indexed": true,
-      "materialHash": "2cc043175e0583884daf61c033ae1daa70e7e2688748546f703f3555785f4527",
+      "materialHash": "30b4f18863167c63669a32419e6d027e04fea65d1e88af51049adfa52c876ac6",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.077",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-barge-material-deck",
@@ -149,7 +149,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod0-barge-material-drive.primitive.0",
       "indexCount": 6684,
       "indexed": true,
-      "materialHash": "6fa5569c85423f810ce0e3463c01c3754f40d1e5b49f9f87d2ff8a8ae8386839",
+      "materialHash": "57a0cf00cca40875ecb63eb4fd1256e7672c61437f12a64b1aec576d1918ab6b",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.270",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-barge-material-drive",
@@ -174,7 +174,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod0-barge-material-glass.primitive.0",
       "indexCount": 888,
       "indexed": true,
-      "materialHash": "1e27c9a5e18b039771bc85e4a8d5f6c17b8c36f374a83ba10435a0e0ee2609ba",
+      "materialHash": "db3c534b8c82faced1f4c2a1bb2b5c60470d960d849ba175d7d8f702f5a75684",
       "materialPipelineKey": "blend",
       "meshName": "Cylinder.043",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-barge-material-glass",
@@ -199,7 +199,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod0-barge-material-hull.primitive.0",
       "indexCount": 3888,
       "indexed": true,
-      "materialHash": "86ace8a453b5d8c4ceafc6e7535791f1bae1461f98584e9c70469ef488928781",
+      "materialHash": "1118da5155b0a7044a34dd08702a58867fac6be7b5fe7159b8e0968d560bc973",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.238",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-barge-material-hull",
@@ -224,7 +224,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod0-barge-material-radiator.primitive.0",
       "indexCount": 2592,
       "indexed": true,
-      "materialHash": "bf7d272932b61c9213f912c1b83ff5bb9ffa0fc8fded80977f04aa3526fd893c",
+      "materialHash": "1d9d956bb23fec49b098335be6c30c31fb4a96f7798a021ce58d280c7714eccd",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.021",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-barge-material-radiator",
@@ -249,7 +249,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod0-barge-material-safety.primitive.0",
       "indexCount": 5076,
       "indexed": true,
-      "materialHash": "e1cb569eaf3171258657711f764b7b97e668ace969dc4e34ad6a60ccd9e9b1ba",
+      "materialHash": "989b25365b93b4f31a79d1a35bc448bd2a74a2239bfa13193f597773db8209fc",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.135",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-barge-material-safety",
@@ -274,7 +274,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod0-barge-material-structure.primitive.0",
       "indexCount": 33444,
       "indexed": true,
-      "materialHash": "ff29414ee852e5a7365be8de976e9dd1f4e9c4509db76f17b856dd83054fea71",
+      "materialHash": "fab4b67988c6c1eca320880225b2e8f1aa840331dcda7bf04088b45379d56b71",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.102",
       "nodeId": "sf.render.conveyor-barge.mesh.lod0-barge-material-structure",
@@ -299,7 +299,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod1-barge-material-accent.primitive.0",
       "indexCount": 168,
       "indexed": true,
-      "materialHash": "e4de24a7e631b00d8e7c1b83c2b32a360e3cf84a6c186202953cc0424e663a9d",
+      "materialHash": "94b1429bccbd9c78ae7985ee076a6ad93a594faead2195b591b40315bdd406ac",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.054",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-barge-material-accent",
@@ -324,7 +324,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod1-barge-material-container.primitive.0",
       "indexCount": 972,
       "indexed": true,
-      "materialHash": "0c408b086789f8131476fa9d3dc698916d1f4c636b6809ecf53a40d7f643f8f0",
+      "materialHash": "d529d5cec2d3c0c429c463402921949178355a2f56d549fee6cafe74b325f1af",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.343",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-barge-material-container",
@@ -349,7 +349,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod1-barge-material-deck.primitive.0",
       "indexCount": 1620,
       "indexed": true,
-      "materialHash": "2cc043175e0583884daf61c033ae1daa70e7e2688748546f703f3555785f4527",
+      "materialHash": "30b4f18863167c63669a32419e6d027e04fea65d1e88af51049adfa52c876ac6",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.331",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-barge-material-deck",
@@ -374,7 +374,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod1-barge-material-drive.primitive.0",
       "indexCount": 3732,
       "indexed": true,
-      "materialHash": "6fa5569c85423f810ce0e3463c01c3754f40d1e5b49f9f87d2ff8a8ae8386839",
+      "materialHash": "57a0cf00cca40875ecb63eb4fd1256e7672c61437f12a64b1aec576d1918ab6b",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.414",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-barge-material-drive",
@@ -399,7 +399,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod1-barge-material-glass.primitive.0",
       "indexCount": 984,
       "indexed": true,
-      "materialHash": "1e27c9a5e18b039771bc85e4a8d5f6c17b8c36f374a83ba10435a0e0ee2609ba",
+      "materialHash": "db3c534b8c82faced1f4c2a1bb2b5c60470d960d849ba175d7d8f702f5a75684",
       "materialPipelineKey": "blend",
       "meshName": "Cylinder.053",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-barge-material-glass",
@@ -424,7 +424,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod1-barge-material-hull.primitive.0",
       "indexCount": 3888,
       "indexed": true,
-      "materialHash": "86ace8a453b5d8c4ceafc6e7535791f1bae1461f98584e9c70469ef488928781",
+      "materialHash": "1118da5155b0a7044a34dd08702a58867fac6be7b5fe7159b8e0968d560bc973",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.385",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-barge-material-hull",
@@ -449,7 +449,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod1-barge-material-radiator.primitive.0",
       "indexCount": 2268,
       "indexed": true,
-      "materialHash": "bf7d272932b61c9213f912c1b83ff5bb9ffa0fc8fded80977f04aa3526fd893c",
+      "materialHash": "1d9d956bb23fec49b098335be6c30c31fb4a96f7798a021ce58d280c7714eccd",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.306",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-barge-material-radiator",
@@ -474,7 +474,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod1-barge-material-safety.primitive.0",
       "indexCount": 2808,
       "indexed": true,
-      "materialHash": "e1cb569eaf3171258657711f764b7b97e668ace969dc4e34ad6a60ccd9e9b1ba",
+      "materialHash": "989b25365b93b4f31a79d1a35bc448bd2a74a2239bfa13193f597773db8209fc",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.344",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-barge-material-safety",
@@ -499,7 +499,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod1-barge-material-structure.primitive.0",
       "indexCount": 21384,
       "indexed": true,
-      "materialHash": "ff29414ee852e5a7365be8de976e9dd1f4e9c4509db76f17b856dd83054fea71",
+      "materialHash": "fab4b67988c6c1eca320880225b2e8f1aa840331dcda7bf04088b45379d56b71",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.339",
       "nodeId": "sf.render.conveyor-barge.mesh.lod1-barge-material-structure",
@@ -524,7 +524,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod2-barge-material-accent.primitive.0",
       "indexCount": 168,
       "indexed": true,
-      "materialHash": "e4de24a7e631b00d8e7c1b83c2b32a360e3cf84a6c186202953cc0424e663a9d",
+      "materialHash": "94b1429bccbd9c78ae7985ee076a6ad93a594faead2195b591b40315bdd406ac",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.064",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-barge-material-accent",
@@ -549,7 +549,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod2-barge-material-container.primitive.0",
       "indexCount": 396,
       "indexed": true,
-      "materialHash": "0c408b086789f8131476fa9d3dc698916d1f4c636b6809ecf53a40d7f643f8f0",
+      "materialHash": "d529d5cec2d3c0c429c463402921949178355a2f56d549fee6cafe74b325f1af",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.481",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-barge-material-container",
@@ -574,7 +574,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod2-barge-material-deck.primitive.0",
       "indexCount": 660,
       "indexed": true,
-      "materialHash": "2cc043175e0583884daf61c033ae1daa70e7e2688748546f703f3555785f4527",
+      "materialHash": "30b4f18863167c63669a32419e6d027e04fea65d1e88af51049adfa52c876ac6",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.469",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-barge-material-deck",
@@ -599,7 +599,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod2-barge-material-drive.primitive.0",
       "indexCount": 1356,
       "indexed": true,
-      "materialHash": "6fa5569c85423f810ce0e3463c01c3754f40d1e5b49f9f87d2ff8a8ae8386839",
+      "materialHash": "57a0cf00cca40875ecb63eb4fd1256e7672c61437f12a64b1aec576d1918ab6b",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.441",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-barge-material-drive",
@@ -624,7 +624,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod2-barge-material-glass.primitive.0",
       "indexCount": 408,
       "indexed": true,
-      "materialHash": "1e27c9a5e18b039771bc85e4a8d5f6c17b8c36f374a83ba10435a0e0ee2609ba",
+      "materialHash": "db3c534b8c82faced1f4c2a1bb2b5c60470d960d849ba175d7d8f702f5a75684",
       "materialPipelineKey": "blend",
       "meshName": "Cylinder.063",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-barge-material-glass",
@@ -649,7 +649,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod2-barge-material-hull.primitive.0",
       "indexCount": 1584,
       "indexed": true,
-      "materialHash": "86ace8a453b5d8c4ceafc6e7535791f1bae1461f98584e9c70469ef488928781",
+      "materialHash": "1118da5155b0a7044a34dd08702a58867fac6be7b5fe7159b8e0968d560bc973",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.523",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-barge-material-hull",
@@ -674,7 +674,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod2-barge-material-radiator.primitive.0",
       "indexCount": 924,
       "indexed": true,
-      "materialHash": "bf7d272932b61c9213f912c1b83ff5bb9ffa0fc8fded80977f04aa3526fd893c",
+      "materialHash": "1d9d956bb23fec49b098335be6c30c31fb4a96f7798a021ce58d280c7714eccd",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.444",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-barge-material-radiator",
@@ -699,7 +699,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod2-barge-material-safety.primitive.0",
       "indexCount": 1392,
       "indexed": true,
-      "materialHash": "e1cb569eaf3171258657711f764b7b97e668ace969dc4e34ad6a60ccd9e9b1ba",
+      "materialHash": "989b25365b93b4f31a79d1a35bc448bd2a74a2239bfa13193f597773db8209fc",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.482",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-barge-material-safety",
@@ -724,7 +724,7 @@
       "id": "sf.render.conveyor-barge.mesh.lod2-barge-material-structure.primitive.0",
       "indexCount": 8784,
       "indexed": true,
-      "materialHash": "ff29414ee852e5a7365be8de976e9dd1f4e9c4509db76f17b856dd83054fea71",
+      "materialHash": "fab4b67988c6c1eca320880225b2e8f1aa840331dcda7bf04088b45379d56b71",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.477",
       "nodeId": "sf.render.conveyor-barge.mesh.lod2-barge-material-structure",
@@ -737,144 +737,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0c408b086789f8131476fa9d3dc698916d1f4c636b6809ecf53a40d7f643f8f0",
-      "id": "material:0c408b086789f8131476fa9d",
-      "name": "Material_Container",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "barge_container_shell_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "barge_container_shell_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "barge_container_shell_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "barge_container_shell_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "1e27c9a5e18b039771bc85e4a8d5f6c17b8c36f374a83ba10435a0e0ee2609ba",
-      "id": "material:1e27c9a5e18b039771bc85e4",
-      "name": "Material_Glass",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "barge_bridge_glass_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "srgb",
-          "name": "barge_bridge_glass_emissive",
-          "slot": "emissive",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "barge_bridge_glass_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "barge_bridge_glass_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "barge_bridge_glass_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "2cc043175e0583884daf61c033ae1daa70e7e2688748546f703f3555785f4527",
-      "id": "material:2cc043175e0583884daf61c0",
-      "name": "Material_Deck",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "barge_deck_grip_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "barge_deck_grip_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "barge_deck_grip_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "barge_deck_grip_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "6fa5569c85423f810ce0e3463c01c3754f40d1e5b49f9f87d2ff8a8ae8386839",
-      "id": "material:6fa5569c85423f810ce0e346",
-      "name": "Material_Drive",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "barge_machine_casing_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "barge_machine_casing_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "barge_machine_casing_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "barge_machine_casing_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "86ace8a453b5d8c4ceafc6e7535791f1bae1461f98584e9c70469ef488928781",
-      "id": "material:86ace8a453b5d8c4ceafc6e7",
+      "hash": "1118da5155b0a7044a34dd08702a58867fac6be7b5fe7159b8e0968d560bc973",
+      "id": "material:1118da5155b0a7044a34dd08",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -903,10 +769,10 @@
       ]
     },
     {
-      "hash": "bf7d272932b61c9213f912c1b83ff5bb9ffa0fc8fded80977f04aa3526fd893c",
-      "id": "material:bf7d272932b61c9213f912c1",
+      "hash": "1d9d956bb23fec49b098335be6c30c31fb4a96f7798a021ce58d280c7714eccd",
+      "id": "material:1d9d956bb23fec49b098335b",
       "name": "Material_Radiator",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -935,42 +801,74 @@
       ]
     },
     {
-      "hash": "e1cb569eaf3171258657711f764b7b97e668ace969dc4e34ad6a60ccd9e9b1ba",
-      "id": "material:e1cb569eaf3171258657711f",
-      "name": "Material_Safety",
-      "pipelineKey": "opaque:double",
+      "hash": "30b4f18863167c63669a32419e6d027e04fea65d1e88af51049adfa52c876ac6",
+      "id": "material:30b4f18863167c63669a3241",
+      "name": "Material_Deck",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "barge_safety_marking_basecolor",
+          "name": "barge_deck_grip_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "barge_safety_marking_orm",
+          "name": "barge_deck_grip_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "barge_safety_marking_normal",
+          "name": "barge_deck_grip_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "barge_safety_marking_orm",
+          "name": "barge_deck_grip_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "e4de24a7e631b00d8e7c1b83c2b32a360e3cf84a6c186202953cc0424e663a9d",
-      "id": "material:e4de24a7e631b00d8e7c1b83",
+      "hash": "57a0cf00cca40875ecb63eb4fd1256e7672c61437f12a64b1aec576d1918ab6b",
+      "id": "material:57a0cf00cca40875ecb63eb4",
+      "name": "Material_Drive",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "barge_machine_casing_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "barge_machine_casing_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "barge_machine_casing_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "barge_machine_casing_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "94b1429bccbd9c78ae7985ee076a6ad93a594faead2195b591b40315bdd406ac",
+      "id": "material:94b1429bccbd9c78ae7985ee",
       "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1005,10 +903,112 @@
       ]
     },
     {
-      "hash": "ff29414ee852e5a7365be8de976e9dd1f4e9c4509db76f17b856dd83054fea71",
-      "id": "material:ff29414ee852e5a7365be8de",
+      "hash": "989b25365b93b4f31a79d1a35bc448bd2a74a2239bfa13193f597773db8209fc",
+      "id": "material:989b25365b93b4f31a79d1a3",
+      "name": "Material_Safety",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "barge_safety_marking_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "barge_safety_marking_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "barge_safety_marking_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "barge_safety_marking_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d529d5cec2d3c0c429c463402921949178355a2f56d549fee6cafe74b325f1af",
+      "id": "material:d529d5cec2d3c0c429c46340",
+      "name": "Material_Container",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "barge_container_shell_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "barge_container_shell_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "barge_container_shell_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "barge_container_shell_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "db3c534b8c82faced1f4c2a1bb2b5c60470d960d849ba175d7d8f702f5a75684",
+      "id": "material:db3c534b8c82faced1f4c2a1",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "barge_bridge_glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "srgb",
+          "name": "barge_bridge_glass_emissive",
+          "slot": "emissive",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "barge_bridge_glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "barge_bridge_glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "barge_bridge_glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "fab4b67988c6c1eca320880225b2e8f1aa840331dcda7bf04088b45379d56b71",
+      "id": "material:fab4b67988c6c1eca3208802",
       "name": "Material_Structure",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -2424,19 +2424,19 @@
       "sha256": "c1211fa6105fcacc27688ba19ba11a415ca5e88a4c7f6c9ccb35b9ac5422cdbc"
     },
     "sourceGlb": {
-      "bytes": 4988468,
-      "sha256": "73e832008e376acadf54f74fd46cd258ca15286e2f65945ee75300b9b1d93683",
+      "bytes": 4988480,
+      "sha256": "3b8ba39b7fd761864b9d8ee19fb0289b67bb7f7c733778208392007ffdf0ebc8",
       "uri": "place_conveyor_barge.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 5705880,
-    "sha256": "b5e054bb95a4afcb16328fdfb20b43fe3ad84a4abd7cfd4a00682899bdfec7bc",
+    "bytes": 5705712,
+    "sha256": "37bb998cc1a0251baa0b53476f01cb096aa3fa0120e809a7e49ea6fe061d40c9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3585,7 +3585,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_conveyor_barge.glb"
   },
-  "runtimeHash": "5f211def9f36a06e476be2917842ea4bb09a49ee0055918af319f7d4a819df3c",
+  "runtimeHash": "b884836b164606a1156ef4acb610d54d679193505f3428fbc640caebc554b5d2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

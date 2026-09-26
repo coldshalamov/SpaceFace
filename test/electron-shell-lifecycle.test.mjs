@@ -689,6 +689,7 @@ test('main accepts only the documented quit send channel and invoke IPC set', as
   assert.deepEqual([...h.ipcHandlers.keys()].sort(), [
     'spaceface:achievement-unlock',
     'spaceface:build-info',
+    'spaceface:perf-metrics',
     'spaceface:save-clip',
     'spaceface:steam-status',
     'spaceface:workshop-publish',

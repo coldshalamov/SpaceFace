@@ -139,6 +139,141 @@
       ]
     },
     {
+      "id": "sf.render.inspection-cutter.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        11,
+        0.260201,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        7
+      ],
+      "parentNodeId": "sf.render.inspection-cutter.node.socket-mining-front",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        11,
+        0.260201,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.inspection-cutter.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.2887,
+        0.260201,
+        -2.496582,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        8
+      ],
+      "parentNodeId": "sf.render.inspection-cutter.node.socket-rcs-port",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.2887,
+        0.260201,
+        -2.496582,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.inspection-cutter.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.2887,
+        0.260201,
+        2.496582,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        9
+      ],
+      "parentNodeId": "sf.render.inspection-cutter.node.socket-rcs-starboard",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.2887,
+        0.260201,
+        2.496582,
+        1
+      ]
+    },
+    {
       "id": "sf.render.inspection-cutter.anchor.socket-sensor-dorsal",
       "kind": "socket",
       "localTransform": [
@@ -180,6 +315,51 @@
         0,
         1.399999976158142,
         2.799999952316284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.inspection-cutter.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.36861455,
+        0.260201,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        10
+      ],
+      "parentNodeId": "sf.render.inspection-cutter.node.socket-tether-massline",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.36861455,
+        0.260201,
         0,
         1
       ]
@@ -229,6 +409,51 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.inspection-cutter.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        11,
+        0.260201,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        6
+      ],
+      "parentNodeId": "sf.render.inspection-cutter.node.socket-weapon-front",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        11,
+        0.260201,
+        0,
+        1
+      ]
     }
   ],
   "assetId": "sf.render.inspection-cutter",
@@ -243,7 +468,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e66023c1b32b919c5102c0f9ae83fd5751282b7ca24f945d186ae03538f28971",
+  "contentHash": "b241b553e0a587895549eafdf3a2b1d7e1decda910508d7544a11cd3b395911a",
   "dynamicGroups": [
     {
       "id": "sf.render.inspection-cutter.node.lod0-hook-drive-core.dynamic",
@@ -320,7 +545,7 @@
       "id": "sf.render.inspection-cutter.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 264,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_DRIVE_CORE",
       "nodeId": "sf.render.inspection-cutter.node.lod0-hook-drive-core",
@@ -345,7 +570,7 @@
       "id": "sf.render.inspection-cutter.node.lod0-hook-drive-fan.primitive.0",
       "indexCount": 504,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_DRIVE_FAN",
       "nodeId": "sf.render.inspection-cutter.node.lod0-hook-drive-fan",
@@ -370,7 +595,7 @@
       "id": "sf.render.inspection-cutter.node.lod0-merged-material-cyan.primitive.0",
       "indexCount": 2268,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Cyan",
       "nodeId": "sf.render.inspection-cutter.node.lod0-merged-material-cyan",
@@ -420,7 +645,7 @@
       "id": "sf.render.inspection-cutter.node.lod0-merged-material-hull.primitive.0",
       "indexCount": 5388,
       "indexed": true,
-      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialHash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Hull",
       "nodeId": "sf.render.inspection-cutter.node.lod0-merged-material-hull",
@@ -445,7 +670,7 @@
       "id": "sf.render.inspection-cutter.node.lod0-merged-material-mechanical.primitive.0",
       "indexCount": 3372,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Mechanical",
       "nodeId": "sf.render.inspection-cutter.node.lod0-merged-material-mechanical",
@@ -470,7 +695,7 @@
       "id": "sf.render.inspection-cutter.node.lod0-merged-material-warm.primitive.0",
       "indexCount": 804,
       "indexed": true,
-      "materialHash": "9ff66786ab2abc538bd4e728dc6adb0c4f7adc6404bdd48cfb19bd2fd97d569c",
+      "materialHash": "e4fdcdb4d237e70ede6949bb1b93de4f042a07ed5e265c6d910aab5f9227eadd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Warm",
       "nodeId": "sf.render.inspection-cutter.node.lod0-merged-material-warm",
@@ -495,7 +720,7 @@
       "id": "sf.render.inspection-cutter.node.lod0-remaster-material-brushedmetal-remasternickel.primitive.0",
       "indexCount": 1440,
       "indexed": true,
-      "materialHash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
+      "materialHash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_AftScannerWell_NickelSeam",
       "nodeId": "sf.render.inspection-cutter.node.lod0-remaster-material-brushedmetal-remasternickel",
@@ -545,7 +770,7 @@
       "id": "sf.render.inspection-cutter.node.lod0-remaster-material-glass-remasteroptical.primitive.0",
       "indexCount": 7920,
       "indexed": true,
-      "materialHash": "92d3bd83e3ee165cf2d4464f888be56b92a41200451c8693a79ed83d0b701c95",
+      "materialHash": "74cd926c5ac36d0bf9998f9bff8f4ed46d44238cd4df279382199ac72a9fa6b7",
       "materialPipelineKey": "blend",
       "meshName": "LOD0_Remaster_AftScannerWell_RecessedGlazing",
       "nodeId": "sf.render.inspection-cutter.node.lod0-remaster-material-glass-remasteroptical",
@@ -570,7 +795,7 @@
       "id": "sf.render.inspection-cutter.node.lod0-remaster-material-mechanical-remasterheatcopper.primitive.0",
       "indexCount": 360,
       "indexed": true,
-      "materialHash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
+      "materialHash": "e2c2872893bc0866953560229c31637afcfe3e27a902cc96c1a08afec4e3142d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_AftScannerWell_CoolantReturn",
       "nodeId": "sf.render.inspection-cutter.node.lod0-remaster-material-mechanical-remasterheatcopper",
@@ -595,7 +820,7 @@
       "id": "sf.render.inspection-cutter.node.lod0-remaster-material-mechanical-remasteroxidized.primitive.0",
       "indexCount": 8088,
       "indexed": true,
-      "materialHash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
+      "materialHash": "696124402638cc23b4c1165321f8c0fe5461aab6e62c9713410ab671dfecd7d5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_AftScannerWell_OxidizedLiner",
       "nodeId": "sf.render.inspection-cutter.node.lod0-remaster-material-mechanical-remasteroxidized",
@@ -620,7 +845,7 @@
       "id": "sf.render.inspection-cutter.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 78,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_DRIVE_CORE",
       "nodeId": "sf.render.inspection-cutter.node.lod1-hook-drive-core",
@@ -645,7 +870,7 @@
       "id": "sf.render.inspection-cutter.node.lod1-hook-drive-fan.primitive.0",
       "indexCount": 156,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_DRIVE_FAN",
       "nodeId": "sf.render.inspection-cutter.node.lod1-hook-drive-fan",
@@ -670,7 +895,7 @@
       "id": "sf.render.inspection-cutter.node.lod1-merged-material-cyan.primitive.0",
       "indexCount": 678,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Cyan",
       "nodeId": "sf.render.inspection-cutter.node.lod1-merged-material-cyan",
@@ -720,7 +945,7 @@
       "id": "sf.render.inspection-cutter.node.lod1-merged-material-hull.primitive.0",
       "indexCount": 2394,
       "indexed": true,
-      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialHash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Hull",
       "nodeId": "sf.render.inspection-cutter.node.lod1-merged-material-hull",
@@ -745,7 +970,7 @@
       "id": "sf.render.inspection-cutter.node.lod1-merged-material-mechanical.primitive.0",
       "indexCount": 3468,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Mechanical",
       "nodeId": "sf.render.inspection-cutter.node.lod1-merged-material-mechanical",
@@ -770,7 +995,7 @@
       "id": "sf.render.inspection-cutter.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 30,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_CORE",
       "nodeId": "sf.render.inspection-cutter.node.lod2-hook-drive-core",
@@ -795,7 +1020,7 @@
       "id": "sf.render.inspection-cutter.node.lod2-hook-drive-fan.primitive.0",
       "indexCount": 66,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_FAN",
       "nodeId": "sf.render.inspection-cutter.node.lod2-hook-drive-fan",
@@ -820,7 +1045,7 @@
       "id": "sf.render.inspection-cutter.node.lod2-merged-material-cyan.primitive.0",
       "indexCount": 288,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Cyan",
       "nodeId": "sf.render.inspection-cutter.node.lod2-merged-material-cyan",
@@ -870,7 +1095,7 @@
       "id": "sf.render.inspection-cutter.node.lod2-merged-material-hull.primitive.0",
       "indexCount": 1170,
       "indexed": true,
-      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialHash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Hull",
       "nodeId": "sf.render.inspection-cutter.node.lod2-merged-material-hull",
@@ -895,7 +1120,7 @@
       "id": "sf.render.inspection-cutter.node.lod2-merged-material-mechanical.primitive.0",
       "indexCount": 834,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Mechanical",
       "nodeId": "sf.render.inspection-cutter.node.lod2-merged-material-mechanical",
@@ -908,10 +1133,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
-      "id": "material:2c37d87500caaa70babb7ae3",
+      "hash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
+      "id": "material:67471fe62bfae5dc53b55a4f",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -940,95 +1165,24 @@
       ]
     },
     {
-      "hash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
-      "id": "material:3f4c7f68a654fe0c5b30f2bf",
-      "name": "Material_Cyan",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Cyan_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Cyan_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Cyan_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Cyan_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
-      "id": "material:8ab96250fdee6299bd749485",
-      "name": "Material_Mechanical_RemasterHeatCopper",
-      "pipelineKey": "opaque:double",
+      "hash": "696124402638cc23b4c1165321f8c0fe5461aab6e62c9713410ab671dfecd7d5",
+      "id": "material:696124402638cc23b4c11653",
+      "name": "Material_Mechanical_RemasterOxidized",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "92d3bd83e3ee165cf2d4464f888be56b92a41200451c8693a79ed83d0b701c95",
-      "id": "material:92d3bd83e3ee165cf2d4464f",
+      "hash": "74cd926c5ac36d0bf9998f9bff8f4ed46d44238cd4df279382199ac72a9fa6b7",
+      "id": "material:74cd926c5ac36d0bf9998f9b",
       "name": "Material_Glass_RemasterOptical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "9e34bc73984fd7ba87a3c1b84ac523f51ed250574554741b9bf879f43bea6ac2",
-      "id": "material:9e34bc73984fd7ba87a3c1b8",
-      "name": "Material_Emissive_Warm_RemasterRecess",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "9ff66786ab2abc538bd4e728dc6adb0c4f7adc6404bdd48cfb19bd2fd97d569c",
-      "id": "material:9ff66786ab2abc538bd4e728",
-      "name": "Material_Warm",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Warm_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Warm_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Warm_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Warm_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
-      "id": "material:a9c0f1569d0d5917e18ea3f0",
+      "hash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
+      "id": "material:8957a41c3b54913d8396bc8a",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1055,6 +1209,13 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "9e34bc73984fd7ba87a3c1b84ac523f51ed250574554741b9bf879f43bea6ac2",
+      "id": "material:9e34bc73984fd7ba87a3c1b8",
+      "name": "Material_Emissive_Warm_RemasterRecess",
+      "pipelineKey": "opaque:double",
+      "textures": []
     },
     {
       "hash": "ac9c4edc38b0c17c39b75c63ab801fbbf3e9779b9c1ab2abf8c5d18a93d85044",
@@ -1089,18 +1250,82 @@
       ]
     },
     {
-      "hash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
-      "id": "material:bc5362fa29283f47ae662c67",
+      "hash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
+      "id": "material:afa0d31269441b13f937c930",
       "name": "Material_BrushedMetal_RemasterNickel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
-      "id": "material:eed6e8ec396ecaf2032f9016",
-      "name": "Material_Mechanical_RemasterOxidized",
-      "pipelineKey": "opaque:double",
+      "hash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
+      "id": "material:d2b32c6674246b497763a429",
+      "name": "Material_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Cyan_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e2c2872893bc0866953560229c31637afcfe3e27a902cc96c1a08afec4e3142d",
+      "id": "material:e2c2872893bc086695356022",
+      "name": "Material_Mechanical_RemasterHeatCopper",
+      "pipelineKey": "opaque:front",
       "textures": []
+    },
+    {
+      "hash": "e4fdcdb4d237e70ede6949bb1b93de4f042a07ed5e265c6d910aab5f9227eadd",
+      "id": "material:e4fdcdb4d237e70ede6949bb",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Warm_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
@@ -2520,6 +2745,150 @@
       ]
     },
     {
+      "id": "sf.render.inspection-cutter.node.socket-mining-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        11,
+        0.260201,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mining_Front",
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        7
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.inspection-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        11,
+        0.260201,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.inspection-cutter.node.socket-rcs-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.2887,
+        0.260201,
+        -2.496582,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Port",
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        8
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.inspection-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.2887,
+        0.260201,
+        -2.496582,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.inspection-cutter.node.socket-rcs-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.2887,
+        0.260201,
+        2.496582,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Starboard",
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        9
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.inspection-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.2887,
+        0.260201,
+        2.496582,
+        1
+      ]
+    },
+    {
       "id": "sf.render.inspection-cutter.node.socket-sensor-dorsal",
       "localTransform": [
         1,
@@ -2564,6 +2933,54 @@
         0,
         1.399999976158142,
         2.799999952316284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.inspection-cutter.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.36861455,
+        0.260201,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        10
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.inspection-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.36861455,
+        0.260201,
         0,
         1
       ]
@@ -2616,26 +3033,74 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.inspection-cutter.node.socket-weapon-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        11,
+        0.260201,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Weapon_Front",
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        6
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.inspection-cutter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        11,
+        0.260201,
+        0,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "a771b8492f255f4ba424a3169c32b0cbc5fbf081b1d8255da03fbd0ca84a381a"
+      "sha256": "272f502327fc5b8a55f9c47a66329cbbbb4194edc16f56ac67bac35174a27a58"
     },
     "sourceGlb": {
-      "bytes": 3017488,
-      "sha256": "0c22cd4487da5e82f87e8123a038c5783d9a6701a0b33ccee481a2b04c55dfdc",
+      "bytes": 3017852,
+      "sha256": "231035fbbb1f256f108ce77b9ae99e6750de274534f8ba9926a916dbfaffc83e",
       "uri": "inspection_cutter.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3421420,
-    "sha256": "7e0784b30dd2501e0fea28ba262775fe1dec0650ba903a38530f66487f30559b",
+    "bytes": 3422892,
+    "sha256": "4ae5f9a379121eae7b4c8a741540dc587f42a01d1f3374d45f36713b00848622",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2960,6 +3425,191 @@
             "schema": "spaceface.renderPackageSemantic.v1"
           }
         }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          11,
+          0.260201,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 32,
+        "tags": {
+          "socket": true,
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.inspection-cutter.anchor.socket-weapon-front",
+              "sf.render.inspection-cutter.node.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          11,
+          0.260201,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 33,
+        "tags": {
+          "socket": true,
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.inspection-cutter.anchor.socket-mining-front",
+              "sf.render.inspection-cutter.node.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.2887,
+          0.260201,
+          -2.496582,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 34,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.inspection-cutter.anchor.socket-rcs-port",
+              "sf.render.inspection-cutter.node.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.2887,
+          0.260201,
+          2.496582,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 35,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.inspection-cutter.anchor.socket-rcs-starboard",
+              "sf.render.inspection-cutter.node.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.36861455,
+          0.260201,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 36,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.inspection-cutter.anchor.socket-tether-massline",
+              "sf.render.inspection-cutter.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
       }
     ],
     "materialProfileRoles": {
@@ -3095,7 +3745,7 @@
         "role": "mechanical"
       }
     ],
-    "nodeCount": 32,
+    "nodeCount": 37,
     "primitives": [
       {
         "canopy": false,
@@ -3927,7 +4577,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/inspection_cutter.glb"
   },
-  "runtimeHash": "08f9d60dbd5b51b44829007843b3e3eba428de4154df24819e8163ac61799741",
+  "runtimeHash": "3e3d937a67ca64db72de4c2eaef5bfe0c8509c963ad575809134b3f15e0ac4e6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3974,8 +4624,13 @@
         "sf.render.inspection-cutter.node.socket-camera-focus",
         "sf.render.inspection-cutter.node.socket-engine-main",
         "sf.render.inspection-cutter.node.socket-inspection-front",
+        "sf.render.inspection-cutter.node.socket-mining-front",
+        "sf.render.inspection-cutter.node.socket-rcs-port",
+        "sf.render.inspection-cutter.node.socket-rcs-starboard",
         "sf.render.inspection-cutter.node.socket-sensor-dorsal",
-        "sf.render.inspection-cutter.node.socket-trail-main"
+        "sf.render.inspection-cutter.node.socket-tether-massline",
+        "sf.render.inspection-cutter.node.socket-trail-main",
+        "sf.render.inspection-cutter.node.socket-weapon-front"
       ]
     }
   ]

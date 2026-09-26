@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d02b81889afae56580a2c4afb9c3fe5992bf09acbb9984f0888939e98fc9c7ef",
+  "contentHash": "2290a185190474abea4fe4656b4d3548e6fb83b72ab5dff66af5121799ce494c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod0-seamed-material-fracture.primitive.0",
       "indexCount": 381,
       "indexed": true,
-      "materialHash": "28a97d48663fb50e38bcfb6275e47c60e229d7795e5504bd33ee1620aef0699f",
+      "materialHash": "9284cb24816785d17bf26a8131b6e4665d662157d44b8fbd1e42d0d368e01fd0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_CoherentShearHost",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod0-seamed-material-fracture",
@@ -99,7 +99,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod0-seamed-material-mineral.primitive.0",
       "indexCount": 240,
       "indexed": true,
-      "materialHash": "7600ab1e0fdbd46f159533ac5397e808b0d3045787dddb9b2054ff842b8a405b",
+      "materialHash": "e2c9a2b698e5b1ec801e729f6aca650b34eda77828d4623c2cb12dd26c57ff3b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_InsetMineralLenses",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod0-seamed-material-mineral",
@@ -124,7 +124,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod0-seamed-material-regolith.primitive.0",
       "indexCount": 1185,
       "indexed": true,
-      "materialHash": "8160da6cf7276c0a4007fc30c38dfdcda92c3892864c1da47725744b1415010c",
+      "materialHash": "cc7ba36018e61760c9a32e070a88243566b229eeef11b81a146f08c84cbc02ca",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_CoherentShearHost.001",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod0-seamed-material-regolith",
@@ -149,7 +149,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod0-seamed-material-surveyalloy.primitive.0",
       "indexCount": 2508,
       "indexed": true,
-      "materialHash": "061ca392f70edf13c59fce7648fd375b98a3fb680edd00fb08c5e69fa1bf273f",
+      "materialHash": "828605afa7f8efeb5d803739cc5d6a8881f9952b75dd5463892480443a811287",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Seamed_SurveyCable_Mesh.001",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod0-seamed-material-surveyalloy",
@@ -174,7 +174,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod0-seamed-material-surveymarking.primitive.0",
       "indexCount": 996,
       "indexed": true,
-      "materialHash": "809764b97bba41bcbc8d58745672e50a7a61b2582c4d6e4cfd4c1442c8ce4e46",
+      "materialHash": "f76869d5b93b916297ae5a92e26dfd0f2b05c13bac6c2c59c155aea7436527a2",
       "materialPipelineKey": "opaque",
       "meshName": "Seamed_SurveyText_Font.002",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod0-seamed-material-surveymarking",
@@ -199,7 +199,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod1-seamed-material-fracture.primitive.0",
       "indexCount": 354,
       "indexed": true,
-      "materialHash": "28a97d48663fb50e38bcfb6275e47c60e229d7795e5504bd33ee1620aef0699f",
+      "materialHash": "9284cb24816785d17bf26a8131b6e4665d662157d44b8fbd1e42d0d368e01fd0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_CoherentShearHost",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod1-seamed-material-fracture",
@@ -224,7 +224,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod1-seamed-material-mineral.primitive.0",
       "indexCount": 240,
       "indexed": true,
-      "materialHash": "7600ab1e0fdbd46f159533ac5397e808b0d3045787dddb9b2054ff842b8a405b",
+      "materialHash": "e2c9a2b698e5b1ec801e729f6aca650b34eda77828d4623c2cb12dd26c57ff3b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_InsetMineralLenses",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod1-seamed-material-mineral",
@@ -249,7 +249,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod1-seamed-material-regolith.primitive.0",
       "indexCount": 744,
       "indexed": true,
-      "materialHash": "8160da6cf7276c0a4007fc30c38dfdcda92c3892864c1da47725744b1415010c",
+      "materialHash": "cc7ba36018e61760c9a32e070a88243566b229eeef11b81a146f08c84cbc02ca",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_CoherentShearHost.001",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod1-seamed-material-regolith",
@@ -274,7 +274,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod1-seamed-material-surveyalloy.primitive.0",
       "indexCount": 1356,
       "indexed": true,
-      "materialHash": "061ca392f70edf13c59fce7648fd375b98a3fb680edd00fb08c5e69fa1bf273f",
+      "materialHash": "828605afa7f8efeb5d803739cc5d6a8881f9952b75dd5463892480443a811287",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Seamed_SurveyCable_Mesh.001",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod1-seamed-material-surveyalloy",
@@ -299,7 +299,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod1-seamed-material-surveymarking.primitive.0",
       "indexCount": 996,
       "indexed": true,
-      "materialHash": "809764b97bba41bcbc8d58745672e50a7a61b2582c4d6e4cfd4c1442c8ce4e46",
+      "materialHash": "f76869d5b93b916297ae5a92e26dfd0f2b05c13bac6c2c59c155aea7436527a2",
       "materialPipelineKey": "opaque",
       "meshName": "Seamed_SurveyText_Font.003",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod1-seamed-material-surveymarking",
@@ -324,7 +324,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod2-seamed-material-fracture.primitive.0",
       "indexCount": 336,
       "indexed": true,
-      "materialHash": "28a97d48663fb50e38bcfb6275e47c60e229d7795e5504bd33ee1620aef0699f",
+      "materialHash": "9284cb24816785d17bf26a8131b6e4665d662157d44b8fbd1e42d0d368e01fd0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_CoherentShearHost",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod2-seamed-material-fracture",
@@ -349,7 +349,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod2-seamed-material-mineral.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "7600ab1e0fdbd46f159533ac5397e808b0d3045787dddb9b2054ff842b8a405b",
+      "materialHash": "e2c9a2b698e5b1ec801e729f6aca650b34eda77828d4623c2cb12dd26c57ff3b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_InsetMineralLenses",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod2-seamed-material-mineral",
@@ -374,7 +374,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod2-seamed-material-regolith.primitive.0",
       "indexCount": 474,
       "indexed": true,
-      "materialHash": "8160da6cf7276c0a4007fc30c38dfdcda92c3892864c1da47725744b1415010c",
+      "materialHash": "cc7ba36018e61760c9a32e070a88243566b229eeef11b81a146f08c84cbc02ca",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_CoherentShearHost.001",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod2-seamed-material-regolith",
@@ -399,7 +399,7 @@
       "id": "sf.render.seamed-asteroid.mesh.lod2-seamed-material-surveyalloy.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "061ca392f70edf13c59fce7648fd375b98a3fb680edd00fb08c5e69fa1bf273f",
+      "materialHash": "828605afa7f8efeb5d803739cc5d6a8881f9952b75dd5463892480443a811287",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod2-seamed-material-surveyalloy",
@@ -412,10 +412,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "061ca392f70edf13c59fce7648fd375b98a3fb680edd00fb08c5e69fa1bf273f",
-      "id": "material:061ca392f70edf13c59fce76",
+      "hash": "828605afa7f8efeb5d803739cc5d6a8881f9952b75dd5463892480443a811287",
+      "id": "material:828605afa7f8efeb5d803739",
       "name": "Material_SurveyAlloy",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -444,10 +444,10 @@
       ]
     },
     {
-      "hash": "28a97d48663fb50e38bcfb6275e47c60e229d7795e5504bd33ee1620aef0699f",
-      "id": "material:28a97d48663fb50e38bcfb62",
+      "hash": "9284cb24816785d17bf26a8131b6e4665d662157d44b8fbd1e42d0d368e01fd0",
+      "id": "material:9284cb24816785d17bf26a81",
       "name": "Material_Fracture",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -476,10 +476,42 @@
       ]
     },
     {
-      "hash": "7600ab1e0fdbd46f159533ac5397e808b0d3045787dddb9b2054ff842b8a405b",
-      "id": "material:7600ab1e0fdbd46f159533ac",
+      "hash": "cc7ba36018e61760c9a32e070a88243566b229eeef11b81a146f08c84cbc02ca",
+      "id": "material:cc7ba36018e61760c9a32e07",
+      "name": "Material_Regolith",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "rock_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "rock_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "rock_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "rock_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e2c9a2b698e5b1ec801e729f6aca650b34eda77828d4623c2cb12dd26c57ff3b",
+      "id": "material:e2c9a2b698e5b1ec801e729f",
       "name": "Material_Mineral",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -508,10 +540,10 @@
       ]
     },
     {
-      "hash": "809764b97bba41bcbc8d58745672e50a7a61b2582c4d6e4cfd4c1442c8ce4e46",
-      "id": "material:809764b97bba41bcbc8d5874",
+      "hash": "f76869d5b93b916297ae5a92e26dfd0f2b05c13bac6c2c59c155aea7436527a2",
+      "id": "material:f76869d5b93b916297ae5a92",
       "name": "Material_SurveyMarking",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -534,38 +566,6 @@
         {
           "colorSpace": "linear",
           "name": "seamed_survey_marking_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "8160da6cf7276c0a4007fc30c38dfdcda92c3892864c1da47725744b1415010c",
-      "id": "material:8160da6cf7276c0a4007fc30",
-      "name": "Material_Regolith",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "rock_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "rock_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "rock_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "rock_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1313,19 +1313,19 @@
       "sha256": "38e0a552847c17d5e371efa2fdd0d6c045e9f70bef86059217cbfe4b4bd12f77"
     },
     "sourceGlb": {
-      "bytes": 15745048,
-      "sha256": "2c2e3af2408580207e95a8cdfae7c14305e9ef101ae886829947892ecf30a3dc",
+      "bytes": 15745056,
+      "sha256": "8dc38cd91578e3d73e597733cfc1a25122b0d7808d9567fa2cd9f55bc16e6b5c",
       "uri": "place_asteroid_seamed.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 15815380,
-    "sha256": "da31d7c5c331c9ae9b989f8a23618fb413065db7393d6f17a53d13dfa3948698",
+    "bytes": 15815288,
+    "sha256": "89ca2a02c069af7f76019ea705ff703e63fa09115b04a4152f4c74c6d81bd20a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1865,7 +1865,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_seamed.glb"
   },
-  "runtimeHash": "1f702cde3452f8f64d78d39fb52b9b81376cf867b37ad3bdfe2c3dc591ddebde",
+  "runtimeHash": "8c3569af0f6ad555676c4fdcb1f1979042ae565d58f797738439dbf0eb9611c4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

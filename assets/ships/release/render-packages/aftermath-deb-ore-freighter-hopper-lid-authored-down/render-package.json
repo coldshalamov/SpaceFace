@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fcdf7b487fa3f8f03145fe4b50d08168b82f50505b588d39659e8d52a711b0de",
+  "contentHash": "79eb99aad6da583d270ca67e39d09cef57b24ae0c0358ca785434837489e67cc",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-heat.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_deb_ore_freighter_hopper_lid_Material_Heat_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-heat",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-hull.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialHash": "d999803161e25ecce4ad46f8d0deb6a71d01e4538e0bb3695b817626d5794b10",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_deb_ore_freighter_hopper_lid_Material_Hull_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-hull",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-insulation.primitive.0",
       "indexCount": 504,
       "indexed": true,
-      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_deb_ore_freighter_hopper_lid_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-insulation",
@@ -102,7 +102,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-structural.primitive.0",
       "indexCount": 168,
       "indexed": true,
-      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_deb_ore_freighter_hopper_lid_Material_Structural_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-structural",
@@ -127,7 +127,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-heat.primitive.0",
       "indexCount": 33,
       "indexed": true,
-      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_deb_ore_freighter_hopper_lid_Material_Heat_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-heat",
@@ -152,7 +152,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-hull.primitive.0",
       "indexCount": 15,
       "indexed": true,
-      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialHash": "d999803161e25ecce4ad46f8d0deb6a71d01e4538e0bb3695b817626d5794b10",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_deb_ore_freighter_hopper_lid_Material_Hull_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-hull",
@@ -177,7 +177,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-insulation.primitive.0",
       "indexCount": 240,
       "indexed": true,
-      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_deb_ore_freighter_hopper_lid_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-insulation",
@@ -202,7 +202,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-structural.primitive.0",
       "indexCount": 78,
       "indexed": true,
-      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_deb_ore_freighter_hopper_lid_Material_Structural_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-structural",
@@ -227,7 +227,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-heat.primitive.0",
       "indexCount": 12,
       "indexed": true,
-      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_deb_ore_freighter_hopper_lid_Material_Heat_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-heat",
@@ -252,7 +252,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-hull.primitive.0",
       "indexCount": 6,
       "indexed": true,
-      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialHash": "d999803161e25ecce4ad46f8d0deb6a71d01e4538e0bb3695b817626d5794b10",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_deb_ore_freighter_hopper_lid_Material_Hull_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-hull",
@@ -277,7 +277,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-insulation.primitive.0",
       "indexCount": 99,
       "indexed": true,
-      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_deb_ore_freighter_hopper_lid_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-insulation",
@@ -302,7 +302,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-structural.primitive.0",
       "indexCount": 33,
       "indexed": true,
-      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_deb_ore_freighter_hopper_lid_Material_Structural_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-structural",
@@ -315,42 +315,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
-      "id": "material:124d57494b8cd5aee7fba823",
-      "name": "Material_Structural",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "wreck_structural_alloy_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_structural_alloy_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_structural_alloy_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_structural_alloy_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
-      "id": "material:8ef9abc48d34d6bb9186e0d0",
+      "hash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
+      "id": "material:13ad3b2a75af6f212673762d",
       "name": "Material_Heat",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -379,42 +347,42 @@
       ]
     },
     {
-      "hash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
-      "id": "material:ac4380c2740998f988624d23",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "hash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
+      "id": "material:24f30cbfe23e02dc19ae4afc",
+      "name": "Material_Structural",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "wreck_painted_hull_basecolor",
+          "name": "wreck_structural_alloy_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_painted_hull_orm",
+          "name": "wreck_structural_alloy_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_painted_hull_normal",
+          "name": "wreck_structural_alloy_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_painted_hull_orm",
+          "name": "wreck_structural_alloy_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
-      "id": "material:d405a7105bef6f7b733d5dbb",
+      "hash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
+      "id": "material:35b85f4e71e79d43154f62ec",
       "name": "Material_Insulation",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -437,6 +405,38 @@
         {
           "colorSpace": "linear",
           "name": "wreck_rupture_insulation_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d999803161e25ecce4ad46f8d0deb6a71d01e4538e0bb3695b817626d5794b10",
+      "id": "material:d999803161e25ecce4ad46f8",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_painted_hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1293,19 +1293,19 @@
       "sha256": "1b7b995c86f5b937794048ec942a9d8b76b33743b0073149ca8e9b1b2eb623a8"
     },
     "sourceGlb": {
-      "bytes": 1101676,
-      "sha256": "d5600b5885eeefd6f3607289f0ae80c5d0d96a525355a35f31887afe45542e7b",
+      "bytes": 1101680,
+      "sha256": "95a4d5ceacab8f4f5e7d7fdc619a30b5c4122a5b955513e36fbe8e62ecba6833",
       "uri": "place_aftermath_deb_ore_freighter_hopper_lid_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1113060,
-    "sha256": "2044164dce0ea76b6b3a0186211ad666309046108cb6ea27440192953266cf05",
+    "bytes": 1112984,
+    "sha256": "79bf29e55f13231cd1b3ca14f187923a32d219af16bf569794008d0df076f982",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1731,7 +1731,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_hopper_lid_authored_down.glb"
   },
-  "runtimeHash": "3eb51fb33a1186aa9611682e61b85f1af5b19390c8bcfb22044814aed8136a02",
+  "runtimeHash": "3a2aa2d5b853a9b812424f791365cb97c476c15a7d7dc54cc7440beb6e8e654c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

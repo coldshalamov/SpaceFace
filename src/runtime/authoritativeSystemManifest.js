@@ -180,6 +180,21 @@ export const SYSTEM_CLOCK = Object.freeze({
 /** 2 Hz on the 60 Hz step. Tick 0 always runs so short lab boots still initialize calendar state. */
 export const CALENDAR_CLOCK_PERIOD_TICKS = 30;
 
+/**
+ * The 2 Hz calendar pass is straddled across three cohort ticks — tick%30 ∈ {0,10,20} — so
+ * the ~46 calendar owners do not all land on the same step (measured 8.11 ms step max vs
+ * 2.49 ms p50). Each system still runs once per 30-tick period; cohort assignment is the
+ * system's index in CALENDAR_CLOCK_IDS % 3, stable across hosts and profiles.
+ */
+export const CALENDAR_CLOCK_COHORTS = 3;
+export const CALENDAR_CLOCK_COHORT_STRIDE = CALENDAR_CLOCK_PERIOD_TICKS / CALENDAR_CLOCK_COHORTS;
+
+export function calendarCohortIndex(id) {
+  const idx = CALENDAR_CLOCK_IDS.indexOf(id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id);
+  // Capability-clocked ids outside the list land in the last cohort deterministically.
+  return ((idx % CALENDAR_CLOCK_COHORTS) + CALENDAR_CLOCK_COHORTS) % CALENDAR_CLOCK_COHORTS;
+}
+
 export const CALENDAR_CLOCK_IDS = Object.freeze([
   'buildIdentity', 'aceMemory', 'factionPresence', 'barkDirector', 'beacons', 'travelLanes',
   'automation', 'asteroidSites', 'asteroidFormations', 'crafting', 'economy', 'intervention',

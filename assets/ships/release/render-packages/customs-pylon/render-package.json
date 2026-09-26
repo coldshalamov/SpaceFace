@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bea149a0c58d3902e9ac79f82a6ad1d78ffc8bfbc08b8e423fe5bedc0ac6f09a",
+  "contentHash": "dc807af4f4170ded6a500be1802bd2f34bdb0b6195e5a3ef1e119f8e8d550017",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -99,7 +99,7 @@
       "id": "sf.render.customs-pylon.mesh.base-hz.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f28c343cddb4fb2b567b5d963e0ec8637eaf8b6263bfc3a4d5ec70b58da03d92",
+      "materialHash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.010",
       "nodeId": "sf.render.customs-pylon.mesh.base-hz",
@@ -124,7 +124,7 @@
       "id": "sf.render.customs-pylon.mesh.base.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.customs-pylon.mesh.base",
@@ -149,7 +149,7 @@
       "id": "sf.render.customs-pylon.mesh.column.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "ce42ac00f9ecaf9018e12cb80ec0a546f5d7901cc10c22e1f1122050e2d6e682",
+      "materialHash": "e76428a023b51c64a1243fbd3f92ab31c3075a17d4f9f6ffd436fb1213f5609e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.customs-pylon.mesh.column",
@@ -174,7 +174,7 @@
       "id": "sf.render.customs-pylon.mesh.crest.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
+      "materialHash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.customs-pylon.mesh.crest",
@@ -199,7 +199,7 @@
       "id": "sf.render.customs-pylon.mesh.head.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "ce42ac00f9ecaf9018e12cb80ec0a546f5d7901cc10c22e1f1122050e2d6e682",
+      "materialHash": "e76428a023b51c64a1243fbd3f92ab31c3075a17d4f9f6ffd436fb1213f5609e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.008",
       "nodeId": "sf.render.customs-pylon.mesh.head",
@@ -224,7 +224,7 @@
       "id": "sf.render.customs-pylon.mesh.sensor0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "ce42ac00f9ecaf9018e12cb80ec0a546f5d7901cc10c22e1f1122050e2d6e682",
+      "materialHash": "e76428a023b51c64a1243fbd3f92ab31c3075a17d4f9f6ffd436fb1213f5609e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.customs-pylon.mesh.sensor0",
@@ -249,7 +249,7 @@
       "id": "sf.render.customs-pylon.mesh.sensor1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "ce42ac00f9ecaf9018e12cb80ec0a546f5d7901cc10c22e1f1122050e2d6e682",
+      "materialHash": "e76428a023b51c64a1243fbd3f92ab31c3075a17d4f9f6ffd436fb1213f5609e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.customs-pylon.mesh.sensor1",
@@ -312,10 +312,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
-      "id": "material:66a89e4576e5df116e40f4c3",
-      "name": "esk_struct_alloy",
-      "pipelineKey": "opaque:double",
+      "hash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
+      "id": "material:5305fc668e4d72b103333713",
+      "name": "esk_hazard_stripe",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -326,24 +326,24 @@
       "textures": []
     },
     {
-      "hash": "ce42ac00f9ecaf9018e12cb80ec0a546f5d7901cc10c22e1f1122050e2d6e682",
-      "id": "material:ce42ac00f9ecaf9018e12cb8",
-      "name": "esk_paint_authority_navy",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
-      "id": "material:e6f069a3dc5923ebcb0ed51c",
+      "hash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
+      "id": "material:be22fc38209109d7bc12285f",
       "name": "esk_id_plate",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "f28c343cddb4fb2b567b5d963e0ec8637eaf8b6263bfc3a4d5ec70b58da03d92",
-      "id": "material:f28c343cddb4fb2b567b5d96",
-      "name": "esk_hazard_stripe",
-      "pipelineKey": "opaque:double",
+      "hash": "e76428a023b51c64a1243fbd3f92ab31c3075a17d4f9f6ffd436fb1213f5609e",
+      "id": "material:e76428a023b51c64a1243fbd",
+      "name": "esk_paint_authority_navy",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "id": "material:ef83aaa905288b1ffc8a4f70",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -892,19 +892,19 @@
       "sha256": "a5306d0add1c970716463d180793fb31c69b1e5b6d9aa0fe4a1cda3f847234f6"
     },
     "sourceGlb": {
-      "bytes": 15248,
-      "sha256": "bb134430a182fb40c07d64038dd7f04e8cf8358ca6befebe3dc4665542ed4b23",
+      "bytes": 15252,
+      "sha256": "63dac9b1414ffb412296d20eab551f81ac96b54779963833b45a018ec19780d5",
       "uri": "place_customs_pylon.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 23724,
-    "sha256": "5a5153b59b6ce33d647e2ada5a960c12400749e8c944a844ffe4f9b2a4aa3709",
+    "bytes": 23648,
+    "sha256": "9bdbefcb7e828020b37493be5833f70cdaa602a227daa5025affa9e0339765a6",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1304,7 +1304,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_customs_pylon.glb"
   },
-  "runtimeHash": "de5f879b11f16d2b277f0750d3b43be7e446b98cea5769f4468fe5ef0864560c",
+  "runtimeHash": "6c30f89db9824db705e5e62fa9440d9731cc8d8c813b267d88d2d6150486ed89",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -145,7 +145,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "36a67d52943bdd48444056ac1c399e23b3747b3ba1495e515f15a52d56853d8b",
+  "contentHash": "69f4f6d362a1e1f55bd2acd8d8ce225f00cabc7ba1fd5f6e30d84ddebbc7d931",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -166,7 +166,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod0-accentconcordblueburned.primitive.0",
       "indexCount": 5640,
       "indexed": true,
-      "materialHash": "87b334bead1849a1d93be4fb16e109b357b097d53e83603ee18730e9a4fb3619",
+      "materialHash": "bd1f3182285a0a9708157c0cdc02f7fae148bbae839cd138c967fe38b88487af",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_AccentConcordBlueBurned_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod0-accentconcordblueburned",
@@ -191,7 +191,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod0-armorscorched.primitive.0",
       "indexCount": 90384,
       "indexed": true,
-      "materialHash": "dba2d54f5f53626c0455e872a840c3945621fa47014464f80b32c65baa39cb84",
+      "materialHash": "6a4be49f5d76a1e867e36fe4066af79dac489e670dc14e044c0d72b124ae8c59",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_ArmorScorched_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod0-armorscorched",
@@ -216,7 +216,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod0-conduitcopper.primitive.0",
       "indexCount": 12672,
       "indexed": true,
-      "materialHash": "4e0cbdc875ad181a3a8c919410bac46de365b4626c236ee37b114d6cb2c5b0ee",
+      "materialHash": "adc69aa4b26a19a66a29b55e58b6f60e4822e87bc1fb9f5ee8649820ed31f477",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_ConduitCopper_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod0-conduitcopper",
@@ -291,7 +291,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod0-hull.primitive.0",
       "indexCount": 51240,
       "indexed": true,
-      "materialHash": "4c9aaf0b39e9ee013763e3912aaf977b91452dfd80a5c4e9650137ecbfe35174",
+      "materialHash": "59db5cdf46ce1d64a659e926d7b5963d4a3d5ecebd754b81b0d64318bb3e3b75",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod0-hull",
@@ -316,7 +316,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod0-interiorexposedalloy.primitive.0",
       "indexCount": 171888,
       "indexed": true,
-      "materialHash": "81481bbf79585643fc3779ba2caa225f039ef0b6f4d6dc2b46551ab803b3206b",
+      "materialHash": "e44c9a39957521081da30fd9de58d91e1e7fb7407cb4f80e0d66dc8849283a21",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_InteriorExposedAlloy_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod0-interiorexposedalloy",
@@ -341,7 +341,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod0-mechanicalexposed.primitive.0",
       "indexCount": 152796,
       "indexed": true,
-      "materialHash": "07f7167ec983189a7b1eb822d9d1901a4f5666f43ef9546d16a2bd5569d8a0b2",
+      "materialHash": "5d832eb7c42a71fc918077b65a6e36427ba9d66932f07f8dfc1378cd39828375",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalExposed_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod0-mechanicalexposed",
@@ -366,7 +366,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod1-accentconcordblueburned.primitive.0",
       "indexCount": 3240,
       "indexed": true,
-      "materialHash": "87b334bead1849a1d93be4fb16e109b357b097d53e83603ee18730e9a4fb3619",
+      "materialHash": "bd1f3182285a0a9708157c0cdc02f7fae148bbae839cd138c967fe38b88487af",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_AccentConcordBlueBurned_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod1-accentconcordblueburned",
@@ -391,7 +391,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod1-armorscorched.primitive.0",
       "indexCount": 41088,
       "indexed": true,
-      "materialHash": "dba2d54f5f53626c0455e872a840c3945621fa47014464f80b32c65baa39cb84",
+      "materialHash": "6a4be49f5d76a1e867e36fe4066af79dac489e670dc14e044c0d72b124ae8c59",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_ArmorScorched_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod1-armorscorched",
@@ -416,7 +416,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod1-conduitcopper.primitive.0",
       "indexCount": 4164,
       "indexed": true,
-      "materialHash": "4e0cbdc875ad181a3a8c919410bac46de365b4626c236ee37b114d6cb2c5b0ee",
+      "materialHash": "adc69aa4b26a19a66a29b55e58b6f60e4822e87bc1fb9f5ee8649820ed31f477",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_ConduitCopper_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod1-conduitcopper",
@@ -491,7 +491,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod1-hull.primitive.0",
       "indexCount": 28176,
       "indexed": true,
-      "materialHash": "4c9aaf0b39e9ee013763e3912aaf977b91452dfd80a5c4e9650137ecbfe35174",
+      "materialHash": "59db5cdf46ce1d64a659e926d7b5963d4a3d5ecebd754b81b0d64318bb3e3b75",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod1-hull",
@@ -516,7 +516,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod1-interiorexposedalloy.primitive.0",
       "indexCount": 54804,
       "indexed": true,
-      "materialHash": "81481bbf79585643fc3779ba2caa225f039ef0b6f4d6dc2b46551ab803b3206b",
+      "materialHash": "e44c9a39957521081da30fd9de58d91e1e7fb7407cb4f80e0d66dc8849283a21",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_InteriorExposedAlloy_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod1-interiorexposedalloy",
@@ -541,7 +541,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod1-mechanicalexposed.primitive.0",
       "indexCount": 68508,
       "indexed": true,
-      "materialHash": "07f7167ec983189a7b1eb822d9d1901a4f5666f43ef9546d16a2bd5569d8a0b2",
+      "materialHash": "5d832eb7c42a71fc918077b65a6e36427ba9d66932f07f8dfc1378cd39828375",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalExposed_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod1-mechanicalexposed",
@@ -566,7 +566,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod2-accentconcordblueburned.primitive.0",
       "indexCount": 1320,
       "indexed": true,
-      "materialHash": "87b334bead1849a1d93be4fb16e109b357b097d53e83603ee18730e9a4fb3619",
+      "materialHash": "bd1f3182285a0a9708157c0cdc02f7fae148bbae839cd138c967fe38b88487af",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_AccentConcordBlueBurned_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod2-accentconcordblueburned",
@@ -591,7 +591,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod2-armorscorched.primitive.0",
       "indexCount": 11388,
       "indexed": true,
-      "materialHash": "dba2d54f5f53626c0455e872a840c3945621fa47014464f80b32c65baa39cb84",
+      "materialHash": "6a4be49f5d76a1e867e36fe4066af79dac489e670dc14e044c0d72b124ae8c59",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_ArmorScorched_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod2-armorscorched",
@@ -616,7 +616,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod2-conduitcopper.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "4e0cbdc875ad181a3a8c919410bac46de365b4626c236ee37b114d6cb2c5b0ee",
+      "materialHash": "adc69aa4b26a19a66a29b55e58b6f60e4822e87bc1fb9f5ee8649820ed31f477",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_ConduitCopper_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod2-conduitcopper",
@@ -691,7 +691,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod2-hull.primitive.0",
       "indexCount": 10356,
       "indexed": true,
-      "materialHash": "4c9aaf0b39e9ee013763e3912aaf977b91452dfd80a5c4e9650137ecbfe35174",
+      "materialHash": "59db5cdf46ce1d64a659e926d7b5963d4a3d5ecebd754b81b0d64318bb3e3b75",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod2-hull",
@@ -716,7 +716,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod2-interiorexposedalloy.primitive.0",
       "indexCount": 11604,
       "indexed": true,
-      "materialHash": "81481bbf79585643fc3779ba2caa225f039ef0b6f4d6dc2b46551ab803b3206b",
+      "materialHash": "e44c9a39957521081da30fd9de58d91e1e7fb7407cb4f80e0d66dc8849283a21",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_InteriorExposedAlloy_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod2-interiorexposedalloy",
@@ -741,7 +741,7 @@
       "id": "sf.render.wreck-cathedral.mesh.lod2-mechanicalexposed.primitive.0",
       "indexCount": 17352,
       "indexed": true,
-      "materialHash": "07f7167ec983189a7b1eb822d9d1901a4f5666f43ef9546d16a2bd5569d8a0b2",
+      "materialHash": "5d832eb7c42a71fc918077b65a6e36427ba9d66932f07f8dfc1378cd39828375",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalExposed_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod2-mechanicalexposed",
@@ -754,42 +754,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "07f7167ec983189a7b1eb822d9d1901a4f5666f43ef9546d16a2bd5569d8a0b2",
-      "id": "material:07f7167ec983189a7b1eb822",
-      "name": "Material_Mechanical_Exposed",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_Exposed_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_Exposed_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_Exposed_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_Exposed_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "4c9aaf0b39e9ee013763e3912aaf977b91452dfd80a5c4e9650137ecbfe35174",
-      "id": "material:4c9aaf0b39e9ee013763e391",
+      "hash": "59db5cdf46ce1d64a659e926d7b5963d4a3d5ecebd754b81b0d64318bb3e3b75",
+      "id": "material:59db5cdf46ce1d64a659e926",
       "name": "Material_Hull_ConcordGray",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -818,96 +786,64 @@
       ]
     },
     {
-      "hash": "4e0cbdc875ad181a3a8c919410bac46de365b4626c236ee37b114d6cb2c5b0ee",
-      "id": "material:4e0cbdc875ad181a3a8c9194",
-      "name": "Material_Conduit_Copper",
-      "pipelineKey": "opaque:double",
+      "hash": "5d832eb7c42a71fc918077b65a6e36427ba9d66932f07f8dfc1378cd39828375",
+      "id": "material:5d832eb7c42a71fc918077b6",
+      "name": "Material_Mechanical_Exposed",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "Material_Conduit_Copper_basecolor",
+          "name": "Material_Mechanical_Exposed_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Conduit_Copper_orm",
+          "name": "Material_Mechanical_Exposed_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Conduit_Copper_normal",
+          "name": "Material_Mechanical_Exposed_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Conduit_Copper_orm",
+          "name": "Material_Mechanical_Exposed_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "81481bbf79585643fc3779ba2caa225f039ef0b6f4d6dc2b46551ab803b3206b",
-      "id": "material:81481bbf79585643fc3779ba",
-      "name": "Material_Interior_ExposedAlloy",
-      "pipelineKey": "opaque:double",
+      "hash": "6a4be49f5d76a1e867e36fe4066af79dac489e670dc14e044c0d72b124ae8c59",
+      "id": "material:6a4be49f5d76a1e867e36fe4",
+      "name": "Material_Armor_Scorched",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "Material_Interior_ExposedAlloy_basecolor",
+          "name": "Material_Armor_Scorched_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Interior_ExposedAlloy_orm",
+          "name": "Material_Armor_Scorched_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Interior_ExposedAlloy_normal",
+          "name": "Material_Armor_Scorched_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Interior_ExposedAlloy_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "87b334bead1849a1d93be4fb16e109b357b097d53e83603ee18730e9a4fb3619",
-      "id": "material:87b334bead1849a1d93be4fb",
-      "name": "Material_Accent_ConcordBlue_Burned",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Accent_ConcordBlue_Burned_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Accent_ConcordBlue_Burned_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Accent_ConcordBlue_Burned_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Accent_ConcordBlue_Burned_orm",
+          "name": "Material_Armor_Scorched_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -952,6 +888,70 @@
       ]
     },
     {
+      "hash": "adc69aa4b26a19a66a29b55e58b6f60e4822e87bc1fb9f5ee8649820ed31f477",
+      "id": "material:adc69aa4b26a19a66a29b55e",
+      "name": "Material_Conduit_Copper",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Conduit_Copper_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Conduit_Copper_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Conduit_Copper_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Conduit_Copper_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "bd1f3182285a0a9708157c0cdc02f7fae148bbae839cd138c967fe38b88487af",
+      "id": "material:bd1f3182285a0a9708157c0c",
+      "name": "Material_Accent_ConcordBlue_Burned",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Accent_ConcordBlue_Burned_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Accent_ConcordBlue_Burned_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Accent_ConcordBlue_Burned_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Accent_ConcordBlue_Burned_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "d25b6965a8644ad713b9c517467452a971126e7ee647d91fab8f52f85c5c6800",
       "id": "material:d25b6965a8644ad713b9c517",
       "name": "Material_Emissive_MarkerAmber",
@@ -990,32 +990,32 @@
       ]
     },
     {
-      "hash": "dba2d54f5f53626c0455e872a840c3945621fa47014464f80b32c65baa39cb84",
-      "id": "material:dba2d54f5f53626c0455e872",
-      "name": "Material_Armor_Scorched",
-      "pipelineKey": "opaque:double",
+      "hash": "e44c9a39957521081da30fd9de58d91e1e7fb7407cb4f80e0d66dc8849283a21",
+      "id": "material:e44c9a39957521081da30fd9",
+      "name": "Material_Interior_ExposedAlloy",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "Material_Armor_Scorched_basecolor",
+          "name": "Material_Interior_ExposedAlloy_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Armor_Scorched_orm",
+          "name": "Material_Interior_ExposedAlloy_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Armor_Scorched_normal",
+          "name": "Material_Interior_ExposedAlloy_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Armor_Scorched_orm",
+          "name": "Material_Interior_ExposedAlloy_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -2277,19 +2277,19 @@
       "sha256": "f3c2bcb3b4bae3e82eb201d665bf41e64fadea066a7bd44f86de4cb6f8146d5b"
     },
     "sourceGlb": {
-      "bytes": 7563260,
-      "sha256": "32094bcd6df7671e9e2d93ae491a6aab33aa1ca9bd2a32cc3548cb7532eedcca",
+      "bytes": 7563264,
+      "sha256": "6de8743a60209ce6ce62c12d93832956e85351b1e2fb2025aa474bff7b9e6313",
       "uri": "place_landmark_wreck_cathedral.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 11915508,
-    "sha256": "f49ba624ed93bbfea49d193a4d9847f22835b900c58f808d8499fadb66cbd9b7",
+    "bytes": 11915392,
+    "sha256": "131d02b0e8a0ef1231c60fae6c6487d5643b3e96b6bb42bdbc927dc39a92a624",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3259,7 +3259,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb"
   },
-  "runtimeHash": "ed0f3289a864f9883532f1e228ed816ced981cc36ce479837a943f5126c35108",
+  "runtimeHash": "ddb0a4a20074b63c0a2a00fe4a38102d3b9e1f5426f7b6bfb20b773fa86e1d96",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

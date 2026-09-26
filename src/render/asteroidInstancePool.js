@@ -22,6 +22,7 @@ const _shadowProjection = new THREE.Matrix4();
 const _viewFrustum = new THREE.Frustum();
 const _shadowFrustum = new THREE.Frustum();
 const _worldSphere = new THREE.Sphere();
+const _syncRootsSeen = new Set();
 
 function createVariantStats(variant) {
   return { variant, registered: 0, submitted: 0, capacity: 0, uploads: 0, reuses: 0 };
@@ -266,6 +267,7 @@ export function syncAsteroidInstancePool(pool, options = {}) {
 
   const viewFrustumReady = prepareFrustum(options.camera, _viewProjection, _viewFrustum);
   const shadowFrustumReady = prepareFrustum(options.shadowCamera, _shadowProjection, _shadowFrustum);
+  _syncRootsSeen.clear();
   stats.submitted = 0;
   stats.visibleBatches = 0;
 
@@ -298,7 +300,15 @@ export function syncAsteroidInstancePool(pool, options = {}) {
       if (!root || !leaf) continue;
       leaf.visible = false;
       if (!root.parent || root.visible === false) continue;
-      leaf.updateWorldMatrix(true, false);
+      // Per-record leaf.updateWorldMatrix(true, false) re-walks the whole ancestor chain for every
+      // record — updateWorldMatrix has no dirty gate. One (true, true) refresh per owner root
+      // covers the shared chain and every leaf hanging under it; the leaf-local call below then
+      // only recomposes the leaf itself.
+      if (!_syncRootsSeen.has(root)) {
+        _syncRootsSeen.add(root);
+        root.updateWorldMatrix(true, true);
+      }
+      leaf.updateWorldMatrix(false, false);
       if (viewFrustumReady || shadowFrustumReady) {
         const geometry = leaf.geometry;
         if (!geometry || !geometry.attributes || !geometry.attributes.position) continue;

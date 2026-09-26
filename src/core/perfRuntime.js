@@ -343,6 +343,19 @@ export function ensurePerfRuntime(state) {
   let frameSystemTotalMs = 0;
   let frameSimStepCount = 0;
   let frameMeasuredStepCount = 0;
+  // Per-step timing for hitch verdicts: framePhaseMs.sim is last-step-only, so a catch-up
+  // frame's expensive step hides under the cheap one that closes the frame. Bounded list,
+  // written only while attribution is on — ordinary frames stay alloc-free.
+  const FRAME_SIM_STEP_RING_N = 8;
+  const frameSimStepMs = new Float64Array(FRAME_SIM_STEP_RING_N);
+  const frameSimStepMeasured = new Uint8Array(FRAME_SIM_STEP_RING_N);
+  let frameSimStepListLen = 0;
+  let currentStepMeasured = false;
+  // A hitch owned by sim with unmeasured steps names no system. Hitch streaks cluster, so
+  // arm one frame of full system measurement after such a verdict — the echo step then
+  // reports its real owner instead of '(none)'. Self-limiting: disarms the first clean frame.
+  let simFollowupMeasurePending = false;
+  let simFollowupMeasureThisFrame = false;
   // Background-job evidence is opt-in. The live queue pays one branch at job boundaries while
   // ordinary frames pay nothing; enabled captures use a fixed-capacity record ring.
   let backgroundJobTrackingEnabled = false;
@@ -501,7 +514,9 @@ export function ensurePerfRuntime(state) {
     isSystemTimingEnabled() { return systemTimingEnabled === true; },
     shouldMeasureSystemsThisStep(simTick) {
       const measured = systemTimingEnabled === true
-        && (systemTimingFullCoverage === true || shouldSampleSystemTimingTick(simTick));
+        && (systemTimingFullCoverage === true || simFollowupMeasureThisFrame
+          || shouldSampleSystemTimingTick(simTick));
+      currentStepMeasured = measured;
       if (hitchAttributionEnabled && measured) frameMeasuredStepCount += 1;
       return measured;
     },
@@ -707,11 +722,24 @@ export function ensurePerfRuntime(state) {
             simSystemTotalMs: frameSystemTotalMs,
             simStepCount: frameSimStepCount,
             simMeasuredStepCount: frameMeasuredStepCount,
+            simStepMs: frameSimStepListLen
+              ? Array.from(frameSimStepMs.subarray(0, frameSimStepListLen))
+              : null,
+            simStepMeasured: frameSimStepListLen
+              ? Array.from(frameSimStepMeasured.subarray(0, frameSimStepListLen))
+              : null,
             callbackIntervalMs: nextCallbackIntervalMs,
             externalGapMs: nextExternalCallbackGapMs,
             dispatchLagMs: nextCallbackDispatchLagMs,
           });
           accumulateHitch(hitchHistogram, classification);
+          if (classification && classification.owner === 'sim'
+              && classification.simFullyMeasured !== true) {
+            simFollowupMeasurePending = true;
+            if (hitchHistogram) {
+              hitchHistogram.simFollowupArmed = (hitchHistogram.simFollowupArmed || 0) + 1;
+            }
+          }
           hitchVerdicts.push({
             atMs: Number.isFinite(callbackTimestampMs) ? callbackTimestampMs : null,
             owner: classification && classification.owner ? classification.owner : 'unknown',
@@ -728,6 +756,13 @@ export function ensurePerfRuntime(state) {
         frameSystemTotalMs = 0;
         frameSimStepCount = 0;
         frameMeasuredStepCount = 0;
+        frameSimStepListLen = 0;
+        if (simFollowupMeasureThisFrame && hitchHistogram) {
+          hitchHistogram.simFollowupMeasuredFrames
+            = (hitchHistogram.simFollowupMeasuredFrames || 0) + 1;
+        }
+        simFollowupMeasureThisFrame = simFollowupMeasurePending;
+        simFollowupMeasurePending = false;
       }
       previousCallbackMs = frameCallbackStats.last;
       previousSimFrameMs = framePhaseMs.simFrame;
@@ -809,7 +844,14 @@ export function ensurePerfRuntime(state) {
       countBacklogCause(loop.backlogCause);
     },
     recordStepTotal(ms) {
-      if (hitchAttributionEnabled) frameSimStepCount += 1;
+      if (hitchAttributionEnabled) {
+        frameSimStepCount += 1;
+        if (frameSimStepListLen < FRAME_SIM_STEP_RING_N) {
+          frameSimStepMs[frameSimStepListLen] = Number.isFinite(ms) && ms >= 0 ? ms : -1;
+          frameSimStepMeasured[frameSimStepListLen] = currentStepMeasured ? 1 : 0;
+          frameSimStepListLen += 1;
+        }
+      }
       if (Number.isFinite(ms) && ms >= 0) framePhaseMs.sim = ms;
       sample(phaseStats.sim, ms);
     },
@@ -1048,6 +1090,8 @@ export function ensurePerfRuntime(state) {
       frameSystemTotalMs = 0;
       frameSimStepCount = 0;
       frameMeasuredStepCount = 0;
+      frameSimStepListLen = 0;
+      currentStepMeasured = false;
       resetBackgroundJobRecords();
       resetStat(frameStats);
       resetStat(frameCallbackStats);

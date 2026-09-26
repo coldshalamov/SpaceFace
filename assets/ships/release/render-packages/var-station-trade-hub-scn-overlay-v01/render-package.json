@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e7e2f4f02af4114930af79ad5df3cdbaa40fcc94b4102ae91f562c6a63b1b2e0",
+  "contentHash": "d2cbd7933f8fcd09e0c542e175287fd201d9714a20484d0d9ef6e557037bc928",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -227,7 +227,7 @@
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-cladding-band.primitive.1",
       "indexCount": 120,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_cladding_band.001",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-cladding-band",
@@ -552,7 +552,7 @@
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_ServiceWell_Inner",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.remaster-material-mechanical-shadowenamel",
@@ -579,17 +579,10 @@
       "textures": []
     },
     {
-      "hash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
-      "id": "material:ae1ee81b0e0eb81a22cf6f2d",
-      "name": "KitMat_Emissive",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
-      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "hash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "id": "material:a3835271b1d8aa0e92a83e88",
       "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -616,6 +609,13 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
+      "id": "material:ae1ee81b0e0eb81a22cf6f2d",
+      "name": "KitMat_Emissive",
+      "pipelineKey": "opaque:double",
+      "textures": []
     }
   ],
   "nodes": [
@@ -1407,19 +1407,19 @@
       "sha256": "ae9179b27512aaf4b8e404e74455b811cc3f8ce5e1e7b54a757852ee42a0df90"
     },
     "sourceGlb": {
-      "bytes": 75588,
-      "sha256": "6419a7032e2ad721f0d183e81a6bac7bab32d7690e4b95232a033ba0127bd991",
+      "bytes": 75592,
+      "sha256": "b5fb1bcfe7ab728473711d42395db68fb51ababc1e6a6e72cfeee9f39fa35630",
       "uri": "var_station_trade_hub_scn_overlay_v01.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 129168,
-    "sha256": "eb5c65200d90699fbb3b161059dfc6cca1ce81cd04d52d72cdae8a8ab9511bfd",
+    "bytes": 129152,
+    "sha256": "3e9b4c5bdf6ac46db55cbe0d32b81eca456141a3eea2c12e6c989085e791a574",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2166,7 +2166,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/var_station_trade_hub_scn_overlay_v01.glb"
   },
-  "runtimeHash": "2dba55d829ecfdc76533579281bdbe3712552a89068882e71a50817758331170",
+  "runtimeHash": "bb102e5c17207da2cf87c1a3311c68f8d53ba99d054ff00a979d5d3aac6b38e3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

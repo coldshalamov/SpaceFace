@@ -1238,7 +1238,7 @@ export const input = {
     } else {
       // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).
       const hit = this.helpers && this.helpers.raycastToPlane
-        ? this.helpers.raycastToPlane(this._ndc)
+        ? this.helpers.raycastToPlane(this._ndc, this._rayHit || (this._rayHit = { x: 0, z: 0 }))
         : null;
       const w = hit && Number.isFinite(hit.x) && Number.isFinite(hit.z) ? hit : { x: 0, z: 0 };
       aimWorld.x = w.x; aimWorld.z = w.z;

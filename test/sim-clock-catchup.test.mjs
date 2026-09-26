@@ -113,10 +113,15 @@ test('createSimulation calendar owners run at 2 Hz, not every tick', () => {
   const bark = ran.filter((row) => row.name === 'barkDirector');
   const physics = ran.filter((row) => row.name === 'physics');
   const missions = ran.filter((row) => row.name === 'missions');
+  const ecology = ran.filter((row) => row.name === 'regionalEcology');
   assert.equal(physics.length, ticks);
   assert.equal(bark.length, 3);
   assert.equal(missions.length, 3);
   assert.deepEqual(bark.map((row) => row.tick), [1, CALENDAR_CLOCK_PERIOD_TICKS, CALENDAR_CLOCK_PERIOD_TICKS * 2]);
+  // Straddled cohorts: regionalEcology (cohort 1) fires at tick%30===10, not the
+  // cohort-0 tick — same 2 Hz cadence, a different phase.
+  assert.equal(ecology.length, 3);
+  assert.deepEqual(ecology.map((row) => row.tick), [1, 10, 40]);
   sim.dispose();
 });
 
@@ -178,6 +183,37 @@ test('production primary ticks iterate the combat queue, not calendar names', ()
   assert.deepEqual(
     updateQueueForThisStep(partitions, calendarState).map((s) => s.name),
     ['physics', 'barkDirector', 'missions', 'npcJobsRuntime'],
+    'cohort-0 calendar owners run on tick%30===0',
+  );
+  const cohortOneState = { runtime: { profileId: 'production' }, tick: 40, simCatchupIndex: 0 };
+  assert.deepEqual(
+    updateQueueForThisStep(partitions, cohortOneState).map((s) => s.name),
+    ['physics', 'npcJobsRuntime'],
+    'no calendar cohort runs on tick%30===10 when every stub is cohort 0',
+  );
+  const straddled = partitionUpdateSystems([
+    stub('physics', []),
+    stub('economy', []),        // cohort 1 → tick%30===10
+    stub('salvage', []),        // cohort 2 → tick%30===20
+    stub('barkDirector', []),   // cohort 0 → tick%30===0
+  ]);
+  assert.deepEqual(
+    updateQueueForThisStep(straddled, cohortOneState).map((s) => s.name),
+    ['physics', 'economy'],
+  );
+  assert.deepEqual(
+    updateQueueForThisStep(straddled, { runtime: { profileId: 'production' }, tick: 50, simCatchupIndex: 0 }).map((s) => s.name),
+    ['physics', 'salvage'],
+  );
+  assert.deepEqual(
+    updateQueueForThisStep(straddled, calendarState).map((s) => s.name),
+    ['physics', 'barkDirector'],
+  );
+  const wakeState = { runtime: { profileId: 'production' }, tick: 2, simCatchupIndex: 0, clockWake: { calendar: true } };
+  assert.deepEqual(
+    updateQueueForThisStep(straddled, wakeState).map((s) => s.name),
+    ['physics', 'economy', 'salvage', 'barkDirector'],
+    'a calendar wake still runs every cohort',
   );
   const catchupState = { runtime: { profileId: 'production' }, tick: 30, simCatchupIndex: 1 };
   assert.deepEqual(

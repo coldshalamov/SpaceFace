@@ -221,7 +221,15 @@ function createGameServer(opts) {
   const useAsync = opts.async !== false;
   const extraRoutes = attachPlayerStore(opts);
   const userContentDir = opts.userContentDir ? path.resolve(opts.userContentDir) : null;
-  const staticHeaders = Object.freeze({ ...(opts.staticHeaders || {}) });
+  // Cross-origin isolation: every byte this server sends is same-origin loopback,
+  // so COOP same-origin + COEP credentialless are free — they unlock full-resolution
+  // performance.now() (~100µs clamped otherwise), SharedArrayBuffer (the built phase-14
+  // sim-worker transport), and measureUserAgentSpecificMemory.
+  const staticHeaders = Object.freeze({
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'credentialless',
+    ...(opts.staticHeaders || {}),
+  });
   const staticHeadersByPath = Object.fromEntries(Object.entries(opts.staticHeadersByPath || {})
     .map(([key, headers]) => [String(key).replace(/\\/g, '/').replace(/^\//, ''), Object.freeze({ ...headers })]));
   const devDiagnostics = opts.devDiagnostics !== false;
