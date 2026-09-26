@@ -60,6 +60,9 @@ Headless SwiftShader exaggerates compile costs; headed GPU numbers are the arbit
 | GPU-process metrics witness | electron/main.cjs, preload.cjs | `spaceface:perf-metrics` → `app.getAppMetrics()` per-process CPU/memory — attributes GPU-process link stalls vs renderer busy frames | In-page counters can't see the GPU process |
 | Probe GC boundary | scripts/probe-frame-solid.mjs | `--js-flags=--expose-gc` + `window.gc()` before the sampler — boot garbage out of the measured window | gcMs attribution noise |
 | ~~Deep-queue flight overlap~~ REVERTED (47f88a5cf) | partsLibrary.js | Granting `overlapAuthoredPipelineCompile` at dispatch when pending > 8 measured net-negative on both runs: leftUndrawn/episodes 2/36 → 30/45 → 69/119, in-frame links 2 → 11. On a compile-bound renderer the presented-frame budget is the scarce resource — overlapping the GPU gate stacks links into drawn frames. The serial slot stands; Pole A residual needs cheaper jobs, not overlapped stages | 06-24Z + 06-29Z A/B |
+| Mesh-build drain on poll frames | renderer.js (`serviceRenderMeshResidency`) | The `_drainMeshBuildQueue(8)` call only ran on the 'deferred'/'held-first-flight'/'drain' branches — 'full'/'poll' reconcile frames skipped it entirely, so a queued mesh-build sat a whole poll cadence (the `noMesh` asteroids at rows 38/14 of the probe). Now every pending-queue frame drains. Late-present gate + retry backoff unchanged. | noMesh residue in the 06-06Z honest run |
+| Submit-options scratch | renderer.js (`_submitVisibilityOptions`) + test update | The per-entity `shouldSubmitEntityMesh({...})` literal (~170–300 allocs/frame) is one module scratch, every field rewritten per call site so no stale flag leaks. The test's source contract moved from literal-regex to assignment-regex. | Pole E GC hygiene |
+| Calendar cohort straddle | catchupPolicy.js, authoritativeSystemManifest.js, test update | The 46 CALENDAR owners all fired on `tick%30===0` (step max 8.11 ms vs p50 2.49 ms). `calendarCohortIndex(id) = index%3` in CALENDAR_CLOCK_IDS → cohorts run `tick%30 ∈ {0,10,20}`; same 2 Hz cadence per system, manifest order preserved inside the tick (cohortQueues = all minus other cohorts). Boot ticks (<=1) and `clockWake.calendar` still run every cohort. **47a golden reproduces bit-identical** (`f542e2e9`) — legacy47a walks `all` every tick; straddle is production-profile only. | explorer: step max 8.11 ms vs p50 2.49 ms; barkDirector p95 1.42 ms |
 
 ## 2. The poles, ranked (evidence in §4)
 
@@ -91,10 +94,11 @@ lattice cells (`opticStructureId`) and 11 field-grown asteroids — nearest aste
 - Size: removes ~53 entities from every O(entityList) walk + 42 static colliders +
   42 residency slots + 42 scene nodes.
 
-### Pole C — calendar tick straddle
-46 CALENDAR systems all land on tick%30==0 (measured step max 8.11 ms vs p50 2.49 ms;
-barkDirector alone p95 1.42 ms). Phase into tick%30 ∈ {0,10,20}: same cadence per
-system, spike ÷3. **Hash-moving — mint under leaf.**
+### Pole C — calendar tick straddle — LANDED (82da377ed)
+Cohorts of index%3 in CALENDAR_CLOCK_IDS phase onto tick%30 ∈ {0,10,20}. Turned out
+**not** hash-moving: the 47a golden runs the legacy47a profile, which walks `all`
+every tick — straddle is production-only, `check:sim` reproduces `f542e2e9` exactly.
+Test updated to pin cohort phase + wake-runs-all semantics.
 
 ### Pole D — projectile sweep batching
 `_admitProjectileSweepBodies` runs field+far queries per projectile per step (up to
@@ -196,6 +200,23 @@ but confirmed against master this session): `render-package-pilots` GLB SHA
 mismatch (~24 stale LOD artifacts, ~84 MB), world-place/station fallback empty
 Group, `authored-preload-scope` owner-inactive throw, `crucible-live-geometry`
 retry-budget semantics.
+
+### Post-merge CI adjudication (master = 314cfaaa8, all reproduced on master tip)
+
+- `static (1)` program-docs: 33 `integratedCommit is not an ancestor of HEAD`
+  errors — the receipts point at rebase-orphaned commits (e.g. 77976fd3 exists in
+  the object store but is not an ancestor of origin/master either); the queue
+  file is byte-identical to master's.
+- `feel` ×4 (`fun-bench-flight-scenarios` B2/B3 turn-radius + visible-depth
+  clauses; `hitstun-curve` ×2): identical failures on master tip under node24 —
+  master's own flight/hitstun numbers drifted off contract.
+- `draw-flight` `accelerates to actual G cap`: `s.speed` = 312 on branch AND
+  master tip (expected 145–160) — upstream physics drift, not the diff. (The
+  earlier `fixtureReady` timeout was a strict-MIME `.json` module rejection in
+  the check's own server — fixed f4885cb2e; the speed assert remains upstream.)
+- `check-autopilot-v3` (not in the CI matrix, run locally): the
+  `throughline-ambush` encounter never records `escaped` — identical on master
+  tip. Master-side, unrelated to the straddle (fails with the straddle reverted).
 
 Focused node --test sweep over the touched modules at branch tip (far-actors,
 time-effects, moment-detector, docking-corridor, hlod, entity-mesh-visibility,
