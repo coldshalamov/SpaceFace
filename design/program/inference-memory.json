@@ -1688,6 +1688,19 @@
       "integration": "live",
       "commit": "13ae49cb9",
       "verification": "focused_green"
+    },
+    {
+      "id": "INFERENCE-20",
+      "date": "2026-09-26",
+      "wf": "WF-10",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "The Eris Margin Metronome was a charted:false scan label describing an 'area-denial emitter' that denied nothing — every operable machine lived in charted space. A rotating denial cone now registers in the field kernel on the saved 8 s sim clock, shoves mass mouth-first (NPCs take the shove — bait the patrol), burns the player through the combat kernel's hazard_radiation origin, and speaks hazard boundaries; a debris_current warning circle marks the approach.",
+      "fingerprint": "verb=cross,subject=metronome-beam,sector=eris-margin,layer=machine,tempo=sweep,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "d77197454",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
