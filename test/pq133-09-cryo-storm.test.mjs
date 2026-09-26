@@ -258,7 +258,11 @@ test('law ten-wave blocks match Helios content; only gates differ', () => {
       const shape = (recipe) => recipe.packages.map(
         (pkg) => `${pkg.atTick}:${pkg.role}:${pkg.enemyId}:${pkg.count}:${pkg.batchSize}:${pkg.batchGapTicks}`,
       ).join('|');
-      assert.equal(shape(block[i]), shape(helios[i]), `${arenaId} wave ${i + 1} changed content`);
+      // The wave-ten elite slot is arena-authored: Foundry alone fields mirrorjaw_foreman, the
+      // other arenas keep dreadnought_boss (survivalWaves.js header disposition). Normalize it
+      // out of the shape comparison; the package check below still pins the arena's own boss.
+      const normalize = (s) => s.replace(/mirrorjaw_foreman|dreadnought_boss/g, '<ARENA_BOSS>');
+      assert.equal(normalize(shape(block[i])), normalize(shape(helios[i])), `${arenaId} wave ${i + 1} changed content`);
       assert.equal(block[i].arenaPhase, helios[i].arenaPhase);
       assert.ok(peakConcurrentDemand(block[i].packages) <= 24);
       if (i === 9) {
