@@ -3328,25 +3328,6 @@
       }
     },
     {
-      "id": "place_dock_interior",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_dock_interior.glb",
-      "release": "assets/ships/release/parts/places/place_dock_interior.glb",
-      "sourceSha256": "d474c24db920203bab2d9e1d7a995bdceb4dd30c2c628059e11926377d9789a2",
-      "releaseSha256": "466828ae415e51091e9328fe2e940b9d0b812b43e0d84413b04009793a7c9de4",
-      "sourceBytes": 23024444,
-      "releaseBytes": 8865704,
-      "textures": 37,
-      "ktx2Textures": 37,
-      "meshoptBufferViews": 53,
-      "contractNodeCount": 12,
-      "textureProfiles": {
-        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
-        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
-        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
-      }
-    },
-    {
       "id": "place_gate_jump_ring",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_gate_jump_ring.glb",
@@ -4437,6 +4418,25 @@
       "ktx2Textures": 24,
       "meshoptBufferViews": 43,
       "contractNodeCount": 21
+    },
+    {
+      "id": "place_dock_interior",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_dock_interior.glb",
+      "release": "assets/ships/release/parts/places/place_dock_interior.glb",
+      "sourceSha256": "ad7b0597b0e49181f3d06bab0856fd1c703ef3ed30ffbead4358426f477524cc",
+      "releaseSha256": "ffa6f310ad8a6e9cc2799721c833e7c5b36e3c9e80da707811e2a996d8eabe77",
+      "sourceBytes": 22969332,
+      "releaseBytes": 8852620,
+      "textures": 37,
+      "ktx2Textures": 37,
+      "meshoptBufferViews": 53,
+      "contractNodeCount": 12,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

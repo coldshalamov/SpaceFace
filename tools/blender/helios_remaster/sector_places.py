@@ -584,7 +584,11 @@ def place(name,objects,p):
             x=1.7+i*1.25
             beam('Remaster_GantryLoadGusset'+str(i),(x,-.63,4.2),(x+.48,-.63,4.76),.16,.15,p['alloy'])
     elif name=='place_dock_interior':
-        for sign in (-1,1):
+        # Service braces park on the closed (rear) wall only. The manifest keeps
+        # portal-side structure outside the 28 m preview aperture; mouth-side
+        # braces occluded sampled hull vertices in the Shipworks composition gate
+        # (check-shipworks-dock-composition), so the -y row is not re-added.
+        for sign in (1,):
             for i in range(5):
                 x=-18+i*9
                 beam('Remaster_DockServiceArch'+str(sign)+str(i),(x,sign*15.4,1),(x,sign*13.7,5.8),.28,.28,p['ivory'])
