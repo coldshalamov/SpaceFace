@@ -450,7 +450,7 @@
     "check:ui-identity": "node scripts/check-ui-identity.mjs",
     "check:ui:perf": "npm run check:perf-budget && npm run check:spatial-hash && npm run check:perf:spatial-cache && npm run check:perf-summary && npm run check:vfx-sleep && node scripts/check-ui-frame-sleep.mjs && npm run check:radar:perf && npm run check:ui-identity && node scripts/check-ui-budgets.mjs",
     "check:ui:budgets": "node scripts/check-ui-budgets.mjs",
-    "check:bar:narrative": "node scripts/check-bar-canonical-contacts.mjs && node --test test/portrait-registry.test.mjs && npm run check:faction-registers",
+    "check:bar:narrative": "node scripts/check-bar-canonical-contacts.mjs && node --test test/portrait-registry.test.mjs && node --test test/bar-faction-greetings.test.mjs && npm run check:faction-registers",
     "check:smuggling-card": "node scripts/check-smuggling-card.mjs",
     "check:fact-ledger": "node scripts/check-fact-ledger.mjs",
     "check:market-chart": "node scripts/check-market-chart.mjs",

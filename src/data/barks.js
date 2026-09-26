@@ -1053,6 +1053,191 @@ export const CONTACT_VOICE_REGISTERS = Object.freeze({
   ], true),
 });
 
+// ── Station-bar generated contacts: greeting + approach voice ────────────────────────────────
+//
+// Generated bar contacts (ui/station/barContacts.js) carry a factionId but used to share one
+// global ROLE_LINES table, so a Quiet fixer and a Concord clerk opened with the same sentence.
+// These pools are the bar register of each house: the greeting is the first-impression line a
+// generated contact opens with; the approach line is what the talk stage shows while the player
+// stands in front of them. Authored canonical and depth contacts keep their own lines — these
+// tables only voice generated names. Selection is a deterministic per-contact index, never the
+// roster rng, so a save and a reroll can't re-voice the same person.
+
+export const BAR_GREETING_BARKS = Object.freeze({
+  faction_scn: Object.freeze({
+    any: Object.freeze([
+      'State your inquiry. The register is open.',
+      'Your manifest precedes you. Speak plainly.',
+      'This counter accepts questions. Formally.',
+      'Inquiries are logged. Proceed.',
+    ]),
+    barkeep: Object.freeze([
+      'Your account is on file. State your order.',
+      'The counter is open. Orders are logged.',
+    ]),
+  }),
+  faction_mts: Object.freeze({
+    any: Object.freeze([
+      'Everything has a price. Yours first.',
+      'The board never sleeps. Neither do margins.',
+      'Ask. The first question is complimentary.',
+      'Politeness is free. Answers are not.',
+    ]),
+    barkeep: Object.freeze([
+      'Your tab is a ledger. Keep it interesting.',
+      'Order. The house takes its margin either way.',
+    ]),
+  }),
+  faction_dmc: Object.freeze({
+    any: Object.freeze([
+      'Pull up a crate. The shift is long.',
+      'Ain\'t much quiet on this claim. Ask away.',
+      'Vein\'s thin, patience thinner. What do you need?',
+      'Long shift. Make it worth the ore.',
+    ]),
+    barkeep: Object.freeze([
+      'Pour\'s honest. Talk ain\'t free, but close.',
+      'Rest your rig. The belt can wait a pour.',
+    ]),
+  }),
+  faction_reach: Object.freeze({
+    any: Object.freeze([
+      'You are weighed already. Mind your tonnage.',
+      'The pack weighs the weigh, not the mouth.',
+      'Ask. Answers are weighed by the answer.',
+      'Your hull scans heavy. Talk light.',
+    ]),
+    barkeep: Object.freeze([
+      'House weighs the pour. You weigh the company.',
+      'Drink is cheap. Your cargo is not.',
+    ]),
+  }),
+  faction_quiet: Object.freeze({
+    any: Object.freeze([
+      'Sit.',
+      'Ask. Low.',
+      'No names. Order.',
+      'Seen.',
+    ]),
+    barkeep: Object.freeze([
+      'Same drawer. Same rates. Ask.',
+      'Drink. Then quiet.',
+    ]),
+  }),
+  faction_free: Object.freeze({
+    any: Object.freeze([
+      'Sit. What can I do you for?',
+      'Pull up a stool. What is on your mind?',
+      'New face. Talk.',
+      'Buy a drink or sell a story. Either works.',
+    ]),
+    barkeep: Object.freeze([
+      'Drink first, story second. What will it be?',
+      'Room is open. So is the tap.',
+    ]),
+  }),
+  faction_vael: Object.freeze({
+    any: Object.freeze([
+      'Clause one: parties may convene. State your term.',
+      'This-vessel acknowledges your presence. Petition noted.',
+      'The accord grants audience. Speak within the terms.',
+      'Your approach is registered. The floor is open.',
+    ]),
+    barkeep: Object.freeze([
+      'The pour is a standing clause. Obligations follow.',
+      'Your order is granted. The ledger remains open.',
+    ]),
+  }),
+  faction_choir: Object.freeze({
+    any: Object.freeze([
+      'The Chorus hears. Speak.',
+      'A seat opens. The Pattern observes.',
+      'Sing your need. The shrine listens.',
+      'The interval permits. Speak in measure.',
+    ]),
+    barkeep: Object.freeze([
+      'The pour is consecrated. The question is not.',
+      'Rest. The chorus holds your place.',
+    ]),
+  }),
+});
+
+export const BAR_APPROACH_BARKS = Object.freeze({
+  faction_scn: Object.freeze([
+    'Your approach is logged. State your inquiry.',
+    'They acknowledge you. Questions proceed formally.',
+    'A nod, protocol satisfied. Ask your question.',
+  ]),
+  faction_mts: Object.freeze([
+    'A raised glass and a measured look. The account is open.',
+    'They note you like a line item. Ask something.',
+    'An appraising glance. Business may commence.',
+  ]),
+  faction_dmc: Object.freeze([
+    'A tired nod. What do you need?',
+    'They shift over. Talk is cheap, ore ain\'t.',
+    'A grunt of acknowledgment. Ask away.',
+  ]),
+  faction_reach: Object.freeze([
+    'Eyes like a weigh-slip. Ask carefully.',
+    'They measure you before they hear you. Ask.',
+    'A slow look over your gear. Speak.',
+  ]),
+  faction_quiet: Object.freeze([
+    'No greeting. Ask, or leave it.',
+    'A look. Nothing else.',
+    'They watch you sit. That is the greeting.',
+  ]),
+  faction_free: Object.freeze([
+    'They look up as you approach. Ask them something.',
+    'A friendly nod. What is on your mind?',
+    'They make room. Ask away.',
+  ]),
+  faction_vael: Object.freeze([
+    'Acknowledgment registers. State your petition.',
+    'Your presence is noted in the ledger. Proceed.',
+    'The counterparty observes you. Terms may follow.',
+  ]),
+  faction_choir: Object.freeze([
+    'They incline their head. The Pattern receives you.',
+    'A measure of silence, then room. Speak.',
+    'The chorus pauses for you. Ask.',
+  ]),
+});
+
+function barLineAt(pool, index) {
+  if (!Array.isArray(pool) || pool.length === 0) return null;
+  const n = Number.isFinite(index) ? index : 0;
+  return pool[((Math.floor(n) % pool.length) + pool.length) % pool.length];
+}
+
+/**
+ * Deterministic first-impression line for a generated bar contact, voiced in the contact's own
+ * faction register. Unknown factions fall back to faction_free; role pools fall back to 'any'.
+ * @param {string} factionId
+ * @param {string} [role]    generated contact role ('barkeep' gets the counter voice).
+ * @param {number} [index]   deterministic pick (e.g. a stable hash of the contact id).
+ * @returns {string|null} a non-empty line, or null if the corpus is empty.
+ */
+export function barGreetingBarkFor(factionId, role, index) {
+  const cell = BAR_GREETING_BARKS[factionId] || BAR_GREETING_BARKS.faction_free;
+  const pool = (role && cell[role]) || cell.any
+    || (BAR_GREETING_BARKS.faction_free && BAR_GREETING_BARKS.faction_free.any);
+  return barLineAt(pool, index);
+}
+
+/**
+ * Deterministic stage line shown while the player stands in front of a generated bar contact —
+ * the faction-voiced replacement for "They look up as you approach." Authored contacts do not
+ * use this table; their stage copy stays as written.
+ * @param {string} factionId
+ * @param {number} [index]  deterministic pick.
+ * @returns {string|null} a non-empty line, or null if the corpus is empty.
+ */
+export function barApproachBarkFor(factionId, index) {
+  return barLineAt(BAR_APPROACH_BARKS[factionId] || BAR_APPROACH_BARKS.faction_free, index);
+}
+
 // ── Witness reaction: somebody watched the crime ────────────────────────────────────────────
 //
 // Same contract as HULL_RECOGNITION and HISTORY_RECOGNITION: an event line, not a

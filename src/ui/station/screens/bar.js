@@ -369,7 +369,7 @@ export function createBarScreen(ctx) {
           `<span class="sx-talk__avatar" data-bigpic aria-hidden="true"></span>` +
         `</header>` +
         `<p class="k-sentence k-sentence--emph sx-talk__reply${saidText ? ' is-said' : ' is-idle'}">` +
-          `${escapeHtml(saidText || 'They look up as you approach. Ask them something.')}` +
+          `${escapeHtml(saidText || c.approach || 'They look up as you approach. Ask them something.')}` +
         `</p>` +
         `<ul class="k-words sx-talk__choices" aria-label="What you can ask">` +
           (choices.length
