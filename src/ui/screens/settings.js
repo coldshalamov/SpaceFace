@@ -41,6 +41,10 @@ import {
 } from '../accessibilityChecklist.js';
 import { recordMotionChoice } from '../accessibility.js';
 import { el, words, settle, cue } from '../kit/index.js';
+// ORRERY (design/frontend/ORRERY.md §6 Meta): the categories on a Ladder with the Hand, the sliders as
+// graduated Scales, and a live preview of what the focused row changes beside the list.
+import { injectOrrerySettings, dressSettingsPane } from '../orrery/settingsLayouts.js';
+import { createSettingsPreview } from '../orrery/settingsPreview.js';
 
 const SETTINGS_SHEET_ID = 'of-settings-css';
 
@@ -267,9 +271,10 @@ export const settingsScreen = {
   mount(rootEl, ctx) {
     injectDeckplate();
     ensureSettingsStyles();
+    injectOrrerySettings();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-narrow');
-    rootEl.classList.add('k-screen', 'of-settings');
+    rootEl.classList.add('k-screen', 'of-settings', 'orr-settings');
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('data-fh-register', 'bench');
     rootEl.setAttribute('aria-label', 'Settings');
@@ -315,7 +320,22 @@ export const settingsScreen = {
     foot.appendChild(back);
     rootEl.appendChild(foot);
 
-    refs = { root: rootEl, title, hang, pane, foot, tabBtns, active: 'Audio' };
+    // The live preview beside the list (ORRERY §6 Meta). Decoration for sighted players: inert and
+    // aria-hidden; it stands down on a document without SVG, and never costs a control.
+    let preview = null;
+    try { preview = createSettingsPreview(); } catch (e) { preview = null; }
+    if (preview) rootEl.insertBefore(preview.el, foot);
+    refs = { root: rootEl, title, hang, pane, foot, tabBtns, active: 'Audio', preview };
+    if (preview && typeof pane.addEventListener === 'function') {
+      const rowOf = (target) => (target && typeof target.closest === 'function' ? target.closest('.k-row') : null);
+      const later = (fn) => { if (typeof queueMicrotask === 'function') queueMicrotask(fn); else Promise.resolve().then(fn); };
+      pane.addEventListener('focusin', (ev) => { const row = rowOf(ev.target); if (row) preview.focusRow(row); });
+      pane.addEventListener('pointerover', (ev) => { const row = rowOf(ev.target); if (row) preview.focusRow(row); });
+      const refresh = (ev) => { const row = rowOf(ev.target); if (row) later(() => preview.refreshRow(row)); };
+      pane.addEventListener('input', refresh);
+      pane.addEventListener('change', refresh);
+      pane.addEventListener('click', (ev) => { if (ev.target && ev.target.closest && ev.target.closest('.k-words--row .k-word')) refresh(ev); });
+    }
     this._select(ctx, 'Audio', { silent: true });
   },
 
@@ -331,6 +351,7 @@ export const settingsScreen = {
     });
     refs.pane.setAttribute('aria-labelledby', refs.tabBtns[tab].id);
     this._render(ctx);
+    try { if (refs.preview) refs.preview.show(tab, ctx.state.settings); } catch (e) { /* the preview is cosmetic */ }
     if (!silent) {
       try { settle(refs.pane, { from: 'left', state: 'settings:' + tab }); } catch (e) { /* motion is cosmetic */ }
     }
@@ -343,6 +364,7 @@ export const settingsScreen = {
     const payload = { section, key, value };
     if (persist === false) payload.persist = false;
     ctx.bus.emit('settings:changed', payload);
+    try { if (refs && refs.preview) refs.preview.changed(section, key, s); } catch (e) { /* the preview is cosmetic */ }
   },
 
   // Apply a Performance / Balanced / Quality preset. `applyQualityPreset` writes only presentation keys, then we
@@ -601,6 +623,7 @@ export const settingsScreen = {
       this._renderGamepadSettings(ctx, pane);
     }
     dressSettingsControls(pane);
+    dressSettingsPane(pane);
   },
 
   _renderGamepadSettings(ctx, pane, build = paneBuilder(pane)) {
@@ -716,8 +739,11 @@ export const settingsScreen = {
     btn.textContent = 'Press a key…';
     btn.classList.add('sf-bind-btn--capture');
     btn.setAttribute('aria-pressed', 'true'); // the kit lights a pressed word: this one is listening
+    const preview = refs && refs.preview;
+    try { if (preview) preview.listen(true, btn.closest ? btn.closest('.k-row') : null); } catch (e) { /* cosmetic */ }
 
     const done = (commit) => {
+      try { if (preview) preview.listen(false); } catch (e) { /* cosmetic */ }
       this._capturing = false;
       btn.classList.remove('sf-bind-btn--capture');
       btn.removeAttribute('aria-pressed');
@@ -794,8 +820,11 @@ export const settingsScreen = {
     btn.textContent = 'Press a pad button…';
     btn.classList.add('sf-bind-btn--capture');
     btn.setAttribute('aria-pressed', 'true'); // listening
+    const preview = refs && refs.preview;
+    try { if (preview) preview.listen(true, btn.closest ? btn.closest('.k-row') : null); } catch (e) { /* cosmetic */ }
 
     const done = (commit) => {
+      try { if (preview) preview.listen(false); } catch (e) { /* cosmetic */ }
       this._capturing = false;
       btn.classList.remove('sf-bind-btn--capture');
       btn.removeAttribute('aria-pressed');
@@ -876,7 +905,10 @@ export const settingsScreen = {
   // "can't drag below 3% / have to keep the mouse on the line" bug). The pane is fully
   // event-driven — its own controls update their own value labels — so there is nothing to refresh.
   refresh() {},
-  dispose() { refs = null; },
+  dispose() {
+    try { if (refs && refs.preview) refs.preview.dispose(); } catch (e) { /* cosmetic */ }
+    refs = null;
+  },
 };
 
 /** A screen with no 3D mount is "ready" as soon as it shows (the capture seam's photograph-me signal). */
