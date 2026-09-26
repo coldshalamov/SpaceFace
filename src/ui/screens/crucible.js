@@ -37,6 +37,12 @@ import {
 import { ensureStuntCallout, releaseStuntCallout } from '../stuntCallout.js';
 import { killReplayActions, replaySampleAt, skipKillReplay } from '../../systems/killReplay.js';
 import {
+  clearKillcamTape,
+  killcamStageRequestFor,
+  skipKillcamPlayback,
+  takeKillcamTape,
+} from '../../sim/killcamTape.js';
+import {
   SWARM_DRAFT_EVERY,
   SWARM_REFIT_EVERY,
   SWARM_RULESET,
@@ -2270,6 +2276,15 @@ export const crucibleResultsScreen = {
   id: 'crucibleResults',
   data: { locked: true },
 
+  // THE INSTANT KILL-CAM (DEMO_READINESS_2026-09-20 §4, "The toy (swarm)"): the results
+  // screen stands on the recorded round tail — the last ~5 s of the fight, played once
+  // behind the plate. The manager asks this def for a stage spec while the screen is top;
+  // the spec is plain data (no renderer import), and null is the designed fallback every
+  // time: under reduced motion, after the visible SKIP, or when no tape was recorded.
+  stage(ctx) {
+    return killcamStageRequestFor(ctx && ctx.state);
+  },
+
   mount(rootEl, ctx) {
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'sf-crucible-results');
@@ -2286,6 +2301,10 @@ export const crucibleResultsScreen = {
     const result = owner && typeof owner.lastResult === 'function' ? owner.lastResult() : null;
     rootEl.dataset.stamp = resultStamp(result);
     rootEl.dataset.outcome = (result && result.outcome) || 'empty';
+
+    // Seal the kill-cam tape once, engraved with the run's seed; the stage's own seal is
+    // idempotent and gets exactly this tape. A seal failure must never take down the plate.
+    try { takeKillcamTape({ seed: result && result.seed }); } catch { /* the replay is optional */ }
 
     // .k-title — the identity word, and the owner's sentence, verbatim. The structured chain below
     // re-states it in fielded form; it never rewrites it, because survivalResults owns the wording.
@@ -2396,6 +2415,24 @@ export const crucibleResultsScreen = {
       return button;
     };
 
+    // The kill-cam's visible SKIP: the fight is playing behind the plate right now, so the
+    // word leads the ways out. After it, the authored still is the picture and stays so.
+    if (ctx && ctx.state && killcamStageRequestFor(ctx.state)) {
+      const skipCam = addWord(word('Skip the kill-cam', 'k-word--emph'));
+      skipCam.addEventListener('click', () => {
+        skipKillcamPlayback();
+        // The manager is the steady writer of stageRequest and re-syncs on screen moves;
+        // this screen is the top staged screen naming its own request null, and the
+        // manager re-owns the field on the next transition.
+        const ui = ctx.state && ctx.state.ui;
+        if (ui && ui.stageRequest && ui.stageRequest.scene === 'crucible-killcam') {
+          ui.stageRequest = null;
+        }
+        rootEl.dataset.kStage = 'plate'; // the authored still fades back in
+        if (skipCam.parentElement) skipCam.parentElement.hidden = true;
+      });
+    }
+
     const replayLabels = killReplayActions(result);
     if (replayLabels.length) {
       const replayNote = el('p', 'k-t-fine sf-crres__replay', '');
@@ -2434,6 +2471,9 @@ export const crucibleResultsScreen = {
     again.addEventListener('click', () => {
       // INF-010: one explicit retry action — same seed and kit as the run began, deep-copied
       // so the challenge cannot silently change; replays through the ordinary New Game route.
+      // The round boundary: the kill-cam stops and the last fight's tape goes now (the
+      // run:started listener clears it too — this is the same boundary, named early).
+      try { clearKillcamTape(); } catch { /* the replay is optional */ }
       const retry = buildCrucibleRetryRequest();
       if (!retry) {
         ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });

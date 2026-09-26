@@ -25,7 +25,7 @@ const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
  * Invariant: every PRODUCTION_UPDATE_ORDER id must also appear here (update ⊆ init).
  */
 export const PRODUCTION_INIT_ORDER = Object.freeze([
-  'core', 'runSession', 'survivalWave', 'survivalRewards', 'survivalDraft', 'survivalResults', 'killReplay',
+  'core', 'runSession', 'survivalWave', 'survivalRewards', 'survivalDraft', 'survivalResults', 'killReplay', 'killcamRecorder',
   'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmSupply', 'swarmChain', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
   'scanner', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics',
@@ -107,7 +107,10 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'swarmArena', 'survivalWave', 'survivalRun',
   // swarmChain: the kill chain. It ticks only to notice a lapse, and it reads the phase
   // survivalRun has already settled this tick.
-  'swarmChain', 'killReplay',
+  // killcamRecorder: the instant kill-cam tape (DEMO_READINESS §4). A read-only pose
+  // recorder over the same settled phase and entity list, one slot after the kill-replay
+  // ring; it writes nothing but its own ring buffers.
+  'swarmChain', 'killReplay', 'killcamRecorder',
   'heat', 'traffic', 'drill', 'claims', 'chronicler',
   'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'planetHud',
   // survivalHud: the Crucible run readout. After survivalRun/survivalWave so it reads the phase
@@ -140,6 +143,7 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   survivalHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   crucibleFocus: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   swarmChain: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'run' }),
+  killcamRecorder: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'run' }),
   massSeedHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   fieldHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   planetHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),

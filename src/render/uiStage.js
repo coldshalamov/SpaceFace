@@ -26,6 +26,7 @@ import { isReleaseAssetMode } from './releaseMode.js';
 import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
 import { yieldToBrowser } from './startupGpuResidency.js';
 import { buildTitleAttractStage } from './titleAttractStage.js';
+import { buildKillcamStage } from './killcamStage.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
@@ -183,6 +184,34 @@ const SCENES = Object.freeze({
     // The live module owns the camera (a slow orbit around the fight centroid); these
     // values are only the first-frame seed before its update runs.
     camera: { at: [0, 120, 170], target: [0, 0, 0], fov: 42 },
+    drift: { yaw: 0.02, pitch: 0.006, period: 70 },
+    props: [],
+  },
+
+  // THE INSTANT KILL-CAM (DEMO_READINESS_2026-09-20 §4, "The toy (swarm)"): the recorded
+  // round tail plays once behind the results plate. No authored set — the fight is the
+  // picture, seen past the ember sky of the Crucible's own foundry. A missing or
+  // malformed tape fails closed to the results plate exactly like the title attract;
+  // reduced motion never requests this scene at all.
+  'crucible-killcam': {
+    live: 'killcam',
+    sky: {
+      zenith: 0x0b0810, horizon: 0x571f08, ground: 0x080302,
+      horizonSoftness: 0.42, stars: 0.55, starSeed: 2026,
+    },
+    fog: { color: 0x1a0a06, density: 0.002 },
+    lights: {
+      // The arena's warm key over a cold rim: the same two-voice rig the attract fight
+      // reads by, shifted one step toward the foundry.
+      key: { color: 0xffcf9e, intensity: 2.0, dir: [-0.38, 0.72, 0.5], shadow: false },
+      rim: { color: 0x7fa8ff, intensity: 1.0, dir: [0.72, 0.3, -0.6] },
+      hemi: { sky: 0x3a2530, ground: 0x0d0a0c, intensity: 0.55 },
+      ambient: { color: 0x18100e, intensity: 0.42 },
+      practicals: [],
+    },
+    // First-frame seed only — the live module owns the camera (a slow orbit around the
+    // fight's death neighbourhood).
+    camera: { at: [0, 84, 120], target: [0, 0, 0], fov: 42 },
     drift: { yaw: 0.02, pitch: 0.006, period: 70 },
     props: [],
   },
@@ -565,6 +594,37 @@ async function loadSceneContent(built, renderer, request) {
     if (!built.hullDrawn) {
       console.warn('[uiStage] live title has nothing to show; the stage stays on its plate');
     }
+    return;
+  }
+
+  // The instant kill-cam: same admit-whole-then-reveal discipline as the title attract.
+  // No tape or a failed build is not an error — the results plate is the designed
+  // fallback, and the screen reports ready the moment the plate is the picture.
+  if (spec.live === 'killcam') {
+    let live = null;
+    try {
+      live = await buildKillcamStage(built, {
+        loadPart: (file, slot) => loadPart(file, renderer, slot, built),
+      });
+    } catch (error) {
+      lastError = error && error.message ? error.message : String(error);
+      console.warn('[uiStage] kill-cam content failed; the plate stays', error);
+      live = null;
+    }
+    if (built.disposed) { live?.dispose?.(); return; }
+    built.phase = 'preparing';
+    const admitted = live && Array.isArray(live.roots) ? live.roots.filter(Boolean) : [];
+    await prepareForFirstDraw(admitted, renderer, built);
+    if (built.disposed) { live?.dispose?.(); return; }
+    for (const group of admitted) group.visible = true;
+    built.live = live;
+    built.marks.prepared = stageNow() - built.marks.start;
+    built.hullDrawn = !!(live && live.ready === true);
+    // No tape is a designed outcome, but the status machinery needs the terminal word:
+    // 'unavailable' is what turns a staged screen's k-ready on with the plate as the
+    // final picture. 'loading' forever would leave the results screen never ready.
+    built.liveFailed = !built.hullDrawn;
+    built.phase = built.hullDrawn ? 'live' : 'no-hull';
     return;
   }
 

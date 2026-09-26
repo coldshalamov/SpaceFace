@@ -53,8 +53,11 @@ test('production init + update order lengths match the live browser baseline', (
   // posture as customsPrompt) — it subscribes at init and never ticks.
   // 159 -> 160 init only: moralTrapPrompt is the same adapter posture (deck verbs over the
   // shipped moralTrap:choose intent) — init order only.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 160);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 119);
+  // 160 -> 161 init / 119 -> 120 update: the kill-cam recorder (DEMO_READINESS §4). A
+  // read-only pose ring one slot after the kill-replay ring; it writes nothing but its
+  // own buffers, so the update order grows by one pure observer.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 161);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 120);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -194,7 +197,9 @@ test('browser production system set is unchanged vs production manifest constant
   // 158 with the kill-replay ring (one system in both orders; records after the swarm chain).
   // 159 with impoundPayPrompt (event-only prompt-deck adapter; init order only).
   // 160 with moralTrapPrompt (same adapter posture; init order only).
-  assert.equal(registry.systems.length, 160);
+  // 161 with the kill-cam recorder (one system in both orders; reads poses after the
+  // kill-replay ring, writes only its own ring buffers).
+  assert.equal(registry.systems.length, 161);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));
