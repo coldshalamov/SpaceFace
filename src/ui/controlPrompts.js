@@ -1,4 +1,5 @@
 import { BINDINGS } from './bindings.js';
+import { gamepadGlyphForAction } from './bindings.js';
 import {
   formatBindingCode,
   resolveActionCodes,
@@ -98,19 +99,23 @@ function buildKbmPrompts(state) {
   return classic;
 }
 
+function padGlyph(action) {
+  return gamepadGlyphForAction(action) || '';
+}
+
 const GAMEPAD_PROMPTS = Object.freeze({
-  flight: 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine / selected Site beam  •  RB boost  •  LB brake  •  Y shove  •  R3 countermeasure  •  A/Cross Massline  •  B dock when prompted  •  X target  •  View star map  •  Start → Pause → Mission Log',
-  mining: 'LT hold to mine  •  Release to cool  •  Fly through cargo drift  •  X next signal',
-  combat: 'RT fire  •  Right stick aim at target  •  X cycle targets  •  R3 countermeasure  •  D-Pad Right bomb  •  D-Pad Left cycle bombs  •  RB boost to dodge  •  Start pause',
-  station: 'B dock when prompted  •  Hub: LB/RB tabs  •  D-pad/left stick focus  •  A act  •  B leave once aboard',
-  gate: 'View open Star Map  •  Select destination  •  Jump to travel between systems',
+  flight: `Left stick fly  •  Right stick aim  •  ${padGlyph('fire')} fire  •  ${padGlyph('mine')} mine / selected Site beam  •  ${padGlyph('boost')} boost  •  ${padGlyph('brake')} brake  •  ${padGlyph('deployRepulsor')} shove  •  ${padGlyph('countermeasure')} countermeasure  •  ${padGlyph('massline')} Massline  •  ${padGlyph('dock')} dock when prompted  •  ${padGlyph('cycleTarget')} target  •  ${padGlyph('map')} star map  •  ${padGlyph('pause')} pause`,
+  mining: `${padGlyph('mine')} hold to mine  •  Release to cool  •  Fly through cargo drift  •  ${padGlyph('cycleTarget')} next signal`,
+  combat: `${padGlyph('fire')} fire  •  Right stick aim at target  •  ${padGlyph('cycleTarget')} cycle targets  •  ${padGlyph('countermeasure')} countermeasure  •  ${padGlyph('dropBomb')} bomb  •  ${padGlyph('cycleBomb')} cycle bombs  •  ${padGlyph('boost')} boost to dodge  •  ${padGlyph('pause')} pause`,
+  station: `${padGlyph('dock')} dock when prompted  •  Hub: ${padGlyph('tabPrev')}/${padGlyph('tabNext')} tabs  •  D-pad/left stick focus  •  ${padGlyph('accept')} act  •  ${padGlyph('cancel')} leave once aboard`,
+  gate: `${padGlyph('map')} open Star Map  •  Select destination  •  Jump to travel between systems`,
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Left stick flies and right stick aims.',
-  tutorialMine: 'The Hitch is armed: RT fires the Pulse Laser S. Hold LT on the marked rock to mine the mass reading, then collect the drift.',
-  tutorialDock: 'Follow the cyan station arrow. Press B at the dock prompt. Bring the discrepancy back before someone edits it out.',
+  tutorialMine: `The Hitch is armed: ${padGlyph('fire')} fires the Pulse Laser S. Hold ${padGlyph('mine')} on the marked rock to mine the mass reading, then collect the drift.`,
+  tutorialDock: `Follow the cyan station arrow. Press ${padGlyph('dock')} at the dock prompt. Bring the discrepancy back before someone edits it out.`,
   firstFlight: 'Left stick flies. Right stick aims.',
-  firstCombat: 'Fire with RT. X cycles targets.',
-  firstStation: 'Review Departure Check before B undocks.',
-  firstGate: 'Open the Star Map with View. Plot a gate route.',
+  firstCombat: `Fire with ${padGlyph('fire')}. ${padGlyph('cycleTarget')} cycles targets.`,
+  firstStation: `Review Departure Check before ${padGlyph('dock')} undocks.`,
+  firstGate: `Open the Star Map with ${padGlyph('map')}. Plot a gate route.`,
 });
 
 const TOUCH_PROMPTS = Object.freeze({

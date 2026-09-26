@@ -16,6 +16,7 @@
 //   Asteroids use a small pool of seeded displacement variants per type (deterministic, bounded)
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
+import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
 import {
@@ -1807,7 +1808,7 @@ function buildShipMesh(e, pal) {
 
   // 4) WEAPONS — place a barrel at each authored hardpoint whose slot has a fitted weapon.
   const slots = def && def.slots;
-  const hardpoints = vis.hardpoints || [];
+  const hardpoints = modelTruthMountFractions(def && def.id, 'SOCKET_Weapon_');
   if (!outer.userData.weapons) outer.userData.weapons = [];
   if (slots && hardpoints.length) {
     const weaponFit = (e.data && e.data.fittings) || [];
@@ -1826,7 +1827,7 @@ function buildShipMesh(e, pal) {
   }
 
   // 5) ENGINES — nozzles+plumes at authored engineMounts, sized by fitted engine class.
-  const mounts = vis.engineMounts || [];
+  const mounts = modelTruthMountFractions(def && def.id, 'SOCKET_Engine_');
   for (let i = 0; i < mounts.length; i++) {
     const m = mounts[i];
     const en = engineProp(pal, R, m.scaleK || 1, loadout.engineClass || 60);

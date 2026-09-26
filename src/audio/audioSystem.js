@@ -1873,6 +1873,27 @@ export const audio = {
       this._onMasslineInstrument('strain', p);
     });
     bus.on('tether:nearBreak', (p) => this._onMasslineInstrument('strain', p));
+    // Player-facing rope and mining hits that had no listener use the closest existing recipe.
+    bus.on('tether:latched', (p) => {
+      const id = combatVerbRecipe('tether:latched');
+      if (id) this.play(id, { gain: 0.65 });
+    });
+    bus.on('tether:broke', (p) => {
+      const id = combatVerbRecipe('tether:broke');
+      if (id) this.play(id, { gain: 0.8 });
+    });
+    bus.on('tether:cut', (p) => {
+      const id = combatVerbRecipe('tether:cut');
+      if (id) this.play(id, { gain: 0.55 });
+    });
+    bus.on('mining:yield', (p) => {
+      const id = combatVerbRecipe('mining:yield');
+      if (id) this.play(id, { position: p && p.pos, gain: 0.45 });
+    });
+    bus.on('mining:seamHit', (p) => {
+      const id = combatVerbRecipe('mining:seamHit');
+      if (id) this.play(id, { position: p && p.pos, gain: 0.55 });
+    });
     bus.on('barkDirector:voice', (p) => this._onBarkVoice(p));
     // The first-hour instructor speaks every tutorial line through the same radio treatment the
     // barks get — key click, one distinct register, squelch tail — on a single mic, so a beat

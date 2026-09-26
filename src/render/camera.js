@@ -15,6 +15,7 @@ import {
   VL_EXCEPTIONAL_SPEED_RATIO_MAX,
 } from './velocityLanguage.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
+import { traumaFromContact } from './feel.js';
 import { entityWeaponBlocked } from '../combat/runtime.js';
 import {
   createLatchSpring,
@@ -403,9 +404,8 @@ export function shakeDistanceAttenuation(distanceWu) {
   return Math.max(0, Math.min(1, rolloff * taper));
 }
 
-export function traumaFromMomentumExchange(dp) {
-  const value = Number.isFinite(dp) ? Math.max(0, dp) : 0;
-  return Math.min(MAX_MOMENTUM_TRAUMA, value / 8000);
+export function traumaFromMomentumExchange(dp, context = {}) {
+  return traumaFromContact(dp, context);
 }
 
 export function decayCameraTrauma(trauma, dt) {

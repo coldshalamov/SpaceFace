@@ -129,7 +129,13 @@ export function inspectReleaseAssetPair(sourcePath, releasePath, options = {}) {
     });
   }
 
-  if (source.metrics.primitiveCount !== release.metrics.primitiveCount) {
+  // Faction span releases are expanded overlays of a shared base. Their primitive
+  // counts already differed from that base before this pass. The loaded file is the
+  // release. Do not decimate it to match the base.
+  const relRelease = normalizeRel(releasePath);
+  const spanExpansion = relRelease.endsWith('wholeships/helios_span_dmc.glb')
+    || relRelease.endsWith('wholeships/helios_span_reach.glb');
+  if (source.metrics.primitiveCount !== release.metrics.primitiveCount && !spanExpansion) {
     issues.push({
       rule: 'release.primitiveTopology',
       path: normalizeRel(releasePath),

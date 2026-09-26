@@ -8,6 +8,12 @@
 // not ours. We emit ONLY combat:fire (+ combat:beamStop on release). Damage application and
 // projectile:hit/combat:damage are owned by physics + combat.
 import { WEAPONS } from '../data/weapons.js';
+import {
+  modelTruthBoltRadius,
+  modelTruthFlashOrigin,
+  modelTruthMineSensorRadius,
+  modelTruthShotOrigin,
+} from '../data/modelTruth.js';
 import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
@@ -1100,7 +1106,7 @@ export const weapons = {
       pos: muzzle,
       vel,
       rot: dir,
-      radius: 0.7,
+      radius: modelTruthBoltRadius(e),
       mass: 0.1,
       team: e.team,
       ownerId: e.id,
@@ -1247,7 +1253,7 @@ export const weapons = {
       pos, vel: { x: 0, z: 0 }, rot: dir,
       // This stationary proximity sensor must not enter Rapier as a solid ball. collides:false
       // alone only disables the legacy collision path; an overlapping hull would be ejected.
-      radius: 1.6, mass: 0.6, collides: false, physicsBody: false,
+      radius: modelTruthMineSensorRadius(e), mass: 0.6, collides: false, physicsBody: false,
       team: e.team, ownerId: e.id, factionId: e.factionId,
       data: isWell ? {
         kind: 'gravity_well', weaponId: w.defId, ownerId: e.id,
@@ -1527,19 +1533,17 @@ export const weapons = {
     return dir;
   },
 
-  // Muzzle world position for a hardpoint: the ship centre + the facing's hull offset (rotated by
-  // the hull yaw) + a small radial push along the fire dir so shots visibly clear the hull.
+  // The shot leaves the same empty the muzzle flash uses. There is no radius stand-in.
   _muzzle(e, w, dir) {
-    const r = e.radius || 1;
-    const off = (w.muzzleOffset || [0.8, 0]);
-    const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
-    // offset is in ship-local axes: off[0] = forward(+x), off[1] = right(+z).
-    // forward axis = (cf,sf); right axis = (-sf,cf). Rotate the local offset into world XZ.
-    const wx = off[0] * cf + off[1] * (-sf);
-    const wz = off[0] * sf + off[1] * cf;
-    const px = e.pos.x + wx * r + Math.cos(dir) * r * 0.35;
-    const pz = e.pos.z + wz * r + Math.sin(dir) * r * 0.35;
-    return { x: px, z: pz };
+    const origin = modelTruthShotOrigin(e, w);
+    if (origin) return { x: origin.x, z: origin.z, y: origin.y };
+    void dir;
+    return { x: e.pos.x, z: e.pos.z };
+  },
+
+  flashOrigin(e, w) {
+    const origin = modelTruthFlashOrigin(e, w) || this._muzzle(e, w, e.rot || 0);
+    return { x: origin.x, z: origin.z, y: origin.y };
   },
 
   // Representative projectile speed of the player's primary weapon. Massline tether fire control

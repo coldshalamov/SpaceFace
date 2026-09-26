@@ -308,6 +308,36 @@ export function resolveCollisionFeel(impact, context = {}, out = null) {
   return out;
 }
 
+/** One trauma number for a contact. Physics, the camera helper, and the flash all call this. */
+export function traumaFromContact(dp, context = {}) {
+  const momentum = Number.isFinite(dp) ? Math.max(0, dp) : 0;
+  const pre = Number.isFinite(context.feelDeltaV)
+    ? context.feelDeltaV
+    : context.preSolveClosingSpeed;
+  const playerDeltaV = Number.isFinite(context.playerDeltaV) ? Math.max(0, context.playerDeltaV) : 0;
+  const deltaV = Number.isFinite(pre) && pre > 0
+    ? pre
+    : Number.isFinite(context.deltaV) && context.deltaV > 0
+      ? context.deltaV
+      : playerDeltaV > 0
+        ? playerDeltaV
+        : momentum / 20;
+  const feel = resolveCollisionFeel(
+    { dp: momentum },
+    {
+      mode: context.mode || 'flight',
+      deltaV,
+      feelDeltaV: Number.isFinite(pre) && pre > 0 ? pre : deltaV,
+      momentum,
+      playerDistance: Number.isFinite(context.playerDistance) ? context.playerDistance : 0,
+      motionReduce: context.motionReduce === true,
+      photoMode: context.photoMode === true,
+      state: context.state,
+    },
+  );
+  return feel && Number.isFinite(feel.trauma) ? feel.trauma : 0;
+}
+
 const STYLE_ID = 'sf-feel-style';
 
 // Tunables — spec2/02 §3 exact numbers. Hit-stop is short so it reads as "weight," not "lag.

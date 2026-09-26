@@ -1,3 +1,5 @@
+import { modelTruthHitVolume } from '../data/modelTruth.js';
+
 export function worldPointToEntityLocal(entity, worldPoint) {
   const px = Number(worldPoint && worldPoint.x) || 0;
   const pz = Number(worldPoint && worldPoint.z) || 0;
@@ -69,7 +71,7 @@ export function selectHitSubsystem(entity, combatant, catalog, hit = {}) {
   const penetrations = [];
   for (const subsystemId of Object.keys(combatant.subsystems).sort()) {
     const def = catalog.subsystems.get(subsystemId);
-    const entryT = def ? segmentVolumeEntryT(def.volume, skin, center, radius) : null;
+    const entryT = def ? segmentVolumeEntryT(volumeForHit(entity, def), skin, center, radius) : null;
     if (entryT != null) penetrations.push({ id: subsystemId, priority: Number(def.hitPriority) || 0, entryT });
   }
   penetrations.sort((a, b) => a.entryT - b.entryT || b.priority - a.priority || compareText(a.id, b.id));
@@ -99,11 +101,17 @@ function distanceSqPointSegment(px, pz, ax, az, bx, bz) {
   return ox * ox + oz * oz;
 }
 
+function volumeForHit(entity, def) {
+  if (!def) return null;
+  return modelTruthHitVolume(entity, def.id) || def.volume;
+}
+
 function subsystemMatchesAtPoint(entity, combatant, catalog, local) {
   const matches = [];
   for (const subsystemId of Object.keys(combatant.subsystems).sort()) {
     const def = catalog.subsystems.get(subsystemId);
-    if (def && volumeContainsPoint(def.volume, local, entity.radius || 1)) {
+    const volume = volumeForHit(entity, def);
+    if (def && volumeContainsPoint(volume, local, entity.radius || 1)) {
       matches.push({ id: subsystemId, priority: Number(def.hitPriority) || 0 });
     }
   }

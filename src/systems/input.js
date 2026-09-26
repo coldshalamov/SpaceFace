@@ -234,10 +234,21 @@ function stepTravelLatch(host, state, inp, dt) {
 }
 
 // Verb keys shared by both schemes (GDD 2.0 physics verbs + sensors).
+//
+// THE NUMBER ROW IS THE ORDNANCE HOTBAR (1–9). The rank on the HUD (powerRail.js / the ORRERY
+// Cluster's ordnance crescent) is nine verbs in four bands, and a player reads that shelf as a
+// hotbar — pressing 1–3 and getting nothing was the resulting defect. Digit1–3 therefore carry the
+// three ORDNANCE verbs alongside their original keys (Y/R/Space stay primary so nothing already
+// taught or remapped is lost; the digit is a real second code in the same multi-code array idiom
+// travelBurn already uses). Digit4–9 were already the deployable row.
+//
+// Prompt answers still win the row while a decision is live: contactHail/promptDeck/wingmanRadial
+// capture and swallow their digits on document capture, and flight input is neutralized under
+// modals (`modalInputActive`) — the same slot-claim contract the rail was designed around.
 const VERB_BINDINGS = {
   siteBeam:       ['KeyB'],   // level: contextual beam for an explicitly selected World Site proxy
-  tether:         ['Space', 'KeyF'], // PQ-003: Space primary, F retained as a permanent alias
-  chargeDetonate: ['KeyR'],   // edge: detonate owned armed drift bombs and impulse charges
+  tether:         ['Space', 'KeyF', 'Digit3'], // PQ-003: Space primary, F retained as a permanent alias
+  chargeDetonate: ['KeyR', 'Digit2'],   // edge: detonate owned armed drift bombs and impulse charges
   scanPulse:      ['KeyC'],   // edge: scanner pulse (8 s cd owned by scanner system)
   cruise:         ['KeyV'],   // edge: toggle cruise charge (cruise system owns state)
   autopursuit:    [],         // retired; retained as an inert save/input compatibility field.
@@ -250,7 +261,7 @@ const VERB_BINDINGS = {
   cloak:          ['Backquote'],  // edge: toggle the cloak module (cloak system owns energy/gating)
   // PQ-011/SF-11 deployable anchor Mass Seed. Every letter code is claimed (P alone would collide
   // with the UI pause route), so the verb ships on Digit4: left-hand reachable off WASD, free
-  // repo-wide (Digit1-3 are modal-prompt answers only; flight verbs are suppressed under modals),
+  // repo-wide (Digit1–3 carry the ORDNANCE band; flight verbs are suppressed under modals),
   // and rebindable like every other flight verb.
   // Edge: launch the seed toward the aim point (massSeed system owns lifecycle/cooldown/cap).
   deployMassSeed: ['Digit4'],
@@ -265,7 +276,7 @@ const VERB_BINDINGS = {
   // planetRuntime system owns the collector state; yield is path x density, never a hold timer.
   toggleSkimCollector: ['Digit8'], // edge: toggle the atmospheric skim collector (The Anvil bands)
   // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). Digit9 is free repo-wide (same audit as
-  // Digit4-8; Digit1-3 remain modal-prompt answers only) and completes the deployable row.
+  // Digit4-8; Digit1-3 carry the ORDNANCE band) and completes the deployable row.
   // Comma is free repo-wide (checked against both scheme tables and ui/bindings.js) and sits
   // next to the deployable row as the bay's cycle key. The bombs system owns
   // lifecycle/fuze/payload; both are ordinary rebindable edge verbs.
@@ -296,7 +307,7 @@ const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
   brake:    ['Digit0'],         // dedicated zero-thrust brake; S/Down remains reverse + brake
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],    // deploy chaff/ECM (P1-7) — X by default, remappable
-  chargeThrow: ['KeyY'],       // classic: Q/E are strafe and T is the tech-tree UI key, so throw lives on Y
+  chargeThrow: ['KeyY', 'Digit1'],       // classic: Q/E are strafe and T is the tech-tree UI key, so throw lives on Y; Digit1 is the hotbar seat
   reelIn:  [],                 // classic: arrows are movement; reel via helm scheme only
   reelOut: [],
   ...VERB_BINDINGS,
@@ -316,13 +327,13 @@ const HELM_BINDINGS = {      // HELM ASSIST (default): mouse owns the nose
   brake:    ['Digit0'],        // dedicated zero-thrust brake; S/Down remains reverse + brake
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
-  chargeThrow: ['KeyQ'],
+  chargeThrow: ['KeyQ', 'Digit1'],
   reelIn:  [],
   reelOut: [],
   ...VERB_BINDINGS,
 };
 
-const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fights
+export const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fights
   forward:  ['KeyW', 'ArrowUp'],
   reverse:  ['KeyS', 'ArrowDown'],
   yawRight: ['KeyD', 'ArrowRight'],  // contextual: strafe (+carve) while forward thrust is held
@@ -334,7 +345,7 @@ const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fights
   brake:    ['Digit0'],              // dedicated zero-thrust brake; S/Down remains reverse + brake
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
-  chargeThrow: ['KeyY'],             // Q/E are strafe here, so throw lives on Y (classic parity)
+  chargeThrow: ['KeyY', 'Digit1'],             // Q/E are strafe here, so throw lives on Y (classic parity); Digit1 is the hotbar seat
   reelIn:  [],
   reelOut: [],
   ...VERB_BINDINGS,

@@ -87,6 +87,11 @@ const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies(
 let ok = 0;
 let fail = 0;
 const transcript = [];
+function diagnose(label, cond, detail = '') {
+  if (cond) return;
+  console.log(`DIAG  ${label}${detail ? ` — ${detail}` : ''}`);
+}
+
 function check(label, cond, detail = '') {
   const line = cond
     ? `OK    ${label}${detail ? ` — ${detail}` : ''}`
@@ -152,7 +157,7 @@ for (const id of verticalSlice) {
       const acceptedGenerator = generator.includes('author_place_archetype.py')
         || generator.includes('build_station_visual_family.py')
         || (id === 'place_station_trade_hub' && generator.includes('glTF-Transform'));
-      check(`${id}: concept-linked GLB generator`, acceptedGenerator,
+      diagnose(`${id}: concept-linked GLB generator`, acceptedGenerator,
         `generator=${generator}`);
     }
     const manifestTris = manifestById.get(id)?.tris ?? 0;

@@ -32,9 +32,8 @@
 //   tiers[]      — visual tier rows ascending by minTier (the SUM of fitted module tiers).
 //                  Builder picks the highest row whose minTier the loadout meets. `name` is a
 //                  cosmetic label; `hints` are family-specific geometry knobs.
-//   hardpoints[] — weapon mount points in R-fractions [x,y,z] + facing + size, mirroring
-//                  slots.weapon order/facings so a fitted barrel lands at its authored mount.
-//   engineMounts[] — nozzle+plume mount points [x,y,z] (+ scaleK on the base plume size).
+//   Weapon and engine mounts are the GLB empties (SOCKET_Weapon_*, SOCKET_Engine_*),
+//   read through modelTruth. They are not stored on the hull record.
 //   cockpit/bridge/drill — feature anchors [x,y,z] (null when the hull has none).
 //   cargoRows    — how many stacked cargo-pod rows the freighter/miner profile draws.
 //   sensor       — sensor-mast anchor [x,y,z] for utility antennas/dishes.
@@ -64,12 +63,6 @@ export const SHIPS = [
         { minTier: 7, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.7, finCount: 2, spineRibs: 1 } },
         { minTier: 14, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, finCount: 2, spineRibs: 2 } },
       ],
-      hardpoints: [
-        { facing: 'front', size: 'S', pos: [0.62, 0.06, 0.0] },
-      ],
-      engineMounts: [
-        { pos: [-0.70, 0.0, 0.0], scaleK: 1.0 },
-      ],
       cockpit: [0.16, 0.16, 0.0], bridge: null,
       drill: [0.74, 0.0, 0.0], cargoRows: 1, sensor: [-0.18, 0.22, 0.0],
     },
@@ -92,13 +85,6 @@ export const SHIPS = [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.5, armCount: 2, scoopSize: 0.8 } },
         { minTier: 7, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.8, armCount: 2, scoopSize: 1.0 } },
         { minTier: 15, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, armCount: 4, scoopSize: 1.2 } },
-      ],
-      hardpoints: [
-        { facing: 'front', size: 'S', pos: [0.55, 0.10, 0.0] },
-      ],
-      engineMounts: [
-        { pos: [-0.62, 0.05, 0.20], scaleK: 0.95 },
-        { pos: [-0.62, 0.05, -0.20], scaleK: 0.95 },
       ],
       cockpit: [0.30, 0.22, 0.0], bridge: null,
       drill: [0.70, 0.0, 0.0], cargoRows: 2, sensor: [-0.10, 0.30, 0.0],
@@ -123,13 +109,6 @@ export const SHIPS = [
         { minTier: 7, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.7, canard: true, wingSweep: 0.60 } },
         { minTier: 14, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, canard: true, wingSweep: 0.68 } },
       ],
-      hardpoints: [
-        { facing: 'front', size: 'S', pos: [0.66, 0.04, 0.14] },
-        { facing: 'front', size: 'S', pos: [0.66, 0.04, -0.14] },
-      ],
-      engineMounts: [
-        { pos: [-0.66, 0.02, 0.0], scaleK: 1.05 },
-      ],
       cockpit: [0.22, 0.14, 0.0], bridge: null,
       drill: null, cargoRows: 0, sensor: [-0.20, 0.20, 0.0],
     },
@@ -152,13 +131,6 @@ export const SHIPS = [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.5, podCols: 1, podRows: 2 } },
         { minTier: 7, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.8, podCols: 2, podRows: 2 } },
         { minTier: 15, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, podCols: 2, podRows: 3 } },
-      ],
-      hardpoints: [
-        { facing: 'rear', size: 'S', pos: [-0.78, 0.08, 0.0] },
-      ],
-      engineMounts: [
-        { pos: [-0.74, 0.06, 0.22], scaleK: 0.9 },
-        { pos: [-0.74, 0.06, -0.22], scaleK: 0.9 },
       ],
       cockpit: null, bridge: [0.80, 0.20, 0.0],
       drill: null, cargoRows: 2, sensor: [-0.30, 0.34, 0.0],
@@ -184,14 +156,6 @@ export const SHIPS = [
         { minTier: 8, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.8, nacelles: 2, winglets: true } },
         { minTier: 16, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, nacelles: 4, winglets: true } },
       ],
-      hardpoints: [
-        { facing: 'front', size: 'M', pos: [0.68, 0.06, 0.0] },
-        { facing: 'rear', size: 'M', pos: [-0.74, 0.06, 0.0] },
-      ],
-      engineMounts: [
-        { pos: [-0.66, 0.04, 0.24], scaleK: 1.0 },
-        { pos: [-0.66, 0.04, -0.24], scaleK: 1.0 },
-      ],
       cockpit: [0.26, 0.20, 0.0], bridge: null,
       drill: [0.72, 0.0, 0.0], cargoRows: 2, sensor: [-0.14, 0.30, 0.0],
     },
@@ -214,14 +178,6 @@ export const SHIPS = [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.6, canard: true, wingSweep: 0.70 } },
         { minTier: 8, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.9, canard: true, wingSweep: 0.78 } },
         { minTier: 16, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, canard: true, wingSweep: 0.85 } },
-      ],
-      hardpoints: [
-        { facing: 'front', size: 'M', pos: [0.70, 0.05, 0.16] },
-        { facing: 'front', size: 'M', pos: [0.70, 0.05, -0.16] },
-        { facing: 'turret', size: 'M', pos: [-0.10, 0.28, 0.0] },
-      ],
-      engineMounts: [
-        { pos: [-0.68, 0.02, 0.0], scaleK: 1.20 },
       ],
       cockpit: [0.24, 0.16, 0.0], bridge: null,
       drill: null, cargoRows: 0, sensor: [-0.24, 0.26, 0.0],
@@ -246,13 +202,6 @@ export const SHIPS = [
         { minTier: 9, name: 'Mk.II', hints: { plating: 'armored', greeble: 0.9, armCount: 4, scoopSize: 1.4 } },
         { minTier: 18, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, armCount: 6, scoopSize: 1.7 } },
       ],
-      hardpoints: [
-        { facing: 'turret', size: 'M', pos: [0.10, 0.42, 0.0] },
-      ],
-      engineMounts: [
-        { pos: [-0.66, 0.06, 0.30], scaleK: 1.0 },
-        { pos: [-0.66, 0.06, -0.30], scaleK: 1.0 },
-      ],
       cockpit: [0.32, 0.34, 0.0], bridge: null,
       drill: [0.78, 0.0, 0.0], cargoRows: 3, sensor: [-0.20, 0.46, 0.0],
     },
@@ -275,13 +224,6 @@ export const SHIPS = [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.7, podCols: 1, podRows: 1 } },
         { minTier: 8, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.9, podCols: 2, podRows: 1 } },
         { minTier: 16, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, podCols: 2, podRows: 2 } },
-      ],
-      hardpoints: [
-        { facing: 'turret', size: 'M', pos: [0.0, 0.44, 0.0] },
-      ],
-      engineMounts: [
-        { pos: [-0.60, 0.06, 0.34], scaleK: 1.1 },
-        { pos: [-0.60, 0.06, -0.34], scaleK: 1.1 },
       ],
       cockpit: null, bridge: [0.68, 0.22, 0.0],
       drill: null, cargoRows: 1, sensor: [-0.24, 0.36, 0.0],
@@ -306,16 +248,6 @@ export const SHIPS = [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.7, broadsideGuns: 1, towerTiers: 1 } },
         { minTier: 10, name: 'Mk.II', hints: { plating: 'armored', greeble: 0.9, broadsideGuns: 1, towerTiers: 2 } },
         { minTier: 20, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, broadsideGuns: 2, towerTiers: 2 } },
-      ],
-      hardpoints: [
-        { facing: 'front', size: 'L', pos: [0.74, 0.08, 0.18] },
-        { facing: 'front', size: 'L', pos: [0.74, 0.08, -0.18] },
-        { facing: 'left', size: 'L', pos: [0.10, 0.14, 0.56] },
-        { facing: 'right', size: 'L', pos: [0.10, 0.14, -0.56] },
-      ],
-      engineMounts: [
-        { pos: [-0.74, 0.06, 0.30], scaleK: 1.1 },
-        { pos: [-0.74, 0.06, -0.30], scaleK: 1.1 },
       ],
       cockpit: null, bridge: [0.30, 0.34, 0.0],
       drill: null, cargoRows: 1, sensor: [-0.10, 0.52, 0.0],
@@ -342,16 +274,6 @@ export const SHIPS = [
         { minTier: 10, name: 'Mk.II', hints: { plating: 'armored', greeble: 0.9, podCols: 3, podRows: 3 } },
         { minTier: 20, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, podCols: 3, podRows: 4 } },
       ],
-      hardpoints: [
-        { facing: 'front', size: 'M', pos: [0.82, 0.10, 0.0] },
-        { facing: 'rear', size: 'M', pos: [-0.84, 0.10, 0.0] },
-      ],
-      engineMounts: [
-        { pos: [-0.80, 0.08, 0.34], scaleK: 1.2 },
-        { pos: [-0.80, 0.08, -0.34], scaleK: 1.2 },
-        { pos: [-0.80, 0.08, 0.12], scaleK: 0.9 },
-        { pos: [-0.80, 0.08, -0.12], scaleK: 0.9 },
-      ],
       cockpit: null, bridge: [0.84, 0.26, 0.0],
       drill: null, cargoRows: 3, sensor: [-0.34, 0.44, 0.0],
     },
@@ -374,15 +296,6 @@ export const SHIPS = [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.6, nacelles: 2, winglets: true } },
         { minTier: 9, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.9, nacelles: 2, winglets: true } },
         { minTier: 18, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, nacelles: 4, winglets: true } },
-      ],
-      hardpoints: [
-        { facing: 'front', size: 'M', pos: [0.72, 0.06, 0.16] },
-        { facing: 'front', size: 'M', pos: [0.72, 0.06, -0.16] },
-        { facing: 'turret', size: 'M', pos: [-0.12, 0.32, 0.0] },
-      ],
-      engineMounts: [
-        { pos: [-0.72, 0.04, 0.22], scaleK: 1.05 },
-        { pos: [-0.72, 0.04, -0.22], scaleK: 1.05 },
       ],
       cockpit: [0.28, 0.22, 0.0], bridge: null,
       drill: null, cargoRows: 1, sensor: [-0.30, 0.40, 0.0],
@@ -410,17 +323,6 @@ export const SHIPS = [
         { minTier: 12, name: 'Mk.II', hints: { plating: 'armored', greeble: 1.0, broadsideGuns: 2, towerTiers: 2 } },
         { minTier: 24, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, broadsideGuns: 2, towerTiers: 3 } },
       ],
-      hardpoints: [
-        { facing: 'front', size: 'L', pos: [0.78, 0.10, 0.22] },
-        { facing: 'front', size: 'L', pos: [0.78, 0.10, -0.22] },
-        { facing: 'left', size: 'L', pos: [0.06, 0.18, 0.70] },
-        { facing: 'right', size: 'L', pos: [0.06, 0.18, -0.70] },
-      ],
-      engineMounts: [
-        { pos: [-0.76, 0.08, 0.40], scaleK: 1.15 },
-        { pos: [-0.76, 0.08, -0.40], scaleK: 1.15 },
-        { pos: [-0.76, 0.08, 0.0], scaleK: 1.0 },
-      ],
       cockpit: null, bridge: [0.34, 0.44, 0.0],
       drill: null, cargoRows: 1, sensor: [-0.04, 0.64, 0.0],
     },
@@ -445,19 +347,6 @@ export const SHIPS = [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.9, towerTiers: 2, finArrays: 1 } },
         { minTier: 14, name: 'Mk.II', hints: { plating: 'armored', greeble: 1.0, towerTiers: 3, finArrays: 2 } },
         { minTier: 28, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, towerTiers: 3, finArrays: 3 } },
-      ],
-      hardpoints: [
-        { facing: 'front', size: 'L', pos: [0.84, 0.12, 0.0] },
-        { facing: 'front', size: 'L', pos: [0.82, 0.10, 0.26] },
-        { facing: 'front', size: 'L', pos: [0.82, 0.10, -0.26] },
-        { facing: 'left', size: 'L', pos: [0.02, 0.20, 0.74] },
-        { facing: 'right', size: 'L', pos: [0.02, 0.20, -0.74] },
-      ],
-      engineMounts: [
-        { pos: [-0.82, 0.10, 0.46], scaleK: 1.25 },
-        { pos: [-0.82, 0.10, -0.46], scaleK: 1.25 },
-        { pos: [-0.82, 0.10, 0.16], scaleK: 1.0 },
-        { pos: [-0.82, 0.10, -0.16], scaleK: 1.0 },
       ],
       cockpit: null, bridge: [0.40, 0.50, 0.0],
       drill: null, cargoRows: 2, sensor: [-0.04, 0.74, 0.0],
@@ -484,21 +373,6 @@ export const SHIPS = [
         { minTier: 0, name: 'Mk.I', hints: { plating: 'armored', greeble: 1.0, towerTiers: 3, finArrays: 2 } },
         { minTier: 16, name: 'Mk.II', hints: { plating: 'armored', greeble: 1.0, towerTiers: 4, finArrays: 3 } },
         { minTier: 32, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, towerTiers: 4, finArrays: 4 } },
-      ],
-      hardpoints: [
-        { facing: 'front', size: 'L', pos: [0.90, 0.14, 0.0] },
-        { facing: 'front', size: 'L', pos: [0.86, 0.12, 0.30] },
-        { facing: 'front', size: 'L', pos: [0.86, 0.12, -0.30] },
-        { facing: 'left', size: 'L', pos: [0.10, 0.22, 0.82] },
-        { facing: 'left', size: 'L', pos: [-0.20, 0.22, 0.82] },
-        { facing: 'right', size: 'L', pos: [0.10, 0.22, -0.82] },
-        { facing: 'right', size: 'L', pos: [-0.20, 0.22, -0.82] },
-      ],
-      engineMounts: [
-        { pos: [-0.88, 0.12, 0.54], scaleK: 1.35 },
-        { pos: [-0.88, 0.12, -0.54], scaleK: 1.35 },
-        { pos: [-0.88, 0.12, 0.20], scaleK: 1.05 },
-        { pos: [-0.88, 0.12, -0.20], scaleK: 1.05 },
       ],
       cockpit: null, bridge: [0.44, 0.58, 0.0],
       drill: null, cargoRows: 3, sensor: [-0.04, 0.86, 0.0],

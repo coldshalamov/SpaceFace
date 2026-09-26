@@ -13,6 +13,7 @@
 // dispose those (the factory may reuse them); we only dispose our renderer + RT + geometry we add.
 import * as THREE from 'three';
 import { SHIPS } from '../data/ships.js';
+import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { disposeAuthoredAssetRuntime, loadAuthoredPart } from '../render/assetLoader.js';
@@ -355,15 +356,16 @@ function buildFastPreviewMesh(defId) {
   }
 
   addFastMesh(root, new THREE.SphereGeometry(Math.max(height * 0.32, 1.4), 16, 8), materials.glass, 'PreviewCanopy', [length * 0.12, height * 0.58, 0], [0, 0, 0], [1.4, 0.65, 0.9]);
-  const mounts = visuals.engineMounts && visuals.engineMounts.length
-    ? visuals.engineMounts
+  const authoredEngines = modelTruthMountFractions(def && def.id, 'SOCKET_Engine_');
+  const mounts = authoredEngines.length
+    ? authoredEngines
     : [{ pos: [-0.68, 0, -0.24], scaleK: 1 }, { pos: [-0.68, 0, 0.24], scaleK: 1 }];
   for (const mount of mounts.slice(0, 6)) {
     const p = mount.pos || [-0.68, 0, 0];
     addFastEngine(root, p[0] * radius, p[1] * radius, p[2] * radius, Math.max(1.5, radius * 0.18 * (mount.scaleK || 1)), materials);
   }
 
-  const hardpoints = visuals.hardpoints || [];
+  const hardpoints = modelTruthMountFractions(def && def.id, 'SOCKET_Weapon_');
   for (const hp of hardpoints.slice(0, 8)) {
     const p = hp.pos || [0, 0, 0];
     addFastMesh(root, new THREE.CylinderGeometry(radius * 0.035, radius * 0.045, radius * 0.28, 8), materials.dark, 'PreviewHardpoint', [p[0] * radius, p[1] * radius + height * 0.15, p[2] * radius], [0, 0, Math.PI / 2]);

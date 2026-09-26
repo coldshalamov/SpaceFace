@@ -6,19 +6,33 @@ import {
   decayCameraTrauma,
   traumaFromMomentumExchange,
 } from '../src/render/camera.js';
+import { resolveCollisionFeel, traumaFromContact } from '../src/render/feel.js';
+import { collisionImpactMagnitude } from '../src/render/combat/collisionImpactScale.js';
 import { physics } from '../src/core/physics.js';
 import { createGameState } from '../src/core/gameState.js';
 
 const ROOT = new URL('../', import.meta.url);
 const checks = [];
 
-check('SPEC3-18 trauma scalar uses momentum exchange formula and cap', () => {
+check('SPEC3-18 trauma scalar is resolveCollisionFeel', () => {
   assert.equal(CAMERA_TRAUMA_TUNING.decayPerSecond, 1.8, 'trauma must decay at 1.8/s');
   assert.equal(CAMERA_TRAUMA_TUNING.maxMomentumTrauma, 0.5, 'ordinary impact trauma cap must be 0.5');
   assert.equal(traumaFromMomentumExchange(0), 0);
-  assert.equal(traumaFromMomentumExchange(2000), 0.25);
-  assert.equal(traumaFromMomentumExchange(4000), 0.5);
-  assert.equal(traumaFromMomentumExchange(16000), 0.5);
+  const samples = [20, 80, 150];
+  let previous = 0;
+  for (const deltaV of samples) {
+    const feel = resolveCollisionFeel(
+      { dp: deltaV * 20 },
+      { mode: 'flight', deltaV, feelDeltaV: deltaV, momentum: deltaV * 20, playerDistance: 0 },
+    );
+    const trauma = traumaFromMomentumExchange(deltaV * 20, { deltaV, feelDeltaV: deltaV });
+    assert.equal(trauma, feel.trauma);
+    assert.equal(trauma, traumaFromContact(deltaV * 20, { deltaV, feelDeltaV: deltaV }));
+    assert.ok(trauma >= previous);
+    previous = trauma;
+    const flash = collisionImpactMagnitude({ feelDeltaV: deltaV, deltaV, dp: deltaV * 20 });
+    assert.equal(flash, feel.trauma);
+  }
 });
 
 check('SPEC3-18 trauma decays deterministically without sim state mutation', () => {
@@ -49,8 +63,11 @@ check('SPEC3-18 physics emits impact dp without writing camera state', () => {
   const impact = events.find((entry) => entry.name === 'physics:impact');
   assert(impact, 'resolvePair must emit physics:impact');
   assert(impact.payload.dp > 0, `impact dp should be positive, got ${impact.payload.dp}`);
-  assert.equal(impact.payload.trauma, traumaFromMomentumExchange(impact.payload.dp),
-    'impact payload trauma must match min(0.5, dp / 8000)');
+  assert.equal(impact.payload.trauma, traumaFromMomentumExchange(impact.payload.dp, {
+    playerDeltaV: impact.payload.playerDeltaV,
+    feelDeltaV: impact.payload.preSolveClosingSpeed,
+    mode: 'flight',
+  }), 'impact payload trauma must match resolveCollisionFeel');
   assert.equal(impact.payload.playerInvolved, true, 'impact payload should mark player involvement');
   assert.equal(state.camera.trauma, 0, 'physics event emission must not mutate render camera state');
 });
@@ -61,6 +78,9 @@ check('SPEC3-18 source hooks keep camera juice render-side', () => {
   assert.match(cameraSrc, /const t2 = c\.trauma \* c\.trauma/, 'shake amplitude must use trauma squared');
   assert.match(physicsSrc, /physics:impact/, 'physics must expose impact momentum for render-side trauma consumers');
   assert.doesNotMatch(physicsSrc, /state\.camera\.trauma\s*=/, 'sim physics must not write camera trauma');
+  assert.doesNotMatch(physicsSrc, /dp\s*\/\s*8000/, 'physics must not keep a second trauma scale');
+  assert.doesNotMatch(cameraSrc, /dp\s*\/\s*8000/, 'camera trauma helper must not keep a second trauma scale');
+  assert.match(physicsSrc, /traumaFromContact/, 'physics trauma comes from resolveCollisionFeel');
 });
 
 const failed = checks.filter((entry) => !entry.ok);

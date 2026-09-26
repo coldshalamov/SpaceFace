@@ -8,12 +8,11 @@
 //
 // Pure: no THREE, no DOM, no state, no RNG. Node-testable.
 
-// The shared 8→150 WU/s axis (collision-feel floor → reference slam). Mirrors
-// COLLISION_DELTA_V_FLOOR / COLLISION_DELTA_V_REF in render/feel.js — duplicated, not imported,
-// because this file must stay a leaf: feel.js already sits upstream of the same receipts and a
-// render->render import chain would fold the whole feel module into VFX's import graph.
-export const COLLISION_DISPLAY_SPEED_TOUCH = 8;    // WU/s — below this a contact is a touch
-export const COLLISION_DISPLAY_SPEED_SLAM = 150;   // WU/s — the presentation saturates here
+// Flash size is resolveCollisionFeel. The old private 8→150 line is not a second scale.
+import { COLLISION_DELTA_V_FLOOR, COLLISION_DELTA_V_REF, resolveCollisionFeel } from '../feel.js';
+
+export const COLLISION_DISPLAY_SPEED_TOUCH = COLLISION_DELTA_V_FLOOR;
+export const COLLISION_DISPLAY_SPEED_SLAM = COLLISION_DELTA_V_REF;
 
 /** The speed the presentation answers to: pre-solve closing speed when the receipt carries it. */
 export function collisionDisplayDeltaV(receipt) {
@@ -23,29 +22,35 @@ export function collisionDisplayDeltaV(receipt) {
   return Math.max(applied, preSolve);
 }
 
-/**
- * The 0.6–2.4 authored magnitude band, mapped onto the presentation axis. Receipts that carry no
- * pre-solve channel keep the legacy clamped-dv curve (dv/14, saturating ~34 WU/s) so manual and
- * legacy receipts stay bit-stable; pre-solve receipts map the full 8→150 axis linearly so the
- * nudge and the slam land at visibly different sizes.
- */
-export function collisionImpactMagnitude(receipt) {
+/** Flash size is the trauma resolveCollisionFeel already computed for this contact. */
+export function collisionFeelForReceipt(receipt) {
   const dv = collisionDisplayDeltaV(receipt);
-  const preSolve = Number(receipt && receipt.feelDeltaV);
-  if (Number.isFinite(preSolve) && preSolve > 0) {
-    const u = Math.min(1, Math.max(0,
-      (dv - COLLISION_DISPLAY_SPEED_TOUCH) / (COLLISION_DISPLAY_SPEED_SLAM - COLLISION_DISPLAY_SPEED_TOUCH)));
-    return 0.6 + 1.8 * u;
-  }
-  return Math.max(0.6, Math.min(2.4, dv / 14));
+  const preSolve = Number(receipt && (receipt.feelDeltaV ?? receipt.preSolveClosingSpeed));
+  const momentum = Number(receipt && (receipt.exchangedMomentum ?? receipt.dp)) || 0;
+  return resolveCollisionFeel(
+    { dp: momentum },
+    {
+      mode: 'flight',
+      deltaV: dv,
+      feelDeltaV: Number.isFinite(preSolve) && preSolve > 0 ? preSolve : dv,
+      momentum,
+      playerDistance: 0,
+    },
+  );
+}
+
+export function collisionImpactMagnitude(receipt) {
+  const feel = collisionFeelForReceipt(receipt);
+  return feel && Number.isFinite(feel.trauma) ? feel.trauma : 0;
 }
 
 /** Contact light: intensity and radius both ride the same display speed the flash sizes read. */
 export function collisionImpactLight(receipt) {
-  const dv = collisionDisplayDeltaV(receipt);
-  const magnitude = collisionImpactMagnitude(receipt);
+  const feel = collisionFeelForReceipt(receipt);
+  const magnitude = feel && Number.isFinite(feel.trauma) ? feel.trauma : 0;
+  const dv = feel && Number.isFinite(feel.deltaV) ? feel.deltaV : 0;
   return {
-    intensity: 2.6 * magnitude,
+    intensity: 2.6 * (magnitude / 0.35),
     range: 120 + dv * 3,
   };
 }

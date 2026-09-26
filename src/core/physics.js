@@ -35,6 +35,7 @@ import {
 import { SpatialHash } from './spatialHash.js';
 import { opticGenerationOf } from '../combat/opticField.js';
 import { projectileTravelLimit } from '../combat/projectileFlight.js';
+import { traumaFromContact } from '../render/feel.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { promoteFarActor, queryFarActors } from '../world/farActorTable.js';
 
@@ -1521,7 +1522,6 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
   if (!bus || typeof bus.emit !== 'function') return 0;
   const dp = Math.max(0, finiteOrZero(impulseMag) * Math.max(0, finiteOrZero(material && material.impactScale) || 1));
   if (!(dp > 0)) return 0;
-  const trauma = Math.min(0.5, dp / 8000);
   const playerId = state && state.playerId;
   const playerInvolved = playerId != null && (a.id === playerId || b.id === playerId);
   let playerDeltaV = 0;
@@ -1529,6 +1529,12 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
     const player = a.id === playerId ? a : b;
     playerDeltaV = dp / Math.max(0.1, finiteOrZero(player && player.mass) || 1);
   }
+  const trauma = traumaFromContact(dp, {
+    mode: state && state.mode || 'flight',
+    playerDeltaV,
+    feelDeltaV: options.preSolveClosingSpeed,
+    preSolveClosingSpeed: options.preSolveClosingSpeed,
+  });
   const payload = {
     consequenceKernelVersion: 1,
     backend: String(options.backend || 'custom'),

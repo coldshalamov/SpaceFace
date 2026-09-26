@@ -95,19 +95,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.1,
-          -1.15,
-          -1.63
+          -1.0999999642372131,
+          -1.149999976158142,
+          -1.6299999952316284
         ],
         "max": [
           3.5,
-          2.11,
-          1.63
+          2.109999895095825,
+          1.6299999952316284
         ],
         "dimensionsM": [
-          4.6,
-          3.26,
-          3.26
+          4.599999964237213,
+          3.2599998712539673,
+          3.259999990463257
         ]
       }
     },
@@ -149,19 +149,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.9,
-          -0.156,
-          -2.22
+          -0.8999999761581421,
+          -0.1560124196112156,
+          -2.2200000286102295
         ],
         "max": [
-          4.8099,
-          1.18,
+          4.8098578453063965,
+          1.1799999475479126,
           1.75
         ],
         "dimensionsM": [
-          5.7099,
-          1.336,
-          3.97
+          5.709857821464539,
+          1.3360123671591282,
+          3.9700000286102295
         ]
       }
     },
@@ -203,19 +203,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.8,
-          -0.045,
-          -1.85
+          -0.8000000715255737,
+          -0.04500001668930054,
+          -1.850000023841858
         ],
         "max": [
-          4.055,
-          1.81,
-          1.85
+          4.054999828338623,
+          1.809999942779541,
+          1.850000023841858
         ],
         "dimensionsM": [
-          4.855,
-          1.855,
-          3.7
+          4.854999899864197,
+          1.8549999594688416,
+          3.700000047683716
         ]
       }
     },
@@ -259,19 +259,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.222,
-          -1.4313,
-          -1.4313
+          -0.22199999541044235,
+          -1.4313119649887085,
+          -1.4313119649887085
         ],
         "max": [
-          3.302,
-          1.469,
-          1.4313
+          3.302000045776367,
+          1.4690145254135132,
+          1.4313119649887085
         ],
         "dimensionsM": [
-          3.524,
-          2.9003,
-          2.8626
+          3.5240000411868095,
+          2.9003264904022217,
+          2.862623929977417
         ]
       }
     },
@@ -315,19 +315,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.36,
-          -1.062,
-          -1.062
+          -0.36000001430511475,
+          -1.062000036239624,
+          -1.062000036239624
         ],
         "max": [
           2.5,
-          1.062,
-          1.062
+          1.062000036239624,
+          1.062000036239624
         ],
         "dimensionsM": [
-          2.86,
-          2.124,
-          2.124
+          2.8600000143051147,
+          2.124000072479248,
+          2.124000072479248
         ]
       }
     },
@@ -375,19 +375,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.22,
-          -1.075,
-          -1.8676
+          -0.2199999988079071,
+          -1.0749999284744263,
+          -1.867606282234192
         ],
         "max": [
-          2.8,
-          0.8176,
-          1.8676
+          2.8000000715255737,
+          0.8176062107086182,
+          1.867606282234192
         ],
         "dimensionsM": [
-          3.02,
-          1.8926,
-          3.7352
+          3.020000070333481,
+          1.8926061391830444,
+          3.735212564468384
         ]
       }
     },
@@ -431,19 +431,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.37,
-          -1.04,
-          -1.0386
+          -0.3699999935925007,
+          -1.0399999618530273,
+          -1.0386087894439697
         ],
         "max": [
-          2.4,
-          1.04,
-          1.0386
+          2.4000000953674316,
+          1.0399999618530273,
+          1.0386087894439697
         ],
         "dimensionsM": [
-          2.77,
-          2.08,
-          2.0772
+          2.7700000889599323,
+          2.0799999237060547,
+          2.0772175788879395
         ]
       }
     },
@@ -487,19 +487,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.63,
-          -1.2967,
-          -1.2967
+          -0.6299999952316284,
+          -1.2967344522476196,
+          -1.2967344522476196
         ],
         "max": [
-          2.6,
-          1.2967,
-          1.2967
+          2.5999999046325684,
+          1.2967344522476196,
+          1.2967344522476196
         ],
         "dimensionsM": [
-          3.23,
-          2.5935,
-          2.5935
+          3.2299998998641968,
+          2.5934689044952393,
+          2.5934689044952393
         ]
       }
     },
@@ -543,19 +543,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.65,
-          -0.5378,
-          -0.5461
+          -0.6500000134110451,
+          -0.5378341674804688,
+          -0.5461311340332031
         ],
         "max": [
-          1.725,
-          0.5378,
-          0.5461
+          1.725000023841858,
+          0.5378341674804688,
+          0.5461311340332031
         ],
         "dimensionsM": [
-          2.375,
-          1.0757,
-          1.0923
+          2.375000037252903,
+          1.0756683349609375,
+          1.0922622680664062
         ]
       }
     },
@@ -597,19 +597,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.3,
-          -0.11,
+          -0.30000001192092896,
+          -0.10999999940395355,
           0
         ],
         "max": [
-          3.8,
-          0.2,
-          4.3
+          3.799999952316284,
+          0.20000000298023224,
+          4.300000190734863
         ],
         "dimensionsM": [
-          4.1,
-          0.31,
-          4.3
+          4.099999964237213,
+          0.3100000023841858,
+          4.300000190734863
         ]
       }
     },
@@ -652,17 +652,17 @@
       "bounds": {
         "min": [
           0,
-          -0.11,
+          -0.10999999940395355,
           0
         ],
         "max": [
-          5.2,
-          0.3025,
+          5.199999809265137,
+          0.30250000953674316,
           5.5
         ],
         "dimensionsM": [
-          5.2,
-          0.4125,
+          5.199999809265137,
+          0.4125000089406967,
           5.5
         ]
       }
@@ -706,18 +706,18 @@
       "bounds": {
         "min": [
           0,
-          -0.12,
+          -0.11999999731779099,
           0
         ],
         "max": [
-          3.6,
-          0.32,
-          3.8
+          3.5999999046325684,
+          0.31999999821186065,
+          3.799999952316284
         ],
         "dimensionsM": [
-          3.6,
-          0.44,
-          3.8
+          3.5999999046325684,
+          0.43999999552965163,
+          3.799999952316284
         ]
       }
     },
@@ -759,19 +759,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.2,
-          -0.175,
-          -1.8
+          -0.20000000298023224,
+          -0.17499999701976776,
+          -1.7999999523162842
         ],
         "max": [
-          4.6,
-          0.66,
-          1.8
+          4.599999904632568,
+          0.6600000262260437,
+          1.7999999523162842
         ],
         "dimensionsM": [
-          4.8,
-          0.835,
-          3.6
+          4.799999907612801,
+          0.8350000232458115,
+          3.5999999046325684
         ]
       }
     },
@@ -813,18 +813,18 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.2,
-          -0.09,
+          -0.20000000298023224,
+          -0.09000000357627869,
           0
         ],
         "max": [
-          4.8,
-          0.2,
+          4.800000190734863,
+          0.20000000298023224,
           4
         ],
         "dimensionsM": [
-          5,
-          0.29,
+          5.0000001937150955,
+          0.2900000065565109,
           4
         ]
       }
@@ -867,19 +867,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.4108,
-          -0.214,
-          -0.0181
+          -0.410754919052124,
+          -0.21395866572856903,
+          -0.018118271604180336
         ],
         "max": [
-          3.8154,
-          0.2713,
-          4.1108
+          3.8153786659240723,
+          0.27125000953674316,
+          4.110809803009033
         ],
         "dimensionsM": [
-          4.2261,
-          0.4852,
-          4.1289
+          4.226133584976196,
+          0.4852086752653122,
+          4.1289280746132135
         ]
       }
     },
@@ -921,19 +921,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.4,
-          -0.04,
-          -1.4386
+          -0.4000000059604645,
+          -0.03999999910593033,
+          -1.438605785369873
         ],
         "max": [
-          2.4,
-          3.31,
-          1.2
+          2.4000000953674316,
+          3.310000091791153,
+          1.2000000476837158
         ],
         "dimensionsM": [
-          2.8,
-          3.35,
-          2.6386
+          2.800000101327896,
+          3.3500000908970833,
+          2.638605833053589
         ]
       }
     },
@@ -974,18 +974,18 @@
       "bounds": {
         "min": [
           -1,
-          -0.0818,
+          -0.08180370181798935,
           -1.5
         ],
         "max": [
-          2.9446,
-          0.29,
-          0.9
+          2.9445669651031494,
+          0.28999999165534973,
+          0.8999999761581421
         ],
         "dimensionsM": [
-          3.9446,
-          0.3718,
-          2.4
+          3.9445669651031494,
+          0.3718036934733391,
+          2.399999976158142
         ]
       }
     },
@@ -1025,19 +1025,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.9,
-          -0.01,
-          -0.7
+          -0.8999999761581421,
+          -0.009999999776482582,
+          -0.699999988079071
         ],
         "max": [
-          2.8,
-          0.585,
-          1.925
+          2.799999952316284,
+          0.5849999856948853,
+          1.9249999523162842
         ],
         "dimensionsM": [
-          3.7,
-          0.595,
-          2.625
+          3.6999999284744263,
+          0.5949999854713679,
+          2.6249999403953552
         ]
       }
     },
@@ -1079,19 +1079,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.3,
-          -0.01,
-          -1.2
+          -0.2999999523162842,
+          -0.010000001639127731,
+          -1.2000000476837158
         ],
         "max": [
-          3.3,
-          0.2725,
-          1.275
+          3.299999952316284,
+          0.27250000834465027,
+          1.274999976158142
         ],
         "dimensionsM": [
-          3.6,
-          0.2825,
-          2.475
+          3.5999999046325684,
+          0.282500009983778,
+          2.475000023841858
         ]
       }
     },
@@ -1131,19 +1131,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.4,
-          -0.03,
-          -1.4
+          -0.3999999046325684,
+          -0.029999998211860654,
+          -1.399999976158142
         ],
         "max": [
-          3.8,
-          0.52,
-          1.4
+          3.7999999046325685,
+          0.5199999809265137,
+          1.399999976158142
         ],
         "dimensionsM": [
-          4.2,
-          0.55,
-          2.8
+          4.199999809265137,
+          0.5499999791383743,
+          2.799999952316284
         ]
       }
     },
@@ -1185,19 +1185,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.4,
-          -0.04,
-          -1.6
+          -0.40000002384185795,
+          -0.03999999731779098,
+          -1.600000023841858
         ],
         "max": [
-          2.8,
-          0.63,
-          1.6
+          2.800000023841858,
+          0.6299999952316284,
+          1.600000023841858
         ],
         "dimensionsM": [
-          3.2,
-          0.67,
-          3.2
+          3.200000047683716,
+          0.6699999925494194,
+          3.200000047683716
         ]
       }
     },
@@ -1237,19 +1237,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.2,
-          -0.26,
-          -1.3
+          -0.20000000298023224,
+          -0.25999999046325684,
+          -1.2999999523162842
         ],
         "max": [
-          3.8,
-          1.1,
-          1.3
+          3.799999952316284,
+          1.100000023841858,
+          1.2999999523162842
         ],
         "dimensionsM": [
-          4,
-          1.36,
-          2.6
+          3.9999999552965164,
+          1.3600000143051147,
+          2.5999999046325684
         ]
       }
     },
@@ -1278,19 +1278,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -6.6142,
-          -3.28,
-          -4.0126
+          -6.614248752593994,
+          -3.2800421714782715,
+          -4.012554168701172
         ],
         "max": [
-          7.6551,
-          3.5614,
-          3.696
+          7.65512228012085,
+          3.561368942260742,
+          3.696011781692505
         ],
         "dimensionsM": [
-          14.2694,
-          6.8414,
-          7.7086
+          14.269371032714844,
+          6.841411113739014,
+          7.708565950393677
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 9 DET + cathedral trim/ashfall wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, matte oxidized, anomaly emissive, 3-role EEVEE lit PBR. Ashfall cathedral ribs + oxidation + violet vein skin pass. 30 MCP renders. tris=3468. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
@@ -1338,19 +1338,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.55,
-          -1.145,
-          -2.5853
+          -5.550000190734863,
+          -1.1449999809265137,
+          -2.5852553844451904
         ],
         "max": [
-          5.9503,
-          2.3183,
-          2.5894
+          5.950285911560059,
+          2.3182501792907715,
+          2.589414358139038
         ],
         "dimensionsM": [
-          11.5003,
-          3.4633,
-          5.1747
+          11.500286102294922,
+          3.463250160217285,
+          5.1746697425842285
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + corporate trim + fade wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat 0.22, 3-role EEVEE lit PBR. Core Bastion escort corporate-clean-fading. 24 MCP renders. tris=3240. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
@@ -1398,19 +1398,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.15,
-          -0.525,
-          -2.9423
+          -5.150000095367432,
+          -0.5249999910593033,
+          -2.9422624111175537
         ],
         "max": [
-          5.299,
-          0.8911,
-          2.9423
+          5.29899263381958,
+          0.8911317586898804,
+          2.9422624111175537
         ],
         "dimensionsM": [
-          10.449,
-          1.4161,
-          5.8845
+          10.448992729187012,
+          1.4161317497491837,
+          5.884524822235107
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + trim sheet + combat wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, roughness variation, clearcoat, 3-role EEVEE lit PBR. Core lawful patrol bounty hunter cyan-steel. 31 MCP renders. tris=3308. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
@@ -1458,19 +1458,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.55,
-          -1.15,
-          -2.1855
+          -5.550000190734863,
+          -1.149999976158142,
+          -2.185458183288574
         ],
         "max": [
-          5.8242,
-          2.453,
-          2.1921
+          5.824155807495117,
+          2.453000068664551,
+          2.192146062850952
         ],
         "dimensionsM": [
-          11.3742,
-          3.603,
-          4.3776
+          11.37415599822998,
+          3.603000044822693,
+          4.377604246139526
         ]
       },
       "note": "PRO revamp 2026-07-06 — 8 DET layers + Full Finish surfacing: trim sheet + wear mask (image-gen), SF_EdgeWear/SF_CavityDirt node groups, AO bake, roughness variation, clearcoat, 3-role PBR (Hull/Mech/Accent). Belt cargo runner manifest-lies character. tris=3248. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
@@ -1518,19 +1518,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.994,
-          -2.5892,
-          -2.8624
+          -5.994000434875488,
+          -2.589240550994873,
+          -2.8623721599578857
         ],
         "max": [
-          7.05,
-          2.6572,
-          2.7228
+          7.050034523010254,
+          2.657245397567749,
+          2.722813129425049
         ],
         "dimensionsM": [
-          13.044,
-          5.2465,
-          5.5852
+          13.044034957885742,
+          5.246485948562622,
+          5.585185289382935
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + frigate trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat 0.28, stencil emissive, 3-role EEVEE lit PBR. Core authority squadron stripe + disciplined wear skin pass. 29 MCP renders. tris=3300. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
@@ -1578,19 +1578,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.8,
-          -1.3,
-          -2.774
+          -5.800000190734863,
+          -1.2999999523162842,
+          -2.7740466594696045
         ],
         "max": [
-          6.0182,
-          2.4608,
-          2.7633
+          6.01824951171875,
+          2.4607994556427,
+          2.763338088989258
         ],
         "dimensionsM": [
-          11.8182,
-          3.7608,
-          5.5374
+          11.818249702453613,
+          3.7607994079589844,
+          5.537384748458862
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + gunship trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat, stencil emissive, 3-role EEVEE lit PBR. Military/fringe battle-scar + soot + red stencil skin pass. 32 MCP renders. tris=3288. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
@@ -1638,19 +1638,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.45,
-          -0.26,
-          -2.6961
+          -5.449999809265137,
+          -0.25999999046325684,
+          -2.6960744857788086
         ],
         "max": [
-          5.7504,
-          1.0908,
-          2.6961
+          5.750356674194336,
+          1.0907999277114868,
+          2.6960744857788086
         ],
         "dimensionsM": [
-          11.2004,
-          1.3508,
-          5.3921
+          11.200356483459473,
+          1.3507999181747437,
+          5.392148971557617
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + interceptor trim + heat wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat, 3-role EEVEE lit PBR. Fringe fast pursuit heat-scarred sodium-red. 24 MCP renders. tris=3212. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
@@ -1698,19 +1698,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.1503,
-          -1.3752,
-          -2.793
+          -5.150293350219727,
+          -1.3751511368400684,
+          -2.7929770946502686
         ],
         "max": [
-          5.8011,
-          2.9856,
-          2.7011
+          5.801102161407471,
+          2.9855709075927734,
+          2.701101541519165
         ],
         "dimensionsM": [
-          10.9514,
-          4.3607,
-          5.4941
+          10.951395511627197,
+          4.360722044432842,
+          5.494078636169434
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + ore trim sheet + dust wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, roughness variation, clearcoat, 3-role EEVEE lit PBR. Belt ore hauler dust-caked rust-amber. 30 MCP renders. tris=21048. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
@@ -1758,19 +1758,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.665,
-          -1.9077,
-          -2.5385
+          -5.664999961853027,
+          -1.9076822996139526,
+          -2.5385117530822754
         ],
         "max": [
-          6.6114,
-          2.0427,
-          2.3537
+          6.61139440536499,
+          2.0427043437957764,
+          2.3536930084228516
         ],
         "dimensionsM": [
-          12.2764,
-          3.9504,
-          4.8922
+          12.276394367218018,
+          3.950386643409729,
+          4.892204761505127
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + patchwork trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, violet emissive stripe, 3-role EEVEE lit PBR. Free Frontier smuggler patchwork skin pass. 29 render_viewport_to_path MCP renders. tris=2566. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
@@ -1818,19 +1818,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.6403,
-          -0.5134,
-          -1.5602
+          -5.640317916870117,
+          -0.5133943557739258,
+          -1.5602314472198486
         ],
         "max": [
-          5.2872,
-          1.0819,
-          1.5578
+          5.2872185707092285,
+          1.081866979598999,
+          1.5578429698944092
         ],
         "dimensionsM": [
-          10.9275,
-          1.5953,
-          3.1181
+          10.927536487579346,
+          1.5952613353729248,
+          3.118074417114258
         ]
       },
       "note": "PRO Full Finish 2026-07-06 — Bevel4+WN+meso insets+DET weld/reactor/DEBT/hatch/bolts/tag/soot. Surfacing: trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO bake+clearcoat+roughness_variation (textures/hull_starter/). Skin: Pit repossessed 3-owner wear, DEBT graffiti, port weld scar, reactor soot, inventory tag. 1612 tris / blender_mcp. Texture-role correction 2026-07-27 — authored trim retained as base color; a declared neutral OpenGL normal is used where no authored surface-height bake exists; packed ORM uses the Blender AO bake on untransformed UV0 when valid plus explicit material roughness/metalness classes; all roles are bound.",
@@ -1859,26 +1859,28 @@
       "priority": "P2",
       "file": "places/place_ash_pin.glb",
       "tris": 1192,
-      "bytes": 196768,
+      "bytes": 196772,
       "textureSize": 128,
       "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py.",
       "bounds": {
         "min": [
-          -2.428373,
-          -0.05616,
-          -2.501255
+          -2.4283730025746664,
+          -0.05616000294685364,
+          -2.501255171123816
         ],
         "max": [
-          2.428373,
-          12.481041,
-          2.501255
+          2.4283730025746664,
+          12.481041467104873,
+          2.501255171123816
         ],
         "dimensionsM": [
-          4.856746,
-          12.537201,
-          5.00251
+          4.856746005149333,
+          12.537201470051727,
+          5.002510342247632
         ]
-      }
+      },
+      "mount": "origin",
+      "sockets": []
     },
     {
       "id": "place_asteroid_graffiti",
@@ -1886,7 +1888,7 @@
       "priority": "P1",
       "file": "places/place_asteroid_graffiti.glb",
       "tris": 13456,
-      "bytes": 20678880,
+      "bytes": 20678884,
       "textureSize": 1024,
       "note": "Geology landmark V3 live promotion 2026-07-19 — dry-fractured-regolith-with-nonemissive-prospector-history; authored LOD0/1/2 (9,876 / 2,472 / 1,108 tris), six functional PBR material roles with bound base-color/normal/ORM maps, explicit runtime geology/mechanical/warning roles, recessed fracture seats, preserved pivot and interaction markers, deterministic texture generation, no emission substitute, and dry nonuniform roughness reviewed at close/default/far standalone game-camera assumptions before live-route admission.",
       "hooks": [],
@@ -1928,19 +1930,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.9984,
-          -6.1531,
-          -3.9586
+          -8.998377799987793,
+          -6.1530961990356445,
+          -3.9585583209991455
         ],
         "max": [
-          8.7721,
-          6.1155,
-          4.299
+          8.77209758758545,
+          6.115530490875244,
+          4.299026012420654
         ],
         "dimensionsM": [
-          17.7705,
-          12.2686,
-          8.2576
+          17.770475387573242,
+          12.268626689910889,
+          8.2575843334198
         ]
       }
     },
@@ -1950,7 +1952,7 @@
       "priority": "P1",
       "file": "places/place_asteroid_rock_b.glb",
       "tris": 1755,
-      "bytes": 1867224,
+      "bytes": 1867228,
       "textureSize": 1024,
       "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 688 tris. | M1-SLICEA-VISUAL-001 connected rebuild 2026-07-10 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=9F09141B2841 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=5E8E63BFEC0F",
       "hooks": [],
@@ -1960,19 +1962,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -3.4406,
-          -4.2213,
-          -6.7001
+          -3.4405910968780518,
+          -4.221262454986572,
+          -6.7000555992126465
         ],
         "max": [
-          3.8209,
-          6.8854,
-          6.7857
+          3.8208541870117188,
+          6.885381698608398,
+          6.7857465744018555
         ],
         "dimensionsM": [
-          7.2615,
-          11.1067,
-          13.4858
+          7.2614452838897705,
+          11.10664415359497,
+          13.485802173614502
         ]
       }
     },
@@ -1992,19 +1994,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -4.8085,
-          -4.6022,
-          -4.1893
+          -4.808531761169434,
+          -4.6022186279296875,
+          -4.189250946044922
         ],
         "max": [
-          4.9049,
-          5.1656,
-          4.5358
+          4.904945373535156,
+          5.165618896484375,
+          4.535816192626953
         ],
         "dimensionsM": [
-          9.7134,
-          9.7678,
-          8.7251
+          9.71347713470459,
+          9.767837524414062,
+          8.725067138671875
         ]
       }
     },
@@ -2014,7 +2016,7 @@
       "priority": "P0",
       "file": "places/place_asteroid_seamed.glb",
       "tris": 3362,
-      "bytes": 18047712,
+      "bytes": 18047716,
       "textureSize": 1024,
       "note": "Geology landmark V3 live promotion 2026-07-19 — dry-bedded-regolith-with-surveyed-mineral-fracture; authored LOD0/1/2 (8,340 / 3,552 / 1,448 tris), six functional PBR material roles with bound base-color/normal/ORM maps, explicit runtime geology/mechanical/warning roles, recessed fracture seats, preserved pivot and interaction markers, deterministic texture generation, no emission substitute, and dry nonuniform roughness reviewed at close/default/far standalone game-camera assumptions before live-route admission.",
       "hooks": [],
@@ -2024,19 +2026,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.11311,
-          -10.154118,
-          -11.740408
+          -14.113109588623047,
+          -10.154117584228516,
+          -11.740407943725586
         ],
         "max": [
-          14.330973,
-          11.371243,
-          12.095528
+          14.330972671508789,
+          11.371243476867676,
+          12.095527648925781
         ],
         "dimensionsM": [
-          28.444082,
-          21.525361,
-          23.835936
+          28.444082260131836,
+          21.52536106109619,
+          23.835935592651367
         ]
       }
     },
@@ -2061,19 +2063,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -3.06,
-          -1.6,
-          -1.7
+          -3.059999942779541,
+          -1.600000023841858,
+          -1.7000000476837158
         ],
         "max": [
-          3.06,
-          1.63,
-          1.7
+          3.059999942779541,
+          1.6299999952316284,
+          1.7000000476837158
         ],
         "dimensionsM": [
-          6.12,
-          3.23,
-          3.4
+          6.119999885559082,
+          3.2300000190734863,
+          3.4000000953674316
         ]
       },
       "triangleMetric": "lod0"
@@ -2084,7 +2086,7 @@
       "priority": "P1",
       "file": "places/place_ceres_bait_wreck.glb",
       "tris": 4138,
-      "bytes": 4731648,
+      "bytes": 4731656,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull"
@@ -2110,26 +2112,26 @@
       },
       "hooks": [],
       "sockets": [
+        "SOCKET_BlackBox",
         "SOCKET_Hazard_Core",
-        "SOCKET_Salvage_Core",
-        "SOCKET_BlackBox"
+        "SOCKET_Salvage_Core"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -34.3155,
-          -24.6237,
-          -18.0725
+          -34.31549072265625,
+          -24.623668670654297,
+          -18.072460174560547
         ],
         "max": [
-          34.3155,
-          24.6237,
-          18.0725
+          34.31549072265625,
+          24.62367057800293,
+          18.072460174560547
         ],
         "dimensionsM": [
-          68.631,
-          49.2473,
-          36.1449
+          68.6309814453125,
+          49.24733924865723,
+          36.144920349121094
         ]
       }
     },
@@ -2139,7 +2141,7 @@
       "priority": "P1",
       "file": "places/place_ceres_grave_shard.glb",
       "tris": 989,
-      "bytes": 3134404,
+      "bytes": 3134408,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull"
@@ -2165,25 +2167,25 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Tether_Massline",
-        "SOCKET_Salvage_Core"
+        "SOCKET_Salvage_Core",
+        "SOCKET_Tether_Massline"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -15.7783,
-          -11.0977,
-          -8.1875
+          -15.778303146362305,
+          -11.09766674041748,
+          -8.187520980834961
         ],
         "max": [
-          15.7783,
-          11.0977,
-          8.1875
+          15.778303146362305,
+          11.09766674041748,
+          8.187520980834961
         ],
         "dimensionsM": [
-          31.5566,
-          22.1953,
-          16.375
+          31.55660629272461,
+          22.19533348083496,
+          16.375041961669922
         ]
       }
     },
@@ -2193,7 +2195,7 @@
       "priority": "P2",
       "file": "places/place_claim_mark.glb",
       "tris": 1356,
-      "bytes": 204096,
+      "bytes": 204104,
       "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
@@ -2201,21 +2203,23 @@
       "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py.",
       "bounds": {
         "min": [
-          -1.188637,
-          -0.3888,
-          -1.205929
+          -1.1886365089836446,
+          -0.3887999653816223,
+          -1.2059294075235099
         ],
         "max": [
-          1.31197,
-          9.76478,
-          1.611297
+          1.3119701276658589,
+          9.76478018854995,
+          1.611296953549306
         ],
         "dimensionsM": [
-          2.500607,
-          10.15358,
-          2.817226
+          2.5006066366495032,
+          10.153580153931573,
+          2.817226361072816
         ]
-      }
+      },
+      "mount": "origin",
+      "sockets": []
     },
     {
       "id": "place_claim_outpost_base",
@@ -2247,32 +2251,32 @@
       },
       "mount": "origin",
       "tris": 15384,
-      "bytes": 6835992,
+      "bytes": 6835996,
       "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core",
         "SOCKET_Dock_Approach",
         "SOCKET_Emissive",
+        "SOCKET_Module_Defense",
         "SOCKET_Module_Depot",
         "SOCKET_Module_Refinery",
-        "SOCKET_Module_Defense",
-        "SOCKET_Module_Teleporter"
+        "SOCKET_Module_Teleporter",
+        "SOCKET_Structure_Core"
       ],
       "bounds": {
         "min": [
-          -46.13517,
-          -42.320339,
-          -13.576312
+          -46.135169982910156,
+          -42.32033920288086,
+          -13.576312065124512
         ],
         "max": [
           55.5,
-          42.320339,
-          17.669581
+          42.32033920288086,
+          17.669581413269043
         ],
         "dimensionsM": [
-          101.63517,
-          84.640678,
-          31.245893
+          101.63516998291016,
+          84.64067840576172,
+          31.245893478393555
         ]
       },
       "note": "Claim Anchor; player claim growth family, PBR, explicit LOD0/1/2. LOD0 15384 tris / 5 draw groups.",
@@ -2308,7 +2312,7 @@
       },
       "mount": "origin",
       "tris": 24324,
-      "bytes": 6489504,
+      "bytes": 6489508,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2321,19 +2325,19 @@
       ],
       "bounds": {
         "min": [
-          -47.0226,
-          -47.0226,
-          -13.5763
+          -47.02259826660156,
+          -47.02259826660156,
+          -13.576312065124512
         ],
         "max": [
           55.5,
-          47.0226,
-          17.6696
+          47.02259826660156,
+          17.669599533081055
         ],
         "dimensionsM": [
-          102.5226,
-          94.0452,
-          31.2459
+          102.52259826660156,
+          94.04519653320312,
+          31.245911598205566
         ]
       },
       "note": "PQ-022 Tethys heist lawful catcher; open-mouth impound fork re-authored from the KEEP receiver-facility candidate. 24324 tris LOD0; 2 tint roles. Promoted from assets/ships/m5_claim_outposts/source_candidates/receiver_facility_material_truth_v1/places/place_claim_outpost_base.glb (KEEP review 2026-08-10); source 705c277e3dc7.",
@@ -2351,26 +2355,22 @@
       "tris": 3780,
       "bytes": 76664,
       "hooks": [],
-      "sockets": [
-        "socket_service",
-        "socket_tow_aft",
-        "socket_tow_front"
-      ],
+      "sockets": [],
       "bounds": {
         "min": [
-          -13.9,
-          -9.3,
-          -9.3
+          -13.899999618530273,
+          -9.300000190734863,
+          -9.300000190734863
         ],
         "max": [
-          13.9,
-          13.05,
-          9.3
+          13.899999618530273,
+          13.050000190734863,
+          9.300000190734863
         ],
         "dimensionsM": [
-          27.8,
-          22.35,
-          18.6
+          27.799999237060547,
+          22.350000381469727,
+          18.600000381469727
         ]
       },
       "note": "PQ-195 Third Shift SP-07 flywheel assembly; caged industrial load promoted from the packet blockout candidate. 3780 tris (all); 0 tint roles. Promoted from assets/ships/breakaway_v1/source_candidates/sp07-spindle.glb (blockout silhouette pass, PQ-195.00); source 874d8cb389df.",
@@ -2388,11 +2388,7 @@
       "tris": 552,
       "bytes": 15712,
       "hooks": [],
-      "sockets": [
-        "socket_mouth",
-        "socket_seat",
-        "socket_service"
-      ],
+      "sockets": [],
       "bounds": {
         "min": [
           -3.5,
@@ -2401,12 +2397,12 @@
         ],
         "max": [
           89.5,
-          5.65,
+          5.650000095367432,
           37.5
         ],
         "dimensionsM": [
           93,
-          15.15,
+          15.150000095367432,
           75
         ]
       },
@@ -2443,32 +2439,32 @@
       },
       "mount": "origin",
       "tris": 33212,
-      "bytes": 9472792,
+      "bytes": 9472800,
       "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core",
         "SOCKET_Dock_Approach",
         "SOCKET_Emissive",
+        "SOCKET_Module_Defense",
         "SOCKET_Module_Depot",
         "SOCKET_Module_Refinery",
-        "SOCKET_Module_Defense",
-        "SOCKET_Module_Teleporter"
+        "SOCKET_Module_Teleporter",
+        "SOCKET_Structure_Core"
       ],
       "bounds": {
         "min": [
-          -46.1352,
-          -42.3203,
-          -39.55
+          -46.135169982910156,
+          -42.32033920288086,
+          -39.55000576018254
         ],
         "max": [
           55.5,
-          42.3203,
-          25.7488
+          42.32033920288086,
+          25.74881362915039
         ],
         "dimensionsM": [
-          101.6352,
-          84.6406,
-          65.2988
+          101.63516998291016,
+          84.64067840576172,
+          65.29881938933293
         ]
       },
       "note": "Defense Bastion Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 33212 tris / 5 draw groups.",
@@ -2504,32 +2500,32 @@
       },
       "mount": "origin",
       "tris": 56760,
-      "bytes": 12409820,
+      "bytes": 12409824,
       "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core",
         "SOCKET_Dock_Approach",
         "SOCKET_Emissive",
+        "SOCKET_Module_Defense",
         "SOCKET_Module_Depot",
         "SOCKET_Module_Refinery",
-        "SOCKET_Module_Defense",
-        "SOCKET_Module_Teleporter"
+        "SOCKET_Module_Teleporter",
+        "SOCKET_Structure_Core"
       ],
       "bounds": {
         "min": [
-          -47.8643,
-          -44.0495,
-          -30.93
+          -47.86434555053711,
+          -44.04951477050781,
+          -30.93000030517578
         ],
         "max": [
           55.5,
-          44.0495,
-          21.8698
+          44.04951477050781,
+          21.86981201171875
         ],
         "dimensionsM": [
-          103.3643,
-          88.099,
-          52.7998
+          103.36434555053711,
+          88.09902954101562,
+          52.79981231689453
         ]
       },
       "note": "Industrial Refinery Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 56760 tris / 5 draw groups.",
@@ -2565,7 +2561,7 @@
       },
       "mount": "origin",
       "tris": 22560,
-      "bytes": 5940356,
+      "bytes": 5940360,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2578,19 +2574,19 @@
       ],
       "bounds": {
         "min": [
-          -50.8652,
-          -50.8652,
-          -30.93
+          -50.86520004272461,
+          -50.86520004272461,
+          -30.930002212524414
         ],
         "max": [
-          55.5,
-          47.0226,
-          21.8698
+          55.50001525878906,
+          47.02260208129883,
+          21.86981201171875
         ],
         "dimensionsM": [
-          106.3652,
-          97.8878,
-          52.7998
+          106.36521530151367,
+          97.88780212402344,
+          52.799814224243164
         ]
       },
       "note": "PQ-022 Tethys heist covert fence; asymmetric shielded-handoff receiver re-authored from the KEEP receiver-facility candidate. 22560 tris LOD0; 2 tint roles. Promoted from assets/ships/m5_claim_outposts/source_candidates/receiver_facility_material_truth_v1/places/place_claim_outpost_refinery.glb (KEEP review 2026-08-10); source defefcb65fa8.",
@@ -2626,32 +2622,32 @@
       },
       "mount": "origin",
       "tris": 62992,
-      "bytes": 13424076,
+      "bytes": 13424080,
       "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core",
         "SOCKET_Dock_Approach",
         "SOCKET_Emissive",
+        "SOCKET_Module_Defense",
         "SOCKET_Module_Depot",
         "SOCKET_Module_Refinery",
-        "SOCKET_Module_Defense",
-        "SOCKET_Module_Teleporter"
+        "SOCKET_Module_Teleporter",
+        "SOCKET_Structure_Core"
       ],
       "bounds": {
         "min": [
-          -48.8364,
-          -47.9295,
-          -37.65
+          -48.83639907836914,
+          -47.929500579833984,
+          -37.650001525878906
         ],
         "max": [
-          55.5,
-          47.9295,
-          24.8938
+          55.5000114440918,
+          47.929500579833984,
+          24.89381217956543
         ],
         "dimensionsM": [
-          104.3364,
-          95.859,
-          62.5438
+          104.33641052246094,
+          95.85900115966797,
+          62.543813705444336
         ]
       },
       "note": "Trade Relay Claim material-truth V2; asteroid-gripping recovery/communications relay, PBR, explicit LOD0/1/2. LOD0 62992 tris / 5 draw groups.",
@@ -2663,7 +2659,7 @@
       "priority": "P2",
       "file": "places/place_cold_locker.glb",
       "tris": 1784,
-      "bytes": 161296,
+      "bytes": 161300,
       "textureSize": 0,
       "tintable": {
         "accent": "furniture_signal_lens"
@@ -2671,21 +2667,23 @@
       "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=de17d9e996bf0b6f",
       "bounds": {
         "min": [
-          -2.968355,
-          -0.783804,
-          -3.06
+          -2.9683549762540364,
+          -0.7838041502424746,
+          -3.060000466346743
         ],
         "max": [
-          3.036531,
-          32.526047,
-          3.281
+          3.0365312918071647,
+          32.52604688942211,
+          3.2810000028610204
         ],
         "dimensionsM": [
-          6.004886,
-          33.309851,
-          6.341
+          6.004886268061201,
+          33.309851039664586,
+          6.3410004692077635
         ]
-      }
+      },
+      "mount": "origin",
+      "sockets": []
     },
     {
       "id": "place_container_rack",
@@ -2708,19 +2706,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -6.7693,
-          -4.07,
-          -4.18
+          -6.76928186416626,
+          -4.070000171661377,
+          -4.179999828338623
         ],
         "max": [
-          6.7693,
-          7.63,
-          4.18
+          6.76928186416626,
+          7.62999963760376,
+          4.180000305175781
         ],
         "dimensionsM": [
-          13.5386,
-          11.7,
-          8.36
+          13.53856372833252,
+          11.699999809265137,
+          8.360000133514404
         ]
       },
       "triangleMetric": "lod0"
@@ -2731,7 +2729,7 @@
       "priority": "P1",
       "file": "places/place_conveyor_barge.glb",
       "tris": 37332,
-      "bytes": 12970868,
+      "bytes": 12970876,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2766,19 +2764,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -2.57,
+          -2.5699996948242188,
           -2,
-          -9.0775
+          -9.077492713928223
         ],
         "max": [
-          70.275,
-          8.025,
-          9.0775
+          70.2750015258789,
+          8.025000214576721,
+          9.077492713928223
         ],
         "dimensionsM": [
-          72.845,
-          10.025,
-          18.155
+          72.84500122070312,
+          10.025000214576721,
+          18.154985427856445
         ]
       }
     },
@@ -2799,19 +2797,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -12.9,
-          -4.4301,
+          -12.90000057220459,
+          -4.430063247680664,
           -1.5
         ],
         "max": [
-          14.1,
-          2.4,
-          3.1
+          14.100000381469727,
+          2.4000000953674316,
+          3.1000001430511475
         ],
         "dimensionsM": [
-          27,
-          6.8301,
-          4.6
+          27.000000953674316,
+          6.830063343048096,
+          4.6000001430511475
         ]
       },
       "triangleMetric": "lod0"
@@ -2822,7 +2820,7 @@
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
       "tris": 30518,
-      "bytes": 5456460,
+      "bytes": 5456424,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull"
@@ -2854,19 +2852,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -27.445,
-          -5.5,
-          -6.40625
+          -27.44499969482422,
+          -5.49999962002039,
+          -6.406249523162842
         ],
         "max": [
-          27.250002,
-          6.429978,
-          6.36
+          27.250001907348633,
+          6.429977796971798,
+          6.359999656677246
         ],
         "dimensionsM": [
-          54.695002,
-          11.929977,
-          12.766249
+          54.69500160217285,
+          11.929977416992188,
+          12.766249179840088
         ]
       }
     },
@@ -2876,7 +2874,7 @@
       "priority": "P1",
       "file": "places/place_debris_chunk.glb",
       "tris": 19250,
-      "bytes": 4220396,
+      "bytes": 4220408,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2908,19 +2906,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          0.150001,
-          -3.951835,
-          -5.001788
+          0.15000057220458984,
+          -3.9518349170684814,
+          -5.0017876625061035
         ],
         "max": [
-          24.048378,
-          3.703914,
-          5.499457
+          24.048377990722656,
+          3.703914165496826,
+          5.499457359313965
         ],
         "dimensionsM": [
-          23.898377,
-          7.655749,
-          10.501245
+          23.898377418518066,
+          7.655749082565308,
+          10.501245021820068
         ]
       }
     },
@@ -2930,7 +2928,7 @@
       "priority": "P0",
       "file": "places/place_dock_interior.glb",
       "tris": 22452,
-      "bytes": 23024512,
+      "bytes": 23024444,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2962,18 +2960,18 @@
       "bounds": {
         "min": [
           -26,
-          -4.425,
-          -18.000001
+          -4.425000190734863,
+          -18.000000715255737
         ],
         "max": [
           26,
-          12.775,
+          12.774999618530273,
           18
         ],
         "dimensionsM": [
           52,
-          17.2,
-          36.000001
+          17.199999809265137,
+          36.00000071525574
         ]
       },
       "note": "H-04 neutral Shipworks service bay — deterministic open-front industrial backdrop with its portal and crane rear-parked outside a 28 m preview aperture, authored PBR surfaces, adaptive preview-mount policy, and LOD0-only runtime export; LOD1/LOD2 remain editable in Blender."
@@ -3018,7 +3016,7 @@
       "bounds": {
         "min": [
           -26,
-          -4.425,
+          -4.425000190734863,
           -18
         ],
         "max": [
@@ -3028,7 +3026,7 @@
         ],
         "dimensionsM": [
           52,
-          17.425,
+          17.425000190734863,
           36
         ]
       },
@@ -3074,7 +3072,7 @@
       "bounds": {
         "min": [
           -26,
-          -4.425,
+          -4.425000190734863,
           -18
         ],
         "max": [
@@ -3084,7 +3082,7 @@
         ],
         "dimensionsM": [
           52,
-          17.425,
+          17.425000190734863,
           36
         ]
       },
@@ -3110,19 +3108,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -7.35,
+          -7.350000381469727,
           -7.5,
-          -7.35
+          -7.350000381469727
         ],
         "max": [
-          7.35,
-          4.24,
-          7.35
+          7.350000381469727,
+          4.239999771118164,
+          7.350000381469727
         ],
         "dimensionsM": [
-          14.7,
-          11.74,
-          14.7
+          14.700000762939453,
+          11.739999771118164,
+          14.700000762939453
         ]
       },
       "triangleMetric": "lod0"
@@ -3146,19 +3144,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.99,
-          -0.0306,
-          -3.05
+          -0.9900000095367432,
+          -0.03060007095336914,
+          -3.049999952316284
         ],
         "max": [
-          4.95,
-          13.06,
-          1.0845
+          4.949999809265137,
+          13.0600004196167,
+          1.0844852924346924
         ],
         "dimensionsM": [
-          5.94,
-          13.0906,
-          4.1345
+          5.93999981880188,
+          13.090600490570068,
+          4.134485244750977
         ]
       },
       "triangleMetric": "lod0"
@@ -3184,19 +3182,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -13.2,
-          -0.85,
-          -7.2
+          -13.199999809265137,
+          -0.8500000238418579,
+          -7.199999809265137
         ],
         "max": [
-          13.2,
-          9.1346,
+          13.199999809265137,
+          9.134552955627441,
           7.25
         ],
         "dimensionsM": [
-          26.4,
-          9.9846,
-          14.45
+          26.399999618530273,
+          9.9845529794693,
+          14.449999809265137
         ]
       },
       "triangleMetric": "lod0"
@@ -3207,7 +3205,7 @@
       "priority": "P0",
       "file": "places/place_gate_jump_ring.glb",
       "tris": 43644,
-      "bytes": 11853172,
+      "bytes": 11853328,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3234,26 +3232,28 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Dock_Approach",
         "SOCKET_Emissive",
-        "SOCKET_Gate_Aperture"
+        "SOCKET_Gate_Aperture",
+        "SOCKET_Structure_Core"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
           -10,
-          -40.900002,
-          -40.9
+          -40.900001525878906,
+          -40.90000009536743
         ],
         "max": [
           10,
-          44.661469,
-          44.066654
+          44.661468505859375,
+          44.066654205322266
         ],
         "dimensionsM": [
           20,
-          85.56147,
-          84.966654
+          85.56147003173828,
+          84.9666543006897
         ]
       },
       "triangleMetric": "lod0"
@@ -3278,19 +3278,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -3.06,
-          -1.6,
-          -10.7593
+          -3.059999942779541,
+          -1.600000023841858,
+          -10.75930118560791
         ],
         "max": [
-          6.1,
-          2.8529,
-          1.7
+          6.099999904632568,
+          2.852944850921631,
+          1.7000000476837158
         ],
         "dimensionsM": [
-          9.16,
-          4.4529,
-          12.4593
+          9.15999984741211,
+          4.452944874763489,
+          12.459301233291626
         ]
       },
       "triangleMetric": "lod0"
@@ -3311,19 +3311,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -3.7,
-          -2.2,
-          -3.2138
+          -3.700000047683716,
+          -2.200000047683716,
+          -3.2138044834136963
         ],
         "max": [
-          3.7,
-          2.74,
-          3.2138
+          3.700000047683716,
+          2.740000009536743,
+          3.2138044834136963
         ],
         "dimensionsM": [
-          7.4,
-          4.94,
-          6.4276
+          7.400000095367432,
+          4.940000057220459,
+          6.427608966827393
         ]
       },
       "triangleMetric": "lod0"
@@ -3337,7 +3337,7 @@
       "textureSize": 512,
       "mount": "origin",
       "tris": 253652,
-      "bytes": 18890576,
+      "bytes": 18890564,
       "hooks": [],
       "sockets": [
         "SOCKET_Flythrough_Entry",
@@ -3346,19 +3346,19 @@
       ],
       "bounds": {
         "min": [
-          -288.6276,
-          -72.4538,
-          -139.2015
+          -288.6275949937867,
+          -72.45375128988184,
+          -139.20145853912663
         ],
         "max": [
-          320.6464,
-          148.2705,
-          113.2121
+          320.6463601187267,
+          148.27045586763836,
+          113.21207955796656
         ],
         "dimensionsM": [
-          609.274,
-          220.7243,
-          252.4136
+          609.2739551125135,
+          220.7242071575202,
+          252.41353809709318
         ]
       },
       "note": "PQ-018 Wreck Cathedral hero landmark; re-authored construction language (source sha256 7c2f3fcd… superseding REVISE baseline f335935f…). Explicit LOD0/1/2 roots at 166944/68684/18024 tris and 8 draw groups each; 8 semantic materials, 26 authored 512/256px PBR maps. Outer cladding plates + casemate section lips + rooted rupture members; materials separate armor/frame/alloy/propulsion/service/emissive. Semantic markers SOCKET_Flythrough_Entry/Exit, SOCKET_TheMarker, ZONE_*, SALVAGE_*, INTERACTION_HangarCavity preserved through release. Declares a 72m x 58m clear +X/-X fly-through envelope. Whole-asset G1/G2/G4 KEEP remains for cathedral-reauthor-h1/review."
@@ -3369,7 +3369,7 @@
       "priority": "P1",
       "file": "places/place_lane_beacon.glb",
       "tris": 7892,
-      "bytes": 930788,
+      "bytes": 930796,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3401,19 +3401,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.575,
-          -5.13,
-          -1.575
+          -1.5750000476837158,
+          -5.130000114440918,
+          -1.5750000476837158
         ],
         "max": [
-          9.025,
-          9.23,
-          1.575
+          9.024999618530273,
+          9.229999542236328,
+          1.5750000476837158
         ],
         "dimensionsM": [
-          10.6,
-          14.36,
-          3.15
+          10.59999966621399,
+          14.359999656677246,
+          3.1500000953674316
         ]
       },
       "triangleMetric": "lod0"
@@ -3424,7 +3424,7 @@
       "priority": "P2",
       "file": "places/place_lane_pin.glb",
       "tris": 740,
-      "bytes": 76528,
+      "bytes": 76532,
       "textureSize": 0,
       "tintable": {
         "accent": "furniture_signal_lens"
@@ -3432,21 +3432,23 @@
       "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=9c6c1c565bb8875d",
       "bounds": {
         "min": [
-          -2.858706,
-          -1.944,
-          -4.337505
+          -2.8587056484981304,
+          -1.9439998865127563,
+          -4.3375052715050515
         ],
         "max": [
-          4.93,
-          31.620008,
-          4.337505
+          4.930000300407414,
+          31.620008156777025,
+          4.3375052715050515
         ],
         "dimensionsM": [
-          7.788706,
-          33.564008,
-          8.675011
+          7.788705948905545,
+          33.56400804328978,
+          8.675010543010103
         ]
-      }
+      },
+      "mount": "origin",
+      "sockets": []
     },
     {
       "id": "place_maintenance_gantry",
@@ -3468,19 +3470,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.55,
-          -0.0412,
-          -10.05
+          -1.5499999523162842,
+          -0.041205406188964844,
+          -10.050000190734863
         ],
         "max": [
-          2.45,
-          10.67,
-          10.05
+          2.4499998092651367,
+          10.670001983642578,
+          10.050000190734863
         ],
         "dimensionsM": [
-          4,
-          10.7112,
-          20.1
+          3.999999761581421,
+          10.711207389831543,
+          20.100000381469727
         ]
       },
       "triangleMetric": "lod0"
@@ -3491,7 +3493,7 @@
       "priority": "P1",
       "file": "places/place_memorial_array.glb",
       "tris": 3820,
-      "bytes": 817016,
+      "bytes": 817024,
       "textureSize": 256,
       "note": "PQ-022 navigation-infrastructure material-truth V2 — admitted candidate fd18cf6619f9, promoted source 9cb774d83ea0; LOD0/1/2 2816/932/180 render tris across five semantic PBR groups. Browser/Electron route and performance remain separate gates.",
       "hooks": [],
@@ -3502,17 +3504,17 @@
       "bounds": {
         "min": [
           -1.5,
-          -1.214861,
+          -1.2148610353469849,
           -1.5
         ],
         "max": [
-          13.3,
-          1.85,
+          13.300000190734863,
+          1.850000023841858,
           1.5
         ],
         "dimensionsM": [
-          14.8,
-          3.064861,
+          14.800000190734863,
+          3.0648610591888428,
           3
         ]
       },
@@ -3524,7 +3526,7 @@
       "priority": "P1",
       "file": "places/place_mining_drone.glb",
       "tris": 19124,
-      "bytes": 4158172,
+      "bytes": 4158284,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3559,19 +3561,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.4,
-          -0.121483,
-          -1.195
+          -0.40000009536743164,
+          -0.12148261070251465,
+          -1.1949999928474426
         ],
         "max": [
-          4.6,
-          1.3025,
-          1.195
+          4.599999904632568,
+          1.3025000095367432,
+          1.1950000524520874
         ],
         "dimensionsM": [
           5,
-          1.423983,
-          2.39
+          1.4239826202392578,
+          2.39000004529953
         ]
       }
     },
@@ -3581,7 +3583,7 @@
       "priority": "P1",
       "file": "places/place_nav_buoy.glb",
       "tris": 2072,
-      "bytes": 479280,
+      "bytes": 479320,
       "textureSize": 256,
       "note": "PQ-022 navigation-infrastructure material-truth V2 buoy repair — admitted candidate cbaed85c003e, promoted source edcfd2779a42; LOD0/1/2 1876/972/288 render tris across five semantic PBR groups. Billboard and memorial rows are accepted and untouched by this transaction. Browser/Electron route and performance remain separate gates.",
       "hooks": [],
@@ -3591,19 +3593,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.4,
+          -1.399999976158142,
           -5,
-          -1.4
+          -1.399999976158142
         ],
         "max": [
-          1.575,
-          10.3,
-          1.4
+          1.5749999284744263,
+          10.300000190734863,
+          1.399999976158142
         ],
         "dimensionsM": [
-          2.975,
-          15.3,
-          2.8
+          2.9749999046325684,
+          15.300000190734863,
+          2.799999952316284
         ]
       },
       "triangleMetric": "lod0"
@@ -3628,18 +3630,18 @@
       "bounds": {
         "min": [
           -8.5,
-          -1.05,
-          -0.8
+          -1.0499999523162842,
+          -0.800000011920929
         ],
         "max": [
           8.5,
           6,
-          0.8
+          0.800000011920929
         ],
         "dimensionsM": [
           17,
-          7.05,
-          1.6
+          7.049999952316284,
+          1.600000023841858
         ]
       },
       "triangleMetric": "lod0"
@@ -3663,19 +3665,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -6.373,
-          -2.7538,
-          -3.2
+          -6.372984409332275,
+          -2.753845691680908,
+          -3.200000047683716
         ],
         "max": [
-          4.7,
-          2.95,
-          3.02
+          4.700000286102295,
+          2.950000047683716,
+          3.0199999809265137
         ],
         "dimensionsM": [
-          11.073,
-          5.7038,
-          6.22
+          11.07298469543457,
+          5.703845739364624,
+          6.2200000286102295
         ]
       },
       "triangleMetric": "lod0"
@@ -3699,18 +3701,18 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.99,
-          -0.0306,
-          -2.2
+          -0.9900000095367432,
+          -0.03060007095336914,
+          -2.200000047683716
         ],
         "max": [
-          4.3,
-          13.3,
-          1.8
+          4.300000190734863,
+          13.300000190734863,
+          1.7999999523162842
         ],
         "dimensionsM": [
-          5.29,
-          13.3306,
+          5.2900002002716064,
+          13.330600261688232,
           4
         ]
       },
@@ -3735,19 +3737,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.14,
-          -2.86,
-          -2.252
+          -5.140000343322754,
+          -2.8600001335144043,
+          -2.2519617080688477
         ],
         "max": [
-          6.05,
-          2.9,
-          2.252
+          6.049999713897705,
+          2.9000000953674316,
+          2.2519614696502686
         ],
         "dimensionsM": [
-          11.19,
-          5.76,
-          4.5039
+          11.190000057220459,
+          5.760000228881836,
+          4.503923177719116
         ]
       },
       "triangleMetric": "lod0"
@@ -3759,7 +3761,7 @@
       "file": "places/place_station_billboard.glb",
       "tris": 7168,
       "triangleMetric": "lod0",
-      "bytes": 1409576,
+      "bytes": 1409564,
       "textureSize": 256,
       "note": "PQ-022 navigation-infrastructure material-truth V3 — WIP candidate source 9245e7275b36; LOD0/1/2 6832/2864/780 render tris across five semantic PBR groups. Parent visual review, Browser/Electron route, and performance remain separate gates.",
       "hooks": [],
@@ -3769,19 +3771,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -7.11,
-          -3.07,
-          -3.810147
+          -7.110000133514404,
+          -3.069999933242798,
+          -3.810147285461426
         ],
         "max": [
-          7.11,
-          2.68,
-          3.810147
+          7.110000133514404,
+          2.680000066757202,
+          3.810147285461426
         ],
         "dimensionsM": [
-          14.22,
+          14.220000267028809,
           5.75,
-          7.620295
+          7.620294570922852
         ]
       }
     },
@@ -3791,7 +3793,7 @@
       "priority": "P0",
       "file": "places/place_station_blackmarket.glb",
       "tris": 36996,
-      "bytes": 9637268,
+      "bytes": 9637344,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3818,26 +3820,27 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Dock_Approach",
         "SOCKET_Emissive",
-        "SOCKET_Dock_Approach"
+        "SOCKET_Structure_Core"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -65.7852,
-          -58.2552,
-          -18.8173
+          -65.78519533411867,
+          -58.25519561767578,
+          -18.81732177734375
         ],
         "max": [
-          56.1318,
-          58.2552,
-          15.698
+          56.1318473815918,
+          58.25519561767578,
+          15.698038101196289
         ],
         "dimensionsM": [
-          121.917,
-          116.5104,
-          34.5153
+          121.91704271571047,
+          116.51039123535156,
+          34.51535987854004
         ]
       },
       "triangleMetric": "lod0"
@@ -3848,7 +3851,7 @@
       "priority": "P1",
       "file": "places/place_station_fab.glb",
       "tris": 20732,
-      "bytes": 7540724,
+      "bytes": 7540800,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3875,26 +3878,27 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Dock_Approach",
         "SOCKET_Emissive",
-        "SOCKET_Dock_Approach"
+        "SOCKET_Structure_Core"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -57.399999,
+          -57.399999260902405,
           -29,
           -22.5
         ],
         "max": [
-          45.179996,
+          45.179996490478516,
           29,
-          14.759999
+          14.75999927520752
         ],
         "dimensionsM": [
-          102.579995,
+          102.57999575138092,
           58,
-          37.259999
+          37.25999927520752
         ]
       },
       "triangleMetric": "lod0"
@@ -3905,7 +3909,7 @@
       "priority": "P0",
       "file": "places/place_station_military.glb",
       "tris": 112602,
-      "bytes": 8863228,
+      "bytes": 8863396,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3932,26 +3936,27 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Dock_Approach",
         "SOCKET_Emissive",
-        "SOCKET_Dock_Approach"
+        "SOCKET_Structure_Core"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
           -41,
-          -35.900002,
-          -20.85
+          -35.900001525878906,
+          -20.850000381469727
         ],
         "max": [
-          33.450001,
-          40.781158,
-          12.1
+          33.45000076293945,
+          40.781158447265625,
+          12.100000381469727
         ],
         "dimensionsM": [
-          74.450001,
-          76.68116,
-          32.950001
+          74.45000076293945,
+          76.68115997314453,
+          32.95000076293945
         ]
       }
     },
@@ -3961,7 +3966,7 @@
       "priority": "P1",
       "file": "places/place_station_mining.glb",
       "tris": 26660,
-      "bytes": 8450956,
+      "bytes": 8451032,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3988,26 +3993,27 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Dock_Approach",
         "SOCKET_Emissive",
-        "SOCKET_Dock_Approach"
+        "SOCKET_Structure_Core"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -55.2107,
-          -57.2296,
+          -55.210716247558594,
+          -57.22955419413422,
           -27
         ],
         "max": [
-          55.2107,
-          54.1708,
-          21.0479
+          55.210716247558594,
+          54.17078398140766,
+          21.047868728637695
         ],
         "dimensionsM": [
-          110.4214,
-          111.4004,
-          48.0479
+          110.42143249511719,
+          111.40033817554188,
+          48.047868728637695
         ]
       },
       "triangleMetric": "lod0"
@@ -4018,7 +4024,7 @@
       "priority": "P0",
       "file": "places/place_station_refinery.glb",
       "tris": 138840,
-      "bytes": 23088680,
+      "bytes": 23088760,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -4045,26 +4051,27 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Dock_Approach",
         "SOCKET_Emissive",
-        "SOCKET_Dock_Approach"
+        "SOCKET_Structure_Core"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -44.1,
+          -44.099998474121094,
           -25,
-          -58.1
+          -58.099998474121094
         ],
         "max": [
           59,
           30.5,
-          28.7325
+          28.732500076293945
         ],
         "dimensionsM": [
-          103.1,
+          103.0999984741211,
           55.5,
-          86.8325
+          86.83249855041504
         ]
       },
       "triangleMetric": "lod0"
@@ -4075,7 +4082,7 @@
       "priority": "P1",
       "file": "places/place_station_research.glb",
       "tris": 64876,
-      "bytes": 12897992,
+      "bytes": 12898072,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4102,26 +4109,27 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Dock_Approach",
         "SOCKET_Emissive",
-        "SOCKET_Dock_Approach"
+        "SOCKET_Structure_Core"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -54,
-          -53.5992,
-          -43.5371
+          -54.0000101361927,
+          -53.59915720023376,
+          -43.537117827873544
         ],
         "max": [
-          54,
-          53.5992,
-          21.5267
+          54.00000503337799,
+          53.59916042546264,
+          21.526700973510742
         ],
         "dimensionsM": [
-          108,
-          107.1984,
-          65.0638
+          108.00001516957069,
+          107.1983176256964,
+          65.06381880138429
         ]
       },
       "triangleMetric": "lod0"
@@ -4133,7 +4141,7 @@
       "file": "places/place_station_trade_hub.glb",
       "tris": 1676618,
       "budgetClass": "landmark",
-      "bytes": 82073572,
+      "bytes": 82073720,
       "textureSize": 1024,
       "note": "HELIOS-GOLDEN-PRODUCTION-V1 2026-07-19 — engineered STATION-GOLDEN-02 body; functional armor, hull, machinery, service, docking, radiator, window and marking roles; outward-face material lift; supported service-truss bays; 30 KTX2 PBR textures; deterministic Blender production scripts and promotion receipt. Runtime gameplay capture remains the final visual acceptance gate. | PRO Full Finish 2026-07-06 — Meridian gold trade hub foundation. | M4-HELIOS-HUB-ENV promoted 2026-07-11 through 2026-07-12.",
       "factionAccentVariants": {
@@ -4156,24 +4164,26 @@
       },
       "hooks": [],
       "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Dock_Approach",
         "SOCKET_Structure_Core"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -57.422905,
-          -1.820184,
-          -43.625517
+          -57.42290496826172,
+          -1.820183898181165,
+          -43.62551727048114
         ],
         "max": [
-          63.422249,
-          28.675183,
-          43.625517
+          63.42224884033203,
+          28.67518344041749,
+          43.62551727048114
         ],
         "dimensionsM": [
-          120.845154,
-          30.495367,
-          87.251035
+          120.84515380859375,
+          30.495367338598655,
+          87.25103454096228
         ]
       }
     },
@@ -4195,19 +4205,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -67.7152,
-          14.535,
-          -59.5856
+          -67.71522521972656,
+          14.534955978393555,
+          -59.585636138916016
         ],
         "max": [
-          65.4314,
-          39.6919,
-          72.6036
+          65.43138885498047,
+          39.69185256958008,
+          72.6036148071289
         ],
         "dimensionsM": [
-          133.1466,
-          25.1569,
-          132.1893
+          133.14661407470703,
+          25.156896591186523,
+          132.18925094604492
         ]
       },
       "note": "PQ-193.09 — Free-ports trade-hub overlay at donor origin on place_station_trade_hub. Existing overlay identity. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_station_trade_hub_free_overlay_v01.glb."
@@ -4230,19 +4240,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -73.3576,
-          26.677,
-          -66.2221
+          -73.35761260986328,
+          26.676998138427734,
+          -66.22205352783203
         ],
         "max": [
-          79.3566,
-          49.227,
-          66.2181
+          79.35661315917969,
+          49.22699737548828,
+          66.21805572509766
         ],
         "dimensionsM": [
-          152.7142,
-          22.55,
-          132.4401
+          152.71422576904297,
+          22.549999237060547,
+          132.4401092529297
         ]
       },
       "note": "PQ-193.09 — MTS trade-hub overlay at donor origin on place_station_trade_hub. Existing overlay identity. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_station_trade_hub_mts_overlay_v01.glb."
@@ -4265,19 +4275,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -94.400497,
-          11.23069,
-          -65.402
+          -94.40049743652344,
+          11.230690002441406,
+          -65.4020004272461
         ],
         "max": [
-          76.399506,
-          56.176998,
-          65.397995
+          76.39950561523438,
+          56.176998138427734,
+          65.39799499511719
         ],
         "dimensionsM": [
-          170.800003,
-          44.946308,
-          130.799995
+          170.8000030517578,
+          44.94630813598633,
+          130.79999542236328
         ]
       },
       "note": "PQ-193.09 — SCN trade-hub overlay at donor origin on place_station_trade_hub. Existing overlay identity. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_station_trade_hub_scn_overlay_v01.glb."
@@ -4288,7 +4298,7 @@
       "priority": "P2",
       "file": "places/place_tally_post.glb",
       "tris": 1350,
-      "bytes": 225004,
+      "bytes": 225012,
       "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
@@ -4296,21 +4306,23 @@
       "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py.",
       "bounds": {
         "min": [
-          -5.1,
-          -0.864,
-          -5.1
+          -5.1000001430511475,
+          -0.8639999628067017,
+          -5.1000001430511475
         ],
         "max": [
-          9.569305,
-          20.366004,
-          5.1
+          9.569304971034978,
+          20.366004074156383,
+          5.1000001430511475
         ],
         "dimensionsM": [
-          14.669305,
-          21.230004,
-          10.2
+          14.669305114086125,
+          21.230004036963084,
+          10.200000286102295
         ]
-      }
+      },
+      "mount": "origin",
+      "sockets": []
     },
     {
       "id": "place_transfer_arm",
@@ -4333,19 +4345,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -3.9,
-          -0.05,
-          -2.3
+          -3.9000000953674316,
+          -0.05000000447034836,
+          -2.299999952316284
         ],
         "max": [
-          16.4,
-          10.4,
-          2.3
+          16.399999618530273,
+          10.399999618530273,
+          2.299999952316284
         ],
         "dimensionsM": [
-          20.3,
-          10.45,
-          4.6
+          20.299999713897705,
+          10.449999623000622,
+          4.599999904632568
         ]
       },
       "triangleMetric": "lod0"
@@ -4369,19 +4381,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.2,
-          -0.0421,
-          -11.2
+          -1.2000000476837158,
+          -0.04207277297973633,
+          -11.199999809265137
         ],
         "max": [
-          1.2,
-          13.2,
-          11.2
+          1.2000000476837158,
+          13.199999809265137,
+          11.199999809265137
         ],
         "dimensionsM": [
-          2.4,
-          13.2421,
-          22.4
+          2.4000000953674316,
+          13.242072582244873,
+          22.399999618530273
         ]
       },
       "triangleMetric": "lod0"
@@ -4392,7 +4404,7 @@
       "priority": "P2",
       "file": "places/place_whistle.glb",
       "tris": 1618,
-      "bytes": 251228,
+      "bytes": 251236,
       "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
@@ -4400,21 +4412,23 @@
       "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py.",
       "bounds": {
         "min": [
-          -2.670737,
-          -0.4752,
-          -2.102661
+          -2.6707374561916346,
+          -0.47519996762275696,
+          -2.1026606017045566
         ],
         "max": [
-          2.757491,
-          11.595547,
-          2.750914
+          2.7574914312148286,
+          11.59554671323219,
+          2.750914485222511
         ],
         "dimensionsM": [
-          5.428229,
-          12.070747,
-          4.853575
+          5.428228887406464,
+          12.070746680854947,
+          4.8535750869270675
         ]
-      }
+      },
+      "mount": "origin",
+      "sockets": []
     },
     {
       "id": "place_worklight_tower",
@@ -4441,12 +4455,12 @@
         ],
         "max": [
           1.5,
-          15.82,
+          15.820000648498535,
           1.5
         ],
         "dimensionsM": [
           3,
-          15.82,
+          15.820000648498535,
           3
         ]
       },
@@ -4478,19 +4492,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.02,
+          -1.007889986038208,
           0,
-          -1.02
+          -0.699999988079071
         ],
         "max": [
-          1.02,
-          1.1,
-          1.02
+          1.13359996676445,
+          1.0019999742507935,
+          0.8799999952316284
         ],
         "dimensionsM": [
-          2.04,
-          1.1,
-          2.04
+          2.141489952802658,
+          1.0019999742507935,
+          1.5799999833106995
         ]
       }
     },
@@ -4507,9 +4521,7 @@
       "hooks": [
         "flow_mesh"
       ],
-      "sockets": [
-        "flow_mesh"
-      ],
+      "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
@@ -4542,9 +4554,7 @@
       "hooks": [
         "flow_mesh"
       ],
-      "sockets": [
-        "flow_mesh"
-      ],
+      "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
@@ -4577,9 +4587,7 @@
       "hooks": [
         "flow_mesh"
       ],
-      "sockets": [
-        "flow_mesh"
-      ],
+      "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
@@ -4612,9 +4620,7 @@
       "hooks": [
         "flow_mesh"
       ],
-      "sockets": [
-        "flow_mesh"
-      ],
+      "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
@@ -4647,9 +4653,7 @@
       "hooks": [
         "flow_mesh"
       ],
-      "sockets": [
-        "flow_mesh"
-      ],
+      "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
@@ -4682,9 +4686,7 @@
       "hooks": [
         "flow_mesh"
       ],
-      "sockets": [
-        "flow_mesh"
-      ],
+      "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
@@ -4717,9 +4719,7 @@
       "hooks": [
         "powered"
       ],
-      "sockets": [
-        "powered"
-      ],
+      "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
@@ -4752,9 +4752,7 @@
       "hooks": [
         "powered"
       ],
-      "sockets": [
-        "powered"
-      ],
+      "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
@@ -4787,9 +4785,7 @@
       "hooks": [
         "powered"
       ],
-      "sockets": [
-        "powered"
-      ],
+      "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
@@ -4822,9 +4818,7 @@
       "hooks": [
         "powered"
       ],
-      "sockets": [
-        "powered"
-      ],
+      "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
@@ -4857,9 +4851,7 @@
       "hooks": [
         "powered"
       ],
-      "sockets": [
-        "powered"
-      ],
+      "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
@@ -4892,9 +4884,7 @@
       "hooks": [
         "powered"
       ],
-      "sockets": [
-        "powered"
-      ],
+      "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
@@ -4936,19 +4926,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.08,
+          -1.0800000429153442,
           0,
-          -0.87
+          -0.8700000047683716
         ],
         "max": [
-          1.08,
-          6.49,
-          0.87
+          1.0800000429153442,
+          6.490000247955322,
+          0.8700000047683716
         ],
         "dimensionsM": [
-          2.16,
-          6.49,
-          1.74
+          2.1600000858306885,
+          6.490000247955322,
+          1.7400000095367432
         ]
       }
     },
@@ -4973,19 +4963,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.945,
+          -0.9449999928474426,
           0,
-          -0.7976
+          -0.7975999712944031
         ],
         "max": [
-          0.73,
-          0.8,
-          0.7976
+          0.7300000190734863,
+          0.800000011920929,
+          0.7975999712944031
         ],
         "dimensionsM": [
-          1.675,
-          0.8,
-          1.5952
+          1.675000011920929,
+          0.800000011920929,
+          1.5951999425888062
         ]
       }
     },
@@ -5009,19 +4999,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.02,
+          -1.0199999809265137,
           0,
-          -1.02
+          -1.0199999809265137
         ],
         "max": [
-          1.02,
-          0.846,
-          1.02
+          1.0199999809265137,
+          0.8459999933838844,
+          1.0199999809265137
         ],
         "dimensionsM": [
-          2.04,
-          0.846,
-          2.04
+          2.0399999618530273,
+          0.8459999933838844,
+          2.0399999618530273
         ]
       }
     },
@@ -5046,19 +5036,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          0.085,
+          0.08500000089406967,
           0,
-          -0.86
+          -0.8600000143051147
         ],
         "max": [
-          1.16,
-          0.982,
-          0.86
+          1.159999966621399,
+          0.9819999933242798,
+          0.8600000143051147
         ],
         "dimensionsM": [
-          1.075,
-          0.982,
-          1.72
+          1.0749999657273293,
+          0.9819999933242798,
+          1.7200000286102295
         ]
       }
     },
@@ -5082,19 +5072,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.04,
+          -1.0399999916553497,
           0,
-          -1.04
+          -1.0419999808073044
         ],
         "max": [
-          1.04,
-          0.928,
-          1.04
+          1.0400000214576721,
+          0.9279999732971191,
+          1.0399999618530273
         ],
         "dimensionsM": [
-          2.08,
-          0.928,
-          2.08
+          2.080000013113022,
+          0.9279999732971191,
+          2.0819999426603317
         ]
       }
     },
@@ -5119,19 +5109,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.8001,
+          -0.8001000285148621,
           0,
-          -0.9462
+          -0.9539999961853027
         ],
         "max": [
-          0.9214,
-          1.2,
-          0.6
+          0.9213700294494629,
+          1.2000000476837158,
+          0.6000000238418579
         ],
         "dimensionsM": [
-          1.7215,
-          1.2,
-          1.5462
+          1.721470057964325,
+          1.2000000476837158,
+          1.5540000200271606
         ]
       }
     },
@@ -5167,19 +5157,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.9289,
+          -0.9289000332355499,
           0,
-          -0.905
+          -0.9049999956041574
         ],
         "max": [
-          1.02687,
-          1.03,
-          0.905
+          1.026869997382164,
+          1.0299999713897705,
+          0.9049999713897705
         ],
         "dimensionsM": [
-          1.95577,
-          1.03,
-          1.81
+          1.955770030617714,
+          1.0299999713897705,
+          1.809999966993928
         ]
       }
     },
@@ -5189,7 +5179,7 @@
       "priority": "P2",
       "file": "pods/pod_cargo_container.glb",
       "tris": 5324,
-      "bytes": 341860,
+      "bytes": 341868,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5221,19 +5211,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.53,
-          -0.02,
-          -1.510301
+          -0.5299999713897705,
+          -0.019999995827674866,
+          -1.5103009939193726
         ],
         "max": [
-          4.81,
-          2.43,
-          1.500301
+          4.809999942779541,
+          2.430000066757202,
+          1.5003010034561157
         ],
         "dimensionsM": [
-          5.34,
-          2.45,
-          3.010602
+          5.3399999141693115,
+          2.450000062584877,
+          3.0106019973754883
         ]
       }
     },
@@ -5243,7 +5233,7 @@
       "priority": "P1",
       "file": "pods/pod_47a_evidence_spindle.glb",
       "tris": 6864,
-      "bytes": 448004,
+      "bytes": 448040,
       "textureSize": 256,
       "tintable": {
         "hull": "Material_Hull"
@@ -5274,19 +5264,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.71,
-          -0.02,
-          -1.625318
+          -0.7100000381469727,
+          -0.019999995827674866,
+          -1.6253180503845215
         ],
         "max": [
-          4.81,
-          3.61,
-          1.555318
+          4.809999942779541,
+          3.609999895095825,
+          1.555317997932434
         ],
         "dimensionsM": [
-          5.52,
-          3.63,
-          3.180636
+          5.519999980926514,
+          3.6299998909235,
+          3.1806360483169556
         ]
       }
     },
@@ -5296,7 +5286,7 @@
       "priority": "P1",
       "file": "places/place_47a_rescue_capsule.glb",
       "tris": 4888,
-      "bytes": 353336,
+      "bytes": 353372,
       "textureSize": 256,
       "tintable": {
         "hull": "Material_Ceramic"
@@ -5327,19 +5317,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -3.62,
-          -1.52,
-          -1.57
+          -3.619999885559082,
+          -1.5199999809265137,
+          -1.5699999332427979
         ],
         "max": [
-          3.91,
-          1.85,
-          1.57
+          3.9100000858306885,
+          1.8499999046325684,
+          1.5699999332427979
         ],
         "dimensionsM": [
-          7.53,
-          3.37,
-          3.14
+          7.5299999713897705,
+          3.369999885559082,
+          3.1399998664855957
         ]
       }
     },
@@ -5379,19 +5369,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.2695,
-          -0.0778,
-          -1.5753
+          -0.2694820761680603,
+          -0.07780865952372551,
+          -1.5752559900283813
         ],
         "max": [
-          4.6196,
-          0.23,
-          1.5687
+          4.619626522064209,
+          0.23000000417232513,
+          1.5686571598052979
         ],
         "dimensionsM": [
-          4.8891,
-          0.3078,
-          3.1439
+          4.889108598232269,
+          0.30780866369605064,
+          3.143913149833679
         ]
       }
     },
@@ -5434,19 +5424,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.45,
-          -0.095,
-          -1.34
+          -0.44999992847442627,
+          -0.09500002861022949,
+          -1.340000033378601
         ],
         "max": [
-          3.75,
-          1.66,
-          1.34
+          3.7499998807907104,
+          1.659999966621399,
+          1.340000033378601
         ],
         "dimensionsM": [
-          4.2,
-          1.755,
-          2.68
+          4.199999809265137,
+          1.7549999952316284,
+          2.680000066757202
         ]
       }
     },
@@ -5486,19 +5476,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.575,
-          -0.04,
-          -1.8
+          -0.574999988079071,
+          -0.03999999910593033,
+          -1.7999999523162842
         ],
         "max": [
-          3.775,
-          1.8195,
-          1.8
+          3.7750000953674316,
+          1.819491982460022,
+          1.7999999523162842
         ],
         "dimensionsM": [
-          4.35,
-          1.8595,
-          3.6
+          4.350000083446503,
+          1.8594919815659523,
+          3.5999999046325684
         ]
       }
     },
@@ -5538,19 +5528,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.65,
-          -0.02,
-          -1.4
+          -0.6499999761581421,
+          -0.020000003278255463,
+          -1.399999976158142
         ],
         "max": [
           3.75,
-          1.2845,
-          1.4
+          1.2845031023025513,
+          1.399999976158142
         ],
         "dimensionsM": [
-          4.4,
-          1.3045,
-          2.8
+          4.399999976158142,
+          1.3045031055808067,
+          2.799999952316284
         ]
       }
     },
@@ -5595,18 +5585,18 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.2,
-          -0.91,
-          -0.8
+          -0.19999998807907104,
+          -0.9100000262260437,
+          -0.800000011920929
         ],
         "max": [
-          4.61,
-          0.498601,
-          0.575
+          4.610000133514404,
+          0.49860110878944397,
+          0.574999988079071
         ],
         "dimensionsM": [
-          4.81,
-          1.408601,
+          4.810000121593475,
+          1.4086011350154877,
           1.375
         ]
       }
@@ -5651,19 +5641,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.3,
-          -0.725,
-          -0.85
+          -0.30000001192092896,
+          -0.7250000238418579,
+          -0.8500000238418579
         ],
         "max": [
-          6.13,
-          0.77,
-          0.85
+          6.130000188946724,
+          0.7699999809265137,
+          0.8500000238418579
         ],
         "dimensionsM": [
-          6.43,
-          1.495,
-          1.7
+          6.430000200867653,
+          1.4950000047683716,
+          1.7000000476837158
         ]
       }
     },
@@ -5707,19 +5697,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.3,
-          -0.535,
-          -0.85
+          -0.30000001192092896,
+          -0.5350000262260437,
+          -0.8500000238418579
         ],
         "max": [
-          7.35,
-          0.535,
-          0.85
+          7.349999904632568,
+          0.5350000262260437,
+          0.8500000238418579
         ],
         "dimensionsM": [
-          7.65,
-          1.07,
-          1.7
+          7.649999916553497,
+          1.0700000524520874,
+          1.7000000476837158
         ]
       }
     },
@@ -5763,18 +5753,18 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.15,
-          -0.52,
+          -0.15000000596046448,
+          -0.5199999809265137,
           -0.5
         ],
         "max": [
-          4.64,
-          0.52,
+          4.63999992236495,
+          0.5199999809265137,
           0.5
         ],
         "dimensionsM": [
-          4.79,
-          1.04,
+          4.789999928325415,
+          1.0399999618530273,
           1
         ]
       }
@@ -5819,19 +5809,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.2,
-          -0.45,
-          -0.462798
+          -0.20000004768371582,
+          -0.44999998807907104,
+          -0.4627975523471832
         ],
         "max": [
-          6.1,
-          0.52,
-          0.462798
+          6.100000202655792,
+          0.5199999809265137,
+          0.4627975523471832
         ],
         "dimensionsM": [
-          6.3,
-          0.97,
-          0.925595
+          6.300000250339508,
+          0.9699999690055847,
+          0.9255951046943665
         ]
       }
     },
@@ -5876,17 +5866,17 @@
       "bounds": {
         "min": [
           -0.25,
-          -1.05,
+          -1.0499999523162842,
           -1.125
         ],
         "max": [
-          4.865,
-          1.05,
+          4.864999771118164,
+          1.0499999523162842,
           1.125
         ],
         "dimensionsM": [
-          5.115,
-          2.1,
+          5.114999771118164,
+          2.0999999046325684,
           2.25
         ]
       }
@@ -5897,7 +5887,7 @@
       "priority": "P2",
       "file": "wholeships/apron_shuttle.glb",
       "tris": 12202,
-      "bytes": 4037336,
+      "bytes": 4037604,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5913,24 +5903,29 @@
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
-        "SOCKET_Trail_Main"
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -9.3,
-          -2.225,
-          -2.16
+          -9.300000190734863,
+          -2.2249999046325684,
+          -2.1600000858306885
         ],
         "max": [
-          8.45,
-          1.746853,
-          2.08
+          8.449999809265137,
+          1.7468531131744385,
+          2.0799999237060547
         ],
         "dimensionsM": [
           17.75,
-          3.971853,
-          4.24
+          3.971853017807007,
+          4.240000009536743
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Apron Shuttle, live traffic role shuttle; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (3456/410/174 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -5941,7 +5936,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_dart.glb",
       "tris": 18642,
-      "bytes": 19306620,
+      "bytes": 19306708,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5954,32 +5949,33 @@
         "Gun_Assembly"
       ],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -7.025,
-          -0.722586,
-          -3.025
+          -7.025000095367432,
+          -0.7225860953330994,
+          -3.0249998569488525
         ],
         "max": [
-          8.750127,
-          1.575,
-          3.025
+          8.750126838684082,
+          1.5750000476837158,
+          3.0249998569488525
         ],
         "dimensionsM": [
-          15.775127,
-          2.297586,
-          6.05
+          15.775126934051514,
+          2.297586143016815,
+          6.049999713897705
         ]
       },
       "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Dart, live flyby_interceptor Reach hostile body; explicit LOD0/1/2, 8/7/7 draws, damageable drive/gun roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
@@ -5990,7 +5986,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_lode.glb",
       "tris": 27240,
-      "bytes": 20186844,
+      "bytes": 20186928,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6003,32 +5999,33 @@
         "Gun_Assembly"
       ],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -11.525,
-          -1.755,
-          -4.9875
+          -11.524999618530273,
+          -1.7549999952316284,
+          -4.987500190734863
         ],
         "max": [
-          12.099999,
-          2.575,
-          4.9875
+          12.09999942779541,
+          2.575000047683716,
+          4.987500190734863
         ],
         "dimensionsM": [
-          23.624999,
-          4.33,
-          9.975
+          23.624999046325684,
+          4.330000042915344,
+          9.975000381469727
         ]
       },
       "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Maul, live heavy_brawler Reach hostile body; explicit LOD0/1/2, 8/7/7 draws, damageable drive/gun roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
@@ -6039,7 +6036,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_rig.glb",
       "tris": 14724,
-      "bytes": 19004840,
+      "bytes": 19004932,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6053,33 +6050,34 @@
         "HOOK_TETHER_SPOOL"
       ],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
-        "SOCKET_Engine_Main",
-        "SOCKET_Trail_Main",
-        "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
         "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
-        "SOCKET_Tether_Front"
+        "SOCKET_Tether_Front",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.175,
-          -2.1,
-          -3.181428
+          -8.175000190734863,
+          -2.0999999046325684,
+          -3.1814281940460205
         ],
         "max": [
-          9.54,
-          3.87,
-          1.805
+          9.539999961853027,
+          3.870000123977661,
+          1.8050000667572021
         ],
         "dimensionsM": [
-          17.715,
-          5.97,
-          4.986428
+          17.71500015258789,
+          5.9700000286102295,
+          4.986428260803223
         ]
       },
       "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Hook, live tether_control_raider Reach hostile body; explicit LOD0/1/2, 9/8/8 draws, damageable drive/gun/tether roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
@@ -6091,7 +6089,7 @@
       "priority": "P1",
       "file": "wholeships/ashline_rig_corsair_blade.glb",
       "tris": 19444,
-      "bytes": 19515016,
+      "bytes": 19515116,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6105,33 +6103,34 @@
         "HOOK_TETHER_SPOOL"
       ],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
-        "SOCKET_Engine_Main",
-        "SOCKET_Trail_Main",
-        "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
         "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
-        "SOCKET_Tether_Front"
+        "SOCKET_Tether_Front",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.175,
-          -2.1,
-          -3.181428
+          -8.175000190734863,
+          -2.0999999046325684,
+          -3.1814281940460205
         ],
         "max": [
-          9.641732,
-          4.349393,
-          2.552605
+          9.641732215881348,
+          4.349392890930176,
+          2.5526046752929688
         ],
         "dimensionsM": [
-          17.816732,
-          6.449393,
-          5.734033
+          17.81673240661621,
+          6.449392795562744,
+          5.734032869338989
         ]
       },
       "note": "PQ-193.06 — Corsair Blade, live corsair_raider body. Foundry variant of the Ashline Rig with ram-lip, four blades, weapon collars, and lamps; donor PBR materials on the kit; pirate Rig slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_ashline_rig_corsair_blade_v01.glb."
@@ -6150,7 +6149,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_atlas",
       "tris": 65126,
-      "bytes": 3605016,
+      "bytes": 3605096,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6163,34 +6162,35 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -12.132,
-          -1.6,
-          -3.57
+          -12.131999967332359,
+          -1.5999999716877937,
+          -3.570000171661377
         ],
         "max": [
           11,
-          3.169999,
-          3.57
+          3.1699994908616547,
+          3.570000171661377
         ],
         "dimensionsM": [
-          23.132,
-          4.769999,
-          7.14
+          23.13199996733236,
+          4.769999462549448,
+          7.140000343322754
         ]
       },
       "note": "Fleet remaster production Atlas. Live player heavy hauler. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -6209,7 +6209,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_bastion",
       "tris": 40702,
-      "bytes": 2138908,
+      "bytes": 2139000,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6222,34 +6222,35 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -10.382,
-          -1.2,
-          -2.52
+          -10.381999967332359,
+          -1.1999999955296516,
+          -2.5199999809265137
         ],
         "max": [
           9.25,
-          2.18,
-          2.52
+          2.180000066757202,
+          2.5199999809265137
         ],
         "dimensionsM": [
-          19.632,
-          3.38,
-          5.04
+          19.63199996733236,
+          3.380000062286854,
+          5.039999961853027
         ]
       },
       "note": "Fleet remaster production Bastion. Live player corvette. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -6268,7 +6269,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_colossus",
       "tris": 56910,
-      "bytes": 2960060,
+      "bytes": 2960140,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6281,34 +6282,35 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -12.885,
-          -1.45,
-          -5.32
+          -13.132000183461342,
+          -1.5999999716877937,
+          -3.3199996948242188
         ],
         "max": [
           12,
-          17.41,
-          3.304
+          2.580000162124634,
+          3.319999933242798
         ],
         "dimensionsM": [
-          24.885,
-          18.86,
-          8.624
+          25.132000183461344,
+          4.1800001338124275,
+          6.639999628067017
         ]
       },
       "note": "Fleet remaster production Colossus. Live player battlecruiser. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -6320,7 +6322,7 @@
       "priority": "P1",
       "file": "wholeships/helios_arclight.glb",
       "tris": 35888,
-      "bytes": 7175412,
+      "bytes": 7175388,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6333,32 +6335,33 @@
         "Gun_Assembly"
       ],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -16.111364,
-          -4.1,
-          -5.885962
+          -16.111364364624023,
+          -4.099999904632568,
+          -5.885962009429932
         ],
         "max": [
-          16.800001,
-          4.204,
-          5.87
+          16.80000114440918,
+          4.203999757766724,
+          5.869999885559082
         ],
         "dimensionsM": [
-          32.911366,
-          8.304,
-          11.755962
+          32.9113655090332,
+          8.303999662399292,
+          11.755961894989014
         ]
       },
       "note": "PQ-193.07 — Helios Arclight, rare heavy hauler. Distinct body from live Span/Atlas slots. Provenance: assets/ships/m4_hero_hauler/."
@@ -6369,7 +6372,7 @@
       "priority": "P1",
       "file": "wholeships/helios_cradle.glb",
       "tris": 37870,
-      "bytes": 25784456,
+      "bytes": 25784540,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6383,32 +6386,33 @@
         "Mining_Emitter"
       ],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -10.35,
-          -3.65,
-          -4.65
+          -10.350000381469727,
+          -3.6499998569488525,
+          -4.650000095367432
         ],
         "max": [
-          11.799999,
-          5.05,
-          4.65
+          11.799999237060547,
+          5.049999713897705,
+          4.650000095367432
         ],
         "dimensionsM": [
-          22.15,
-          8.7,
-          9.3
+          22.149999618530273,
+          8.699999570846558,
+          9.300000190734863
         ]
       },
       "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Cradle, live Helios traffic role miner; explicit LOD0/1/2, 9/9/9 draws, semantic 1K PBR maps, damageable drive/gun/mining roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
@@ -6419,7 +6423,7 @@
       "priority": "P1",
       "file": "wholeships/helios_lark.glb",
       "tris": 36010,
-      "bytes": 25667296,
+      "bytes": 25667384,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6432,32 +6436,33 @@
         "Gun_Assembly"
       ],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.275,
-          -1.225,
-          -3.7
+          -8.274999618530273,
+          -1.225000023841858,
+          -3.6999998092651367
         ],
         "max": [
-          9.950078,
-          2.12,
-          3.7
+          9.950078010559082,
+          2.119999885559082,
+          3.6999998092651367
         ],
         "dimensionsM": [
-          18.225078,
-          3.345,
-          7.4
+          18.225077629089355,
+          3.34499990940094,
+          7.399999618530273
         ]
       },
       "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Lark, live Helios traffic role courier; explicit LOD0/1/2, 8/8/8 draws, semantic 1K PBR maps, damageable drive/gun roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
@@ -6468,7 +6473,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span.glb",
       "tris": 55736,
-      "bytes": 27039256,
+      "bytes": 27039336,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6481,32 +6486,33 @@
         "Gun_Assembly"
       ],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.325,
-          -2.3,
-          -4.46
+          -14.324999809265137,
+          -2.3000001907348633,
+          -4.460000038146973
         ],
         "max": [
-          14.15,
-          2.81,
-          4.46
+          14.149999618530273,
+          2.81000018119812,
+          4.460000038146973
         ],
         "dimensionsM": [
-          28.474999,
-          5.11,
-          8.92
+          28.47499942779541,
+          5.110000371932983,
+          8.920000076293945
         ]
       },
       "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Span, live Helios traffic role hauler; explicit LOD0/1/2, 8/8/8 draws, semantic 1K PBR maps, damageable drive/gun roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
@@ -6518,7 +6524,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_dmc.glb",
       "tris": 60808,
-      "bytes": 27492292,
+      "bytes": 28690116,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6531,31 +6537,32 @@
         "Gun_Assembly"
       ],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.325,
-          -2.3,
+          -14.324999809265137,
+          -2.3000001907348633,
           -4.625
         ],
         "max": [
-          14.15,
-          3.560601,
+          14.149999618530273,
+          3.5606014728546143,
           4.625
         ],
         "dimensionsM": [
-          28.474999,
-          5.860602,
+          28.47499942779541,
+          5.8606016635894775,
           9.25
         ]
       },
@@ -6568,7 +6575,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_mts.glb",
       "tris": 59678,
-      "bytes": 27768400,
+      "bytes": 27768480,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6581,32 +6588,33 @@
         "Gun_Assembly"
       ],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.325,
-          -2.3,
-          -4.46
+          -14.324999809265137,
+          -2.3000001907348633,
+          -4.460000038146973
         ],
         "max": [
-          14.15,
-          3.96,
-          4.46
+          14.149999618530273,
+          3.9600000381469727,
+          4.460000038146973
         ],
         "dimensionsM": [
-          28.474999,
-          6.26,
-          8.92
+          28.47499942779541,
+          6.260000228881836,
+          8.920000076293945
         ]
       },
       "note": "PQ-193.09 — live Helios Span carrying the MTS sealed faction kit. Donor hull is the accepted Span. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_helios_span_mts_sealed_v01.glb."
@@ -6618,7 +6626,7 @@
       "priority": "P1",
       "file": "wholeships/helios_span_reach.glb",
       "tris": 58062,
-      "bytes": 27285532,
+      "bytes": 28372704,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6631,32 +6639,33 @@
         "Gun_Assembly"
       ],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.662499,
-          -2.3,
-          -4.46
+          -14.66249942779541,
+          -2.3000001907348633,
+          -4.460000038146973
         ],
         "max": [
-          14.15,
-          3.252204,
-          4.46
+          14.149999618530273,
+          3.252204179763794,
+          4.460000038146973
         ],
         "dimensionsM": [
-          28.812499,
-          5.552204,
-          8.92
+          28.812499046325684,
+          5.552204370498657,
+          8.920000076293945
         ]
       },
       "note": "PQ-193.09 — live Helios Span carrying the Reach scrap faction kit. Donor hull is the accepted Span. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_helios_span_reach_scrap_v01.glb."
@@ -6675,7 +6684,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
       "tris": 13306,
-      "bytes": 1188568,
+      "bytes": 1188652,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6687,34 +6696,35 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.1,
-          -1.05,
-          -4.55
+          -5.399999618530273,
+          -1.0499999523162842,
+          -4.550000190734863
         ],
         "max": [
-          5.78,
-          1.294,
-          4.55
+          5.699999809265137,
+          1.6799999475479126,
+          4.550000190734863
         ],
         "dimensionsM": [
-          10.88,
-          2.344,
-          9.1
+          11.09999942779541,
+          2.7299998998641968,
+          9.100000381469727
         ]
       },
       "note": "PQ-050.01 chase_form_v17. Cycle 5: darker hull, plate course, HN/07 lettering, hull-wide dirt, extra hoses/cargo. Hitch/Kestrel untouched. Chase Hitch-plus PASS for the four C4 notes."
@@ -6725,7 +6735,7 @@
       "priority": "P2",
       "file": "wholeships/inspection_cutter.glb",
       "tris": 16503,
-      "bytes": 5046492,
+      "bytes": 5046852,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6740,25 +6750,30 @@
         "SOCKET_Camera_Focus",
         "SOCKET_Engine_Main",
         "SOCKET_Inspection_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
         "SOCKET_Sensor_Dorsal",
-        "SOCKET_Trail_Main"
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -11.577497,
-          -3.329519,
-          -2.496316
+          -11.577497482299805,
+          -3.329519271850586,
+          -2.4963157176971436
         ],
         "max": [
           11,
-          3.85,
-          2.496316
+          3.8499999046325684,
+          2.4963157176971436
         ],
         "dimensionsM": [
-          22.577497,
-          7.179519,
-          4.992631
+          22.577497482299805,
+          7.179519176483154,
+          4.992631435394287
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Inspection Cutter, live traffic role customs; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4144/1356/578 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -6777,7 +6792,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_ironback",
       "tris": 42530,
-      "bytes": 2228276,
+      "bytes": 2228356,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6790,34 +6805,35 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -9.385,
-          -1.35,
-          -4.72
+          -9.632000183461342,
+          -1.4999999478459358,
+          -3.0200002193450928
         ],
         "max": [
           8.5,
-          14.128,
-          3
+          2.2567517870714475,
+          3.0199999809265137
         ],
         "dimensionsM": [
-          17.885,
-          15.478,
-          7.72
+          18.132000183461344,
+          3.7567517349173833,
+          6.0400002002716064
         ]
       },
       "note": "Fleet remaster production Ironback. Live player mining barge. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -6850,32 +6866,32 @@
         "HOOK_SECONDARY_POD"
       ],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
         "SOCKET_Trail_Main",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.316187,
-          -2.766388,
-          -7.015333
+          -14.316186904907227,
+          -2.766388416290283,
+          -7.0153326988220215
         ],
         "max": [
-          13.90574,
-          4.363783,
-          7.015333
+          13.905739784240723,
+          4.36378288269043,
+          7.0153326988220215
         ],
         "dimensionsM": [
-          28.221927,
-          7.130171,
-          14.030665
+          28.22192668914795,
+          7.130171298980713,
+          14.030665397644043
         ]
       },
       "note": "Hitch V7 polish live promotion — same boat, manufactured drive/sensor/shoulders/radiators, DIE LAUGHING spray stencil, role-mapped PBR, nine sockets, no baked plume."
@@ -6892,21 +6908,32 @@
       "note": "Kestrel LOD1 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth.",
       "bounds": {
         "min": [
-          -14.315042,
-          -2.761895,
-          -7.015333
+          -14.315042495727539,
+          -2.7618954181671143,
+          -7.0153326988220215
         ],
         "max": [
-          13.90574,
-          4.359975,
-          7.015333
+          13.905739784240723,
+          4.359975337982178,
+          7.0153326988220215
         ],
         "dimensionsM": [
-          28.220782,
-          7.121871,
-          14.030665
+          28.22078227996826,
+          7.121870756149292,
+          14.030665397644043
         ]
-      }
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
     },
     {
       "id": "wholeship_kestrel_lod2",
@@ -6920,21 +6947,32 @@
       "note": "Kestrel LOD2 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth.",
       "bounds": {
         "min": [
-          -14.32,
-          -2.77,
-          -7.015333
+          -14.319999694824219,
+          -2.7699999809265137,
+          -7.0153326988220215
         ],
         "max": [
-          13.90574,
-          4.363783,
-          7.015333
+          13.905739784240723,
+          4.36378288269043,
+          7.0153326988220215
         ],
         "dimensionsM": [
-          28.225739,
-          7.133783,
-          14.030665
+          28.22573947906494,
+          7.133782863616943,
+          14.030665397644043
         ]
-      }
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
     },
     {
       "id": "wholeship_leviathan_production_v1",
@@ -6950,7 +6988,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_leviathan",
       "tris": 56910,
-      "bytes": 2957956,
+      "bytes": 2958032,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6963,34 +7001,35 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.385,
-          -1.7,
-          -5.92
+          -14.632000183461342,
+          -1.8499999716877937,
+          -3.620000123977661
         ],
         "max": [
           13.5,
-          19.6,
-          3.652
+          2.830000162124634,
+          3.619999885559082
         ],
         "dimensionsM": [
-          27.885,
-          21.3,
-          9.572
+          28.132000183461344,
+          4.6800001338124275,
+          7.240000009536743
         ]
       },
       "note": "Fleet remaster production Leviathan. Live player flagship. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -7009,40 +7048,42 @@
       "status": "integration_candidate",
       "wiringStatus": "live_express_candidate",
       "tris": 58211,
-      "bytes": 13125508,
+      "bytes": 13125660,
       "textureSize": 1024,
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Dock_Port",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Service_Starboard",
+        "SOCKET_Tether_Keel",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard",
-        "SOCKET_Dock_Port",
-        "SOCKET_Service_Starboard",
-        "SOCKET_Tether_Keel"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
           -21,
-          -5.47,
-          -9.48
+          -5.46999979019165,
+          -9.479999542236328
         ],
         "max": [
-          19.799999,
-          5.666806,
-          9.48
+          19.799999237060547,
+          5.666805744171143,
+          9.479999542236328
         ],
         "dimensionsM": [
-          40.799999,
-          11.136806,
-          18.959999
+          40.79999923706055,
+          11.136805534362793,
+          18.959999084472656
         ]
       },
       "note": "PQ-049 Massline Express Liner. Civic pressure-drum passenger body for the existing Helios express slot. Authored LOD0/1/2; LOD0 is the packaged live body. Not self-accepted."
@@ -7061,7 +7102,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_mule",
       "tris": 34372,
-      "bytes": 2172716,
+      "bytes": 2172800,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7074,34 +7115,35 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.825,
-          -1.23,
-          -3.295
+          -8.825000286102295,
+          -1.2299998998641968,
+          -3.2949999570846558
         ],
         "max": [
-          6.4,
-          3.13,
-          3.27
+          6.400000095367432,
+          3.129999876022339,
+          3.2699999809265137
         ],
         "dimensionsM": [
-          15.225,
-          4.36,
-          6.565
+          15.225000381469727,
+          4.359999775886536,
+          6.564999938011169
         ]
       },
       "note": "Fleet remaster production Mule. Live player freighter. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -7112,7 +7154,7 @@
       "priority": "P2",
       "file": "wholeships/ore_barge.glb",
       "tris": 21208,
-      "bytes": 4514692,
+      "bytes": 4514944,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7127,26 +7169,31 @@
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Dorsal",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front",
         "SOCKET_Work_Boom"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -21.77,
-          -1.8,
-          -3.82
+          -21.770000457763672,
+          -1.7999999523162842,
+          -3.819999933242798
         ],
         "max": [
-          17.850002,
-          4.75116,
-          3.82
+          17.85000228881836,
+          4.75115966796875,
+          3.819999933242798
         ],
         "dimensionsM": [
-          39.620003,
-          6.55116,
-          7.64
+          39.62000274658203,
+          6.551159620285034,
+          7.639999866485596
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Ore Barge, live traffic role ore_carrier; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (7752/1044/446 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7173,7 +7220,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_pelican",
       "tris": 30974,
-      "bytes": 1644940,
+      "bytes": 1645388,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7186,20 +7233,38 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
-      "note": "Fleet remaster production Pelican. Distinct prospector wholeship so Pelican no longer shares the Ironback barge silhouette. Chamfered plate hull, twin axial ion drives, cutter arms, starboard filter drums. Not self-accepted. Provenance: assets/ships/pelican_production_v1/."
+      "note": "Fleet remaster production Pelican. Distinct prospector wholeship so Pelican no longer shares the Ironback barge silhouette. Chamfered plate hull, twin axial ion drives, cutter arms, starboard filter drums. Not self-accepted. Provenance: assets/ships/pelican_production_v1/.",
+      "bounds": {
+        "min": [
+          -6.811999797821045,
+          -1.4199999570846558,
+          -2.8899998664855957
+        ],
+        "max": [
+          7.815442085266113,
+          2.336752414703369,
+          2.690000057220459
+        ],
+        "dimensionsM": [
+          14.627441883087158,
+          3.756752371788025,
+          5.579999923706055
+        ]
+      }
     },
     {
       "id": "wholeship_prospector_skiff",
@@ -7207,7 +7272,7 @@
       "priority": "P2",
       "file": "wholeships/prospector_skiff.glb",
       "tris": 12244,
-      "bytes": 4052088,
+      "bytes": 4052368,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7221,26 +7286,31 @@
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
         "SOCKET_Scan_Pin",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front",
         "SOCKET_Work_Boom"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -7.9,
-          -1.949444,
-          -2.669701
+          -7.899999618530273,
+          -1.9494436979293823,
+          -2.6697006225585938
         ],
         "max": [
-          9.440001,
-          1.74,
-          2.32
+          9.440000534057617,
+          1.7400000095367432,
+          2.319999933242798
         ],
         "dimensionsM": [
-          17.34,
-          3.689444,
-          4.989701
+          17.34000015258789,
+          3.6894437074661255,
+          4.989700555801392
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Prospector Skiff, live traffic role prospector; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (2636/500/212 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7259,7 +7329,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_ranger",
       "tris": 24744,
-      "bytes": 3125096,
+      "bytes": 3125224,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7272,34 +7342,35 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.62,
-          -3.453,
-          -0.971
+          -8.619999885559082,
+          -0.9713971614837646,
+          -3.4531514644622803
         ],
         "max": [
-          7.15,
-          3.453,
-          1.88
+          8.699999809265137,
+          1.8799999952316284,
+          3.4531514644622803
         ],
         "dimensionsM": [
-          15.77,
-          6.906,
-          2.851
+          17.31999969482422,
+          2.851397156715393,
+          6.9063029289245605
         ]
       },
       "note": "PQ-050.03 chase_form_v4a. Cycle 4: remass bow + mid-hull into a broader, shorter continuous explorer shell (no new garnish). Hitch/Kestrel/Hornet/Drifter untouched. Chase Hitch-plus REVISE (CAGE_READ NO; TUBE_PADDLE NO; Hitch still wins formed-shell massing/skin)."
@@ -7310,7 +7381,7 @@
       "priority": "P2",
       "file": "wholeships/repair_tender.glb",
       "tris": 18502,
-      "bytes": 4383916,
+      "bytes": 4384148,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7325,27 +7396,32 @@
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Umbilical_Dorsal",
         "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front",
         "SOCKET_Work_Boom"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -12.4,
-          -2.36,
-          -5.267666
+          -12.399999618530273,
+          -2.359999895095825,
+          -5.267666339874268
         ],
         "max": [
-          12.300001,
-          3.380717,
+          12.30000114440918,
+          3.380717158317566,
           4.25
         ],
         "dimensionsM": [
-          24.700001,
-          5.740717,
-          9.517666
+          24.700000762939453,
+          5.740717053413391,
+          9.517666339874268
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Repair Tender, live traffic role tender; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (5652/920/392 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7356,7 +7432,7 @@
       "priority": "P2",
       "file": "wholeships/rescue_lifter.glb",
       "tris": 19676,
-      "bytes": 4435028,
+      "bytes": 4435288,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7372,24 +7448,29 @@
         "SOCKET_Camera_Focus",
         "SOCKET_Engine_Main",
         "SOCKET_Hoist_Main",
-        "SOCKET_Trail_Main"
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.200001,
-          -2.725,
-          -3.6
+          -14.200000762939453,
+          -2.7250001430511475,
+          -3.5999999046325684
         ],
         "max": [
-          14.800001,
-          4.33,
-          3.6
+          14.80000114440918,
+          4.329999923706055,
+          3.5999999046325684
         ],
         "dimensionsM": [
-          29.000002,
-          7.055,
-          7.2
+          29.000001907348633,
+          7.055000066757202,
+          7.199999809265137
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Rescue Lifter, live traffic role rescue; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4692/684/292 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7400,7 +7481,7 @@
       "priority": "P2",
       "file": "wholeships/salvage_cutter.glb",
       "tris": 13964,
-      "bytes": 4165212,
+      "bytes": 4165432,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7415,27 +7496,32 @@
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Aft",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Tether_Port",
         "SOCKET_Tether_Starboard",
         "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front",
         "SOCKET_Work_Boom"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -10.099999,
+          -10.09999942779541,
           -2,
-          -3.67
+          -3.669999837875366
         ],
         "max": [
-          10.700564,
-          3.109795,
-          3.67
+          10.70056438446045,
+          3.1097946166992188,
+          3.669999837875366
         ],
         "dimensionsM": [
-          20.800564,
-          5.109795,
-          7.34
+          20.80056381225586,
+          5.109794616699219,
+          7.339999675750732
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Salvage Cutter, live traffic role salvor; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4400/742/318 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7446,7 +7532,7 @@
       "priority": "P2",
       "file": "wholeships/scrap_sweeper.glb",
       "tris": 12916,
-      "bytes": 4072924,
+      "bytes": 4073192,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7462,24 +7548,29 @@
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Aft",
         "SOCKET_Engine_Main",
-        "SOCKET_Trail_Main"
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
           -9.5,
-          -2.350707,
-          -3.147204
+          -2.350706934928894,
+          -3.1472036838531494
         ],
         "max": [
-          9.426921,
+          9.426920890808105,
           3.5,
-          3.147204
+          3.1472036838531494
         ],
         "dimensionsM": [
-          18.926921,
-          5.850707,
-          6.294407
+          18.926920890808105,
+          5.850706934928894,
+          6.294407367706299
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Scrap Sweeper, live traffic role sweeper; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (3520/678/290 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7490,7 +7581,7 @@
       "priority": "P2",
       "file": "wholeships/survey_pin.glb",
       "tris": 13884,
-      "bytes": 4703968,
+      "bytes": 4704344,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7504,27 +7595,32 @@
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
         "SOCKET_Scan_Pin",
         "SOCKET_Sensor_Dorsal",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
-        "SOCKET_Utility_Dorsal"
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -11.1,
-          -1.563264,
-          -3.892146
+          -11.100000381469727,
+          -1.563264012336731,
+          -3.892145872116089
         ],
         "max": [
-          9.8,
-          4.55,
-          4.05
+          9.800000190734863,
+          4.550000190734863,
+          4.050000190734863
         ],
         "dimensionsM": [
-          20.900001,
-          6.113264,
-          7.942146
+          20.90000057220459,
+          6.113264203071594,
+          7.942146062850952
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Survey Pin, live traffic role surveyor; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4104/666/284 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7535,7 +7631,7 @@
       "priority": "P2",
       "file": "wholeships/volatiles_tanker.glb",
       "tris": 23377,
-      "bytes": 5227508,
+      "bytes": 5227900,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7551,24 +7647,29 @@
         "SOCKET_Cargo_Dorsal",
         "SOCKET_Coupling_Front",
         "SOCKET_Engine_Main",
-        "SOCKET_Trail_Main"
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -17.244871,
-          -1.67583,
-          -3.333834
+          -17.244871139526367,
+          -1.6758301258087158,
+          -3.333834171295166
         ],
         "max": [
-          17.880001,
-          5.973592,
-          2.63
+          17.880001068115234,
+          5.9735918045043945,
+          2.630000114440918
         ],
         "dimensionsM": [
-          35.124872,
-          7.649422,
-          5.963834
+          35.1248722076416,
+          7.64942193031311,
+          5.963834285736084
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Volatiles Tanker, live traffic role tanker; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (8688/2646/1130 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7587,7 +7688,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_warden",
       "tris": 53604,
-      "bytes": 3137556,
+      "bytes": 3137648,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7600,34 +7701,35 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -11.132,
-          -1.35,
-          -2.92
+          -11.131999967332359,
+          -1.3499999716877937,
+          -2.9200003147125244
         ],
         "max": [
           10,
-          2.33,
-          2.92
+          2.330000162124634,
+          2.9200000762939453
         ],
         "dimensionsM": [
-          21.132,
-          3.68,
-          5.84
+          21.13199996733236,
+          3.6800001338124275,
+          5.84000039100647
         ]
       },
       "note": "Fleet remaster production Warden. Live player gunship. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -7654,7 +7756,7 @@
       "status": "accepted",
       "wiringStatus": "live_player_wasp",
       "tris": 15410,
-      "bytes": 13199596,
+      "bytes": 13199676,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7667,35 +7769,36 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "note": "Accepted production Wasp. New SpaceFace-authored fighter body with seven semantic material draws, authored 11.5k/7.7k/5.4k LODs, compact dark canopy, bounded tone-mapped twin drive apertures, no embedded plume, and exact first-party provenance at assets/ships/wasp_production_v1/PROVENANCE.json. Canonical public Shipyard -> Undock -> save -> Continue visual acceptance passed 2026-07-14; receipt: .devshots/alpha/m5-role-public-route-v2/evidence.json.",
       "bounds": {
         "min": [
           -10,
-          -1.38,
-          -8.08183
+          -1.3799999952316284,
+          -8.081830024719238
         ],
         "max": [
           12,
-          2.319466,
-          8.08183
+          2.3194658756256104,
+          8.081830024719238
         ],
         "dimensionsM": [
           22,
-          3.699466,
-          16.16366
+          3.6994658708572388,
+          16.163660049438477
         ]
       }
     },
@@ -7706,7 +7809,7 @@
       "priority": "P1",
       "file": "wholeships/wasp_free_militia.glb",
       "tris": 16878,
-      "bytes": 13334128,
+      "bytes": 13334208,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7719,34 +7822,35 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
           -10,
-          -1.38,
-          -8.08183
+          -1.3799999952316284,
+          -8.081830024719238
         ],
         "max": [
           12,
-          2.324737,
-          8.08183
+          2.324737071990967,
+          8.081830024719238
         ],
         "dimensionsM": [
           22,
-          3.704737,
-          16.16366
+          3.704737067222595,
+          16.163660049438477
         ]
       },
       "note": "PQ-193.09 — live Wasp carrying the Free militia faction kit. Pirate Wasp slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_wasp_free_militia_v01.glb."
@@ -7758,7 +7862,7 @@
       "priority": "P1",
       "file": "wholeships/wasp_mts_escort.glb",
       "tris": 23696,
-      "bytes": 14390672,
+      "bytes": 14390752,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7771,34 +7875,35 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
           -10,
-          -1.38,
-          -8.08183
+          -1.3799999952316284,
+          -8.081830024719238
         ],
         "max": [
           12,
-          4.860343,
-          8.08183
+          4.8603434562683105,
+          8.081830024719238
         ],
         "dimensionsM": [
           22,
-          6.240343,
-          16.16366
+          6.240343451499939,
+          16.163660049438477
         ]
       },
       "note": "PQ-193.09 — live Wasp carrying the MTS escort faction kit. Pirate Wasp slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_wasp_mts_escort_v01.glb."
@@ -7810,7 +7915,7 @@
       "priority": "P1",
       "file": "wholeships/wasp_scn_patrol.glb",
       "tris": 23866,
-      "bytes": 14421392,
+      "bytes": 14421468,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7823,34 +7928,35 @@
       },
       "hooks": [],
       "sockets": [
-        "SOCKET_Weapon_Front",
-        "SOCKET_Mining_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Cargo_Ventral",
-        "SOCKET_Camera_Focus",
-        "SOCKET_RCS_Port",
-        "SOCKET_RCS_Starboard"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
           -10,
-          -1.38,
-          -8.08183
+          -1.3799999952316284,
+          -8.081830024719238
         ],
         "max": [
           12,
-          2.38,
-          8.08183
+          2.380000114440918,
+          8.081830024719238
         ],
         "dimensionsM": [
           22,
-          3.76,
-          16.16366
+          3.7600001096725464,
+          16.163660049438477
         ]
       },
       "note": "PQ-193.09 — live Wasp carrying the SCN patrol faction kit. Pirate Wasp slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_wasp_scn_patrol_v01.glb."
@@ -7861,7 +7967,7 @@
       "priority": "P2",
       "file": "wholeships/yard_tug.glb",
       "tris": 24558,
-      "bytes": 4769596,
+      "bytes": 4769860,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7875,26 +7981,31 @@
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
         "SOCKET_Push_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
-        "SOCKET_Utility_Dorsal"
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -12.61818,
-          -1.58,
-          -3.5402
+          -12.618180274963379,
+          -1.5800000429153442,
+          -3.5401997566223145
         ],
         "max": [
-          13.509999,
-          4.42,
-          3.5402
+          13.50999927520752,
+          4.420000076293945,
+          3.5401997566223145
         ],
         "dimensionsM": [
-          26.12818,
-          6,
-          7.0804
+          26.1281795501709,
+          6.0000001192092896,
+          7.080399513244629
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Yard Tug, live traffic role tug; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (8208/3116/1331 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7917,19 +8028,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.8,
-          -0.39,
-          -0.55
+          -0.7898100018501282,
+          -0.38999998569488525,
+          -0.5408300161361694
         ],
         "max": [
-          0.8,
-          0.44,
-          0.55
+          0.797569990158081,
+          0.43320000171661377,
+          0.5447900295257568
         ],
         "dimensionsM": [
-          1.6,
-          0.83,
-          1.1
+          1.5873799920082092,
+          0.823199987411499,
+          1.0856200456619263
         ]
       }
     }

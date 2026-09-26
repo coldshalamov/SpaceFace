@@ -33,6 +33,9 @@ import {
   findMasslineHeadConflict,
   fitRefusalText,
   fits,
+  catalogHullFacts,
+  moduleSimMass,
+  moduleSimPrice,
   getDerivedStats,
   hardpointClassOf,
   mountOutputFactor,
@@ -2769,17 +2772,19 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const slotSummary = Object.entries(def.slots || {}).filter(([, arr]) => (arr || []).length)
         .map(([t, arr]) => `<span class="sx-spec__hp">${(arr || []).length}×\u00a0${escapeHtml(SLOT_LABEL[t] || t)}</span>`).join('');
       const credits = (ctx.state.player && ctx.state.player.credits) || 0;
-      const afford = def.price <= credits;
+      const facts = catalogHullFacts(def.id);
+      const afford = facts.price <= credits;
       const isOwned = owned().some((s) => s.defId === def.id);
       const availability = shipworksActionAvailability(ctx.state);
       const canBuy = afford && availability.hullEnabled;
       // a key that cannot be pressed still says what it would do; why it cannot stands under it as a label
-      const whyNot = !availability.hullEnabled ? availability.hullLabel : (afford ? '' : `${fmt(def.price - credits)} cr short`);
+      const whyNot = !availability.hullEnabled ? availability.hullLabel : (afford ? '' : `${fmt(facts.price - credits)} cr short`);
       const buyAria = canBuy ? 'Buy ship' : `Buy ship, ${whyNot}`;
       // The stage-right column: the hull's name and class, its price as the hero number, then the hull as
       // readings against the one you fly (each carries your hull's value as its ghost: ice where this hull
       // gains, dim bone where it costs), and Buy as the one primary key. The sockets stand on the disc.
       const mine = activeOwnedDef();
+      const mineFacts = mine ? catalogHullFacts(mine.id) : null;
       const compare = !!(mine && mine.id !== def.id);
       const reading = (label, value, ownValue, unit, lowerIsBetter = false) => {
         const v = Number(value) || 0; const o = Number(ownValue) || 0;
@@ -2793,23 +2798,24 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       sideEl.innerHTML =
         `<h3 class="k-t-sub sx-sw-side__name">${entitySpanHtml('hull:' + def.id, escapeHtml(def.name))}</h3>` +
         `<p class="sx-sw-side__class">${escapeHtml(def.role || 'ship')} \u00b7 T${def.tier}</p>` +
-        `<div class="k-hero sx-sw-side__hero"><span class="k-hero__n">${def.price > 0 ? fmt(def.price) : 'Starter'}</span><span class="k-hero__w">${def.price > 0 ? 'credits' : 'hull'}</span></div>` +
+        `<div class="k-hero sx-sw-side__hero"><span class="k-hero__n">${facts.price > 0 ? fmt(facts.price) : 'Starter'}</span><span class="k-hero__w">${facts.price > 0 ? 'credits' : 'hull'}</span></div>` +
         `<ul class="sx-sw-read" aria-label="${compare ? `Readings against your ${escapeHtml(mine.name)}` : 'Readings'}">` +
-          reading('Hull', def.hull, mine && mine.hull, '') + reading('Shield', def.shield, mine && mine.shield, '') +
-          reading('Cargo', def.cargo, mine && mine.cargo, 'u') + reading('Mass', def.mass, mine && mine.mass, 't', true) +
+          reading('Hull', facts.hull, mineFacts && mineFacts.hull, '') + reading('Shield', facts.shield, mineFacts && mineFacts.shield, '') +
+          reading('Cargo', facts.cargo, mineFacts && mineFacts.cargo, 'u') + reading('Mass', facts.mass, mineFacts && mineFacts.mass, 't', true) +
+          reading('Speed', facts.speed, mineFacts && mineFacts.speed, '') +
         `</ul>` +
         (compare ? `<p class="sx-sw-read__vs">\u2190 your ${escapeHtml(mine.name)}</p>` : '') +
         `<p class="sx-sw-read__hp">Hardpoints: ${slotSummary || '\u2014'}</p>` +
         `<ul class="k-words k-words--row sx-buybar${canBuy || isOwned ? '' : ' is-blocked'}">` +
           (isOwned
             ? `<li><span class="k-word k-word--emph k-38 sx-btn-ghost">In your fleet</span></li>`
-            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${canBuy ? '' : 'disabled'} aria-label="${escapeHtml(buyAria)}">Buy ship${canBuy ? ` <small>${fmt(def.price)} cr</small>` : ''}</button></li>` +
+            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${canBuy ? '' : 'disabled'} aria-label="${escapeHtml(buyAria)}">Buy ship${canBuy ? ` <small>${fmt(facts.price)} cr</small>` : ''}</button></li>` +
               (canBuy ? '' : `<li class="sx-buybar__why" aria-hidden="true">${escapeHtml(whyNot)}</li>`)) +
         `</ul>`;
       dressSide();
       drawBuyRim();
       const priceN = sideEl.querySelector('.sx-sw-side__hero .k-hero__n');
-      if (priceN && def.price > 0) rollTo(priceN, def.price);
+      if (priceN && facts.price > 0) rollTo(priceN, facts.price);
       return;
     }
     // Fleet: the projected nodes on the hull own selection. This lower circuit makes the loadout
@@ -3028,7 +3034,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     } else if (def.slotType === 'utility') {
       add('CLOAK %', def.mods && def.mods.scannerCloak ? def.mods.scannerCloak * 100 : null);
     }
-    add('MASS', def.mass);
+    add('MASS', moduleSimMass(def));
     add('DRAW', def.energyDraw != null ? def.energyDraw : def.energyCost);
     return rows.slice(0, 3);
   }
@@ -3926,7 +3932,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const offer = stationShopOffer(def, shopStationId);
       const confirmOpts = describeOutfittingSpendConfirm(def, credits, {
         fitSlotIndex,
-        price: offer ? offer.price : def.price,
+        price: offer ? offer.price : moduleSimPrice(def),
       });
       if (confirmOpts) {
         try { bf.focus({ preventScroll: true }); } catch (_) {

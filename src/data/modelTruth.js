@@ -10,6 +10,22 @@ import {
   skinContains,
   throatOpen,
 } from './modelTruthMath.js';
+import {
+  boltRadiusFromPlanar,
+  fittedSocketLocal,
+  hitVolumeFromRow,
+  measuredHardpointFromRow,
+  mineSensorRadiusFromPlanar,
+  mountFractionsFromRow,
+  nozzleWorldFromRow,
+  placeDrawScaleFromRow,
+  plumeWorldFromRow,
+  ropeEndFromRow,
+  shotWorldFromRow,
+  socketWorldFromRow,
+  unmeasuredHitVolumeIds,
+  weaponSocketNameForSlot,
+} from './modelTruthMounts.js';
 
 const ROWS = Array.isArray(census.rows) ? census.rows : [];
 const BY_ID = new Map(ROWS.map((row) => [row.id, row]));
@@ -243,4 +259,94 @@ export function separateSkinOverlaps(entities) {
   return list;
 }
 
-export { flightPlaneToleranceWu, CAMERA_NEAR_MARGIN_WU };
+function rowFor(entityOrId) {
+  if (typeof entityOrId === 'string') return modelTruthRow(entityOrId);
+  return modelTruthRowForEntity(entityOrId);
+}
+
+export function modelTruthSocketWorld(entity, socketName) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  return socketWorldFromRow(row, entity, socketName);
+}
+
+export function modelTruthShotOrigin(entity, weapon) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  const slot = weapon && Number.isFinite(weapon.slotIndex) ? weapon.slotIndex : 0;
+  return shotWorldFromRow(row, entity, slot);
+}
+
+export function modelTruthFlashOrigin(entity, weapon) {
+  return modelTruthShotOrigin(entity, weapon);
+}
+
+export function modelTruthPlumeOrigin(entity) {
+  const row = rowFor(entity);
+  return row ? plumeWorldFromRow(row, entity) : null;
+}
+
+export function modelTruthNozzleOrigin(entity) {
+  const row = rowFor(entity);
+  return row ? nozzleWorldFromRow(row, entity) : null;
+}
+
+export function modelTruthRopeEnd(entity) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  return ropeEndFromRow(row, entity);
+}
+
+export function modelTruthMeasuredHardpoint(entity) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  return measuredHardpointFromRow(row, entity);
+}
+
+export function modelTruthMountFractions(defId, prefix) {
+  const row = modelTruthRow(defId);
+  if (!row) return [];
+  return mountFractionsFromRow(row, prefix);
+}
+
+export function modelTruthHitVolume(entity, subsystemId) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  return hitVolumeFromRow(row, entity, subsystemId);
+}
+
+export function modelTruthUnmeasuredHitVolumes(entityOrId) {
+  const row = rowFor(entityOrId);
+  return row ? unmeasuredHitVolumeIds(row) : [];
+}
+
+export function modelTruthBoltRadius(entity) {
+  return boltRadiusFromPlanar(modelTruthPlanarRadius(entity));
+}
+
+export function modelTruthMineSensorRadius(entity) {
+  return mineSensorRadiusFromPlanar(modelTruthPlanarRadius(entity));
+}
+
+export function modelTruthPlaceDrawScale(entity) {
+  const row = rowFor(entity);
+  return placeDrawScaleFromRow(row, entity);
+}
+
+/** World nameplates and map pips share the measured planar size. Deckplate titles do not. */
+export function modelTruthNameplateHeight(entity) {
+  return Math.max(1.5, modelTruthPlanarRadius(entity) * 0.15);
+}
+
+export function modelTruthPipRadius(entity) {
+  return Math.max(1.2, modelTruthPlanarRadius(entity) * 0.08);
+}
+
+export function modelTruthWeaponSocketName(entity, weapon) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  const slot = weapon && Number.isFinite(weapon.slotIndex) ? weapon.slotIndex : 0;
+  return weaponSocketNameForSlot(row, slot);
+}
+
+export { flightPlaneToleranceWu, CAMERA_NEAR_MARGIN_WU, fittedSocketLocal };

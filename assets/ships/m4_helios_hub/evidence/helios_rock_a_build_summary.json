@@ -19,17 +19,17 @@
     "familySource": {
       "path": "assets/ships/m4_helios_hub/source/places/helios_rock_a.glb",
       "bytes": 1970132,
-      "sha256": "E99971402AB9A4A7335DBBFA44C582A9596357225BD3336A2914B192677DEFDA"
+      "sha256": "9FB85EB84D4A5998635A6AD8C93E19D9DBC9693F3C20AB7E5F71C30AF4A47547"
     },
     "liveSource": {
       "path": "assets/ships/parts/places/place_asteroid_rock_a.glb",
       "bytes": 1970132,
-      "sha256": "E99971402AB9A4A7335DBBFA44C582A9596357225BD3336A2914B192677DEFDA"
+      "sha256": "9FB85EB84D4A5998635A6AD8C93E19D9DBC9693F3C20AB7E5F71C30AF4A47547"
     },
     "release": {
       "path": "assets/ships/release/parts/places/place_asteroid_rock_a.glb",
-      "bytes": 2842200,
-      "sha256": "05D8ED9C2770DF65D48C331A843A92052EFE5BC86990932364D403FE7E1983A6"
+      "bytes": 2842204,
+      "sha256": "6BE134D2416890CB495A92CAD9B6FFDE4DB6FC75D5508736935E1D1A1A7AF2FF"
     },
     "metrics": {
       "triangles": 1977,
@@ -48,7 +48,7 @@
   "sourceGlb": "assets/ships/m4_helios_hub/source/places/helios_rock_a.glb",
   "productionBlend": "assets/ships/m4_helios_hub/blender/helios_rock_a_production.blend",
   "sourceBytes": 1970132,
-  "sourceSha256": "E99971402AB9A4A7335DBBFA44C582A9596357225BD3336A2914B192677DEFDA",
+  "sourceSha256": "9FB85EB84D4A5998635A6AD8C93E19D9DBC9693F3C20AB7E5F71C30AF4A47547",
   "totalTriangles": 1977,
   "hullTriangles": 1977,
   "lod0Triangles": 1238,
@@ -181,9 +181,9 @@
         7.5878005027771
       ],
       "center": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ]
     },
     "collisionCoverageRatio": {
@@ -275,9 +275,9 @@
           7.5878005027771
         ],
         "center": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "collisionCoverageRatio": {
@@ -294,7 +294,7 @@
     "lodBuildStats": [
       {
         "lod": "lod0",
-        "decimateRatio": 1.0,
+        "decimateRatio": 1,
         "mergedMeshes": [
           "LOD0_Merged_Material_Rock",
           "LOD0_Merged_Material_Warm"
@@ -335,7 +335,7 @@
   "lodStats": [
     {
       "lod": "lod0",
-      "decimateRatio": 1.0,
+      "decimateRatio": 1,
       "mergedMeshes": [
         "LOD0_Merged_Material_Rock",
         "LOD0_Merged_Material_Warm"
