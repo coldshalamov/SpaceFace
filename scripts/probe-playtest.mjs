@@ -355,6 +355,75 @@ const ROUTES = {
     });
   },
 
+  // Economy loop: flight -> find rock -> mine it -> ore/cargo receipt.
+  async loop(ctx) {
+    await B(ctx, 'l01-boot', 'title -> new game -> flight', async () => {
+      await ctx.page.waitForFunction(() =>
+        document.body.dataset.kScreen === 'mainMenu'
+        || !!document.querySelector('.screen[data-screen="mainMenu"]'), null, { timeout: 60_000 });
+      await sleep(1500);
+      await newGameToFlight(ctx);
+      const s = await snap(ctx);
+      return { screen: s.screen, mode: s.mode };
+    });
+
+    await B(ctx, 'l02-rock', 'autopilot to nearest asteroid', async () => {
+      const rock = await ctx.page.evaluate(() => {
+        const H = window.__SF_PT_HELPERS__;
+        const p = H.player();
+        if (!p) return null;
+        let best = null, bd = Infinity;
+        for (const e of window.SF.state.entities.values()) {
+          if (!e || e.type !== 'asteroid' || e.alive === false || !e.pos) continue;
+          const d = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
+          if (d < bd) { bd = d; best = e; }
+        }
+        if (!best) return null;
+        window.SF.state.nav.autopilot = {
+          active: true, targetEntityId: best.id, target: null,
+          label: 'playtest-rock', arrivalRadius: 80, status: 'cruise',
+        };
+        return { id: best.id, d0: Math.round(bd) };
+      });
+      if (!rock) { observe(ctx, 'note', 'mining', 'no asteroid entities near spawn'); return null; }
+      let d = rock.d0;
+      for (let i = 0; i < 60; i++) {
+        await sleep(1500);
+        d = await ctx.page.evaluate((id) => {
+          const p = window.__SF_PT_HELPERS__.player();
+          const e = window.SF.state.entities.get(id);
+          return e ? Math.round(Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z)) : Infinity;
+        }, rock.id);
+        if (d <= 160) break;
+      }
+      await shotNow(ctx, 'l02-at-rock');
+      return { rock, d };
+    });
+
+    await B(ctx, 'l03-mine', 'hold RMB on the rock — beam bites, ore receipt shows', async () => {
+      const before = await ctx.page.evaluate(() => {
+        const c = window.SF.state.player && window.SF.state.player.cargo;
+        return c ? JSON.stringify(c).slice(0, 120) : null;
+      });
+      await ctx.page.mouse.move(800, 450);
+      await ctx.page.mouse.down({ button: 'right' });
+      await sleep(6000);
+      await shotNow(ctx, 'l03-beaming');
+      await sleep(8000);
+      await ctx.page.mouse.up({ button: 'right' });
+      const s = await snap(ctx);
+      const after = await ctx.page.evaluate(() => {
+        const c = window.SF.state.player && window.SF.state.player.cargo;
+        return c ? JSON.stringify(c).slice(0, 120) : null;
+      });
+      const t = s.text || '';
+      if (before === after && !/ore|platinum|nickel|yield|extract|cargo|mass/i.test(t)) {
+        observe(ctx, 'rough-edge', 'mining', '14s RMB near a rock produced no cargo change or yield signal');
+      }
+      return { screen: s.screen, mode: s.mode, cargoBefore: before, cargoAfter: after, textHead: t.slice(0, 260) };
+    });
+  },
+
   // Crucible: open from title, launch quick play, fight briefly, observe combat UI, then leave.
   async combat(ctx) {
     await B(ctx, 'c01-door', 'title -> Crucible door', async () => {
