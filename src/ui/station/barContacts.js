@@ -20,6 +20,7 @@ import {
 } from '../../data/stationContacts.js';
 import { uniqueWreckBarRumor } from '../uniqueWreckRumorSurface.js';
 import {
+  AUTHORED_DOCK_RUMORS,
   frontierRumorOffer,
   frontierRumorOwned,
   TETHYS_BLACK_MARKET_DISCOVERY,
@@ -754,6 +755,17 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     ? uniqueWreckBarRumor(state, stationId, choiceId)
     : null;
   if (wreckRumor) return { text: wreckRumor.text, uniqueWreckRumor: wreckRumor };
+
+  const authoredDockRumor = role === 'barkeep' && choiceId === 'rumors'
+    ? AUTHORED_DOCK_RUMORS[stationId]
+    : null;
+  if (authoredDockRumor) {
+    const rumor = frontierRumorOffer(state, stationId);
+    return {
+      text: authoredDockRumor,
+      frontierRumorOffer: rumor || null,
+    };
+  }
 
   const canonical = contact && contact.canonicalKey
     ? buildCanonicalReply(contact, choiceId, ctx, stationId)

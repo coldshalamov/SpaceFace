@@ -12,6 +12,13 @@ export const FRONTIER_RUMOR_DAY_SECONDS = 600;
 export const FRONTIER_RUMOR_SCHEMA_VERSION = 1;
 export const FRONTIER_RUMOR_RECEIPT_LIMIT = 48;
 
+// A local, no-card bar lead for the authored physical tug already beside Ceres Refinery.
+// The existing bar contact reply presents this copy; the regular purchasable frontier card
+// remains available on the same screen.
+export const AUTHORED_DOCK_RUMORS = Object.freeze({
+  station_ceres: 'The Long Berth is an abandoned yard tug still turning beside Ceres Refinery. She is loose: Massline her and pull her clear of the hauler approach.',
+});
+
 // PQ-048.11: this is a remembered physical discovery, not a new contact or mission authority.
 // World owns its acquired -> contacted transition after scanner investigation of the existing buoy.
 export const TETHYS_BLACK_MARKET_DISCOVERY = Object.freeze({
