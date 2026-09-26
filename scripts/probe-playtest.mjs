@@ -578,6 +578,39 @@ const ROUTES = {
       else if (!/helios/i.test(sector) === /helios/i.test(from)) { /* same-sector guard */ }
       return { from, target, jumpStart: j0, arrived, sector, mode: s.mode, saveNow: !!(await ctx.page.evaluate(() => window.SF.state.meta && window.SF.state.meta.lastSavedAt)) };
     });
+
+    await B(ctx, 'l07-hail', 'target nearest ship -> HAIL -> tactical hail deck opens', async () => {
+      const picked = await ctx.page.evaluate(() => {
+        const st = window.SF.state;
+        const p = st.entities.get(st.playerId);
+        let best = null, bd = Infinity;
+        for (const e of st.entities.values()) {
+          if (!e || e.id === st.playerId || e.alive === false) continue;
+          if (e.type !== 'ship' && e.type !== 'drone') continue;
+          const d = Math.hypot((e.pos ? e.pos.x : e.x) - p.pos.x, (e.pos ? e.pos.z : e.z) - p.pos.z);
+          if (d < bd) { bd = d; best = e; }
+        }
+        if (!best) return null;
+        st.player.targetId = best.id;
+        return { id: best.id, type: best.type, d: Math.round(bd) };
+      });
+      if (!picked) return { contact: null };
+      await sleep(1200);
+      const avail = await ctx.page.evaluate(() => {
+        const b = document.querySelector('#sf-contact-hail');
+        return { exists: !!b, text: b && (b.textContent || '').trim(), disabled: b && b.disabled };
+      });
+      await ctx.page.evaluate(() => { const b = document.querySelector('#sf-contact-hail'); if (b) b.click(); });
+      await sleep(1500);
+      await shotNow(ctx, 'l07-hail');
+      const deck = await ctx.page.evaluate(() => ({
+        open: !!document.querySelector('.sf-drawer--haildeck, .sf-haildeck'),
+        facts: (document.querySelector('[data-k="deck-facts"]') || {}).textContent || '',
+      }));
+      const s = await snap(ctx);
+      if (picked.d <= 5200 && !deck.open) observe(ctx, 'rough-edge', 'comms', `HAIL clicked for contact ${picked.id} @ ${picked.d}WU but no hail deck opened (avail=${JSON.stringify(avail)})`);
+      return { contact: picked, avail, deckOpen: deck.open, screen: s.screen };
+    });
   },
 
   // Crucible: open from title, launch quick play, fight briefly, observe combat UI, then leave.
