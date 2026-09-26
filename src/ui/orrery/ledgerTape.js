@@ -28,7 +28,7 @@ const CSS = `
 .orr-ltape > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; }
 .orr-ltape__tick { cursor:pointer; }
 /* weight, not wire: the tape is a luminous band under a 2px edge; its fine scale 1.5px */
-.orr-svg .orr-ltape__rule { --orr-w-band:7px; --orr-band-a:.085; --orr-w-edge:2px; --orr-edge-a:.5; }
+.orr-svg .orr-ltape__rule { --orr-w-band:7px; --orr-band-a:.28; --orr-w-edge:2px; --orr-edge-a:.66; }
 .orr-svg .orr-ltape__minor { stroke:rgb(${BONE} / .32); }
 .orr-svg .orr-ltape__major { stroke:rgb(${BONE} / .6); }
 .orr-svg .orr-ltape__stem { stroke:rgb(${BONE} / .62); }
@@ -52,6 +52,7 @@ html.sf-reduce-motion .orr-svg .orr-ltape__settle { animation:none; }
 .orr-svg .orr-ltape__hand-bead { fill:var(--dp-hand-hot, #ffd98c); }
 .orr-svg .orr-ltape__leader { stroke:rgb(${BONE} / .52); stroke-linecap:butt; }
 .orr-svg .orr-ltape__axis-line { stroke:rgb(${BONE} / .5); }
+.orr-svg .orr-ltape__axis-band { --orr-w-band:7px; --orr-band-a:.27; stroke-linecap:butt; }
 .orr-svg .orr-ltape__axis-minor { stroke:rgb(${BONE} / .34); }
 .orr-ltape text.orr-ltape__key.orr-ltape__axis-n { fill:rgb(${BONE} / .72); font-size:11px; }
 .orr-svg .orr-ltape__ghost-stem { stroke:rgb(${BONE} / .4); }
@@ -81,7 +82,7 @@ html.sf-reduce-motion .orr-svg .orr-ltape__settle { animation:none; }
 .orr-ltape text.orr-ltape__key { fill:rgb(${BONE} / .55); font-size:8.5px; }
 .orr-ltape text.orr-ltape__cycle { fill:rgb(${BONE} / .66); font-size:10.5px; }
 /* the purse gauge: a band track under an edge, the sums as lit values with beads */
-.orr-svg .orr-ltape__arc-track { --orr-w-band:8px; --orr-band-a:.085; --orr-edge-a:.44; }
+.orr-svg .orr-ltape__arc-track { --orr-w-band:8px; --orr-band-a:.28; --orr-edge-a:.6; }
 .orr-svg .orr-ltape__arc-zero { stroke:rgb(${BONE} / .6); }
 .orr-svg .orr-ltape__arc { stroke:rgb(248 244 234); fill:none; }
 .orr-svg .orr-ltape__arc--out { stroke:rgb(${BONE} / .5); }
@@ -261,6 +262,7 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
         }
       }
       // the axis runs from the ceiling down and out of the tape: the reading beneath hangs from it
+      rg.appendChild(svg('path', { d: `M ${f(x0 + 1)} ${f(y - stemLen(ceilCr))} L ${f(x0 + 1)} ${H}`, class: 'orr-band orr-ltape__axis-band' }));
       rg.appendChild(svg('path', { d: `M ${f(x0 + 1)} ${f(y - stemLen(ceilCr))} L ${f(x0 + 1)} ${H}`, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 2, 'shape-rendering': 'crispEdges' }));
       rg.appendChild(svg('path', { d: majors, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 2 }));
       rg.appendChild(svg('path', { d: minors, class: 'orr-core orr-ltape__axis-minor', 'stroke-width': 1.5 }));
@@ -272,6 +274,7 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       const gLen = (v) => (v / ghostCeil) * maxUp;
       let majors = '';
       for (const sign of [1, -1]) for (let k = 2; k <= 4; k += 2) { const yy = sign > 0 ? y - gLen((ghostCeil * k) / 4) : y + gLen((ghostCeil * k) / 4); majors += `M ${f(x0)} ${f(yy)} L ${f(x0 + 6)} ${f(yy)} `; { const t = svg('text', { x: f(x0 + 9), y: f(yy + 3.5), 'text-anchor': 'start', class: 'orr-ltape__key orr-ltape__axis-n' }); t.textContent = `${sign < 0 ? '\u2212' : ''}${fmt((ghostCeil * k) / 4)}${k === 4 && sign > 0 ? ' cr' : ''}`; rg.appendChild(t); } }
+      rg.appendChild(svg('path', { d: `M ${f(x0 + 1)} ${f(y - gLen(ghostCeil))} L ${f(x0 + 1)} ${f(y + gLen(ghostCeil))}`, class: 'orr-band orr-ltape__axis-band' }));
       rg.appendChild(svg('path', { d: `M ${f(x0 + 1)} ${f(y - gLen(ghostCeil))} L ${f(x0 + 1)} ${f(y + gLen(ghostCeil))}`, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 2, 'shape-rendering': 'crispEdges' }));
       rg.appendChild(svg('path', { d: majors, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 2 }));
       const gx = x0 + 64; // clear of the axis figures (x0 + 9 .. x0 + 48)
