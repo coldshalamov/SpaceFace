@@ -33,8 +33,8 @@ const CSS = `
 .orr-route.is-off::before, .orr-route.is-off > svg, .orr-route.is-off > .orr-route__caption { display:none; }
 .orr-route.is-tether > .orr-route__caption { display:none; }
 /* weight, not wire: every ring of depth is a luminous band under a crisp edge; the near ring is the brighter */
-.orr-svg .orr-route__ring { --orr-edge-a:.34; --orr-band-a:.055; --orr-w-band:7px; --orr-w-edge:1.5px; }
-.orr-svg .orr-route__ring--near { --orr-edge-a:.46; --orr-band-a:.08; }
+.orr-svg .orr-route__ring { --orr-edge-a:.52; --orr-band-a:.29; --orr-w-band:7px; --orr-w-edge:1.5px; }
+.orr-svg .orr-route__ring--near { --orr-edge-a:.64; --orr-band-a:.32; }
 .orr-svg .orr-route__lane { stroke:rgb(${BONE} / .26); }
 .orr-svg .orr-route__beam { stroke:var(--dp-hand, #f2b950); }
 .orr-svg .orr-route__beam-bloom { stroke:var(--dp-hand, #f2b950); opacity:.2; }
