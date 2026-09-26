@@ -18,7 +18,6 @@ import { syncScrollExtent, SCROLL_EXTENT_CSS } from './scrollExtent.js';
 import { svg, arcD, ticksD } from './svg.js';
 import { reducedMotion, onFrame } from './motion.js';
 import { decrypt } from './text.js';
-import { words as kitWords } from '../kit/dom.js';
 
 const STYLE_ID = 'sf-orrery-settings-layouts';
 const S = 'html body #screens > .k-screen.of-settings.orr-settings';
@@ -161,10 +160,21 @@ ${S} #sf-settings-pane select.k-select:hover { background:${CHEVRON} right 4px c
 ${S} #sf-settings-pane select.k-select:focus-visible, ${S} #sf-settings-pane select.k-select:focus { color:var(--dp-hand-hot, #ffd98c) !important;
   background:${CHEVRON} right 4px center / 10px 6px no-repeat, linear-gradient(var(--dp-hand, #f2b950) 0 0) 0 100% / 100% 2px no-repeat !important; }
 ${S} #sf-settings-pane select.k-select option { background:#0b0e13; color:rgb(${HOT}); }
-/* a short choice drawn as words keeps its <select> as the value's owner, out of sight and out of the tab order */
-${S} #sf-settings-pane select.k-select[hidden] { display:none !important; }
-${S} #sf-settings-pane .k-row .orr-set-choice { gap:4px 18px !important; }
-${S} #sf-settings-pane .k-row .orr-set-choice .k-word { letter-spacing:.15em !important; }
+/* the list it opens is an instrument too (a customizable select): a column of light on deep glass, a rail
+   down its edge, the chosen option lit; the native control stays the control (keys, pad, probes) */
+${S} #sf-settings-pane select.k-select, ${S} #sf-settings-pane select.k-select::picker(select) { appearance:base-select !important; }
+${S} #sf-settings-pane select.k-select::picker-icon { display:none; }
+${S} #sf-settings-pane select.k-select::picker(select) { border:0; border-radius:0; padding:8px 0; margin-top:6px; width:max-content; min-width:220px; max-width:440px; right:auto;
+  background:linear-gradient(90deg, transparent 13px, rgb(${BONE} / .3) 13px 14.5px, transparent 14.5px), rgb(7 9 13 / .97);
+  box-shadow:0 22px 60px rgb(0 0 0 / .66), 0 0 0 1px rgb(${BONE} / .06); color:rgb(${HOT}); }
+${S} #sf-settings-pane select.k-select option { position:relative; display:flex; align-items:center; min-height:36px; padding:0 22px 0 34px;
+  background:none; border:0; outline:none !important; box-shadow:none; color:rgb(${BONE} / .78); font-family:var(--dp-face-read, "Instrument Sans"); font-size:14px; font-weight:500; cursor:pointer; }
+${S} #sf-settings-pane select.k-select option::checkmark { display:none; }
+${S} #sf-settings-pane select.k-select option::before { content:""; position:absolute; left:10px; top:50%; width:8px; height:1.5px; background:rgb(${BONE} / .5); }
+${S} #sf-settings-pane select.k-select option:is(:hover, :focus, :focus-visible) { color:rgb(255 253 248); background:linear-gradient(90deg, rgb(${BONE} / .1), rgb(${BONE} / 0)); outline:none !important; }
+${S} #sf-settings-pane select.k-select option:checked { color:rgb(${HOT}); background:none; border:0; outline:none; }
+${S} #sf-settings-pane select.k-select option:checked::before { left:24px; width:5px; height:5px; margin-top:-2.5px; border-radius:50%; background:var(--dp-hand-hot, #ffd98c);
+  box-shadow:0 0 6px rgb(255 217 140 / .7); }
 
 /* a binding is its key: the key in label caps on an underline; listening runs ice */
 ${S} #sf-settings-pane .sf-bind-btn { all:unset !important; box-sizing:border-box !important; position:relative !important; justify-self:start !important; cursor:pointer !important;
@@ -530,7 +540,6 @@ export function injectOrrerySettings(doc = globalThis.document) {
  */
 export function dressSettingsPane(pane, { arrive = false } = {}) {
   if (!pane || typeof pane.querySelectorAll !== 'function') return;
-  dressChoices(pane);
   for (const row of pane.querySelectorAll('.k-row')) {
     if (!row.dataset) continue;
     let kind = 'row';
@@ -569,52 +578,6 @@ export function dressSettingsPane(pane, { arrive = false } = {}) {
       }
     }
     setTimeout(() => { for (const row of pane.querySelectorAll('.orr-set-rise')) row.classList.remove('orr-set-rise'); }, 1400);
-  }
-}
-
-// A short choice (two to four short options) is not a dropdown: its options stand as words on the
-// line, the live one lit, like a switch. The <select> stays in the DOM as the value's owner (its change
-// handler is the setting's behaviour) but leaves the tab order; the words drive it by setting its value
-// and dispatching the same change event a player's pick would.
-const CHOICE_MAX = 4;
-const CHOICE_CHARS = 24;
-function dressChoices(pane) {
-  for (const sel of pane.querySelectorAll('select.k-select')) {
-    if (!sel.dataset || sel.dataset.orrWords === '1' || !sel.options) continue;
-    const opts = [...sel.options];
-    const chars = opts.reduce((n, o) => n + String(o.textContent || '').length, 0);
-    if (opts.length < 2 || opts.length > CHOICE_MAX || chars > CHOICE_CHARS) continue;
-    const row = typeof sel.closest === 'function' ? sel.closest('.k-row') : null;
-    if (!row || typeof sel.insertAdjacentElement !== 'function') continue;
-    const label = row.querySelector(':scope > label');
-    let group = null;
-    const sync = () => {
-      if (!group) return;
-      for (const b of group.querySelectorAll('.k-word')) b.setAttribute('aria-pressed', String(b.dataset.action === `choice:${sel.value}`));
-    };
-    group = kitWords(opts.map((o) => ({ action: `choice:${o.value}`, label: o.textContent })), {
-      row: true, size: 'body', ariaLabel: label ? String(label.textContent || '').trim() : 'Choice',
-      onPick: (action) => {
-        const v = action.slice('choice:'.length);
-        if (sel.value !== v) {
-          sel.value = v;
-          sel.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        sync();
-      },
-    });
-    group.classList.add('orr-set-choice');
-    if (label) {
-      if (!label.id) label.id = `${sel.id || 'orr-set-choice'}-label`;
-      group.setAttribute('aria-labelledby', label.id);
-    }
-    sel.dataset.orrWords = '1';
-    sel.tabIndex = -1;
-    sel.hidden = true;
-    sel.style.display = 'none';
-    sel.insertAdjacentElement('afterend', group);
-    sel.addEventListener('change', sync);
-    sync();
   }
 }
 

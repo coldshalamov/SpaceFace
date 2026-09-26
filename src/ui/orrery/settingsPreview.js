@@ -110,6 +110,8 @@ const CSS = `
 .orr-set-hud__frame > .orr-cluster { position:absolute !important; left:0; bottom:0; }
 .orr-set-hud.is-bloomless .orr-bloom { opacity:0 !important; }
 .orr-set-hud { --dp-bloom-a:var(--orr-set-bloom, .22); }
+/* in miniature the Cluster's strokes scale down with it: its rest light rises so no line goes to a hairline */
+.orr-set-hud.is-small { --dp-line:rgb(${BONE} / .5); --dp-line-faint:rgb(${BONE} / .28); --dp-line-hi:rgb(${BONE} / .86); }
 .orr-set-hud.is-hc { --dp-line:rgb(${BONE} / .6); --dp-line-faint:rgb(${BONE} / .34); --dp-line-hi:rgb(${BONE} / .92); --dp-ink-dim:rgb(248 244 234); }
 .orr-set-hud.is-hc .orr-label { color:rgb(248 244 234) !important; }
 .orr-set-hud.is-readable .orr-label, .orr-set-hud.is-readable .orr-value, .orr-set-hud.is-readable .orr-set-hud__cap, .orr-set-hud.is-readable .orr-set-hud__hint {
@@ -458,6 +460,7 @@ function buildHud(doc) {
     frame.style.width = `${f1(w)}px`;
     frame.style.height = `${f1(h)}px`;
     frame.style.setProperty('--orr-cluster-scale', String(Math.round(s * 1000) / 1000));
+    host.classList.toggle('is-small', s < 0.72);
     hint.style.top = `${f1(Math.max(0, top - hintH))}px`;
     hint.style.left = `${f1(left + 22 * s)}px`;
     hint.style.right = 'auto';
@@ -633,9 +636,9 @@ export function createSettingsPreview(doc = globalThis.document) {
     const pr = pane ? pane.getBoundingClientRect() : rr;
     const rowR = beamRow.getBoundingClientRect();
     if (!rowR.height || rowR.bottom < pr.top + 10 || rowR.top > pr.bottom - 30) { hideBeam(); return; }
-    const src = beamRow.querySelector(':scope > div.k-words--row > span') || beamRow.querySelector('.orr-set-choice')
+    const src = beamRow.querySelector(':scope > div.k-words--row > span')
       || beamRow.querySelector(':scope > .k-words--row') || beamRow.querySelector('.sf-bind-btn')
-      || beamRow.querySelector(':scope > .k-t-emph') || beamRow.querySelector('select:not([hidden])');
+      || beamRow.querySelector(':scope > .k-t-emph') || beamRow.querySelector('select');
     const target = el.dataset.mode === 'dial' ? dial.el.querySelector('.orr-set-dial__key') : value;
     if (!src || !target) { hideBeam(); return; }
     const sr = src.getBoundingClientRect();
