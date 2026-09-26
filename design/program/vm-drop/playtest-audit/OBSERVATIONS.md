@@ -358,6 +358,16 @@ s04 now lands `Take the Hitch to the range` -> screen=range and the range lesson
 full (HEAVY HULLS TURN WIDE gate-course card, AGAIN/TRY IT EMPTY/NEXT RULE/RETURN verbs, 9-rule
 tab strip). e05 walks all 10 pause verbs green; e01 pause + resume green; F3 footprint green.
 
+## Run 13 — drill screen + remaining-seam coverage
+
+New beat s05 opens the drill screen through the real handoff: `drill:approachStarted` (sets
+`activeDrillApproach`, blocks input, dock fade) then `drill:approachCompleted` with the live
+asteroid entity id — uiRoot matches the approach and pushes the `drill` screen. Result: 36
+beats, 0 defects, 0 console/shader errors; screen=drill, AST-4 ore strip + heat/charge gauges
+render (35-s05-drill.png). Recovery-berth path reviewed in code — gameOver receipt fields
+(station berth, cost vs quote, hardship fund, coverage line, per-outcome refresh) already
+render all cases; the "No recovery route" copy seen at l08 is the genuine no-insurance branch.
+
 ## Run ledger
 
 | run | routes | beats | obs | game fixes landed |
@@ -365,8 +375,9 @@ tab strip). e05 walks all 10 pause verbs green; e01 pause + resume green; F3 foo
 | 10 | screens+edge+combat+loop | 35+8+7+10 | D60 fixed | find palette in-flight `163d0321a` |
 | 11 | screens | 35 | D61, D62 found | shipworks dead verbs `cf5cc3cc3`, replay hint `a562abfc5` |
 | 12 | screens | 35 | clean | verifies D61/D62 in a fresh boot |
+| 13 | screens | 36 | clean | drill screen reached via real approachCompleted handoff |
 
 ## Next runs
 
-- Adventure real-death → recovery-berth path (c04b covers crucible death only).
-- Crucible share codes, drill/asteroid site approach (event-driven, needs asteroid-site setup).
+- r14: consolidated edge+combat+loop regression pass on the fixes HEAD.
+- Adventure real-death → recovery-berth (insurance-carrying save) if a fixtured state lands.
