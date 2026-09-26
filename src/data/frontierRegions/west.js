@@ -406,7 +406,7 @@ const REGION_KEPLER = freezeRegion({
         factionId: 'faction_reach',
         size: 'M',
         services: ['black_market', 'repair', 'refuel', 'missions'],
-        chartNote: 'The Bazaar shelters under the capsized Void-Reach: stolen cargo in, carrier surplus out, and every favor has a price.',
+        chartNote: 'The Bazaar under the capsized Void-Reach: stolen cargo in, surplus out, favors priced.',
         repGated: true,
       },
     ],
