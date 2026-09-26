@@ -282,6 +282,13 @@ Replayed the full check sequence headlessly — turn speeds hold 312 (momentum
 conserved), `vel.z`=312>140, brake→0.2<3, stroke-restart works. Only the accel
 window was stale; refreshed to 300-325 with the derivation in a comment.
 
+### Fifth round (head 128d81f82 — draw-flight fix)
+
+- `draw-flight`: **GREEN** — the refreshed window passes.
+- `static (1)`: same 33 program-docs ancestry errors as adjudicated twice above
+  (fails identically on master tip 314cfaaa8; the integratedCommit SHAs live in
+  the pre-Sep-8 archived history that was never pushed).
+
 Focused node --test sweep over the touched modules at branch tip (far-actors,
 time-effects, moment-detector, docking-corridor, hlod, entity-mesh-visibility,
 authored-admission, audio-parameter-churn, pq146-projectiles, projectile-flight,
