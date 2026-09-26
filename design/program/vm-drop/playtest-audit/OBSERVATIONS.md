@@ -351,12 +351,20 @@ leave a mid-pop layer eating the first Esc); e05 exits to flight through in-scre
 mounts inside pause — a single Esc left pause open and s01's "autopilot stall" was a frozen sim);
 s03 picks the visible `data-nav="bar"`; s01 clears leftover modals before travelling.
 
+## Run 12 — fix verification run
+
+Screens route re-run on the fix: 35 beats, 0 defects, 0 console/shader errors, 5.7 min wall.
+s04 now lands `Take the Hitch to the range` -> screen=range and the range lesson screen renders
+full (HEAVY HULLS TURN WIDE gate-course card, AGAIN/TRY IT EMPTY/NEXT RULE/RETURN verbs, 9-rule
+tab strip). e05 walks all 10 pause verbs green; e01 pause + resume green; F3 footprint green.
+
 ## Run ledger
 
 | run | routes | beats | obs | game fixes landed |
 |-----|--------|-------|-----|-------------------|
 | 10 | screens+edge+combat+loop | 35+8+7+10 | D60 fixed | find palette in-flight `163d0321a` |
-| 11 | screens | 35 | D61, D62 fixed | shipworks dead verbs `cf5cc3cc3`, replay hint `a562abfc5` |
+| 11 | screens | 35 | D61, D62 found | shipworks dead verbs `cf5cc3cc3`, replay hint `a562abfc5` |
+| 12 | screens | 35 | clean | verifies D61/D62 in a fresh boot |
 
 ## Next runs
 
