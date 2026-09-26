@@ -101,9 +101,11 @@ import {
 } from '../data/sectorActivityPockets.js';
 import {
   KILL_MACHINE_SECTOR_ID,
+  METRONOME_SECTOR_ID,
   PALLAS_REEF_SECTOR_ID,
   apertureHazardZones,
   killMachineHazardZones,
+  metronomeHazardZone,
   pallasReefHazardZone,
   weatherHazardZones,
   weatherScanScale,
@@ -2965,6 +2967,9 @@ export const world = {
     if (sector.id === PALLAS_REEF_SECTOR_ID) extra.push(pallasReefHazardZone());
     extra.push(...weatherHazardZones(sector.id));
     extra.push(...apertureHazardZones(sector.id));
+    // The Metronome's approach-warning circle: the map marker + hazard:enter/exit
+    // language come free, while the beam wedge itself does the real work.
+    if (sector.id === METRONOME_SECTOR_ID) extra.push(metronomeHazardZone());
     for (const zone of extra) {
       if (existing.has(zone.id)) continue;
       const center = this._toGlobal(zone.center, sector.id);
