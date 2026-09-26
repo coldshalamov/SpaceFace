@@ -468,7 +468,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6171669f101c7151f50ce25d7a8fc13835b20311a6cbdb4e6f603bfb56596104",
+  "contentHash": "e54125e67036a71ecac1893e9377599d81f91b94768032dcef77e1eb96dff816",
   "dynamicGroups": [
     {
       "id": "sf.render.volatiles-tanker.node.lod0-hook-drive-core.dynamic",
@@ -2939,8 +2939,8 @@
       "uri": "volatiles_tanker.glb"
     },
     "sourceManifest": {
-      "bytes": 189651,
-      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
+      "bytes": 193703,
+      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
       "uri": "pilots.json"
     }
   },
@@ -4357,7 +4357,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/volatiles_tanker.glb"
   },
-  "runtimeHash": "44c7c0c7167ca45470be0915bc2d3c046814c63eab189c3b98302cd9f8bc196d",
+  "runtimeHash": "985d6770de15d46ffdf0ef82bb8b97d6f06d6c46a0bbb085f0b05fd639450ce4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2290a185190474abea4fe4656b4d3548e6fb83b72ab5dff66af5121799ce494c",
+  "contentHash": "d272d888927b435fe95d8d3dd4c4c09f8fc0a137e7ed5de38841ab692a42d6b5",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1318,8 +1318,8 @@
       "uri": "place_asteroid_seamed.glb"
     },
     "sourceManifest": {
-      "bytes": 189651,
-      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
+      "bytes": 193703,
+      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
       "uri": "pilots.json"
     }
   },
@@ -1865,7 +1865,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_seamed.glb"
   },
-  "runtimeHash": "8c3569af0f6ad555676c4fdcb1f1979042ae565d58f797738439dbf0eb9611c4",
+  "runtimeHash": "484030e30dfc3a858a501f771a120a74585e083e315494e0e86a38474d33a4b8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
