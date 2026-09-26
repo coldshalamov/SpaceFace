@@ -372,3 +372,18 @@ leaf, pushes `devin/lane-<slug>`; winners merge here after probe A/B.
   program in offline key-parity sim. A/B pending on this box.
 - `admission`, `decode`, `batching`, `allocs` in flight; `simwalk`,
   `textures`, `postfx`, `hud` queued behind the org's session cap.
+
+### Lane A/B adjudication
+
+- `shaderwarm` `cfd21b7b8` — **reverted** (revert `2de602116`). Diagnosis
+  correct (warm probes minted bare-Physical keys instead of the real
+  `applyAuthoredMaterialProfile` + `canonicalizeAuthoredProgramState` chain),
+  but A/B on this box showed no reduction: flightShaderLinks 20→22, in-frame
+  8→9, aggregates within noise but strictly worse (519/282 vs 199/106).
+  Link-subject diff shows real authored admissions (LOD0_engine_fan,
+  Bourse_Carrier_Wreck, GLTFKit_*) still mint novel programs — the 23/23
+  key-parity sim missed axes real assets carry (slot presence, env params,
+  lightmap/vertex variants). Warm-up probe design must enumerate keys from
+  REAL material state at admission, not the static role matrix. Lane notes
+  preserved: canopy probes test-locked to pre-canon subsets; uncovered axes
+  DoubleSide/alphaTest/vertexColors/tangent-less/mapless-breakup.
