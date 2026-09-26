@@ -558,7 +558,7 @@ const ambush = {
     if (choiceId === 'buyout') {
       // Credits-priced contract buyout (327 ghost): the quiet honors a paid contract.
       const amount = live.vars.amount | 0;
-      if ((d.player().credits | 0) < amount) {
+      if (((state.player && state.player.credits) | 0) < amount) {
         d.say(live, 'bark', ack.broke || 'toll_broke_ack');
         return ambush.choose(d, live, state, 'refuse');
       }

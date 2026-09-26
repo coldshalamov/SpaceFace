@@ -36,6 +36,12 @@ function makeState(credits = 600) {
     world: {},
     entities: new Map(),
   };
+  // Production shape: director.player() returns the player *entity* — pos/vel/data, no
+  // credits. Credits live on state.player. Seeding both keeps this seam honest.
+  state.playerId = 'player-ent';
+  state.entities.set('player-ent', {
+    id: 'player-ent', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: {},
+  });
   state.entities.set('ghost-1', {
     id: 'ghost-1', alive: true, pos: { x: 600, z: 0 }, data: { lootTableId: 'quiet_ghost' },
   });
@@ -46,7 +52,7 @@ function scriptDelegate(state, emitted, opts = {}) {
   const dir = directorOver(state, emitted);
   return {
     now: () => state.simTime,
-    player: () => state.player,
+    player: () => state.entities.get(state.playerId),
     cargoValue: () => dir.cargoValue(),
     takeTithe: (amount) => dir.takeTithe(amount),
     stream: () => () => 0.5,
