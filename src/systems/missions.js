@@ -136,7 +136,7 @@ import { actionById as salvageActionById } from '../data/salvageActions.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
-import { rollBountyMark, bountyMarkHail, markArchetypePoolFor } from '../data/bountyMarks.js';
+import { rollBountyMark, bountyMarkHail, markArchetypePoolFor, MARK_HAIL_RANGE_WU } from '../data/bountyMarks.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { hash32 } from '../core/rng.js';
 import { Masks } from '../core/entity.js';
@@ -2397,6 +2397,8 @@ export const missions = {
           riskTier, sectorDef: SECTOR_BY_ID.get(destSectorId) })
       : null;
     if (bountyMark) { params.markName = bountyMark.name; params.markPlace = bountyMark.placeName; }
+    // placeName stays in params.markPlace — the stamped target keeps spawn-identity fields only.
+    const { placeName: _markPlace, ...markStoryTarget } = bountyMark || {};
 
     // Economy Pulse: pay the net work budget, not a product of unbounded multipliers.
     const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier,distance,params,
@@ -2417,7 +2419,7 @@ export const missions = {
       expiresAtEpoch: epoch + 1,
       storyTag: null,
       // placeName stays in params.markPlace — the stamped target keeps spawn-identity fields only.
-      ...(bountyMark ? { storyTarget: { ...bountyMark, placeName: undefined } } : {}),
+      ...(bountyMark ? { storyTarget: markStoryTarget } : {}),
     };
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
     // above is untouched: a condition-free offer is byte-identical to the shipped one.
@@ -6633,11 +6635,14 @@ export const missions = {
       }
       // Re-stamp person identity from the mission record: Continue-adopted hosts restore
       // `ai.name` through the durable record but not `data.name`/`scanLabel`, so a rematerialized
-      // mark (or ghost-pack anchor) must be re-dressed here to keep its face on the scanner.
-      if (m.storyTarget && m.storyTarget.name) {
+      // mark (or ghost-pack anchor) must be re-dressed here to keep its face on the scanner. Only
+      // the mark's own host takes the identity — pack-mates sharing the mission tag stay anonymous,
+      // and a stale label on a rematerialized host is overwritten to match.
+      if (m.storyTarget && m.storyTarget.name
+        && (durableSlot === 0 || ent.data.storyTargetId === m.storyTarget.id)) {
         ent.data.name = m.storyTarget.name;
-        if (!ent.data.scanLabel) ent.data.scanLabel = m.storyTarget.label || m.storyTarget.name;
-        if (!ent.data.ai.name) ent.data.ai.name = m.storyTarget.name;
+        ent.data.scanLabel = m.storyTarget.label || m.storyTarget.name;
+        ent.data.ai.name = m.storyTarget.name;
       }
     }
     ent.flags = ent.flags || {};
@@ -6685,20 +6690,22 @@ export const missions = {
   },
 
   /**
-   * The mark speaks once: when the player closes inside scanner-contact range of the spawned
+   * The board mark speaks once: when the player closes inside the approach band on the spawned
    * writ target, the person behind the posting acknowledges the board that sent the hull. One
    * shot per mission — `_markHailed` rides the ordinary active-mission serialization, so a save
-   * mid-stalk does not replay the line.
+   * mid-stalk does not replay the line. Only `board_writ` roles speak this register — authored
+   * career and legacy writs keep their own fiction.
    */
   _maybeMarkHail(m, state) {
-    if (!m || !m.storyTarget || !m.storyTarget.name || m._markHailed) return;
+    if (!m || !m.storyTarget || m.storyTarget.role !== 'board_writ'
+      || !m.storyTarget.name || m._markHailed) return;
     const targetId = (m.targetEntityIds || [])[0];
     const mark = targetId != null && state.entities && state.entities.get(targetId);
     const player = state.entities && state.entities.get(state.playerId);
     if (!mark || mark.alive === false || !player || !mark.pos || !player.pos) return;
     const dx = mark.pos.x - player.pos.x;
     const dz = mark.pos.z - player.pos.z;
-    if (dx * dx + dz * dz > 2200 * 2200) return;
+    if (dx * dx + dz * dz > MARK_HAIL_RANGE_WU * MARK_HAIL_RANGE_WU) return;
     m._markHailed = true;
     const text = bountyMarkHail((state.meta && state.meta.seed) || 1, m.id);
     this.bus.emit('comms:popup', { sender: m.storyTarget.name, text, category: 'personal', ttl: 6 });

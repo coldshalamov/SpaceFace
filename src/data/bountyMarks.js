@@ -85,6 +85,33 @@ export const BOUNTY_MARK_ZONE_TYPES = Object.freeze([
   'trade_lane',
 ]);
 
+/** The mark speaks when the player closes inside this approach band — a hail on the stalk,
+ * well inside scanner contact, not on first acquisition. */
+export const MARK_HAIL_RANGE_WU = 2200;
+
+/**
+ * POI types that can never be a mark's lair: anomalies are authored story sites (obelisk, boss
+ * arena, sealed archives) and wormholes are gated transit — a public writ does not park a wanted
+ * person inside another system's set piece.
+ */
+const MARK_POI_BLOCKED_TYPES = new Set(['anomaly', 'wormhole']);
+
+/**
+ * A POI stays out of the writ pool when it is hidden, owned by another runtime, locked behind a
+ * boss or tech gate, or itself a discovery (scan/manual investigation/recovery/discoveryPlate):
+ * the board must not leak what the player has not found, and must not trespass authored content.
+ * In a sector with no hostile spawns (the tutorial home), beacon POIs — the teaching waypoints —
+ * are additionally off-limits; a mark there holds at a work site or gate instead.
+ */
+function markPoiEligible(poi, sectorDef) {
+  if (!poi || !poi.id || !poi.name) return false;
+  if (MARK_POI_BLOCKED_TYPES.has(poi.type)) return false;
+  if (sectorDef && sectorDef.enemyDensity === 0 && poi.type === 'beacon') return false;
+  if (poi.hidden || poi.runtimeOwner || poi.unlockAfterBossId || poi.gatedBy) return false;
+  if (poi.requiresActiveScan || poi.manualInvestigation || poi.recoveryEncounter || poi.discoveryPlate) return false;
+  return true;
+}
+
 const _sectorNameById = new Map(SECTORS.map((sec) => [sec.id, sec && sec.name]));
 
 /**
@@ -111,8 +138,11 @@ export function markArchetypePoolFor(riskTier) {
 function markPlaceCandidates(sectorId, sectorDef) {
   const candidates = [];
   const anchors = SECTOR_ANCHORS[sectorId];
-  const poiNameById = new Map(((sectorDef && sectorDef.pois) || [])
-    .filter((poi) => poi && poi.id && poi.name)
+  const sectorPois = (sectorDef && sectorDef.pois) || [];
+  // A POI that another site unlocks only after its boss falls is an occupied arena, not a lair.
+  const bossGateIds = new Set(sectorPois.map((poi) => poi && poi.unlockAfterBossId).filter(Boolean));
+  const poiNameById = new Map(sectorPois
+    .filter((poi) => markPoiEligible(poi, sectorDef) && !bossGateIds.has(poi.id))
     .map((poi) => [poi.id, poi.name]));
   for (const anchorPoi of (anchors && anchors.pois) || []) {
     const name = anchorPoi && poiNameById.get(anchorPoi.id);
@@ -125,8 +155,9 @@ function markPlaceCandidates(sectorId, sectorDef) {
   }
   for (const gate of (anchors && anchors.gates) || []) {
     if (!gate || !gate.to) continue;
-    const neighborName = _sectorNameById.get(gate.to) || 'the neighbor';
-    candidates.push({ anchorId: gate.to, anchorRadius: 300, placeName: `the ${neighborName} gate` });
+    const neighborName = _sectorNameById.get(gate.to);
+    candidates.push({ anchorId: gate.to, anchorRadius: 300,
+      placeName: neighborName ? `the ${neighborName} gate` : 'the far gate' });
   }
   return candidates;
 }

@@ -14,7 +14,7 @@ import { SECTORS } from '../src/data/sectors.js';
 import { SECTOR_ANCHORS } from '../src/data/sectorAnchors.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
-import { MARK_NAMES } from '../src/data/bountyMarks.js';
+import { MARK_NAMES, MARK_HAIL_RANGE_WU, rollBountyMark } from '../src/data/bountyMarks.js';
 
 const BOARD_ID = 'station_expanse';
 
@@ -145,6 +145,62 @@ test('the mark place is a real named feature of the destination sector', () => {
   assert.ok(sawNamedPlace >= 8, `most rolled marks should hold a named place (got ${sawNamedPlace})`);
 });
 
+test('the mark roll is a pure function of (seed, offer id, sector, tier) — a fixed golden', () => {
+  const byId = new Map(SECTORS.map((s) => [s.id, s]));
+  assert.deepEqual(rollBountyMark({
+    seed: 0x5eed, offerId: 'mo_probe_1', sectorId: 'sector_charon_expanse',
+    riskTier: 1, sectorDef: byId.get('sector_charon_expanse'),
+  }), {
+    id: 'mark:mo_probe_1',
+    name: 'Pike Sorrow',
+    label: 'PIKE SORROW — WARRANT',
+    role: 'board_writ',
+    archetype: 'wasp_swarmer',
+    factionId: 'faction_reach',
+    anchorId: 'sector_io_reach',
+    anchorRadius: 300,
+    placeName: 'the Io Reach gate',
+  });
+});
+
+test('a writ never names a hidden, gated, or owned place', () => {
+  const poiById = new Map();
+  const bossGateIds = new Set();
+  for (const sec of SECTORS) for (const poi of (sec.pois || [])) {
+    if (!poi || !poi.id) continue;
+    if (poi.unlockAfterBossId) bossGateIds.add(poi.unlockAfterBossId);
+    if (!poiById.has(poi.id)) poiById.set(poi.id, poi);
+  }
+  const SPOILERS = new Set([
+    'poi_tutorial', 'poi_blackmkt', 'poi_vesta_ore_cache', 'poi_hcache', 'poi_stash',
+    'poi_anomaly', 'poi_wormhole', 'poi_boss', 'poi_vault', 'poi_vault_maw',
+    'heist_launcher', 'lawful_catcher', 'fence_receiver',
+  ]);
+  let poiPlaces = 0;
+  for (let seed = 1; seed <= 64; seed++) {
+    for (const sec of SECTORS) {
+      for (let i = 0; i < 4; i++) {
+        const mark = rollBountyMark({
+          seed, offerId: `mo_sweep_${seed}_${i}`, sectorId: sec.id,
+          riskTier: 1 + (seed % 4), sectorDef: sec,
+        });
+        if (!mark || !mark.anchorId) continue;
+        const poi = poiById.get(mark.anchorId);
+        assert.ok(!SPOILERS.has(mark.anchorId) && !bossGateIds.has(mark.anchorId),
+          `${mark.anchorId} is an authored/gated place — the board must not name it`);
+        if (!poi) continue; // gate anchors resolve to neighbor sector ids, not POIs
+        poiPlaces++;
+        assert.ok(!poi.hidden && !poi.runtimeOwner && !poi.unlockAfterBossId && !poi.gatedBy
+          && !poi.requiresActiveScan && !poi.manualInvestigation && !poi.recoveryEncounter
+          && !poi.discoveryPlate && poi.type !== 'anomaly' && poi.type !== 'wormhole'
+          && !(sec.enemyDensity === 0 && poi.type === 'beacon'),
+          `writ must not name ${poi.id} — hidden, gated, or owned content`);
+      }
+    }
+  }
+  assert.ok(poiPlaces > 0, 'the sweep actually visited POI places');
+});
+
 test('accepting spawns the named mark inside its named place, not on the player ring', () => {
   const world = makeWorld();
   const { state, missionSystem } = world;
@@ -203,10 +259,10 @@ test('the mark hails once when the player closes inside scanner range', () => {
   missionSystem._ensureMissionTargets(active);
   const mark = state.entities.get(active.targetEntityIds[0]);
 
-  // Park the player just inside the 2200 WU contact band.
+  // Park the player just inside the approach band.
   state.entities.set(state.playerId, {
     id: state.playerId, alive: true, team: 1,
-    pos: { x: mark.pos.x + 1500, z: mark.pos.z },
+    pos: { x: mark.pos.x + (MARK_HAIL_RANGE_WU - 700), z: mark.pos.z },
     data: {},
   });
 
@@ -268,9 +324,25 @@ test('Continue-adopted marks get their person identity re-stamped', () => {
   assert.equal(host.data.ai.name, offer.storyTarget.name);
 });
 
+test('the hail once-latch survives save/load', () => {
+  const world = makeWorld();
+  const { state, missionSystem } = world;
+  const board = missionSystem.ensureBoard(BOARD_ID);
+  const offer = bountyOffers(board)[0];
+  assert.ok(missionSystem.acceptMission(offer.id));
+  const active = state.missions.active[0];
+  active._markHailed = true;
+
+  const restored = makeWorld();
+  restored.missionSystem.deserialize(missionSystem.serialize());
+  const restoredMission = restored.state.missions.active.find((m) => m.id === active.id);
+  assert.ok(restoredMission, 'the mission round-trips the save');
+  assert.equal(restoredMission._markHailed, true, 'the once-latch rides the save — no replay');
+});
+
 test('ghost-convoy and authored storyTarget offers keep their own fiction', () => {
   const world = makeWorld();
-  const { state, missionSystem, spawnedSpecs } = world;
+  const { state, bus, missionSystem, spawnedSpecs } = world;
   const authored = {
     id: 'ext_bounty_authored',
     source: 'encounterAftermath',
@@ -295,4 +367,15 @@ test('ghost-convoy and authored storyTarget offers keep their own fiction', () =
   missionSystem._ensureMissionTargets(active);
   const spec = spawnedSpecs[0];
   assert.equal(spec.data.name, 'Authored Name', 'spawn stamps the authored identity');
+
+  // An authored writ keeps its own fiction — closing in does not produce board-register lines.
+  const mark = state.entities.get(active.targetEntityIds[0]);
+  state.entities.set(state.playerId, {
+    id: state.playerId, alive: true, team: 1,
+    pos: { x: mark.pos.x + 100, z: mark.pos.z },
+    data: {},
+  });
+  missionSystem._maybeMarkHail(active, state);
+  assert.equal(bus.emitted.filter((e) => e.name === 'comms:popup').length, 0,
+    'an authored mark does not speak the board register');
 });
