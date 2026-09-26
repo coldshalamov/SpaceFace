@@ -157,7 +157,10 @@ export const TECH_WORK = deepFreeze({
 export const MISSION_WORK = deepFreeze({
   cargo_delivery:{ taskS:100, legs:1, consumesCargo:true },
   bulk_trade:{ taskS:120, legs:1, saleRevenue:true },
-  bounty_hunt:{ taskS:150, legs:2 },
+  // D59: a mark's on-site work is the approach plus the fight — the data-grounded EHP/DPS model
+  // kills a reference-strength mark in ~30s, and units scaling tracks real EHP growth. Pricing the
+  // hunt at 150s re-paid the same loop several times over every wage period.
+  bounty_hunt:{ taskS:30, legs:2 },
   mining_quota:{ taskS:210, legs:2, retainedLoot:true },
   salvage_retrieval:{ taskS:180, legs:2, consumesCargo:true, recoveredCargo:true },
   escort:{ taskS:190, legs:1 }, patrol_clear:{ taskS:200, legs:2 },

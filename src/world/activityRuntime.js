@@ -200,6 +200,14 @@ function ensureRuntime(state) {
       reasonsById: new Map(),
       changedIds: [],
       signaturesById: new Map(),
+      // Perf: per-entity cache of the last activitySignature string and the scalar parts it was
+      // built from, so an unchanged entity between ticks costs zero string builds. The signature
+      // string is a pure function of (simTier, presentationTier, nextEventAtT, pinnedExact,
+      // pins content); reusablePins reports whether pins content changed this pass via
+      // `_pinsChanged`, and the scalars compare directly. Same values in, same string out —
+      // equality decisions and changedIds content are identical to rebuilding every tick.
+      signatureCacheById: new Map(),
+      _pinsChanged: false,
       pinBuffersById: new Map(),
       currentEntityIds: new Set(),
       frame: null,
@@ -316,9 +324,9 @@ function authoritativeCollisionIds(state) {
     || null;
 }
 
-function imminentCollisionFor(state, player, entity) {
+function imminentCollisionFor(state, player, entity, collisionIds) {
   if (!player || !entity || entity.id === player.id || !player.pos || !entity.pos) return false;
-  const ids = authoritativeCollisionIds(state);
+  const ids = collisionIds != null ? collisionIds : authoritativeCollisionIds(state);
   if (ids && (typeof ids.has === 'function' ? ids.has(entity.id) : Array.isArray(ids) && ids.includes(entity.id))) {
     return true;
   }
@@ -366,11 +374,48 @@ function reusablePins(runtime, id, pins) {
     stable.length = 0;
     for (let i = 0; i < pins.length; i++) stable.push(pins[i]);
   }
+  // Perf scratch: tells cachedActivitySignature (the only caller between here and the next
+  // reusablePins call) whether the stable pin buffer's CONTENT changed this pass.
+  runtime._pinsChanged = !same;
   return stable;
 }
 
 function activitySignature(stamp) {
   return `${stamp.simTier}|${stamp.presentationTier}|${stamp.nextEventAtT}|${stamp.pinnedExact ? 1 : 0}|${stamp.pins.join(',')}`;
+}
+
+// Perf: identical output to activitySignature(stamp), but a stable entity between ticks (the
+// common case — the same ~60 actors re-stamp at 60 Hz) reuses the cached string instead of
+// rebuilding a template string + join every pass. Cache entries follow the exact lifecycle of
+// pinBuffersById (deleted when the signature map's end-of-pass cleanup drops the entity).
+function cachedActivitySignature(runtime, id, stamp) {
+  let cache = runtime.signatureCacheById.get(id);
+  if (cache
+    && !runtime._pinsChanged
+    && cache.simTier === stamp.simTier
+    && cache.presentationTier === stamp.presentationTier
+    && cache.nextEventAtT === stamp.nextEventAtT
+    && cache.pinnedExact === stamp.pinnedExact) {
+    return cache.signature;
+  }
+  const signature = activitySignature(stamp);
+  if (!cache) {
+    cache = {
+      simTier: stamp.simTier,
+      presentationTier: stamp.presentationTier,
+      nextEventAtT: stamp.nextEventAtT,
+      pinnedExact: stamp.pinnedExact,
+      signature,
+    };
+    runtime.signatureCacheById.set(id, cache);
+  } else {
+    cache.simTier = stamp.simTier;
+    cache.presentationTier = stamp.presentationTier;
+    cache.nextEventAtT = stamp.nextEventAtT;
+    cache.pinnedExact = stamp.pinnedExact;
+    cache.signature = signature;
+  }
+  return signature;
 }
 
 function attachStamp(entity, rec) {
@@ -882,6 +927,11 @@ function classifyWorld(state, runtime) {
   ctx.pinsNormalized = false;
 
   const visit = selection.entities;
+  // Perf: per-pass invariants hoisted out of the visit loop. The physics lookahead set does not
+  // change during this pass (it is republished by the physics system later in the same tick), and
+  // the world-record bag is the same object for every entity this pass.
+  const passCollisionIds = authoritativeCollisionIds(state);
+  const passWorldRecordBag = state.world && state.world.records && state.world.records.byId;
   for (let i = 0; i < visit.length; i++) {
     const entity = visit[i];
     if (!entity || entity.alive === false) continue;
@@ -922,8 +972,7 @@ function classifyWorld(state, runtime) {
       ? facts.damagedPlayerUntil.get(entity.id)
       : -1;
     const recId = data.worldRecordId;
-    const bag = state.world && state.world.records && state.world.records.byId;
-    const worldRec = recId && bag ? bag[recId] : null;
+    const worldRec = recId && passWorldRecordBag ? passWorldRecordBag[recId] : null;
     const scheduledWakeDue = durableWakeDue(worldRec, simTime)
       || liveWakeDue(entity, simTime) != null;
     if (scheduledWakeDue) runtime.wakeCandidates.push(entity);
@@ -955,7 +1004,7 @@ function classifyWorld(state, runtime) {
       // coordinates place it beyond the current player's ordinary activity bubble. Preserve it in
       // the exact owner view; generic far passive traffic remains wake-gated below.
       || authoredActiveCombat);
-    ctx.imminentCollision = imminentCollisionFor(state, player, entity);
+    ctx.imminentCollision = imminentCollisionFor(state, player, entity, passCollisionIds);
     ctx.aggregateOnly = entity.type === 'ship'
       && !onGlass
       && !onRunway
@@ -982,7 +1031,7 @@ function classifyWorld(state, runtime) {
         runtime.initialInactiveAiEntities.push(entity);
       }
     }
-    const signature = activitySignature(stamp);
+    const signature = cachedActivitySignature(runtime, entity.id, stamp);
     if (runtime.signaturesById.get(entity.id) !== signature) {
       runtime.signaturesById.set(entity.id, signature);
       runtime.changedIds.push(entity.id);
@@ -1023,6 +1072,7 @@ function classifyWorld(state, runtime) {
     runtime.signaturesById.delete(id);
     runtime.reasonsById.delete(id);
     runtime.pinBuffersById.delete(id);
+    runtime.signatureCacheById.delete(id);
     runtime.seenEntityIds.delete(id);
   }
   counts.physics = statics.length + dynamics.length;

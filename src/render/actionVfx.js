@@ -1,7 +1,8 @@
 // Small physical answers to actions that previously only changed simulation state.
 // Uses the already precompiled folded-surface program; one bounded draw, no new lights.
 import * as THREE from 'three';
-import { SweptSurfaceBatch } from './forceLanguage/sweptSurfaceBatch.js';
+import { SweptSurfaceBatch, SURFACE_FLOATS } from './forceLanguage/sweptSurfaceBatch.js';
+import { ForceParticleFlow } from './vfx/forceParticleFlow.js';
 
 const recipe=(verb,color,life=.65)=>Object.freeze({verb,color:new THREE.Color(color),life});
 export const ACTION_VFX_RECIPES=Object.freeze({
@@ -17,6 +18,11 @@ export const ACTION_VFX_RECIPES=Object.freeze({
   'beam:repaired':recipe('repair',0x84ffd2,.45),
   'beam:transferred':recipe('transfer',0x9bdfff,.45),
   'bombs:commanded':recipe('command',0xffca86,.55),
+  'ship:boostPreKick':recipe('ignition',0xa9eaff,.24),
+  'salvage:reactorVented':recipe('vent',0xffb271,1.15),
+  'cargo:caughtByNet':recipe('catch',0x85e7cf,.65),
+  'mining:richCoreCompleted':recipe('harvest',0xffdf96,.85),
+  'mining:richCoreFizzle':recipe('cool',0x8cacca,.6),
 });
 export const ACTION_VFX_EVENTS=Object.freeze(Object.keys(ACTION_VFX_RECIPES));
 const finite=(v,f=0)=>Number.isFinite(v)?v:f;
@@ -30,16 +36,19 @@ export class ActionVfx {
   constructor(scene,toLocal=null){
     this.batch=new SweptSurfaceBatch(scene,{capacity:192,name:'SF_ActionAnswers'});
     this.mesh=this.batch.mesh;this.toLocal=toLocal;this.local={x:0,z:0};
-    this.d=new Float32Array(24);this.time=0;this.serial=0;this.live=0;this.disposed=false;
+    this.particles=new ForceParticleFlow(this.mesh,{capacity:160});
+    this.particleOptions={reducedMotion:false,reducedFlash:false};
+    this.particleBurst={kind:'current',x:0,z:0,y:.8,dx:1,dz:0,radius:1,seed:0,count:8,life:.5,strength:1};
+    this.d=new Float32Array(SURFACE_FLOATS);this.d[26]=-1;this.time=0;this.serial=0;this.live=0;this.disposed=false;
     this.slots=Array.from({length:32},()=>({alive:false,event:null,id:null,sourceId:null,attached:false,born:0,last:0,
-      x:0,z:0,sx:0,sz:0,radius:1,angle:0,seed:0,recipe:null}));
+      x:0,z:0,sx:0,sz:0,radius:1,angle:0,seed:0,recipe:null,particlePulse:-1}));
   }
   emit(name,p={},state={}){
     if(this.disposed)return false;
     const recipe=ACTION_VFX_RECIPES[name];if(!recipe)return false;
-    const id=p.targetId??p.victimId??p.entityId??p.ownerId??p.sourceId??p.aId;
+    const id=p.targetId??p.victimId??p.entityId??p.shipId??p.podId??p.asteroidId??p.ownerId??p.sourceId??p.aId;
     const target=entity(state,id);
-    const sourceId=p.ownerId??p.actorId??p.byId??p.sourceId??state.playerId;
+    const sourceId=p.ownerId??p.actorId??p.byId??p.sourceId??p.minerId??p.netId??state.playerId;
     const source=entity(state,sourceId);
     const well=field(state,p.wellId??p.fieldId);
     const pos=valid(p.pos)?p.pos:target?.pos??well?.center??source?.pos;
@@ -57,11 +66,11 @@ export class ActionVfx {
     slot.alive=true;slot.event=name;slot.id=id;slot.sourceId=sourceId;slot.recipe=recipe;
     // A receipted point is a contact snapshot (including sling-bomb combos), not the owner's hull.
     slot.attached=!valid(p.pos)&&recipe.verb!=='grind';
-    if(!sustained)slot.born=now;
+    if(!sustained){slot.born=now;slot.particlePulse=-1;}
     slot.last=now;slot.x=pos.x;slot.z=pos.z;slot.sx=start.x;slot.sz=start.z;
     slot.radius=Math.max(2.5,Math.min(24,finite(target?.radius,5)));
     slot.angle=Math.atan2(finite(target?.vel?.z),finite(target?.vel?.x));
-    if(Math.hypot(finite(target?.vel?.x),finite(target?.vel?.z))<1)slot.angle=finite(target?.rot);
+    if(recipe.verb==='ignition'||Math.hypot(finite(target?.vel?.x),finite(target?.vel?.z))<1)slot.angle=finite(target?.rot);
     if(!sustained)slot.seed=salt(String(id)+':'+(++this.serial)+':'+Math.round(now*1000));
     return true;
   }
@@ -73,16 +82,44 @@ export class ActionVfx {
     d[12]=c.r*1.65;d[13]=c.g*1.65;d[14]=c.b*1.65;d[15]=opacity;
     d[16]=1;d[17]=phase+s.seed;d[18]=0;d[19]=s.recipe.verb==='grind'?3:0;
     d[20]=1;d[21]=1;d[22]=1;d[23]=0;
+    d[24]=s.born; // local transport age even for short, non-field strips
     this.batch.add(d);
+  }
+  _particles(s,age,continuous,reduced){
+    if(reduced||age<.035)return;
+    const pulse=continuous?Math.floor(age/.17):age<s.recipe.life*.68?Math.floor(age/.18):s.particlePulse;
+    if(pulse<=s.particlePulse)return;s.particlePulse=pulse;
+    const p=this.particleBurst,verb=s.recipe.verb;
+    if(this.toLocal)this.toLocal(s.x,s.z,this.local);else{this.local.x=s.x;this.local.z=s.z;}
+    p.x=this.local.x;p.z=this.local.z;p.radius=s.radius;p.dx=Math.cos(s.angle);p.dz=Math.sin(s.angle);
+    p.seed=s.seed+pulse*.381966;p.count=verb==='vent'?9:verb==='ignition'?5:6;p.strength=1;
+    p.life=Math.min(.75,s.recipe.life*.85);
+    p.kind=verb==='capture'||verb==='catch'?'well':verb==='repair'?'repair':
+      verb==='vent'||verb==='grind'||verb==='combo'?'heat':verb==='transfer'||verb==='fling'?'transfer':
+      verb==='harvest'?'repulsor':verb==='ignition'?'cone':'current';
+    if(verb==='ignition'){
+      p.x-=p.dx*s.radius*.8;p.z-=p.dz*s.radius*.8;p.dx=-p.dx;p.dz=-p.dz;p.radius=s.radius*.7;
+    }
+    if(verb==='transfer'){
+      const dx=s.x-s.sx,dz=s.z-s.sz,length=Math.hypot(dx,dz);
+      if(length>.01){
+        if(this.toLocal)this.toLocal(s.sx,s.sz,this.local);else{this.local.x=s.sx;this.local.z=s.sz;}
+        p.x=this.local.x;p.z=this.local.z;p.dx=dx/length;p.dz=dz/length;p.radius=length;
+      }
+    }
+    this.particles.emit(p);
   }
   update(state={}){
     if(this.disposed)return 0;
     const now=finite(state.simTime,this.time);
+    const elapsed=Math.max(0,now-this.time);
     if(now<this.time)this.clear();this.time=now;
-    if(!this.live)return 0;
+    if(!this.live&&!this.particles.live)return 0;
     const video=state.settings?.video,a11y=state.settings?.accessibility;
     const reduced=!!(video?.motionReduce||a11y?.reducedMotion||a11y?.motionReduce);
     const flash=!!(video?.flashReduce||a11y?.flashReduce||a11y?.reducedFlash);
+    this.particleOptions.reducedMotion=reduced;this.particleOptions.reducedFlash=flash;
+    if(reduced)this.particles.clear();else this.particles.update(elapsed,this.particleOptions);
     this.batch.begin(now,reduced,flash);this.live=0;
     for(const s of this.slots){
       if(!s.alive)continue;
@@ -92,13 +129,14 @@ export class ActionVfx {
       const target=entity(state,s.id);
       // Attached work follows the actual body. Contact/grind snapshots stay at their true contact.
       if(s.attached&&target?.alive!==false&&valid(target?.pos)){s.x=target.pos.x;s.z=target.pos.z;}
+      const source=entity(state,s.sourceId);
+      if(valid(source?.pos)){s.sx=source.pos.x;s.sz=source.pos.z;}
       const r=s.radius,verb=s.recipe.verb;
       const u=reduced ? .35 : (continuous?age/s.recipe.life:Math.max(0,t)),attack=Math.min(1,age/.045);
       const cooling=continuous?1-Math.max(0,(t-.5)*2):1-t;
       const op=attack*cooling*(flash ? .4 : .92),turn=s.seed*TAU;
+      this._particles(s,age,continuous,reduced);
       if(verb==='transfer'||verb==='latch'||verb==='cut'){
-        const source=entity(state,s.sourceId);
-        if(valid(source?.pos)){s.sx=source.pos.x;s.sz=source.pos.z;}
         const dx=s.x-s.sx,dz=s.z-s.sz,len=Math.hypot(dx,dz);
         if(len>.01){
           const angle=Math.atan2(dz,dx),peel=verb==='cut'?1-u:1;
@@ -108,18 +146,34 @@ export class ActionVfx {
               Math.min(1.3,r*.16),Math.min(4,len*.03)*Math.sin(k+turn+u*3),k/3,op);
           }
         }
-      }else if(verb==='repair'||verb==='prime'||verb==='cool'){
+      }else if(verb==='repair'||verb==='prime'||verb==='cool'||verb==='catch'){
         // Weld seams traverse the hull; priming clamps tighten and spent clamps fall away.
         for(let k=0;k<4;k++){
-          const a=turn+k*TAU/4,rad=r*(verb==='repair'?1:verb==='cool'?1+u*.45:1.15-u*.3);
+          const a=turn+k*TAU/4,rad=r*(verb==='repair'?1:verb==='cool'?1+u*.45:1.15-Math.min(u,.7)*.3);
           const x=s.x+Math.cos(a)*rad,z=s.z+Math.sin(a)*rad;
           this._strip(s,x,z,a+Math.PI/2,-r*.45,r*.45,r*.11,verb==='repair'?r*.25*Math.sin(u*5+k):r*.08,k/4,op);
         }
-      }else if(verb==='fling'||verb==='combo'||verb==='grind'){
+      }else if(verb==='ignition'||verb==='vent'){
+        // Engine compression loads at the nozzle, then releases aft; a vent peels a hot jet
+        // off its hull port and leaves particle residue instead of an expanding radial flash.
+        const axis=s.angle+Math.PI,reach=r*(verb==='ignition'?.4+u*.5:.4+u*2.2);
+        for(let k=0;k<3;k++){
+          const side=(k-1)*.22;
+          this._strip(s,s.x,s.z,axis+side,r*.72,r*.72+reach,r*.065,r*.12*Math.sin(u*4+k),k/3,op);
+        }
+      }else if(verb==='fling'||verb==='combo'||verb==='grind'||verb==='harvest'){
         const angle=verb==='grind'?turn:s.angle;
         for(let k=0;k<5;k++){
-          const spread=(k-2)*(verb==='grind'?.72:.17),reach=r*(.8+u*2.4)*(1+s.seed*.4);
-          this._strip(s,s.x,s.z,angle+spread,r*.3,reach,r*(.08+k%2*.025),r*.13*Math.sin(k+u*4),k/5,op);
+          const spread=verb==='harvest'?k*TAU/5:(k-2)*(verb==='grind'?.72:.17);
+          const launch=Math.max(0,u-k*.035),reach=r*(.8+launch*2.4)*(1+s.seed*.4);
+          this._strip(s,s.x,s.z,angle+spread,r*(.3+launch*.8),reach,r*(.05+k%2*.025),r*.13*Math.sin(k+u*4),k/5,op);
+        }
+      }else if(verb==='disrupt'||verb==='command'){
+        // A command answers in opposed source strokes; disrupted charge forks and severs.
+        for(let k=0;k<4;k++){
+          const a=turn+k*TAU/4,breakup=Math.max(0,(u-.35)/.65),start=r*(.65+breakup*.5);
+          this._strip(s,s.x,s.z,a,start,start+r*(.8-breakup*.6),r*.065,r*.28*Math.sin(k+u*5),k/4,op);
+          if(verb==='disrupt')this._strip(s,s.x,s.z,a+.32,start+r*.2,start+r*.65,r*.03,-r*.15,k/4,op*.7);
         }
       }else{
         // Capture draws curved jaws inward; disruption/command peels broken fronts outward.
@@ -128,9 +182,9 @@ export class ActionVfx {
           reach,reach*(inward?.48:1.12),r*.12,0,k/5,op,0,inward?.8:.43);
       }
     }
-    this.batch.end();return this.live;
+    this.batch.end();this.mesh.visible=this.batch.count>0||this.particles.live>0;return this.live;
   }
-  reproject(dx,dz){this.batch.reproject(dx,dz);}
-  clear(){for(const s of this.slots)s.alive=false;this.live=0;this.batch.begin(this.time);this.batch.end();}
-  dispose(){if(this.disposed)return;this.batch.dispose();this.disposed=true;this.live=0;}
+  reproject(dx,dz){this.batch.reproject(dx,dz);this.particles.reproject(dx,dz);}
+  clear(){for(const s of this.slots)s.alive=false;this.live=0;this.particles.clear();this.batch.begin(this.time);this.batch.end();}
+  dispose(){if(this.disposed)return;this.particles.dispose();this.batch.dispose();this.disposed=true;this.live=0;}
 }

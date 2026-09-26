@@ -12,7 +12,7 @@ function world(list = []) { return { mode: 'flight', simTime: 1, entityList: lis
 test('presentation is lazy, shares one mesh, and disposes on route and scene changes', () => {
   const s = world(); updateBombPresentation(s); assert.equal(s.render.scene.children.length, 0);
   s.entityList.push(entity()); updateBombPresentation(s);
-  assert.equal(s.render.scene.children.length, 1); assert.equal(bombPresentationStats(s).drawCalls, 1);
+  assert.equal(s.render.scene.children.length, 1); assert.equal(bombPresentationStats(s).drawCalls, 2);
   const scene = s.render.scene; s.render.scene = new THREE.Scene(); updateBombPresentation(s);
   assert.equal(scene.children.length, 0); assert.equal(s.render.scene.children.length, 1);
   s.mode = 'menu'; updateBombPresentation(s); assert.equal(s.render.scene.children.length, 0);
@@ -24,7 +24,7 @@ test('field geometry is bounded, finite and stable in memory under maximum occup
   batch.update(s, entities, 1);
   assert.equal(batch.stats.bombs, BOMB_DRIFT.maxWorldActive); assert.equal(batch.stats.overflow, 6);
   assert.ok(batch.count <= BOMB_PRESENTATION_MAX_VERTICES);
-  assert.equal(batch.count % 3, 0); assert.equal(batch.stats.drawCalls, 1);
+  assert.equal(batch.count % 3, 0); assert.equal(batch.stats.drawCalls, 2);
   for (const n of positions) assert.ok(Number.isFinite(n));
   for (let i = 3; i < colors.length; i += 4) assert.ok(colors[i] >= 0 && colors[i] <= 1);
   for (let i = 0; i < 120; i++) { s.simTime = 1 + i / 1200; batch.update(s, entities, 0.5); }

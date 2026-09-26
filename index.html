@@ -22,6 +22,10 @@
   <link rel="stylesheet" href="./styles/kit.css" />
   <link rel="stylesheet" href="./styles/prompt-deck.css" />
   <link rel="stylesheet" href="./styles/crucible.css" />
+  <!-- The station sheet set is NOT linked here: it is injected by src/ui/station/stationStyles.js
+       (game boot calls ensureStylesheet; station/ship screens call it on mount). Runtime injection
+       positions it after the Deckplate <style> block, the cascade order the sheets were written
+       for; a static <link> here would put them before it and invert that order. -->
   <!-- Keep quarks importmap below — PQ-190 VFX runtime still loads three.quarks. -->
   <script type="importmap">
   {

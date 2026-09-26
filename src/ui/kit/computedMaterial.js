@@ -2,9 +2,9 @@
 //
 // WHY THIS EXISTS. Seven screens -- codex, crucible, help, newGame, range, saveLoad, techTree -- pin
 // their surfaces inline rather than through classes, because the kit's component sheet
-// (assets/ui/kit/kit/fh.css) is injected by stationApp.ensureStylesheet() and so is absent until the
-// player first docks. That is worth fixing separately; until then a pin is how these surfaces get
-// painted, and this module is the one place the paint is decided.
+// (assets/ui/kit/kit/fh.css) used to arrive only at first dock (ledger D15; it now loads at boot
+// via src/ui/station/stationStyles.js). The pins are still how these surfaces get painted, and
+// this module is the one place the paint is decided.
 //
 // HISTORY, because it is the lesson. These pins were nine-sliced PNGs (a 240x56 key upsampled 2x on
 // every HiDPI display -- the owner's "smudges"), then COMPUTED caps (a lit top rule, a dark sill and a

@@ -1107,7 +1107,7 @@ export const ECONOMY_BALANCE = deepFreeze({
     "base": {
       "cargo_delivery": 411,
       "bulk_trade": 453,
-      "bounty_hunt": 552,
+      "bounty_hunt": 303,
       "mining_quota": 677,
       "salvage_retrieval": 614,
       "escort": 598,
@@ -1140,7 +1140,7 @@ export const ECONOMY_BALANCE = deepFreeze({
         "saleRevenue": true
       },
       "bounty_hunt": {
-        "taskS": 150,
+        "taskS": 30,
         "legs": 2
       },
       "mining_quota": {

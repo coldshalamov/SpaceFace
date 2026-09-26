@@ -1566,7 +1566,7 @@ function finalize(receipt, ctx, costs, budget, horizonS) {
     fails.push('origin_retry_missing');
   }
   if (!receipt.inventoryConserved) {
-    fails.push(`inventory_not_conserved end=${endU} expected=${expected}`);
+    fails.push(`inventory_not_conserved end=${receipt.inventoryEndU} expected=${receipt.inventoryExpectedU}`);
   }
 
   // Beam M must stay research-gated.

@@ -32,7 +32,7 @@
 | **Name** | The Quiessence (depth program C14) |
 | **Position** | `{ x: -1900, z: -1700 }` (sector anchor) |
 | **Role** | Seventeen intact freighters holding formation around one violet buoy — the sector's standing mystery. Landmarked per PQ-153.02 (fielded 2026-09-25 still review) |
-| **Stand-in** | Marker hulls (`bandLandmarkFleet: 17`, scanner/Band identities only) + `place_nav_buoy` until depth H1c authors the dark-freighter art |
+| **Stand-in** | Seventeen marker hulls (`bandLandmarkFleet: 17`) carrying the shared `place_dead_hulk` silhouette at half scale — the 2026-09-26 still review found scanner-only carriers render as nothing — plus the `place_nav_buoy` centre marker, until depth H1c authors the dark-freighter art |
 
 ## Required renderable asset roles
 

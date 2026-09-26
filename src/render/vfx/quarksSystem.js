@@ -28,6 +28,7 @@
 //   - All spawn paths reuse scratch vectors/matrices; bursts only (emissionOverTime: 0).
 
 import * as THREE from 'three';
+import { ForceParticleFlow } from './forceParticleFlow.js';
 import { impactOutwardNormal, impactTangentFraction } from '../combat/impactEventRecord.js';
 import {
   FRAGMENT_FAMILY,
@@ -144,6 +145,11 @@ export class QuarksVfxSystem {
     this.renderer.name = 'SF_QuarksBatchedRenderer';
     this.root = new THREE.Group();
     this.root.name = 'SF_QuarksEmittersRoot';
+    this.flow = new ForceParticleFlow(this.root, { capacity: 256 });
+    this._flowSequence = 0;
+    this._flowFrame = { reducedMotion: false, reducedFlash: false };
+    this._flowEvent = { kind: 'heat', x: 0, y: 0, z: 0, dx: 1, dz: 0, radius: 10,
+      seed: 0, count: 8, life: 0.8, strength: 1 };
 
     this._scratchPos = new THREE.Vector3();
     this._scratchDir = new THREE.Vector3();
@@ -650,10 +656,33 @@ export class QuarksVfxSystem {
     scene.add(this.root);
   }
 
-  update(dt) {
-    if (!this.scene) return;
-    const clampedDt = Math.min(0.05, Math.max(0.001, dt));
+  update(dt, accessibility = null) {
+    if (!this.scene || !Number.isFinite(dt) || dt <= 0) return;
+    const clampedDt = Math.min(0.05, dt);
     this.renderer.update(clampedDt);
+    const profile = accessibility?.id || '';
+    this._flowFrame.reducedMotion = !!accessibility?.reducedMotion || profile.includes('motion');
+    this._flowFrame.reducedFlash = !!accessibility?.reducedFlash || profile.includes('flash');
+    this.flow.update(dt, this._flowFrame);
+  }
+
+  _emitFlow(kind, x, y, z, dx, dz, radius, count, life, strength = 1, seed = null) {
+    const event = this._flowEvent;
+    event.kind = kind; event.x = x; event.y = y; event.z = z; event.dx = dx; event.dz = dz;
+    event.radius = radius; event.count = count; event.life = life; event.strength = strength;
+    event.seed = Number.isFinite(seed) ? seed : ++this._flowSequence;
+    return this.flow.emit(event);
+  }
+
+  reproject(dx, dz) {
+    if (!Number.isFinite(dx) || !Number.isFinite(dz)) return;
+    for (const sys of this.renderer.systemToBatchIndex.keys()) {
+      for (let i = 0; i < sys.particleNum; i++) {
+        sys.particles[i].position.x += dx; sys.particles[i].position.z += dz;
+      }
+    }
+    for (const batch of this.renderer.batches) batch.update();
+    this.flow.reproject(dx, dz);
   }
 
   /**
@@ -711,6 +740,7 @@ export class QuarksVfxSystem {
 
     const count = Math.max(2, Math.min(8, Math.round(intensity * 6)));
     this.retroVenting.spawn(count, this.retroVenting.emissionState, this._scratchMatrix);
+    this._emitFlow('cone', x, y, z, dirX, dirZ, 7 + intensity * 8, Math.min(5, count), 0.34, intensity * 0.6);
   }
 
   /**
@@ -764,6 +794,7 @@ export class QuarksVfxSystem {
     this._scratchQuat.setFromUnitVectors(_vForward, this._scratchDir);
     this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
     this.damageVenting.spawn(count, this.damageVenting.emissionState, this._scratchMatrix);
+    this._emitFlow('cone', x, y, z, dirX, dirZ, 5.5, Math.min(5, count), 0.7, 0.65);
   }
 
   /**
@@ -796,6 +827,9 @@ export class QuarksVfxSystem {
     if (cargoShare > 0) {
       emitted += this._spawnCapped(this.cargoDebris, Math.round(requested * 0.3 * cargoShare), this._scratchMatrix);
     }
+    if (requested > 0) this._emitFlow('heat', x, y, z, 1, 0,
+      Math.max(6, Math.min(55, Number(options?.radius) || requested * 0.7)),
+      Math.min(30, Math.max(8, Math.round(requested * 0.8))), 0.85, 1, options?.seed);
     return emitted;
   }
 
@@ -846,6 +880,7 @@ export class QuarksVfxSystem {
   }
 
   reset() {
+    this.flow.clear();
     this.impactSpall.particleNum = 0;
     this.shieldShards.particleNum = 0;
     this.muzzleSparks.particleNum = 0;
@@ -860,6 +895,7 @@ export class QuarksVfxSystem {
   }
 
   dispose() {
+    this.flow.dispose();
     // detach first so nothing renders a half-torn-down batch
     if (this.scene) {
       this.scene.remove(this.renderer);

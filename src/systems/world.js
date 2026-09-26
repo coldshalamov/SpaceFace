@@ -2413,7 +2413,13 @@ export const world = {
             : 1600,
           memorialHull: true,
           scanRange: finitePositive(poi.scanRange) ? Number(poi.scanRange) : SCAN_RANGE,
-          visualRadius: 14,
+          // PQ-153.02 still review: carriers that render as nothing fail the shipping-camera
+          // bar — the census saw the ring, the camera saw one hull and bare space. The
+          // shared dead-hulk GLB at half scale is the stand-in silhouette (H1c owns the
+          // bespoke dark-freighter art); `hidden` keeps them off contacts as before.
+          placeId: 'place_dead_hulk',
+          placeScale: 0.5,
+          visualRadius: 21,
         });
         for (let shipIndex = 1; shipIndex <= fleetCount; shipIndex += 1) {
           const angle = (shipIndex / fleetCount) * Math.PI * 2;
@@ -2426,7 +2432,7 @@ export const world = {
             ? this.helpers.spawnEntity({
               type: 'fx',
               pos: hullPos,
-              radius: 14,
+              radius: 21,
               mass: 0,
               collides: false,
               physicsBody: false,
@@ -2435,7 +2441,7 @@ export const world = {
             })
             : insertDressingRow(this.state, {
               pos: hullPos,
-              radius: 14,
+              radius: 21,
               homeSectorId: sector.id,
               data: hullFleetData(shipIndex),
             });

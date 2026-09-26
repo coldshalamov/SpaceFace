@@ -18,6 +18,7 @@ function fixture() {
     prisms:[{x:20,z:20,radius:2.4,yaw:0.4,life:EMERGENT_TUNING.prismLife-1}],
   }};
 }
+const primaryMeshes=(pools)=>[pools.arcs,pools.rings,pools.gels,pools.prisms];
 const response=(mesh)=>Array.from(mesh.geometry.attributes.iResponse.array.subarray(0,4));
 const uniforms=(mesh)=>mesh.material.uniforms||mesh.material.userData.uniforms;
 
@@ -38,7 +39,7 @@ test('electrical contact preserves both zero-coordinate endpoints and floating-o
 
 test('deposited matter and prism shards are opaque scene-lit bodies with four bounded instance draws',()=>{
   const pools=createEmergentPrimitivePools();pools.update(fixture());
-  assert.equal(pools.group.children.length,4);
+  assert.equal(primaryMeshes(pools).every(mesh=>mesh.isInstancedMesh),true); assert.equal(pools.particles.capacity,96);
   for(const body of [pools.gels,pools.prisms]) {
     assert.equal(body.material.isMeshPhysicalMaterial,true);
     assert.equal(body.material.transparent,false);
@@ -57,17 +58,17 @@ test('simulation pause sleeps uploads, live animation uses retained uniforms, an
   const pools=createEmergentPrimitivePools(),state=fixture();
   state.rng=()=>{throw new Error('presentation consumed simulation RNG');};
   const before=JSON.stringify(state);pools.update(state);
-  const matrices=pools.group.children.map(mesh=>mesh.instanceMatrix.array);
-  const matrixVersions=pools.group.children.map(mesh=>mesh.instanceMatrix.version);
-  const responseVersions=pools.group.children.map(mesh=>mesh.geometry.attributes.iResponse.version);
+  const matrices=primaryMeshes(pools).map(mesh=>mesh.instanceMatrix.array);
+  const matrixVersions=primaryMeshes(pools).map(mesh=>mesh.instanceMatrix.version);
+  const responseVersions=primaryMeshes(pools).map(mesh=>mesh.geometry.attributes.iResponse.version);
   pools.update(state);
-  assert.deepEqual(pools.group.children.map(mesh=>mesh.instanceMatrix.version),matrixVersions);
-  assert.deepEqual(pools.group.children.map(mesh=>mesh.geometry.attributes.iResponse.version),responseVersions);
+  assert.deepEqual(primaryMeshes(pools).map(mesh=>mesh.instanceMatrix.version),matrixVersions);
+  assert.deepEqual(primaryMeshes(pools).map(mesh=>mesh.geometry.attributes.iResponse.version),responseVersions);
   assert.equal(JSON.stringify(state),before);
   state.simTime+=0.3;pools.update(state);
   assert.equal(uniforms(pools.arcs).uTime.value,state.simTime);
-  for(let i=0;i<4;i++)assert.equal(pools.group.children[i].instanceMatrix.array,matrices[i]);
-  assert.deepEqual(pools.group.children.map(mesh=>mesh.instanceMatrix.version),matrixVersions);
+  for(let i=0;i<4;i++)assert.equal(primaryMeshes(pools)[i].instanceMatrix.array,matrices[i]);
+  assert.deepEqual(primaryMeshes(pools).map(mesh=>mesh.instanceMatrix.version),matrixVersions);
   pools.dispose();
 });
 
@@ -102,9 +103,9 @@ test('accessibility retains opaque material silhouettes, freezes transport, and 
   const u=uniforms(pools.arcs);assert.equal(u.uMotion.value,0);assert.equal(u.uFlash.value,0.24);
   assert.equal(response(pools.gels)[1],1);assert.equal(response(pools.prisms)[1],1);
   assert.equal(pools.gels.count,1);assert.equal(pools.prisms.count,1);
-  const stable=pools.group.children.map(response);
+  const stable=primaryMeshes(pools).map(response);
   state.simTime+=2;pools.update(state);
-  assert.deepEqual(pools.group.children.map(response),stable,'sustained receipt structure remains frozen');
+  assert.deepEqual(primaryMeshes(pools).map(response),stable,'sustained receipt structure remains frozen');
   pools.dispose();
 });
 
@@ -116,7 +117,7 @@ test('producer lifetime drives pressure expansion and deposited-matter retiremen
   state.emergent.fields[0].life=0.10;pools.update(state);
   assert.ok(response(pools.gels)[3]>0.75);
   state.emergent.presentationCount=0;pools.update(state);
-  for(const mesh of pools.group.children){assert.equal(mesh.visible,false);assert.equal(mesh.count,0);}
+  for(const mesh of primaryMeshes(pools)){assert.equal(mesh.visible,false);assert.equal(mesh.count,0);}
   pools.dispose();pools.dispose();assert.equal(pools.group.children.length,0);
 });
 
@@ -126,9 +127,65 @@ test('saturation retains bounded capacities and stable buffers across repeated i
     for(const kind of ['arc','ring','gel','prism'])for(let i=0;i<90;i++)presentation.push({kind,x:i*4,z:0,x2:i*4+2,z2:1,scale:3,yaw:0});
     const state={simTime:0,emergent:{presentation,presentationCount:presentation.length}};
     assert.deepEqual(pools.update(state),{arcs:64,rings:24,gels:16,prisms:16});
-    const buffers=pools.group.children.map(mesh=>mesh.geometry.attributes.iResponse.array);
+    const buffers=primaryMeshes(pools).map(mesh=>mesh.geometry.attributes.iResponse.array);
     state.simTime=1;pools.update(state);
-    for(let i=0;i<4;i++)assert.equal(pools.group.children[i].geometry.attributes.iResponse.array,buffers[i]);
+    for(let i=0;i<4;i++)assert.equal(primaryMeshes(pools)[i].geometry.attributes.iResponse.array,buffers[i]);
     pools.dispose();
   }
+});
+
+test('authoritative arc lifetime narrows and cools the discharge without moving either endpoint',()=>{
+  const pools=createEmergentPrimitivePools(),state=fixture();
+  pools.update(state);
+  const strike=response(pools.arcs),matrix=Array.from(pools.arcs.instanceMatrix.array.subarray(0,16));
+  state.simTime+=0.15;state.emergent.flashes[0].ttl=0.03;pools.update(state);
+  const cooling=response(pools.arcs);
+  assert.ok(cooling[1]<strike[1]*0.60,'current cross-section retracts during cooling');
+  assert.ok(cooling[2]<strike[2]*0.20,'radiance retires with the true receipt lifetime');
+  assert.ok(cooling[3]>0.85,'shader receives true late-life phase for branch retraction');
+  assert.deepEqual(Array.from(pools.arcs.instanceMatrix.array.subarray(0,16)),matrix);
+  const paused=response(pools.arcs);pools.update(state);assert.deepEqual(response(pools.arcs),paused);
+  pools.dispose();
+});
+
+test('reduced-motion discharge retains width but still communicates cooling and authoritative expiry',()=>{
+  const pools=createEmergentPrimitivePools(),state=fixture();
+  state.settings.video.motionReduce=true;pools.update(state);const early=response(pools.arcs);
+  state.simTime+=0.17;state.emergent.flashes[0].ttl=0.01;pools.update(state);const late=response(pools.arcs);
+  assert.equal(early[1],late[1]);assert.ok(late[2]<early[2]);assert.ok(late[3]>early[3]);
+  assert.equal(uniforms(pools.arcs).uMotion.value,0);
+  state.emergent.presentationCount=0;pools.update(state);assert.equal(pools.arcs.count,0);
+  pools.dispose();
+});
+
+test('sparse transport bursts once per active packet, stays bounded, and retires without respawning each frame',()=>{
+  const pools=createEmergentPrimitivePools(),state=fixture();
+  const scene=new THREE.Scene();scene.add(pools.group);
+  pools.update(state);assert.equal(pools.particles.live,16);
+  const first=pools.particles.system.particles[0],start=first.position.clone();
+  pools.update(state);assert.equal(pools.particles.live,16);assert.ok(first.position.equals(start));
+  // The thermal publisher creates another overlapping receipt every tick. These are updates
+  // to powered contact, not permission for an unbounded spray on every rendered frame.
+  for(let i=0;i<30;i++) {
+    state.simTime+=1/60;
+    state.emergent.flashes[0]={...state.emergent.presentation[0],ttl:0.2};
+    pools.update(state);assert.ok(pools.particles.live<=16);
+  }
+  assert.equal(pools.particles.live,0);
+  state.emergent.presentationCount=0;pools.update(state);
+  state.simTime+=0.01;state.emergent.presentationCount=4;pools.update(state);
+  assert.equal(pools.particles.live,16,'a new lifecycle can emit a fresh packet');
+  pools.dispose();assert.equal(pools.particles.live,0);
+});
+
+test('transport reprojects during pause and reduced motion preserves the emitted parcel pose',()=>{
+  const pools=createEmergentPrimitivePools(),state=fixture();state.settings.video.motionReduce=true;
+  const scene=new THREE.Scene();scene.add(pools.group);
+  let origin=0;const project=(x,z,out)=>{out.x=x-origin;out.z=z-origin;};
+  pools.update(state,project);const p=pools.particles.system.particles[0],start=p.position.clone();
+  origin=80;pools.update(state,project);
+  assert.ok(p.position.distanceTo(start.clone().add(new THREE.Vector3(-80,0,-80)))<1e-6);
+  const paused=p.position.clone();state.simTime+=0.05;pools.update(state,project);
+  assert.ok(p.position.distanceTo(paused)<1e-6,'cooling does not move parcels under reduced motion');
+  pools.dispose();
 });

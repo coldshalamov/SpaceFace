@@ -41,6 +41,7 @@ import {
   HAZARD_BY_SECTOR,
   LANDMARK_BY_SECTOR,
   planetAnchorStandoffWU,
+  planetLandmarkStandoffWU,
   WAY_OF_LIFE_SIX,
 } from './lib/sectorAnchors.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
@@ -106,10 +107,13 @@ function anchorSpecFor(sectorId) {
     if (row.kind === 'planet') {
       return {
         kind: 'planet', refId: row.id, name: row.name,
-        standoffWU: planetAnchorStandoffWU(), fallbackCenter: anvilGlobalCenter(),
+        standoffWU: planetLandmarkStandoffWU(), fallbackCenter: anvilGlobalCenter(),
       };
     }
-    return { kind: row.kind, refId: row.id, name: row.name };
+    return {
+      kind: row.kind, refId: row.id, name: row.name,
+      parkOffsetWU: row.parkOffsetWU || null, parkSide: row.parkSide || null,
+    };
   }
   const row = HAZARD_BY_SECTOR.get(sectorId);
   assert.ok(row, `no hazard anchor row for ${sectorId} (scripts/lib/sectorAnchors.mjs)`);
@@ -193,6 +197,7 @@ try {
     }
   });
 
+  let landmarkAdmitted = null;
   for (const sectorId of SECTORS) {
     const dir = path.join(OUT, sectorId);
     await mkdir(dir, { recursive: true });
@@ -250,14 +255,18 @@ try {
         feature = { x: entry.pos.x, z: entry.pos.z };
         extent = ent ? hullOf(ent) : 60;
         standoff = extent + 40;
-        park = { x: feature.x, z: feature.z - standoff };
+        park = spec.parkOffsetWU
+          ? { x: feature.x + spec.parkOffsetWU.x, z: feature.z + spec.parkOffsetWU.z }
+          : { x: feature.x, z: feature.z + (spec.parkSide === 'north' ? standoff : -standoff) };
       } else if (spec.kind === 'worldSite') {
         const ent = alive().find((e) => e.data && e.data.worldSiteId === spec.refId);
         if (!ent) throw new Error(`world site ${spec.refId} not resident in ${id}`);
         feature = { x: ent.pos.x, z: ent.pos.z };
         extent = hullOf(ent);
         standoff = extent + 40;
-        park = { x: feature.x, z: feature.z - standoff };
+        park = spec.parkOffsetWU
+          ? { x: feature.x + spec.parkOffsetWU.x, z: feature.z + spec.parkOffsetWU.z }
+          : { x: feature.x, z: feature.z + (spec.parkSide === 'north' ? standoff : -standoff) };
       } else if (spec.kind === 'planet') {
         const p = state.planet;
         const live = !!(p && p.active === true && p.zoneId === spec.refId && p.center);
@@ -280,10 +289,13 @@ try {
       }
 
       // Clearance: the parking spot must not sit on a live hull (this file's header explains
-      // the 2.5M-WU depenetration throw). Rotate the same standoff around the feature until clear.
+      // the 2.5M-WU depenetration throw). Only PHYSICAL bodies can depenetrate — dressing
+      // rows, site markers and other collides:false actors render but cannot throw, and
+      // treating them as obstacles once forced the Ceres park 400 WU off the wreck's hull.
+      // Rotate the same standoff around the feature until clear of what can actually hit.
       const player0 = state.entities.get(state.playerId);
       const pr = (player0 && player0.radius) || 8;
-      const blockedBy = (p) => alive().find((e) => e !== player0 && e.pos
+      const blockedBy = (p) => alive().find((e) => e !== player0 && e.collides === true && e.pos
         && Math.hypot(e.pos.x - p.x, e.pos.z - p.z) <= (e.radius || 8) + pr + 24);
       if (blockedBy(park)) {
         const radius = Math.hypot(park.x - feature.x, park.z - feature.z);
@@ -337,6 +349,44 @@ try {
     // dispatch, the first job cycle — the same 24 s the measurement bench waits.
     const settleFrom = await page.evaluate(() => window.SF.state.simTime);
     await page.waitForFunction((t) => window.SF.state.simTime >= t + 24, settleFrom, { timeout: 300_000 });
+
+    // PQ-153.02 round-3: landmark GLBs admit asynchronously (decode + pipeline compile measured
+    // ~40 s from sector arrival on software GL). A player flying to a landmark minutes into a
+    // sector always finds the authored body standing there; the strip must photograph that same
+    // state, not the admission window — round 2 watched Ceres for 55 s and the cathedral
+    // committed at ~t+40 s, so every frame showed the pre-admission substrate. Wait for the
+    // anchor's authored body (capped; a stall degrades to what the game actually shows).
+    // PQ-153.02 round-3: landmark GLBs admit asynchronously (decode + pipeline compile measured
+    // ~40 s from sector arrival on software GL). A player flying to a landmark minutes into a
+    // sector always finds the authored body standing there; the strip must photograph that same
+    // state, not the admission window — round 2 watched Ceres for 55 s and the cathedral
+    // committed at ~t+40 s, so every frame showed the pre-admission substrate. Wait for the
+    // anchor's authored body (capped; a stall degrades to what the game actually shows).
+    // The predicate must match the SITE ROOT specifically — every hull component shares
+    // worldSiteId and meshes transiently while the root is still decoding. And it must NOT be
+    // followed by a re-seat teleport: relocatePlayerInSector shifts the floating origin out
+    // here, re-posing every entity, and the root's position-keyed residency boundary strands —
+    // round 4 re-seated and the wreck never admitted at all (probe without the re-seat: authored
+    // and on screen at t≈40 s).
+    if (ANCHOR === 'landmark' && (spec.kind === 'poi' || spec.kind === 'worldSite')) {
+      // The result is surfaced, never swallowed silently: a timed-out admission means the
+      // strip photographs the pre-admission substrate (round 8's empty frames), and the
+      // summary line has to say so instead of failing a reviewer's patience next run.
+      landmarkAdmitted = await page.waitForFunction(({ refId, kind }) => {
+        const state = window.SF.state;
+        const ent = [...(state.entityList || [])].find((e) => e && e.alive !== false && e.data
+          && (kind === 'worldSite'
+            ? (e.data.worldSiteId === refId && e.data.role === 'world_site_root')
+            : e.data.poiId === refId));
+        if (!ent) return false;
+        const meshState = ent.mesh && ent.mesh.userData
+          ? String(ent.mesh.userData.authoredAssetState || '')
+          : '';
+        return ent.presentationAdmission === 'ready' || meshState === 'authored';
+      }, { refId: spec.refId, kind: spec.kind }, { timeout: 420_000 })
+        .then((handle) => !!handle)
+        .catch(() => false);
+    }
 
     // PQ-153.02's done-when is "screenshot composition checked at the shipping camera": landmark
     // mode banks one frame at the untouched 144 WU zoom BEFORE the wheel-out, then zooms like the
@@ -418,10 +468,16 @@ try {
       census,
     };
     if (ship144) report.sectors[sectorId].ship144 = ship144;
+    if (ANCHOR === 'landmark' && (spec.kind === 'poi' || spec.kind === 'worldSite')) {
+      report.sectors[sectorId].landmarkAdmitted = landmarkAdmitted;
+    }
     const anchorLabel = anchor.station || anchor.name || anchor.id || anchor.kind;
     console.log(`[sector-identity] ${sectorId}: ${frames.length} frames over `
       + `${frames.length * SECONDS_PER_FRAME}s sim (${(wallMs / 1000).toFixed(1)}s wall) `
-      + `at ${anchorLabel} +${anchor.standoffWU}WU; parked=${census.parkedAtIntended}; ${census.onCamera110.count} on camera, ${census.withinPocket750.count} in the pocket`);
+      + `at ${anchorLabel} +${anchor.standoffWU}WU; parked=${census.parkedAtIntended}; ${census.onCamera110.count} on camera, ${census.withinPocket750.count} in the pocket`
+      + (ANCHOR === 'landmark' && (spec.kind === 'poi' || spec.kind === 'worldSite')
+        ? `; landmarkAdmitted=${landmarkAdmitted === true ? 'yes' : 'NO — frames show the pre-admission substrate'}`
+        : ''));
   }
 
   report.pageErrors = pageErrors;

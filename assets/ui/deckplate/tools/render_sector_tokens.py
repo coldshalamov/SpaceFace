@@ -12,8 +12,10 @@ detail is secondary.
     blender -b --factory-startup -P assets/ui/deckplate/tools/render_sector_tokens.py -- \
         <out_dir> [size=512] [samples=64] [ids=all]
 
-writes <out_dir>/<sector id>.png (RGBA). finish: scripts or sharp downsample to 256 webp into
-assets/ui/generated/chart/<sector id>.webp.
+writes <out_dir>/<sector id>.png (RGBA, transparent film) and <sector id>.black.png (the same frame over black);
+then merge and downsample into the Chart's tokens:
+
+    node assets/ui/deckplate/tools/finish_sector_tokens.mjs <out_dir> assets/ui/generated/chart [sheet.png]
 
 Deterministic: every scatter uses its own seeded random.Random; noise textures use fixed offsets.
 """
@@ -33,6 +35,7 @@ ONLY = set(argv[3].split(",")) if len(argv) > 3 and argv[3] not in ("", "all") e
 os.makedirs(OUT_DIR, exist_ok=True)
 
 KEY_WARM = (1.0, 0.84, 0.66)
+GAS_GAIN = 0.35
 RIM_COOL = (0.56, 0.72, 1.0)
 
 
@@ -360,7 +363,9 @@ def gas_mat(name, color, emit_col, density=2.0, emit_strength=1.5, scale=2.5, fa
     L.new(d.outputs["Value"], vol.inputs["Density"])
     e = nt.nodes.new("ShaderNodeMath")
     e.operation = "MULTIPLY"
-    e.inputs[1].default_value = emit_strength
+    # GAS_GAIN: the strengths below were first tuned while a glow's colour clipped away on the transparent
+    # film; with the black pass keeping it, a third of that reads as the same veil
+    e.inputs[1].default_value = emit_strength * GAS_GAIN
     L.new(m.outputs["Value"], e.inputs[0])
     # the glow is its own volume emission added to the body (the principled volume's own emission rendered
     # nothing in this build: the knot read as grey scattered light)
@@ -676,7 +681,7 @@ def s_ceres_belt(m):
     rng = random.Random(21)
     protos = rock_protos("cb", m["rock_warm"], 8, 2)
     scatter_ring(protos, rng, 240, 0.6, 1.0, 0.045, (0.01, 0.1), tilt=(math.radians(12), 0, 0), size_pow=3.2)
-    d = gas("dust", (0, 0, 0), (1.05, 1.05, 0.12), gas_mat("dust", (1.0, 0.8, 0.6), (1.0, 0.62, 0.32), density=0.35, emit_strength=0.9, scale=3.0, falloff=0.6))
+    d = gas("dust", (0, 0, 0), (1.05, 1.05, 0.12), gas_mat("dust", (1.0, 0.8, 0.6), (1.0, 0.62, 0.32), density=0.08, emit_strength=0.8, scale=3.0, falloff=0.6, fill=(0.5, 0.8)))
     d.rotation_euler = (math.radians(12), 0, 0)
     cyl("st", 0.035, 0.08, (0.72, -0.3, 0.05), (0.4, 0, 0), m["hull"])
     sphere("stlight", 0.02, (0.72, -0.3, 0.1), m["win"], seg=10)
@@ -771,7 +776,7 @@ def s_sker_haven(m):
 
 
 def s_veil_nebula(m):
-    gas("knot", (0, 0, 0), (1.05, 0.95, 0.8), gas_mat("veil", (0.03, 0.3, 0.36), (0.0, 0.62, 0.74), density=2.2, emit_strength=4.5, scale=1.6, falloff=0.7, fill=(0.3, 0.72)))
+    gas("knot", (0, 0, 0), (1.05, 0.95, 0.8), gas_mat("veil", (0.03, 0.3, 0.36), (0.0, 0.62, 0.74), density=1.6, emit_strength=4.5, scale=1.9, falloff=1.3, fill=(0.4, 0.74)))
     gas("fil", (0.25, -0.1, 0.1), (0.7, 0.35, 0.3), gas_mat("fil", (0.04, 0.2, 0.5), (0.08, 0.4, 1.0), density=1.6, emit_strength=5.0, scale=3.5, fill=(0.35, 0.72)))
     sphere("st", 0.025, (-0.05, 0.05, 0.08), m["win"], seg=12)
 

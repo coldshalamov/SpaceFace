@@ -226,6 +226,7 @@ export async function simulateCrucibleSwarm({
   seed,
   waveCount = CRUCIBLE_WAVE_TARGET,
   tickCap = CRUCIBLE_TICK_CAP,
+  onTick = null,
 } = {}) {
   if (!Number.isFinite(seed)) {
     throw new Error('simulateCrucibleSwarm: `seed` must be a finite number (fixed seeds or it did not happen)');
@@ -504,6 +505,7 @@ export async function simulateCrucibleSwarm({
           clearedWave = (ev.payload && ev.payload.wave) || (state.run && state.run.wave) || wavesCleared;
         }
       }
+      if (onTick) onTick({ state, tick, t, events: newEvents, player: playerAfter });
       sampleHostileInFrame(state, playerAfter, hostileInFrame, SIM_DT, aiIntent.phase);
       // Record heading ONCE per unique tick. Rapier emits a run of receipts for one contact;
       // stamping the whole tick rotation onto every receipt (then summing) invented heading.
@@ -2769,6 +2771,7 @@ export async function simulateCrucibleDuel({
   arenaId = 'helios_core',
   loadoutId = 'energy_baseline',
   stockDoctrineOnly = false,
+  onTick = null,
 } = {}) {
   if (!Number.isFinite(seed)) {
     throw new Error('simulateCrucibleDuel: `seed` must be a finite number (fixed seeds or it did not happen)');
@@ -2949,6 +2952,7 @@ export async function simulateCrucibleDuel({
       for (const ev of newEvents) ingestDuelEvent(ev, duel, state, {
         allyIds, enemyIds, lastActionOn, lastAction, collisionVictims,
       });
+      if (onTick) onTick({ state, tick, t, events: newEvents, player: playerAfter });
 
       lastAction = sampleIssuedVerbs(state, prevVerbs, tick, verbTrace, lastAction);
 

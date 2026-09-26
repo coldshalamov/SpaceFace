@@ -414,6 +414,9 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
       const bs = ring.ids.map((_, i) => ((target.get(ring.id) + step * i) % 360 + 360) % 360).sort((a, b) => a - b);
       const half = ((ring.size / 2 + 6) / ring.nameR) * (180 / Math.PI);
       let best = null;
+      for (const span of [ring.nameSpanFull || ring.nameSpan, ring.nameSpanShort || ring.nameSpan]) {
+      if (best) break;
+      ring.nameSpan = span;
       for (let i = 0; i < bs.length; i += 1) {
         const a0 = bs[i] + half;
         const a1 = (i + 1 < bs.length ? bs[i + 1] : bs[0] + 360) - half;
@@ -429,6 +432,8 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
         const score = room - Math.abs(wrap180(mid - 180)) * 0.6;
         if (!best || score > best.score) best = { mid, score };
       }
+      }
+      if (ring.countTspan) ring.countTspan.textContent = best && ring.nameSpan === ring.nameSpanShort && ring.nameSpanShort !== ring.nameSpanFull ? '' : ring.countText;
       ring.nameArc = null;
       if (!best) continue;
       const lower = best.mid > 90 && best.mid < 270;
@@ -589,6 +594,8 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
         const spanDeg = (textLen / r) * (180 / Math.PI);
         ring.nameAt = 180;
         ring.nameSpan = spanDeg;
+        ring.nameSpanFull = spanDeg;
+        ring.nameSpanShort = (((word.length + 1) * rn * 0.95) / r) * (180 / Math.PI);
         ring.nameR = r;
         ring.namePx = rn;
         const pid = `con-morr-name-${ring.id}-${Math.round(R)}`;
@@ -601,6 +608,8 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
         tp.appendChild(doc.createTextNode(`${word}  `));
         const c = svg('tspan');
         c.textContent = `${held}/${ring.ids.length}`;
+        ring.countText = c.textContent;
+        ring.countTspan = c;
         tp.appendChild(c);
         text.appendChild(tp);
         g.appendChild(text);

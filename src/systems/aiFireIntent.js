@@ -20,6 +20,15 @@ const RECENT_DEFENSIVE_DAMAGE_TICKS = 180;
 const FIRE_WINDOW_ADMISSION = new WeakMap();
 const PD_CONTACT_ID_SCRATCH = [];
 const PD_TABLE_RADIUS_PAD_WU = 80;
+// Perf memo for recentlyDamagedBy: the backward walk over the combat trace costs O(events in the
+// 180-tick window) per armed actor per tick, and the window holds thousands of entries during a
+// busy swarm wave. The memo is INCREMENTAL: a cached answer stays valid until the trace appends
+// past the length it was computed at (then only the appended delta is scanned), and a `true`
+// answer additionally carries the tick it expires at (RECENT_DEFENSIVE_DAMAGE_TICKS after the
+// damage event that proved it). A shrunken trace (ring compaction) resets lengths so the next
+// query rescans. Answers are therefore always identical to a full fresh walk.
+const RECENT_DAMAGE_MEMOS = new WeakMap();
+const RECENT_DAMAGE_MEMO_CAP = 512;
 
 export function applyAIFiringIntent(decision, state) {
   if (!decision || !state || !state.entities || typeof state.entities.get !== 'function') return;
@@ -77,6 +86,8 @@ export function applyAIFiringIntent(decision, state) {
   }
   const ai = data.ai || {};
   const recentlyDamaged = recentlyDamagedBy(state, e.id, engagementTarget.id);
+  // Pure read this tick; both doctrine and engagement gates consume the same value.
+  const playerWanted = isPlayerWanted(state);
   // SCREEN activity.targetId names the defended charge, so it is not an offensive target lock.
   // Map the selected intercept into the ordinary ENGAGE doctrine gate while preserving SCREEN
   // activity/ROE semantics and the final engagement authority below.
@@ -90,7 +101,7 @@ export function applyAIFiringIntent(decision, state) {
     objectiveKind,
     target: engagementTarget,
     self: e,
-    wanted: isPlayerWanted(state),
+    wanted: playerWanted,
     recentlyDamaged,
   });
   const authorization = permitted ? authorizeAIEngagement({
@@ -99,7 +110,7 @@ export function applyAIFiringIntent(decision, state) {
     target: engagementTarget,
     tick: state.tick,
     objectiveReason: objective && objective.reason,
-    wanted: isPlayerWanted(state),
+    wanted: playerWanted,
     recentlyDamaged,
   }) : null;
   if (!permitted || !authorization || !authorization.ok) {
@@ -320,10 +331,19 @@ function clearFire(intent, reason = null, blockerId = null) {
 
 function admittedFireWindow(entity, doctrine, action) {
   if (!doctrine) return true;
-  const key = `${doctrine.doctrineId || ''}|${doctrine.cycle || 0}|${doctrine.phase || ''}|${doctrine.phaseStartedTick ?? ''}`;
   let runtime = FIRE_WINDOW_ADMISSION.get(entity);
-  if (!runtime || runtime.key !== key) {
-    runtime = { key, admitted: false };
+  // The identity key is compared field-by-field instead of being rebuilt as a template string
+  // every call; the four stringified fields are exactly the segments the old key joined.
+  const doctrineId = String(doctrine.doctrineId || '');
+  const cycle = String(doctrine.cycle || 0);
+  const phase = String(doctrine.phase || '');
+  const phaseStartedTick = String(doctrine.phaseStartedTick ?? '');
+  if (!runtime
+    || runtime.doctrineId !== doctrineId
+    || runtime.cycle !== cycle
+    || runtime.phase !== phase
+    || runtime.phaseStartedTick !== phaseStartedTick) {
+    runtime = { doctrineId, cycle, phase, phaseStartedTick, admitted: false };
     FIRE_WINDOW_ADMISSION.set(entity, runtime);
   }
   if (action && action.actionId) runtime.admitted = true;
@@ -343,15 +363,61 @@ function recentlyDamagedBy(state, entityId, targetId) {
   const events = state.combat && state.combat.trace && Array.isArray(state.combat.trace.events)
     ? state.combat.trace.events
     : [];
-  for (let index = events.length - 1; index >= 0; index--) {
+  let memo = RECENT_DAMAGE_MEMOS.get(state);
+  if (!memo || memo.events !== events) {
+    memo = { events, len: 0, byPair: new Map() };
+    RECENT_DAMAGE_MEMOS.set(state, memo);
+  }
+  // Ring compaction shrank the array: stored lengths are stale beyond recovery — reset them so
+  // the next query rescans from the start of what remains.
+  if (events.length < memo.len) {
+    memo.len = 0;
+    for (const perTarget of memo.byPair.values()) {
+      for (const entry of perTarget.values()) entry.len = 0;
+    }
+  }
+  let perTarget = memo.byPair.get(entityId);
+  if (!perTarget) {
+    perTarget = new Map();
+    if (memo.byPair.size < RECENT_DAMAGE_MEMO_CAP) memo.byPair.set(entityId, perTarget);
+  }
+  const entry = perTarget.get(targetId);
+  if (entry) {
+    if (entry.answer) {
+      // A `true` holds until the proving damage event ages out of the window.
+      if (tick <= entry.untilTick) return true;
+    } else if (events.length === entry.len) {
+      return false;
+    }
+  }
+  // Scan the appended delta (or everything, when cold/reset/expired-true). Identical predicate
+  // to a full backward walk — events below `start` were already reflected in the cached answer.
+  let result = false;
+  let resultUntilTick = -1;
+  const start = entry && entry.len <= events.length ? entry.len : 0;
+  for (let index = events.length - 1; index >= start; index--) {
     const event = events[index];
     if (!event) continue;
     const eventTick = Number.isInteger(event.tick) ? event.tick : tick;
     if (tick - eventTick > RECENT_DEFENSIVE_DAMAGE_TICKS) break;
     if (event.kind !== 'damage.routed') continue;
-    if (event.targetId === entityId && (targetId == null || event.attackerId === targetId)) return true;
+    if (event.targetId === entityId && (targetId == null || event.attackerId === targetId)) {
+      result = true;
+      resultUntilTick = eventTick + RECENT_DEFENSIVE_DAMAGE_TICKS;
+      break;
+    }
   }
-  return false;
+  if (!result && entry && entry.answer && tick <= entry.untilTick) {
+    // The window has not expired on the previously proven event and the new delta holds no
+    // newer proof — the old `true` still stands (its event lives below `start`).
+    result = true;
+    resultUntilTick = entry.untilTick;
+  }
+  // While a `true` answer is alive it does not depend on trace length at all.
+  perTarget.set(targetId, result
+    ? { answer: true, len: Number.MAX_SAFE_INTEGER, untilTick: resultUntilTick }
+    : { answer: false, len: events.length, untilTick: -1 });
+  return result;
 }
 
 function leadAngleFor(shooter, tgt, weapons) {

@@ -2384,10 +2384,19 @@ export const missions = {
     }
     const [rLo, rHi] = def.riskTierRange || [0, 1];
     const riskTier = clamp(economicRiskTier(typeId, sectorRisk, this._repOf(info.factionId)), rLo, rHi);
-    // D59: standing buys harder bounty marks (riskTier above drives spawn strength), never richer
-    // pay — pricing the standing tier re-paid the same bounty loop at escalating wages. Pay keeps
-    // the destination sector's own risk.
-    const payRiskTier = typeId === 'bounty_hunt' ? clamp(sectorRisk, rLo, rHi) : riskTier;
+    // D59: a bounty pays the boarding board's local rate — the board sector's own tier and danger —
+    // while standing and the destination's danger escalate the MARK (riskTier above: harder, longer
+    // fights, more return fire), never the priced rate. Pricing destination/standing escalation into
+    // the rate re-paid the same loop at operator-to-industrial wages and walked the hunter route out
+    // of its healthy band within one session.
+    const bountyPay = typeId === 'bounty_hunt';
+    let payRiskTier = riskTier;
+    let payTier = null;
+    if (bountyPay) {
+      const boardSector = SECTOR_BY_ID.get(info.sectorId);
+      payRiskTier = clamp(boardSector ? dangerTier(boardSector) : 1, rLo, rHi);
+      payTier = Math.max(info?.sectorTier ?? info?.tier ?? 0, payRiskTier);
+    }
 
     // Per-type params (quota qty, target strength, scan count, commodity, …) + cargo value.
     const params = this._rollParams(typeId, info, dest, riskTier, rng);
@@ -2405,7 +2414,7 @@ export const missions = {
     const { placeName: _markPlace, ...markStoryTarget } = bountyMark || {};
 
     // Economy Pulse: pay the net work budget, not a product of unbounded multipliers.
-    const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier:payRiskTier,distance,params,
+    const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier:payRiskTier,tier:payTier,distance,params,
       loyaltyMultiplier:this._repOf(info.factionId) >= (cfg.faction.friendlyThreshold || 25)
         ? (cfg.faction.loyaltyBonus || 1.15) : 1});
     const reward_cr = economyTerms.rewardCr;
