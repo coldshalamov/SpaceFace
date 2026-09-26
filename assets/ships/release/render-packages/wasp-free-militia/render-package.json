@@ -564,7 +564,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f377451a1589ddee8c8a1276b5cf738ba0247263c78b4b7a085eae7bb4cc7047",
+  "contentHash": "a9b2bf9488247a8263d5fa806b5581b4c50147daffc35cf31d1c589edc7cb764",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -3469,7 +3469,7 @@
     },
     "sourceManifest": {
       "bytes": 189651,
-      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
+      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
       "uri": "pilots.json"
     }
   },
@@ -4998,7 +4998,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_free_militia.glb"
   },
-  "runtimeHash": "118ed0d892584c3ac620294c5a5d75023f86c3da5037c861f931a97840c9682a",
+  "runtimeHash": "318dd32b9c511efabaf6cde6efd628b93f530e1f9d2e4d2ecfaa965e7844bf0b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

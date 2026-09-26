@@ -4401,14 +4401,14 @@
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/massline_express_liner_v1.glb",
       "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb",
-      "sourceSha256": "aaa58f10265d08e2eb856c75b9c1f94b991fd1945aa3aa2588ea260c83289690",
-      "releaseSha256": "75bbdc56046f1360904e8355ea131d8adff95bdf80d952e4ba520a580e803d19",
-      "sourceBytes": 12667384,
-      "releaseBytes": 5277236,
+      "sourceSha256": "a97cdfb920fcd5d9230526981a878a46420afd7ad32516c60d2e7dc70b815a54",
+      "releaseSha256": "65aefd7a018de728b8097c9930432417d2e4cfb099bc9362c31fed9b4d42b9d4",
+      "sourceBytes": 13125660,
+      "releaseBytes": 5354532,
       "textures": 27,
       "ktx2Textures": 27,
-      "meshoptBufferViews": 48,
-      "contractNodeCount": 22
+      "meshoptBufferViews": 72,
+      "contractNodeCount": 30
     },
     {
       "id": "wholeship_massline_express_liner_v1_lod1",
