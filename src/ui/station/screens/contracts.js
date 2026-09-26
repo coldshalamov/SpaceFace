@@ -723,15 +723,20 @@ export function createContractsScreen(ctx) {
       const kr = key ? key.getBoundingClientRect() : null;
       const hide = () => { tether.style.display = 'none'; cap.style.display = 'none'; };
       if (!kr || !(dr.width > 0) || !(kr.width > 0)) { hide(); return; }
-      const kx = kr.right - dr.left + 20;
+      // at 1440p the station shell is zoomed: rects come back in zoomed px while the route orrery's origin and
+      // every style length are the element's own css px. The tether's viewBox is the dossier's rect, so path
+      // coordinates stay in rect px; the orrery's origin is scaled INTO rect px and style lengths OUT of it.
+      const z = dossier.offsetWidth > 0 ? dr.width / dossier.offsetWidth : 1;
+      const zr = routeHost.offsetWidth > 0 ? rr.width / routeHost.offsetWidth : z;
+      const kx = kr.right - dr.left + 20 * z;
       // snapped to the pixel grid so the 1px core reads as one row, not two half rows
       const ky = Math.round(kr.top - dr.top + kr.height / 2) + 0.5;
-      const ox = rr.left - dr.left + g.origin.x;
-      const oy = rr.top - dr.top + g.origin.y;
-      if (!(ox > kx + 80)) { hide(); return; }
+      const ox = rr.left - dr.left + g.origin.x * zr;
+      const oy = rr.top - dr.top + g.origin.y * zr;
+      if (!(ox > kx + 80 * z)) { hide(); return; }
       const dy = ky - oy;
       const ex = ox - Math.abs(dy);
-      const d = ex > kx + 24 ? `M ${kx} ${ky} H ${ex.toFixed(1)} L ${ox.toFixed(1)} ${oy.toFixed(1)}` : `M ${kx} ${ky} L ${ox.toFixed(1)} ${oy.toFixed(1)}`;
+      const d = ex > kx + 24 * z ? `M ${kx} ${ky} H ${ex.toFixed(1)} L ${ox.toFixed(1)} ${oy.toFixed(1)}` : `M ${kx} ${ky} L ${ox.toFixed(1)} ${oy.toFixed(1)}`;
       tether.setAttribute('viewBox', `0 0 ${Math.max(1, dr.width)} ${Math.max(1, dr.height)}`);
       tether.querySelector('.sx-ct-tether__core').setAttribute('d', d);
       tether.querySelector('.sx-ct-tether__bloom').setAttribute('d', d);
@@ -739,10 +744,10 @@ export function createContractsScreen(ctx) {
       bead.setAttribute('cx', String(kx)); bead.setAttribute('cy', String(ky));
       cap.querySelector('.orr-route__jumps').textContent = g.jumpsText || '';
       cap.querySelector('.orr-route__via').textContent = g.viaText || '';
-      cap.style.left = `${Math.round(kx + 22)}px`;
+      cap.style.left = `${Math.round(kx / z + 22)}px`;
       // the reading hangs from the line (never up into the terms at a short height)
       // at 720 the reading stands above the line (the column's foot fades below it); at full size it hangs under the line
-      cap.style.top = `${Math.round(ky + (window.innerHeight <= 800 ? -30 : 18))}px`;
+      cap.style.top = `${Math.round(ky / z + (window.innerHeight <= 800 ? -30 : 18))}px`;
       tether.style.display = '';
       cap.style.display = '';
       // the ladder's foot closes on the tether's line: the YOURS block bottom-anchors six px above it, so the
@@ -757,12 +762,12 @@ export function createContractsScreen(ctx) {
           // the line as drawn (its path's lowest row is the horizontal run), not the key box's arithmetic
           const drawn = tether.querySelector('.sx-ct-tether__core').getBoundingClientRect();
           const lineY = drawn.height > 0 ? drawn.bottom - 0.5 : dr.top + ky;
-          const push = (lineY - 6) - bottom;
+          const push = ((lineY - 6) - bottom) / z;
           // the sheet's own margin is !important: the push must be too
           if (push > 0) yours.style.setProperty('margin-top', `${Math.round(push)}px`, 'important');
           // the seam between the board and YOURS carries the rail, so the ladder stays one scale with a block gap
           const board = document.querySelector('.sx-ct__board');
-          const seam = board ? Math.max(0, yours.getBoundingClientRect().top - board.getBoundingClientRect().bottom) : 0;
+          const seam = board ? Math.max(0, (yours.getBoundingClientRect().top - board.getBoundingClientRect().bottom) / z) : 0;
           yours.style.setProperty('--ct-seam', `${Math.round(seam)}px`);
           // ONE tick series for the whole ladder: every block, the seam and the section and row ticks are
           // phased from the ladder's first tick, so the pitch never breaks at a joint
@@ -770,11 +775,14 @@ export function createContractsScreen(ctx) {
           const kids = hang ? [...hang.children] : [];
           // on whole pixels: a box's background is painted from its snapped top, so the phase is taken between
           // rounded tops and every minor tick lands as one crisp row
-          const origin = Math.round(kids.length ? kids[0].getBoundingClientRect().top : yours.getBoundingClientRect().top);
+          // phases in css px (rect px / z): the 8 px tick pitch is the sheet's own length
+          const cssTop = (node) => node.getBoundingClientRect().top / z;
+          const origin = Math.round(kids.length ? cssTop(kids[0]) : cssTop(yours));
           const phase = (y) => (((origin - Math.round(y)) % 8) + 8) % 8;
           const snap = (y) => origin + Math.round((y - origin) / 8) * 8;
-          for (const kid of kids) kid.style.setProperty('--ct-tick-y', `${phase(kid.getBoundingClientRect().top)}px`);
-          const yr = yours.getBoundingClientRect();
+          for (const kid of kids) kid.style.setProperty('--ct-tick-y', `${phase(cssTop(kid))}px`);
+          const yrRect = yours.getBoundingClientRect();
+          const yr = { top: yrRect.top / z, height: yrRect.height / z };
           yours.style.setProperty('--ct-seam-phase', `${phase(yr.top - seam)}px`);
           // YOURS's major tick on the series point nearest its label's centre (it replaces that minor tick)
           const padTop = parseFloat(getComputedStyle(yours).paddingTop) || 0;
@@ -783,10 +791,11 @@ export function createContractsScreen(ctx) {
           // each tracked row's tick on the series point nearest its title's first line
           for (const job of list.querySelectorAll('.sx-job')) {
             const name = job.querySelector('.k-row__name') || job;
-            const nr = name.getBoundingClientRect();
+            const nrRect = name.getBoundingClientRect();
+            const nr = { top: nrRect.top / z, height: nrRect.height / z };
             const lh = parseFloat(getComputedStyle(name).lineHeight) || nr.height;
             const mid = nr.top + Math.min(nr.height, lh) / 2;
-            job.style.setProperty('--ct-row-y', `${snap(mid) - Math.round(job.getBoundingClientRect().top)}px`);
+            job.style.setProperty('--ct-row-y', `${snap(mid) - Math.round(cssTop(job))}px`);
           }
         }
       } catch (_) { /* cosmetic */ }
