@@ -278,16 +278,34 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
   if (typeof ResizeObserver === 'function') {
     ro = new ResizeObserver(() => build());
     ro.observe(host);
+    // the stage and the hero box move as the columns settle: the yard re-centres on the hull with them
+    ro.observe(anchor);
+    const heroBox = hero && typeof anchor.querySelector === "function" ? anchor.querySelector(hero) : null;
+    if (heroBox) ro.observe(heroBox);
     for (const li of items()) ro.observe(li);
   }
   if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(() => build());
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => build());
   build();
+  // the columns settle for a moment after mount and SLIDE the stage without resizing it (a ResizeObserver
+  // cannot see a move): watch the hull's box for two seconds and re-centre the yard if it moved
+  const watchUntil = (typeof performance !== 'undefined' ? performance.now() : 0) + 2000;
+  let lastAt = null;
+  const heroAt = () => { const h = hero && typeof anchor.querySelector === 'function' ? anchor.querySelector(hero) : null; const r = (h || anchor).getBoundingClientRect(); return r.left + r.width / 2 + ',' + (r.top + r.height); };
+  const watch = () => {
+    if (disposed) return;
+    const at = heroAt();
+    if (lastAt !== null && at !== lastAt && !drag) build();
+    lastAt = at;
+    if (performance.now() < watchUntil && typeof requestAnimationFrame === 'function') requestAnimationFrame(watch);
+  };
+  let disposed = false;
+  if (typeof requestAnimationFrame === 'function' && typeof performance !== 'undefined') requestAnimationFrame(watch);
   return {
     el: wrap,
     update,
     layout: build,
     get geometry() { return g; },
-    dispose() { if (settle) settle.stop(); if (mo) mo.disconnect(); if (ro) ro.disconnect(); wrap.remove(); back.remove(); },
+    dispose() { disposed = true; if (settle) settle.stop(); if (mo) mo.disconnect(); if (ro) ro.disconnect(); wrap.remove(); back.remove(); },
   };
 }

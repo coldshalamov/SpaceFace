@@ -902,12 +902,16 @@ html body #screens .k-screen.orr-newgame .sf-ng-footer .sf-back.k-word::after { 
   #screens .orr-newgame .orr-yard > .orr-turntable__row > li .k-word-sub { font-size:12px !important; }
 }
 /* the launch beat: on LAUNCH the run's four beads light in sequence (it plays while the run boots) */
-#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step::before { animation:ng-bead-lit 360ms ease-out both; }
-#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step:nth-child(2)::before { animation-delay:120ms; }
-#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step:nth-child(3)::before { animation-delay:240ms; }
-#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step:nth-child(4)::before { animation-delay:360ms; }
-@keyframes ng-bead-lit { to { background:rgb(252 249 240); box-shadow:0 0 0 2px rgb(252 249 240), 0 0 14px 3px rgb(255 240 214 / .55); } }
-html.sf-reduce-motion #screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step::before { animation-duration:1ms; animation-delay:0ms; }
+/* the beads' rest look is !important (it must beat the kit), and an animation cannot override !important:
+   the lit look is set !important under .is-launching and TRANSITIONS in, each bead a beat after the last */
+#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step::before { background:rgb(252 249 240) !important;
+  box-shadow:0 0 0 2px rgb(252 249 240), 0 0 14px 3px rgb(255 240 214 / .55) !important; transition:background 240ms ease-out, box-shadow 240ms ease-out; }
+#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step:nth-child(2)::before { transition-delay:140ms; }
+#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step:nth-child(3)::before { transition-delay:280ms; }
+#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step:nth-child(4)::before { transition-delay:420ms; }
+html.sf-reduce-motion #screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step::before { transition:none; }
+/* no lone word on the last line of the hull's sentence (1280 left "way." alone) */
+#screens .orr-newgame .orr-ng-caption > .k-sentence { text-wrap:pretty; }
 
 `;
 
