@@ -1777,6 +1777,50 @@ export const RECIPES = [
     reverbMix: 0.45, reverbDecay: 1.8,
   },
 
+  // --- Field deploy voices (CV-EAR) — every field power gets its own one-shot; no more
+  // borrowed anomaly swell on the Well and no UI confirm click on force powers. Combat bus.
+  {
+    // WELL — the Intake: a sucking drop, energy falling inward.
+    id: 'sfx_field_deploy_well',
+    category: 'weapon', type: 'oscillator', wave: 'sine',
+    baseFreq: 140, freqSweep: [140, 46], sweepTimeS: 0.42,
+    gainEnvelope: { attack: 0.08, sustain: 0.04, release: 0.7 },
+    filterType: 'lowpass', filterFreq: 300, filterQ: 0.8,
+  },
+  {
+    // REPULSOR — the Plow: a push thump, energy thrown outward.
+    id: 'sfx_field_deploy_repulsor',
+    category: 'weapon', type: 'oscillator', wave: 'sine',
+    baseFreq: 55, freqSweep: [55, 170], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 600, filterQ: 0.9,
+    transientClick: { gain: 0.3 },
+  },
+  {
+    // CONE — the Sluice: a directional gust opened ahead of the nose.
+    id: 'sfx_field_deploy_cone',
+    category: 'weapon', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.006, sustain: 0.03, release: 0.35 },
+    filterType: 'bandpass', filterFreq: 1200, filterQ: 1.2,
+  },
+  {
+    // SKIM — the scoop sheet: a high shimmer as the sheet opens.
+    id: 'sfx_field_deploy_skim',
+    category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 480, freqSweep: [480, 640], sweepTimeS: 0.15,
+    gainEnvelope: { attack: 0.01, sustain: 0.04, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 3.0,
+  },
+  {
+    // SEED — the lock-ring: a short mechanical clack as the ring locks.
+    id: 'sfx_field_deploy_seed',
+    category: 'weapon', type: 'oscillator', wave: 'square',
+    baseFreq: 320, freqSweep: [320, 190], sweepTimeS: 0.06,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 700, filterQ: 2.0,
+    transientClick: { gain: 0.4 },
+  },
+
   // --- First-hour identity motifs (procedural, exclusive roles) ---
   // Accel step: idle→thrust / thrust→boost — short sub + air, never reused for UI.
   {

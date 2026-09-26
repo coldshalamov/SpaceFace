@@ -1921,8 +1921,11 @@ export const audio = {
       this.play('sfx_firsthour_coldopen', { gain: 0.7, critical: true });
     });
     bus.on('fields:deployed', (p) => {
-      if (p && p.kind && p.kind !== 'well') return;
-      this._playAccessibilityCue('well', { position: p && p.center });
+      // CV-EAR: every field power carries its own deploy voice through the accessibility
+      // cue table (NPC deploys included — the position already attenuates by distance).
+      const kind = p && p.kind;
+      if (!kind) return;
+      this._playAccessibilityCue(kind, { position: p && p.center });
     });
     bus.on(VISUAL_EVENT_BUS, (p) => this._onVisualEventAudio(p));
     bus.on('bulletTime:start', () => {
