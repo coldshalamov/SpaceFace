@@ -844,6 +844,10 @@ export const bombs = {
   // stock, per-payload cooldowns and the live selection. In-flight bomb entities are
   // transient — non-persistent actors never serialize.
   serialize() {
+    // A registered-but-uninitialized owner (headless fixtures, post-destroy) serializes
+    // nothing — _callSerialize treats undefined as absent-owner, and the rack's starter
+    // kit is additive on the deserialize side anyway.
+    if (!this.state) return undefined;
     const rt = ensureRuntime(this.state);
     return {
       v: 1,
@@ -858,6 +862,8 @@ export const bombs = {
     };
   },
   deserialize(data) {
+    // No bound state means no live bag to restore into — the starter kit lands at init.
+    if (!this.state) return;
     const rt = ensureRuntime(this.state);
     // Pre-rack saves carry no `bombs` key at all (and a partial bag without a rack is treated
     // the same): the additive default is the starter kit, not an error and not an empty bay.

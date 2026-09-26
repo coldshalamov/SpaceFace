@@ -195,7 +195,7 @@
     "check:impulse:massline-combos": "node scripts/check-impulse-massline-combos.mjs",
     "check:sg02:dash-collision": "node scripts/check-sg02-dash-collision.mjs",
     "check:sg02:save-reload": "node scripts/check-sg02-save-reload.mjs",
-    "check:sg02": "npm run check:sg02:intake && npm run check:physics-authority && npm run check:sg02:dynamic-lab && node scripts/check-sg02-authority.mjs && node scripts/check-sg02-production-combat-port.mjs && node scripts/check-sg02-tether.mjs && npm run check:sg02:tether-resilience && node scripts/check-sg02-dash-collision.mjs && node scripts/check-sg02-save-reload.mjs && npm run check:sim:dynamic",
+    "check:sg02": "npm run check:sg02:intake && npm run check:physics-authority && npm run check:sg02:dynamic-lab && node scripts/check-sg02-authority.mjs && node scripts/check-sg02-production-combat-port.mjs && node scripts/check-sg02-tether.mjs && npm run check:sg02:tether-resilience && node scripts/check-sg02-dash-collision.mjs && node scripts/check-sg02-save-reload.mjs && node --test test/sg02-coincident-spawn.test.mjs && npm run check:sim:dynamic",
     "check:player-knock": "node --test test/sg02-player-contact-give.test.mjs test/knock-budget.test.mjs",
     "check:rulings": "node scripts/check-rulings-guards.mjs && node --test test/rulings-guards.test.mjs && npm run check:player-knock && node --test test/hitstun-curve.test.mjs",
     "check:sg06:intake": "node scripts/check-sg06-intake.mjs",

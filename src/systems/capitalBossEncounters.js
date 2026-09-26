@@ -112,7 +112,8 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       for(const [k,order] of Object.entries(store.orders)) if(order.fightId===r.fightId) delete store.orders[k];
       delete store.fights[String(fightId)];return true;
     },
-    serialize() {return clone(root());},
+    // Uninitialized owner (headless fixtures) serializes nothing — absent-owner semantics.
+    serialize() {return ctx?clone(root()):undefined;},
     restore(data) {
       if(!data||data.version!==1||typeof data.fights!=='object'||!data.orders) throw new TypeError('Invalid capital system save');
       const fights={};
