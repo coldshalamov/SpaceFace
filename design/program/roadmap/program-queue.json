@@ -19600,7 +19600,9 @@
         "src/systems/missions.js"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-209.01-REPORT.md"
+      ],
       "brief": "DONE 2026-09-25: the leaf's focused fixture exists and is green - test/cargo-kill-salvage-sale-opportunity.test.mjs drives kill -> salvage -> sale -> new opportunity on real owners at seed 20901. The signature chain occurred zero times in ~60 hours; make mined/looted goods and the combat aftermath meet the economy at least once on the scripted battery, and make progression spend reachable."
     },
     {
@@ -19619,7 +19621,9 @@
         "src/systems/fieldDepletion.js"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-209.02-REPORT.md"
+      ],
       "brief": "DONE 2026-09-25: the leaf's focused fixture exists and is green - test/b1-hours-income-encounter-supply.test.mjs asserts post-hour-1 income > 0 on the derived ten-hour model (seeds 4242/8008); the click-farm clause is answered by aim-weighted seam yield in src/systems/mining.js (PQ-155.04). The starter field depletes and the next reachable field is ~14,000 WU away with nothing on the way; give income a curve, and address the ~92-shots-per-rock mining click-farm."
     },
     {
