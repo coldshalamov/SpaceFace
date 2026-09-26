@@ -31,9 +31,9 @@ subagent scores it **>= 8/10 overall with no axis below 7**, looking at real scr
 | Screen | State | Last score | Composition file | What is left |
 |---|---|---|---|---|
 | Flight HUD (bench `orrery-flight`) | Phase 0a passed; live via `hudAdapter.js` | 8 | `flightPreview.js`, `hudSkin.js` | Live-route pass: ring brightness, orphan hairlines, objective dial. Radar/lock |
-| Title / main menu | Rebuilt on a geometry (2026-09-25 late): the emblem stands BEHIND the logotype (arcRail `place` option: pivot and radius from the height, verbs on the right side at bearing 112), its rim lettered, its rings masked round the name (`clearOf`); flat hub; contrast items landed | 7.1 (r1) | `arcRail.js`, `screenLayouts.js`, `mainMenu.js` | r2 in critic (`frontdoor-r2-critic.txt`) |
-| Pause | Rebuilt: seven stops (Resume, then one per group, the group's name a legend at the head of its row, verbs after it; up/down between rows, left/right along one); the shadow pool stretches to the longest row; the brief's progress is a bone gauge with a thin numeral | 6.7 (r1) | `arcRail.js` (`grouped`), `pause.js`, `screenLayouts.js` | r2 in critic |
-| New game | Rebuilt: two columns (the form with LAUNCH under the seed; the stage one instrument): the hull alone on a transparent canvas (`createStageHull({dock:false})`), its numbers as three arcs of one ring round it (`hullRing.js`), a carousel that turns the chosen hull to the front, the first fifteen minutes as a foot scale | 6.4 (r1) | `hullRing.js`, `stopDial.js` (carousel), `newGame.js`, `screenLayouts.js` | Unscored: send r86/r87 stills to the front-door critic after Title/Pause |
+| Title / main menu | **Passed** (r3 8.1): the emblem behind the logotype, one knockout round the name and kicker, the head lifted over the dial's pool | **8.1 (r3)** | `arcRail.js` (`place`, `clearOf`), `screenLayouts.js`, `mainMenu.js` | A planet node cut by the knockout's top edge at 1920 (cosmetic) |
+| Pause | **Passed** (r3 8.0): seven stops, the Hand's row lights its legend, a smaller dial clear of the key strip, the brief's readings in phosphor | **8.0 (r3)** | `arcRail.js` (`grouped`), `pause.js`, `screenLayouts.js` | The pentagon rock on the dial face; small labels at 2560 |
+| New game | r1-rebuild scored 7.1 (the title plate put a hauler behind the chosen hull); r2 landed its own bare backdrop (render_title_backdrop.py `bare` → backdrop-newgame.jpg), the hull at zoom 1.55, the craft items | 7.1 (r1 rebuild) | `hullRing.js`, `stopDial.js`, `newGame.js`, `screenLayouts.js` | r2 in critic (`frontdoor-r4-critic.txt`) |
 | Crucible door / armory / refit / results | **Passed** | 8 / 8 / 8 / 8 | `screenLayouts.js`, `slotJig.js`, `hullSchematic.js`, `deathDial.js` | Door: HINGE crowding at 1280, launch glow. Refit still carries key caps (HOLD F·X, ENTER) — the station retired caps for dotted words; align |
 | Station shell (all 7 tabs share it) | **Passed** | 8 | `stationLayouts.js` | Ring swing on tab arrival. Every tab critic names the shell's amber tab-rail cursor as a second amber mark: make it bone or phosphor |
 | Station Market | **Passed** | 8 | `marketLayouts.js` | 1280: dial over bright backdrop. Name the one reason a trade is unavailable |
@@ -192,7 +192,7 @@ Scores late on 2026-09-25: **Ledger 8.1, Factions 8.0, Missions 8.07, Industry 8
 Shipworks 7.3 (r12, r13 with a builder); Title 7.1 / Pause 6.7 / New game 6.4 were round-1 scores before
 their rebuilds (r2 in critic). Critic reports: `scratchpad/<tab>-r<n>-critic.txt`, `frontdoor-r<n>-critic.txt`.
 
-1. **Close the front door**: score Title/Pause r2 and New game r1-rebuild with the front-door critic; land to 8.0.
+1. **Close the front door**: Title (8.1) and Pause (8.0) PASSED; New game r2 in critic.
    Score Shipworks r13 with the Shipworks critic.
 2. (Done: the New Game launch key carries its word; the rebuild is in.)
 3. **Station motion.** Tabs arrive with a ring swing. Numerals roll with `createCounter` (credits,
@@ -201,8 +201,10 @@ their rebuilds (r2 in critic). Critic reports: `scratchpad/<tab>-r<n>-critic.txt
    with the pulse, rivals last; the Ledger stem draws with settle and the purse sweeps on a receipt; the
    Bar voice arc breathes with the line. All of it respects `html.sf-reduce-motion`.
 4. (Done 2026-09-25 late: Title, Pause and New game are rebuilt on geometries; see item 1.)
-5. **Chart, Meta, Loading, THE SHIP, comms/radials/dialogs/toasts, Asteroid Works**: each from §6 of
-   ORRERY.md. Stills of title/pause/new-game/chart/ship at both sizes are in `.devshots/ui-bench/`.
+5. **Meta** (Settings/Credits, Save/Load/Game over, Codex/Mission log, Research/Achievements) is with four
+   builder agents (shared brief `scratchpad/builder-brief.md`, each with its own composition module). Then
+   **Chart** (galaxyMap.js, 9.6k lines, canvas-drawn; its sector rings wear faction colours that collide with the
+   Hand's amber), Loading, THE SHIP, comms/radials/dialogs/toasts, Asteroid Works: each from §6 of ORRERY.md. Stills of title/pause/new-game/chart/ship at both sizes are in `.devshots/ui-bench/`.
 6. **2560×1440 is covered** by the shell's `zoom:1.25` rule; re-check the Missions tether and the
    Shipworks verbs (both seated with `position:fixed` from page coordinates). Walks ran clean on
    Missions and Industry on 2026-09-25 (42 / 46 controls, every picture changed; the "(unlabeled)"
