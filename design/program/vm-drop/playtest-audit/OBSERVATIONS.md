@@ -278,6 +278,12 @@ loop→l04 / edge→x08 / screens→i08, all three fixed beats green:
 | 4 | loop+edge | 3+6 | 0 defects (1 designed full-hold) | x06/x03 harness fixes |
 | 5 | loop+edge | 5+6 | 0 defects (travel budget only) | 2 upstream CI checks fixed |
 
+**D63 — UPSTREAM (not ours): static(2) shard red at master `314cfaaa8`.** bar-faction-greetings
+test, check-title-attract, check-countermeasures, check-sg05-runtime, check-sg08-render-vfx,
+check-phase0-slice-contract, check-authored-place-runtime, check-perf-packets — verified identical
+on detached clean master; the vm branch diff touches none of these files. Owners: whoever landed
+the last ~80 commits on master (build-map lanes).
+
 ## Next runs
 
 - loop route now covers: rock→mine→dock→SELL held ore→shipworks→undock (full money loop).
