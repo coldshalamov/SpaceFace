@@ -95,6 +95,38 @@ export function modelTruthContains(entity, x, z) {
   return skinContains(x, z, primitives);
 }
 
+export function modelTruthProxyManifest(entity) {
+  const row = stationRow(entity) || modelTruthRowForEntity(entity);
+  const skin = row && row.proposedSkin;
+  if (!row || !skin || skin.adopted !== true || !skin.primitives || !skin.primitives.length) return null;
+  const dock = row.family === 'station' || row.family === 'gate';
+  return {
+    schemaVersion: 1,
+    id: `skin:${row.id}`,
+    stationIds: row.id === 'place_station_trade_hub' ? ['station_helios'] : [],
+    flags: { collides: true, renderable: false, targetable: false, radarVisible: false },
+    referenceRadius: dock ? 'dockRadius' : 'radius',
+    primitives: skin.primitives,
+    opening: row.opening || null,
+    mouthBearingDeg: skin.mouthBearingDeg,
+    sourceRow: row.id,
+  };
+}
+
+function stationRow(entity) {
+  if (!entity || entity.type !== 'station') return null;
+  const data = entity.data || {};
+  if (data.isGate === true || data.isWormhole === true || data.collisionProxy === 'gate_jump_ring') {
+    return modelTruthRow('place_gate_jump_ring');
+  }
+  const token = String(data.archetypeGlb || data.stationTypeId || data.placeId || '');
+  if (!token) return modelTruthRow('place_station_trade_hub');
+  if (BY_ID.has(token)) return BY_ID.get(token);
+  const prefixed = `place_station_${token}`;
+  if (BY_ID.has(prefixed)) return BY_ID.get(prefixed);
+  return modelTruthRow('place_station_trade_hub');
+}
+
 export function modelTruthCameraMarginWu() {
   return CAMERA_NEAR_MARGIN_WU;
 }

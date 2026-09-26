@@ -8,6 +8,7 @@ import { initializePresentationAdmission } from './presentationAdmission.js';
 import { packCombatTable } from './combatTable.js';
 import { beginDirtyTick, markDirty, collectDirtyIds, DIRTY } from './dirtyJournal.js';
 import { stampNearWorkBudget } from './activityScheduler.js';
+import { modelTruthProxyManifest } from '../data/modelTruth.js';
 
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
@@ -52,6 +53,14 @@ export const core = {
       const index = ensureEntityIndex(state);
       reconcileEntityIndexSource(index, state.entityList);
       const e = makeEntity(spec);
+      const measuredSkin = e && e.collides !== false ? modelTruthProxyManifest(e) : null;
+      if (measuredSkin) {
+        const declared = e.data && e.data.collisionProxy;
+        if (!declared || declared === 'station_ring_hub' || declared === 'helios_trade_hub' || declared === 'gate_jump_ring') {
+          e.data = e.data || {};
+          e.data.collisionProxy = measuredSkin.id;
+        }
+      }
       initializePresentationAdmission(e);
       const reserved = Number.isSafeInteger(spec && spec.id) && spec.id > 0 ? spec.id : 0;
       const id = reserved && !state.entities.has(reserved)

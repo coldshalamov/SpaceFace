@@ -185,10 +185,13 @@ async function measureGlb(absPath) {
         const i3 = index * 3;
         return transformPoint(matrix, array[i3], array[i3 + 1], array[i3 + 2]);
       };
-      const bucket = nodeLod === 1 || nodeLod === 2 ? lodPoints[nodeLod] : points;
       const stride = Math.max(1, Math.floor((indices ? indices.length : array.length / 3) / 12000));
       for (let i = 0; i < (indices ? indices.length : array.length / 3); i += stride) {
-        bucket.push(at(indices ? indices[i] : i));
+        const point = at(indices ? indices[i] : i);
+        // Every mesh in the file contributes to that file's outline. A LOD1 file whose
+        // nodes are tagged LOD1 must not be measured as an empty body.
+        points.push(point);
+        if (nodeLod === 1 || nodeLod === 2) lodPoints[nodeLod].push(point);
       }
       const step = Math.max(1, Math.floor(triCount / 4000));
       for (let t = 0; t < triCount; t += step) {
@@ -427,9 +430,26 @@ async function measureRow(row) {
     for (let variant = 0; variant < 5; variant += 1) cloud = cloud.concat(asteroidPoints(row.id, variant));
     const radius = row.entityRadius || 12;
     const world = cloud.map((p) => ({ x: p.x * radius, y: p.y * radius, z: p.z * radius }));
-    const collider = colliderFor(row, { entityRadius: radius }, null);
-    const evaluated = evaluateOutline(world, collider.primitives, row.opening || null);
+    let collider = colliderFor(row, { entityRadius: radius }, null);
+    let evaluated = evaluateOutline(world, collider.primitives, row.opening || null);
     const gasBloom = row.id === 'ast_gas_cloud' ? evaluated.silhouetteRadius * 1.22 : evaluated.silhouetteRadius;
+    let skin = null;
+    if (row.solid && row.opening !== 'gas-soft') {
+      skin = buildPlanarSkin(evaluated.slice, { referenceRadius: radius, opening: row.opening || null });
+      const fitted = scaleProxyPrimitives(skin.primitives, radius);
+      const gap = radialGap(evaluated.outline, fitted, evaluated.toleranceWu, null);
+      skin = { ...skin, adopted: gap.gapWu <= 1.25 };
+      if (skin.adopted) {
+        evaluated = {
+          ...evaluated,
+          coverageWu: roundWu(gap.coverageWu),
+          stickWu: roundWu(gap.stickWu),
+          gapWu: roundWu(gap.gapWu),
+          overTolerance: false,
+        };
+        collider = { kind: 'proxy', id: `skin:${row.id}`, primitives: fitted, factor: collider.factor };
+      }
+    }
     const status = rowStatus(row, {
       missing: false,
       overTolerance: evaluated.overTolerance,
@@ -438,9 +458,6 @@ async function measureRow(row) {
       silhouetteRadius: gasBloom,
       lod: null,
     });
-    const skin = status.status === 'red'
-      ? buildPlanarSkin(evaluated.slice, { referenceRadius: radius, opening: row.opening || null })
-      : null;
     return {
       id: row.id,
       family: row.family,
@@ -458,8 +475,8 @@ async function measureRow(row) {
       gameplay: {
         entityRadius: radius,
         dockRadius: null,
-        colliderKind: 'ball',
-        colliderId: null,
+        colliderKind: collider.kind,
+        colliderId: collider.id,
         ballFactor: collider.factor,
       },
       shell: {
@@ -472,8 +489,8 @@ async function measureRow(row) {
       sockets: [],
       lod: { lod0: false, lod1: false, lod2: false, outlineDeltaWu: null },
       collider: {
-        kind: 'ball',
-        id: null,
+        kind: collider.kind,
+        id: collider.id,
         gapWu: evaluated.gapWu,
         toleranceWu: evaluated.toleranceWu,
         coverageWu: evaluated.coverageWu,
@@ -575,6 +592,34 @@ async function measureRow(row) {
   lod.toleranceWu = roundWu(lodTol);
   lod.overTolerance = lodOver;
 
+  const reference = row.colliderKind === 'proxy'
+    ? (worst.dockRadius || row.dockRadius || worst.entityRadius)
+    : (worst.entityRadius || row.entityRadius || 1);
+  let skin = null;
+  if (row.solid && row.opening !== 'gas-soft' && worstEval.slice && worstEval.slice.length) {
+    skin = buildPlanarSkin(worstEval.slice, { referenceRadius: reference, opening: row.opening || null });
+    const fitted = scaleProxyPrimitives(skin.primitives, reference);
+    const opening = skin.mouthBearingDeg == null ? null : {
+      bearing: skin.mouthBearingDeg * Math.PI / 180,
+      half: row.opening === 'gate-throat' ? 0.5 : (row.opening === 'dock-mouth' ? 0.42 : 0),
+    };
+    const gap = radialGap(worstEval.outline, fitted, worstEval.toleranceWu, opening);
+    const throatSealed = row.opening === 'gate-throat'
+      && !throatOpen(fitted, Math.max(4, worstEval.silhouetteRadius * 0.2));
+    skin = { ...skin, adopted: gap.gapWu <= 2.5 && !throatSealed, gapWu: roundWu(gap.gapWu) };
+    if (skin.adopted) {
+      worstEval = {
+        ...worstEval,
+        coverageWu: roundWu(gap.coverageWu),
+        stickWu: roundWu(gap.stickWu),
+        gapWu: roundWu(gap.gapWu),
+        overTolerance: false,
+        throatSealed: false,
+      };
+      worstCollider = { kind: 'proxy', id: `skin:${row.id}`, primitives: fitted, factor: null };
+    }
+  }
+
   const status = rowStatus(row, {
     missing: false,
     overTolerance: worstEval.overTolerance,
@@ -583,12 +628,6 @@ async function measureRow(row) {
     colliderRadius: worstCollider.primitives[0]?.r || 0,
     lod,
   });
-  const reference = row.colliderKind === 'proxy'
-    ? (worst.dockRadius || row.dockRadius || worst.entityRadius)
-    : (worst.entityRadius || row.entityRadius || 1);
-  const skin = row.solid && worstEval.overTolerance
-    ? buildPlanarSkin(worstEval.slice, { referenceRadius: reference, opening: row.opening || null })
-    : null;
 
   return {
     id: row.id,

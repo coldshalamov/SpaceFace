@@ -2,7 +2,7 @@
 // both use these functions so a measured outline and a collider cannot drift apart.
 
 export const SHIP_HULL_TARGET_LENGTH = 1.72;
-export const OUTLINE_BINS = 36;
+export const OUTLINE_BINS = 24;
 export const FLIGHT_PLANE_STICK_FRACTION = 0.12;
 export const FLIGHT_PLANE_STICK_MIN_WU = 2;
 export const CAMERA_NEAR_MARGIN_WU = 1;
@@ -225,30 +225,44 @@ export function colliderRadiusAt(angle, primitives, maxRadius) {
   const cap = Math.max(1, maxRadius * 1.35);
   const c = Math.cos(angle);
   const s = Math.sin(angle);
-  if (!skinContains(0, 0, primitives)) {
-    let lo = 0;
-    let hi = cap;
-    let found = 0;
-    for (let i = 0; i < 18; i += 1) {
-      const mid = (lo + hi) / 2;
-      if (skinContains(c * mid, s * mid, primitives)) {
-        found = mid;
-        lo = mid;
-      } else hi = mid;
-    }
-    return found;
+  // Shells are hollow, so "inside" is not a prefix of the ray. Sample the ray.
+  const steps = 48;
+  let outer = 0;
+  for (let i = 0; i <= steps; i += 1) {
+    const radius = (cap * i) / steps;
+    if (skinContains(c * radius, s * radius, primitives)) outer = radius;
   }
-  let lo = 0;
-  let hi = cap;
-  for (let i = 0; i < 18; i += 1) {
-    const mid = (lo + hi) / 2;
-    if (skinContains(c * mid, s * mid, primitives)) lo = mid;
-    else hi = mid;
-  }
-  return lo;
+  return outer;
 }
 
-export function radialGap(visualRadii, primitives, toleranceWu) {
+/** How far the visual outline sits outside the skin, and how far the skin sticks past it. */
+export function outlineFit(visualRadii, primitives, toleranceWu) {
+  const bins = visualRadii.length;
+  const silhouette = silhouetteRadiusOf(visualRadii);
+  let coverage = 0;
+  let stick = 0;
+  for (let i = 0; i < bins; i += 1) {
+    const visual = visualRadii[i] || 0;
+    if (visual <= 0) continue;
+    const angle = -Math.PI + ((i + 0.5) / bins) * Math.PI * 2;
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    const outer = colliderRadiusAt(angle, primitives, Math.max(silhouette, visual, 1));
+    if (!skinContains(c * visual, s * visual, primitives)) {
+      coverage = Math.max(coverage, Math.max(0, visual - outer));
+    }
+    stick = Math.max(stick, outer - visual - toleranceWu);
+  }
+  return {
+    coverageWu: coverage,
+    stickWu: Math.max(0, stick),
+    gapWu: Math.max(coverage, Math.max(0, stick)),
+    toleranceWu,
+    silhouetteRadius: silhouette,
+  };
+}
+
+export function radialGap(visualRadii, primitives, toleranceWu, opening = null) {
   const bins = visualRadii.length;
   const silhouette = silhouetteRadiusOf(visualRadii);
   let coverage = 0;
@@ -260,6 +274,7 @@ export function radialGap(visualRadii, primitives, toleranceWu) {
     const collider = colliderRadiusAt(angle, primitives, Math.max(silhouette, visual, 1));
     colliderRadii[i] = collider;
     if (visual <= 0) continue;
+    if (opening && Number.isFinite(opening.bearing) && angleDelta(angle, opening.bearing) <= opening.half) continue;
     coverage = Math.max(coverage, visual - collider);
     stick = Math.max(stick, collider - visual - toleranceWu);
   }
@@ -465,42 +480,70 @@ export function obbsFromRectangles(rects, cell, referenceRadius) {
  * Build a planar skin in normalized units (1 = referenceRadius). Openings are wedges
  * that must stay empty: dock mouth or gate throat.
  */
+function angleDelta(a, b) {
+  let d = a - b;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return Math.abs(d);
+}
+
 export function buildPlanarSkin(slice, options) {
   const radii = radialOutline(slice);
   const silhouette = Math.max(silhouetteRadiusOf(radii), 1);
   const tolerance = flightPlaneToleranceWu(silhouette);
   const reference = Math.max(1e-6, Number(options.referenceRadius) || silhouette);
-  let cell = Math.min(tolerance, Math.max(silhouette / 18, 1));
-  if (cell > tolerance) cell = tolerance;
-  let solid = fillSolidCells(rasterizeSlice(slice, cell));
-  const bearing = options.opening === 'gate-throat'
-    ? 0
-    : (options.opening === 'dock-mouth' ? mouthBearingRad(slice) : null);
-  if (bearing != null) {
-    const half = options.opening === 'gate-throat' ? 0.55 : 0.38;
-    solid = carveWedge(solid, bearing, half, 0, silhouette * 1.05, cell);
+  const bins = radii.length;
+  let bearing = null;
+  if (options.opening === 'gate-throat') bearing = 0;
+  else if (options.opening === 'dock-mouth') {
+    let lowest = 0;
+    for (let i = 1; i < bins; i += 1) if ((radii[i] || 0) < (radii[lowest] || 0)) lowest = i;
+    bearing = -Math.PI + ((lowest + 0.5) / bins) * Math.PI * 2;
   }
-  let rects = rectanglesFromCells(solid);
-  // Coarsen until the primitive cap holds. Cell never exceeds the stick-out tolerance,
-  // so a coarser cell still cannot poke out past the law.
-  while (rects.length > MAX_SKIN_PRIMITIVES && cell * 1.5 <= tolerance + 1e-6) {
-    cell *= 1.5;
-    solid = fillSolidCells(rasterizeSlice(slice, cell));
-    if (bearing != null) {
-      const half = options.opening === 'gate-throat' ? 0.55 : 0.38;
-      solid = carveWedge(solid, bearing, half, 0, silhouette * 1.05, cell);
+  const half = options.opening === 'gate-throat' ? 0.5 : (options.opening === 'dock-mouth' ? 0.42 : 0);
+  const open = (angle) => bearing != null && angleDelta(angle, bearing) <= half;
+  // One circle on each sampled ray, inset so the sample sits inside the circle and the
+  // circle is too small to bulge into the neighbouring ray. Openings are left empty.
+  const primitives = [];
+  for (let i = 0; i < bins; i += 1) {
+    const visual = radii[i] || 0;
+    if (visual <= 0.4) continue;
+    const angle = -Math.PI + ((i + 0.5) / bins) * Math.PI * 2;
+    if (open(angle)) continue;
+    if (primitives.length >= MAX_SKIN_PRIMITIVES) break;
+    const radius = Math.min(tolerance * 0.5, Math.max(1.25, visual * 0.07));
+    const centerR = Math.max(0, visual - radius + 0.45);
+    primitives.push({
+      kind: 'circle',
+      id: `rim-${i}`,
+      x: roundWu((Math.cos(angle) * centerR) / reference),
+      z: roundWu((Math.sin(angle) * centerR) / reference),
+      r: roundWu(radius / reference),
+    });
+  }
+  // A small core stops flight through the middle without reaching past the rim.
+  if (options.opening !== 'gate-throat' && options.opening !== 'dock-mouth' && primitives.length < MAX_SKIN_PRIMITIVES) {
+    let minVisual = Infinity;
+    for (const radius of radii) if (radius > 0.4) minVisual = Math.min(minVisual, radius);
+    if (Number.isFinite(minVisual) && minVisual > 1) {
+      const radius = Math.min(tolerance * 0.45, minVisual * 0.55);
+      primitives.push({
+        kind: 'circle',
+        id: 'core',
+        x: 0,
+        z: 0,
+        r: roundWu(radius / reference),
+      });
     }
-    rects = rectanglesFromCells(solid);
   }
-  const primitives = obbsFromRectangles(rects, cell, reference);
   return {
     primitives,
-    cellWu: roundWu(cell),
+    cellWu: roundWu(tolerance),
     toleranceWu: roundWu(tolerance),
     silhouetteRadius: roundWu(silhouette),
-    mouthBearingDeg: bearing == null ? null : roundWu(bearing * 180 / Math.PI),
+    mouthBearingDeg: bearing == null ? null : roundWu(((bearing * 180 / Math.PI) % 360 + 360) % 360),
     primitiveCount: primitives.length,
-    capped: rects.length > MAX_SKIN_PRIMITIVES,
+    capped: false,
   };
 }
 

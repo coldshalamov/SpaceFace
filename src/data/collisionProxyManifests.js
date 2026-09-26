@@ -24,6 +24,8 @@
 // it never teleports, never writes velocity directly, and never seizes control (player input always
 // blends). Stations WITHOUT a manifest keep the legacy center-radius dock behavior untouched.
 
+import { modelTruthProxyManifest } from './modelTruth.js';
+
 export const COLLISION_PROXY_SCHEMA_VERSION = 1;
 
 /** Binding flag contract for every proxy primitive (STEP 7). */
@@ -209,7 +211,35 @@ export const COLLISION_PROXY_MANIFESTS = Object.freeze({
 export function resolveCollisionProxyManifest(entity) {
   const data = entity && entity.data;
   const id = data && typeof data.collisionProxy === 'string' ? data.collisionProxy : null;
-  return id && COLLISION_PROXY_MANIFESTS[id] || null;
+  const declared = id && COLLISION_PROXY_MANIFESTS[id] || null;
+  let measured = modelTruthProxyManifest(entity);
+  // The measured skin replaces the retired hoop, the gate ball, and any hull capsule
+  // or rock ball that does not meet the flight-plane tolerance. Gas and other
+  // non-adopted rows keep their old collider. Dock-assist gains stay on the hoop's
+  // docking block; only the mouth bearing moves to the measured opening.
+  if (measured && entity && entity.type === 'station' && measured.opening !== 'gate-throat') {
+    const base = COLLISION_PROXY_MANIFESTS.station_ring_hub;
+    if (base && base.docking) {
+      const mouth = Number.isFinite(measured.mouthBearingDeg)
+        ? measured.mouthBearingDeg
+        : base.docking.corridorBearingDeg;
+      measured = {
+        ...measured,
+        docking: {
+          ...base.docking,
+          corridorBearingDeg: mouth,
+          corridorSnapAnglesDeg: [mouth],
+        },
+      };
+    }
+  }
+  // A skin replaces a declared legacy collider or an explicit skin id. An entity
+  // that declares nothing stays on its ball or capsule — the 47a scenarios depend on that.
+  if (measured && (id === 'station_ring_hub' || id === 'helios_trade_hub'
+    || id === 'gate_jump_ring' || (typeof id === 'string' && id.startsWith('skin:')))) {
+    return measured;
+  }
+  return declared;
 }
 
 /** Station id → manifest id, for world spawn wiring. */

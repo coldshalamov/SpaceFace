@@ -221,7 +221,15 @@ test('the corridor gap stays navigable and the berth deck stays clear of every p
 // ---------------------------------------------------------------------------------------------
 
 test('manifests activate ONLY for entities that explicitly declare them', () => {
-  assert.equal(resolveCollisionProxyManifest(heliosStation()), HELIOS);
+  const resolved = resolveCollisionProxyManifest(heliosStation());
+  assert.equal(resolved.id, 'skin:place_station_trade_hub');
+  assert.equal(resolved.docking.assist.kp, HELIOS.docking.assist.kp);
+  assert.equal(resolved.docking.assist.kd, HELIOS.docking.assist.kd);
+  assert.equal(resolved.docking.assist.maxAccel, HELIOS.docking.assist.maxAccel);
+  assert.equal(resolved.docking.assist.inputBlend, HELIOS.docking.assist.inputBlend);
+  assert.equal(resolved.docking.corridor.speedGate, HELIOS.docking.corridor.speedGate);
+  assert.equal(resolved.docking.capture.speedGate, HELIOS.docking.capture.speedGate);
+  assert.equal(resolved.docking.berth.speedGate, HELIOS.docking.berth.speedGate);
   // Same station id WITHOUT the declaration: no manifest. This is the 47a golden-safety gate.
   const undeclared = heliosStation();
   undeclared.data = { stationId: 'station_helios', dockRadius: 90 };
