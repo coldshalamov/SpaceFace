@@ -3,6 +3,7 @@ import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctri
 import { hash32 } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { ENCOUNTER_COMMAND_RING_CAPACITY } from './aiPorts.js';
 
 const HISTORY_CAPACITY = 128;
 
@@ -128,6 +129,11 @@ export const aiEncounter = {
         anchor: Object.freeze({ x: finite(entity.pos && entity.pos.x), z: finite(entity.pos && entity.pos.z) }),
       });
       encounter.commands.push(command);
+      // Authored pushes share the ports-side ring invariant: this list is walked every tick,
+      // so it must stay bounded no matter which producer grows it.
+      if (encounter.commands.length > ENCOUNTER_COMMAND_RING_CAPACITY) {
+        encounter.commands.splice(0, encounter.commands.length - ENCOUNTER_COMMAND_RING_CAPACITY);
+      }
       ai._calledReinforcements = true;
       emit(this.bus, 'ai:encounterCommand', command);
       emit(this.bus, 'alert', {
@@ -219,6 +225,10 @@ export const aiEncounter = {
     if (typeof helper !== 'function') return;
     const budget = this.helpers && this.helpers.spawnBudget;
     const keep = [];
+    // Commit the survivors even when a spawn throws: without the finally a thrown helper leaves
+    // already-spawned members in the pending array, so the next tick re-spawns duplicates and
+    // leaks their budget grants.
+    try {
     for (const pending of owner.pendingReinforcements) {
       if (finiteInt(pending.dueTick) > finiteInt(state.tick)) {
         keep.push(pending);
@@ -301,7 +311,9 @@ export const aiEncounter = {
         emit(this.bus, 'toast', { text: 'Reinforcements have arrived.', kind: 'warn', ttl: 2.5 });
       }
     }
-    owner.pendingReinforcements = keep;
+    } finally {
+      owner.pendingReinforcements = keep;
+    }
   },
 
 };
