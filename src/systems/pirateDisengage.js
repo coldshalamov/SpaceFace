@@ -56,6 +56,14 @@ export const pirateDisengage = {
     this._combatantsQuiet = null;
     this._combatantWakeSeq = 0;
     this._listen('entity:spawned', (p) => this._onEntitySpawned(p));
+    // Boundary wakes: newGame() is not dispatched on the live route (this system is
+    // not in FRESH_RUN_SYSTEMS), so save/run/sector transitions arrive only here.
+    // A parley resolution can stamp forcePlayerTarget without a spawn — wake there too.
+    this._listen('save:loaded', () => this.noteCombatantWake());
+    this._listen('game:new', () => this.noteCombatantWake());
+    this._listen('game:newGame', () => this.noteCombatantWake());
+    this._listen('sector:enter', () => this.noteCombatantWake());
+    this._listen('pirateParley:resolved', () => this.noteCombatantWake());
   },
 
   /** External wake when a combatant role is stamped without a fresh spawn index bump. */
@@ -81,6 +89,7 @@ export const pirateDisengage = {
     if (this.state) this.state.pirateDisengage = freshState();
     this._combatantsQuiet = null;
     this._combatantWakeSeq = 0;
+    publishPirateDisengageQuiet(this.state, false);
   },
 
   update(_dt, state) {
@@ -107,6 +116,7 @@ export const pirateDisengage = {
       }
     } else if (this._combatantsQuiet) {
       this._combatantsQuiet = null;
+      publishPirateDisengageQuiet(state, false);
     }
     const now = state.simTime || 0;
     const patrols = lawfulPatrols(state);
@@ -121,6 +131,9 @@ export const pirateDisengage = {
             armedTick: state.tick | 0,
           };
           publishPirateDisengageQuiet(state, true);
+        } else {
+          this._combatantsQuiet = null;
+          publishPirateDisengageQuiet(state, false);
         }
         return;
       }

@@ -77,6 +77,12 @@ export const pirateParley = {
       this.bus.on('pirateParley:choose', this._onChoice);
     }
     this._listen('entity:spawned', (p) => this._onEntitySpawned(p));
+    // Boundary wakes: newGame() is not dispatched on the live route (this system is
+    // not in FRESH_RUN_SYSTEMS), so save/run/sector transitions arrive only here.
+    this._listen('save:loaded', () => this.noteParleyWake());
+    this._listen('game:new', () => this.noteParleyWake());
+    this._listen('game:newGame', () => this.noteParleyWake());
+    this._listen('sector:enter', () => this.noteParleyWake());
   },
 
   /** External wake when a toll doctrine is stamped without a fresh spawn index bump. */
@@ -99,6 +105,9 @@ export const pirateParley = {
 
   newGame() {
     if (this.state) this.state.pirateParley = freshState();
+    this._parleyQuiet = null;
+    this._parleyWakeSeq = 0;
+    publishPirateParleyQuiet(this.state, false);
   },
 
   update(_dt, state) {
@@ -125,6 +134,7 @@ export const pirateParley = {
       }
     } else if (this._parleyQuiet) {
       this._parleyQuiet = null;
+      publishPirateParleyQuiet(state, false);
     }
 
     const groups = collectParleySquads(state);
@@ -194,6 +204,9 @@ export const pirateParley = {
             armedTick: state.tick | 0,
           };
           publishPirateParleyQuiet(state, true);
+        } else {
+          this._parleyQuiet = null;
+          publishPirateParleyQuiet(state, false);
         }
       } else {
         this._parleyQuiet = null;
