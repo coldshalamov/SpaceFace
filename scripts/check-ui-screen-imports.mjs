@@ -430,10 +430,11 @@ if (!onboardingHudAttentionImport
     refundCr: 18400,
     cargoLost: true,
     cargoLostQty: 3,
+    invulnS: 8,
   });
   if (!hudSrc.includes('respawnToastText(payload || {})')
     || !hudSrc.includes("kind: payload && payload.cargoLost ? 'warn' : 'good'")
-    || text !== 'Recovered at Helios Station - insurance +18,400 cr - cargo lost 3u - 3s shields online') {
+    || text !== 'Recovered at Helios Station - insurance +18,400 cr - cargo lost 3u - 8s shields online') {
     console.log('FAIL flight HUD - respawn toast must name station, insurance refund, cargo loss, and shield grace');
     fail++;
   } else {
