@@ -196,3 +196,12 @@ but confirmed against master this session): `render-package-pilots` GLB SHA
 mismatch (~24 stale LOD artifacts, ~84 MB), world-place/station fallback empty
 Group, `authored-preload-scope` owner-inactive throw, `crucible-live-geometry`
 retry-budget semantics.
+
+Focused node --test sweep over the touched modules at branch tip (far-actors,
+time-effects, moment-detector, docking-corridor, hlod, entity-mesh-visibility,
+authored-admission, audio-parameter-churn, pq146-projectiles, projectile-flight,
+asteroid-pool ×3, asset-residency ×2, admission-slice-budget, bug-perf-sweep,
+asset-loader ×2): all green except `asset-residency-refcounts`' "headless real
+release-GLB traversal" — a Playwright-launched real-browser GLB traversal that
+stalls identically on origin/master on this box (>8 min against a 120 s test
+timeout; box-slowness in real asset decode, unrelated to the diff).
