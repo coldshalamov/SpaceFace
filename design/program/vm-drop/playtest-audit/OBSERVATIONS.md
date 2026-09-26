@@ -320,3 +320,45 @@ tests — verified byte-identical on detached master).
 
 - Adventure real-death → recovery-berth path (c04b covers crucible death only).
 - Achievements content depth, crucible share codes, gameOver-vs-berth distinction.
+
+## Run 11 — coverage gaps closed + two real defects @ 19e68ce23..a562abfc5
+
+Screens route re-run with widened beats (35 steps, 0 defects, 0 console/shader errors, ~7.6 min wall).
+
+New coverage landed this run:
+- `k01-flight-keys`: F3 → footprint screen renders (chains / chain record / ship ledger / five
+  context verbs) — previously never exercised.
+- `e05-pause-verbs` now walks all 10 pause verbs with deterministic return-to-pause driving:
+  Settings, Load, Mission Log, My Ship, Operations(automation), Local Map, Help, Codex,
+  Achievements, Replay — every verb lands on its screen, none dead.
+- `s04-ship-range`: shipworks "Take it to the range" verb.
+
+**D61 — FIXED: shipworks verb rack dead clicks.** renderApron() reparents `.sx-sw-verbs` onto
+`statsEl.parentElement` (pinned footer row under the stats scroll), but the only `[data-verb]`
+click delegation lived on `statsEl` — every verb in the rack (range/record/fit/activate) painted
+but did nothing. Probe evidence: s04 clicked "Take the Hitch to the range" and the screen never
+left `station`. Fix `cf5cc3cc3`: shared `onVerbClick` bound on the rack's real parent; statsEl
+path stopPropagations after handling so a mid-refresh rack can't double-fire. check:baseline
+16/16.
+
+**D62 — FIXED: Replay empty state rendered its hint twice.** `replaySummary().detail` was painted
+as the header fine line AND again as the `replay-readout` paragraph — "Fly for a while, then
+pause and open Replay." duplicated bottom-left. `a562abfc5` hides the readout until a recording
+exists (it only reports Ready/End during playback). Test `pq-160-00-replay` 4/4.
+
+Probe-hardening commits (not game defects): e01 drives Esc until pause mounts (prior beat could
+leave a mid-pop layer eating the first Esc); e05 exits to flight through in-screen layers (Replay
+mounts inside pause — a single Esc left pause open and s01's "autopilot stall" was a frozen sim);
+s03 picks the visible `data-nav="bar"`; s01 clears leftover modals before travelling.
+
+## Run ledger
+
+| run | routes | beats | obs | game fixes landed |
+|-----|--------|-------|-----|-------------------|
+| 10 | screens+edge+combat+loop | 35+8+7+10 | D60 fixed | find palette in-flight `163d0321a` |
+| 11 | screens | 35 | D61, D62 fixed | shipworks dead verbs `cf5cc3cc3`, replay hint `a562abfc5` |
+
+## Next runs
+
+- Adventure real-death → recovery-berth path (c04b covers crucible death only).
+- Crucible share codes, drill/asteroid site approach (event-driven, needs asteroid-site setup).
