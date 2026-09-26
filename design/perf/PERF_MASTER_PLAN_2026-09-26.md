@@ -59,7 +59,7 @@ Headless SwiftShader exaggerates compile costs; headed GPU numbers are the arbit
 | COOP/COEP on probe host | scripts/lib/gameServer.cjs | `crossOriginIsolated` → ~20× timer resolution + the SAB transport door; does NOT activate the phase-14 worker (explicit opt-ins still required) | Measurement explorer gap |
 | GPU-process metrics witness | electron/main.cjs, preload.cjs | `spaceface:perf-metrics` → `app.getAppMetrics()` per-process CPU/memory — attributes GPU-process link stalls vs renderer busy frames | In-page counters can't see the GPU process |
 | Probe GC boundary | scripts/probe-frame-solid.mjs | `--js-flags=--expose-gc` + `window.gc()` before the sampler — boot garbage out of the measured window | gcMs attribution noise |
-| Deep-queue flight overlap | partsLibrary.js (`flightQueueDeepEnoughForOverlap` + dispatch grant) | `overlapAuthoredPipelineCompile` granted at dispatch when `mode==='flight'` && pending > 8 — the running job releases the serial slot at the pipeline gate so the next CPU compose overlaps only its GPU stages; one admission per frame preserved; shallow queues keep strict serial semantics | 06-06Z run: queue busyShare 1.0 at 28 pending, asteroid 4 hidden 46 frames `asset:loading` |
+| ~~Deep-queue flight overlap~~ REVERTED (47f88a5cf) | partsLibrary.js | Granting `overlapAuthoredPipelineCompile` at dispatch when pending > 8 measured net-negative on both runs: leftUndrawn/episodes 2/36 → 30/45 → 69/119, in-frame links 2 → 11. On a compile-bound renderer the presented-frame budget is the scarce resource — overlapping the GPU gate stacks links into drawn frames. The serial slot stands; Pole A residual needs cheaper jobs, not overlapped stages | 06-24Z + 06-29Z A/B |
 
 ## 2. The poles, ranked (evidence in §4)
 
@@ -67,6 +67,8 @@ Headless SwiftShader exaggerates compile costs; headed GPU numbers are the arbit
 Residual: serial authored composition 1.3–7.9 s/job; queue saturates ~21 deep; ships
 appear `noMesh` at R0_GLASS while their job waits behind station/fx misses.
 - DONE: prefetch now covers non-ship jobs (leaf above).
+- MEASURED-REJECTED: pipeline-gate overlap under a deep queue (47f88a5cf — in-frame
+  links tripled, leftUndrawn per episode 10×). The slot stays serial.
 - NEXT: (a) make one compose job cheaper (repo's stated precondition for re-trying
   overlap — the merge cache was the named path); (b) far-actor restore radius is
   sized by *player* speed only (`farActorTable.js:632` `enter`), so a fast inbound
