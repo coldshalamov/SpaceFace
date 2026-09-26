@@ -46,7 +46,8 @@ test('the Quiet picket is planned outside the berth and reads standing', () => {
   const zone = zonesForSector(SECTOR_ID).find((row) => row.id === MERC_ZONE_ID);
   assert.ok(zone);
   assert.equal(zone.presence?.factionId, 'faction_quiet');
-  assert.equal(zone.presence.standingHostileBelow, 0);
+  assert.equal(zone.presence.standingHostileBelow, -30,
+    'the picket reads the same band the door vets — not a stricter gate than docking');
   assert.equal(zone.presence.context, 'zone_hostile');
 
   // The real contract is analytic: the farthest-in cluster draw must still clear the
@@ -63,7 +64,7 @@ test('the Quiet picket is planned outside the berth and reads standing', () => {
   for (const intent of intents) {
     if (intent.zoneId === MERC_ZONE_ID) {
       assert.equal(intent.factionId, 'faction_quiet');
-      assert.equal(intent.standingHostileBelow, 0);
+      assert.equal(intent.standingHostileBelow, -30);
       const d = Math.hypot(intent.pos.x - station.x, intent.pos.z - station.z);
       assert.ok(d >= STATION_SAFE_RADIUS,
         `picket intent survives the station safety bubble (${d.toFixed(1)} WU)`);
@@ -100,13 +101,15 @@ test('the spawned lance reads standing while the writ-house door does the vettin
   const lance = spawned.find((entity) => entity.data?.ai?.zoneId === MERC_ZONE_ID);
   assert.ok(lance, 'the ordinary world route spawned the authored outpost picket');
   assert.equal(lance.factionId, 'faction_quiet', 'the standing gate needs the spawned faction stamp');
-  assert.equal(lance.data.ai.standingHostileBelow, 0);
+  assert.equal(lance.data.ai.standingHostileBelow, -30);
   assert.ok(Math.hypot(lance.pos.x - station.x, lance.pos.z - station.z) >= STATION_SAFE_RADIUS,
     'the picket stands outside the station safety boundary');
 
   assert.equal(isHostileToPlayer(lance, 0, state), false, 'neutral standing permits the camp approach');
-  state.factions.faction_quiet.rep = -1;
-  assert.equal(isHostileToPlayer(lance, 0, state), true, 'negative standing turns the same picket hostile');
+  state.factions.faction_quiet.rep = -20;
+  assert.equal(isHostileToPlayer(lance, 0, state), false, 'dockable standing is not shot on approach');
+  state.factions.faction_quiet.rep = -40;
+  assert.equal(isHostileToPlayer(lance, 0, state), true, 'truly-red standing turns the same picket hostile');
   state.factions.faction_quiet.rep = 0;
   lance.data.ai.retaliationTargetId = state.playerId;
   assert.equal(isHostileToPlayer(lance, 0, state), true, 'provocation overrides neutral standing');

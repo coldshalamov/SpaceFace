@@ -324,7 +324,8 @@ const RAW_UNIQUE_WRECKS = [
     provenance: { lossId: 'loss_smokesong', incidentId: 'incident_tirr_tracer_cloud', sourceRef: 'bar.io_mercenary.smokesong', recordType: 'battlefield_loss' },
     hazardContext: { label: 'Mercenary Outpost nebula', anchorType: 'poi', anchorId: 'poi_merc', zoneId: 'zone_io_merc', hazardTypes: ['nebula'], placementRule: 'inside_nebula_near_outpost', approachGate: null },
     salvagePool: { cmdty_scrap_metal: 2 },
-    placement: { anchorLocal: { x: 1280, z: 620 }, minRadius: 100, maxRadius: 340, bearingRadiusMin: 260, bearingRadiusMax: 460 },
+    // anchorLocal tracks poi_merc's authored position — the nav buoy moved off the station berth.
+    placement: { anchorLocal: { x: 1520, z: 780 }, minRadius: 100, maxRadius: 340, bearingRadiusMin: 260, bearingRadiusMax: 460 },
     decision: salvageDecision({
       headline: 'SMOKESONG RECOVERY', prompt: 'Choose whether Tirr\'s smoke joins your countermeasures.',
       claimLabel: 'CLAIM SMOKESONG', claimConsequence: 'Keep the broad chaff cloud and its long reset.',

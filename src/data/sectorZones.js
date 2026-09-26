@@ -204,7 +204,9 @@ const CORE_SECTOR_ZONES = {
         doctrine: 'balanced', formation: 'ring',
         context: 'zone_hostile', hostile: true,
         factionId: 'faction_quiet',
-        standingHostileBelow: 0,
+        // Picket and door read the same band: the berth admits rep ≥ -30, so the squad only turns
+        // on truly-red standing. Matches the Sker contract — fly to the refusal, not into a fight.
+        standingHostileBelow: -30,
         spawnCenter: { x: 2750, z: 850 },
       } },
   ],
