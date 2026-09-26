@@ -486,6 +486,30 @@ const ROUTES = {
       const s = await snap(ctx);
       return { shipworksVerbs: verbs.slice(0, 20), undockVerb: undock, screen: s.screen, mode: s.mode, docked: s.docked };
     });
+
+    await B(ctx, 'l06-jump', 'request a gate jump to a neighbor sector -> arrive + autosave', async () => {
+      const from = await ctx.page.evaluate(() => window.SF.state.world.currentSectorId);
+      const neighbors = await ctx.page.evaluate((id) =>
+        (window.SF.state.world.sectors[id] && window.SF.state.world.sectors[id].neighbors) || [], from);
+      if (!neighbors.length) return { from, neighbors: 0 };
+      const target = neighbors[0];
+      await ctx.page.evaluate((t) => window.SF.bus.emit('world:requestJump', { targetSectorId: t, via: 'gate' }), target);
+      await sleep(400);
+      const j0 = await ctx.page.evaluate(() => ({ state: window.SF.state.jump.state, chargeNeeded: window.SF.state.jump.chargeNeeded }));
+      // GATE_CHARGE is 3s; poll up to 40s for the arrive transition.
+      let arrived = false, sector = null;
+      for (let i = 0; i < 80 && !arrived; i++) {
+        sector = await ctx.page.evaluate(() => window.SF.state.world.currentSectorId);
+        arrived = sector === target;
+        if (!arrived) await sleep(500);
+      }
+      await sleep(1500);
+      await shotNow(ctx, 'l06-arrived');
+      const s = await snap(ctx);
+      if (!arrived) observe(ctx, 'defect', 'travel', `gate jump to ${target} never arrived (state=${j0.state})`);
+      else if (!/helios/i.test(sector) === /helios/i.test(from)) { /* same-sector guard */ }
+      return { from, target, jumpStart: j0, arrived, sector, mode: s.mode, saveNow: !!(await ctx.page.evaluate(() => window.SF.state.meta && window.SF.state.meta.lastSavedAt)) };
+    });
   },
 
   // Crucible: open from title, launch quick play, fight briefly, observe combat UI, then leave.
@@ -495,6 +519,31 @@ const ROUTES = {
       await sleep(1400);
       const s = await snap(ctx);
       return { screen: s.screen, controls: s.controls.length };
+    });
+
+    await B(ctx, 'c01b-labdoors', 'crucible door -> Share codes / Practice room sub-screens', async () => {
+      const out = {};
+      for (const re of [/share codes/i, /practice room/i]) {
+        const opened = await ctx.page.evaluate((src) => {
+          const rx = new RegExp(src, 'i');
+          const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
+            .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && rx.test(e.textContent || ''))[0];
+          if (!b) return null; b.click(); return (b.textContent || '').trim();
+        }, re.source);
+        await sleep(1400);
+        const s = await snap(ctx);
+        await shotNow(ctx, 'c01b-' + re.source.replace(/[^a-z]/gi, ''));
+        out[re.source] = { verb: opened, screen: s.screen, mode: s.mode, controls: s.controls.length };
+        // back out: Esc, then re-open crucible door if we fell all the way to title.
+        await pressKey(ctx, 'Escape', 700);
+        await sleep(900);
+        const s2 = await snap(ctx);
+        if (s2.screen === 'mainMenu') {
+          await clickWord(ctx, /crucible/i, 10_000);
+          await sleep(1200);
+        }
+      }
+      return out;
     });
 
     await B(ctx, 'c02-launch', 'Quick play -> crucible flight', async () => {
