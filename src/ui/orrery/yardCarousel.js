@@ -124,7 +124,8 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
       if (img) {
         const h = artWidth * 0.56;
         Object.assign(img.style, { left: `${x.toFixed(1)}px`, top: `${(y - 8 - h).toFixed(1)}px`, width: `${artWidth}px`, height: `${h.toFixed(0)}px`,
-          opacity: (at < 24 ? 0 : 0.58 * fade).toFixed(2) });
+          // the far side of the ring is far away: a hull behind the hero reads dim, so the hero stands in front of it
+          opacity: (at < 24 ? 0 : (at > 90 ? 0.3 : 0.58) * fade).toFixed(2) });
         img.classList.toggle('is-on', at < 12);
       }
     });
