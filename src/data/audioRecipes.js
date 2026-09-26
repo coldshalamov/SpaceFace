@@ -1893,6 +1893,28 @@ export const RECIPES = [
     transientClick: { gain: 0.4 },
   },
 
+  // --- Stunt chain voices (CV-EAR slice 3) — the combo the ear can follow.
+  {
+    // Chain link: a short bright pluck; the combo's own link count pitches it up a pentatonic
+    // ladder via the `rate` option (see STUNT_CHAIN_RATES in audioSystem).
+    id: 'sfx_stunt_link',
+    category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 880, freqSweep: [880, 840], sweepTimeS: 0.05,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 2000, filterQ: 1.4,
+    transientClick: { gain: 0.15 },
+  },
+  {
+    // Style banked: the cash-out — a main voice rising a fifth over a second voice a fifth
+    // below, so the bank reads as a two-note interval rather than another pluck.
+    id: 'sfx_stunt_bank',
+    category: 'weapon', type: 'oscillator', wave: 'sine',
+    baseFreq: 660, freqSweep: [660, 990], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.008, sustain: 0.1, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 2400,
+    subBass: { startFreq: 440, endFreq: 660, dur: 0.4, gain: 0.5 },
+  },
+
   // --- First-hour identity motifs (procedural, exclusive roles) ---
   // Accel step: idle→thrust / thrust→boost — short sub + air, never reused for UI.
   {

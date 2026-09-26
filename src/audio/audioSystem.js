@@ -483,6 +483,11 @@ export const COLLISION_CUE = Object.freeze({
 // plays an ascending melody rather than the same note eight times.
 const SCOOP_CHIME_RATES = Object.freeze([1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.888, 2.0]);
 
+// Stunt chain ladder (CV-EAR) — each player trick in the active combo plucks one step higher.
+// The step reads stuntCombo's own acts.length (the real link count, already bumped before the
+// event lands), so a combo reset drops the pitch back to the bottom for free.
+const STUNT_CHAIN_RATES = Object.freeze([1, 1.125, 1.25, 1.5, 1.667, 2.0]);
+
 const COLLISION_TIER_RECIPES = Object.freeze({
   kiss: 'sfx_dock_clunk',
   knock: 'sfx_mining_impact',
@@ -1818,6 +1823,10 @@ export const audio = {
     bus.on('traffic:ceresCausalChain', (p) => this._onCeresCausalChain(p));
     bus.on(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresWorkAction(p));
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
+    // Stunt chain voices (CV-EAR slice 3): player links pluck up a pentatonic ladder, the
+    // bank lands a rising interval. Bridges stay silent — the near-miss bark already speaks.
+    bus.on('stunt:trickDetected', (p) => this._onStuntTrickDetected(p));
+    bus.on('stunt:styleBanked', (p) => this._onStuntStyleBanked(p));
     // Salvage plate unlock: hydraulic release hiss + the freed panel's clunk. The spark shower is
     // vfx-owned (salvage:cutComplete subscription there); this is its sound.
     bus.on('salvage:cutComplete', (p) => {
@@ -3640,6 +3649,27 @@ export const audio = {
         rate: SCOOP_CHIME_RATES[step],
       });
     }
+  },
+
+  // Stunt chain (CV-EAR slice 3): each player trick in the live combo plucks one step up the
+  // pentatonic ladder, read from the combo's own link count (state.stunts.combo.acts — the act
+  // is committed before stunt:trickDetected lands). trickAmended upgrades the same link and
+  // never reaches this handler; stunt:bridge plays nothing (the near-miss bark already speaks).
+  _onStuntTrickDetected(trick) {
+    if (!trick) return;
+    // Same player gate the callout owner uses (src/ui/stuntCallout.js): only a foreign actor
+    // silences the link; the detector itself is already player-scoped.
+    const playerId = this.state && this.state.playerId;
+    if (playerId != null && trick.actorId != null && trick.actorId !== playerId) return;
+    const combo = this.state && this.state.stunts && this.state.stunts.combo;
+    const acts = combo && Array.isArray(combo.acts) ? combo.acts.length : 0;
+    const step = Math.min(Math.max(0, acts - 1), STUNT_CHAIN_RATES.length - 1);
+    this.play('sfx_stunt_link', { gain: 0.45, rate: STUNT_CHAIN_RATES[step] });
+  },
+
+  _onStuntStyleBanked(bank) {
+    if (!bank) return;
+    this.play('sfx_stunt_bank', { gain: 0.6 });
   },
 
   // Cargo jettison (HUD cargo panel → cargo.dumpCargo): an audible world act that was total
