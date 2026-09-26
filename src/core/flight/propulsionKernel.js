@@ -149,11 +149,11 @@ const TAU = Math.PI * 2;
 /** Advance one fixed propulsion tick. */
 export function stepPropulsion(args = {}) {
   const dt = clamp(finite(args.dt, 0), 0, 0.25);
-  const body = normalizeBody(args.body);
-  const input = normalizeInput(args.input);
+  const body = normalizeBody(args.body, _packetBody);
+  const input = normalizeInput(args.input, _packetInput, _packetInputSubs);
   const profile = normalizeProfile(args.profile || {});
-  const runtime = normalizeRuntime(args.runtime, profile);
-  const environment = normalizeEnvironment(args.environment);
+  const runtime = normalizeRuntime(args.runtime, profile, _packetRuntime);
+  const environment = normalizeEnvironment(args.environment, _packetEnv, _packetEnvSubs);
 
   if (!(dt > 0)) return idleResult(body, profile, runtime, input);
 
@@ -215,7 +215,7 @@ export function resolveTravelCeiling(profileLike) {
  * exactly how `spool` works for the torch drive, except through the input packet rather than the
  * serialized runtime, so the drive axis adds nothing to the saved propulsion runtime.
  */
-function normalizeTravelDrive(raw) {
+function normalizeTravelDrive(raw, out = null) {
   const d = raw && typeof raw === 'object' ? raw : {};
   let state = TRAVEL_DRIVE_STATES.includes(d.state) ? d.state : 'off';
   // A disruption is a forced drop off the burn. The latch usually publishes cooldown already;
@@ -223,26 +223,26 @@ function normalizeTravelDrive(raw) {
   if (d.disrupted === true && (state === 'engaged' || state === 'spooling')) {
     state = 'cooldown';
   }
-  return {
-    state,
-    // Carried ramp state. 0 means "no travel cap in flight"; the first engaged tick seeds it.
-    cap: Math.max(0, finite(d.cap, 0)),
-    // Optional per-call overrides so a lane volume (D8) can multiply the drive's own numbers
-    // without the kernel knowing anything about lanes.
-    ceiling: positive(d.ceiling, 0),
-    rampRate: positive(d.rampRate, 0),
-    rampMult: positive(d.rampMult, 1),
-    // A dead beacon's disruption field is an authored environmental force (D8): the kernel
-    // needs to know the drive came down for a world reason — the live level flag, or a break
-    // reason that was not the pilot's own hand — so the falling ceiling can spend velocity for
-    // as long as the cap record stays elevated (see the governor). Pilot-caused breaks
-    // ('pilot'/'brake'/'cancelled') keep the settle-to-rest coast.
-    disrupted: d.disrupted === true
-      || (d.breakReason != null
-        && d.breakReason !== 'pilot'
-        && d.breakReason !== 'brake'
-        && d.breakReason !== 'cancelled'),
-  };
+  const o = out || {};
+  o.state = state;
+  // Carried ramp state. 0 means "no travel cap in flight"; the first engaged tick seeds it.
+  o.cap = Math.max(0, finite(d.cap, 0));
+  // Optional per-call overrides so a lane volume (D8) can multiply the drive's own numbers
+  // without the kernel knowing anything about lanes.
+  o.ceiling = positive(d.ceiling, 0);
+  o.rampRate = positive(d.rampRate, 0);
+  o.rampMult = positive(d.rampMult, 1);
+  // A dead beacon's disruption field is an authored environmental force (D8): the kernel
+  // needs to know the drive came down for a world reason — the live level flag, or a break
+  // reason that was not the pilot's own hand — so the falling ceiling can spend velocity for
+  // as long as the cap record stays elevated (see the governor). Pilot-caused breaks
+  // ('pilot'/'brake'/'cancelled') keep the settle-to-rest coast.
+  o.disrupted = d.disrupted === true
+    || (d.breakReason != null
+      && d.breakReason !== 'pilot'
+      && d.breakReason !== 'brake'
+      && d.breakReason !== 'cancelled');
+  return o;
 }
 
 /**
@@ -255,7 +255,7 @@ function normalizeTravelDrive(raw) {
  * Only the remembered thrust ceiling decays; earned velocity coasts until the pilot brakes or
  * an actual environmental force acts on it.
  */
-function advanceTravelDrive(drive, profile, baseCap, forwardSpeed, dt) {
+function advanceTravelDrive(drive, profile, baseCap, forwardSpeed, dt, out = null) {
   const ceiling = drive.ceiling > 0
     ? Math.min(drive.ceiling, TRAVEL_CEILING_ABSOLUTE_WU_S)
     : resolveTravelCeiling(profile);
@@ -271,7 +271,11 @@ function advanceTravelDrive(drive, profile, baseCap, forwardSpeed, dt) {
     const nominal = drive.rampRate > 0 ? drive.rampRate : ceiling / TRAVEL_RAMP_FULL_S;
     const rate = nominal * drive.rampMult * (TRAVEL_RAMP_TAPER_FLOOR + (1 - TRAVEL_RAMP_TAPER_FLOOR) * remaining);
     const cap = Math.min(ceiling, from + rate * step);
-    return { state: drive.state, cap, ceiling, ramping: cap < ceiling - EPS, physicsEarnedMomentum: false, disrupted: drive.disrupted === true };
+    const o = out || {};
+    o.state = drive.state; o.cap = cap; o.ceiling = ceiling;
+    o.ramping = cap < ceiling - EPS; o.physicsEarnedMomentum = false;
+    o.disrupted = drive.disrupted === true;
+    return o;
   }
 
   // Off / Spooling / Cooldown: no cap contribution is being added. The old cap record fades,
@@ -279,7 +283,11 @@ function advanceTravelDrive(drive, profile, baseCap, forwardSpeed, dt) {
   // window the latch owner times, not a partial burn.
   const decayed = drive.cap > 0 ? drive.cap * Math.exp(-step / TRAVEL_DISENGAGE_DECAY_TAU_S) : 0;
   const cap = decayed > baseCap ? decayed : 0;
-  return { state: drive.state, cap, ceiling, ramping: false, physicsEarnedMomentum: cap > 0, disrupted: drive.disrupted === true };
+  const o = out || {};
+  o.state = drive.state; o.cap = cap; o.ceiling = ceiling;
+  o.ramping = false; o.physicsEarnedMomentum = cap > 0;
+  o.disrupted = drive.disrupted === true;
+  return o;
 }
 
 // Owner-selected arcade mode: finite-rate vectoring, constant combat-speed command. Normal
@@ -408,7 +416,7 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
   // indistinguishable from no cap, and the coasting ship is carried by the existing
   // earned-momentum decay instead.
   const burn = travelFlag('travelBurn')
-    ? advanceTravelDrive(normalizeTravelDrive(input.travelDrive), profile, baseCap, speed, dt)
+    ? advanceTravelDrive(normalizeTravelDrive(input.travelDrive, _govTravelDrive), profile, baseCap, speed, dt, _travelBurn)
     : null;
   // `input.physicsEarnedMomentum` is the tether/self-sling tag. A disengaged travel burn reports
   // the same contract on `burn` so leftover cruise is a falling ceiling, not a thrust target.
@@ -789,7 +797,7 @@ function stepFieldSail(body, input, profile, runtime, environment, dt) {
       : positive(profile.collapseS, 0.9))
   );
   const axes = localAxes(body.rot);
-  const fieldDir = normalize2(environment.fieldDirection, { x: 1, z: 0 });
+  const fieldDir = normalize2(environment.fieldDirection, FIELD_DIRECTION_DEFAULT);
   const fieldStrength = Math.max(0, finite(environment.fieldStrength, 0));
   const alignment = Math.max(0, dot2({ x: axes.fx, z: axes.fz }, fieldDir));
   const sailAccel = positive(profile.fieldAccel, 8) * fieldStrength * deployed * alignment * Math.max(0, input.throttle);
@@ -1024,16 +1032,16 @@ function vectoringTurnBound(body, input, profile, limits, governor, forwardAccel
 }
 
 /** `true` selects the band defaults without allocating; an object overrides individual keys. */
-function normalizeVelocityVectoring(raw) {
+function normalizeVelocityVectoring(raw, out = null) {
   if (!raw) return null;
   if (raw === true || typeof raw !== 'object') return VELOCITY_VECTORING_DEFAULTS;
   const d = VELOCITY_VECTORING_DEFAULTS;
-  return {
-    rateLowRadS: nonNegative(raw.rateLowRadS, d.rateLowRadS),
-    rateCapRadS: nonNegative(raw.rateCapRadS, d.rateCapRadS),
-    fadeStartRad: clamp(finite(raw.fadeStartRad, d.fadeStartRad), 0, Math.PI),
-    fadeEndRad: clamp(finite(raw.fadeEndRad, d.fadeEndRad), 0, Math.PI),
-  };
+  const o = out || {};
+  o.rateLowRadS = nonNegative(raw.rateLowRadS, d.rateLowRadS);
+  o.rateCapRadS = nonNegative(raw.rateCapRadS, d.rateCapRadS);
+  o.fadeStartRad = clamp(finite(raw.fadeStartRad, d.fadeStartRad), 0, Math.PI);
+  o.fadeEndRad = clamp(finite(raw.fadeEndRad, d.fadeEndRad), 0, Math.PI);
+  return o;
 }
 
 /**
@@ -1268,7 +1276,9 @@ function idleResult(body, profile, runtime, input) {
     body,
     profile,
     input,
-    runtime,
+    // makeResult publishes `runtime` by reference onto the result; copy the normalized packet so
+    // the retained result never aliases the per-call scratch the step path now reuses.
+    runtime: { ...runtime },
     acceleration: zero2(),
     angularAcceleration: 0,
     maxSpeed: finiteOrInfinity(profile.solverSpeedLimit),
@@ -1283,71 +1293,112 @@ export function createPropulsionRuntime(profileLike = {}) {
   return normalizeRuntime(null, profile);
 }
 
-function normalizeRuntime(runtime, profile) {
+// Retained scratch packet for stepPropulsion's per-call normalization. The kernel is synchronous
+// and non-reentrant, and no step retains the normalized body/input/runtime/environment — every
+// step builds a fresh `nextRuntime` via coolRuntime and fresh telemetry via makeResult — so the
+// packet is rewritten in place instead of allocating ~10 objects per craft tick.
+// `createPropulsionRuntime` deliberately keeps the allocating (out=null) path: callers retain
+// and mutate its return across ticks.
+const _packetBodyPos = { x: 0, z: 0 };
+const _packetBodyVel = { x: 0, z: 0 };
+const _packetBody = { pos: _packetBodyPos, vel: _packetBodyVel, rot: 0, angVel: 0, mass: 1, inertia: 1 };
+const _packetTravelDrive = { state: 'off', cap: 0, ceiling: 0, rampRate: 0, rampMult: 1, disrupted: false };
+const _packetVelocityVectoring = { rateLowRadS: 0, rateCapRadS: 0, fadeStartRad: 0, fadeEndRad: 0 };
+const _packetInputSubs = { travelDrive: _packetTravelDrive, velocityVectoring: _packetVelocityVectoring };
+const _packetInput = {
+  drawFlight: null, throttle: 0, strafe: 0, turn: 0, boost: false, brake: false,
+  boostPressed: false, boostReleased: false, physicsEarnedMomentum: false,
+  earnedMomentumDecayTauS: 6, earnedMomentumAssistScale: 1, coastAssistScale: 1,
+  assistMode: 'assisted', travelDrive: _packetTravelDrive, velocityVectoring: null,
+};
+const _packetRuntime = {
+  schemaVersion: PROPULSION_RUNTIME_SCHEMA_VERSION, family: DRIVE_FAMILIES.REACTION,
+  heat: 0, energySpent: 0, fuelSpent: 0, boosting: false, chargeS: 0,
+  pulseCooldownS: 0, autoFlipBurn: false, spool: 0, deployed: 0,
+};
+const _packetEnvDir = { x: 1, z: 0 };
+const _packetEnvSubs = { fieldDirection: _packetEnvDir };
+const _packetEnv = { particulateDensity: 0, dragCoefficient: 0.00002, fieldDirection: _packetEnvDir, fieldStrength: 0 };
+// Governor-local scratch: normalizeTravelDrive/advanceTravelDrive run once per governed tick and
+// both results are consumed (or field-copied into telemetry) inside the same call.
+const _govTravelDrive = { state: 'off', cap: 0, ceiling: 0, rampRate: 0, rampMult: 1, disrupted: false };
+const _travelBurn = { state: 'off', cap: 0, ceiling: 0, ramping: false, physicsEarnedMomentum: false, disrupted: false };
+// Shared fallback for the env field direction — normalize paths read it, never mutate it.
+const FIELD_DIRECTION_DEFAULT = Object.freeze({ x: 1, z: 0 });
+
+function normalizeRuntime(runtime, profile, out = null) {
   const r = runtime && typeof runtime === 'object' ? runtime : {};
-  return {
-    schemaVersion: PROPULSION_RUNTIME_SCHEMA_VERSION,
-    family: profile.family,
-    heat: Math.max(0, finite(r.heat, 0)),
-    energySpent: Math.max(0, finite(r.energySpent, 0)),
-    fuelSpent: Math.max(0, finite(r.fuelSpent, 0)),
-    boosting: !!r.boosting,
-    chargeS: Math.max(0, finite(r.chargeS, 0)),
-    pulseCooldownS: Math.max(0, finite(r.pulseCooldownS, 0)),
-    autoFlipBurn: !!r.autoFlipBurn,
-    spool: clamp(finite(r.spool, 0), 0, 1),
-    deployed: clamp(finite(r.deployed, 0), 0, 1),
-  };
+  const o = out || {};
+  o.schemaVersion = PROPULSION_RUNTIME_SCHEMA_VERSION;
+  o.family = profile.family;
+  o.heat = Math.max(0, finite(r.heat, 0));
+  o.energySpent = Math.max(0, finite(r.energySpent, 0));
+  o.fuelSpent = Math.max(0, finite(r.fuelSpent, 0));
+  o.boosting = !!r.boosting;
+  o.chargeS = Math.max(0, finite(r.chargeS, 0));
+  o.pulseCooldownS = Math.max(0, finite(r.pulseCooldownS, 0));
+  o.autoFlipBurn = !!r.autoFlipBurn;
+  o.spool = clamp(finite(r.spool, 0), 0, 1);
+  o.deployed = clamp(finite(r.deployed, 0), 0, 1);
+  return o;
 }
 
-function normalizeBody(body = {}) {
+function normalizeBody(body = {}, out = null) {
   const mass = positive(body.mass, 1);
-  return {
-    pos: { x: finite(body.pos && body.pos.x, 0), z: finite(body.pos && body.pos.z, 0) },
-    vel: { x: finite(body.vel && body.vel.x, 0), z: finite(body.vel && body.vel.z, 0) },
-    rot: wrapAngle(finite(body.rot, 0)),
-    angVel: finite(body.angVel, 0),
-    mass,
-    inertia: positive(body.inertia, Math.max(1, mass)),
-  };
+  const o = out || {};
+  const pos = o.pos || (o.pos = {});
+  const vel = o.vel || (o.vel = {});
+  pos.x = finite(body.pos && body.pos.x, 0);
+  pos.z = finite(body.pos && body.pos.z, 0);
+  vel.x = finite(body.vel && body.vel.x, 0);
+  vel.z = finite(body.vel && body.vel.z, 0);
+  o.rot = wrapAngle(finite(body.rot, 0));
+  o.angVel = finite(body.angVel, 0);
+  o.mass = mass;
+  o.inertia = positive(body.inertia, Math.max(1, mass));
+  return o;
 }
 
-function normalizeInput(input = {}) {
-  return {
-    drawFlight: validDrawFlight(input.drawFlight) ? input.drawFlight : null,
-    throttle: clamp(finite(input.throttle ?? input.moveZ, 0), -1, 1),
-    strafe: clamp(finite(input.strafe ?? input.moveX, 0), -1, 1),
-    turn: clamp(finite(input.turn ?? input.turnIntent, 0), -1, 1),
-    boost: !!input.boost,
-    brake: !!input.brake,
-    boostPressed: !!input.boostPressed,
-    boostReleased: !!input.boostReleased,
-    physicsEarnedMomentum: !!input.physicsEarnedMomentum,
-    earnedMomentumDecayTauS: positive(input.earnedMomentumDecayTauS, 6),
-    earnedMomentumAssistScale: clamp(finite(input.earnedMomentumAssistScale, 1), 0, 1),
-    coastAssistScale: clamp(finite(input.coastAssistScale, 1), 0, 1),
-    assistMode: normalizeAssistMode(input.assistMode || input.flightMode),
-    // Travel-drive axis (D5). Normalized unconditionally because this object is rebuilt from
-    // scratch and an un-listed key would be dropped before the governor ever saw it. Purely
-    // internal: `makeResult` emits nothing from the normalized input except `assistMode`, and
-    // the drive rides the input packet rather than the serialized runtime, so it adds nothing to
-    // the saved propulsion state and cannot reach a save file.
-    travelDrive: normalizeTravelDrive(input.travelDrive),
-    // Velocity-vectoring opt-in (VELOCITY_VECTORING_DEFAULTS). Listed here for the same reason as
-    // travelDrive: this object is rebuilt from scratch, so an unlisted key never reaches the step.
-    velocityVectoring: normalizeVelocityVectoring(input.velocityVectoring),
-  };
+function normalizeInput(input = {}, out = null, subs = null) {
+  const o = out || {};
+  o.drawFlight = validDrawFlight(input.drawFlight) ? input.drawFlight : null;
+  o.throttle = clamp(finite(input.throttle ?? input.moveZ, 0), -1, 1);
+  o.strafe = clamp(finite(input.strafe ?? input.moveX, 0), -1, 1);
+  o.turn = clamp(finite(input.turn ?? input.turnIntent, 0), -1, 1);
+  o.boost = !!input.boost;
+  o.brake = !!input.brake;
+  o.boostPressed = !!input.boostPressed;
+  o.boostReleased = !!input.boostReleased;
+  o.physicsEarnedMomentum = !!input.physicsEarnedMomentum;
+  o.earnedMomentumDecayTauS = positive(input.earnedMomentumDecayTauS, 6);
+  o.earnedMomentumAssistScale = clamp(finite(input.earnedMomentumAssistScale, 1), 0, 1);
+  o.coastAssistScale = clamp(finite(input.coastAssistScale, 1), 0, 1);
+  o.assistMode = normalizeAssistMode(input.assistMode || input.flightMode);
+  // Travel-drive axis (D5). Normalized unconditionally because this object is rebuilt from
+  // scratch and an un-listed key would be dropped before the governor ever saw it. Purely
+  // internal: `makeResult` emits nothing from the normalized input except `assistMode`, and
+  // the drive rides the input packet rather than the serialized runtime, so it adds nothing to
+  // the saved propulsion state and cannot reach a save file.
+  o.travelDrive = normalizeTravelDrive(input.travelDrive, subs && subs.travelDrive);
+  // Velocity-vectoring opt-in (VELOCITY_VECTORING_DEFAULTS). Listed here for the same reason as
+  // travelDrive: this object is rebuilt from scratch, so an unlisted key never reaches the step.
+  o.velocityVectoring = normalizeVelocityVectoring(input.velocityVectoring, subs && subs.velocityVectoring);
+  return o;
 }
 
 function nonNegative(value, fallback) { return Number.isFinite(value) && value >= 0 ? value : fallback; }
 
-function normalizeEnvironment(environment = {}) {
-  return {
-    particulateDensity: Math.max(0, finite(environment.particulateDensity, 0)),
-    dragCoefficient: Math.max(0, finite(environment.dragCoefficient, 0.00002)),
-    fieldDirection: normalize2(environment.fieldDirection, { x: 1, z: 0 }),
-    fieldStrength: Math.max(0, finite(environment.fieldStrength, 0)),
-  };
+function normalizeEnvironment(environment = {}, out = null, subs = null) {
+  const o = out || {};
+  o.particulateDensity = Math.max(0, finite(environment.particulateDensity, 0));
+  o.dragCoefficient = Math.max(0, finite(environment.dragCoefficient, 0.00002));
+  o.fieldDirection = normalize2Into(
+    environment.fieldDirection,
+    FIELD_DIRECTION_DEFAULT,
+    (subs && subs.fieldDirection) || {},
+  );
+  o.fieldStrength = Math.max(0, finite(environment.fieldStrength, 0));
+  return o;
 }
 
 function normalizeAssistMode(mode) {
@@ -1386,6 +1437,15 @@ function normalize2(v, fallback = zero2()) {
   const z = finite(v && v.z, fallback.z);
   const len = Math.hypot(x, z);
   return len > EPS ? { x: x / len, z: z / len } : { x: fallback.x, z: fallback.z };
+}
+
+function normalize2Into(v, fallback, out) {
+  const x = finite(v && v.x, fallback.x);
+  const z = finite(v && v.z, fallback.z);
+  const len = Math.hypot(x, z);
+  if (len > EPS) { out.x = x / len; out.z = z / len; }
+  else { out.x = fallback.x; out.z = fallback.z; }
+  return out;
 }
 
 function clampMagnitude(v, max) {
