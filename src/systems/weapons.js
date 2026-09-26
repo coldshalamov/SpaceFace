@@ -104,6 +104,15 @@ const MISSILE_COAST_DRAG = 16;           // wu/s^2 gentle speed bleed after burn
 const WEAPON_RECHARGE_MULT = 1.15;
 const WEAPON_VENT_S = 2 / WEAPON_RECHARGE_MULT;
 const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
+
+// Enemy mount roles (authored in enemies.js as `occasional`/`defensiveOnly`, preserved by
+// combat.resolveEnemyWeapon). `occasional` opens a deterministic sim-time window — a seeded
+// phase per mount so twin racks don't volley in lockstep — and `defensiveOnly` answers only
+// while a live target is inside this fraction of the mount's own envelope. Flag-less mounts
+// and the player's battery never touch this gate.
+const OCCASIONAL_PERIOD_S = 12;
+const OCCASIONAL_WINDOW_S = 4;
+const DEFENSIVE_ENVELOPE_FRAC = 0.8;
 // Forced heat vent is AUTHORITATIVE combat behavior (lockout + heat dump). Gate on runtime features
 // / process combat flags — never `typeof window` (N1: Node/browser must not diverge by host).
 // legacy47a keeps weaponHeatVent false so 47-A goldens stay stable; production enables it.
@@ -414,7 +423,7 @@ export const weapons = {
         // freshly-pegged gun trips the vent this tick.
         this._tickVent(e, dt, state);
         // Missile lock build/decay lives on the ship's combat block.
-        this._tickLock(e, dt);
+        this._tickLock(e, dt, state);
       }
       tickMomentumSinkPlant(state, e, this._momentumSinkImpulse, this._entityGetter);
     }
@@ -523,16 +532,18 @@ export const weapons = {
     return true;
   },
 
-  _tickLock(e, dt) {
+  _tickLock(e, dt, state) {
     const ws = e.data && e.data.weapons;
     const combat = e.data && e.data.combat;
     if (!ws || !combat) return;
-    // Does this ship carry any lock-requiring weapon?
+    // Does this ship carry any lock-requiring weapon that is open this tick? An `occasional`
+    // rack is ignored while its window is closed so the incoming-lock warning re-arms per
+    // actual launch window instead of crying wolf between volleys.
     let needsLock = false, lockTimeS = 1.2;
     for (const w of ws) {
       const def = this._byId.get(w.defId) || {};
       const tracking = w.tracking || def.tracking;
-      if (tracking === 'homing') {
+      if (tracking === 'homing' && this._mountRoleOpen(e, w, def, state)) {
         needsLock = true;
         const lt = w.lockTimeS != null ? w.lockTimeS : def.lockTimeS;
         if (lt != null) lockTimeS = Math.min(lockTimeS, lt);
@@ -683,6 +694,34 @@ export const weapons = {
     };
   },
 
+  // Mount-role permission for the authored enemy flags. An `occasional` mount only fires while
+  // its deterministic window is open — a hash-seeded phase per mount so a count:2 rack doesn't
+  // volley in lockstep — and a `defensiveOnly` mount only answers while a live target is inside
+  // its own close envelope (a fraction of the mount's range, so a ship kited at beam range stops
+  // cycling flak it could never land). Flag-less mounts and the player's battery return early and
+  // keep legacy behavior; cooldown/heat still tick while closed so the first open tick is ready.
+  _mountRoleOpen(e, w, def, state, forceTarget = null, fireGate = null) {
+    if (w.occasional !== true && w.defensiveOnly !== true) return true;
+    if (w.occasional === true) {
+      if (!Number.isFinite(w._occPhase)) {
+        const h = this.helpers.hash32(0, String(e.id), String(w.defId || w.id || ''), String(w.slotIndex | 0));
+        w._occPhase = (h % (OCCASIONAL_PERIOD_S * 1000)) / 1000;
+      }
+      const t = ((state && state.simTime) || 0) + w._occPhase;
+      if (((t % OCCASIONAL_PERIOD_S) + OCCASIONAL_PERIOD_S) % OCCASIONAL_PERIOD_S >= OCCASIONAL_WINDOW_S) return false;
+    }
+    if (w.defensiveOnly === true) {
+      const tgt = (fireGate && fireGate.target) || forceTarget || this._resolveTarget(e);
+      if (!tgt || !tgt.pos || tgt.alive === false) return false;
+      const range = (w.range != null ? w.range : def.range) || 0;
+      if (!(range > 0)) return false;
+      const envelope = range * DEFENSIVE_ENVELOPE_FRAC;
+      const dx = tgt.pos.x - e.pos.x, dz = tgt.pos.z - e.pos.z;
+      if (dx * dx + dz * dz > envelope * envelope) return false;
+    }
+    return true;
+  },
+
   // --- fire all weapons on a ship if it is firing this tick ---
   // aimAngle: the world angle to gimbal/turret toward (player mouse aim or NPC lead).
   // forceTarget: an explicit target entity (Massline tether / missile-lock); null = selected target.
@@ -700,6 +739,7 @@ export const weapons = {
     if (aimAngle == null) aimAngle = e.rot;
     for (const w of ws) {
       const def = this._byId.get(w.defId) || {};
+      if (!this._mountRoleOpen(e, w, def, state, forceTarget, fireGate)) continue;
       if (def.emergentPrimitive) {
         capLeft = this._serviceEmergent(e, w, def, firing, capLeft, state, aimAngle);
         continue;
