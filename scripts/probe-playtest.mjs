@@ -569,6 +569,39 @@ const ROUTES = {
       return { inHold, sellVerb: sold, credits: [crBefore, crAfter] };
     });
 
+    await B(ctx, 'l04b-job', 'missions tab -> accept a delivery job (target the mission sector next)', async () => {
+      await ctx.page.evaluate(() => { const el = [...document.querySelectorAll('[data-nav]')].find((n) => /mission|contract|job/i.test(n.dataset.nav || '')); if (el) el.click(); });
+      await sleep(1300);
+      await shotNow(ctx, 'l04b-missions');
+      const before = await ctx.page.evaluate(() => (window.SF.state.missions && window.SF.state.missions.active.length) || 0);
+      // Click the board row carrying an inline commit verb; fallback: select row then detail verb.
+      const clicked = await ctx.page.evaluate(() => {
+        const all = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action], .k-row, li, tr')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live'));
+        const commit = all.find((e) => /dispatch this job|^\s*accept|take on|take contract|sign on/i.test(e.textContent || '') && !/sell what/i.test(e.textContent || ''));
+        if (commit) { commit.click(); return (commit.textContent || '').trim().slice(0, 80); }
+        const row = all.find((e) => /to [A-Z]|deliver|haul|cargo/i.test(e.textContent || '') && (e.textContent || '').length < 300 && !/sell what/i.test(e.textContent || ''));
+        if (row) { row.click(); return 'row:' + (row.textContent || '').trim().slice(0, 70); }
+        return null;
+      });
+      await sleep(900);
+      if (clicked && clicked.startsWith('row:')) {
+        await ctx.page.evaluate(() => {
+          const v = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
+            .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /dispatch this job|^\s*accept|take on|take contract|sign on/i.test(e.textContent || ''))[0];
+          if (v) v.click();
+        });
+        await sleep(900);
+      }
+      const after = await ctx.page.evaluate(() => {
+        const ms = window.SF.state.missions;
+        const last = ms && ms.active && ms.active[ms.active.length - 1];
+        return { active: ms ? ms.active.length : 0, last: last ? { id: last.id, destSectorId: last.destSectorId, destStationId: last.destStationId } : null };
+      });
+      if (after.active <= before) observe(ctx, 'rough-edge', 'missions', `mission accept clicked "${clicked}" but active count ${before}->${after.active}`);
+      return { clicked, before, after };
+    });
+
     await B(ctx, 'l05-outfit', 'shipworks -> buy something affordable -> undock', async () => {
       await ctx.page.evaluate(() => { const el = [...document.querySelectorAll('[data-nav]')].find((n) => /shipworks|ship/i.test(n.dataset.nav || '')); if (el) el.click(); });
       await sleep(1400);
@@ -587,12 +620,17 @@ const ROUTES = {
       return { shipworksVerbs: verbs.slice(0, 20), undockVerb: undock, screen: s.screen, mode: s.mode, docked: s.docked };
     });
 
-    await B(ctx, 'l06-jump', 'request a gate jump to a neighbor sector -> arrive + autosave', async () => {
+    await B(ctx, 'l06-jump', 'request a gate jump (mission destination sector if reachable) -> arrive + autosave', async () => {
       const from = await ctx.page.evaluate(() => window.SF.state.world.currentSectorId);
       const neighbors = await ctx.page.evaluate((id) =>
         (window.SF.state.world.sectors[id] && window.SF.state.world.sectors[id].neighbors) || [], from);
       if (!neighbors.length) return { from, neighbors: 0 };
-      const target = neighbors[0];
+      const missionSector = await ctx.page.evaluate(() => {
+        const act = (window.SF.state.missions && window.SF.state.missions.active) || [];
+        const m = act.find((x) => x && x.destSectorId);
+        return m ? m.destSectorId : null;
+      });
+      const target = missionSector && neighbors.includes(missionSector) ? missionSector : neighbors[0];
       await ctx.page.evaluate((t) => window.SF.bus.emit('world:requestJump', { targetSectorId: t, via: 'gate' }), target);
       await sleep(400);
       const j0 = await ctx.page.evaluate(() => ({ state: window.SF.state.jump.state, chargeNeeded: window.SF.state.jump.chargeNeeded }));
@@ -642,6 +680,28 @@ const ROUTES = {
       const s = await snap(ctx);
       if (picked.d <= 5200 && !deck.open) observe(ctx, 'rough-edge', 'comms', `HAIL clicked for contact ${picked.id} @ ${picked.d}WU but no hail deck opened (avail=${JSON.stringify(avail)})`);
       return { contact: picked, avail, deckOpen: deck.open, screen: s.screen };
+    });
+
+    await B(ctx, 'l09-deliver', 'travel to mission destination station -> dock -> job completes + pays', async () => {
+      const m0 = await ctx.page.evaluate(() => {
+        const act = (window.SF.state.missions && window.SF.state.missions.active) || [];
+        const m = act.find((x) => x && x.destStationId && x.destSectorId === window.SF.state.world.currentSectorId);
+        return m ? { id: m.id, destStationId: m.destStationId, destSectorId: m.destSectorId } : null;
+      });
+      if (!m0) return { delivery: 'none-in-sector' };
+      const crBefore = await ctx.page.evaluate(() => window.SF.state.player && window.SF.state.player.credits);
+      const activeBefore = await ctx.page.evaluate(() => (window.SF.state.missions.active || []).length);
+      const r = await travelToStation(ctx, m0.destStationId, 8 * 60_000);
+      if (!r.docked) { await ctx.page.evaluate((id) => window.__SF_PT_HELPERS__.dock(id), m0.destStationId); await sleep(2000); }
+      await shotNow(ctx, 'l09-dest-station');
+      const after = await ctx.page.evaluate(() => ({
+        credits: window.SF.state.player && window.SF.state.player.credits,
+        active: (window.SF.state.missions.active || []).length,
+        completed: (window.SF.state.missions.completedLog || []).length,
+      }));
+      if (after.active >= activeBefore && after.credits <= crBefore)
+        observe(ctx, 'defect', 'missions', `docked at dest station ${m0.destStationId} but mission ${m0.id} did not complete or pay (${crBefore}->${after.credits})`);
+      return { mission: m0, travel: r.arrived, credits: [crBefore, after.credits], active: [activeBefore, after.active], completedLog: after.completed };
     });
 
     await B(ctx, 'l08-death', 'synthetic ship_destroyed -> gameOver screen presents Continue/respawn', async () => {
