@@ -455,6 +455,10 @@ try {
     const render = window.SF.state && window.SF.state.render;
     const ledger = Array.isArray(render && render.openingCookLedger) ? render.openingCookLedger : [];
     return {
+      // PQ-210.02 counted exit: the boot-order tail settle's receipt (kicks, wait, final
+      // queue/residency counters) — proof the shell, not the first 20 s, paid the leftover
+      // opening composition.
+      openingTail: (render && render.openingCompositionTail) || null,
       steps: ledger
         .filter((row) => row && row.step && row.step !== 'begin' && row.step !== 'lane')
         .map((row) => {
@@ -1247,6 +1251,9 @@ try {
       : []),
     ...(cookLedger && Array.isArray(cookLedger.steps) && cookLedger.steps.length
       ? [`  cook ledger                 ${cookLedger.steps.slice(-18).join(' | ')}`]
+      : []),
+    ...(cookLedger && cookLedger.openingTail
+      ? [`  opening tail settle         ${JSON.stringify(cookLedger.openingTail)}`]
       : []),
     ...linkEvents.slice(0, 24),
     // The post-settle depth sweep's per-object keys: a NOVEL live key diffs against the staged

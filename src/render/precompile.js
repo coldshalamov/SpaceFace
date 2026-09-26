@@ -6,8 +6,14 @@ import { createVisualFactory } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import {
   getAuthoredUpgradeQueueStats,
+  holdAuthoredUpgradeQueueForFirstFlight,
+  isInitialAuthoredCompositionEntity,
+  pumpAuthoredUpgradeQueue,
+  requestOpeningCompositionUpgrades,
+  resumeAuthoredUpgradeQueueAfterOpening,
   shipArchetypeKeyForDefId,
   shipArchetypesForPrecompile,
+  waitForAuthoredUpgradeQueueIdle,
 } from './partsLibrary.js';
 import { applyRealtimeCanopyPolicy } from './canopyMaterialPolicy.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
@@ -419,6 +425,114 @@ export function precompileGlobalPipelines(renderer, scene, camera, options = {})
     renderer, scene, camera, [], true, compiledShipKeysFor(renderer), precompileGenerationFor(renderer), options,
   );
   return rememberGlobalPrecompile(renderer, run);
+}
+
+/**
+ * PQ-210.02 — the opening is as smooth as minute two. The live-sector cook's own upgrade-idle
+ * step is the last consumer of a shared prepare budget; on a contended host the budget is spent
+ * before that step runs (measured 2026-09-25, open route: `live.leftoverUpgradeIdle 460ms timeout
+ * (pending=3,inFlight=2,compiling=true)`), and the loading shell releases with the opening
+ * composition's serial lane still working. Those composes then finish inside flight frames —
+ * the +12.8 s NOVEL program link and the +17 s ~10 MB first-draw upload burst in
+ * .devshots/smooth-open-pq210-02-before-1.txt are exactly that lane landing in the sample.
+ *
+ * This tail settle spends the gpu-resources gate's own headroom while the shell still owns the
+ * picture: kick every opening-composition entity still waiting for a first draw, lift the
+ * first-flight queue hold for the drain (nothing can present during loading, so the guard's
+ * flight-boundary purpose is not served here), prioritize opening-composition jobs on the serial
+ * lane, and wait — bounded, fail-open — for every in-flight compose, pipeline compile and GPU
+ * residency upload to reach a terminal state. Committed swaps that cross the opening publication
+ * gate park exactly as the cook leaves them; the expensive decode/compile/upload work is what
+ * this moves behind the shell. Render/asset-side only: no sim entities are created.
+ *
+ * Counted exit, like the packet's other leaves: the receipt names kicks, polls, wait time and
+ * the final queue/residency counters so a probe can diff first-20 s events, not vibes.
+ */
+export async function settleOpeningCompositionTail(state, options = {}) {
+  const render = state && state.render;
+  const scene = render && render.scene;
+  const renderer = render && render.renderer;
+  const meshes = render && render.meshes;
+  if (!state || !scene || !renderer || !meshes) {
+    return { skipped: true, reason: 'render-state-unavailable' };
+  }
+  const budgetMs = Math.max(0, Number(options.budgetMs) || 20000);
+  const now = typeof performance !== 'undefined' && performance && typeof performance.now === 'function'
+    ? () => performance.now()
+    : () => Date.now();
+  const started = now();
+  const deadline = started + budgetMs;
+  const onlyOpening = (job) => !!(job && job.entity
+    && isInitialAuthoredCompositionEntity(job.entity, state));
+  let laneDrain = null;
+  const flushPipelineLane = () => {
+    if (laneDrain || typeof render.drainPendingPipelineAdmissions !== 'function') return;
+    try {
+      laneDrain = Promise.resolve(render.drainPendingPipelineAdmissions())
+        .catch(() => null)
+        .finally(() => { laneDrain = null; });
+    } catch { /* the wait below still bounds the settle */ }
+  };
+  const yieldToMain = typeof options.yieldToMain === 'function'
+    ? options.yieldToMain
+    : async () => {
+      flushPipelineLane();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    };
+  const residencyPending = () => {
+    try {
+      const value = typeof render.pendingAuthoredGpuResidency === 'function'
+        ? render.pendingAuthoredGpuResidency()
+        : 0;
+      return Number.isFinite(value) ? value : 0;
+    } catch { return 0; }
+  };
+  let kicked = { requested: 0, ids: [] };
+  let stats = { idle: false, pending: null, inFlight: null, compiling: null };
+  let polls = 0;
+  while (state.mode === 'loading' && now() < deadline) {
+    // Open-composition boundaries that mounted after the cook's own request pass sit at
+    // 'awaiting-authored-admission' and would otherwise request on their first live draw.
+    // requestOpeningCompositionUpgrades is idempotent over the admission state.
+    try {
+      const request = requestOpeningCompositionUpgrades(state, renderer, scene, meshes);
+      if (request && Number.isFinite(request.requested)) {
+        kicked = {
+          requested: kicked.requested + request.requested,
+          ids: kicked.ids.concat(request.ids || []).slice(0, 16),
+        };
+      }
+    } catch { /* a refused request leaves the live trigger armed */ }
+    // The cook's finally armed firstFlightHandoffHold. During loading nothing presents, so lift
+    // it for the drain and re-arm it below: held non-opening leftovers stay deferred, while the
+    // opening composition's own jobs may finish their decode/compile/upload behind the shell
+    // instead of at the in-flight latch inside the first 20 s of flight.
+    resumeAuthoredUpgradeQueueAfterOpening(scene);
+    stats = await waitForAuthoredUpgradeQueueIdle(scene, {
+      timeoutMs: Math.min(4000, Math.max(0, deadline - now())),
+      yieldToMain,
+      pump: () => pumpAuthoredUpgradeQueue(scene, { only: onlyOpening }),
+    });
+    polls += 1;
+    flushPipelineLane();
+    if (stats && stats.idle === true && residencyPending() === 0) break;
+  }
+  if (laneDrain) { try { await laneDrain; } catch { /* best effort */ } }
+  if (scene && state.mode === 'loading') holdAuthoredUpgradeQueueForFirstFlight(scene);
+  const residency = residencyPending();
+  return {
+    skipped: false,
+    waitedMs: Math.round(now() - started),
+    polls,
+    kicked: kicked.requested,
+    kickedIds: kicked.ids,
+    settled: !!(stats && stats.idle === true) && residency === 0,
+    pending: stats ? stats.pending : null,
+    inFlight: stats ? stats.inFlight : null,
+    compiling: stats ? stats.compiling : null,
+    residency,
+    budget: budgetMs,
+  };
 }
 
 export function invalidatePrecompileState(renderer, options = {}) {

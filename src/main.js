@@ -31,6 +31,7 @@ import { applyAccessibility } from './ui/accessibility.js';
 import { ensureStylesheet as ensureStationStylesheet } from './ui/station/stationStyles.js';
 import { createLoadingPresenter } from './ui/loadingPresenter.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
+import { settleOpeningCompositionTail } from './render/precompile.js';
 import {
   waitForCurrentRenderPipelines as waitForRenderPipelineWarmup,
   waitForOpeningGpuResources,
@@ -603,7 +604,22 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
         return true;
       }
       try {
-        return await cook;
+        const cookReady = await cook;
+        // PQ-210.02 — the opening composition's serial lane must not finish inside flight frames.
+        // The live-sector cook's own upgrade-idle step shares a prepare budget that a contended
+        // host has already spent by the time it runs, so the shell used to release with
+        // composes/compiles/uploads still open and flight paid them (NOVEL program link +12.8 s,
+        // ~10 MB first-draw uploads +17 s in the before sample). This bounded, fail-open tail
+        // spends the gate's own headroom finishing that work while the shell still owns the
+        // picture. Boot-order only; the settle is render/asset-side and spawns nothing.
+        if (state.mode === 'loading') {
+          const tail = await settleOpeningCompositionTail(state, { budgetMs: 20000 });
+          if (state.render) state.render.openingCompositionTail = tail;
+          SF_DEBUG_ONLY: if (SF_DEBUG && tail && tail.skipped !== true) {
+            console.log('[SpaceFace] opening composition tail settle: %s', JSON.stringify(tail));
+          }
+        }
+        return cookReady;
       } catch (error) {
         console.warn('[startup] opening GPU cook failed', error);
         return false;
