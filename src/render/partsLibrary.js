@@ -112,6 +112,7 @@ import {
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import { canonicalizeAuthoredProgramState } from './programCanon.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
+import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../data/collisionProxyManifests.js';
 import {
   entityRequiresAuthoredPresentation,
   hasExplicitAuthoredGeologyPresentation,
@@ -3342,6 +3343,9 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   canonicalizeMaplessHullMaterials(root, palette);
   normalizePlacePropBindings(bindings);
   centerAuthoredPlaceRoot(root, record, scale);
+  // Stations key on the placeFile stem recorded on the boundary (e.g. place_station_trade_hub),
+  // not the GLB's internal assetId.
+  installAuthoredApproachYaw(root, entity, ownerBoundary?.userData?.placeId || placeId);
   installWorldSitePresentation(root, entity);
   installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings);
   specializeClaimRelayOpaqueMaterials(root, placeId);
@@ -3414,6 +3418,34 @@ function specializeClaimRelayOpaqueMaterials(root, placeId) {
     packedOrmMaterialCount,
     roles: [...roles].sort(),
   };
+}
+
+// Authored approach-channel registration. Some authored station packages draw their real
+// open flight lane at a fixed bearing inside the GLB, while the collision corridor that
+// lane must serve is stamped per-station (data.corridorBearingDeg → proxy ring gap,
+// capture lane, berth, autopilot routing). When the two disagree the corridor runs under
+// solid roof and the hull vanishes for the whole approach. Rotate the authored city about
+// its visual center so the drawn channel lands on the effective corridor bearing.
+// Values are the bearing (deg, world atan2(z,x) convention) of the package's open channel,
+// measured on the real meshes — see scripts/probe-station-occlusion.mjs SF_OCCL_MAP.
+const AUTHORED_APPROACH_CHANNEL_DEG = Object.freeze({
+  place_station_trade_hub: 250,
+});
+
+function installAuthoredApproachYaw(root, entity, placeId) {
+  const channelDeg = AUTHORED_APPROACH_CHANNEL_DEG[placeId];
+  if (!Number.isFinite(channelDeg) || !root || !root.isObject3D) return;
+  if (!entity || entity.type !== 'station') return;
+  const manifest = resolveCollisionProxyManifest(entity);
+  if (!manifest || !manifest.docking) return;
+  const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
+  if (!Number.isFinite(corridorDeg)) return;
+  // Empirically verified on the live renderer: positive rotation.y moves an
+  // authored-bearing-β feature to world bearing β + α in this transform chain.
+  const yawDeg = ((corridorDeg - channelDeg + 540) % 360) - 180;
+  if (!yawDeg) return;
+  root.rotation.y = yawDeg * (Math.PI / 180);
+  root.userData.authoredApproachYawDeg = yawDeg;
 }
 
 function centerAuthoredPlaceRoot(root, record, scale) {
