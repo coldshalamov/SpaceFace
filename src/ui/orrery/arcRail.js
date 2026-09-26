@@ -171,32 +171,39 @@ export function arcRailGeometry(W, H, count, { span = null, pivotY = 0.56, gaps 
 // of light (brightest outside, fading to ~6 % at the hub), a graduated scale, a sun with rays, three
 // small ringed bodies, and the game's verb -- a rock on a tether swinging round the centre.
 function drawFace(p, re) {
+  // weight, not wire (owner 2026-09-25): every orbit is a band of light with a crisp edge, dotted orbits are
+  // bold dots, the sun is a lit core in a halo, the bodies are filled worlds with a lit rim
   const g = svg('g', { class: 'orr-arcrail__face', style: `transform-origin:${p.x}px ${p.y}px`, fill: 'none' });
   const bone = (a) => `rgb(232 226 212 / ${a})`;
-  const ringAt = (f, a, extra = {}) => g.appendChild(svg('path', { d: arcD(p.x, p.y, re * f, 0, 360), stroke: bone(a), 'stroke-width': 1, ...extra }));
-  ringAt(0.9, 0.2);
-  ringAt(0.78, 0.13, { 'stroke-dasharray': '1 6', 'stroke-linecap': 'round', 'stroke-width': 1.4 });
-  ringAt(0.66, 0.14);
-  ringAt(0.52, 0.1, { 'stroke-dasharray': '10 5' });
-  ringAt(0.38, 0.08);
-  ringAt(0.24, 0.06, { 'stroke-dasharray': '1 4', 'stroke-linecap': 'round' });
-  g.appendChild(svg('path', { d: ticksD(p.x, p.y, re * 0.66, 180, { len: 4, major: 15, majorLen: 9, inward: true }), stroke: bone(0.12), 'stroke-width': 1 }));
-  // crosshair and a sun with rays
-  g.appendChild(svg('path', { d: `M ${p.x - re * 0.9} ${p.y} L ${p.x + re * 0.9} ${p.y} M ${p.x} ${p.y - re * 0.9} L ${p.x} ${p.y + re * 0.9}`, stroke: bone(0.05), 'stroke-width': 1 }));
-  g.appendChild(svg('path', { d: arcD(p.x, p.y, re * 0.07, 0, 360), stroke: bone(0.18), 'stroke-width': 1.2 }));
-  g.appendChild(svg('path', { d: ticksD(p.x, p.y, re * 0.16, 24, { len: re * 0.05, inward: true }), stroke: bone(0.1), 'stroke-width': 1 }));
-  // three small bodies riding their orbits, each with its own thin ring
-  for (const [f, a, r] of [[0.66, 58, 9], [0.52, 128, 6], [0.9, 12, 5]]) {
+  const band = (f, a, w) => {
+    g.appendChild(svg('path', { d: arcD(p.x, p.y, re * f, 0, 360), stroke: bone(a * 0.42), 'stroke-width': w }));
+    g.appendChild(svg('path', { d: arcD(p.x, p.y, re * f, 0, 360), stroke: bone(Math.min(0.62, a * 2.2)), 'stroke-width': 1.25 }));
+  };
+  const dots = (f, a, gap) => g.appendChild(svg('path', { d: arcD(p.x, p.y, re * f, 0, 360), stroke: bone(a), 'stroke-width': 2.6, 'stroke-dasharray': `0 ${gap}`, 'stroke-linecap': 'round' }));
+  band(0.9, 0.2, 10);
+  dots(0.78, 0.34, 9);
+  band(0.66, 0.15, 8);
+  band(0.52, 0.11, 6);
+  dots(0.38, 0.22, 7);
+  band(0.24, 0.08, 5);
+  g.appendChild(svg('path', { d: ticksD(p.x, p.y, re * 0.66 - 5, 180, { len: 4, major: 15, majorLen: 10, inward: true }), stroke: bone(0.24), 'stroke-width': 1.5 }));
+  // the sun: a lit core in a halo, its rays with body
+  g.appendChild(svg('circle', { cx: p.x, cy: p.y, r: re * 0.13, fill: bone(0.05) }));
+  g.appendChild(svg('circle', { cx: p.x, cy: p.y, r: re * 0.075, fill: bone(0.12), stroke: bone(0.45), 'stroke-width': 1.5 }));
+  g.appendChild(svg('path', { d: ticksD(p.x, p.y, re * 0.17, 24, { len: re * 0.05, inward: true }), stroke: bone(0.26), 'stroke-width': 1.5, 'stroke-linecap': 'round' }));
+  // three bodies riding their orbits: filled worlds with a lit rim and a halo ring
+  for (const [f, a, r] of [[0.66, 58, 10], [0.52, 128, 7], [0.9, 12, 6]]) {
     const [bx, by] = polar(p.x, p.y, re * f, a);
-    g.appendChild(svg('circle', { cx: bx.toFixed(1), cy: by.toFixed(1), r, stroke: bone(0.3), 'stroke-width': 1.2, fill: 'rgb(5 7 10 / .6)' }));
-    g.appendChild(svg('path', { d: arcD(bx, by, r + 5, 0, 360), stroke: bone(0.14), 'stroke-width': 1 }));
+    g.appendChild(svg('circle', { cx: bx.toFixed(1), cy: by.toFixed(1), r: r + 7, fill: bone(0.05) }));
+    g.appendChild(svg('circle', { cx: bx.toFixed(1), cy: by.toFixed(1), r, fill: 'rgb(26 24 22)', stroke: bone(0.62), 'stroke-width': 1.75 }));
+    g.appendChild(svg('path', { d: arcD(bx, by, r - 2.5, 200, 340), stroke: bone(0.5), 'stroke-width': 2, 'stroke-linecap': 'round' }));
   }
-  // the tether: from the centre, sagging round to a faceted rock on the outer orbit
+  // the tether: from the centre, sagging round to a rock on the outer orbit, both with body
   const [rx, ry] = polar(p.x, p.y, re * 0.78, 152);
   const [qx, qy] = polar(p.x, p.y, re * 0.66, 104);
-  g.appendChild(svg('path', { d: `M ${p.x} ${p.y} Q ${qx.toFixed(1)} ${qy.toFixed(1)} ${rx.toFixed(1)} ${ry.toFixed(1)}`, stroke: bone(0.26), 'stroke-width': 1.2 }));
-  const rock = [0, 55, 120, 170, 230, 290].map((a, i) => polar(rx, ry, [11, 8, 12, 9, 13, 8][i], a)).map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`);
-  g.appendChild(svg('path', { d: `M ${rock.join(' L ')} Z`, stroke: bone(0.34), 'stroke-width': 1.2, fill: 'rgb(5 7 10 / .55)' }));
+  g.appendChild(svg('path', { d: `M ${p.x} ${p.y} Q ${qx.toFixed(1)} ${qy.toFixed(1)} ${rx.toFixed(1)} ${ry.toFixed(1)}`, stroke: bone(0.34), 'stroke-width': 1.75, 'stroke-linecap': 'round' }));
+  const rock = [0, 40, 95, 150, 205, 262, 318].map((a, i) => polar(rx, ry, [12, 9, 13, 8, 12, 10, 9][i], a)).map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`);
+  g.appendChild(svg('path', { d: `M ${rock.join(' L ')} Z`, stroke: bone(0.55), 'stroke-width': 1.5, 'stroke-linejoin': 'round', fill: 'rgb(34 31 28)' }));
   return g;
 }
 
@@ -328,22 +335,24 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     const orbit = svg('g', { class: 'orr-arcrail__orbit', style: `transform-origin:${pivot.x}px ${pivot.y}px` });
     const rimTicks = ticksD(pivot.x, pivot.y, re + 9, 144, { len: 3, major: 12, majorLen: 8, inward: false });
     orbit.appendChild(svg('path', { d: rimTicks, class: 'orr-bloom orr-hi', 'stroke-width': 4, opacity: '.18' }));
-    orbit.appendChild(svg('path', { d: rimTicks, stroke: 'rgb(236 230 216 / .72)', 'stroke-width': 1, fill: 'none' }));
+    orbit.appendChild(svg('path', { d: rimTicks, stroke: 'rgb(236 230 216 / .72)', 'stroke-width': 1.5, fill: 'none' }));
     layer.appendChild(orbit);
     layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-bloom orr-hi', 'stroke-width': 5, opacity: '.1' }));
-    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), stroke: 'rgb(236 230 216 / .62)', 'stroke-width': 1.2, fill: 'none' }));
+    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-band', style: '--orr-w-band:9px; --orr-band-a:.09' }));
+    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-edge', style: '--orr-edge-a:.7; --orr-w-edge:1.75px' }));
     glintBloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 8, opacity: '.18' });
     glint = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.4, opacity: '.55' });
     layer.append(glintBloom, glint);
     // the rail: an arc of light through the verbs' ticks
     const a0 = angles[0] - 8;
     const a1 = angles[angles.length - 1] + 8;
-    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, ri - 8, a0, a1), class: 'orr-core orr-rest orr-arcrail__rail', 'stroke-width': 1, pathLength: 1 }));
+    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, ri - 8, a0, a1), class: 'orr-band', style: '--orr-w-band:7px; --orr-band-a:.08' }));
+    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, ri - 8, a0, a1), class: 'orr-core orr-rest orr-arcrail__rail', 'stroke-width': 1.5, pathLength: 1 }));
     layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, ri - 8, a0, a1), class: 'orr-bloom orr-rest', 'stroke-width': 4, opacity: '.12' }));
     ticks = angles.map((a) => {
       const [tx0, ty0] = polar(pivot.x, pivot.y, ri - 13, a);
       const [tx1, ty1] = polar(pivot.x, pivot.y, ri - 3, a);
-      const t = svg('path', { d: `M ${tx0.toFixed(1)} ${ty0.toFixed(1)} L ${tx1.toFixed(1)} ${ty1.toFixed(1)}`, class: 'orr-core orr-hi orr-arcrail__tick', 'stroke-width': 1.4 });
+      const t = svg('path', { d: `M ${tx0.toFixed(1)} ${ty0.toFixed(1)} L ${tx1.toFixed(1)} ${ty1.toFixed(1)}`, class: 'orr-core orr-hi orr-arcrail__tick', 'stroke-width': 2.2 });
       layer.appendChild(t);
       return t;
     });
