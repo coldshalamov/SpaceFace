@@ -208,8 +208,11 @@ export async function bootPlaytest({ outDir, query = '', headless = true, viewpo
       },
       docked: () => !!(window.SF.state.ui && window.SF.state.ui.docked),
       // Position:fixed controls (station footer verbs, overlays) report offsetParent=null, so
-      // every offsetParent!==null filter is blind to them. isVis covers both.
-      isVis: (e) => !!e && (e.offsetParent !== null || getComputedStyle(e).position === 'fixed' || e.getClientRects().length > 0),
+      // every offsetParent!==null filter is blind to them. getClientRects() is equally blind to
+      // visibility:hidden (rects still exist) — checkVisibility() covers both axes correctly.
+      isVis: (e) => !!e && (typeof e.checkVisibility === 'function'
+        ? e.checkVisibility()
+        : (e.offsetParent !== null || getComputedStyle(e).position === 'fixed' || e.getClientRects().length > 0)),
       clickText: (srcRe, extraSel) => {
         const re = typeof srcRe === 'string' ? new RegExp(srcRe, 'i') : srcRe;
         const sel = extraSel || 'button, .k-word, [role="button"], [data-action], [data-nav], a';

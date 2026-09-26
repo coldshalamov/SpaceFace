@@ -729,6 +729,10 @@ function injectCommsCss() {
   body.ui-live-screen #sf-comms { opacity:0; pointer-events:none; }
   body.ui-modal-open .sf-comm-backlog-btn,
   body.ui-live-screen .sf-comm-backlog-btn { opacity:0; visibility:hidden; pointer-events:none; }
+  /* An open backlog is a HUD overlay, not a screen — without this it keeps painting at
+     z-index 2400 over whatever modal the player opens next (map over open comms, etc.). */
+  body.ui-modal-open .sf-comm-backlog,
+  body.ui-live-screen .sf-comm-backlog { visibility:hidden; pointer-events:none; }
   .sf-comm { --comm-color:var(--text-secondary); --comm-glow:none; position:relative; padding:7px 10px 8px;
     border:1px solid rgba(147,174,195,.24); border-top-color:rgba(147,196,211,.42); border-radius:2px;
     background:linear-gradient(108deg, rgba(17,25,36,.91), rgba(7,12,20,.78)); box-shadow:0 10px 24px rgba(0,0,0,.22);
