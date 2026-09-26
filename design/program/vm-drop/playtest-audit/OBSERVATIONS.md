@@ -467,10 +467,20 @@ which re-engages each poll. A dropped autopilot mid-leg coasts to a stop and bur
 whole deadline. Fixed `c525cd2c0` (re-engage guard + last-distance/encounter counters in
 the timeout error, `81fe334bc`). r22 verifies.
 
+## Run 22 — demo-path CLEAN PASS on the fix HEAD @ c525cd2c0
+
+11/11 steps clean end-to-end: title → crucible → round 1 (real fight, died sim≈141s) →
+results → belt → job → problem leg → paid → **return to Helios + buy-and-fit in 115 s**
+(r21's timeout leg, now with the autopilot re-engage guard) → undock → demoEnd card.
+The guard confirms the r21 failure was probe-side; whether the game's autopilot can drop
+on its own mid-leg without manual input stays an open ledger question — the probe now
+records the encounter counters if it recurs.
+
 ## Next runs
 
-- r22 in flight: demo-path with the autopilot re-engage guard.
 - Adventure real-death → recovery-berth (insurance-carrying save) if a fixtured state lands.
 - crucibleDraft / crucibleRefit / motionAsk audited via ui-bench stills (r18/19 section) —
   all composed and clean; no live probe path exists (a probe cannot legitimately win a
   crucible round, and motionAsk only mounts on a true first boot).
+- Every route is green on the fix HEAD: screens 36/36 (r17), combat 7/7 real-crucible
+  (r19), demo-path 11/11 (r22). Full surface census is in the PR body.
