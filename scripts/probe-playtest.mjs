@@ -611,6 +611,37 @@ const ROUTES = {
       if (picked.d <= 5200 && !deck.open) observe(ctx, 'rough-edge', 'comms', `HAIL clicked for contact ${picked.id} @ ${picked.d}WU but no hail deck opened (avail=${JSON.stringify(avail)})`);
       return { contact: picked, avail, deckOpen: deck.open, screen: s.screen };
     });
+
+    await B(ctx, 'l08-death', 'synthetic ship_destroyed -> gameOver screen presents Continue/respawn', async () => {
+      // The kill path itself is proven by combat c04b; this verifies the adventure-mode
+      // gameOver presentation + respawn affordance, which no other beat reaches.
+      await ctx.page.evaluate(() => {
+        const st = window.SF.state;
+        const p = st.entities.get(st.playerId);
+        const pos = p && p.pos ? { x: p.pos.x, z: p.pos.z } : { x: 0, z: 0 };
+        window.SF.bus.emit('player:death', { victimId: st.playerId, killerId: null, recoverable: true, victimVel: { x: 0, z: 0 }, pos });
+        window.SF.bus.emit('game:over', { reason: 'ship_destroyed', recoverable: true, receipt: { reason: 'probe' } });
+      });
+      await sleep(2500);
+      const s = await snap(ctx);
+      await shotNow(ctx, 'l08-gameover');
+      const verbs = await ctx.page.evaluate(() =>
+        [...document.querySelectorAll('button, .k-word, [role="button"], [data-action]')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live'))
+          .map((e) => (e.textContent || '').trim()).filter(Boolean).slice(0, 24));
+      // Click the recovery/continue verb if present and verify we return to flight.
+      const recover = await ctx.page.evaluate(() => {
+        const b = [...document.querySelectorAll('button, .k-word, [role="button"], [data-action]')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live')
+            && /continue|recover|respawn|rebuild|fly again|wake/i.test(e.textContent || ''))[0];
+        if (!b) return null; b.click(); return (b.textContent || '').trim();
+      });
+      await sleep(2500);
+      const s2 = await snap(ctx);
+      if (s.screen !== 'gameOver' && s.screen !== null) observe(ctx, 'rough-edge', 'death', `game:over landed screen=${s.screen}`);
+      if (recover && s2.mode !== 'flight' && !s2.docked) observe(ctx, 'rough-edge', 'death', `recovery verb "${recover}" left mode=${s2.mode} screen=${s2.screen}`);
+      return { screen: s.screen, verbs: verbs.slice(0, 14), recoverVerb: recover, afterScreen: s2.screen, afterMode: s2.mode };
+    });
   },
 
   // Crucible: open from title, launch quick play, fight briefly, observe combat UI, then leave.
