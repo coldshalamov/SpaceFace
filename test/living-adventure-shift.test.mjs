@@ -30,6 +30,19 @@ function extract(h) {
   return h.sim.state.entityList.find((e) => e.alive !== false && e.data?.npcMiningSource);
 }
 
+test('the cutter starts on the field-facing berth without a refinery wall across its first leg', () => {
+  for (const seed of [4242, 8008]) {
+    const { miner, rock, refinery } = boot(seed);
+    const mx = miner.pos.x - refinery.pos.x, mz = miner.pos.z - refinery.pos.z;
+    const rx = rock.pos.x - refinery.pos.x, rz = rock.pos.z - refinery.pos.z;
+    const berthDistance = Math.hypot(mx, mz);
+    assert.ok(berthDistance > refinery.radius + miner.radius, 'the spawn clears both hulls');
+    assert.ok(berthDistance <= refinery.data.dockRadius, 'commissioning starts inside the actual dock envelope');
+    assert.ok((mx * rx + mz * rz) / (berthDistance * Math.hypot(rx, rz)) > 0.98,
+      'the first work leg points away from the refinery');
+  }
+});
+
 test('both opening seeds carry actual loose ore into the refinery exactly once', () => {
   for (const seed of [4242, 8008]) {
     const h = boot(seed);

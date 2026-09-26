@@ -1532,6 +1532,7 @@ export const traffic = {
         pos,
         ai: aiSpec,
       });
+      this._stageHeliosCutterSpawn(spec, station, sectorId, role);
       const ent = this.helpers.spawnEntity(spec);
       if (!ent) continue;
       this._stampTrafficDurableIdentity(ent, sectorId, role, def, already + i);
@@ -3683,6 +3684,29 @@ export const traffic = {
    * Stamp homeSectorId + stable worldRecordId before first demotion so capture/kill never
    * attaches homeless freighters to the wrong sector bag.
    */
+  _stageHeliosCutterSpawn(spec, station, sectorId, role) {
+    if (sectorId !== 'sector_helios_prime' || role !== 'miner'
+      || stationIdentity(station) !== 'station_helios') return;
+    let face = null, nearest = Infinity;
+    forEachFieldRock(this.state, (rock) => {
+      if (rock.alive === false || !rock.pos || rock.data?.fieldId !== 'f_helios_starter'
+        || !(rock.data.oreHP > 0)) return;
+      const d2 = (rock.pos.x - station.pos.x) ** 2 + (rock.pos.z - station.pos.z) ** 2;
+      if (d2 < nearest) { face = rock; nearest = d2; }
+    });
+    if (!face || !(nearest > 0)) return;
+    // Start the shift on the field-facing berth, outside the station skin. A random berth on
+    // the opposite side aimed the first physical work leg straight through the refinery.
+    // This is the initial spawn spec only; neither a living nor a restored hull is relocated.
+    const clearance = (station.radius || 0) + (spec.radius || 16) + 24;
+    const dockReach = Math.max(clearance, station.data?.dockRadius || 0);
+    const r = (clearance + dockReach) * 0.5;
+    const dx = face.pos.x - station.pos.x, dz = face.pos.z - station.pos.z;
+    spec.pos = { x: station.pos.x + dx / Math.sqrt(nearest) * r,
+      z: station.pos.z + dz / Math.sqrt(nearest) * r };
+    spec.rot = Math.atan2(dz, dx);
+  },
+
   _stampTrafficDurableIdentity(ent, sectorId, role, def, seq) {
     if (!ent) return;
     if (sectorId === 'sector_helios_prime' && role === 'ore_carrier') {
