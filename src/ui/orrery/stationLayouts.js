@@ -115,7 +115,7 @@ ${S} .sxb-vital__track > .sxb-vital__fill { display:none !important; }
 ${S} .sxb-vital > .orr-vdial-bare { display:block; width:92px; height:60px; }
 ${S} .orr-vdial { display:block; width:92px; height:60px; overflow:visible; }
 ${S} .orr-vdial path { fill:none; stroke-linecap:butt; }
-${S} .orr-vdial__track { stroke:rgb(${BONE} / .2); stroke-width:3; }
+${S} .orr-vdial__track { stroke:rgb(${BONE} / .4); stroke-width:3; }
 ${S} .orr-vdial__track.is-bare { stroke-dasharray:1.5 3.2; stroke:rgb(${BONE} / .32); stroke-width:3; }
 ${S} .orr-vdial__ticks { stroke:rgb(${BONE} / .46); stroke-width:1.5px; vector-effect:non-scaling-stroke; }
 ${S} .orr-vdial__fill { stroke:rgb(${BONE} / .86); stroke-width:3; transition:stroke-dasharray .6s cubic-bezier(.3, 1.2, .5, 1); }
@@ -177,8 +177,9 @@ ${S} .sxb-ops .sx-tile__seat { display:none !important; }
 ${S} :is(.sxb-ops .so-berth-status, .sx-comms__toggle, .sxb-help) > .so-icon { display:none !important; }
 ${S} .sxb-ops .orr-stationrow__beam { display:none !important; }
 /* weight, not wire: the tab rail is a luminous band under a 2px line, 1.5px fine ticks, 2px station ticks; the needle has body */
-${S} .sxb-ops .orr-stationrow__rule { background:linear-gradient(90deg, rgb(${BONE} / 0), rgb(${BONE} / .085) 40px, rgb(${BONE} / .085) calc(100% - 40px), rgb(${BONE} / 0)) 0 6.5px / 100% 7px no-repeat; }
-${S} .sxb-ops .orr-stationrow__rule path.orr-rest { stroke:rgb(${BONE} / .44); stroke-width:2px; }
+${S} .sxb-ops .orr-stationrow__rule { background:linear-gradient(90deg, rgb(${BONE} / 0), rgb(${BONE} / .27) 40px, rgb(${BONE} / .27) calc(100% - 40px), rgb(${BONE} / 0)) 0 6.5px / 100% 7px no-repeat; }
+${S} .sxb-ops .orr-stationrow:is(:hover, :focus-within) .orr-stationrow__rule { background:linear-gradient(90deg, rgb(${BONE} / 0), rgb(${BONE} / .38) 40px, rgb(${BONE} / .38) calc(100% - 40px), rgb(${BONE} / 0)) 0 6.5px / 100% 7px no-repeat; }
+${S} .sxb-ops .orr-stationrow__rule path.orr-rest { stroke:rgb(${BONE} / .62); stroke-width:2px; }
 ${S} .sxb-ops .orr-stationrow__rule path.orr-faint { stroke:rgb(${BONE} / .26); stroke-width:1.5px; }
 ${S} .sxb-ops .orr-stationrow__rule path.orr-stationrow__tick { stroke-width:2px; }
 ${S} .sxb-ops .orr-stationrow__blade { stroke:rgb(246 241 230 / .9); stroke-width:1.4px; stroke-linejoin:round; }
