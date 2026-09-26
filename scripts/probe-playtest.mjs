@@ -659,11 +659,17 @@ const ROUTES = {
       await sleep(1300);
       await shotNow(ctx, 'l04b-missions');
       const before = await ctx.page.evaluate(() => (window.SF.state.missions && window.SF.state.missions.active.length) || 0);
-      // Click the board row carrying an inline commit verb; fallback: select row then detail verb.
+      // Click a leaf commit verb ("Dispatch this job" / "Accept"…) — a short-text element so we hit
+      // the verb itself, not the row card that merely contains it. Fallback: select row -> detail verb.
       const clicked = await ctx.page.evaluate(() => {
+        const isLeafVerb = (e) => {
+          const t = (e.textContent || '').trim();
+          return t.length > 0 && t.length < 80 && /dispatch this job|accept|take on|take contract|sign on|take job/i.test(t)
+            && !/sell what/i.test(t);
+        };
         const all = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action], .k-row, li, tr')]
           .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live'));
-        const commit = all.find((e) => /dispatch this job|^\s*accept|take on|take contract|sign on/i.test(e.textContent || '') && !/sell what/i.test(e.textContent || ''));
+        const commit = all.find((e) => isLeafVerb(e) && !e.querySelector('.k-word, button, [data-action]'));
         if (commit) { commit.click(); return (commit.textContent || '').trim().slice(0, 80); }
         const row = all.find((e) => /to [A-Z]|deliver|haul|cargo/i.test(e.textContent || '') && (e.textContent || '').length < 300 && !/sell what/i.test(e.textContent || ''));
         if (row) { row.click(); return 'row:' + (row.textContent || '').trim().slice(0, 70); }
@@ -673,7 +679,9 @@ const ROUTES = {
       if (clicked && clicked.startsWith('row:')) {
         await ctx.page.evaluate(() => {
           const v = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-            .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /dispatch this job|^\s*accept|take on|take contract|sign on/i.test(e.textContent || ''))[0];
+            .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live')
+              && (e.textContent || '').trim().length < 80
+              && /dispatch this job|accept|take on|take contract|sign on|take job/i.test(e.textContent || ''))[0];
           if (v) v.click();
         });
         await sleep(900);
