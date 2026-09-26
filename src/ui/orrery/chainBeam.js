@@ -29,13 +29,16 @@ const CSS = `
 .orr-chain__label.is-after-block .orr-chain__verb { opacity:.5; }
 .orr-chain__process.is-blocked { opacity:.55; }
 .orr-svg .orr-chain__scale { stroke:rgb(${BONE} / .34); }
-.orr-svg .orr-chain__timearc { stroke:rgb(248 244 234 / .7); }
+/* the process ring is a bezel: a band of light inward from the ring, the scale cut through it, the run time lighting it */
+.orr-svg .orr-chain__bezel { fill:none; stroke:rgb(${BONE} / .31); stroke-linecap:butt; }
+.orr-chain.is-blocked .orr-svg .orr-chain__bezel { stroke:rgb(${BONE} / .29); }
+.orr-svg .orr-chain__timearc { stroke:rgb(248 244 234 / .66); }
 .orr-svg .orr-chain__timearc-bloom { stroke:rgb(${BONE}); }
 .orr-svg .orr-chain__timearc--off { stroke:rgb(${BONE} / .28); }
 /* weight, not wire: the run track and every stock gauge are bands under an edge; their fills are lit values with beads */
-.orr-svg .orr-chain__track { --orr-band-a:.08; --orr-edge-a:.42; --orr-w-edge:1.5px; }
+.orr-svg .orr-chain__track { --orr-band-a:.27; --orr-edge-a:.56; --orr-w-edge:1.5px; }
 .orr-svg .orr-chain__track-cap { fill:rgb(${BONE} / .66); }
-.orr-svg .orr-chain__stock-track { --orr-band-a:.09; --orr-edge-a:.44; --orr-w-edge:1.5px; }
+.orr-svg .orr-chain__stock-track { --orr-band-a:.28; --orr-edge-a:.6; --orr-w-edge:1.5px; }
 .orr-svg .orr-chain__stock-div { stroke:rgb(${BONE} / .6); }
 .orr-svg .orr-chain__stock-fill { stroke:rgb(248 244 234); }
 .orr-svg .orr-chain__stock-bloom { stroke:rgb(${BONE} / .22); }
@@ -84,6 +87,7 @@ const CSS = `
 .orr-svg .orr-chain__glyph { fill:none; stroke:rgb(${BONE} / .85); stroke-width:1.35; stroke-linecap:square; stroke-linejoin:miter; filter:drop-shadow(0 0 2px rgb(236 230 216 / .45)); }
 .orr-svg .orr-chain__glyph.is-short { stroke:rgb(${BONE} / .5); }
 .orr-svg .orr-chain__glyph :is(path, rect, circle, ellipse) { vector-effect:non-scaling-stroke; }
+.orr-svg .orr-chain__scale.orr-chain__notch { fill:none; stroke:rgb(6 8 11 / .9); stroke-linecap:butt; }
 .orr-chain__reason { font-family:var(--dp-face-display, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250; font-size:calc(30px * var(--orr-chain-s)); font-weight:250; line-height:1.05; color:rgb(248 244 234); letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .62); white-space:nowrap; }
 .orr-svg .orr-chain__node--out { stroke:rgb(248 244 234); stroke-width:2.4; }
 .orr-svg .orr-chain__core { fill:rgb(246 241 230); }
@@ -253,21 +257,37 @@ export function createChainBeam(host, { onLayout = null } = {}) {
       l.style.width = `${f(xIn - rIn - 10 * scL)}px`;
       if (arriveNow) { l.classList.add('orr-chain__rise'); l.style.setProperty('--orr-delay', `${100 + i * 40}ms`); }
     });
-    // the process: a ring with the word in it
+    // the process: a ring with the word in it. Its bezel is a band of light inward from the ring with the ring's own
+    // scale cut through it; the run time lights the bezel (full when instant, filling on a timed job, dark when blocked)
+    const aw = Math.round(Math.max(8, Math.min(16, 11 * scL)));
+    const rA = rProc - 1 - aw / 2;
+    // the process's name rides inside the bezel at twelve o'clock, in a window the band opens for it
+    const procWord = String(data.process || 'process').toUpperCase();
+    const procFs = 9.5 * scL;
+    const win = ((procWord.length * procFs * 0.95) / 2 / rA) * (180 / Math.PI) + 6;
+    const timeFrac = blocked ? 0 : (Number.isFinite(data.timeFrac) ? Math.max(0, Math.min(1, data.timeFrac)) : 1);
     const proc = svg('g', {});
     proc.append(
       svg('path', { d: arcD(xProc, cy, rProc, 0, 360), class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 8, opacity: blocked ? '.06' : '.14' }),
-      svg('path', { d: arcD(xProc, cy, rProc, 0, 360), class: `orr-core orr-chain__node--process${blocked ? ' orr-chain__node--blocked' : ''}`, 'stroke-width': 2, fill: 'none' }),
-      // the ring's own scale: sixty minor ticks inside the stroke, so the time arc has something to read against
-      svg('path', { d: ticksD(xProc, cy, rProc - 3, rProc < 90 ? 30 : 60, { len: 3, major: rProc < 90 ? 5 : 15, majorLen: 6, inward: true }), class: 'orr-core orr-chain__scale', 'stroke-width': 1.5 }),
+      svg('path', { d: arcD(xProc, cy, rA, win, 360 - win), class: 'orr-chain__bezel', 'stroke-width': aw }),
     );
-    // the run time as an arc on that scale: full when instant, filling on a timed job, empty and dashed when blocked
-    const timeFrac = blocked ? 0 : (Number.isFinite(data.timeFrac) ? Math.max(0, Math.min(1, data.timeFrac)) : 1);
-    if (timeFrac > 0.005) {
-      const dT = arcD(xProc, cy, rProc - 9, 0, 360 * timeFrac);
-      proc.appendChild(svg('path', { d: dT, class: 'orr-bloom orr-chain__timearc-bloom', 'stroke-width': 8, opacity: '.16' }));
-      proc.appendChild(svg('path', { d: dT, class: 'orr-core orr-chain__timearc', 'stroke-width': 2.4 }));
+    if (timeFrac > 0.005) proc.appendChild(svg('path', { d: arcD(xProc, cy, rA, win, win + (360 - 2 * win) * timeFrac), class: 'orr-core orr-chain__timearc', 'stroke-width': aw - 4, 'stroke-linecap': 'butt' }));
+    // the scale cut through the bezel: short notches on its outer half, the majors across it; none in the name's window
+    const nT = rProc < 90 ? 30 : 60;
+    const everyMajor = rProc < 90 ? 5 : 15;
+    let notchD = '';
+    for (let k = 0; k < nT; k += 1) {
+      const a = (360 * k) / nT;
+      if (Math.abs(((a + 180) % 360) - 180) < win) continue;
+      const len = k % everyMajor === 0 ? aw - 1 : Math.round(aw * 0.45);
+      const [nx0, ny0] = polar(xProc, cy, rProc - 2, a);
+      const [nx1, ny1] = polar(xProc, cy, rProc - 2 - len, a);
+      notchD += `M ${f(nx0)} ${f(ny0)} L ${f(nx1)} ${f(ny1)} `;
     }
+    proc.append(
+      svg('path', { d: notchD, class: 'orr-chain__scale orr-chain__notch', 'stroke-width': 1.5 }),
+      svg('path', { d: arcD(xProc, cy, rProc, 0, 360), class: `orr-core orr-chain__node--process${blocked ? ' orr-chain__node--blocked' : ''}`, 'stroke-width': 2, fill: 'none' }),
+    );
     // the run track: the ring's outer gauge, open at twelve o'clock (the reason's leader lands in the gap) and capped
     // at both ends so an empty track reads as a track that will fill; a job's progress fills it clockwise from the gap
     const rT = rProc + 8 * scL;
@@ -287,7 +307,7 @@ export function createChainBeam(host, { onLayout = null } = {}) {
     }
     // the process name rides the top of the ring's inner scale
     const arcId = `orr-chain-arc-${++pathSeq}`;
-    proc.appendChild(svg('path', { id: arcId, d: arcD(xProc, cy, rProc - 19 * scL, -75, 75), fill: 'none', stroke: 'none' }));
+    proc.appendChild(svg('path', { id: arcId, d: arcD(xProc, cy, rA - procFs * 0.36, -75, 75), fill: 'none', stroke: 'none' }));
     const arcText = svg('text', { class: `orr-chain__procarc${blocked ? ' is-blocked' : ''}` });
     const arcPath = svg('textPath', { href: `#${arcId}`, startOffset: '50%', 'text-anchor': 'middle' });
     arcPath.textContent = String(data.process || 'process').toUpperCase();
