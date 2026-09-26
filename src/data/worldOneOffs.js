@@ -1,4 +1,5 @@
-// PQ-143.02 — six texture one-offs (design/program/roadmap/active/PQ-143.md, leaf .02).
+// PQ-143.02 — texture one-offs (design/program/roadmap/active/PQ-143.md, leaf .02): the six
+// original set pieces plus the CR-TEXTURE runaway ladle at Vesta Forge.
 //
 // The universe needs a handful of memorable, NON-systemic set pieces: things a player flies past
 // once and remembers, with no mission, no economy and no scan gate attached. "Not everything
@@ -12,9 +13,10 @@
 // flying the `express` traffic role (lane_cinder_run_courier in laneContacts.js), stamped as a
 // deterministic fixture of the start sector by traffic.js.
 //
-// Reachability: every anchor is on the default route — Helios Prime (the start) and Ceres Belt
-// (the first hop). PlaceIds reference existing packaged props only (verified by
-// test/world-one-offs.test.mjs against the packaged GLBs); no new art, no owner call.
+// Reachability: every anchor is on the default route — Helios Prime (the start) and its gate
+// neighbours (Ceres Belt, Tethys Junction, Vesta Forge). PlaceIds reference existing packaged
+// props only (verified by test/world-one-offs.test.mjs against the packaged GLBs); no new art,
+// no owner call.
 
 export const WORLD_ONE_OFFS = Object.freeze([
   Object.freeze({
@@ -96,6 +98,24 @@ export const WORLD_ONE_OFFS = Object.freeze([
     spin: 0,
     radius: 60,
     why: 'The bow alone out-masses everything the yard has launched since; she makes everything feel small.',
+  }),
+  Object.freeze({
+    // CR-TEXTURE — one ropeable hulk on the foundry approach at Vesta Forge. A packaged
+    // slurry bank stands in for the dropped slag ladle: same industrial-vessel read, no new
+    // art. It drifts on the clean side of the approach, clear of the rock fields, the slag
+    // glow, the ore winnow, and the dead freighter's pocket.
+    id: 'oneoff_runaway_ladle',
+    name: 'The Runaway Ladle — a foundry slag ladle that slipped its crane',
+    placeId: 'place_slurry_tank',
+    sectorId: 'sector_vesta_forge',
+    anchor: { type: 'station', id: 'station_forge' },
+    offsetLocal: Object.freeze({ x: -720, z: 380 }),
+    rot: 1.9,
+    spin: 0.1,
+    radius: 20,
+    // Heavier than the yard tug, so the rope swings it like the poured-steel drum it is.
+    physicalBody: Object.freeze({ mass: 240 }),
+    why: 'It slipped the crane on a double shift; the foundry logged it as scrap and the crews still steer around it.',
   }),
   Object.freeze({
     // WORLD-13 — one always-there dressing piece at the Tethys customs gate, from a place that
