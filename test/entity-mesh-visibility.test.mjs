@@ -137,19 +137,21 @@ test('default video settings still request full picture quality', async () => {
 
 test('live entity view sync hides off-runway roots through the helper', async () => {
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  assert.match(source, /applyEntityMeshVisibility\(mesh,\s*shouldSubmitEntityMesh\(/);
-  assert.match(source, /hidden:\s*true/);
-  assert.match(source, /hidden:\s*false/);
-  assert.match(source, /snapshotMissing:\s*!posed/);
+  assert.match(source, /applyEntityMeshVisibility\(mesh,\s*shouldSubmitEntityMesh\(_submitVisibilityOptions\)/);
+  assert.match(source, /applyEntityMeshVisibility\(mesh,\s*posed && shouldSubmitEntityMesh\(_submitVisibilityOptions\)/,
+    'the hidden-boundary site submits through the same scratch');
+  assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*true/);
+  assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*false/);
+  assert.match(source, /_submitVisibilityOptions\.snapshotMissing\s*=\s*!posed/);
   assert.match(source, /let posed = this\._hasCompletedPresentationPose\(slot,\s*entityId\)/,
     'clean roots derive pose validity from the latest completed fence');
   assert.match(source, /snapshotIndexOf\(snapshot,\s*entityId\)/,
     'ordinary roots fail closed when the completed fence has no matching identity');
-  assert.match(source, /middleBand:\s*viewBand === 'middle'/);
-  assert.match(source, /pipelinesPending:\s*!!\(mesh\.userData && mesh\.userData\.pipelinesPending\)/);
-  assert.match(source, /authoredPending:\s*isAuthoredPendingStatus\(mesh\.userData && mesh\.userData\.authoredAssetState\)/);
+  assert.match(source, /_submitVisibilityOptions\.middleBand\s*=\s*viewBand === 'middle'/);
+  assert.match(source, /_submitVisibilityOptions\.pipelinesPending\s*=\s*!!\(mesh\.userData && mesh\.userData\.pipelinesPending\)/);
+  assert.match(source, /_submitVisibilityOptions\.authoredPending\s*=\s*isAuthoredPendingStatus\(mesh\.userData && mesh\.userData\.authoredAssetState\)/);
   assert.match(source, /onLiveGlass/,
     'the live-glass submit override reaches the visibility rule');
-  assert.equal((source.match(/ledgerRow:\s*!!\(packedFlags & PRESENTATION_FLAGS\.LEDGER\) \|\| isPresentationLedgerRow\(entity\)/g) || []).length, 2,
+  assert.equal((source.match(/_submitVisibilityOptions\.ledgerRow\s*=\s*!!\(packedFlags & PRESENTATION_FLAGS\.LEDGER\) \|\| isPresentationLedgerRow\(entity\)/g) || []).length, 2,
     'both submit sites tell the visibility rule which roots are far/field/dressing ledger rows');
 });
