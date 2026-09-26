@@ -22,7 +22,7 @@ import {
   fieldEscapeOf,
 } from '../src/data/fields.js';
 import { actions } from '../src/systems/actions.js';
-import { fields, fieldBodyProfile } from '../src/systems/fields.js';
+import { FIELD_WINDUP_S, fields, fieldBodyProfile } from '../src/systems/fields.js';
 
 const SEED = 14702;
 const BOOST = FIELD_ESCAPE_BOOST_ACCEL;
@@ -224,7 +224,10 @@ test('newer opposite-polarity field cancels a live pin while still inside the We
       state.input.aimWorld = { x: 100, z: 0 };
       state.input.actions.deployWell = true;
       sim.step();
-      sim.step();
+      state.input.actions.deployWell = false;
+      // INF-042: a deployed Well winds up over FIELD_WINDUP_S before it grips at full strength.
+      const windupTicks = Math.ceil(FIELD_WINDUP_S / DT) + 2;
+      for (let i = 0; i < windupTicks; i++) sim.step();
       const pinned = state.combat.entities[String(target.id)];
       assert.ok(pinned.statuses[PINNED_STATUS_ID], 'the Well pins before the counter');
       assert.ok(Math.abs(readPhysicsTelemetry(target).mass - 240) < 1e-4);
@@ -234,7 +237,8 @@ test('newer opposite-polarity field cancels a live pin while still inside the We
       state.fields.cooldowns.repulsor = 0;
       state.input.actions.deployRepulsor = true;
       sim.step();
-      sim.step();
+      state.input.actions.deployRepulsor = false;
+      for (let i = 0; i < windupTicks; i++) sim.step();
       const freed = state.combat.entities[String(target.id)];
       assert.equal(state.entities.get(player.id).type, 'ship');
       assert.equal(state.entities.get(target.id).type, 'ship');
@@ -242,7 +246,7 @@ test('newer opposite-polarity field cancels a live pin while still inside the We
       assert.ok(freed.statuses[UNMOORED_STATUS_ID]);
       assert.equal(state.combat.entities[String(player.id)].statuses[UNMOORED_STATUS_ID], undefined);
       assert.ok(Math.abs(readPhysicsTelemetry(target).mass - 12) < 1e-4);
-      printEscape('well+repulsor', 'polarity_cancel', 2 * DT);
+      printEscape('well+repulsor', 'polarity_cancel', (windupTicks + 1) * DT);
     } finally {
       if (typeof physicsSystem._disableSg02DynamicAuthority === 'function') {
         physicsSystem._disableSg02DynamicAuthority();
