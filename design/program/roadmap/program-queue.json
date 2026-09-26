@@ -19340,7 +19340,7 @@
       "priority": 9821,
       "title": "Bomb audio catalog and victim-attached statuses",
       "kind": "implementation",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [
         "PQ-205.00"
       ],
@@ -19350,8 +19350,13 @@
         "src/data/bombs.js"
       ],
       "checks": [],
-      "receiptRefs": [],
-      "brief": "Adopt the real bomb cue IDs into the existing catalog, give the slug a bounded source-following inhale/collapse, terminate loops on every fieldEnded/cleanup path, and share thermite burn duration through the existing status owner."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-205.01-REPORT.md"
+      ],
+      "brief": "Adopt the real bomb cue IDs into the existing catalog, give the slug a bounded source-following inhale/collapse, terminate loops on every fieldEnded/cleanup path, and share thermite burn duration through the existing status owner.",
+      "integratedCommit": "81e5e1c03",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-205.01-REPORT.md",
+      "notes": "2026-09-27: receipt ACCEPT-WITH-FINDINGS with 0 blockers; focused bomb suites re-verified 81/81 green (bombs, bomb-audio-cues, bomb-audio-loops, bomb-choreography, audio-bomb-drop-voice, bomb-first-use-hint, bomb-presentation, bomb-rack-economy, bomb-remap-help, bomb-vfx-radiance, bombs-empty-quiet-latch)."
     },
     {
       "id": "PQ-205.02",
@@ -19359,7 +19364,7 @@
       "priority": 9822,
       "title": "NPC bomb mirror and shootable projectile proxy",
       "kind": "implementation",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [
         "PQ-205.00"
       ],
@@ -19369,8 +19374,13 @@
         "src/ai/"
       ],
       "checks": [],
-      "receiptRefs": [],
-      "brief": "One telegraphed pursuit-lane doctrine calling bombs.drop/commandDetonate, plus a moving projectile-sweep proxy with an authoritative pose adapter; destroying it retires the bomb exactly once. No second integrator."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-205.02-REPORT.md"
+      ],
+      "brief": "One telegraphed pursuit-lane doctrine calling bombs.drop/commandDetonate, plus a moving projectile-sweep proxy with an authoritative pose adapter; destroying it retires the bomb exactly once. No second integrator.",
+      "integratedCommit": "5502dd84c",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-205.02-REPORT.md",
+      "notes": "2026-09-27: receipt ACCEPT-WITH-FINDINGS with 0 blockers; focused bomb suites re-verified 81/81 green (bombs, bomb-audio-cues, bomb-audio-loops, bomb-choreography, audio-bomb-drop-voice, bomb-first-use-hint, bomb-presentation, bomb-rack-economy, bomb-remap-help, bomb-vfx-radiance, bombs-empty-quiet-latch)."
     },
     {
       "id": "PQ-205.03",
@@ -19378,7 +19388,7 @@
       "priority": 9823,
       "title": "Bomb rack economy and loadout orchestration",
       "kind": "implementation",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [
         "PQ-205.00"
       ],
@@ -19388,8 +19398,13 @@
         "src/systems/economy.js"
       ],
       "checks": [],
-      "receiptRefs": [],
-      "brief": "Decide a fitted rack / small loadout / combat resupply rather than eight mandatory consumables; preserve cooldowns across selection and keep economy/cargo/unlock owners authoritative."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-205.03-REPORT.md"
+      ],
+      "brief": "Decide a fitted rack / small loadout / combat resupply rather than eight mandatory consumables; preserve cooldowns across selection and keep economy/cargo/unlock owners authoritative.",
+      "integratedCommit": "ea6c6acd0",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-205.03-REPORT.md",
+      "notes": "2026-09-27: receipt ACCEPT-WITH-FINDINGS with 0 blockers; focused bomb suites re-verified 81/81 green (bombs, bomb-audio-cues, bomb-audio-loops, bomb-choreography, audio-bomb-drop-voice, bomb-first-use-hint, bomb-presentation, bomb-rack-economy, bomb-remap-help, bomb-vfx-radiance, bombs-empty-quiet-latch)."
     },
     {
       "id": "PQ-206.00",
