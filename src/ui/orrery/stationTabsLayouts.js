@@ -15,8 +15,8 @@ const PLAIN = 'background:none !important; border:0 !important; border-image:non
 const HAND = 'clip-path:polygon(0 0, 100% 50%, 0 100%, 26% 50%) !important;';
 // WEIGHT (owner 2026-09-25: no thin wireframe): a spine is a 2px line over a 7px faint band (left edge at x);
 // minor ticks are 1.5px, row ticks 2px. `pos` is the layer's position / size.
-const SPINE = (x, a = .4, pos = '0 0 / 100% 100%') => `linear-gradient(90deg, transparent ${x}px, rgb(${BONE} / ${a}) ${x}px, rgb(${BONE} / ${a}) ${x + 2}px, transparent ${x + 2}px) ${pos} no-repeat`;
-const BAND = (x, pos = '0 0 / 100% 100%') => `linear-gradient(90deg, transparent ${x - 2.5}px, rgb(${BONE} / .085) ${x - 2.5}px, rgb(${BONE} / .085) ${x + 4.5}px, transparent ${x + 4.5}px) ${pos} no-repeat`;
+const SPINE = (x, a = .55, pos = '0 0 / 100% 100%') => `linear-gradient(90deg, transparent ${x}px, rgb(${BONE} / ${a}) ${x}px, rgb(${BONE} / ${a}) ${x + 2}px, transparent ${x + 2}px) ${pos} no-repeat`;
+const BAND = (x, pos = '0 0 / 100% 100%', a = .27) => `linear-gradient(90deg, transparent ${x - 2.5}px, rgb(${BONE} / ${a}) ${x - 2.5}px, rgb(${BONE} / ${a}) ${x + 4.5}px, transparent ${x + 4.5}px) ${pos} no-repeat`;
 /** The rail of light down a list, a tick on every row, the Hand on the chosen one. */
 const rail = (list, row, chosen) => `
 ${T} ${list} { background:${SPINE(7)}, ${BAND(7)},
@@ -804,7 +804,7 @@ ${T} .sx-dossier__terms { position:relative; padding-left:16px !important; backg
 ${T} .sx-dossier__terms > li { position:relative; }
 ${T} .sx-dossier__terms > li::before { content:""; position:absolute; left:-16px; top:.55em; width:9px; height:1.5px; background:rgb(${BONE} / .46); }
 ${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { left:-16px; top:.55em; }
-${T} .orr-ct-scales { position:relative; padding-left:16px !important; box-sizing:border-box; background:${SPINE(3, .36)}, ${BAND(3)}; }
+${T} .orr-ct-scales { position:relative; padding-left:16px !important; box-sizing:border-box; background:${SPINE(3, .55)}, ${BAND(3)}; }
 ${T} .orr-ct-scales::before, ${T} .orr-ct-scales::after { content:""; position:absolute; left:0; width:9px; height:1.5px; background:rgb(${BONE} / .46); }
 ${T} .orr-ct-scales::before { top:20px; }
 ${T} .orr-ct-scales::after { top:62px; }
@@ -1050,7 +1050,7 @@ ${T} .sx-ledger__keys { display:block !important; }
 }
 /* the empty ladder keeps its rail with one empty rung where the first receipt will land */
 ${T} .sx-ledger .st-ledger-empty:not([hidden]) { position:relative !important; margin-top:36px !important; padding:8px 0 8px 26px !important;
-  background:${SPINE(7, .36)}, ${BAND(7)},
+  background:${SPINE(7, .55)}, ${BAND(7)},
     repeating-linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat !important; }
 ${T} .sx-ledger .st-ledger-empty:not([hidden])::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:2px; background:rgb(${BONE} / .46); }
 
@@ -1201,7 +1201,7 @@ ${T} .sx-ledger__read.fh-plate, ${T} .sx-ledger__row > .sx-ledger__read { paddin
   ${T} .sx-talk__choices > li .sx-choice { padding-top:13px !important; padding-bottom:13px !important; }
 }
 /* the reply spine and its ticks at rest light */
-${T} .sx-talk__choices { background:${SPINE(30, .38, '0 8px / 100% calc(100% - 16px)')}, ${BAND(30, '0 8px / 100% calc(100% - 16px)')} !important; }
+${T} .sx-talk__choices { background:${SPINE(30, .55, '0 8px / 100% calc(100% - 16px)')}, ${BAND(30, '0 8px / 100% calc(100% - 16px)')} !important; }
 ${T} .sx-choice::before, ${T} .sx-talk__choices > li:first-child .sx-choice::before { background:rgb(${BONE} / .55) !important; }
 /* the reply keys are keys, not list numbers: dim unless current */
 ${T} .sx-choice::after { font-size:11px !important; font-weight:600 !important; color:rgb(${BONE} / .55) !important; }
@@ -1335,7 +1335,7 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:not(.is-active, .is-selected,
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:not(.is-active, .is-selected, [aria-selected="true"]) .k-row__sub { color:rgb(${BONE} / .5) !important; }
 /* one spine through the terms: the scales' rule continues down the ladder; the dashes are its ticks; the key is the last rung */
 ${T} .sx-dossier__terms { position:relative !important; padding-bottom:0 !important; margin-bottom:0 !important; min-height:0 !important; }
-${T} .sx-dossier__terms::before { content:""; position:absolute; left:0; top:-2px; bottom:6px; width:8px; background:${SPINE(3, .36)}, ${BAND(3)}; pointer-events:none; }
+${T} .sx-dossier__terms::before { content:""; position:absolute; left:0; top:-2px; bottom:6px; width:8px; background:${SPINE(3, .55)}, ${BAND(3)}; pointer-events:none; }
 ${T} .sx-dossier__terms > li:last-child { margin-bottom:0 !important; }
 ${T} .sx-dossier__foot { margin-top:6px !important; }
 /* the glass under the route orrery: the instrument is not part of the set */
@@ -1564,7 +1564,7 @@ ${T} .sx-ind__list[data-overflow="0"] .orr-extent::after { display:none; }
 /* K1: the Hand stops at its bead's rim (the core stays on top) and carries a bloom */
 ${T} .sx-bar__rows .sx-bar-row:is(.is-active, .is-selected, [aria-selected="true"])::after { width:26px !important; box-shadow:0 0 3px 1px rgb(242 185 80 / .28) !important; }
 /* K2: one 1px spine from the first heading to twelve px under the board key; the leads' marker opaque and asleep */
-${T} .sx-bar__hang::after { left:4px !important; width:8px !important; background:${SPINE(3, .38)}, ${BAND(3)} !important; top:var(--bar-spine-top, 0px) !important; bottom:auto !important; height:var(--bar-spine-h, 100%) !important;
+${T} .sx-bar__hang::after { left:4px !important; width:8px !important; background:${SPINE(3, .55)}, ${BAND(3)} !important; top:var(--bar-spine-top, 0px) !important; bottom:auto !important; height:var(--bar-spine-h, 100%) !important;
   -webkit-mask-image:linear-gradient(180deg, transparent, #000 16px, #000 calc(100% - 16px), transparent) !important; mask-image:linear-gradient(180deg, transparent, #000 16px, #000 calc(100% - 16px), transparent) !important; }
 ${T} .sx-lead__rows .sx-lead.is-current::before { background:rgb(124 120 112) !important; }
 /* K5: every lead title at full light (the marker alone says current); at 720 a long title takes a second line */
@@ -1578,11 +1578,11 @@ ${T} .sx-lead__rows .sx-lead .sx-lead__t, ${T} .sx-lead__rows .sx-lead.is-curren
 
 /* ================================ ROUND 13: MISSIONS ======================================== */
 /* one tick series: every block's minor ticks tile at 8px from the phase the screen measured off the ladder's first tick */
-${T} .sx-ct__hang > * { background:${SPINE(7, .36)}, ${BAND(7)},
+${T} .sx-ct__hang > * { background:${SPINE(7, .55)}, ${BAND(7)},
     linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px) 4px var(--ct-tick-y, 0px) / 6px 8px repeat-y !important; }
 /* the seam takes the blocks' measured stroke: a 1px spine at .24, its band, 5px ticks on the same series */
 ${T} .sx-ct__yours::before { left:3px !important; width:9px !important;
-  background:${SPINE(4, .36)}, ${BAND(4)},
+  background:${SPINE(4, .55)}, ${BAND(4)},
     linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px) 1px var(--ct-seam-phase, 0px) / 6px 8px repeat-y !important; }
 /* section and row ticks sit on the series, on their words */
 ${T} .sx-ct__yours::after { top:var(--ct-yours-major, 50%) !important; margin-top:0 !important; height:2px !important; }
@@ -1597,7 +1597,7 @@ ${T} .sx-ct__jobs .sx-job::before { top:var(--ct-row-y, .75em) !important; margi
 
 /* ================================ ROUND 12: INDUSTRY ======================================== */
 /* the spine belongs to the scroller's own box: the cursor maps to the same box, so they share a top and an end */
-${T} .sx-ind__list { background:${SPINE(7, .4)}, ${BAND(7)} !important; }
+${T} .sx-ind__list { background:${SPINE(7, .55)}, ${BAND(7)} !important; }
 /* the group's shared tier on its header, after the process word */
 ${T} .sx-ind-process__head .sx-ind-process__tier { margin-left:10px; color:rgb(${BONE} / .62) !important; letter-spacing:.12em; }
 ${T} .sx-ind-process__head .sx-ind-process__tier::before { content:"·  "; color:rgb(${BONE} / .4); }
@@ -1636,6 +1636,22 @@ ${T} .sx-ind-process__items .sx-ind-row::before, ${T} .sx-ind-process__items .sx
 ${T} .sx-ind-row__name .sx-ind-row__from { margin-left:12px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wght" 600, "wdth" 112;
   font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .52) !important; }
 @media (max-height:800px) { ${T} .sx-ind-row__name .sx-ind-row__from { display:block; margin-left:0; margin-top:2px; } ${T} .sx-ind-process__items .sx-ind-row { --ind-name-y:12.5px; } }
+
+/* ================================ WEIGHT: THE BAND LIFTS WHERE THE PLAYER IS ========================== */
+/* a ladder under the pointer or holding focus lifts its band (~.27 -> .38 bone) and its line */
+/* the reading's rule continues the tape's axis: the same 2px line on the same column, over the same band */
+${T} .sx-ledger__read::after { left:-2px !important; width:8px !important; background:${SPINE(3, .5)}, ${BAND(3)} !important; }
+/* the reply spine repaints over each reply's veil, so it reads as one band from the first reply to the last */
+${T} .sx-talk__choices .sx-choice { background:${SPINE(30)}, ${BAND(30)}, linear-gradient(90deg, rgb(6 8 11 / .58), rgb(6 8 11 / .42) 55%, rgb(6 8 11 / 0)) !important; }
+${T} .sx-talk__choices .sx-choice:is(:hover, :focus-visible) { background:${SPINE(30, .62)}, ${BAND(30, '0 0 / 100% 100%', .38)}, linear-gradient(90deg, rgb(12 15 20 / .78), rgb(12 15 20 / .55) 55%, rgb(12 15 20 / 0)) !important; }
+${T} :is(.sx-fac__rows, .st-ledger-list):is(:hover, :focus-within) { background:${SPINE(7, .62)}, ${BAND(7, '0 0 / 100% 100%', .38)},
+    repeating-linear-gradient(180deg, rgb(${BONE} / .44) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat !important; }
+${T} .sx-ct__hang:is(:hover, :focus-within) > * { background:${SPINE(7, .62)}, ${BAND(7, '0 0 / 100% 100%', .38)},
+    linear-gradient(180deg, rgb(${BONE} / .44) 0 1.5px, transparent 1.5px) 4px var(--ct-tick-y, 0px) / 6px 8px repeat-y !important; }
+${T} .sx-ct__hang:is(:hover, :focus-within) > .sx-ct__yours::before { background:${SPINE(4, .62)}, ${BAND(4, '0 0 / 100% 100%', .38)},
+    linear-gradient(180deg, rgb(${BONE} / .44) 0 1.5px, transparent 1.5px) 1px var(--ct-seam-phase, 0px) / 6px 8px repeat-y !important; }
+${T} .sx-ind__list:is(:hover, :focus-within) { background:${SPINE(7, .62)}, ${BAND(7, '0 0 / 100% 100%', .38)} !important; }
+${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)}, ${BAND(3, '0 0 / 100% 100%', .38)} !important; }
 
 `;
 
