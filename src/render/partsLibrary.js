@@ -20,6 +20,7 @@ import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import {
+  isCriticalHubInCurrentSector,
   isCriticalStartingHub as isTableCriticalStartingHub,
   isOpeningStoryActor,
   tableInstanceFarCullWu,
@@ -4203,15 +4204,16 @@ function upgradeQueueState(scene) {
   return state;
 }
 
-function authoredUpgradePriority(job) {
+export function authoredUpgradePriority(job) {
   const entity = job && job.entity;
   if (entity && entity.isPlayer === true) return 0;
+  const live = authoredRuntimeState();
   // A hostile ship inside the camera's fight-fit envelope is being acted on now: it outranks the
   // critical starting hub and every dressing job. Recomputed on each admission, so a hostile that
   // closes the distance promotes while it waits; nothing in flight is ever pre-empted.
-  const combatant = combatantAdmissionPriority(entity, authoredRuntimeState());
+  const combatant = combatantAdmissionPriority(entity, live);
   if (combatant !== null) return combatant;
-  if (isCriticalStartingHub(entity)) return 1;
+  if (isCriticalHubInCurrentSector(entity, live && live.world && live.world.currentSectorId)) return 1;
   const background = backgroundUpgradePriority(job);
   // A sector arrival hands this queue the destination's whole authored population in one burst, and
   // steady-flight admission is serial, so queue order decides what the player sees first. Staged
@@ -4219,7 +4221,6 @@ function authoredUpgradePriority(job) {
   // every admission, and the destination is staged while the player is still in the sector they
   // are leaving, so a distance measured at staging time would just be the width of the jump.
   if (!job || !job.options || job.options.sectorArrivalBody !== true) return background;
-  const live = authoredRuntimeState();
   const player = live && live.entities && live.playerId != null
     ? live.entities.get(live.playerId)
     : null;
@@ -4332,7 +4333,8 @@ export function shouldAutoTriggerAuthoredUpgrade(entity, scene, liveState = auth
   if (!liveState || !liveState.render || liveState.render.scene !== scene) return true;
   if (!entity || entity.alive === false) return false;
   if (liveState.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, liveState);
-  if (entity.isPlayer === true || isCriticalStartingHub(entity)) return true;
+  if (entity.isPlayer === true
+      || isCriticalHubInCurrentSector(entity, liveState.world && liveState.world.currentSectorId)) return true;
   if (liveState.mode !== 'flight') return false;
   if (liveState.player && liveState.player.targetId === entity.id) return true;
   // Spatial prefetch (requestAuthoredUpgrade) owns flight decode. First-render
