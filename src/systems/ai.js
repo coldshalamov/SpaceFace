@@ -299,6 +299,8 @@ export const ai = {
         if (target) intent.aimAngle = Math.atan2(-dz, -dx);
         intent.boost = true;
         // Trader/PD types only shoot when truly cornered (very close).
+        // Compat-path defensive gate: the live mount-level envelope (0.8 × mount range → 192 WU
+        // for flak) is the authority in tacticalAI; this legacy 160 WU check stays for this path.
         if (!telegraphHoldingFire && !arrivalHoldingFire && (!arch.defensiveOnly || dist < 160)) this._maybeFire(e, data, intent, predAng, dist, arch);
         break;
     }

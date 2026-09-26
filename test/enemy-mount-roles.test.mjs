@@ -193,6 +193,63 @@ test('an occasional homing rack only builds missile lock inside its window', () 
   assert.equal(e.data.combat.lockTarget, null, 'closed-window rack must drop the lock');
 });
 
+test('same-def mounts on different slots do not volley in lockstep', () => {
+  const { state, system } = harness();
+  const mounts = [0, 1, 2, 3].map((slotIndex) => ({ defId: 'wpn_plasma_cannon_m', occasional: true, slotIndex }));
+  const e = enemyShip('e_multi', mounts);
+  const def = WPN.get('wpn_plasma_cannon_m');
+  const phases = mounts.map((w) => {
+    system._mountRoleOpen(e, w, def, state); // seeds w._occPhase
+    return w._occPhase;
+  });
+  assert.ok(new Set(phases).size > 1, 'a count:N rack that volleys in lockstep is the defect this unit removed');
+});
+
+test('a defensiveOnly mount with no live target stays closed', () => {
+  const { state, system } = harness();
+  const w = { defId: 'wpn_flak_turret_s', defensiveOnly: true, slotIndex: 0 };
+  const e = enemyShip('e_idle', [w]);
+  const def = WPN.get('wpn_flak_turret_s');
+  assert.equal(e.data.combat.targetId, undefined);
+  assert.equal(system._mountRoleOpen(e, w, def, state), false, 'a defensive mount answers its target — no target, no fire');
+});
+
+test('a missile lock completes inside an open occasional window', () => {
+  const { state, system } = harness();
+  const w = {
+    defId: 'wpn_missile_rack_m', occasional: true, slotIndex: 0,
+    tracking: 'homing', lockTimeS: 1.2, _cooldown: 0, _heat: 0,
+  };
+  const e = enemyShip('e_lockdone', [w]);
+  const tgt = { id: 'tgt', type: 'ship', alive: true, pos: { x: 100, z: 0 }, vel: { x: 0, z: 0 }, radius: 12 };
+  state.entities.set('tgt', tgt);
+  e.data.combat.targetId = 'tgt';
+  const def = WPN.get('wpn_missile_rack_m');
+  // Open the window and hold the cone for the authored 1.2 s lock.
+  let t = 0;
+  for (; t < 48; t += 0.1) { state.simTime = t; if (system._mountRoleOpen(e, w, def, state)) break; }
+  for (let i = 0; i < 90; i++) { state.simTime += 1 / 60; system._tickLock(e, 1 / 60, state); }
+  assert.ok((e.data.combat.lockProgress || 0) >= 1, 'the warn/launch path needs a completed lock, not just buildup');
+  assert.equal(e.data.combat.lockTarget, 'tgt');
+});
+
+test('an authored slower lockTimeS is honored, not clamped to 1.2 s', () => {
+  const { state, system } = harness();
+  const w = {
+    defId: 'wpn_torpedo_l', slotIndex: 0,
+    tracking: 'homing', lockTimeS: 2.5, _cooldown: 0, _heat: 0,
+  };
+  const e = enemyShip('e_slowlock', [w]);
+  const tgt = { id: 'tgt', type: 'ship', alive: true, pos: { x: 100, z: 0 }, vel: { x: 0, z: 0 }, radius: 12 };
+  state.entities.set('tgt', tgt);
+  e.data.combat.targetId = 'tgt';
+  for (let i = 0; i < 72; i++) { state.simTime += 1 / 60; system._tickLock(e, 1 / 60, state); }
+  assert.ok((e.data.combat.lockProgress || 0) < 1,
+    'a 2.5 s rack locking in 1.2 s gives the player a warn window shorter than authored');
+  for (let i = 0; i < 90; i++) { state.simTime += 1 / 60; system._tickLock(e, 1 / 60, state); }
+  assert.ok((e.data.combat.lockProgress || 0) >= 1, 'the authored 2.5 s lock still completes');
+});
+
 test('flag-less legacy mounts ignore the role gate', () => {
   const { state, system, events } = harness();
   const w = {

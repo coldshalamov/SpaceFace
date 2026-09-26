@@ -533,13 +533,16 @@ export const weapons = {
   },
 
   _tickLock(e, dt, state) {
+    // A caller that forgets `state` must not produce a permanently-frozen occasional window —
+    // fall back to the system's bound state rather than evaluating simTime as 0.
+    state = state || this.state;
     const ws = e.data && e.data.weapons;
     const combat = e.data && e.data.combat;
     if (!ws || !combat) return;
     // Does this ship carry any lock-requiring weapon that is open this tick? An `occasional`
     // rack is ignored while its window is closed so the incoming-lock warning re-arms per
     // actual launch window instead of crying wolf between volleys.
-    let needsLock = false, lockTimeS = 1.2;
+    let needsLock = false, lockTimeS = Infinity;
     for (const w of ws) {
       const def = this._byId.get(w.defId) || {};
       const tracking = w.tracking || def.tracking;
@@ -549,6 +552,9 @@ export const weapons = {
         if (lt != null) lockTimeS = Math.min(lockTimeS, lt);
       }
     }
+    // Fastest open mount governs the warn/launch cadence; the 1.2 s floor is only the default
+    // for racks that author no time — starting there silently ignored slower authored locks.
+    if (!Number.isFinite(lockTimeS)) lockTimeS = 1.2;
     if (!needsLock) { combat.lockProgress = 0; combat.lockTarget = null; return; }
     const tgt = this._resolveTarget(e);
     if (tgt && this._inLockCone(e, tgt)) {
@@ -739,7 +745,13 @@ export const weapons = {
     if (aimAngle == null) aimAngle = e.rot;
     for (const w of ws) {
       const def = this._byId.get(w.defId) || {};
-      if (!this._mountRoleOpen(e, w, def, state, forceTarget, fireGate)) continue;
+      if (!this._mountRoleOpen(e, w, def, state, forceTarget, fireGate)) {
+        // A sustained emergent ray opened by this mount would leak into world.ray forever if the
+        // role gate simply skips its service — _serviceEmergent's !firing branch is the only
+        // clearer. No authored flagged mount is emergent today; this is insurance against one.
+        if (def.emergentPrimitive) clearEmergentRay(state, e.id);
+        continue;
+      }
       if (def.emergentPrimitive) {
         capLeft = this._serviceEmergent(e, w, def, firing, capLeft, state, aimAngle);
         continue;
