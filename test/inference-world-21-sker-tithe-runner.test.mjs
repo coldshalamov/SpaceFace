@@ -81,3 +81,63 @@ test('traffic stamps the tithe-runner identity onto an ambient freighter', () =>
   assert.equal(stamped.data.trafficLabel, 'TITHE-RUN');
   assert.equal(stamped.data.scanLabel, 'TITHE-RUN');
 });
+
+test('stamped lane identities are not claimed by world-site or claim hooks', () => {
+  const bus = createBus();
+  const spawned = [];
+  const entities = new Map();
+  const sys = Object.create(trafficBase);
+  sys.bus = bus;
+  sys.state = {
+    meta: { seed: 4242 },
+    entities,
+    traffic: { freighters: [] },
+    entityIndex: {
+      __spacefaceEntityIndexV1: true,
+      dockStations: [{ id: 90, type: 'station', alive: true, pos: { x: 100, z: 200 }, data: { stationId: 'station_sker' } }],
+    },
+  };
+  sys._active = [];
+  sys._rng = () => 0.5;
+  sys.helpers = {
+    spawnEntity: (spec) => {
+      const ent = { id: `freighter_${spawned.length + 1}`, ...spec, data: { ...(spec.data || {}) } };
+      entities.set(ent.id, ent);
+      spawned.push(ent);
+      return ent;
+    },
+  };
+  const stations = [{ id: 'station_sker', pos: { x: 100, z: 200 } }];
+  sys._ensureNamedLaneContact(SKER, { id: SKER, factionId: 'faction_reach' }, stations);
+  const stamped = spawned[0];
+  assert.equal(stamped.data.namedLaneContactId, 'lane_vey_tithe');
+
+  // A site hook's root + station resolve, but the stamped freighter is not an eligible candidate.
+  entities.set('site_root', { id: 'site_root', alive: true, type: 'asteroid_site', data: { worldRecordId: 'site_test/root' } });
+  sys._registry = {
+    get: (id) => {
+      if (id === 'asteroidSites') {
+        return {
+          worldSiteTrafficHooks: (sid) => sid === SKER
+            ? [{ id: 'hook_site', siteId: 'site_test', stationId: 'station_sker', eligibleRoles: ['hauler'], label: 'SITE RUN', slingPos: { x: 9, z: 9 } }]
+            : [],
+        };
+      }
+      if (id === 'claims') {
+        return {
+          travelInfrastructureHooks: (sid) => sid === SKER
+            ? [{ id: 'hook_claim', stationId: 'station_sker', slingPos: { x: 5, z: 5 }, label: 'CLAIM SHUTTLE' }]
+            : [],
+        };
+      }
+      return null;
+    },
+  };
+
+  assert.equal(sys._applyWorldSiteTrafficHooks(SKER), 0, 'no world-site route claims the stamped contact');
+  assert.equal(sys._applyClaimTravelHooks(SKER), 0, 'no claim-travel route claims the stamped contact');
+  assert.equal(stamped.data.trafficLabel, 'TITHE-RUN', 'her lane identity survives the hook passes');
+  assert.equal(stamped.data.namedLaneContactId, 'lane_vey_tithe');
+  assert.equal(stamped.data.worldSiteTrafficHookId, undefined);
+  assert.equal(stamped.data.claimTravelTrafficHookId, undefined);
+});

@@ -2072,6 +2072,7 @@ export const traffic = {
         .map((rec) => ({ rec, entity: liveEntity(this.state, rec && rec.id) }))
         .filter(({ rec, entity }) => rec && entity
           && !(entity.data && (entity.data.jobId
+            || entity.data.namedLaneContactId
             || entity.data.worldSiteTrafficHookId
             || entity.data.claimTravelTrafficHookId)))
         .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
@@ -2197,6 +2198,7 @@ export const traffic = {
         .map((rec) => ({ rec, entity: liveEntity(this.state, rec && rec.id) }))
         .filter(({ rec, entity }) => rec && entity
           && !(entity.data && (entity.data.jobId
+            || entity.data.namedLaneContactId
             || entity.data.worldSiteTrafficHookId
             || entity.data.claimTravelTrafficHookId)))
         .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
