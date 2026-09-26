@@ -18,11 +18,13 @@
 //     consumes the reveal and emits moralTrap:choose back. `consequence` is additive metadata
 //     the system reads to route the result.
 //
-// noTouch honored: missions.js / economy.js / factions.js are not edited. The system reads
-// state.missions.active, listens to the same bus events, and EMITS sanctioned intents only.
+// Attach rides offer GENERATION: missions.js calls attachTrap once inside _withConditions
+// (seeded per offer id, Helios and story offers excluded), and the active instance inherits
+// offer.trap through _instanceFromOffer. This system stays event-driven — it reads
+// state.missions.active, listens to bus events, and EMITS sanctioned intents only.
 // Budget: spawn:none · voice: comms (reveal + choice) · draw:none.
 
-import { MORAL_TRAPS, TRAP_IDS, trapById, trapFitsOfferType } from '../data/moralTraps.js';
+import { MORAL_TRAPS, TRAP_IDS, trapFitsOfferType } from '../data/moralTraps.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 
 const ATTACH_PROB = 0.18; // low-probability attach — traps are a treat, not every run
@@ -34,10 +36,14 @@ const ATTACH_PROB = 0.18; // low-probability attach — traps are a treat, not e
  *   1. the seeded roll beats ATTACH_PROB (trap-free is the common case),
  *   2. a trap exists that fits the offer's type,
  *   3. (defensively) the offer has an id (no id ⇒ no trap — golden-sim safe).
+ * The authored Helios teaching beat owns its board (seedHeliosOfferTrap); authored and
+ * contract-sourced offers never carry a procedural lie on top of their written one.
  * PURE; deterministic per (seed, offerId).
  */
 export function attachTrap(offer, seed) {
   if (!offer || !offer.id) return offer;
+  if (offer.trap || offer.stationId === 'station_helios') return offer;
+  if (offer.storyTag || offer.campaign47aBeat != null || offer.storyBranch || offer.source) return offer;
   const rng = mulberry32(hash32(seed, offer.id, 'trap') >>> 0);
   if (rng() > ATTACH_PROB) return offer; // trap-free (the common case)
   // Candidate traps that fit this offer type.
@@ -101,21 +107,6 @@ export const moralTrapSystem = {
     }
   },
 
-  update(_dt, state) {
-    this._state = state || this._state;
-    const board = state && state.missions && state.missions.boards && state.missions.boards.station_helios;
-    const slots = board && board.slots;
-    if (!Array.isArray(slots)) return;
-    for (let i = 0; i < slots.length; i++) {
-      const offer = slots[i];
-      if (!offer || offer.trap || offer._heliosTrapSeeded) continue;
-      const seeded = seedHeliosOfferTrap(offer);
-      if (!seeded || seeded === offer || !seeded.trap) continue;
-      slots[i] = seeded;
-      break;
-    }
-  },
-
   _revealAcceptedHeliosTrap(payload) {
     const id = payload && (payload.missionId || payload.id);
     const mission = this._findActive(id) || (payload && payload.mission);
@@ -136,6 +127,7 @@ export const moralTrapSystem = {
     const active = (state.missions && state.missions.active) || [];
     for (const m of active) {
       if (!m || !m.trap || m._trapRevealed || m._trapResolved) continue;
+      if (m.status && m.status !== 'active') continue;
       if (m.trap.revealAt && m.trap.revealAt !== 'mid_run') continue;
       const line = typeof m.trap.revealLine === 'string' ? m.trap.revealLine.trim() : '';
       if (!line) continue;
@@ -166,7 +158,7 @@ export const moralTrapSystem = {
     const state = this._state;
     if (!p || !p.missionId || !p.optionId) return;
     const m = this._findActive(p.missionId);
-    if (!m || !m.trap || !m.trap.choice) return;
+    if (!m || !m.trap || !m.trap.choice || m._trapResolved) return;
     const option = m.trap.choice.options.find((o) => o.id === p.optionId);
     if (!option) return;
     // Route the option's consequence through its DISTINCT shipped channel. The system EMITS intents
@@ -174,28 +166,31 @@ export const moralTrapSystem = {
     this._applyConsequence(m, option);
     // Clear the choice UI state.
     if (state.ui) delete state.ui.moralTrap;
-    // Flag the trap resolved so it can't fire again.
+    // Flag the trap resolved so it can't fire again — before the settle emit, whose listeners run
+    // synchronously and must already see the fork closed.
     m._trapResolved = true;
     if (this._bus && this._bus.emit) {
       this._bus.emit('moralTrap:resolved', { missionId: m.id, trapId: m.trap.id, optionId: option.id });
+      // 'end' options break the contract NOW through missions' own abandon path — no parallel
+      // teardown: poster rep penalty, collateral forfeit, receipt and cargo cleanup ride _failMission.
+      if (option.settle === 'end') {
+        this._bus.emit('mission:abandon', { missionId: m.id, reason: 'moral_trap' });
+      }
     }
   },
 
   _applyConsequence(m, option) {
     const c = option.consequence;
     if (!c || !this._bus || !this._bus.emit) return;
-    // Distinct shipped channel per consequence.channel:
-    if (c.channel === 'rep' && c.repChannel) {
-      // Single-writer: factions own rep via faction:repDelta.
+    // The rep mark always lands at choice time — the faction learned which way you chose.
+    if (c.repChannel && (c.repDelta || c.delta || 0)) {
       this._bus.emit('faction:repDelta', { factionId: c.repChannel, delta: c.delta || c.repDelta || 0, reason: 'moralTrap' });
-    } else if (c.channel === 'credits') {
-      // Single-writer: economy owns credits. The amount multiplies the mission's reward (a partial
-      // or bonus payout). economy:grantCredits is the sanctioned grant channel.
+    }
+    // A credits channel grants upfront only on 'end' options (bounty/settlement payoffs). On a
+    // 'continue' option the pay IS the contract — granting it here would pay twice at delivery.
+    if (c.channel === 'credits' && option.settle !== 'continue') {
       const reward = (m.reward_cr || 0) * (c.amount || 1);
       if (reward > 0) this._bus.emit('economy:grantCredits', { amount: Math.round(reward), reason: 'moralTrap:payout' });
-      if (c.repChannel && (c.repDelta || 0)) {
-        this._bus.emit('faction:repDelta', { factionId: c.repChannel, delta: c.repDelta, reason: 'moralTrap' });
-      }
     }
     // A 'contraband' consequence (if a trap ever uses it) would emit the shipped
     // player:scannedByPatrol { hasContraband:true } to route through runScan — NOT a direct bust.

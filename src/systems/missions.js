@@ -106,6 +106,7 @@ import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { attachConditions } from './contractClauses.js';
 import { isFragileCommodity } from './fragileCargo.js';
+import { attachTrap, seedHeliosOfferTrap } from './moralTrap.js';
 // PQ-019C — the authored physical capsule heist. The offer and its tuned scalars are data; the run
 // itself is driven by the runtime module below, which consumes PQ-019B's pure arbiter. Both are
 // inert unless an active mission actually carries a `heist` subrecord.
@@ -1072,6 +1073,9 @@ export const missions = {
     // ── Player intents (UI) ────────────────────────────────────────────────────────────────
     bus.on('ui:acceptMission', (p) => this.acceptMission(p && p.missionId));
     bus.on('ui:abandonMission', (p) => this.abandonMission(p && p.missionId));
+    // Domain-level abandon intent: systems (e.g. moral-trap 'end' choices) settle a contract
+    // through the same single-writer path as the Mission Log button.
+    bus.on('mission:abandon', (p) => { if (p && p.missionId) this.abandonMission(p.missionId); });
     bus.on('ui:trackMission', (p) => { if (p && p.missionId) this.trackMission(p.missionId); });
     // Economy-born contracts are emit-only producers. Missions remains the sole board/active
     // authority and boards only a complete, normal offer shape; discovery-only salvage hooks keep
@@ -2274,6 +2278,14 @@ export const missions = {
       offers.unshift(intro);
       if (offers.length > S) offers.length = S;
     }
+    if (info.id === 'station_helios') {
+      // WORLD-18 authored beat, seeded at generation: exactly one qualifying offer carries the
+      // teaching trap per board roll (deterministic pick; the per-tick board scan it replaced
+      // never ran in production).
+      const trapIdx = offers.findIndex((o) => o && !o.storyTag && !o.source
+        && (o.type === 'cargo_delivery' || o.type === 'passenger_transport'));
+      if (trapIdx >= 0) offers[trapIdx] = seedHeliosOfferTrap(offers[trapIdx]);
+    }
     this._markFeaturedOffer(offers, info, epoch);
     return offers;
   },
@@ -2413,7 +2425,10 @@ export const missions = {
     const twistSeed = (this.helpers && this.helpers.hash32)
       ? this.helpers.hash32(this.state.meta.seed, 'twists', epoch)
       : (((this.state.meta.seed || 0) ^ 0x71c3a91b) >>> 0);
-    const stamped = attachTwistClauses(withTerms, twistSeed);
+    const trapSeed = (this.helpers && this.helpers.hash32)
+      ? this.helpers.hash32(this.state.meta.seed, 'traps', epoch)
+      : (((this.state.meta.seed || 0) ^ 0x3c6ef35f) >>> 0);
+    const stamped = attachTrap(attachTwistClauses(withTerms, twistSeed), trapSeed);
     if (stamped === offer) return offer;
     const terms = (stamped.clauses || []).filter(isMissionConditionRow)
       .map((row) => missionConditionById(row.conditionId))
@@ -3045,6 +3060,10 @@ export const missions = {
       // offer carries no key at all, so non-featured instances stay byte-identical.
       ...(offer.featured && typeof offer.featured === 'object'
         ? { featured: JSON.parse(JSON.stringify(offer.featured)) } : {}),
+      // Moral traps: the lie on the contract rides the instance so the mid-run reveal can find it.
+      // Same conditional-spread precedent — an honest offer's instance stays byte-identical.
+      ...(offer.trap && typeof offer.trap === 'object'
+        ? { trap: JSON.parse(JSON.stringify(offer.trap)) } : {}),
       // PQ-019C. The heist subrecord nests inside an active entry, which serialize() already carries
       // wholesale via `{ ...rest }` — durable with NO save-schema change and no new top-level key.
       // Conditional spread on the same precedent as `clauses` above: every non-heist instance gains

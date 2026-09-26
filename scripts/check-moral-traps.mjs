@@ -5,10 +5,14 @@
 //     bit-identical to today. Golden-sim safe (no id ⇒ no trap).
 //   - Each trap's choice has EXACTLY 2 options, each routing to a DISTINCT shipped consequence
 //     (channel: rep|credits, distinct factionId/delta/amount) — never two with no mechanical
-//     difference (the named failureMode). The choice uses the wreckMissions shape.
+//     difference (the named failureMode). The choice uses the wreckMissions shape. Every option
+//     declares settle:'continue'|'end' — continue pays at settlement, end breaks the contract
+//     NOW through missions' own abandon path (mission:abandon intent — no parallel teardown).
 //   - The reveal fires ONCE (flagged on the instance — no re-roll). Repeated cues don't re-reveal.
-//   - Each consequence EMITS a sanctioned intent (faction:repDelta / economy:grantCredits) — the
-//     system NEVER writes credits/rep/cargo directly (single-writer honored).
+//   - Each consequence EMITS a sanctioned intent (faction:repDelta / economy:grantCredits /
+//     mission:abandon) — the system NEVER writes credits/rep/cargo/mission status directly
+//     (single-writer honored). A credits channel on a 'continue' option grants NOTHING upfront:
+//     "keep the pay" means the contract settles normally, not a silent double-pay.
 import assert from 'node:assert/strict';
 
 import { MORAL_TRAPS, TRAP_IDS, trapById, trapFitsOfferType } from '../src/data/moralTraps.js';
@@ -43,8 +47,15 @@ function testTrapsUseWreckChoiceShape() {
     assert.equal(t.choice.options.length, 2, `${id} choice has exactly 2 options (binary)`);
     for (const o of t.choice.options) {
       assert.ok(o.id && o.label && o.blurb, `${id} option has id/label/blurb (wreckMissions shape)`);
+      assert.ok(o.settle === 'continue' || o.settle === 'end',
+        `${id} option ${o.id} declares how the contract settles`);
       assert.ok(o.consequence, `${id} option ${o.id} carries consequence metadata`);
     }
+    // Exactly one fork honors the contract and one breaks it — a choice between two identical
+    // settles is the sameness failureMode with extra steps.
+    const settles = t.choice.options.map((o) => o.settle);
+    assert.ok(settles.includes('continue') && settles.includes('end'),
+      `${id} offers one honor fork and one break fork`);
   }
 }
 
@@ -150,14 +161,18 @@ function testConsequenceEmitsSanctionedIntentOnly() {
   sys.init({ bus, state, helpers: { voice: { say() { return true; } } } });
   bus.emit('sector:enter', { sectorId: 's1' }); // reveal
   emitted.length = 0;
-  // Choose "deliver" → credits channel (+ quiet rep)
+  // Choose "deliver" → settle:'continue': the quiet faction's mark lands now, the pay arrives at
+  // contract settlement — an upfront grant here would double-pay. The contract keeps running.
   bus.emit('moralTrap:choose', { missionId: 'm1', optionId: 'deliver' });
   const grants = emitted.filter((e) => e.evt === 'economy:grantCredits');
   const repDeltas = emitted.filter((e) => e.evt === 'faction:repDelta');
-  assert.ok(grants.length >= 1, 'deliver routes through economy:grantCredits (single-writer)');
-  assert.ok(grants[0].p.amount > 0, 'grant amount is the reward * consequence.amount');
-  // Single-writer honored: the system NEVER writes credits/rep directly — it only EMITS intents.
-  assert.ok(repDeltas.length >= 1 || grants.length >= 1, 'consequence emits sanctioned intents only');
+  const abandons = emitted.filter((e) => e.evt === 'mission:abandon');
+  assert.ok(repDeltas.length >= 1, 'deliver marks the faction that noticed (single-writer)');
+  assert.equal(repDeltas[0].p.factionId, 'faction_quiet');
+  assert.equal(grants.length, 0, 'a continue-fork never grants upfront — the pay IS the contract');
+  assert.equal(abandons.length, 0, 'the honor fork keeps the contract running');
+  // Single-writer honored: the system NEVER writes credits/rep/missions directly — only intents.
+  assert.ok(repDeltas.length >= 1, 'consequence emits sanctioned intents only');
 
   // The state itself was never mutated by the consequence (credits/rep/factions untouched)
   assert.equal(state.player, undefined, 'player state never written by the trap system');
@@ -171,6 +186,42 @@ function testConsequenceEmitsSanctionedIntentOnly() {
   bus.emit('moralTrap:choose', { missionId: 'm1', optionId: 'divert' });
   const repDivert = emitted.filter((e) => e.evt === 'faction:repDelta');
   assert.ok(repDivert.length >= 1, 'divert routes through faction:repDelta (distinct channel)');
-  // The two options used DIFFERENT primary channels (credits vs rep) — distinct consequences.
+  // settle:'end' settles the contract through missions' own abandon path — an intent, never a
+  // direct status write.
+  assert.ok(emitted.some((e) => e.evt === 'mission:abandon' && e.p.missionId === 'm1'),
+    'an end-fork emits mission:abandon rather than mutating the mission');
   sys.destroy();
 }
+
+// ── 8. an 'end' bounty option pays once, upfront, and ends the contract ─────────────────────
+function testEndForkBounty() {
+  const handlers = new Map();
+  const emitted = [];
+  const bus = {
+    on(evt, fn) { if (!handlers.has(evt)) handlers.set(evt, []); handlers.get(evt).push(fn); },
+    off(evt, fn) { const l = handlers.get(evt) || []; const i = l.indexOf(fn); if (i >= 0) l.splice(i, 1); },
+    emit(evt, p) { emitted.push({ evt, p }); for (const fn of (handlers.get(evt) || []).slice()) fn(p); },
+  };
+  const state = {
+    simTime: 50,
+    missions: { active: [{ id: 'm2', type: 'passenger_transport', reward_cr: 1200, trap: {
+      id: 'passenger_is_fugitive', revealAt: 'mid_run', revealLine: 'reveal',
+      choice: trapById('passenger_is_fugitive').choice,
+    } }] },
+  };
+  const sys = { ...moralTrapSystem };
+  sys.init({ bus, state, helpers: { voice: { say() { return true; } } } });
+  bus.emit('moralTrap:choose', { missionId: 'm2', optionId: 'turn_in' });
+  const grants = emitted.filter((e) => e.evt === 'economy:grantCredits');
+  assert.equal(grants.length, 1, 'the bounty pays once');
+  assert.equal(grants[0].p.amount, Math.round(1200 * 1.5), 'bounty is reward * consequence.amount');
+  assert.ok(emitted.some((e) => e.evt === 'mission:abandon' && e.p.missionId === 'm2'),
+    'the passenger leaves — the contract cannot still deliver');
+  // A duplicated choose cannot re-pay.
+  emitted.length = 0;
+  bus.emit('moralTrap:choose', { missionId: 'm2', optionId: 'turn_in' });
+  assert.equal(emitted.filter((e) => e.evt === 'economy:grantCredits').length, 0,
+    'resolved forks are latched — no double consequence');
+  sys.destroy();
+}
+testEndForkBounty();

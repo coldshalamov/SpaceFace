@@ -21,9 +21,13 @@
 //   fitsTypes   — offer types this trap can attach to
 //   revealAt    — when the reveal fires: 'mid_run' (after accept, on first scan/proximity cue)
 //   revealLine  — the one-line comms reveal (the moment of truth)
-//   choice      — { prompt, options:[{id,label,blurb,consequence}] } — the binary choice
+//   choice      — { prompt, options:[{id,label,blurb,settle,consequence}] } — the binary choice
+//   settle      — 'continue': the job still runs to normal settlement (the rep mark lands now, the
+//                 pay lands at delivery — "keep the pay" is literal). 'end': the contract is broken
+//                 NOW through missions' own abandon path — poster penalty and forfeit included.
 //   consequence — for EACH option: { channel: 'rep'|'credits'|'contraband', factionId?, delta?, amount? }
-//                 channel='contraband' reuses the shipped runScan bust path.
+//                 channel='contraband' reuses the shipped runScan bust path. A credits channel on a
+//                 'continue' option is never granted upfront — that would double-pay at settlement.
 
 export const MORAL_TRAPS = Object.freeze({
   // Cargo-is-weapons: the "industrial equipment" is arms for a faction the player may not back.
@@ -37,10 +41,12 @@ export const MORAL_TRAPS = Object.freeze({
       options: Object.freeze([
         Object.freeze({
           id: 'deliver', label: 'Deliver as agreed', blurb: 'Arms reach their buyer. You keep the pay — and a quiet faction\'s approval.',
+          settle: 'continue',
           consequence: Object.freeze({ channel: 'credits', amount: 1.0, repChannel: 'faction_quiet', repDelta: 5 }),
         }),
         Object.freeze({
           id: 'divert', label: 'Divert to Concord', blurb: 'Hand the arms to a Concord patrol. You lose the pay but earn lawful standing.',
+          settle: 'end',
           consequence: Object.freeze({ channel: 'rep', repChannel: 'faction_scn', repDelta: 12 }),
         }),
       ]),
@@ -58,10 +64,12 @@ export const MORAL_TRAPS = Object.freeze({
       options: Object.freeze([
         Object.freeze({
           id: 'harbor', label: 'Honor the passage', blurb: 'You ferry them to safety. Frontier goodwill — and Concord heat if scanned.',
+          settle: 'continue',
           consequence: Object.freeze({ channel: 'rep', repChannel: 'faction_free', repDelta: 10 }),
         }),
         Object.freeze({
           id: 'turn_in', label: 'Signal Concord', blurb: 'Turn them in for the bounty. Credits now — and a name the Frontier won\'t forget.',
+          settle: 'end',
           consequence: Object.freeze({ channel: 'credits', amount: 1.5, repChannel: 'faction_free', repDelta: -15 }),
         }),
       ]),
@@ -79,10 +87,12 @@ export const MORAL_TRAPS = Object.freeze({
       options: Object.freeze([
         Object.freeze({
           id: 'deliver', label: 'Deliver anyway', blurb: 'The station gets useless cargo. You keep the pay — but the Frontier remembers.',
+          settle: 'continue',
           consequence: Object.freeze({ channel: 'credits', amount: 1.0, repChannel: 'faction_free', repDelta: -20 }),
         }),
         Object.freeze({
           id: 'dump', label: 'Dump and report', blurb: 'Jettison the fakes, name the supplier. You lose the pay but the relief effort lives.',
+          settle: 'end',
           consequence: Object.freeze({ channel: 'rep', repChannel: 'faction_free', repDelta: 8 }),
         }),
       ]),
@@ -101,10 +111,12 @@ export const MORAL_TRAPS = Object.freeze({
       options: Object.freeze([
         Object.freeze({
           id: 'deliver', label: 'Deliver to the buyer', blurb: 'The Pit pays twice for its own air. You keep the margin. Meridian’s Clear-Air position widens.',
+          settle: 'continue',
           consequence: Object.freeze({ channel: 'credits', amount: 1.2, repChannel: 'faction_mts', repDelta: 6 }),
         }),
         Object.freeze({
           id: 'return', label: 'Divert to the Pit dock', blurb: 'Hand the canisters to the station they were stolen from. No pay. The Pit breathes one cycle longer.',
+          settle: 'end',
           consequence: Object.freeze({ channel: 'rep', repChannel: 'faction_dmc', repDelta: 14 }),
         }),
       ]),
@@ -123,10 +135,12 @@ export const MORAL_TRAPS = Object.freeze({
       options: Object.freeze([
         Object.freeze({
           id: 'deliver', label: 'Deliver as logged', blurb: 'The moisture-loss column stands. The two stay filed as tonnes. Drift remembers, and so does the ledger.',
+          settle: 'continue',
           consequence: Object.freeze({ channel: 'credits', amount: 1.0, repChannel: 'faction_dmc', repDelta: -18 }),
         }),
         Object.freeze({
-          id: 'reweigh', label: 'Reweigh and refile', blurb: 'Strip the moisture-loss line and log the two by name. The ore pays less. The dead leave the column.',
+          id: 'reweigh', label: 'Reweigh and refile', blurb: 'Strip the moisture-loss line and log the two by name. The ore contract is broken. The dead leave the column.',
+          settle: 'end',
           consequence: Object.freeze({ channel: 'rep', repChannel: 'faction_dmc', repDelta: 16 }),
         }),
       ]),
