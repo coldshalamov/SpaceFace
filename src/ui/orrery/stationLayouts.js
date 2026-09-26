@@ -19,7 +19,8 @@ export function vitalDialSvg({ frac = 0, bare = false } = {}) {
   const ticks = ticksD(cx, cy, r + 2.5, 4, { len: 3, from, to, inward: false });
   // the bead rides a hand that turns about the dial's centre, so it and the arc glide together
   const fill = bare ? ''
-    : `<path class="orr-vdial__fill" d="${d}" pathLength="1" stroke-dasharray="${f(v)} 1"/>`
+    : `<path class="orr-vdial__bloom" d="${d}" pathLength="1" stroke-dasharray="${f(v)} 1"/>`
+      + `<path class="orr-vdial__fill" d="${d}" pathLength="1" stroke-dasharray="${f(v)} 1"/>`
       + `<g class="orr-vdial__hand" style="transform:rotate(${f(from + (to - from) * v)}deg)"${v > 0.004 ? '' : ' opacity="0"'}>`
       + `<circle class="orr-vdial__bead" cx="${cx}" cy="${cy - r}" r="2.3"/></g>`;
   return `<svg class="orr-vdial" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true" focusable="false">`
@@ -36,6 +37,8 @@ export function setVitalDial(svgEl, frac) {
   const { from, to } = DIAL;
   const v = Math.max(0, Math.min(1, Number.isFinite(frac) ? frac : 0));
   fill.style.strokeDasharray = `${f(v)} 1`;
+  const bloom = svgEl.querySelector('.orr-vdial__bloom');
+  if (bloom) bloom.style.strokeDasharray = `${f(v)} 1`;
   hand.style.transform = `rotate(${f(from + (to - from) * v)}deg)`;
   if (v > 0.004) hand.removeAttribute('opacity'); else hand.setAttribute('opacity', '0');
   return true;
@@ -74,7 +77,7 @@ ${S} .sxb-next__bead { background:rgb(${BONE} / .85) !important; box-shadow:none
 ${S} :is(.sxb-next__n, .sxb-next__x) { color:rgb(${BONE} / .7) !important; }
 ${S} .sxb-next__x:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
 ${S} .so-command-trigger > .so-icon { display:none !important; }
-${S} .dp-title__rule { background:linear-gradient(90deg, rgb(${BONE} / .6), rgb(${BONE} / 0)) !important; height:1px !important; box-shadow:none !important; }
+${S} .dp-title__rule { background:linear-gradient(90deg, rgb(${BONE} / .6), rgb(${BONE} / 0)) !important; height:2px !important; box-shadow:none !important; }
 ${S} .so-command-trigger { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;
   min-height:0 !important; height:auto !important; padding:4px 0 !important; gap:9px !important; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
   font-weight:650; font-size:11px !important; letter-spacing:.22em; text-transform:uppercase; color:rgb(${BONE} / .72) !important; }
@@ -114,8 +117,9 @@ ${S} .orr-vdial { display:block; width:92px; height:60px; overflow:visible; }
 ${S} .orr-vdial path { fill:none; stroke-linecap:butt; }
 ${S} .orr-vdial__track { stroke:rgb(${BONE} / .2); stroke-width:3; }
 ${S} .orr-vdial__track.is-bare { stroke-dasharray:1.5 3.2; stroke:rgb(${BONE} / .32); stroke-width:3; }
-${S} .orr-vdial__ticks { stroke:rgb(${BONE} / .42); stroke-width:1; }
+${S} .orr-vdial__ticks { stroke:rgb(${BONE} / .46); stroke-width:1.5px; vector-effect:non-scaling-stroke; }
 ${S} .orr-vdial__fill { stroke:rgb(${BONE} / .86); stroke-width:3; transition:stroke-dasharray .6s cubic-bezier(.3, 1.2, .5, 1); }
+${S} .orr-vdial__bloom { stroke:rgb(255 240 214 / .2); stroke-width:8; transition:stroke-dasharray .6s cubic-bezier(.3, 1.2, .5, 1); }
 ${S} .orr-vdial__bead { fill:rgb(246 241 230); }
 ${S} .orr-vdial__hand { transform-box:view-box; transform-origin:38px 30px; transition:transform .6s cubic-bezier(.3, 1.2, .5, 1); }
 ${S} .sxb-vital[data-tone='warn'] .orr-vdial__fill { stroke:rgb(250 247 238); }
@@ -123,6 +127,7 @@ ${S} .sxb-vital[data-tone='warn'] .orr-vdial__track { stroke:rgb(${BONE} / .5); 
 ${S} .sxb-vital[data-tone='warn'] [data-vital-act] { color:rgb(250 247 238) !important; }
 ${S} .sxb-vital[data-tone='warn'] [data-vital-act] .orr-act__cost { color:rgb(${BONE} / .85); }
 ${S} .sxb-vital[data-tone='bad'] .orr-vdial__fill { stroke:var(--dp-danger, #ff5038); }
+${S} .sxb-vital[data-tone='bad'] .orr-vdial__bloom { stroke:rgb(255 80 56 / .22); }
 ${S} .sxb-vital[data-tone='bad'] .orr-vdial__bead { fill:var(--dp-danger, #ff5038); }
 ${S} .sxb-vital__value { position:absolute !important; left:0; right:0; top:21px; margin:0 !important; padding:0 !important; text-align:center; pointer-events:none;
   display:flex; flex-direction:column; align-items:center; line-height:1 !important; background:none !important; color:rgb(246 241 230) !important; }
@@ -170,8 +175,17 @@ ${S} .sxb-ops .sxb-launch-seat { margin-left:auto !important; }
 ${S} .sxb-ops .sxb-launch-seat { flex:none !important; }
 ${S} .sxb-ops .sx-tile__seat { display:none !important; }
 ${S} :is(.sxb-ops .so-berth-status, .sx-comms__toggle, .sxb-help) > .so-icon { display:none !important; }
-${S} .sxb-ops .orr-stationrow__beam, ${S} .sxb-ops .orr-stationrow__glow { display:none !important; }
-${S} .sxb-ops .orr-stationrow__bead { r:2.6px; }
+${S} .sxb-ops .orr-stationrow__beam { display:none !important; }
+/* weight, not wire: the tab rail is a luminous band under a 2px line, 1.5px fine ticks, 2px station ticks; the needle has body */
+${S} .sxb-ops .orr-stationrow__rule { background:linear-gradient(90deg, rgb(${BONE} / 0), rgb(${BONE} / .085) 40px, rgb(${BONE} / .085) calc(100% - 40px), rgb(${BONE} / 0)) 0 6.5px / 100% 7px no-repeat; }
+${S} .sxb-ops .orr-stationrow__rule path.orr-rest { stroke:rgb(${BONE} / .44); stroke-width:2px; }
+${S} .sxb-ops .orr-stationrow__rule path.orr-faint { stroke:rgb(${BONE} / .26); stroke-width:1.5px; }
+${S} .sxb-ops .orr-stationrow__rule path.orr-stationrow__tick { stroke-width:2px; }
+${S} .sxb-ops .orr-stationrow__blade { stroke:rgb(246 241 230 / .9); stroke-width:1.4px; stroke-linejoin:round; }
+${S} .sxb-ops .orr-stationrow__glow { opacity:.16; }
+${S} .sxb-ops .orr-stationrow__bead { r:3.6px; }
+/* the old etched hairline under the group retires: the rail of light is the one rule the tabs stand on */
+${S} .sxb-ops .sx-dock__group--nav::after { display:none !important; }
 ${S} .sxb-ops .so-berth-status { align-self:flex-start !important; height:auto !important; min-height:0 !important; padding:13px 0 0 !important; gap:8px;
   margin-left:clamp(28px, 3vw, 56px) !important; flex:none !important; }
 ${S} .sxb-ops .so-berth-status { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip:rect(0 0 0 0) !important;
