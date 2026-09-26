@@ -699,9 +699,17 @@ test('the swarm draft is a real upgrade path, not three ways to swap a gun', () 
       swarm.eligibleCount > arc.eligibleCount,
       `${starter.id}: the swarm pool is deeper (${swarm.eligibleCount} vs ${arc.eligibleCount})`,
     );
-    // While the hull has room, every card should be something the player does not have yet.
+    // While the hull has room, every card should be something the player does not have yet. A
+    // swap offer is only honest when the hull has no empty slot the thing could land in — the
+    // Storm Carom forge hull fills every utility slot on purpose, so its first rail may trade
+    // against the parts it carries.
+    const FITTING_BY_ID = new Map([...WEAPONS, ...MODULES].map((def) => [def.id, def]));
     for (const offer of swarm.offers) {
-      assert.equal(offer.replaces, null, `${starter.id}: first draft adds rather than swaps`);
+      if (offer.replaces == null) continue;
+      const def = FITTING_BY_ID.get(offer.defId);
+      const hasEmptyCompatible = slots.some((slot, i) => !fittings[i] && fits(slot, def));
+      assert.equal(hasEmptyCompatible, false,
+        `${starter.id}: ${offer.defId} swaps ${offer.replaces} while a compatible slot sits empty`);
     }
   }
 });
