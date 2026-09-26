@@ -472,3 +472,44 @@ test('residencyOptionsForBoundary marks an on-glass boundary urgent on compile a
     else globalThis.window = previousWindow;
   }
 });
+
+test('authored GPU gate reports its sub-phase timings without changing admission results', async () => {
+  // The D38 residual is the job's own GPU gate (pipeline phase 100% of one measured ship job,
+  // 2026-09-25/26 probes). The per-stage instrument must name where that gate's time goes —
+  // policies/compile/residency — and must leave the admission outcome and hook sequence intact.
+  const root = new THREE.Group();
+  root.add(new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshBasicMaterial(),
+  ));
+  const hooks = [];
+  const options = {
+    prepareAuthoredPipelines: async (subject) => {
+      hooks.push('compile');
+      assert.equal(subject, root);
+      await new Promise((resolve) => setTimeout(resolve, 8));
+      return { skipped: false, programs: 3 };
+    },
+    prepareAuthoredGpuResidency: async (subject) => {
+      hooks.push('residency');
+      assert.equal(subject, root);
+      return { skipped: false, uploads: 2 };
+    },
+  };
+
+  const result = await partsLibrary.prepareAuthoredVisualPipelines(root, options);
+  assert.deepEqual(hooks, ['compile', 'residency'],
+    'the gate compiles before it uploads');
+  assert.equal(result.skipped, false);
+  assert.equal(result.pipelines.programs, 3, 'the compile outcome rides through unchanged');
+  assert.equal(result.gpuResidency.uploads, 2, 'the residency outcome rides through unchanged');
+  for (const key of ['policiesMs', 'compileMs', 'residencyMs']) {
+    assert.equal(typeof result[key], 'number', `${key} is reported`);
+    assert.ok(result[key] >= 0, `${key} is non-negative`);
+  }
+  assert.ok(result.compileMs > 0, 'a awaited compile hook reports nonzero compile time');
+
+  // No hooks (preview/test harness): still skipped, no timing surface promised.
+  const skipped = await partsLibrary.prepareAuthoredVisualPipelines(root, {});
+  assert.equal(skipped.skipped, true);
+});

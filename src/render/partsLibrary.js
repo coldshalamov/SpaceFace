@@ -9,6 +9,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
+import { modelTruthMountFractions, modelTruthPlaceDrawScale } from '../data/modelTruth.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { SWARM_ROSTER, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -3290,6 +3291,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   });
   const authoredLength = Math.max(record.bounds && record.bounds.size && record.bounds.size[0] || 1, 1e-6);
   const rawScale = Number(data.placeScale);
+  const censusScale = modelTruthPlaceDrawScale(entity);
   const targetRadius = Number(data.placeTargetRadius);
   const authoredEnvelope = Math.max(
     1e-6,
@@ -3297,9 +3299,11 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
       ? record.bounds.size.map((value) => Number(value) || 0)
       : [authoredLength]),
   );
-  const scale = Number.isFinite(targetRadius) && targetRadius > 0
-    ? (targetRadius * 2) / authoredEnvelope
-    : (Number.isFinite(rawScale) && rawScale > 0 ? rawScale : 1);
+  const scale = censusScale != null
+    ? censusScale
+    : (Number.isFinite(targetRadius) && targetRadius > 0
+      ? (targetRadius * 2) / authoredEnvelope
+      : (Number.isFinite(rawScale) && rawScale > 0 ? rawScale : 1));
   instantiatePart(record, root, {
     position: [0, 0, 0],
     rotation: [0, 0, 0],
@@ -4842,6 +4846,23 @@ function monotonicNow() {
     : Date.now();
 }
 
+// Per-job phase timings (decode/compose/pipeline/commit) live on the boundary while its one
+// serial admission runs, then ride the job's diagnostic for the frame-solid probe. One small
+// object per upgrade job — jobs are heavyweight by nature, this adds nothing measurable.
+const ADMISSION_PHASE_KEYS = ['decode', 'compose', 'pipeline', 'commit'];
+
+function beginAdmissionPhaseTimings(boundary) {
+  if (!boundary || !boundary.userData) return null;
+  const timings = {};
+  boundary.userData.__admissionPhaseTimings = timings;
+  return timings;
+}
+
+function endAdmissionPhase(timings, phase, startedAtMs) {
+  if (!timings) return;
+  timings[`${phase}Ms`] = Math.max(0, monotonicNow() - startedAtMs);
+}
+
 function recordAdmissionSlice(startedAtMs, hitchOwner = null) {
   const elapsedMs = monotonicNow() - startedAtMs;
   const perf = authoredRuntimeState()?.perfRuntime;
@@ -4905,6 +4926,21 @@ function beginUpgradeDiagnostic(state, job) {
 function finishUpgradeDiagnostic(state, job, diagnostic) {
   diagnostic.endedAtMs = monotonicNow();
   diagnostic.durationMs = Math.max(0, diagnostic.endedAtMs - diagnostic.startedAtMs);
+  const boundaryTimings = job.boundary && job.boundary.userData
+    ? job.boundary.userData.__admissionPhaseTimings
+    : null;
+  if (boundaryTimings) {
+    diagnostic.phases = {};
+    for (const phase of ADMISSION_PHASE_KEYS) {
+      const value = Number(boundaryTimings[`${phase}Ms`]);
+      if (Number.isFinite(value)) diagnostic.phases[`${phase}Ms`] = Math.round(value);
+    }
+    for (const key of ['policiesMs', 'compileMs', 'residencyMs']) {
+      const value = Number(boundaryTimings[key]);
+      if (Number.isFinite(value)) diagnostic.phases[key] = Math.round(value);
+    }
+    delete job.boundary.userData.__admissionPhaseTimings;
+  }
   diagnostic.transferBytes = resourceBytesForUrls(job.assetUrls);
   const perf = job.perfBackgroundJobOwner;
   if (perf && typeof perf.endBackgroundJob === 'function' && job.perfBackgroundJob) {
@@ -5485,33 +5521,43 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   // idempotent policies also run at the presentation boundary, but applying them only after this
   // detached-root compile changes the program key and leaves the first draw to link synchronously.
   assertAuthoredVisualPreparationActive(options, 'before-material-policy');
+  const policiesStartedAtMs = monotonicNow();
   configureRealtimeCanopyMaterials(root);
   configureTransparentSinglePassSurfaces(root);
   canonicalizeAuthoredProgramState(root);
+  const policiesMs = Math.max(0, monotonicNow() - policiesStartedAtMs);
   const tier1 = tier1CausalCounters();
   if (tier1) {
     tier1.countPipelinePreparation('material-policies', 1);
     if (typeof preparePipelines === 'function') tier1.countPipelinePreparation('compile-pipelines', 1);
     if (typeof prepareResidency === 'function') tier1.countPipelinePreparation('gpu-residency', 1);
   }
+  const compileStartedAtMs = monotonicNow();
   const pipelines = typeof preparePipelines === 'function'
     ? await preparePipelines(root)
     : { skipped: true, reason: 'pipeline compiler unavailable' };
+  const compileMs = Math.max(0, monotonicNow() - compileStartedAtMs);
   assertAuthoredVisualPreparationActive(options, 'after-pipeline-compile');
   if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
     await options.yieldToNextPresent();
     assertAuthoredVisualPreparationActive(options, 'after-present-yield');
   }
+  const residencyStartedAtMs = monotonicNow();
   const gpuResidency = typeof prepareResidency === 'function'
     ? await prepareResidency(root, {
         isResidencyOwnerActive: options.isResidencyOwnerActive,
       })
     : { skipped: true, reason: 'GPU residency uploader unavailable' };
+  const residencyMs = Math.max(0, monotonicNow() - residencyStartedAtMs);
   assertAuthoredVisualPreparationActive(options, 'after-gpu-residency');
   return {
     skipped: pipelines?.skipped === true && gpuResidency?.skipped === true,
     pipelines,
     gpuResidency,
+    // Sub-phase evidence for the serial admission lane (frame-solid probe job phase split).
+    policiesMs: Math.round(policiesMs),
+    compileMs: Math.round(compileMs),
+    residencyMs: Math.round(residencyMs),
   };
 }
 
@@ -5583,15 +5629,19 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     // Prefetch may have captured a plan before combat/traffic identity landed on the entity.
     // Await any in-flight decode, then admit the *current* whole-ship selection so compose cannot
     // look up a hull that was never added to the library.
+    const phaseTimings = beginAdmissionPhaseTimings(boundary);
+    const decodeStartedAtMs = monotonicNow();
     if (prefetchedLibrary) {
       try { await prefetchedLibrary; } catch { /* live admission below is authoritative */ }
     }
     const library = await preloadAuthoredAssetsForEntity(renderer, entity, options);
+    endAdmissionPhase(phaseTimings, 'decode', decodeStartedAtMs);
     const compositionStartedAtMs = monotonicNow();
     try {
       authored = buildComposedShip(entity, library, scene, boundary, options);
     } finally {
       recordAdmissionSlice(compositionStartedAtMs, 'compose');
+      endAdmissionPhase(phaseTimings, 'compose', compositionStartedAtMs);
       const tier1 = tier1CausalCounters();
       if (tier1) tier1.countAuthoredAdmissionJob('composition');
     }
@@ -5619,7 +5669,16 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
         const tier1 = tier1CausalCounters();
         if (tier1) tier1.countAuthoredAdmissionJob('pipeline-prepare');
       }
-      await pipelineReady;
+      const pipelineResult = await pipelineReady;
+      // The GPU gate's full service time (material-policy walk + program compile + residency
+      // upload), not just its synchronous prologue — this is the phase the lane serializes on.
+      endAdmissionPhase(phaseTimings, 'pipeline', pipelineStartedAtMs);
+      if (phaseTimings && pipelineResult && typeof pipelineResult === 'object') {
+        for (const key of ['policiesMs', 'compileMs', 'residencyMs']) {
+          const value = Number(pipelineResult[key]);
+          if (Number.isFinite(value)) phaseTimings[key] = value;
+        }
+      }
       const commitStartedAtMs = monotonicNow();
       try {
         swapped = await commitAuthoredBoundary(
@@ -5634,6 +5693,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
         }
       } finally {
         recordAdmissionSlice(commitStartedAtMs);
+        endAdmissionPhase(phaseTimings, 'commit', commitStartedAtMs);
         const tier1 = tier1CausalCounters();
         if (tier1) tier1.countAuthoredAdmissionJob('commit');
       }
@@ -8108,9 +8168,7 @@ function authoredWeaponMounts(entity, shipDef, records, seed, options = {}) {
   const fittedWeaponIds = Array.isArray(data.fittings)
     ? data.fittings.filter((id) => WEAPON_BY_ID.has(id))
     : [];
-  const hardpoints = shipDef && shipDef.visuals && Array.isArray(shipDef.visuals.hardpoints)
-    ? shipDef.visuals.hardpoints
-    : [];
+  const hardpoints = modelTruthMountFractions(shipDef && shipDef.id, 'SOCKET_Weapon_');
   const slotEntries = shipSlotEntries(shipDef, 'weapon');
   // fittedOnly: whole-ship bodies bake their ambient dressing — only guns actually fitted may
   // sprout on their sockets, never a seed pick for an empty hardpoint.
