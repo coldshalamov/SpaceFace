@@ -4,6 +4,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { collectLodTriangleCounts } from './partsManifestMetrics.mjs';
 
 const GLB_MAGIC = 0x46546c67;
 const JSON_CHUNK_TYPE = 0x4e4f534a;
@@ -150,7 +151,9 @@ export function verifyAssetReceipt(root, releaseEntry, partEntry) {
     }
     if (metrics) {
       const total = metrics.triangles;
-      const lod0 = metrics.lods.lod0;
+      // Same LOD classifier the parts manifest and the loader use. A name-only
+      // first-node guess under-counts hulls whose LOD lives on extras.
+      const lod0 = collectLodTriangleCounts(metrics.gltf).lod0;
       const matchesTotal = partEntry.tris === total;
       const matchesLod0 = lod0 > 0 && partEntry.tris === lod0;
       if (!matchesTotal && !matchesLod0) {

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import { dirname, join } from 'node:path';
 
 import {
   assertIncludesAll,
@@ -7,6 +8,7 @@ import {
   branchById,
   proofMetricById,
   readScenarioContract,
+  runSfSimAsync,
   runTraceAsync,
   traceHas,
   writeTapeWithCommands,
@@ -45,9 +47,11 @@ for (const branchId of ['surrender_evidence', 'deliver_to_contact']) {
     `${branchId} should require physical proximity to the handoff target`);
 }
 
-// The four branch traces are independent 36k-tick sims (own tape file, own sf-sim
-// subprocess, same deterministic seed) and dominate this check's wall time serially.
-// Overlap them: assertions below are unchanged, only the wait is shared.
+// The branch command lands at tick 36010. The four outcomes share one prefix saved at
+// 36009; each tail only resimulates the resolution. Paying that prefix four times pushed
+// check:baseline over its 90s wall.
+const PREFIX_TICKS = 36009;
+const BRANCH_TICKS = 36120;
 const probeTapes = expectedBranches.map((branchId) => {
   const branch = branchById(contract, branchId);
   return {
@@ -70,19 +74,37 @@ const probeTapes = expectedBranches.map((branchId) => {
   };
 });
 
+const prefixTape = writeTapeWithCommands({
+  id: '47a-physical-branch-prefix',
+  notes: ['Shared prefix for the four resolution outcomes. No branch command is applied.'],
+  dropScenarioBranches: true,
+});
+const envelopePath = join(dirname(prefixTape.path), 'prefix-envelope.json');
+
 let traceResults;
 try {
+  await runSfSimAsync([
+    'run', '47a',
+    '--seed', '47',
+    '--ticks', String(PREFIX_TICKS),
+    '--inputs', prefixTape.path,
+    '--physics-backend', 'rapier-dynamic',
+    '--hash',
+    '--write-envelope', envelopePath,
+  ]);
   traceResults = await Promise.all(probeTapes.map(async ({ branchId, tape }) => ({
     branchId,
     result: await runTraceAsync({
-      ticks: 36120,
+      ticks: BRANCH_TICKS,
       inputPath: tape.path,
       events: 'scenario.*,combat.*,tether.*',
       limit: 520,
+      loadEnvelope: envelopePath,
     }),
   })));
 } finally {
   for (const { tape } of probeTapes) tape.cleanup();
+  prefixTape.cleanup();
 }
 
 const completed = [];

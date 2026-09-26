@@ -44,7 +44,7 @@ ${scope} ${list} { ${PLAIN} position:relative !important; display:flex !importan
   margin:0 !important; padding:4px 0 !important; counter-reset:orrlad; background:${RAIL_BG} !important; }
 ${scope} ${list} > li { position:relative !important; counter-increment:orrlad; width:100% !important; list-style:none !important; margin:0 !important; }
 ${scope} ${list} > li::before { content:counter(orrlad, decimal-leading-zero); position:absolute; left:44px; top:50%; transform:translateY(-50%); pointer-events:none;
-  ${LABEL} font-size:10px; letter-spacing:.14em; color:rgb(${BONE} / .52); font-variant-numeric:tabular-nums; }
+  ${LABEL} font-size:10px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
 ${scope} ${list} > li:has(> ${item}:is(${chosen}))::before { color:rgb(${BONE} / .86); }
 ${scope} ${list} ${item} { all:unset !important; box-sizing:border-box !important; position:relative !important; display:flex !important; align-items:center !important;
   width:100% !important; min-height:46px !important; padding:0 8px 0 74px !important; cursor:pointer !important; ${LABEL} font-size:13px !important;
@@ -109,23 +109,24 @@ ${S} #sf-settings-pane .k-row > div.k-words--row { ${PLAIN} display:grid !import
 ${S} #sf-settings-pane input.k-range { -webkit-appearance:none !important; appearance:none !important; ${PLAIN} display:block !important; width:var(--orr-scale-w, 254px) !important;
   height:30px !important; margin:0 !important; padding:0 !important; cursor:pointer !important;
   background:
-    linear-gradient(rgb(${HOT} / .92) 0 0) 7px 13px / calc((100% - 14px) * var(--orr-v, .5)) 2px no-repeat,
-    linear-gradient(rgb(${BONE} / .34) 0 0) 7px 13.5px / calc(100% - 14px) 1px no-repeat,
-    linear-gradient(90deg, rgb(${BONE} / .44) 0 1px, transparent 1px) 7px 17px / calc((100% - 14px) / 20) 4px repeat-x,
-    linear-gradient(90deg, rgb(${BONE} / .62) 0 1px, transparent 1px) 7px 17px / calc((100% - 14px) / 4) 8px repeat-x !important;
-  background-clip:content-box, content-box, content-box, content-box !important; }
+    linear-gradient(rgb(${HOT} / .96) 0 0) 7px 12.5px / calc((100% - 14px) * var(--orr-v, .5)) 3px no-repeat,
+    linear-gradient(rgb(${HOT} / .17) 0 0) 7px 9.5px / calc((100% - 14px) * var(--orr-v, .5)) 9px no-repeat,
+    linear-gradient(rgb(${BONE} / .44) 0 0) 7px 13.25px / calc(100% - 14px) 1.5px no-repeat,
+    linear-gradient(rgb(${BONE} / .075) 0 0) 7px 9.5px / calc(100% - 14px) 9px no-repeat,
+    linear-gradient(90deg, rgb(${BONE} / .5) 0 1px, transparent 1px) 7px 21px / calc((100% - 14px) / 20) 4px repeat-x,
+    linear-gradient(90deg, rgb(${BONE} / .72) 0 1.5px, transparent 1.5px) 7px 21px / calc((100% - 14px) / 4) 8px repeat-x !important; }
 ${S} #sf-settings-pane input.k-range::-webkit-slider-runnable-track { -webkit-appearance:none; height:30px; background:transparent; border:0; box-shadow:none; }
-${S} #sf-settings-pane input.k-range::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:14px; height:22px; margin-top:3px; border:0; border-radius:0; box-shadow:none;
+${S} #sf-settings-pane input.k-range::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:14px; height:24px; margin-top:2px; border:0; border-radius:0; box-shadow:none;
   background:
-    linear-gradient(90deg, transparent 6px, rgb(${HOT}) 6px 8px, transparent 8px) 0 0 / 14px 22px no-repeat,
-    linear-gradient(90deg, transparent 3px, rgb(${HOT} / .2) 3px 11px, transparent 11px) 0 4px / 14px 14px no-repeat; }
+    linear-gradient(90deg, transparent 5.5px, rgb(${HOT}) 5.5px 8.5px, transparent 8.5px) 0 0 / 14px 24px no-repeat,
+    linear-gradient(90deg, transparent 2px, rgb(${HOT} / .24) 2px 12px, transparent 12px) 0 4px / 14px 16px no-repeat; }
 ${S} #sf-settings-pane input.k-range:hover::-webkit-slider-thumb {
   background:
-    linear-gradient(90deg, transparent 6px, rgb(255 253 248) 6px 8px, transparent 8px) 0 0 / 14px 22px no-repeat,
-    linear-gradient(90deg, transparent 2px, rgb(${HOT} / .3) 2px 12px, transparent 12px) 0 3px / 14px 16px no-repeat; }
-${S} #sf-settings-pane input.k-range:focus::-webkit-slider-thumb { height:26px; margin-top:1px;
+    linear-gradient(90deg, transparent 5.5px, rgb(255 253 248) 5.5px 8.5px, transparent 8.5px) 0 0 / 14px 24px no-repeat,
+    linear-gradient(90deg, transparent 1px, rgb(${HOT} / .34) 1px 13px, transparent 13px) 0 3px / 14px 18px no-repeat; }
+${S} #sf-settings-pane input.k-range:focus::-webkit-slider-thumb { height:28px; margin-top:0;
   background:
-    linear-gradient(90deg, transparent 5.5px, var(--dp-hand-hot, #ffd98c) 5.5px 8.5px, transparent 8.5px) 0 0 / 14px 26px no-repeat,
+    linear-gradient(90deg, transparent 5px, var(--dp-hand-hot, #ffd98c) 5px 9px, transparent 9px) 0 0 / 14px 28px no-repeat,
     linear-gradient(90deg, transparent 1px, rgb(242 185 80 / .36) 1px 13px, transparent 13px) 0 4px / 14px 18px no-repeat; }
 ${S} #sf-settings-pane input.k-range:focus { outline:none !important; }
 ${S} #sf-settings-pane .k-row > div.k-words--row > span { ${PLAIN} font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100% !important;
@@ -138,7 +139,7 @@ ${S} #sf-settings-pane .k-row .k-words--row:has(> li) { ${PLAIN} display:flex !i
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) > li { list-style:none !important; margin:0 !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { all:unset !important; box-sizing:border-box !important; position:relative !important; display:inline-block !important;
   cursor:pointer !important; padding:7px 0 9px !important; ${LABEL} font-size:11.5px !important; letter-spacing:.2em !important; line-height:1 !important;
-  color:rgb(${BONE} / .6) !important; transition:color .16s linear; }
+  color:rgb(${BONE} / .66) !important; transition:color .16s linear; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word::before { content:none !important; display:none !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word::after { content:"" !important; display:block !important; position:absolute !important; left:0 !important; right:0 !important;
   bottom:0 !important; top:auto !important; width:auto !important; height:1px !important; margin:0 !important; background:rgb(${BONE} / .16) !important; transform:none !important;
@@ -159,6 +160,21 @@ ${S} #sf-settings-pane select.k-select:hover { background:${CHEVRON} right 4px c
 ${S} #sf-settings-pane select.k-select:focus-visible, ${S} #sf-settings-pane select.k-select:focus { color:var(--dp-hand-hot, #ffd98c) !important;
   background:${CHEVRON} right 4px center / 10px 6px no-repeat, linear-gradient(var(--dp-hand, #f2b950) 0 0) 0 100% / 100% 2px no-repeat !important; }
 ${S} #sf-settings-pane select.k-select option { background:#0b0e13; color:rgb(${HOT}); }
+/* the list it opens is an instrument too (a customizable select): a column of light on deep glass, a rail
+   down its edge, the chosen option lit; the native control stays the control (keys, pad, probes) */
+${S} #sf-settings-pane select.k-select, ${S} #sf-settings-pane select.k-select::picker(select) { appearance:base-select !important; }
+${S} #sf-settings-pane select.k-select::picker-icon { display:none; }
+${S} #sf-settings-pane select.k-select::picker(select) { border:0; border-radius:0; padding:8px 0; margin-top:6px; width:max-content; min-width:220px; max-width:440px; right:auto;
+  background:linear-gradient(90deg, transparent 13px, rgb(${BONE} / .3) 13px 14.5px, transparent 14.5px), rgb(7 9 13 / .97);
+  box-shadow:0 22px 60px rgb(0 0 0 / .66), 0 0 0 1px rgb(${BONE} / .06); color:rgb(${HOT}); }
+${S} #sf-settings-pane select.k-select option { position:relative; display:flex; align-items:center; min-height:36px; padding:0 22px 0 34px;
+  background:none; border:0; outline:none !important; box-shadow:none; color:rgb(${BONE} / .78); font-family:var(--dp-face-read, "Instrument Sans"); font-size:14px; font-weight:500; cursor:pointer; }
+${S} #sf-settings-pane select.k-select option::checkmark { display:none; }
+${S} #sf-settings-pane select.k-select option::before { content:""; position:absolute; left:10px; top:50%; width:8px; height:1.5px; background:rgb(${BONE} / .5); }
+${S} #sf-settings-pane select.k-select option:is(:hover, :focus, :focus-visible) { color:rgb(255 253 248); background:linear-gradient(90deg, rgb(${BONE} / .1), rgb(${BONE} / 0)); outline:none !important; }
+${S} #sf-settings-pane select.k-select option:checked { color:rgb(${HOT}); background:none; border:0; outline:none; }
+${S} #sf-settings-pane select.k-select option:checked::before { left:24px; width:5px; height:5px; margin-top:-2.5px; border-radius:50%; background:var(--dp-hand-hot, #ffd98c);
+  box-shadow:0 0 6px rgb(255 217 140 / .7); }
 
 /* a binding is its key: the key in label caps on an underline; listening runs ice */
 ${S} #sf-settings-pane .sf-bind-btn { all:unset !important; box-sizing:border-box !important; position:relative !important; justify-self:start !important; cursor:pointer !important;
@@ -197,6 +213,12 @@ ${S} #sf-settings-pane > .k-words > .k-word:hover { color:rgb(255 253 248) !impo
 ${S} #sf-settings-pane > .k-words > .k-word:focus-visible { color:var(--dp-hand-hot, #ffd98c) !important; }
 ${S} #sf-settings-pane > .k-words > .k-t-fine { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:11.5px !important; color:rgb(${BONE} / .6) !important; }
 ${S} #sf-settings-pane > .orr-extent::before { left:7px; }
+/* a category arrives row by row */
+${S} #sf-settings-pane .orr-set-rise { animation:orr-rise 460ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
+html.sf-reduce-motion ${S} #sf-settings-pane .orr-set-rise { animation:none !important; }
+/* the screens stand above their spotlight */
+${S} > :is(.k-title, .k-hang, .orr-set-preview, .k-foot) { position:relative; z-index:1; }
+${S} #sf-settings-pane { z-index:1; }
 
 /* ------------------------------------------------ the way back --------------------------------- */
 ${S} > .k-foot { align-items:center !important; }
@@ -211,6 +233,8 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
   ${S} { --orr-scale-w:174px; --orr-label-w:150px; grid-template-columns:minmax(150px, 176px) minmax(456px, 480px) minmax(0, 1fr) !important; }
   ${S} #sf-settings-pane .k-row { column-gap:16px !important; }
   ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:10.5px !important; letter-spacing:.12em !important; }
+  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) { gap:4px 14px !important; }
+  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:10.5px !important; letter-spacing:.12em !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 174px) 56px !important; column-gap:10px !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:19px !important; }
   ${S} .sf-tabbar .sf-tab { min-height:40px !important; }
@@ -263,7 +287,7 @@ ${C} .orr-cr-progress svg { width:62px; height:62px; overflow:visible; }
 ${C} .orr-cr-progress__n { font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 280 !important; font-weight:280 !important; font-size:28px;
   line-height:.9; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
 ${C} .orr-cr-progress__n small { font-size:.46em; margin-left:2px; color:rgb(${BONE} / .7); }
-${C} .orr-cr-progress__l { ${LABEL} display:block; margin-top:6px; font-size:9.5px; letter-spacing:.24em; color:rgb(${BONE} / .6); }
+${C} .orr-cr-progress__l { ${LABEL} display:block; margin-top:6px; font-size:10px; letter-spacing:.24em; color:rgb(${BONE} / .74); }
 
 /* ------------------------------------------------ credits: the reel ---------------------------- */
 ${C} > .k-stage { ${PLAIN} backdrop-filter:none !important; -webkit-backdrop-filter:none !important; max-width:none !important; width:100% !important; min-height:0 !important;
@@ -277,13 +301,13 @@ ${C} .orr-cr-reel { position:relative; max-width:min(660px, 100%); padding:9vh 0
 ${C} .orr-cr-sec { position:relative; scroll-margin-top:9vh; }
 ${C} .orr-cr-sec + .orr-cr-sec { margin-top:86px; }
 ${C} .orr-cr-head { ${LABEL} display:flex; align-items:center; gap:16px; margin:0 0 24px !important; font-size:12px !important; letter-spacing:.28em !important; color:rgb(${HOT}) !important; }
-${C} .orr-cr-head > i { font-style:normal; font-size:10px; letter-spacing:.14em; color:rgb(${BONE} / .56); font-variant-numeric:tabular-nums; }
+${C} .orr-cr-head > i { font-style:normal; font-size:10px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
 ${C} .orr-cr-head::after { content:""; flex:0 1 180px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / 0)); }
 /* the maker: the name at display size, the build and the trade in labels, one sentence */
 ${C} .of-credits-made { margin:0 0 20px !important; }
 ${C} .of-credits-kicker { display:none !important; }
 ${C} .of-credits-name { margin:0 !important; font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800 !important;
-  font-weight:800 !important; font-size:clamp(52px, 7.4vh, 88px) !important; line-height:.92 !important; letter-spacing:-.005em !important; text-transform:uppercase !important;
+  font-weight:800 !important; font-size:clamp(48px, 7vh, 80px) !important; line-height:.92 !important; white-space:nowrap; letter-spacing:-.005em !important; text-transform:uppercase !important;
   color:rgb(${HOT}) !important; text-shadow:0 2px 24px rgb(0 0 0 / .5); }
 ${C} .of-credits-ver, ${C} .of-credits-made .k-row__sub { ${LABEL} display:inline-block; margin:18px 22px 0 0 !important; font-size:11px !important; letter-spacing:.24em !important;
   color:rgb(${BONE} / .72) !important; }
@@ -314,7 +338,7 @@ ${C} .of-credits-notice > .k-caps { ${LABEL} margin:6px 0 12px !important; font-
   background:none !important; padding:0 !important; }
 ${C} .of-credits-notice > .k-sentence { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important; line-height:1.6 !important; max-width:66ch !important;
   color:rgb(${BONE} / .68) !important; margin:0 0 10px !important; text-transform:none !important; letter-spacing:0 !important; }
-${C} .orr-cr-end { ${LABEL} display:flex; align-items:center; gap:16px; margin:96px 0 0 30px; font-size:10.5px; letter-spacing:.3em; color:rgb(${BONE} / .6); }
+${C} .orr-cr-end { ${LABEL} display:flex; align-items:center; gap:16px; margin:96px 0 0 30px; font-size:10.5px; letter-spacing:.3em; color:rgb(${BONE} / .68); }
 ${C} .orr-cr-end::before { content:""; width:28px; height:1px; background:rgb(${BONE} / .4); }
 /* Scroll Reveal: each line rises out of the dark as the reel brings it up */
 ${C} .orr-cr-line { opacity:0; transform:translateY(16px); transition:opacity 640ms var(--dp-ease-out, ease-out), transform 760ms var(--dp-ease-out, ease-out); }
@@ -430,8 +454,8 @@ export function createReelProgress(doc = globalThis.document) {
   const s = svg('svg', { class: 'orr-svg', viewBox: '0 0 62 62' });
   s.appendChild(svg('path', { d: ticksD(31, 31, 30, 40, { len: 2, major: 10, majorLen: 5 }), class: 'orr-core orr-faint', 'stroke-width': 1, 'stroke-linecap': 'butt' }));
   s.appendChild(svg('path', { d: arcD(31, 31, 22, 0, 360), class: 'orr-core orr-faint', 'stroke-width': 2 }));
-  const bloom = svg('path', { d: arcD(31, 31, 22, 0, 359.99), class: 'orr-bloom orr-phos', 'stroke-width': 6, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
-  const arc = svg('path', { d: arcD(31, 31, 22, 0, 359.99), class: 'orr-core orr-phos', 'stroke-width': 2, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
+  const bloom = svg('path', { d: arcD(31, 31, 22, 0, 360), class: 'orr-bloom orr-phos', 'stroke-width': 6, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
+  const arc = svg('path', { d: arcD(31, 31, 22, 0, 360), class: 'orr-core orr-phos', 'stroke-width': 2, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
   s.append(bloom, arc);
   const read = doc.createElement('div');
   const n = doc.createElement('b');
@@ -485,7 +509,17 @@ export function revealReel(root, lines) {
   return { dispose() { io.disconnect(); } };
 }
 
-const CSS = `${SETTINGS_CSS}
+const SPOT_CSS = `
+/* Spotlight (ORRERY §4 #13): a soft inspection light rides under the pointer, behind the words */
+:is(${S}, ${C}) > .orr-spot { position:absolute; left:0; top:0; width:100%; height:100%; z-index:0; pointer-events:none; opacity:0; transition:opacity .35s linear;
+  background:radial-gradient(300px circle at var(--x, 50%) var(--y, 50%), rgb(${BONE} / .075), rgb(${BONE} / .03) 42%, rgb(${BONE} / 0) 72%); }
+:is(${S}, ${C}) > .orr-spot.is-on { opacity:1; }
+html.sf-reduce-motion :is(${S}, ${C}) > .orr-spot { transition:none; }
+@media (forced-colors: active) { :is(${S}, ${C}) > .orr-spot { display:none; } }
+`;
+
+const CSS = `${SPOT_CSS}
+${SETTINGS_CSS}
 ${CREDITS_CSS}
 ${SCROLL_EXTENT_CSS}`;
 
@@ -504,7 +538,7 @@ export function injectOrrerySettings(doc = globalThis.document) {
  * Scale's fill from its value, and seat the rail's light cursor.
  * Idempotent per node; safe on a shim document (every DOM call is guarded).
  */
-export function dressSettingsPane(pane) {
+export function dressSettingsPane(pane, { arrive = false } = {}) {
   if (!pane || typeof pane.querySelectorAll !== 'function') return;
   for (const row of pane.querySelectorAll('.k-row')) {
     if (!row.dataset) continue;
@@ -532,4 +566,55 @@ export function dressSettingsPane(pane) {
     paint();
   }
   try { syncScrollExtent(pane); } catch (e) { /* a shim document has no layout */ }
+  if (arrive && !reducedMotion()) {
+    let i = 0;
+    for (const node of pane.children) {
+      const rows = node.classList && node.classList.contains('k-rows') ? [...node.children] : [node];
+      for (const row of rows) {
+        if (!row.classList || i > 22) continue;
+        row.classList.add('orr-set-rise');
+        row.style.setProperty('--orr-delay', `${60 + i * 26}ms`);
+        i += 1;
+      }
+    }
+    setTimeout(() => { for (const row of pane.querySelectorAll('.orr-set-rise')) row.classList.remove('orr-set-rise'); }, 1400);
+  }
+}
+
+/** Spotlight: a soft light that follows the pointer across the screen, behind its words. */
+export function attachSpotlight(root) {
+  const doc = root && root.ownerDocument;
+  if (!doc || typeof root.addEventListener !== 'function' || typeof root.insertBefore !== 'function') return null;
+  const spot = doc.createElement('i');
+  spot.className = 'orr-spot';
+  spot.setAttribute('aria-hidden', 'true');
+  root.insertBefore(spot, root.firstChild);
+  let frame = 0;
+  let px = 0;
+  let py = 0;
+  const paint = () => {
+    frame = 0;
+    const r = root.getBoundingClientRect();
+    const zoom = root.offsetWidth ? r.width / root.offsetWidth : 1;
+    spot.style.setProperty('--x', `${Math.round((px - r.left) / (zoom || 1))}px`);
+    spot.style.setProperty('--y', `${Math.round((py - r.top) / (zoom || 1))}px`);
+    spot.classList.add('is-on');
+  };
+  const onMove = (ev) => {
+    px = ev.clientX; py = ev.clientY;
+    if (frame) return;
+    if (typeof requestAnimationFrame === 'function') frame = requestAnimationFrame(paint); else paint();
+  };
+  const onLeave = () => spot.classList.remove('is-on');
+  root.addEventListener('pointermove', onMove, { passive: true });
+  root.addEventListener('pointerleave', onLeave);
+  return {
+    el: spot,
+    dispose() {
+      if (frame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
+      root.removeEventListener('pointermove', onMove);
+      root.removeEventListener('pointerleave', onLeave);
+      spot.remove();
+    },
+  };
 }

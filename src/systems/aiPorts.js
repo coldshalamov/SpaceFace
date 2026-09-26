@@ -13,7 +13,7 @@ import { activityAllowsOffense, effectiveActivityForAI, normalizeRoe } from '../
 import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
-import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
+import { isDynamicPhysicsBodyEntity, measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
@@ -861,6 +861,26 @@ function addBrakeForce(force, entity, profile, dt) {
   force.z += ((vz * scale) - vz) * profile.mass / dtSafe;
 }
 
+// Steering clearance follows the collider physics actually builds. A measured skin is fixed-body
+// geometry only (resolveCollisionProxyManifest refuses it on a dynamic body), so a dynamic hull
+// steers on the same gameplay radius its capsule/ball uses; stations and other fixed solids keep
+// the measured planar radius. `modelTruthPlanarRadius` returns this exact value for a body with
+// no skin, and maneuver's bodyRadius() falls back to `radius` when it is 0.
+// Fixed solids resolve their census row once (the lookup allocates); a changed radius, dock
+// radius, or data object re-measures.
+const STEERING_PLANAR_RADIUS_CACHE = new WeakMap();
+function steeringPlanarRadius(entity) {
+  if (!entity || isDynamicPhysicsBodyEntity(entity)) return Number(entity && entity.radius) || 0;
+  const data = entity.data || null;
+  const radius = entity.radius;
+  const dockRadius = data ? data.dockRadius : undefined;
+  const cached = STEERING_PLANAR_RADIUS_CACHE.get(entity);
+  if (cached && cached.data === data && cached.radius === radius && cached.dockRadius === dockRadius) return cached.value;
+  const value = modelTruthPlanarRadius(entity);
+  STEERING_PLANAR_RADIUS_CACHE.set(entity, { data, radius, dockRadius, value });
+  return value;
+}
+
 function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity), attachmentIndex = null, freeze = Object.freeze, cacheOwner = null) {
   const runtime = combatRuntimeFor(state, entity.id);
   const ai = entity.data && entity.data.ai || {};
@@ -878,7 +898,7 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     vel: vec2(entity.vel, freeze),
     rot: wrapAngle(finite(entity.rot)),
     radius: positive(entity.radius, 1),
-    planarRadius: modelTruthPlanarRadius(entity),
+    planarRadius: steeringPlanarRadius(entity),
     hullFraction: fraction(entity.hull, entity.hullMax, 1),
     moraleImmune: ai.moraleImmune === true,
     arenaPursuit: entity.data?.runCohort === 'survival' && ai.forcePlayerTarget === true,
@@ -1021,7 +1041,7 @@ function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, 
     pos: vec2(other.pos, freeze),
     vel: vec2(other.vel, freeze),
     radius: positive(other.radius, 0),
-    planarRadius: modelTruthPlanarRadius(other),
+    planarRadius: steeringPlanarRadius(other),
     alive: true,
     valid: true,
     visible: true,

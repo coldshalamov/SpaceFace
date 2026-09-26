@@ -8,6 +8,7 @@
 // hull-drain aura. The hangar jam holds reinforcements by moving mass, not by a spawn flag.
 
 import { fieldsFlag } from '../data/fields.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
   CINDER_SLUICE_FIELD,
   CINDER_SLUICE_SECTOR_ID,
@@ -21,6 +22,10 @@ import {
   APERTURE_ID,
   APERTURE_MOUTH,
   APERTURE_PLUG,
+  METRONOME_BEAM_DPS,
+  METRONOME_FIELD,
+  METRONOME_POI_ID,
+  METRONOME_SECTOR_ID,
   aperturePoint,
   WEATHER_SECTOR_IDS,
   WEATHER_VOLUMES,
@@ -33,10 +38,13 @@ import {
   killMachineFieldDir,
   killMachinePhase,
   killMachinesForSector,
+  metronomeBeamDir,
+  metronomeBeamEtaAt,
   pallasReefPhase,
   pointInsideAperture,
   pointInsideCinderSluice,
   pointInsideKillMachine,
+  pointInsideMetronomeBeam,
   pointInsidePallasReef,
   pointInsideWeatherVolume,
   weatherPhase,
@@ -129,6 +137,17 @@ export const environmentalMachinery = {
     this._aperturePlugEnsured = false;
     this._apertureLastPhase = null;
     this._apertureLastOccupant = null;
+    // The Metronome (Eris Margin): a rotating denial cone registered per-tick via one
+    // dir patch — the field kernel renormalizes it, presentation reads field.dir live.
+    this._metronomeRegistered = false;
+    this._metronomePlayerInside = false;
+    this._metronomeDirOut = { x: 1, z: 0 };
+    this._metronomePatch = { dir: { x: 1, z: 0 } };
+    // Perf: true once every machine region has been torn down and nothing is live. The per-tick
+    // update() on a route with no environmental machinery (the default) otherwise re-ran the
+    // whole _clear family at 60 Hz — dozens of field-system lookups and map ops that were all
+    // no-ops. _clear sets it; any active branch clears it.
+    this._clearSettled = false;
     if (this.bus && typeof this.bus.on === 'function') {
       const clear = (why) => this._clear(why);
       this._unsubs = [
@@ -158,10 +177,14 @@ export const environmentalMachinery = {
     const inWeather = !!(inFlight && WEATHER_SECTOR_IDS.has(sectorId));
     const sectorMachines = inFlight ? killMachinesForSector(sectorId) : EMPTY_LIST;
     const inKill = sectorMachines.length > 0;
-    if (!fieldsFlag('enabled') || !(inCeres || inPallas || inWeather || inKill)) {
-      this._clear(!(inCeres || inPallas || inWeather || inKill) ? 'inactive_route' : 'fields_disabled');
+    const inMetronome = !!(inFlight && sectorId === METRONOME_SECTOR_ID);
+    if (!fieldsFlag('enabled') || !(inCeres || inPallas || inWeather || inKill || inMetronome)) {
+      if (this._clearSettled !== true) {
+        this._clear(!(inCeres || inPallas || inWeather || inKill || inMetronome) ? 'inactive_route' : 'fields_disabled');
+      }
       return;
     }
+    this._clearSettled = false;
 
     if (inCeres) {
       this._updateCinder(state);
@@ -180,6 +203,86 @@ export const environmentalMachinery = {
     else this._clearWeather('wrong_sector');
     if (inFlight && sectorId === VESTA_ORE_WINNOW.sectorId) this._updateWinnow(state);
     else this._clearWinnow();
+
+    if (inMetronome) this._updateMetronome(_dt, state);
+    else this._clearMetronome('wrong_sector');
+  },
+
+  // The Metronome beam: one rotating denial cone. The sweep is pure simTime math —
+  // the kernel patch turns the beam, hazard boundaries speak on edge, and the wedge
+  // burns the player through the combat kernel's hazard-radiation origin while the
+  // field's own force carries mass out of the sweep. NPC ships and projectiles take
+  // the shove through the same field candidates — baiting a patrol into the beam is
+  // the authored counterplay; hull burn is player-only, same as every hazard zone.
+  _updateMetronome(dt, state) {
+    const system = this._fieldsSystem();
+    if (!system || typeof system.registerEnvironmental !== 'function') return;
+    const simTime = simTimeOf(state);
+    const dir = metronomeBeamDir(simTime, this._metronomeDirOut);
+    if (this._metronomeRegistered !== true || system.hasExternal(METRONOME_FIELD.id) !== true) {
+      system.registerEnvironmental({
+        ...METRONOME_FIELD,
+        dir: { x: dir.x, z: dir.z },
+        createdAt: simTime,
+      });
+      this._metronomeRegistered = true;
+    } else if (typeof system.updateExternal === 'function') {
+      const patch = this._metronomePatch;
+      patch.dir.x = dir.x;
+      patch.dir.z = dir.z;
+      system.updateExternal(METRONOME_FIELD.id, patch);
+    }
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const inside = !!(player && player.pos && pointInsideMetronomeBeam(player.pos, simTime));
+    if (inside !== this._metronomePlayerInside) {
+      this._emitHazardBoundary(inside, HAZARD_TYPE, METRONOME_FIELD.id, METRONOME_POI_ID, undefined, {
+        phase: 'sweep',
+        remainingS: inside ? 0 : metronomeBeamEtaAt(player.pos, simTime),
+      });
+      this._metronomePlayerInside = inside;
+    }
+    if (inside) this._applyMetronomeBurn(state, player, dt);
+  },
+
+  // The authored "radiation damage through the hazard system": a thermal burn with a
+  // hazard_radiation origin so the death log names the beam, through the combat
+  // kernel's single damage writer. No kernel, no burn — a stub fields system in a
+  // probe still gets the sweep without needing combat.
+  _applyMetronomeBurn(state, player, dt) {
+    const damage = METRONOME_BEAM_DPS * (Number(dt) || 0);
+    if (!(damage > 0) || !player || player.alive === false) return;
+    const combat = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('combat')
+      : null;
+    if (!combat || typeof combat.ensureKernel !== 'function') return;
+    const packet = scalarHitToDamagePacket({
+      damage,
+      damageType: 'thermal',
+      pos: player.pos,
+      source: { kind: 'hazard_radiation', hazardId: METRONOME_FIELD.id },
+    });
+    packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+    combat.ensureKernel().routeDamage({
+      attackerId: null,
+      targetId: player.id,
+      packet,
+      origin: { kind: 'hazard_radiation', id: METRONOME_FIELD.id },
+    });
+  },
+
+  _clearMetronome(why) {
+    const system = this._fieldsSystem();
+    if (system && typeof system.hasExternal === 'function' && system.hasExternal(METRONOME_FIELD.id)
+        && typeof system.unregisterExternal === 'function') {
+      system.unregisterExternal(METRONOME_FIELD.id);
+    }
+    this._metronomeRegistered = false;
+    if (this._metronomePlayerInside) {
+      this._emitHazardBoundary(false, HAZARD_TYPE, METRONOME_FIELD.id, METRONOME_POI_ID, why);
+      this._metronomePlayerInside = false;
+    }
   },
 
   _updateWinnow(state) {
@@ -260,6 +363,7 @@ export const environmentalMachinery = {
         reef: this._reefDiagnostics(simTime),
         weather: this._weatherDiagnostics(state, simTime),
         aperture: this._apertureDiagnostics(state, simTime),
+        metronome: this._metronomeDiagnostics(simTime),
       });
     }
     const phase = cinderSluicePhase(record, simTime);
@@ -274,6 +378,17 @@ export const environmentalMachinery = {
       reef: this._reefDiagnostics(simTime),
       weather: this._weatherDiagnostics(state, simTime),
       aperture: this._apertureDiagnostics(state, simTime),
+      metronome: this._metronomeDiagnostics(simTime),
+    });
+  },
+
+  _metronomeDiagnostics(simTime) {
+    const dir = metronomeBeamDir(simTime, this._metronomeDirOut);
+    return Object.freeze({
+      id: METRONOME_FIELD.id,
+      beamBearingDeg: Math.round((Math.atan2(dir.z, dir.x) * 180 / Math.PI) * 10) / 10,
+      fieldRegistered: this._metronomeRegistered === true,
+      playerInside: this._metronomePlayerInside === true,
     });
   },
 
@@ -935,6 +1050,8 @@ export const environmentalMachinery = {
     this._clearAperture(why);
     this._clearReef(why);
     this._clearWeather(why);
+    this._clearMetronome(why);
+    this._clearSettled = true;
   },
 };
 

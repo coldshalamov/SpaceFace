@@ -81,6 +81,7 @@ export function archivePlateSvg({ segments = [], current = -1, top = '', bottom 
   const parts = [];
   // the outer scale turns slowly: 120 graduations, a major every tenth
   parts.push(`<g class="orr-arc-drift"><path class="orr-arc-tick" d="${ticksD(C, C, 197, 120, { len: 3, major: 10, majorLen: 8 })}"/></g>`);
+  parts.push(`<path class="orr-arc-band" stroke-width="10" d="${arcD(C, C, 186, 0, 360)}"/>`);
   parts.push(`<path class="orr-arc-ring orr-arc-ring--outer orr-arc-draw" pathLength="1" d="${arcD(C, C, 186, 0, 360)}"/>`);
   // the section: one arc per entry
   const n = Math.max(0, segments.length | 0);
@@ -112,6 +113,7 @@ export function archivePlateSvg({ segments = [], current = -1, top = '', bottom 
   if (top) parts.push(arcText(C, C, 146, top, { size: 9.5 }));
   if (bottom) parts.push(arcText(C, C, 152, bottom, { lower: true, size: 9.5 }));
   // the aperture's rim and its four index marks
+  parts.push(`<path class="orr-arc-band" stroke-width="12" d="${arcD(C, C, 134, 0, 360)}"/>`);
   parts.push(`<path class="orr-arc-ring orr-arc-ring--rim" d="${arcD(C, C, 132, 0, 360)}"/>`);
   parts.push(`<path class="orr-arc-tick orr-arc-tick--hi" d="${ticksD(C, C, 132, 4, { len: 9 })}"/>`);
   if (glyph && ARCHIVE_GLYPHS[glyph]) {
@@ -161,7 +163,7 @@ export function missionDialSvg({ progress = 0, time = null, urgent = false } = {
     const t = clamp01(time);
     if (t > 0.004) {
       const d = arcD(C, C, 104, 0, 360 * t);
-      parts.push(`<path class="orr-mdial__clock-bloom${urgent ? ' is-threat' : ''}" d="${d}"/><path class="orr-mdial__clock${urgent ? ' is-threat' : ''}" d="${d}"/>`);
+      parts.push(`<path class="orr-mdial__clock-bloom${urgent ? ' is-threat' : ''}" d="${d}" pathLength="1"/><path class="orr-mdial__clock${urgent ? ' is-threat' : ''}" d="${d}" pathLength="1"/>`);
     }
   }
   // progress
@@ -171,7 +173,7 @@ export function missionDialSvg({ progress = 0, time = null, urgent = false } = {
   if (p > 0.004) {
     const d = p >= 0.999 ? inner : arcD(C, C, 88, 0, 360 * p);
     const [hx, hy] = polar(C, C, 88, 360 * p);
-    parts.push(`<path class="orr-mdial__prog-bloom" d="${d}"/><path class="orr-mdial__prog" d="${d}"/><circle class="orr-mdial__bead" cx="${q(hx)}" cy="${q(hy)}" r="3"/>`);
+    parts.push(`<path class="orr-mdial__prog-bloom" d="${d}" pathLength="1"/><path class="orr-mdial__prog" d="${d}" pathLength="1"/><circle class="orr-mdial__bead" cx="${q(hx)}" cy="${q(hy)}" r="3"/>`);
   }
   return `<svg class="orr-svg orr-mdial__svg" viewBox="0 0 240 240" aria-hidden="true" focusable="false">${parts.join('')}</svg>`;
 }

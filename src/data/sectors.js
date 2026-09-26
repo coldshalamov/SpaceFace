@@ -218,22 +218,26 @@ const CORE_SECTORS = [
         manualInvestigation: true,
       },
       // PQ-153.02 hero landmark (depth program C13e, lore `landmark_c13e_resonant_cathedral`).
-      // Anchors zone_vesta_forge beside the foundry it was raised against. `pos` is inline
-      // sector-local (the frontier-region precedent) because sectorAnchors.js is a contended table
-      // this packet does not own; applySectorAnchors leaves unanchored pois untouched. A `pos` on
-      // the record means _spawnPOIs scatters nothing for it.
+      // Anchors zone_vesta_forge beside the foundry it was raised against: (-330,1060) sits ~350 WU
+      // off station_forge with the f_vesta_3 crystal field's rim (~460 WU out, rocks to r360)
+      // composing its northern sky, clear of the vesta_storm_lane sheet at (680,320). The 2026-09-25
+      // landmark still review parked at (-1050,1180) and framed nothing but black — the old spot was
+      // 740 WU from the foundry and 1100+ WU from any field, a bare void the sector's dressing never
+      // reaches. `pos` is inline sector-local (the frontier-region precedent) because
+      // sectorAnchors.js is a contended table this packet does not own; applySectorAnchors leaves
+      // unanchored pois untouched. A `pos` on the record means _spawnPOIs scatters nothing for it.
       {
         id: 'poi_vesta_resonant_cathedral',
         type: 'anomaly',
         name: 'The Resonant Cathedral',
         landmark: true,
-        pos: { x: -1050, z: 1180 },
+        pos: { x: -330, z: 1060 },
         landmarkGlb: 'place_maintenance_gantry',
         visualRadius: 30,
         factionId: 'faction_choir',
         scannerSignalKind: 'archive',
         flavorTargetRef: 'landmark_c13e_resonant_cathedral',
-        dressingExclusionRadius: 300,
+        dressingExclusionRadius: 170,
         discoveryPlate: {
           title: 'The Resonant Cathedral',
           body: 'Twin spires and a resonance arch raised where the Choir first sang inside a '
@@ -381,21 +385,26 @@ const CORE_SECTORS = [
         manualInvestigation: true, recoveryEncounter: true },
       { id: 'poi_stash',  type: 'cache', name: 'Stash Cache', hidden: true },
       // PQ-153.02 hero landmark (depth program C13d, lore `landmark_c13d_skerris_throne`).
-      // Anchors zone_sker_haven (Skerris Deep) on the approach to the Bazaar: a fortress welded
-      // from captured hulls, so the shared dead-hulk silhouette is the honest one. Inline `pos`
-      // for the same reason as the Vesta landmark above.
+      // Anchors zone_sker_haven (Skerris Deep) ON the approach to the Bazaar: (300,-550) sits on
+      // the charted Pallas gate (2274,-3411) -> Sker Bazaar (-540,680) chord, threading the gap
+      // between the sector's two dense_asteroid pockets (873 WU off the first, 813 off the second
+      // — both clear), so a pilot arriving from Pallas flies past the fortress on final approach.
+      // The 2026-09-25 landmark still review parked at (-1500,1350) — 1170 WU BEYOND the Bazaar,
+      // off every approach, framed against bare black. A fortress welded from captured hulls, so
+      // the shared dead-hulk silhouette is the honest one. Inline `pos` for the same reason as the
+      // Vesta landmark above.
       {
         id: 'poi_sker_throne',
         type: 'colony',
         name: 'The Skerris Throne',
         landmark: true,
-        pos: { x: -1500, z: 1350 },
+        pos: { x: 300, z: -550 },
         landmarkGlb: 'place_dead_hulk',
         visualRadius: 34,
         factionId: 'faction_reach',
         scannerSignalKind: 'archive',
         flavorTargetRef: 'landmark_c13d_skerris_throne',
-        dressingExclusionRadius: 300,
+        dressingExclusionRadius: 170,
         discoveryPlate: {
           title: 'The Skerris Throne',
           body: 'A fortress welded from captured hulls, every plate a raid trophy with a story on '
@@ -437,7 +446,7 @@ const CORE_SECTORS = [
     trafficPerMin: 0, enemyDensity: 0.80, enemyLevel: [10, 15],
     neighbors: ['sector_charon_expanse'],
     stations: [
-      { id: 'station_ashcache', name: 'Ruined Cache Station', type: 'blackmarket', factionId: 'faction_vael', size: 'S', services: ['repair','refuel','missions'], repGated: true,
+      { id: 'station_ashcache', name: 'Ruined Cache Station', type: 'blackmarket', factionId: 'faction_vael', size: 'S', services: ['black_market','repair','refuel','missions'], repGated: true,
         chartNote: "Vael salvage, half-lit. Buys what shouldn't exist at what it shouldn't cost." },
     ],
     fields: [

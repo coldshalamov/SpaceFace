@@ -101,9 +101,11 @@ import {
 } from '../data/sectorActivityPockets.js';
 import {
   KILL_MACHINE_SECTOR_ID,
+  METRONOME_SECTOR_ID,
   PALLAS_REEF_SECTOR_ID,
   apertureHazardZones,
   killMachineHazardZones,
+  metronomeHazardZone,
   pallasReefHazardZone,
   weatherHazardZones,
   weatherScanScale,
@@ -165,6 +167,7 @@ import {
 } from '../world/asteroidField.js';
 import { asteroidMass } from '../data/sectorPhysical.js';
 import {
+  dropDressingRow,
   dropDressingSector,
   insertDressingRow,
   getDressingRow,
@@ -1079,6 +1082,8 @@ export const world = {
       RESIDENCY_TIER.FULL,
       opts,
     );
+    // A bag first built REDUCED presented its POIs as dressing rows; FULL owes the live actors.
+    this._promotePoiRowsToLive(sector, active);
     // Already has combat presence → keep anchors; still may need dressing.
     if ((active.enemies && active.enemies.length) || (active.dressing && active.dressing.length)) {
       if (!(active.dressing && active.dressing.length)) {
@@ -1105,6 +1110,42 @@ export const world = {
     }
     this._ensureOpticStructures(sector, active);
     this.helpers.requestPresentationRebuild?.('sector-full');
+  },
+
+  /**
+   * FULL residents keep the POIs that must stay live actors (poiMustStayLiveActor: landmarks,
+   * scanner signals, discovery plates, band-fleet hulls) on the live list, exactly as a bag first
+   * materialized FULL spawns them. A bag first built REDUCED holds them as dressing rows; move each
+   * such row to a live marker under the same data and poi identity, and repoint the bag entry.
+   * Idempotent: rows already live are not dressing rows and are skipped.
+   */
+  _promotePoiRowsToLive(sector, active) {
+    if (!sector || !active || !Array.isArray(active.pois)) return;
+    const sourceById = new Map((sector.pois || []).map((poi) => [poi.id, poi]));
+    for (const entry of active.pois) {
+      const row = entry && entry.id != null ? getDressingRow(this.state, entry.id) : null;
+      if (!row || !row.data || row.data.poi !== true) continue;
+      const data = row.data;
+      const bandHull = Number.isFinite(Number(data.quiessenceShipIndex));
+      const source = sourceById.get(data.poiId) || null;
+      const slot = typeof data.activityObjectSlotId === 'string' ? data.activityObjectSlotId : null;
+      if (!bandHull && !(source && poiMustStayLiveActor(source, slot))) continue;
+      const pos = { x: row.pos.x, z: row.pos.z };
+      dropDressingRow(this.state, row.id);
+      const ent = this.helpers.spawnEntity({
+        type: 'fx',
+        factionId: (source && source.factionId) || null,
+        pos,
+        radius: row.radius,
+        mass: 0,
+        collides: !!(source && source.collides),
+        ...(bandHull ? { physicsBody: false } : {}),
+        ttl: Infinity,
+        data,
+      });
+      this._stampHomeSector(ent, sector.id);
+      entry.id = ent.id;
+    }
   },
 
   // Optic lattices are live colliders, spawned once per sector bag. They do not draw the
@@ -1243,7 +1284,12 @@ export const world = {
     // entity-list walk. Sector entry used to scan the full population twice here (capture, then
     // despawn), making outgoing retirement a measurable arrival-frame cost.
     this._captureSectorDurableRecords(sectorId, { reason: 'strip_full', despawnIds: kill });
-    dropDressingSector(this.state, sectorId);
+    // POI markers (and band-landmark hulls) share the dressing table with the FULL props, and this
+    // strip also runs the instant a neighbour is first materialized REDUCED. A sector-wide drop
+    // erased every non-live POI there before its first frame (the Skerris Throne, the Resonant
+    // Cathedral) and FULL promotion never re-spawned them. Keep the structural rows, per the
+    // contract above ("keep ... pois").
+    dropDressingSector(this.state, sectorId, (row) => !!(row && row.data && row.data.poi === true));
     active.enemies = [];
     active.dressing = [];
     active.worldOneOffSpins = [];
@@ -2921,6 +2967,9 @@ export const world = {
     if (sector.id === PALLAS_REEF_SECTOR_ID) extra.push(pallasReefHazardZone());
     extra.push(...weatherHazardZones(sector.id));
     extra.push(...apertureHazardZones(sector.id));
+    // The Metronome's approach-warning circle: the map marker + hazard:enter/exit
+    // language come free, while the beam wedge itself does the real work.
+    if (sector.id === METRONOME_SECTOR_ID) extra.push(metronomeHazardZone());
     for (const zone of extra) {
       if (existing.has(zone.id)) continue;
       const center = this._toGlobal(zone.center, sector.id);
@@ -3492,6 +3541,9 @@ export const world = {
   _tickAsteroidFieldInteractions(state) {
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     if (!player || !player.pos) return;
+    // Reach must cover the largest promotion distance below: a rock promotes when the
+    // player touches its real collider skin, which exceeds rec.radius by the authored
+    // collider factor (worst 1.55x). 36 covers every authored rock size (radius <= 30).
     const reach = (player.radius || 8) + 36;
     const hits = queryAsteroidField(state, player.pos, reach, this._fieldHitScratch || (this._fieldHitScratch = []));
     for (let i = 0; i < hits.length; i++) {
@@ -3499,7 +3551,11 @@ export const world = {
       if (!rec || !rec.pos) continue;
       const dx = rec.pos.x - player.pos.x;
       const dz = rec.pos.z - player.pos.z;
-      const rad = (player.radius || 8) + (rec.radius || 8);
+      // Promote at the spawned collider's skin, not the record's: the Rapier ball is
+      // rec.radius x the authored collider scale, so a record-skin trigger would create
+      // the body already penetrating the player — a depenetration yeet, not a bump.
+      const colliderR = asteroidColliderRadius(rec.data && rec.data.typeId, rec.radius || 8);
+      const rad = (player.radius || 8) + colliderR;
       if (dx * dx + dz * dz <= rad * rad) {
         promoteAsteroidFieldRock(state, rec.id, this.helpers, 'ram');
       }
@@ -3532,7 +3588,10 @@ export const world = {
   _growFieldSeam(state, sector, field, due) {
     const helpers = this.helpers;
     if (!helpers || typeof helpers.spawnEntity !== 'function') return 0;
-    const live = this._liveFieldRockCount(state, field.id);
+    // The cap is an entity-budget guard — live rocks cost sim and scan bandwidth. Dormant
+    // field records do not: a stocked field whose live rocks were mined out must still get
+    // its seam, or regrowth can never fire anywhere rocks remain on the shelf.
+    const live = this._liveFieldRockCount(state, field.id, { includeDormant: false });
     if (live >= FIELD_REGROWTH_LIVE_CAP) {
       // The belt is already standing at cap; restart the slow clock so the next seam waits for the
       // player to make room instead of spawning into a full field.
@@ -3572,7 +3631,13 @@ export const world = {
         const yieldU = Math.max(1, Math.round(baseYieldU * richness * FIELD_REGROWTH_YIELD_SCALE));
         const px = field.center.x + Math.cos(ang) * r;
         const pz = field.center.z + Math.sin(ang) * r;
-        // Clearance applies to published rocks only; the free seam keeps its authored scatter.
+        // No rock may materialize inside a live hull — a spawned collider on a ship is a
+        // depenetration yeet, not a seam. Applies to the free seam too: a pilot parked in
+        // a dead belt still deserves to keep their ship.
+        const colliderR = asteroidColliderRadius(def.id, size);
+        if (!this._seamCandidateClearOfHulls(state, px, pz, colliderR)) continue;
+        // The remaining clearance applies to published rocks only; the free seam keeps its
+        // authored scatter against anchors and the sector envelope.
         if (lease && !this._resourceWorkCandidateClear(state, sector, px, pz, size)) continue;
         const ent = helpers.spawnEntity({
           type: 'asteroid',
@@ -3583,6 +3648,7 @@ export const world = {
           hull: oreHP,
           hullMax: oreHP,
           collides: true,
+          physicsBody: { radius: colliderR },
           data: {
             typeId: def.id, tier: def.tierCap, tierCap: def.tierCap,
             oreHP, oreHPMax: oreHP, yieldU,
@@ -3793,6 +3859,10 @@ export const world = {
       }
       const size = 8;
       const oreHP = 200;
+      const colliderR = asteroidColliderRadius(def && def.id, size);
+      // A spot under a live hull is a depenetration yeet, not a rock — the frozen spot stays
+      // canonical and retries on the next materialization when the hull has moved.
+      if (!this._seamCandidateClearOfHulls(state, rock.x, rock.z, colliderR)) continue;
       const ent = helpers.spawnEntity({
         type: 'asteroid',
         pos: { x: rock.x, z: rock.z },
@@ -3801,6 +3871,7 @@ export const world = {
         hull: oreHP,
         hullMax: oreHP,
         collides: true,
+        physicsBody: { radius: colliderR },
         data: {
           typeId: def ? def.id : 'ast_common_rock',
           tier: 0,
@@ -3851,7 +3922,7 @@ export const world = {
     return res.grown;
   },
 
-  _liveFieldRockCount(state, fieldId) {
+  _liveFieldRockCount(state, fieldId, { includeDormant = true } = {}) {
     let live = 0;
     // Authored field rocks idle as dormant records, not entities — count them or a stocked
     // field reads as empty and the used-up trigger degenerates to depletion alone. Promoted
@@ -3859,7 +3930,7 @@ export const world = {
     // cross-sector; positions are sector-local, so only the current sector's records count.
     const sectorId = state.world && state.world.currentSectorId;
     const bag = state.world && state.world.asteroidField;
-    if (bag && Array.isArray(bag.rocks)) {
+    if (includeDormant && bag && Array.isArray(bag.rocks)) {
       for (const rec of bag.rocks) {
         if (!rec || rec.alive === false || rec.liveEntityId != null) continue;
         const home = rec.homeSectorId || (rec.data && rec.data.homeSectorId);
@@ -3985,6 +4056,12 @@ export const world = {
         if (adx * adx + adz * adz < keep * keep) return false;
       }
     }
+    return this._seamCandidateClearOfHulls(state, x, z, radius);
+  },
+
+  /** True when a spawned disc at (x,z) would not intersect a live hull. Radius should be the
+   * real collider radius — that is the circle physics resolves, not the visual reference. */
+  _seamCandidateClearOfHulls(state, x, z, radius) {
     const list = state.entityList || [];
     for (let i = 0; i < list.length; i++) {
       const e = list[i];

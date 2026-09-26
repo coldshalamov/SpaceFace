@@ -94,7 +94,7 @@ function springAmbush(d, live, state, player, trigger = 'ignored_demand') {
   d.setPassive(live, false);
   live.phase = 'conflict';
   settleWakeMotive(d, live, trigger);
-  d.say(live, 'alert', 'ambush_spring');
+  d.say(live, 'alert', (live.shape && live.shape.springBark) || 'ambush_spring');
   // W03 shape 325: mine_layer_jackal seeds wake mines on spring (telegraph cue wake_mines).
   if (live.shapeId === 'minefield_wake') seedMinefieldWake(d, live, state, player || d.player());
   // A demand-mode shape also speaks its authored telegraph as the trap shuts — 325's
@@ -497,7 +497,11 @@ const ambush = {
     // Demand mode: an ambush shape that declares choices (minefield wake) voices its own
     // demand bark and opens the decision window. Choiceless ambushes keep the 300 s stalk.
     if (ambushHasDemand(live)) {
-      live.vars.amount = tollAmountFor(d.cargoValue());
+      // A flat contract price when the shape declares one (327's Quiet buyout), else the
+      // cargo-scaled toll amount the wake pirates quote.
+      live.vars.amount = Number.isFinite(live.shape && live.shape.buyoutCr)
+        ? live.shape.buyoutCr
+        : tollAmountFor(d.cargoValue());
       live.deadlineAt = d.now() + (live.shape.offerS || 12);
       d.say(live, 'bark', live.shape.bark || 'ambush_tele', live.vars, { primary: true });
       d.offerChoices(live, live.shape.choices.map((c) => c.id), live.shape.timeoutChoice || 'refuse', live.deadlineAt);
@@ -550,10 +554,25 @@ const ambush = {
 
   choose(d, live, state, choiceId) {
     if (live.phase !== 'offer' || !ambushHasDemand(live)) return;
+    const ack = (live.shape && live.shape.ackBarks) || {};
+    if (choiceId === 'buyout') {
+      // Credits-priced contract buyout (327 ghost): the quiet honors a paid contract.
+      const amount = live.vars.amount | 0;
+      if (((state.player && state.player.credits) | 0) < amount) {
+        d.say(live, 'bark', ack.broke || 'toll_broke_ack');
+        return ambush.choose(d, live, state, 'refuse');
+      }
+      d.charge(amount, 'contract:quiet_buyout');
+      d.rep('faction_quiet', 1, 'contract_bought_out');
+      d.dangerImpulse(live, 'contract_bought_out', -0.01);
+      d.say(live, 'bark', ack.bought || 'wake_tithe_paid');
+      d.despawnAll(live, 22);                              // the lock releases; the ghost is gone
+      return d.resolve(live, 'paid', { vars: live.vars });
+    }
     if (choiceId === 'pay') {
       const amount = live.vars.amount | 0;
       if (d.cargoValue() < amount) {
-        d.say(live, 'bark', 'toll_broke_ack');
+        d.say(live, 'bark', ack.broke || 'toll_broke_ack');
         return ambush.choose(d, live, state, 'refuse');
       }
       const tithe = d.takeTithe(amount);
@@ -564,14 +583,14 @@ const ambush = {
       return d.resolve(live, 'paid', { vars: { ...live.vars, tithe: tithe.label } });
     }
     if (choiceId === 'run') {
-      d.say(live, 'bark', 'toll_flee_ack');
+      d.say(live, 'bark', ack.flee || 'toll_flee_ack');
       d.despawnAll(live, 18);
       return d.resolve(live, 'escaped');
     }
     // refuse (and the response to opening fire): the demand collapses into the spring —
     // mines and all. Timeout arrives as 'timeout' so silence stamps ignored_demand while
     // an explicit refusal stamps explicit_refusal, mirroring the toll contract.
-    d.say(live, 'bark', 'toll_refused_ack');
+    d.say(live, 'bark', ack.refused || 'toll_refused_ack');
     const trigger = choiceId === 'attack' ? 'player_attack'
       : choiceId === 'timeout' ? 'ignored_demand' : 'explicit_refusal';
     springAmbush(d, live, state, d.player(), trigger);

@@ -40,6 +40,7 @@ import {
   slicePoints,
   throatOpen,
 } from '../src/data/modelTruthMath.js';
+import { unmeasuredHitVolumeIds } from '../src/data/modelTruthMounts.js';
 import { resolveCraftProportions } from '../src/core/sg02DynamicBodyOwner.js';
 import { displacementScalar, silhouetteRadius as geologySilhouetteRadius } from '../src/render/objectSpaceGeology.js';
 import { PART_LIBRARY_CONTRACT, liveSolidGlbCatalog } from '../src/render/partsLibrary.js';
@@ -236,6 +237,12 @@ async function measureGlb(absPath) {
   }
   sockets.sort((a, b) => a.name.localeCompare(b.name));
   materials.sort((a, b) => a.name.localeCompare(b.name) || a.role.localeCompare(b.role));
+  const generator = String(root.getAsset?.()?.getGenerator?.() || '');
+  const imageCount = typeof root.listTextures === 'function' ? root.listTextures().length : 0;
+  const legacyTextureRole = imageCount > 0 && !(root.listMaterials?.() || []).some((material) => {
+    const extras = material.getExtras?.() || {};
+    return extras.textureRole || extras.spacefaceTextureRole || extras.textureRoleMode;
+  });
   return {
     bytes,
     triangles,
@@ -249,7 +256,36 @@ async function measureGlb(absPath) {
     materials,
     sockets,
     meshHash,
+    generator,
+    imageCount,
+    legacyTextureRole,
   };
+}
+
+function tasteOf(measured) {
+  if (!measured || measured.missing) return [];
+  const taste = [];
+  if ((measured.imageCount || 0) === 0) taste.push('no-embedded-png');
+  const generator = String(measured.generator || '');
+  if (generator && !/blender|spaceface|gltf-transform|khronos/i.test(generator)) taste.push('generator-name');
+  if (measured.legacyTextureRole) taste.push('legacy-texture-role');
+  return taste;
+}
+
+function withTaste(row, measured, status) {
+  const taste = tasteOf(measured);
+  const next = { ...status };
+  if (taste.length && next.status === 'green') {
+    next.status = 'red';
+    next.reasons = taste;
+  } else if (taste.length) {
+    next.reasons = [...(next.reasons || []), ...taste];
+  }
+  row.tasteBudget = taste.length ? taste.join(',') : null;
+  row.unmeasuredHitVolumes = unmeasuredHitVolumeIds(row);
+  row.status = next.status;
+  row.reasons = next.reasons;
+  return row;
 }
 
 const glbCache = new Map();
@@ -629,7 +665,7 @@ async function measureRow(row) {
     lod,
   });
 
-  return {
+  const built = {
     id: row.id,
     family: row.family,
     url: measured.url,
@@ -689,6 +725,7 @@ async function measureRow(row) {
     note: status.note,
     tasteBudget: null,
   };
+  return withTaste(built, measured, status);
 }
 
 async function buildCensus() {

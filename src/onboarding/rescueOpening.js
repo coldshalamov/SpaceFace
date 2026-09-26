@@ -150,10 +150,14 @@ export function makeRescueCastSpecs(playerPos, rng) {
       vel: { x: Math.cos(drift) * RESCUE_SCOUT_DRIFT_WU, z: Math.sin(drift) * RESCUE_SCOUT_DRIFT_WU },
       radius: 8,
       mass: 16,
-      // Lesson body: hittable so starter-gun impulse can land. Hull is high enough
-      // that a ~20-shot Pulse Laser S burst cannot kill the shove target.
-      hull: 500,
-      hullMax: 500,
+      // Lesson body: hittable so starter-gun impulse can land. A landed starter hit spends
+      // ~5.2 hull (default difficulty), so 120 keeps the authored promise — a ~20-shot
+      // Pulse Laser S burst spends ~105 of 120 and cannot kill the shove target — without
+      // the ~5x sponge overshoot that invited grinding on a body the marker does not ask
+      // you to kill (PQ-163.00 receipt leftover). Killing it IS possible (~24 deliberate
+      // shots) and is a restaged retry, never a wall.
+      hull: 120,
+      hullMax: 120,
       data: {
         weapons: [],
         ai: {
@@ -273,6 +277,85 @@ export function rescuePlayerLatchedTo(state, playerId, targetId) {
     if (att.ownerId === playerId && att.targetId === targetId) return true;
   }
   return false;
+}
+
+// ── Coherent retry placement (PQ-163.00 receipt leftover) ────────────────────────────────
+// A restaged body must re-open the SAME readable problem, not a fresh seeded bearing: the
+// first shove attempt is "push it along the player→wall line", so the retry's scout must sit
+// on the STANDING wall's line again — not 300 wu off it because the spec re-rolled a bearing
+// the standing actors never moved to. Pure and deterministic: placement reads only the
+// caller's player position, the standing actors' live positions, and the caller's rng.
+// `standing` slots are entity-likes ({ pos: {x,z} }) or null when the body itself must be
+// restaged (its own slot is ignored).
+export function rescueSlotRespawnTransform(slot, playerPos, standing, rng) {
+  const px = finite(playerPos && playerPos.x);
+  const pz = finite(playerPos && playerPos.z);
+  const bearing = () => drawRng(rng) * Math.PI * 2;
+  if (slot === 'rock') {
+    // The swing reads rock → derelict: re-stage on the wreck's line, one tow pass short of
+    // it (the authored rock sat 140 wu up-line from the wreck), on the pilot's side so the
+    // release line passes where the player is.
+    const derelict = standing && standing.derelict && standing.derelict.pos
+      ? standing.derelict : null;
+    if (derelict) {
+      const dx = px - derelict.pos.x;
+      const dz = pz - derelict.pos.z;
+      const d = Math.hypot(dx, dz) || 1;
+      const range = Math.min(140, Math.max(90, d * 0.5));
+      return {
+        pos: { x: derelict.pos.x + (dx / d) * range, z: derelict.pos.z + (dz / d) * range },
+        vel: { x: 0, z: 0 },
+      };
+    }
+    const theta = bearing();
+    return {
+      pos: { x: px + Math.cos(theta) * 90, z: pz + Math.sin(theta) * 90 },
+      vel: { x: 0, z: 0 },
+    };
+  }
+  if (slot === 'scout') {
+    // The shove reads scout → asteroid: re-stage on the STANDING wall's line at the authored
+    // 28% offset from the wall back toward the pilot, with the authored 5 wu/s live drift.
+    const asteroid = standing && standing.asteroid && standing.asteroid.pos
+      ? standing.asteroid : null;
+    const drift = bearing();
+    const vel = { x: Math.cos(drift) * RESCUE_SCOUT_DRIFT_WU, z: Math.sin(drift) * RESCUE_SCOUT_DRIFT_WU };
+    if (asteroid) {
+      return {
+        pos: {
+          x: asteroid.pos.x + (px - asteroid.pos.x) * 0.28,
+          z: asteroid.pos.z + (pz - asteroid.pos.z) * 0.28,
+        },
+        vel,
+      };
+    }
+    const theta = bearing();
+    return {
+      pos: { x: px + Math.cos(theta) * 240, z: pz + Math.sin(theta) * 240 },
+      vel,
+    };
+  }
+  if (slot === 'pod') {
+    // The grab reads pod → beacon: re-stage one approach leg from the pilot toward the
+    // STANDING beacon, so the run still points at the ring the fiction names.
+    const beacon = standing && standing.beacon && standing.beacon.pos ? standing.beacon : null;
+    if (beacon) {
+      const dx = beacon.pos.x - px;
+      const dz = beacon.pos.z - pz;
+      const d = Math.hypot(dx, dz) || 1;
+      const range = Math.min(260, d * 0.5);
+      return {
+        pos: { x: px + (dx / d) * range, z: pz + (dz / d) * range },
+        vel: { x: 0, z: 0 },
+      };
+    }
+    const theta = bearing();
+    return {
+      pos: { x: px + Math.cos(theta) * 260, z: pz + Math.sin(theta) * 260 },
+      vel: { x: 0, z: 0 },
+    };
+  }
+  return null;
 }
 
 // ── Funnel events (complete / fail / which beat — the honest telemetry, no percentages) ──

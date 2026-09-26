@@ -99,7 +99,13 @@ ${T} .con-back.sf-back.k-word::after { content:"· ESC" / "" !important; all:uns
 ${T} .con-back.sf-back.k-word:is(:hover, :focus-visible) { outline:none !important; text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:6px; }
 ${T} .con-legend { display:flex; align-items:center; gap:clamp(14px, 1.5vw, 30px); }
 ${T} .con-legend__item { display:inline-flex; align-items:center; gap:8px; ${LABEL} font-size:clamp(9.5px, .56vw, 11.5px); letter-spacing:.18em; color:rgb(${BONE} / .68); }
-${T} .con-legend__item svg { width:16px; height:16px; overflow:visible; flex:none; }
+${T} .con-legend__item svg { width:24px; height:24px; overflow:visible; flex:none; }
+${T} .con-view { display:inline-flex; align-items:baseline; gap:12px; ${LABEL} font-size:clamp(9.5px, .56vw, 11.5px); letter-spacing:.18em; color:rgb(${BONE} / .66); white-space:nowrap; }
+${T} .con-view__zoom { ${NUMERAL} font-size:clamp(16px, 1vw, 22px); letter-spacing:0; color:rgb(${WARM}); }
+${T} .con-view__reset { all:unset; cursor:pointer; color:rgb(${WARM}); }
+${T} .con-view__reset::before { content:"› "; color:rgb(${BONE} / .55); }
+${T} .con-view__reset[hidden] { display:none; }
+${T} .con-view__reset:is(:hover, :focus-visible) { outline:none !important; text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:5px; }
 ${T} .con-picker { display:flex; align-items:center; gap:14px; margin-left:auto; }
 ${T} .con-picker__label { ${LABEL} font-size:clamp(9.5px, .56vw, 11.5px); letter-spacing:.2em; color:rgb(${BONE} / .66); }
 ${T} select.k-select.con-select { min-width:clamp(180px, 13vw, 280px); min-height:36px; ${READ} font-size:clamp(14px, .8vw, 16px) !important; color:rgb(${WARM}) !important;
@@ -116,6 +122,9 @@ ${T} select.k-select.con-select option { background:#0c0f13; color:rgb(${WARM});
 }
 @media (max-width:1100px) {
   ${T} .con-legend { display:none; }
+}
+@media (max-width:1400px) {
+  ${T} .con-view__word { display:none; }
 }
 @media (forced-colors:active) {
   ${T} > .con-side::before { display:none; }
@@ -159,6 +168,11 @@ ${A} > .con-medal-read::before { ${POOL('-14% -20% -8% -24%')} }
 ${A} .con-medal-read > * { margin:0; }
 ${A} .con-medal-read__dial { position:relative; width:clamp(140px, 11.5vw, 260px); height:clamp(140px, 11.5vw, 260px); margin-bottom:clamp(4px, 1vh, 14px) !important; --con-glyph:calc(clamp(140px, 11.5vw, 260px) * .3); }
 ${A} .con-medal-read__dial > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+${A} .con-medal-read__dial > .con-medal__art { opacity:.34; }
+${A} .con-medal-read__dial[data-state="going"] > .con-medal__art { opacity:.66; }
+${A} .con-medal-read__dial[data-state="earned"] > .con-medal__art { opacity:1; }
+${A} .con-medal-read__dial.has-art > .con-medal__glyph { display:none; }
+${A} .con-medal-read__dial.has-art.has-glyph > .con-medal__glyph { display:grid; }
 ${A} .con-medal-read__dial .con-medal__glyph { color:rgb(${BONE} / .55); }
 ${A} .con-medal-read__dial[data-state="earned"] .con-medal__glyph { color:rgb(${WARM}); }
 ${A} .con-medal-read__dial[data-state="going"] .con-medal__glyph { color:rgb(${BONE} / .8); }
@@ -204,7 +218,13 @@ export function injectConstellationScreens(doc = globalThis.document) {
 }
 
 /** The legend's glyph: the star a node of that state is, drawn the way the dial draws it. */
-export function legendStarSvg(kind) {
+export function legendStarSvg(kind, art = '') {
+  if (art) {
+    // the produced star itself, lit the way the dial lights it
+    const k = kind === 'researched' ? 1 : kind === 'available' ? 0.74 : 0.5;
+    const o = kind === 'researched' ? 1 : kind === 'available' ? 0.95 : 0.45;
+    return `<svg viewBox="-14 -14 28 28" aria-hidden="true" focusable="false"><image href="${art}" x="${-14 * k}" y="${-14 * k}" width="${28 * k}" height="${28 * k}" opacity="${o}"></image></svg>`;
+  }
   const open = '<svg viewBox="-8 -8 16 16" aria-hidden="true" focusable="false">';
   if (kind === 'researched') {
     return `${open}<circle r="6.5" fill="rgb(${WARM})" opacity=".18"></circle><path d="M-8 0H8M0-8V8" stroke="rgb(${WARM})" stroke-width="1" opacity=".7"></path>`

@@ -516,7 +516,31 @@ try {
       row.n++; row.totalMs += j.durationMs; row.maxMs = Math.max(row.maxMs, j.durationMs);
     }
     for (const row of Object.values(byKind)) { row.totalMs = Math.round(row.totalMs); row.maxMs = Math.round(row.maxMs); }
-    return { count: jobs.length, p50Ms: pct(0.5), p95Ms: pct(0.95), maxMs: sorted.length ? Math.round(sorted[sorted.length - 1]) : null, byKind };
+    // Where a job's service time goes: decode/compose/pipeline(GPU gate)/commit, summed over
+    // flight jobs that carry phase timings (per-job phase split of the serial lane). Pipeline
+    // sub-phases (policies/compile/residency) name what the GPU gate itself waited on.
+    const PHASE_KEYS = ['decodeMs', 'composeMs', 'pipelineMs', 'commitMs'];
+    const SUBPHASE_KEYS = ['policiesMs', 'compileMs', 'residencyMs'];
+    const phaseTotals = {};
+    let phaseJobs = 0;
+    for (const key of [...PHASE_KEYS, ...SUBPHASE_KEYS]) phaseTotals[key] = { totalMs: 0, maxMs: 0 };
+    for (const j of jobs) {
+      if (!j.phases) continue;
+      phaseJobs++;
+      for (const key of [...PHASE_KEYS, ...SUBPHASE_KEYS]) {
+        const v = Number(j.phases[key]);
+        if (!Number.isFinite(v)) continue;
+        phaseTotals[key].totalMs += v;
+        phaseTotals[key].maxMs = Math.max(phaseTotals[key].maxMs, Math.round(v));
+      }
+    }
+    for (const row of Object.values(phaseTotals)) { row.totalMs = Math.round(row.totalMs); }
+    return {
+      count: jobs.length,
+      p50Ms: pct(0.5), p95Ms: pct(0.95),
+      maxMs: sorted.length ? Math.round(sorted[sorted.length - 1]) : null,
+      byKind, phaseJobs, phaseTotals,
+    };
   }).catch(() => null);
 
   console.log('\nframe-solid audit — everything in the player frame stays drawn and solid');
@@ -554,6 +578,14 @@ try {
   const contextLosses = await page.evaluate(() => window.__SF_CONTEXT_LOSSES__ || 0).catch(() => null);
   console.log(`  admission lanes: ${JSON.stringify((summary && summary.lanes) || null)}`);
   console.log(`  authored composition jobs in flight: ${JSON.stringify(upgradeJobs)}`);
+  if (upgradeJobs && upgradeJobs.phaseJobs > 0) {
+    const totals = upgradeJobs.phaseTotals || {};
+    const sum = Object.values(totals).reduce((acc, row) => acc + row.totalMs, 0) || 1;
+    const shares = Object.entries(totals)
+      .map(([key, row]) => `${key}=${row.totalMs}ms(${Math.round((row.totalMs / sum) * 100)}%,max ${row.maxMs}ms)`)
+      .join(' ');
+    console.log(`  job phase split over ${upgradeJobs.phaseJobs} timed jobs: ${shares}`);
+  }
   console.log(`  context losses: ${contextLosses == null ? 'NOT MEASURED' : contextLosses}`);
   console.log(`  gpu submission: ${submission ? JSON.stringify(submission) : 'NOT MEASURED'}`);
   if (drawCensus) {

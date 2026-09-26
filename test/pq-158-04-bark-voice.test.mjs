@@ -67,14 +67,14 @@ function recipeIdsHas(id) {
   return RECIPES.some((r) => r.id === id);
 }
 
-test('eight faction registers are distinct; mechanic is a ninth close-mic register', () => {
-  assert.equal(BARK_FACTIONS.length, 8);
-  assert.equal(Object.keys(FACTION_VOICE_REGISTERS).length, 8);
+test('thirteen faction registers are distinct; mechanic is a fourteenth close-mic register', () => {
+  assert.equal(BARK_FACTIONS.length, 13);
+  assert.equal(Object.keys(FACTION_VOICE_REGISTERS).length, 13);
   assert.equal(factionRegistersAreDistinct(), true);
   const f0s = new Set(BARK_FACTIONS.map((id) => FACTION_VOICE_REGISTERS[id].f0));
   const rates = new Set(BARK_FACTIONS.map((id) => FACTION_VOICE_REGISTERS[id].rate));
-  assert.ok(f0s.size >= 7, 'registers must sit on different fundamentals');
-  assert.ok(rates.size >= 6, 'registers must speak at different cadences');
+  assert.ok(f0s.size >= 12, 'registers must sit on different fundamentals');
+  assert.ok(rates.size >= 11, 'registers must speak at different cadences');
   assert.equal(MECHANIC_VOICE_REGISTER.id, 'mechanic');
   assert.notEqual(MECHANIC_VOICE_REGISTER.f0, FACTION_VOICE_REGISTERS.faction_scn.f0);
   const mechanic = enumerateMechanicPipeline();
@@ -202,7 +202,7 @@ test(`seed ${MEASURE_SEED}: all ${BARK_CORPUS_TARGET} directed-voice lines exist
   console.log(`[pq-158.04 delivered] seed=${MEASURE_SEED} wavs=${rows.length}/${BARK_CORPUS_TARGET}`);
 });
 
-test(`seed ${MEASURE_SEED}: unlabeled callsign PCM names all eight registers (no filename, no label)`, () => {
+test(`seed ${MEASURE_SEED}: unlabeled callsign PCM names all thirteen registers (no filename, no label)`, () => {
   const shuffled = [...BARK_FACTIONS];
   // Deterministic shuffle from the seed, not Math.random.
   let s = MEASURE_SEED >>> 0;
@@ -220,11 +220,11 @@ test(`seed ${MEASURE_SEED}: unlabeled callsign PCM names all eight registers (no
     assert.equal(got, factionId, `unlabeled ${factionId} callsign named ${got}`);
     named.push(got);
   }
-  assert.equal(new Set(named).size, 8);
+  assert.equal(new Set(named).size, 13);
   console.log(`[pq-158.04 pcm-blind] seed=${MEASURE_SEED} order=${shuffled.join(',')} named=${named.join(',')}`);
 });
 
-test(`seed ${MEASURE_SEED}: unlabeled on-disk clips name eight registers without using filenames`, () => {
+test(`seed ${MEASURE_SEED}: unlabeled on-disk clips name thirteen registers without using filenames`, () => {
   const named = [];
   for (const clip of BLIND_REGISTER_CLIPS) {
     const buf = readFileSync(path.join(ROOT, clip.file));
@@ -232,7 +232,7 @@ test(`seed ${MEASURE_SEED}: unlabeled on-disk clips name eight registers without
     assert.equal(got, clip.factionId, `${clip.file} named ${got}, expected ${clip.factionId}`);
     named.push(got);
   }
-  assert.equal(new Set(named).size, 8);
+  assert.equal(new Set(named).size, 13);
   console.log(`[pq-158.04 blind-files] seed=${MEASURE_SEED} named=${named.join(',')}`);
 });
 
@@ -246,11 +246,11 @@ test(`seed ${MEASURE_SEED}: shipped utterance PCM names each faction register (n
     assert.equal(got, factionId, `utterance ${factionId} named ${got}`);
     named.push(got);
   }
-  assert.equal(new Set(named).size, 8);
+  assert.equal(new Set(named).size, 13);
   console.log(`[pq-158.04 utterance-pcm] seed=${MEASURE_SEED} named=${named.join(',')}`);
 });
 
-test(`seed ${MEASURE_SEED}: player-heard bark WAVs name eight registers from PCM, never from the filename`, () => {
+test(`seed ${MEASURE_SEED}: player-heard bark WAVs name thirteen registers from PCM, never from the filename`, () => {
   const named = [];
   for (const factionId of BARK_FACTIONS) {
     const sampleId = FACTION_VOICE_REGISTERS[factionId].sampleId;
@@ -262,6 +262,6 @@ test(`seed ${MEASURE_SEED}: player-heard bark WAVs name eight registers from PCM
     assert.equal(got, factionId, `${entry.file} named ${got}, expected ${factionId}`);
     named.push(got);
   }
-  assert.equal(new Set(named).size, 8);
+  assert.equal(new Set(named).size, 13);
   console.log(`[pq-158.04 bark-wav-blind] seed=${MEASURE_SEED} named=${named.join(',')}`);
 });

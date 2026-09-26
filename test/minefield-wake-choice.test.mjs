@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   ENCOUNTERS, barkText, receiptText, tollAmountFor,
 } from '../src/data/encounters.js';
+import { COMMODITIES } from '../src/data/commodities.js';
 import { ENCOUNTER_SCRIPTS, createEncounterShapeMeter } from '../src/systems/encounterScripts.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 
@@ -86,7 +87,10 @@ function liveFor(shapeId, playerPos = { x: 0, z: 0 }) {
   };
 }
 
-const RICH_HOLD = { cmdty_ore_iron: 10, cmdty_stolen_goods: 4 }; // 280 + 600 = 880
+const RICH_HOLD = { cmdty_ore_iron: 10, cmdty_stolen_goods: 4 };
+const priceOf = (id) => COMMODITIES.find((c) => c.id === id).basePrice;
+const RICH_HOLD_VALUE = Object.entries(RICH_HOLD)
+  .reduce((sum, [id, n]) => sum + n * priceOf(id), 0);
 
 test('minefield wake opens a demand: own bark, three options, 12 s window', () => {
   const emitted = [];
@@ -96,7 +100,7 @@ test('minefield wake opens a demand: own bark, three options, 12 s window', () =
   ENCOUNTER_SCRIPTS.ambush.fire(d, live, state);
   assert.equal(live.phase, 'offer');
   assert.equal(live.deadlineAt, 112, 'declared offerS 12 honored as the decision window');
-  assert.equal(live.vars.amount, tollAmountFor(880));
+  assert.equal(live.vars.amount, tollAmountFor(RICH_HOLD_VALUE));
   const bark = emitted.find((e) => e.name === 'say:bark');
   assert.equal(bark.payload.textOrId, 'wake_tithe_demand');
   const offer = emitted.find((e) => e.name === 'encounter:choiceOffered');
@@ -113,7 +117,7 @@ test('paying the tithe takes the best goods first and resolves paid', () => {
   const live = liveFor(WAKE);
   ENCOUNTER_SCRIPTS.ambush.fire(d, live, state);
   ENCOUNTER_SCRIPTS.ambush.choose(d, live, state, 'pay');
-  // Tithe 110 from an 880 hold: one 150 cr stolen good covers it — best first.
+  // Tithe from the hold: one stolen good covers it — best first.
   assert.deepEqual(state.player.cargo.items, { cmdty_ore_iron: 10, cmdty_stolen_goods: 3 });
   assert.ok(emitted.some((e) => e.name === 'despawnAll'), 'crew peels off with the take');
   const resolved = emitted.find((e) => e.name === 'resolved');
@@ -242,6 +246,7 @@ test('choiceless ambushes are untouched: silent stalk, proximity spring', () => 
 });
 
 test('wake demand bark and cleared receipt read', () => {
-  assert.match(barkText('wake_tithe_demand', { amount: 110 }), /110/);
+  const tithe = tollAmountFor(RICH_HOLD_VALUE);
+  assert.match(barkText('wake_tithe_demand', { amount: tithe }), new RegExp(String(tithe)));
   assert.match(receiptText(WAKE, 'cleared', {}), /weigh-slip/);
 });

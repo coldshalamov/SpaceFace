@@ -867,6 +867,22 @@ html body #screens .k-screen.orr-newgame .sf-ng-footer .sf-back.k-word::after { 
 #screens .k-screen.orr-newgame { grid-template-rows:auto auto minmax(0, 1fr) auto auto !important;
   grid-template-areas:"title stage" "hang stage" ". stage" "foot stage" "note stage" !important; }
 
+/* ================================ NEW GAME r4: weight + the yard ================================= */
+/* the hero dims as the yard turns between hulls and comes back as it settles */
+#screens .orr-newgame > .k-stage > .k-stage__poster { opacity:calc(1 - var(--ng-spin-mix, 0) * .8) !important; transition:opacity 90ms linear !important; }
+/* the run's scale with weight: a 3px line of light, 10px beads, the first one lit */
+#screens .orr-newgame .sf-ng-route .sf-ng-route__steps::before { height:3px !important; top:3px !important; background:rgb(232 226 212 / .3) !important; border-radius:2px !important;
+  box-shadow:0 0 8px rgb(236 230 216 / .12) !important; }
+#screens .orr-newgame .sf-ng-route .sf-ng-route__steps::after { top:8px !important; height:5px !important; background:repeating-linear-gradient(90deg, rgb(232 226 212 / .3) 0 1.5px, transparent 1.5px 16px) !important; }
+#screens .orr-newgame .sf-ng-route .sf-ng-route__step::before { width:10px !important; height:10px !important; top:-19px !important; left:-1px !important; background:rgb(10 12 16) !important;
+  box-shadow:inset 0 0 0 2px rgb(236 230 216 / .75) !important; }
+#screens .orr-newgame .sf-ng-route .sf-ng-route__step:first-child::before { background:rgb(252 249 240) !important; box-shadow:0 0 0 2px rgb(252 249 240), 0 0 12px 2px rgb(255 240 214 / .45) !important; }
+/* fields: a rule with body, brighter and thicker while it has the key */
+#screens .orr-newgame .orr-ng-input { background-size:100% 1.5px !important; }
+#screens .orr-newgame .orr-ng-input:focus { background-size:100% 2px !important; }
+/* the difficulty dial in the form column */
+#screens .orr-newgame .orr-stoparc { margin:6px 0 0 !important; max-width:100%; }
+
 `;
 
 export function injectOrreryScreens(doc = globalThis.document) {

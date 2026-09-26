@@ -24,6 +24,7 @@ import {
   censusTableBands,
   classifyTableBand,
   glassHalfExtents,
+  isCriticalHubInCurrentSector,
   isCriticalStartingHub,
   residencyEvictRadius,
   residencyPrefetchRadius,
@@ -53,6 +54,10 @@ import {
   isEntityAuthoredUpgradeRelevant,
   isEntityRenderRelevant,
 } from '../src/render/renderer.js';
+import {
+  authoredUpgradePriority,
+  shouldAutoTriggerAuthoredUpgrade,
+} from '../src/render/partsLibrary.js';
 
 test('default glass is a table, not a thousand-unit fake-visible box', () => {
   const glass = glassHalfExtents(144, 50, 16 / 9, 60);
@@ -714,4 +719,72 @@ test('NPC trail helper is the live VFX path', async () => {
   assert.doesNotMatch(source, /TRAIL_NORMAL_PLAYER_DIST = 2200/);
   assert.match(source, /TABLE_HEARING_FAR_WU/);
   assert.doesNotMatch(source, /d < 900/);
+});
+
+test('the critical-hub rung is scoped to the hub\'s own sector', () => {
+  // Measured (.devshots/landmark-diag): the ~82 MB Helios trade hub held the serial composition
+  // queue at rung 1 for 57s+ after the player left Helios, and the destination sector's authored
+  // bodies waited behind a station nobody could see. Outside its sector it queues like any
+  // other station.
+  const hub = {
+    id: 'station_helios',
+    type: 'station',
+    data: { stationId: 'station_helios', sectorId: 'sector_helios_prime' },
+    pos: { x: 9000, z: 0 },
+  };
+  const ceresLandmark = {
+    id: 'world_site_wreck_cathedral',
+    type: 'station',
+    data: { landmark: true, sectorId: 'sector_ceres_belt' },
+    pos: { x: 14000, z: 0 },
+  };
+  const player = { id: 1, isPlayer: true, type: 'ship', pos: { x: 13900, z: 0 } };
+  const liveSector = (sectorId) => ({
+    mode: 'flight',
+    playerId: 1,
+    world: { currentSectorId: sectorId },
+    entities: new Map([[1, player]]),
+  });
+  // authoredUpgradePriority reads the live state through authoredRuntimeState
+  // (globalThis.window.SF.state); pin it for the assertion and restore after.
+  const withLive = (state, fn) => {
+    const previous = globalThis.window;
+    globalThis.window = { SF: { state } };
+    try {
+      return fn();
+    } finally {
+      globalThis.window = previous;
+    }
+  };
+
+  withLive(liveSector('sector_helios_prime'), () => {
+    assert.equal(authoredUpgradePriority({ entity: hub }), 1,
+      'the hub in its own sector keeps rung 1');
+  });
+
+  withLive(liveSector('sector_ceres_belt'), () => {
+    const hubRung = authoredUpgradePriority({ entity: hub });
+    assert.notEqual(hubRung, 1, 'off-sector hub loses the critical rung');
+    const landmarkRung = authoredUpgradePriority({
+      entity: ceresLandmark,
+      options: { sectorArrivalBody: true },
+    });
+    assert.ok(landmarkRung < hubRung,
+      `a Ceres landmark (${landmarkRung}) must outrank the off-sector hub (${hubRung})`);
+  });
+
+  const scene = {};
+  assert.equal(shouldAutoTriggerAuthoredUpgrade(hub, scene, {
+    render: { scene }, mode: 'flight', world: { currentSectorId: 'sector_helios_prime' },
+  }), true, 'the in-sector hub still auto-composes');
+  assert.equal(shouldAutoTriggerAuthoredUpgrade(hub, scene, {
+    render: { scene }, mode: 'flight', world: { currentSectorId: 'sector_ceres_belt' },
+  }), false, 'the off-sector hub waits for the ordinary flight rules');
+
+  assert.equal(isCriticalHubInCurrentSector(hub, 'sector_helios_prime'), true);
+  assert.equal(isCriticalHubInCurrentSector(hub, 'sector_ceres_belt'), false);
+  assert.equal(isCriticalHubInCurrentSector(hub, null), true,
+    'before a live sector exists the startup behaviour stands');
+  assert.equal(isCriticalHubInCurrentSector(ceresLandmark, 'sector_ceres_belt'), false,
+    'an ordinary landmark was never critical');
 });

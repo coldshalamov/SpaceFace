@@ -11,7 +11,7 @@ import { BINDINGS } from '../bindings.js';
 import { SECTORS, surveyDataPrice } from '../../data/sectors.js';
 import { COMMODITIES }  from '../../data/commodities.js';
 import { missionPreflight } from '../missionPreflight.js';
-import { CONTACT_VOICE_REGISTERS } from '../../data/barks.js';
+import { CONTACT_VOICE_REGISTERS, barGreetingBarkFor, barApproachBarkFor } from '../../data/barks.js';
 import { depthContactsForStation } from '../../story/campaign47a/embodiedDialogue.js';
 import {
   stationContactMemoryFor,
@@ -294,12 +294,14 @@ export function generateContacts(stationId, state = {}) {
       ? stationFactionId
       : nearbyFactions[Math.floor(rng() * nearbyFactions.length)];
 
+    const contactId = 'contact_' + stationId + '_' + i;
     contacts.push({
-      id: 'contact_' + stationId + '_' + i,
+      id: contactId,
       name: fullName,
       role,
       factionId,
-      line: ROLE_LINES[role],
+      line: barGreetingBarkFor(factionId, role, fnvHash(contactId + '_line')) || ROLE_LINES[role],
+      approach: barApproachBarkFor(factionId, fnvHash(contactId + '_approach')),
     });
   }
 
@@ -342,7 +344,7 @@ function stampUnheardBarRumor(contacts, stationId, state) {
   if (!host || host.rumorSourceRef) return;
   host.rumorSourceRef = rumor.sourceRef;
   const sentence = String(rumor.text || '').split(/(?<=\.)\s/)[0];
-  if (sentence && /silver-draft/i.test(sentence) && host.line === ROLE_LINES.barkeep) {
+  if (sentence && /silver-draft/i.test(sentence) && !host.canonicalKey) {
     host.line = sentence;
   }
 }

@@ -61,7 +61,7 @@ function boot(seed = 4242) {
   bus.on('recovery:completed', (payload) => events.completed.push(payload));
   bus.on('economy:grantCredits', (payload) => events.credits.push(payload));
   bus.on('faction:repDelta', (payload) => events.rep.push(payload));
-  bus.on('cargo:add', (payload) => events.cargo.push(payload));
+  bus.on('cargo:changed', (payload) => events.cargo.push(payload));
   return { sim, state, bus, player, wreck, events };
 }
 
@@ -141,8 +141,13 @@ test('ordinary scanner play reaches a real recovery decision and settles once', 
   h.sim.runTicks(2);
   assert.equal(h.events.identified.length, 1, 'a second pulse identifies the wreck');
 
-  h.sim.runTicks(Math.ceil(2.7 / SIM_DT));
   const record = Object.values(h.state.recoveryEncounters.records)[0];
+  if (record.phase === 'hazard') {
+    // The classify roll can land a reactor leak; venting is the authored clear path.
+    h.bus.emit('salvage:reactorVented', { wreckId: record.entityId });
+    assert.equal(record.phase, 'stabilizing', 'venting clears the hazard into stabilization');
+  }
+  h.sim.runTicks(Math.ceil(2.7 / SIM_DT));
   assert.equal(record.phase, 'decision');
   h.bus.emit('recovery:choose', { recoveryId: record.id, choice: 'blackbox' });
   assert.equal(h.events.completed.length, 1);
@@ -150,6 +155,11 @@ test('ordinary scanner play reaches a real recovery decision and settles once', 
   assert.equal(h.events.credits[0].amount, 360);
   assert.equal(h.events.rep[0].delta, 4);
   assert.equal(h.events.rep[0].reason, 'recovery:blackbox');
+  assert.ok(h.events.cargo.length >= 1, 'blackbox grants its hold receipt');
+  assert.ok(
+    (h.events.cargo.at(-1).cargo.items.cmdty_salvage_electronics || 0) >= 1,
+    'the hold receipt carries the blackbox cargo',
+  );
 
   h.bus.emit('recovery:choose', { recoveryId: record.id, choice: 'blackbox' });
   assert.equal(h.events.credits.length, 1, 'a settled record cannot pay twice');

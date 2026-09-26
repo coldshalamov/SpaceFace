@@ -59,12 +59,23 @@ const SENSOR_SWEEP = Object.freeze({
   defaultDurationS: 70,
 });
 
+const QUIET_DOCK = Object.freeze({
+  id: 'quiet_dock',
+  silhouette: 'lights-out-runner',
+  trajectory: 'slip-run',
+  accent: 'dimmed-transit-lights',
+  cadenceHz: 5,
+  reducedCadenceHz: 2,
+  defaultDurationS: 35,
+});
+
 export const STATION_SIDE_EVENT_VFX_PROFILES = Object.freeze({
   hauler_dock: HAULER_DOCK,
   patrol_launch: PATROL_LAUNCH,
   repair_drone: REPAIR_DRONE,
   cargo_tractor: CARGO_TRACTOR,
   sensor_sweep: SENSOR_SWEEP,
+  quiet_dock: QUIET_DOCK,
 });
 
 export function resolveStationSideEventVfxProfile(kind) {
@@ -170,6 +181,23 @@ export function writeStationSideEventVfxFrame(
     const travelSign = reducedMotion || Math.cos((elapsed / 22) * TAU) >= 0 ? 1 : -1;
     writeDirection(frame, -Math.sin(angle) * travelSign, Math.cos(angle) * travelSign);
     frame.progress = (cycle + 1) * 0.5;
+  } else if (profile.trajectory === 'slip-run') {
+    // The black-market runner does not fly the lane like declared freight: it burns in hot, cuts
+    // the drive mid-course and drifts off-line, then rejoins the approach. Cubic ease-out approach
+    // + a perpendicular sag keyed to bearing (deterministic per event, never ambient randomness).
+    const t = reducedMotion ? 0.72 : 1 - (1 - progress) * (1 - progress) * (1 - progress);
+    const sag = reducedMotion ? 0 : Math.sin(progress * Math.PI) * 6;
+    const sideSign = Math.sin(baseBearing * 3.7) >= 0 ? 1 : -1;
+    const lx = fx + (tx - fx) * t;
+    const lz = fz + (tz - fz) * t;
+    // Perpendicular of the approach line, applied after the linear step so the offset is readable.
+    const pl = Math.hypot(tx - fx, tz - fz) || 1;
+    const px = -(tz - fz) / pl;
+    const pz = (tx - fx) / pl;
+    frame.x = lx + px * sag * sideSign;
+    frame.z = lz + pz * sag * sideSign;
+    writeDirection(frame, tx - fx, tz - fz);
+    frame.progress = t;
   } else {
     frame.x = fx + (tx - fx) * progress;
     frame.z = fz + (tz - fz) * progress;

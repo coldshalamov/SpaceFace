@@ -315,6 +315,36 @@ export const ENCOUNTER_BARKS = Object.freeze({
     'Trap sprung! Raiders in — strip them clean!',
   ]),
   snare_warn:         'Mass-snare charging dead ahead. Break vector.',
+  // ghost on the bearing — Quiet contract demand; terse, priced, no small talk
+  ghost_contract_demand: Object.freeze([
+    'Contract on your bearing. {amount} cr buys it back. Decide.',
+    'You are the listed target. {amount} cr, or the lock stays.',
+    'A price on your hull: {amount} cr. Pay, hold, or run.',
+  ]),
+  ghost_contract_bought_ack: Object.freeze([
+    'Paid. Contract void. Forget the bearing.',
+    'Received. Your name is off the ledger.',
+    'Done. The lock is a dead tone now.',
+  ]),
+  ghost_refused_ack: Object.freeze([
+    'Refusal filed. The contract stands.',
+    'Noted. Collection is now kinetic.',
+    'Terms rejected. The ghost keeps its fee.',
+  ]),
+  ghost_flee_ack: Object.freeze([
+    'Runner. The contract follows the lane.',
+    'Gone. We keep the bearing.',
+    'Burn if you like. The ledger does not tire.',
+  ]),
+  ghost_broke_ack: Object.freeze([
+    'Insufficient funds. The contract pays in hull.',
+    'No credits. The price moves to your plate.',
+  ]),
+  ghost_spring: Object.freeze([
+    'Contract live. Hold still.',
+    'The lock closes. Quiet collects.',
+    'Terms expired. The ghost fires first.',
+  ]),
   // distress
   distress_call: Object.freeze([
     'Mayday. Drive dead, shields failing. Anyone.',
@@ -485,6 +515,7 @@ export const ENCOUNTER_RECEIPTS = Object.freeze({
   'trader_run.lost':         'HAULER LOST — {dest} prices will feel it.',
   'ghost_on_the_bearing.cleared': 'GHOST BROKEN — the Quiet bearing goes silent.',
   'ghost_on_the_bearing.escaped': 'GHOST EVADED — it keeps to the dark between lanes.',
+  'ghost_on_the_bearing.paid': 'CONTRACT VOIDED — {amount} cr bought the lock\'s release.',
   'pattern_refrain.cleared':  'REFRAIN BROKEN — the Choir withdraws its verse.',
   'pattern_refrain.escaped':  'REFRAIN EVADED — the pattern resolves without you.',
   'salvage_signal.recovered':'BLACK BOX RECOVERED — new lead logged.',

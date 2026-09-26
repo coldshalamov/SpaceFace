@@ -129,8 +129,10 @@ for (const seed of SEEDS) {
 
     // Headline channels: >= 2x separation.
     assert.ok(slamFeel.trauma / nudgeFeel.trauma >= 1.8, 'trauma');
-    assert.ok(collisionImpactMagnitude(slamReceipt) / collisionImpactMagnitude(nudgeReceipt) >= 2, 'vfx magnitude');
-    assert.ok(collisionImpactLight(slamReceipt).intensity / collisionImpactLight(nudgeReceipt).intensity >= 2, 'light');
+    assert.equal(collisionImpactMagnitude(nudgeReceipt), nudgeFeel.trauma);
+    assert.equal(collisionImpactMagnitude(slamReceipt), slamFeel.trauma);
+    assert.ok(collisionImpactMagnitude(slamReceipt) / collisionImpactMagnitude(nudgeReceipt) >= 1.8, 'vfx magnitude');
+    assert.ok(collisionImpactLight(slamReceipt).intensity / collisionImpactLight(nudgeReceipt).intensity >= 1.8, 'light');
     assert.ok(collisionImpactLight(slamReceipt).range / collisionImpactLight(nudgeReceipt).range >= 2, 'light range');
     assert.ok(slamReceipt.debrisCount / Math.max(1, nudgeReceipt.debrisCount) >= 2, 'spall');
     assert.ok(slamCue.gain / nudgeCue.gain >= 2, 'sound volume');

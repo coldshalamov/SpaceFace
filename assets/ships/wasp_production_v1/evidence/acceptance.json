@@ -9,8 +9,8 @@
     "lods": [
       {
         "lod": 0,
-        "bytes": 12797604,
-        "sha256": "FDFD7C76C793C5BE9593E9C095BADE0708C36163086F181FF08BDDFBE5173E5A",
+        "bytes": 13199676,
+        "sha256": "158604835706C067814E40ACAF8090950E9D9A2A0288F476001730A9E1D5572B",
         "triangles": 11526,
         "draws": 7
       },

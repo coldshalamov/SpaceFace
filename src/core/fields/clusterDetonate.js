@@ -159,5 +159,7 @@ export function rateClusterMoment(secondaries) {
     count: rows.length,
     kinds,
     rated: rows.length >= 3,
+    tier: rows.length >= WELL_CLUSTER.cascadeMinCount || kinds.length === WELL_CLUSTER.secondaryKinds.length
+      ? 'cascade' : 'detonation',
   };
 }

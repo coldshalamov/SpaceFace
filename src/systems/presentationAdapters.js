@@ -110,6 +110,10 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   // reusing it would blur two different mechanical facts. Dedicated site audio is a follow-up.
   'world_site.damage': 'presentation.mining.fracture_break',
   'world_site.recovery': 'presentation.mining.core_reward',
+  // The rated cluster moment shares one authored layered boom across both tiers; the cascade
+  // reads through its own banner tier instead of a second voice.
+  'fields.cluster_detonate': 'presentation.fields.cluster_detonate',
+  'fields.cluster_detonate.cascade': 'presentation.fields.cluster_detonate',
 });
 
 const UI_CUES = Object.freeze({
@@ -140,6 +144,9 @@ const UI_CUES = Object.freeze({
   'scenario.comms.denial': uiCue('presentation:scenario:denial', 'warn', 'OFFICIAL DENIAL', 2.2, true),
   'scenario.objective.priority_split': uiCue('presentation:scenario:priority-split', 'warn', 'OBJECTIVES SPLIT', 2.4, true),
   'scenario.branch.resolved': uiCue('presentation:scenario:resolved', 'info', 'EVIDENCE ROUTE LOCKED', 2.4, true),
+  // Rated cluster detonations — the authored voice owns the moment so the alert stays silent.
+  'fields.cluster_detonate': uiCue('presentation:fields:cluster-detonate', 'info', 'CLUSTER DETONATION', 1.8, true),
+  'fields.cluster_detonate.cascade': uiCue('presentation:fields:cluster-cascade', 'warn', 'MASS CASCADE', 2.4, true),
 });
 
 const CAPTIONS = Object.freeze({
@@ -169,6 +176,8 @@ const CAPTIONS = Object.freeze({
   'scenario.comms.denial': 'Official channel denies the shipment.',
   'scenario.objective.priority_split': 'Civilian objective competing with evidence recovery.',
   'scenario.branch.resolved': 'Evidence route resolved.',
+  'fields.cluster_detonate': 'Cluster detonation — the clump cooked off.',
+  'fields.cluster_detonate.cascade': 'Mass cascade — the whole cluster went.',
 });
 
 export const presentationAdapters = {
@@ -656,6 +665,9 @@ function shapeForCue(id) {
   if (id === 'subsystem.restored') return 'ring';
   if (id && id.startsWith('scenario.comms.')) return 'diamond';
   if (id && id.startsWith('scenario.objective.')) return 'split';
+  // The field receipt family gets its own silhouette — a forced-colors player reads the diamond
+  // as a field moment, distinct from tether arcs and comms diamonds' scenario prefix.
+  if (id && id.startsWith('fields.cluster')) return 'diamond';
   return 'pulse';
 }
 

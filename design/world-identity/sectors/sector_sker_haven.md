@@ -28,10 +28,11 @@
 
 | Field | Value |
 |-------|-------|
-| **placement_id** | `station_sker` |
-| **Name** | Sker Bazaar |
-| **Position** | `{ x: -540, z: 680 }` |
-| **Role** | Gate-camped pirate blackmarket — Skerris Deep haven silhouette, rep-gated approach |
+| **placement_id** | `poi_sker_throne` |
+| **Name** | The Skerris Throne (depth program C13d) |
+| **Position** | `{ x: 300, z: -550 }` — on the charted Pallas gate → Sker Bazaar chord, threading the gap between the sector's two dense-asteroid pockets |
+| **Role** | A fortress welded from captured hulls, every plate a raid trophy with a story on scan; flown past on final approach to the Bazaar. Landmarked per PQ-153.02 (fielded 2026-09-25 still review) |
+| **Stand-in** | `place_dead_hulk` — the honest silhouette for welded hulls until depth H1h pass 1 authors the bespoke fortress |
 
 ## Required renderable asset roles
 
@@ -40,5 +41,6 @@ Not procedural-only — each ID must resolve to a manifest-valid GLB.
 | placement_id | Role | `archetypeGlb` / `landmarkGlb` |
 |--------------|------|--------------------------------|
 | `station_sker` | Landmark station | `archetypeGlb`: `place_station_blackmarket` |
+| `poi_sker_throne` | Hero landmark POI | `landmarkGlb`: `place_dead_hulk` (stand-in; H1h pass 1 owns the bespoke fortress) |
 | `poi_bounty` | Bounty wreck POI | `landmarkGlb`: `place_dead_hulk` |
 | `poi_stash` | Hidden stash POI | `landmarkGlb`: `place_debris_chunk` |

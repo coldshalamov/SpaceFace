@@ -19,7 +19,8 @@ import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { createStageHull } from './stageHull.js';
-import { createStopScale, createTurntable } from '../orrery/stopDial.js';
+import { createStopScale, createStopArc, createTurntable } from '../orrery/stopDial.js';
+import { createYardCarousel } from '../orrery/yardCarousel.js';
 import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { hullPosterUrl } from '../hullPosters.js';
@@ -496,7 +497,8 @@ export const newGameScreen = {
     diffField.wrap.appendChild(diffDesc);
     body.appendChild(diffField.wrap);
     // ORRERY: difficulty is a four-stop scale with the amber index.
-    if (ORRERY) this._diffDial = createStopScale({ row: diffWords, width: 470 });
+    // difficulty as a four-stop dial with the Hand (ORRERY 6); it fills the form column with an instrument
+    if (ORRERY) this._diffDial = createStopArc({ row: diffWords, width: 340, radius: 116, span: 144, overshoot: 0 });
     body.appendChild(hairline());
 
     // Arrow bridges for the Tab-invisible starter row: Down from the pilot name or Up from the
@@ -682,15 +684,18 @@ export const newGameScreen = {
       stats.setAttribute('aria-hidden', 'true');
       caption.insertBefore(stats, loadoutField.wrap);
       // one ring round the hull (ORRERY 6): mass left, thrust over the top, line right; the other starters as ghosts
-      const ringStats = (starter) => {
-        const card = starterAirCard(starter);
-        const others = NEW_GAME_STARTERS.filter((s) => s.id !== starter.id).map((s) => starterAirCard(s));
+      // the readings between two hulls (f = 0 at a, 1 at b): while the yard turns they sweep from one to the
+      // next; every starter stands on each arc as a ghost tick, so the lit value travels between them
+      const allCards = NEW_GAME_STARTERS.map((s) => starterAirCard(s));
+      const ringStatsMix = (a, b, f) => {
+        const ca = starterAirCard(a); const cb = starterAirCard(b || a);
         return [['Mass', 'massT', 't'], ['Thrust', 'thrust', ''], ['Line', 'lineWuPerS', 'wu/s']].map(([name, key, unit]) => {
-          const value = Number(card[key]) || 0;
+          const value = (1 - f) * (Number(ca[key]) || 0) + f * (Number(cb[key]) || 0);
           return { name, unit, reading: value >= 1000 ? (value / 1000).toFixed(1) + 'k' : String(Math.round(value)),
-            frac: value / scale[key], ghosts: others.map((o) => (Number(o[key]) || 0) / scale[key]) };
+            frac: value / scale[key], ghosts: allCards.map((o) => (Number(o[key]) || 0) / scale[key]) };
         });
       };
+      const ringStats = (starter) => ringStatsMix(starter, starter, 0);
       this._paintStats = (starter) => {
         if (this._hullRing) this._hullRing.paint(ringStats(starter));
         else paintStarterStats(stats, starterAirCard(starter), scale, NEW_GAME_STARTERS.filter((s) => s.id !== starter.id).map((s) => starterAirCard(s)));
@@ -709,7 +714,17 @@ export const newGameScreen = {
       const heroBox = el('div', 'orr-ng-hero-box');
       heroBox.setAttribute('aria-hidden', 'true');
       stage.appendChild(heroBox);
-      this._starterDial = createTurntable({ row: starterWords, host: rootEl, anchor: stage, art, artWidth: 132, carousel: true, hero: '.orr-ng-hero-box' });
+      // SPIN THE YARD: drag the ring; each hull's mass sets how it answers; release settles and picks
+      const mass = {};
+      for (const s of NEW_GAME_STARTERS) mass['starter:' + s.id] = starterAirCard(s).massT;
+      const starterOfLi = () => [...starterWords.children].filter((li) => li.querySelector && li.querySelector('button'))
+        .map((li) => NEW_GAME_STARTERS.find((s) => 'starter:' + s.id === li.querySelector('button').dataset.action));
+      this._starterDial = createYardCarousel({ row: starterWords, host: rootEl, anchor: stage, hero: '.orr-ng-hero-box', art, artWidth: 132, mass,
+        onTurn: (i0, i1, f) => {
+          const list = starterOfLi();
+          if (this._hullRing && list[i0]) this._hullRing.paint(ringStatsMix(list[i0], list[i1], f));
+          stage.style.setProperty('--ng-spin-mix', (Math.min(f, 1 - f) * 2).toFixed(3));
+        } });
     }
     rootEl.appendChild(stage);
     // the hull alone inside its ring (ORRERY 6): the stage is the instrument, not a photograph of a dock

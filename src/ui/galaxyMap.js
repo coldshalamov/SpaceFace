@@ -24,6 +24,7 @@ import { MAP_WORKBENCH_CSS } from './map/mapWorkbenchCss.js';
 // Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
+import { chartMarkSizes } from '../data/modelTruth.js';
 import { asteroidScanGlyph } from '../data/mining.js';
 import { drawGlyph } from './glyphs.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -1801,6 +1802,15 @@ export function buildLocalModel(state, isHostile, options = {}) {
     contacts.push({
       id: e.id,
       kind: mapKind,
+      type: e.type,
+      defId: e.data && e.data.defId,
+      placeId: e.data && e.data.placeId,
+      radius: e.radius,
+      dockRadius: e.data && e.data.dockRadius,
+      stationTypeId: e.data && (e.data.stationTypeId || e.data.archetypeGlb),
+      archetypeGlb: e.data && e.data.archetypeGlb,
+      typeId: e.data && e.data.typeId,
+      isGate: !!(e.data && (e.data.isGate || e.data.isWormhole)),
       name: (e.data && e.data.name) || e.name || e.role || kind,
       x: e.pos.x, z: e.pos.z,
       vx: e.vel ? e.vel.x : 0, vz: e.vel ? e.vel.z : 0,
@@ -7835,8 +7845,9 @@ export const galaxyMapScreen = {
         ? disambiguateGateLabel(p.name, p.drawPos.x, p.drawPos.z, 0, 0, systemGateNameCounts)
         : p.name;
 
+      const pointMark = chartMarkSizes(p, pxPerWU);
       this._clickTargets.push({
-        sx: x, sy: y, radiusPx: 18, kind: p.kind, id: p.id, x: p.x, z: p.z,
+        sx: x, sy: y, radiusPx: pointMark.pipPx, kind: p.kind, id: p.id, x: p.x, z: p.z,
         entityId: p.entityId, stationId: p.stationId, targetSectorId: p.targetSectorId,
         name: displayName, factionId: p.factionId,
         mapKind: p.mapKind, stageId: p.stageId, stageLabel: p.stageLabel,
@@ -7880,7 +7891,7 @@ export const galaxyMapScreen = {
         lines: pointLines,
         x,
         y,
-        anchorRadius: isGate ? 8 : isStation ? 7 : 5,
+        anchorRadius: pointMark.nameplatePx,
         color: col,
         secondaryColor: marketTint,
         selected: !!(this._selectedTarget && this._selectedTarget.id === p.id),
@@ -8293,8 +8304,9 @@ export const galaxyMapScreen = {
         continue; // nothing important enough to draw leaves the frame
       }
 
+      const contactMark = chartMarkSizes(c, baseScale * cam.zoom);
       this._clickTargets.push({
-        sx: x, sy: y, radiusPx: 14, kind: c.kind, id: c.id, x: c.x, z: c.z,
+        sx: x, sy: y, radiusPx: contactMark.pipPx, kind: c.kind, id: c.id, x: c.x, z: c.z,
         entityId: c.entityId, stationId: c.stationId, name: displayName, factionId: c.factionId,
         hostile: c.hostile,
         detail: `Contact · ${displayName} · ${c.kind.toUpperCase()}`
@@ -8359,7 +8371,7 @@ export const galaxyMapScreen = {
           lines: [displayName],
           x,
           y,
-          anchorRadius: c.kind === 'station' || c.kind === 'gate' ? 8 : 6,
+          anchorRadius: contactMark.nameplatePx,
           color: c.kind === 'gate' ? INK.teal
             : c.kind === 'station' ? INK.brass
               : c.hostile ? INK.red : INK.ink0,

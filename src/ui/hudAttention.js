@@ -224,6 +224,9 @@ export const FIRST_USE_LINE = Object.freeze({
   masslineCloak: 'Coast to stay hidden.',
   bombPropulsion: 'Drop aft, then detonate.',
   firstBombDrop: 'Bomb away. Clear the blast.',
+  firstWellDrop: 'Well deployed. Pull the scrap.',
+  firstRepulsorDrop: 'Repulsor out. Everything near just got shoved.',
+  firstConeOn: 'Cone on. The lane ahead is yours.',
 });
 
 export function firstUseLine(verbId) {
@@ -252,12 +255,16 @@ export function rangePointerLine() {
   return RANGE_POINTER_LINE;
 }
 
-// Missing-three verb lines (PQ-163.02). Boost, the stroke, and the well are taught by doing,
-// one line each, then silence. Copy lives here; order/gating live in src/onboarding/missingThree.js.
+// Missing-three verb lines (PQ-163.02). Boost, the stroke, the well, the repulsor, and the
+// clearing cone are taught by doing, one line each, then silence. Copy lives here;
+// order/gating live in src/onboarding/missingThree.js. Lines name the tool, never the key —
+// bindings are rebindable.
 export const MISSING_THREE_BEAT_LINES = Object.freeze({
   boost: 'Boost. Keep the speed.',
   stroke: 'Draw a line. Fly it.',
   well: 'Drop a well. Pull the scrap.',
+  repulsor: 'Drop the plow. Shove the scrap.',
+  cone: 'Cone on. Clear a lane.',
 });
 
 export function missingThreeBeatLine(verbId) {

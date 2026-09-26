@@ -105,18 +105,25 @@ export function createBus() {
   }
 
   function drainEmitSlice(budget = SECTOR_ENTER_DRAIN_BUDGET) {
-    if (!emitSlice) return 0;
+    // Capture the slice locally: a listener that clear()s the bus (screen teardown mid-present)
+    // or starts a re-entrant sliced emit nulls/replaces `emitSlice` while this drain is on the
+    // stack — writing through the global here crashed on the stale null (seen on glass would be
+    // a hard TypeError inside the frame).
+    const slice = emitSlice;
+    if (!slice) return 0;
     const limit = Math.max(1, Math.floor(Number(budget) || SECTOR_ENTER_DRAIN_BUDGET));
     const next = dispatchRange(
-      emitSlice.fns,
-      emitSlice.payload,
-      emitSlice.event,
-      emitSlice.index,
-      emitSlice.index + limit,
+      slice.fns,
+      slice.payload,
+      slice.event,
+      slice.index,
+      slice.index + limit,
     );
-    const ran = next - emitSlice.index;
-    emitSlice.index = next;
-    if (emitSlice.index >= emitSlice.fns.length) emitSlice = null;
+    const ran = next - slice.index;
+    if (emitSlice === slice) {
+      slice.index = next;
+      if (slice.index >= slice.fns.length) emitSlice = null;
+    }
     return ran;
   }
 

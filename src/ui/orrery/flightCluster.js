@@ -3,8 +3,10 @@
 // Everything in the bottom-left radiates from a single centre, like an orrery:
 //   · the hull's own plan view, as instrument light, at the pivot;
 //   · the ring stack — shield (segmented), armour (hairline), hull — with a swatch legend in the gap;
-//   · SPEED on the upper-left arc, a 1 px ticked Scale with a floating cursor and the reference tick,
-//     directly under its huge thin numeral; BOOST a 3 px charge arc just inside it;
+//   · SPEED on the upper-left arc, a 1 px ticked Scale with a floating gem cursor and the reference
+//     tick, directly under its huge thin numeral — the Scale is a colour instrument: asleep in bone
+//     at rest, phos in flight, ice above the reference (the envelope is engraved into the face as a
+//     faint ice band past the ref tick); BOOST a 3 px charge arc just inside it;
 //   · energy and heat on the lower-left flank, each read at its arc end;
 //   · the heading track over the nose with a velocity pip (where the ship is really going);
 //   · the ORDNANCE CRESCENT wrapping the right side: collapsed groups as small nodes, the armed group
@@ -66,9 +68,19 @@ const CSS = `
 .orr-cluster__read .orr-value { font-size:15px; }
 .orr-cluster__speed { position:absolute; left:22px; top:18px; display:flex; flex-direction:column; gap:8px; }
 .orr-cluster__speed .orr-numeral { font-size:104px; font-weight:250; line-height:.8; text-shadow:0 0 18px rgb(0 0 0 / .55); }
+/* the numeral's phase is the speed's colour story: asleep in dim bone, reading in phos,
+   above reference in ice (the colour data-in-motion wears — ORRERY §3.3) */
+.orr-cluster__speed .orr-numeral.is-rest { color:var(--dp-ink-dim, #b7b4a6); }
+.orr-cluster__speed .orr-numeral.is-over { color:var(--dp-ice, #8fcbff); }
 .orr-cluster__speedfoot { display:flex; gap:12px; align-items:baseline; }
+.orr-cluster__speedstate { font-size:10px; letter-spacing:.18em; color:var(--dp-ink-dim, #b7b4a6); }
+.orr-cluster__speedstate.is-ice { color:var(--dp-ice, #8fcbff); }
 .orr-cluster__speedfoot b { font-family:var(--dp-face-numeral); font-weight:520; font-size:12px; color:var(--dp-ink, #e8e2d4); margin-left:4px; letter-spacing:.02em; }
-.orr-cluster__key { position:absolute; width:48px; height:48px; margin:-24px 0 0 -24px; }
+.orr-cluster__key { position:absolute; width:48px; height:48px; margin:-24px 0 0 -24px;
+  /* the one part of the Cluster that answers the cursor: a verb key is hoverable and focusable so
+     its tier-2 [data-why] reveal can fire (shared whyReveal.js mechanism). A click fires nothing —
+     the press is the key — so the click still falls through to the flight input underneath. */
+  pointer-events:auto; }
 .orr-cluster__key svg { position:absolute; inset:0; width:48px; height:48px; overflow:visible; }
 .orr-cluster__icon { position:absolute; left:50%; top:50%; width:20px; height:20px; margin:-10px 0 0 -10px; background:currentColor;
   -webkit-mask:var(--orr-icon) center / contain no-repeat; mask:var(--orr-icon) center / contain no-repeat; color:var(--dp-ink, #e8e2d4); opacity:.9; }
@@ -112,6 +124,19 @@ const el = (tag, cls, text) => {
   if (text != null) node.textContent = text;
   return node;
 };
+
+/**
+ * The speed Scale's colour phase, pure so the contract is testable without DOM. The phase is
+ * decided against the DISPLAYED (rounded) reading, so the colour can never disagree with the
+ * numeral: 'rest' when the numeral reads 0, 'over' when it rounds above the reference
+ * (ice — beyond the hull's reference envelope), else 'flight'.
+ */
+export function speedPhase(speed, ref) {
+  const s = Math.max(0, Number(speed) || 0);
+  const r = Number(ref) || 180;
+  if (Math.round(s) === 0) return 'rest';
+  return Math.round(s) > Math.round(r) ? 'over' : 'flight';
+}
 const at = (r, deg) => polar(P.x, P.y, r, deg);
 const place = (node, x, y) => { node.style.left = `${x}px`; node.style.top = `${y}px`; };
 const f1 = (n) => n.toFixed(1);
@@ -208,7 +233,16 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   place(heatRead, htx - 70, hty - 14);
 
   // ---- upper-left: the speed Scale under its numeral, boost inside ------------------------------------
+  // The Scale (library element 8) as a colour instrument. Its phases are the reading (§3.3):
+  //   rest — the instrument asleep, bone and dim, until the hull moves;
+  //   flight — the phos reading, needle riding the rail;
+  //   above reference — ice, the one colour data-in-motion may wear: beyond the hull's
+  //   reference the fill, needle and numeral all go ice. The envelope itself is engraved into
+  //   the face as a faint ice band from the reference tick to the arc's end, so the zone you
+  //   can enter is visible before you enter it. Red stays threat-only; amber stays the Hand's.
   s.appendChild(svg('path', { d: arcD(P.x, P.y, R.speed, SPEED_FROM, SPEED_TO), class: 'orr-core orr-faint', 'stroke-width': 1 }));
+  const overZone = svg('path', { d: '', class: 'orr-core orr-ice', 'stroke-width': 2.4, opacity: '.14', 'stroke-linecap': 'butt' });
+  s.appendChild(overZone);
   const tickParts = [];
   for (let i = 0; i <= 20; i += 1) {
     const a = SPEED_FROM + (SPEED_TO - SPEED_FROM) * (i / 20);
@@ -217,10 +251,23 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     tickParts.push(`M ${f1(x0)} ${f1(y0)} L ${f1(x1)} ${f1(y1)}`);
   }
   s.appendChild(svg('path', { d: tickParts.join(' '), class: 'orr-core orr-rest', 'stroke-width': 1 }));
-  const speedArc = arcGauge({ cx: P.x, cy: P.y, r: R.speed, from: SPEED_FROM, to: SPEED_TO, width: 1.6, tone: 'phos', track: 'faint', ghost: false, head: false });
+  const speedArc = arcGauge({ cx: P.x, cy: P.y, r: R.speed, from: SPEED_FROM, to: SPEED_TO, width: 2.4, tone: 'phos', track: 'faint', ghost: false, head: false });
   s.appendChild(speedArc.el);
-  const speedCursor = svg('path', { d: '', class: 'orr-core orr-phos', 'stroke-width': 1.6, fill: 'none', 'stroke-linejoin': 'miter' });
+  // the needle: a gem riding the rail, bloom under a core, that changes metal with the phase
+  const speedCursor = svg('g');
+  const cursorBloom = svg('path', { d: '', class: 'orr-bloom orr-phos', 'stroke-width': 5, 'stroke-linejoin': 'miter', fill: 'none' });
+  const cursorCore = svg('path', { d: '', class: 'orr-core orr-phos', 'stroke-width': 1.6, 'stroke-linejoin': 'miter', fill: 'none' });
+  speedCursor.append(cursorBloom, cursorCore);
   s.appendChild(speedCursor);
+  const setSpeedCursor = (a) => {
+    const [ox, oy] = at(R.speed + 5.5, a);
+    const [lx, ly] = at(R.speed, a - 2.4);
+    const [ix, iy] = at(R.speed - 5.5, a);
+    const [rx, ry] = at(R.speed, a + 2.4);
+    const d = `M ${f1(ox)} ${f1(oy)} L ${f1(lx)} ${f1(ly)} L ${f1(ix)} ${f1(iy)} L ${f1(rx)} ${f1(ry)} Z`;
+    cursorBloom.setAttribute('d', d);
+    cursorCore.setAttribute('d', d);
+  };
   const refTick = svg('path', { d: '', class: 'orr-core orr-hi', 'stroke-width': 1.6 });
   s.appendChild(refTick);
   const boost = arcGauge({ cx: P.x, cy: P.y, r: R.boost, from: SPEED_FROM, to: SPEED_TO, width: 3, tone: 'phos', track: 'faint', ghost: false, head: false });
@@ -234,7 +281,9 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const refVal = el('b');
   const refLab = el('span', 'orr-label', 'Ref');
   refLab.appendChild(refVal);
-  speedFoot.append(el('span', 'orr-label', 'Speed · wu/s'), refLab);
+  const speedState = el('span', 'orr-label orr-cluster__speedstate');
+  speedState.hidden = true;
+  speedFoot.append(el('span', 'orr-label', 'Speed · wu/s'), speedState, refLab);
   speedBlock.append(speedVal, speedFoot);
 
   // ---- legend in the gap ---------------------------------------------------------------------------
@@ -291,8 +340,17 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const keyLayer = el('div');
   root.appendChild(keyLayer);
   const sockets = [];
-  const mkSocket = ({ node, icon, label, sub }) => {
+  // A socket is a hoverable, focusable readout of one verb (not a button: the press is the key, a
+  // click fires nothing). `tip` is the tier-2 [data-why] phrase composed by the rail model — the
+  // one bank of words that says what the verb does, which keys fire it, and why it is not ready —
+  // revealed on hover AND keyboard focus by the shared mechanism (whyReveal.js). The same words
+  // carry the accessible name while no tip is on screen.
+  const mkSocket = ({ node, icon, label, sub, id = '', tip = '' }) => {
     const k = el('div', `orr-cluster__key${node ? ' is-node' : ''}`);
+    k.setAttribute('tabindex', '0');
+    if (id) k.setAttribute(node ? 'data-group' : 'data-slot', id);
+    if (tip) k.setAttribute('data-why', tip);
+    k.setAttribute('aria-label', tip ? tip.replace(/\n/g, '. ') : `${label}${sub ? `, key ${sub}` : ''}`);
     const ks = svg('svg', { viewBox: '-24 -24 48 48', class: 'orr-svg' });
     const r0 = node ? NODE_R : KEY_R;
     ks.appendChild(svg('circle', { r: r0, class: 'orr-core orr-rest', 'stroke-width': 1, fill: 'rgb(5 7 10 / .34)' }));
@@ -312,7 +370,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     k.appendChild(count);
     keyLayer.appendChild(k);
     const spring = createSpring({ value: 0, preset: 'settle', onUpdate: (v) => cd.setAttribute('stroke-dasharray', `${Math.max(0, Math.min(1, v))} 1`) });
-    return { el: k, armed, armedB, spring, count };
+    return { el: k, armed, armedB, spring, count, label, tip };
   };
 
   let openGroup = -1;
@@ -327,7 +385,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     groups.forEach((group, gi) => {
       if (gi === armedGroup) {
         group.slots.forEach((slot) => {
-          const sk = mkSocket({ node: false, icon: slot.icon, label: slot.name, sub: slot.key });
+          const sk = mkSocket({ node: false, icon: slot.icon, label: slot.name, sub: slot.key, id: slot.id });
           const [x, y] = at(R.crescent, a);
           place(sk.el, x, y);
           sockets.push({ ...sk, slot, angle: a });
@@ -337,7 +395,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
         });
         a += 2;
       } else {
-        const sk = mkSocket({ node: true, icon: group.icon, label: group.name, sub: group.slots.map((sl) => sl.key).join(' ') });
+        const sk = mkSocket({ node: true, icon: group.icon, label: group.name, sub: group.slots.map((sl) => sl.key).join(' '), id: group.name, tip: group.tip || '' });
         const [x, y] = at(R.crescent, a);
         place(sk.el, x, y);
         sockets.push({ ...sk, group, angle: a });
@@ -386,22 +444,37 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     const ref = Number(d.speedRef) || 180;
     const max = Number(d.speedMax) || ref * 1.25;
     const speed = Math.max(0, Number(d.speed) || 0);
-    if (changed('speed', Math.round(speed))) {
+    const speedChanged = changed('speed', Math.round(speed));
+    if (speedChanged) {
       speedVal.textContent = String(Math.round(speed));
       const fr = Math.min(1, speed / max);
       speedArc.set(fr);
-      const a = SPEED_FROM + (SPEED_TO - SPEED_FROM) * fr;
-      const [c0x, c0y] = at(R.speed - 10, a - 2.6);
-      const [c1x, c1y] = at(R.speed - 2, a);
-      const [c2x, c2y] = at(R.speed - 10, a + 2.6);
-      speedCursor.setAttribute('d', `M ${f1(c0x)} ${f1(c0y)} L ${f1(c1x)} ${f1(c1y)} L ${f1(c2x)} ${f1(c2y)}`);
+      setSpeedCursor(SPEED_FROM + (SPEED_TO - SPEED_FROM) * fr);
     }
-    if (changed('ref', ref)) {
+    const refChanged = changed('ref', ref);
+    if (refChanged) {
       refVal.textContent = String(Math.round(ref));
       const a = SPEED_FROM + (SPEED_TO - SPEED_FROM) * Math.min(1, ref / max);
       const [r0x, r0y] = at(R.speed - 4, a);
       const [r1x, r1y] = at(R.speed + 13, a);
       refTick.setAttribute('d', `M ${f1(r0x)} ${f1(r0y)} L ${f1(r1x)} ${f1(r1y)}`);
+      overZone.setAttribute('d', arcD(P.x, P.y, R.speed, a, SPEED_TO));
+    }
+    // the phase IS the colour: asleep / reading / beyond the reference envelope. Re-tint only on
+    // a crossing, so a settled frame writes nothing and the scale never flickers at a boundary.
+    if (speedChanged || refChanged) {
+      const phase = speedPhase(speed, ref);
+      if (changed('speedPhase', phase)) {
+        const tone = phase === 'over' ? 'ice' : 'phos';
+        speedArc.setTone(tone);
+        cursorBloom.setAttribute('class', `orr-bloom orr-${tone}`);
+        cursorCore.setAttribute('class', `orr-core orr-${tone}`);
+        speedVal.classList.toggle('is-rest', phase === 'rest');
+        speedVal.classList.toggle('is-over', phase === 'over');
+        speedState.textContent = phase === 'rest' ? 'AT REST' : phase === 'over' ? 'ABOVE REF' : '';
+        speedState.hidden = phase === 'flight';
+        speedState.classList.toggle('is-ice', phase === 'over');
+      }
     }
     if (changed('boost', Math.round((Number(d.boost) || 0) * 100))) boost.set(Number(d.boost) || 0);
     if (Number.isFinite(d.drift) && changed('drift', Math.round(d.drift))) {
@@ -435,6 +508,15 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
         sk.spring.set(state === 'cooldown' ? Number(st.cooldown) || 0 : 0);
         const countText = Number.isFinite(st.count) ? `×${st.count}` : '';
         if (sk.countText !== countText) { sk.countText = countText; sk.count.textContent = countText; }
+        // The verb's reveal phrase moves with its state ("Ready" → "Recharging — 3s"), so it is
+        // rewritten only when the words change: a settled frame still writes nothing.
+        const tip = st.tip || '';
+        if (sk.tip !== tip) {
+          sk.tip = tip;
+          if (tip) sk.el.setAttribute('data-why', tip);
+          else sk.el.removeAttribute('data-why');
+          sk.el.setAttribute('aria-label', tip ? tip.replace(/\n/g, '. ') : `${sk.label}`);
+        }
         if (handAngle == null || sid(sk.slot) === handSlot) { handAngle = sk.angle; handArmed = state === 'armed'; }
       } else {
         const readiness = sk.group.slots.reduce((m, sl) => {

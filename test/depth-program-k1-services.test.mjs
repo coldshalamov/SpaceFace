@@ -53,7 +53,7 @@ test('Pitborn Services cards only expose surfaces each real station actually off
   const expected = {
     station_forge: [['pitborn_yard', 'shipyard'], ['pitborn_fence', 'market']],
     station_ceres: [['pitborn_fence', 'market']],
-    station_ashcache: [],
+    station_ashcache: [['pitborn_fence', 'market']],
   };
   for (const [stationId, rowsExpected] of Object.entries(expected)) {
     rt.bus.emit('dock:docked', { stationId });
@@ -66,7 +66,7 @@ test('Pitborn Services cards only expose surfaces each real station actually off
   }
   assert.deepEqual(
     rt.events.filter((row) => row.event === 'factionPresence:serviceAction').map((row) => row.payload.targetTab),
-    ['shipyard', 'market', 'market'],
+    ['shipyard', 'market', 'market', 'market'],
   );
 });
 

@@ -1,0 +1,26 @@
+{
+  "set": "achievements medals",
+  "source": "medal-grid.png (codex gpt-5.5 image generation, one 4x4 sheet, cut by alpha bounds)",
+  "date": "2026-09-25",
+  "size": 279,
+  "medals": {
+    "berth_assigned": "medal-berth-assigned.webp",
+    "rock_has_a_price": "medal-rock-has-a-price.webp",
+    "paper_trail": "medal-paper-trail.webp",
+    "signed_and_delivered": "medal-signed-and-delivered.webp",
+    "out_of_the_pocket": "medal-out-of-the-pocket.webp",
+    "made_contact": "medal-made-contact.webp",
+    "light_ships_are_ammunition": "medal-light-ships-are-ammunition.webp",
+    "razor_release": "medal-razor-release.webp",
+    "keep_the_speed": "medal-keep-the-speed.webp",
+    "into_the_crucible": "medal-into-the-crucible.webp",
+    "tenth_wave": "medal-tenth-wave.webp",
+    "better_than_last_time": "medal-better-than-last-time.webp",
+    "same_seed_same_day": "medal-same-seed-same-day.webp",
+    "walked_out": "medal-walked-out.webp",
+    "paperwork_filed": "medal-paperwork-filed.webp",
+    "six_figures": "medal-six-figures.webp"
+  },
+  "base": "medal-base.webp",
+  "prompt": "A 4 by 4 grid of sixteen circular achievement medals for a sci-fi game ... made purely of warm white light (bone white, #F8F4EA), transparent background, no text"
+}

@@ -12,6 +12,7 @@
 // Opened with the local-map binding (N by default). Canvas is DPI-scaled like the radar. Purely
 // read-only over movement/combat state (§0.6); explicit route cards can set the nav waypoint.
 import { LocalSpaceIntel, rankTradeRoutes } from '../navigation/localSpaceMapModel.js';
+import { chartMarkSizes } from '../../data/modelTruth.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { asteroidScanGlyph } from '../../data/mining.js';
 import { STORY_BEATS } from '../../data/missions.js';
@@ -821,8 +822,9 @@ export const localmapScreen = {
       const conf = Math.max(0, Math.min(1, c.confidence || 0));
       if (conf < 0.05) continue;
       const isAsteroid = c.kind === 'asteroid';
+      const contactMark = chartMarkSizes(c, scale);
       const target = {
-        sx: x, sy: y, radiusPx: isAsteroid ? 12 : 16,
+        sx: x, sy: y, radiusPx: contactMark.pipPx,
         targetEntityId: c.id,
         pos: { x: c.position.x, z: c.position.z },
         label: c.name || (c.hostile ? 'Hostile contact' : c.kind || 'Contact'),
@@ -833,7 +835,7 @@ export const localmapScreen = {
       this._lastClickTargets.push(target);
       if (!isAsteroid) {
         labelJobs.push({
-          x, y, dx: 8,
+          x, y: y - contactMark.nameplatePx, dx: 8,
           text: c.name || (c.hostile ? 'HOSTILE' : 'Contact'),
           font: canvasFont(500, 13, 'body'),
           color: c.hostile ? roles.foe : roles.paper,

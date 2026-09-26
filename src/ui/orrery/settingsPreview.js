@@ -25,6 +25,7 @@
 import { svg, arcD, polar, ticksD, circularText } from './svg.js';
 import { createSpring, reducedMotion } from './motion.js';
 import { injectOrrery } from './tokens.js';
+import { createCounter, decrypt } from './text.js';
 
 const STYLE_ID = 'sf-orrery-settings-preview';
 const BONE = '236 230 216';
@@ -68,6 +69,10 @@ const CSS = `
   text-shadow:0 0 22px rgb(0 0 0 / .5); transition:color 900ms var(--dp-ease-out, ease-out), text-shadow 900ms var(--dp-ease-out, ease-out); }
 .orr-set-read__value.is-word { font-size:40px; line-height:1; letter-spacing:-.005em; font-variation-settings:"wdth" 100, "wght" 300; font-weight:300; }
 .orr-set-read__value.is-long { font-size:28px; }
+/* the counter rolls one em per digit: its box keeps line-height 1 */
+.orr-set-read__value.orr-counter { display:inline-flex; height:1em; line-height:1; overflow:hidden; }
+.orr-set-read__value.orr-counter .orr-counter__digit { width:.55em; }
+.orr-set-read__value.orr-counter .orr-counter__digit > span { transition-duration:420ms; }
 .orr-set-read__value.is-flash { color:var(--dp-ice, #8fcbff); text-shadow:0 0 18px rgb(143 203 255 / .35); transition:none; }
 .orr-set-read__name { grid-column:2; align-self:end; padding-bottom:6px; ${LABEL} font-size:12px; letter-spacing:.2em; color:rgb(248 244 234 / .92);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -85,11 +90,11 @@ const CSS = `
 .orr-set-preview .orr-svg :is(.orr-core, .orr-bloom), .orr-set-preview .orr-svg path, .orr-set-preview .orr-svg circle { vector-effect:none !important; }
 .orr-set-mixer .orr-set-mixer__lab { font-size:calc(10.5px * var(--orr-set-k, 1)); letter-spacing:.18em; fill:rgb(${BONE} / .66); text-anchor:end; font-weight:650; }
 .orr-set-mixer .orr-set-mixer__lab.is-focus { fill:rgb(248 244 234); }
-.orr-set-mixer .orr-set-mixer__grad { font-size:calc(9.5px * var(--orr-set-k, 1)); letter-spacing:.12em; fill:rgb(${BONE} / .56); text-anchor:middle; font-weight:600; }
+.orr-set-mixer .orr-set-mixer__grad { font-size:calc(9.5px * var(--orr-set-k, 1)); letter-spacing:.12em; fill:rgb(${BONE} / .66); text-anchor:middle; font-weight:600; }
 .orr-set-mixer .orr-set-mixer__fill { transition:opacity .2s linear; }
 .orr-set-mixer .orr-set-ch:not(.is-focus) .orr-set-mixer__fill.orr-core { opacity:.72; }
-.orr-set-mixer .orr-set-ch:not(.is-focus) .orr-set-mixer__fill.orr-bloom { opacity:0; }
-.orr-set-mixer .orr-set-ch.is-focus .orr-set-mixer__fill.orr-bloom { opacity:.3; }
+.orr-set-mixer .orr-set-ch:not(.is-focus) .orr-set-mixer__fill.orr-bloom { opacity:.14; }
+.orr-set-mixer .orr-set-ch.is-focus .orr-set-mixer__fill.orr-bloom { opacity:.38; }
 .orr-set-mixer.is-muted .orr-set-mixer__fill { opacity:0 !important; }
 .orr-set-mixer .orr-set-mixer__ghost { opacity:0; transition:opacity .2s linear; }
 .orr-set-mixer.is-muted .orr-set-mixer__ghost { opacity:1; }
@@ -105,6 +110,8 @@ const CSS = `
 .orr-set-hud__frame > .orr-cluster { position:absolute !important; left:0; bottom:0; }
 .orr-set-hud.is-bloomless .orr-bloom { opacity:0 !important; }
 .orr-set-hud { --dp-bloom-a:var(--orr-set-bloom, .22); }
+/* in miniature the Cluster's strokes scale down with it: its rest light rises so no line goes to a hairline */
+.orr-set-hud.is-small { --dp-line:rgb(${BONE} / .5); --dp-line-faint:rgb(${BONE} / .28); --dp-line-hi:rgb(${BONE} / .86); }
 .orr-set-hud.is-hc { --dp-line:rgb(${BONE} / .6); --dp-line-faint:rgb(${BONE} / .34); --dp-line-hi:rgb(${BONE} / .92); --dp-ink-dim:rgb(248 244 234); }
 .orr-set-hud.is-hc .orr-label { color:rgb(248 244 234) !important; }
 .orr-set-hud.is-readable .orr-label, .orr-set-hud.is-readable .orr-value, .orr-set-hud.is-readable .orr-set-hud__cap, .orr-set-hud.is-readable .orr-set-hud__hint {
@@ -116,7 +123,7 @@ const CSS = `
 .orr-set-hud__foot::before, .orr-set-hud__foot::after { content:""; position:absolute; width:14px; height:14px; border-color:rgb(${BONE} / .5); border-style:solid; }
 .orr-set-hud__foot::before { right:0; top:0; border-width:1px 1px 0 0; }
 .orr-set-hud__foot::after { left:0; top:0; border-width:1px 0 0 1px; }
-.orr-set-hud__foot > i { position:absolute; left:0; top:-18px; font-style:normal; ${LABEL} font-size:9.5px; letter-spacing:.2em; color:rgb(${BONE} / .56); }
+.orr-set-hud__foot > i { position:absolute; left:0; top:-18px; font-style:normal; ${LABEL} font-size:10px; letter-spacing:.2em; color:rgb(${BONE} / .7); }
 /* overlays the HUD really draws: a damage number, a hint, a caption */
 .orr-set-hud__dmg { position:absolute; font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 420; font-weight:420; font-size:22px;
   color:rgb(248 244 234); text-shadow:0 0 2px rgb(3 4 7), 0 0 8px rgb(3 4 7 / .8); opacity:0; transition:opacity .2s linear; white-space:nowrap; }
@@ -148,12 +155,29 @@ const CSS = `
 .orr-set-dial .orr-set-dial__listen { opacity:0; }
 .orr-set-dial.is-listening .orr-set-dial__listen { opacity:1; animation:orr-set-listen 1.6s linear infinite; transform-box:view-box; transform-origin:50% 50%; }
 @keyframes orr-set-listen { to { transform:rotate(360deg); } }
-.orr-set-dial .orr-set-dial__rim text { font-size:calc(9.5px * var(--orr-set-kd, 1)); letter-spacing:.3em; fill:rgb(${BONE} / .56); font-weight:650; }
+.orr-set-dial .orr-set-dial__dz { opacity:0; transition:opacity .2s linear; }
+.orr-set-dial.is-dz .orr-set-dial__dz { opacity:1; }
+.orr-set-dial.is-dz .orr-set-dial__key { transform:translate(-50%, -50%); }
+.orr-set-dial .orr-set-dial__rim text { font-size:calc(9.5px * var(--orr-set-kd, 1)); letter-spacing:.3em; fill:rgb(${BONE} / .66); font-weight:650; }
 /* the foot line: what the preview is */
-.orr-set-foot { ${LABEL} font-size:9.5px; letter-spacing:.22em; color:rgb(${BONE} / .5); display:flex; gap:10px; align-items:center; }
+.orr-set-foot { ${LABEL} font-size:10px; letter-spacing:.22em; color:rgb(${BONE} / .66); display:flex; gap:10px; align-items:center; }
 .orr-set-foot::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--dp-phos, #dfeeff); box-shadow:0 0 6px rgb(223 238 255 / .6); animation:orr-set-live 2.4s ease-in-out infinite; }
 @keyframes orr-set-live { 50% { opacity:.35; } }
 html.sf-reduce-motion .orr-set-preview *, html.sf-reduce-motion .orr-set-preview *::before { animation:none !important; transition:none !important; }
+/* the beam: a line of light from the row being ridden to the reading it moves */
+.orr-set-beam { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; z-index:2; overflow:visible; opacity:0; transition:opacity .22s linear; }
+.orr-set-beam.is-on { opacity:1; }
+.orr-set-beam path, .orr-set-beam circle { vector-effect:none !important; }
+.orr-set-beam .orr-set-beam__core { stroke:rgb(${BONE} / .5); }
+.orr-set-beam .orr-set-beam__glow { stroke:rgb(${BONE} / .1); }
+.orr-set-beam .orr-set-beam__pulse { stroke:rgb(248 244 234 / .8); stroke-dasharray:.08 1; stroke-dashoffset:.08; opacity:0; }
+.orr-set-beam.is-on .orr-set-beam__pulse { opacity:.8; animation:orr-set-beam-run 3.2s linear infinite; }
+.orr-set-beam.is-live .orr-set-beam__pulse { stroke:var(--dp-ice, #8fcbff); stroke-dasharray:.16 1; opacity:1; animation:orr-set-beam-run 760ms linear infinite; }
+.orr-set-beam.is-live .orr-set-beam__core { stroke:rgb(143 203 255 / .62); }
+.orr-set-beam .orr-set-beam__end { fill:rgb(248 244 234); }
+@keyframes orr-set-beam-run { from { stroke-dashoffset:.08; } to { stroke-dashoffset:-1; } }
+html.sf-reduce-motion .orr-set-beam .orr-set-beam__pulse { animation:none !important; opacity:0 !important; }
+@media (forced-colors: active) { .orr-set-beam { display:none; } }
 @media (max-height:800px) {
   .orr-set-preview { row-gap:8px; grid-template-rows:auto minmax(0, 1fr) 0; }
   .orr-set-read { min-height:58px; }
@@ -203,7 +227,7 @@ function buildMixer(doc) {
 
   const channels = MIXER_CHANNELS.map((ch, i) => {
     const r = i === 0 ? MX.master : MX.first - (i - 1) * MX.step;
-    const w = i === 0 ? 3.4 : 2.4;
+    const w = i === 0 ? 4.2 : 3;
     const g = svg('g', { class: 'orr-set-ch' });
     const d = arcD(c, c, r, 0, MX.span);
     g.appendChild(svg('path', { d, class: 'orr-core orr-faint', 'stroke-width': w, 'stroke-linecap': 'butt' }));
@@ -295,8 +319,19 @@ function buildDial(doc) {
   drift.appendChild(svg('path', { d: ticksD(c, c, 196, 96, { len: 3, major: 8, majorLen: 8 }), class: 'orr-core orr-rest', 'stroke-width': 1, 'stroke-linecap': 'butt' }));
   s.appendChild(drift);
   s.appendChild(svg('path', { d: arcD(c, c, 150, 0, 360), class: 'orr-bloom orr-hi', 'stroke-width': 5, opacity: '.1' }));
-  s.appendChild(svg('path', { d: arcD(c, c, 150, 0, 360), class: 'orr-core orr-hi', 'stroke-width': 1.2 }));
-  s.appendChild(svg('path', { d: arcD(c, c, 138, 0, 360), class: 'orr-core orr-faint', 'stroke-width': 1 }));
+  s.appendChild(svg('path', { d: arcD(c, c, 150, 0, 360), class: 'orr-core orr-hi', 'stroke-width': 2 }));
+  s.appendChild(svg('path', { d: arcD(c, c, 138, 0, 360), class: 'orr-core orr-faint', 'stroke-width': 1.5 }));
+  // the stick's deadzone: a lit disc whose radius is the setting (0-50 % of the stick's throw)
+  const dz = svg('g', { class: 'orr-set-dial__dz' });
+  const dzFill = svg('circle', { cx: c, cy: c, r: 0, fill: 'rgb(223 238 255 / .08)' });
+  const dzRing = svg('circle', { cx: c, cy: c, r: 0, fill: 'none', class: 'orr-core orr-phos', 'stroke-width': 2 });
+  const dzBloom = svg('circle', { cx: c, cy: c, r: 0, fill: 'none', class: 'orr-bloom orr-phos', 'stroke-width': 7, opacity: '.2' });
+  dz.append(dzFill, dzBloom, dzRing, svg('path', { d: ticksD(c, c, 128, 20, { len: 4, major: 5, majorLen: 9 }), class: 'orr-core orr-rest', 'stroke-width': 1, 'stroke-linecap': 'butt' }));
+  s.appendChild(dz);
+  const dzSpring = createSpring({ value: 0, preset: 'settle', onUpdate: (v) => {
+    const r = Math.max(0, 128 * 2 * v);
+    for (const n of [dzFill, dzRing, dzBloom]) n.setAttribute('r', r.toFixed(1));
+  } });
   // listening: an ice arc chasing round the ring (data in motion) — hidden at rest
   const listen = svg('g', { class: 'orr-set-dial__listen' });
   listen.appendChild(svg('path', { d: arcD(c, c, 150, 0, 110), class: 'orr-bloom orr-ice', 'stroke-width': 7, opacity: '.3' }));
@@ -326,7 +361,12 @@ function buildDial(doc) {
       }
     },
     listen(on) { host.classList.toggle('is-listening', !!on); },
-    dispose() {},
+    deadzone(v) {
+      const on = Number.isFinite(v);
+      host.classList.toggle('is-dz', on);
+      if (on) dzSpring.set(Math.max(0, Math.min(0.5, v)));
+    },
+    dispose() { dzSpring.stop(); },
   };
 }
 
@@ -420,6 +460,7 @@ function buildHud(doc) {
     frame.style.width = `${f1(w)}px`;
     frame.style.height = `${f1(h)}px`;
     frame.style.setProperty('--orr-cluster-scale', String(Math.round(s * 1000) / 1000));
+    host.classList.toggle('is-small', s < 0.72);
     hint.style.top = `${f1(Math.max(0, top - hintH))}px`;
     hint.style.left = `${f1(left + 22 * s)}px`;
     hint.style.right = 'auto';
@@ -567,6 +608,83 @@ export function createSettingsPreview(doc = globalThis.document) {
   let settingsNow = {};
   let focusedRow = null;
   let flashTimer = 0;
+  let counter = null;
+  let counterText = '';
+  let wordText = '';
+
+  // ---- the beam ----------------------------------------------------------------------------------
+  const beam = svg('svg', { class: 'orr-svg orr-set-beam', 'aria-hidden': 'true' });
+  const beamGlow = svg('path', { d: '', class: 'orr-set-beam__glow', fill: 'none', 'stroke-width': 6, 'stroke-linejoin': 'round' });
+  const beamCore = svg('path', { d: '', class: 'orr-set-beam__core', fill: 'none', 'stroke-width': 1.5, 'stroke-linejoin': 'round' });
+  const beamPulse = svg('path', { d: '', class: 'orr-set-beam__pulse', fill: 'none', 'stroke-width': 2.4, 'stroke-linecap': 'round', pathLength: 1 });
+  const beamA = svg('circle', { r: 2.6, class: 'orr-set-beam__end' });
+  const beamB = svg('circle', { r: 3.2, class: 'orr-set-beam__end' });
+  beam.append(beamGlow, beamCore, beamPulse, beamA, beamB);
+  let beamRow = null;
+  let beamFrame = 0;
+  let liveTimer = 0;
+  const hideBeam = () => beam.classList.remove('is-on');
+  const routeBeam = () => {
+    beamFrame = 0;
+    const root = el.parentElement;
+    if (!root || !beamRow || !beamRow.isConnected || typeof root.getBoundingClientRect !== 'function') { hideBeam(); return; }
+    if (beam.parentElement !== root) root.appendChild(beam);
+    const rr = root.getBoundingClientRect();
+    const zoom = root.offsetWidth ? rr.width / root.offsetWidth : 1;
+    const at = (x, y) => [(x - rr.left) / (zoom || 1), (y - rr.top) / (zoom || 1)];
+    const pane = root.querySelector('#sf-settings-pane');
+    const pr = pane ? pane.getBoundingClientRect() : rr;
+    const rowR = beamRow.getBoundingClientRect();
+    if (!rowR.height || rowR.bottom < pr.top + 10 || rowR.top > pr.bottom - 30) { hideBeam(); return; }
+    const src = beamRow.querySelector(':scope > div.k-words--row > span')
+      || beamRow.querySelector(':scope > .k-words--row') || beamRow.querySelector('.sf-bind-btn')
+      || beamRow.querySelector(':scope > .k-t-emph') || beamRow.querySelector('select');
+    const target = el.dataset.mode === 'dial' ? dial.el.querySelector('.orr-set-dial__key') : value;
+    if (!src || !target) { hideBeam(); return; }
+    const sr = src.getBoundingClientRect();
+    const tr = target.getBoundingClientRect();
+    if (!tr.width) { hideBeam(); return; }
+    const [sx0, sy] = at(sr.right, rowR.top + rowR.height / 2);
+    const [tx0, ty] = at(tr.left, tr.top + tr.height / 2);
+    const [paneRight] = at(pr.right, 0);
+    const sx = sx0 + 20;
+    const tx = tx0 - 16;
+    if (tx - sx < 40) { hideBeam(); return; }
+    // a trace: out of the row, up (or down) the gutter between the list and the preview, into the reading,
+    // its corners cut at 45 degrees like every leader in ORRERY
+    const bx = Math.max(sx + 14, Math.min(tx - 14, (paneRight + tx) / 2));
+    const dy = ty - sy;
+    const cut = Math.min(12, Math.abs(dy) / 2);
+    const s = Math.sign(dy) || 1;
+    const r1 = (n) => Math.round(n * 10) / 10;
+    const d = Math.abs(dy) < 2
+      ? `M ${r1(sx)} ${r1(sy)} H ${r1(tx)}`
+      : `M ${r1(sx)} ${r1(sy)} H ${r1(bx - cut)} L ${r1(bx)} ${r1(sy + s * cut)} V ${r1(ty - s * cut)} L ${r1(bx + cut)} ${r1(ty)} H ${r1(tx)}`;
+    for (const p of [beamGlow, beamCore, beamPulse]) p.setAttribute('d', d);
+    beamA.setAttribute('cx', r1(sx)); beamA.setAttribute('cy', r1(sy));
+    beamB.setAttribute('cx', r1(tx)); beamB.setAttribute('cy', r1(ty));
+    beam.classList.add('is-on');
+  };
+  const queueBeam = () => {
+    if (beamFrame) return;
+    if (typeof requestAnimationFrame === 'function') beamFrame = requestAnimationFrame(routeBeam); else routeBeam();
+  };
+  const liveBeam = () => {
+    if (reducedMotion()) return;
+    beam.classList.add('is-live');
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(() => beam.classList.remove('is-live'), 1100);
+  };
+  let paneBound = null;
+  let rootRo = null;
+  const bindPane = () => {
+    const root = el.parentElement;
+    const pane = root && root.querySelector ? root.querySelector('#sf-settings-pane') : null;
+    if (!pane || pane === paneBound || typeof pane.addEventListener !== 'function') return;
+    paneBound = pane;
+    pane.addEventListener('scroll', queueBeam, { passive: true });
+    if (typeof ResizeObserver === 'function' && !rootRo) { rootRo = new ResizeObserver(queueBeam); rootRo.observe(root); }
+  };
 
   const sizeStage = () => {
     // layout pixels, not the screen's: under the 1440p zoom a client rect is 1.25x the space the Cluster lays out in
@@ -614,8 +732,19 @@ export function createSettingsPreview(doc = globalThis.document) {
   const paintRead = (parts, { flash = false } = {}) => {
     if (!parts || !parts.label) return;
     const v = parts.val || '—';
-    value.textContent = v;
     const numeric = looksNumeric(v);
+    if (numeric) {
+      // one counter for the reading: a number on the same shape rolls digit by digit to its new value
+      if (!counter) { counter = createCounter(value, { format: () => counterText }); }
+      counterText = v;
+      wordText = '';
+      counter.set(0);
+    } else {
+      if (counter) { counter = null; counterText = ''; value.classList.remove('orr-counter'); value.removeAttribute('aria-label'); }
+      if (flash && wordText && wordText !== v) decrypt(value, v, { duration: 280 });
+      else value.textContent = v;
+      wordText = v;
+    }
     value.classList.toggle('is-word', !numeric);
     value.classList.toggle('is-long', !numeric && v.length > 14);
     name.textContent = parts.label;
@@ -630,6 +759,12 @@ export function createSettingsPreview(doc = globalThis.document) {
       flashTimer = setTimeout(() => value.classList.remove('is-flash'), 60);
     }
   };
+  // the stick row in Controls shows its deadzone on the dial as the slider is ridden
+  const deadzoneOf = (row) => {
+    const range = row && row.querySelector ? row.querySelector('input.k-range') : null;
+    const parts = range ? rowParts(row) : null;
+    return parts && /deadzone/i.test(parts.label) ? Number(range.value) : NaN;
+  };
 
   const channelOfRow = (row) => {
     const parts = rowParts(row);
@@ -641,7 +776,7 @@ export function createSettingsPreview(doc = globalThis.document) {
   const paintDial = (row) => {
     const parts = row ? rowParts(row) : null;
     const scheme = SCHEME_NAMES[(settingsNow.gameplay && settingsNow.gameplay.controlScheme) || 'pilot'] || '';
-    if (parts && (parts.bind || (row && row.querySelector(':scope > .k-t-emph')))) {
+    if (parts && (parts.bind || (row && row.querySelector(':scope > .k-t-emph, input.k-range')))) {
       dial.set({ keyText: parts.val, verbText: parts.label, scheme });
     } else {
       dial.set({ keyText: '·', verbText: 'Choose a verb to see its key', scheme });
@@ -670,29 +805,39 @@ export function createSettingsPreview(doc = globalThis.document) {
       hud.set(settingsNow, { tab });
       if (MODE_BY_TAB[tab] === 'hud') hud.show();
       focusedRow = null;
+      bindPane();
       const row = firstRow();
+      beamRow = row;
+      dial.deadzone(NaN);
       if (row) { paintRead(rowParts(row)); if (tab === 'Audio') mixer.focus(channelOfRow(row) || 'master'); }
       if (tab === 'Audio' && (!row || !channelOfRow(row))) mixer.focus('master');
       paintDial(tab === 'Controls' ? row : null);
       sizeStage();
       const raf = globalThis.requestAnimationFrame;
-      if (typeof raf === 'function') raf(sizeStage);
+      if (typeof raf === 'function') raf(() => { sizeStage(); queueBeam(); });
+      // the category arrives row by row: the beam follows once the rows have landed
+      setTimeout(queueBeam, 520);
     },
     focusRow(row) {
       if (!row || row === focusedRow) return;
       const parts = rowParts(row);
       if (!parts || !parts.label) return;
       focusedRow = row;
+      beamRow = row;
       paintRead(parts);
       if (tab === 'Audio') { const k = channelOfRow(row); if (k) mixer.focus(k); }
-      if (tab === 'Controls') paintDial(row);
+      if (tab === 'Controls') { paintDial(row); dial.deadzone(deadzoneOf(row)); }
+      queueBeam();
     },
     refreshRow(row) {
       const parts = rowParts(row);
       if (!parts || !parts.label) return;
       focusedRow = row;
+      beamRow = row;
       paintRead(parts, { flash: true });
-      if (tab === 'Controls') paintDial(row);
+      if (tab === 'Controls') { paintDial(row); dial.deadzone(deadzoneOf(row)); }
+      liveBeam();
+      queueBeam();
     },
     changed(section, key, settings = {}) {
       settingsNow = settings || settingsNow;
@@ -707,6 +852,10 @@ export function createSettingsPreview(doc = globalThis.document) {
     },
     dispose() {
       clearTimeout(flashTimer);
+      clearTimeout(liveTimer);
+      if (beamFrame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(beamFrame);
+      beam.remove();
+      rootRo?.disconnect?.();
       ro?.disconnect?.();
       mixer.dispose(); hud.dispose(); dial.dispose();
     },

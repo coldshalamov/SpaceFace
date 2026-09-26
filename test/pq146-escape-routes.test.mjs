@@ -17,14 +17,22 @@ import { impulseCharges } from '../src/systems/impulseCharges.js';
 import { IMPULSE_CHARGES } from '../src/data/impulseCharges.js';
 import { journalFor } from '../src/combat/stuntEvidence.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
+import { resolveGovernedCombatSpeed } from '../src/core/flight/propulsionCatalog.js';
 const DT=1/60;
-async function scene({playerSpeed=100,z=0,pursuer=true,closing=50,pursuerOffset=0,survival=false}={}){
+// Stunt gates key to the governed combat cruise the evidence journal resolves for the hull
+// (restored fast ceilings, e8d10fed7e). Scripted launches below are re-derived against that
+// same resolved number, never against a hardcoded catalog value that a re-tune would stale.
+const cruiseOf=(state,entity)=>resolveGovernedCombatSpeed(entity,state);
+async function scene({playerSpeed=150,z=0,pursuer=true,closing=50,pursuerOffset=0,survival=false}={}){
   const state=createGameState(14646);state.mode='flight';state.tick=0;state.simTime=0;state.entities.clear();state.entityList.length=0;state.entityIndex=null;state.playerId=0;
   state.settings.gameplay.physicsBackend='rapier-dynamic';state.world.currentSectorId=null;
   if(survival)state.run={kind:'survival',phase:'active',seed:3,wave:1};
   const bus=createBus();let nextId=0;
   const spawn=spec=>{const e=makeEntity({id:nextId++,data:{},...spec});state.entities.set(e.id,e);state.entityList.push(e);bus.emit('entity:spawned',{id:e.id,entity:e});return e;};
-  const ship=(team,pos,vel,extra={})=>spawn({type:'ship',team,pos,vel,radius:6,mass:16,hull:100,hullMax:100,physicsBody:{schemaVersion:1,dynamic:true,radius:6,mass:16,inertiaY:48,ccd:true},data:{encounter:{id:'escape'},...extra}});
+  // hullLength 20: a real small-scout hull. The flight witness looks back 8 hull lengths
+  // (160 WU here); the dot-default 12 left a 96 WU window that a restored-ceiling crossing
+  // (280 WU/s covers 140 WU in its 30-tick lookback) always outran, so no needle could mint.
+  const ship=(team,pos,vel,extra={})=>spawn({type:'ship',team,pos,vel,radius:6,mass:16,hull:100,hullMax:100,hullLength:20,physicsBody:{schemaVersion:1,dynamic:true,radius:6,mass:16,inertiaY:48,ccd:true},data:{encounter:{id:'escape'},...extra}});
   const player=ship(0,{x:0,z},{x:playerSpeed,z:0});
   const helpers={hash32,mulberry32,getEntity:id=>state.entities.get(id),spawnEntity:spawn};
   const flag=COMBAT_FLAGS.weaponImpulseConsequences;COMBAT_FLAGS.weaponImpulseConsequences=true;
@@ -52,8 +60,9 @@ test('Kickstart: the trap blast launches the player past 1.25 cruise, the speed 
   const s=await scene();try{
     s.step(240,tick=>{if(tick===20)s.trap(20);});
     const root=s.root(),launch=root?.nodes.find(n=>n.kind==='launch_retained');
+    const CRUISE=cruiseOf(s.state,s.player);
     assert.equal(root?.kind,'impulse_charge');assert.ok(root.threatAtRoot,'a live pursuit was tracked before the blast');
-    assert.ok(launch&&launch.deltaV>=0.3*105&&launch.exitSpeed>=1.25*105&&launch.retainedSpeed>=0.9*launch.exitSpeed,JSON.stringify(launch));
+    assert.ok(launch&&launch.deltaV>=0.3*CRUISE&&launch.exitSpeed>=1.25*CRUISE&&launch.retainedSpeed>=0.9*launch.exitSpeed,JSON.stringify(launch));
     assert.equal(s.impacts.length,0,'no contact spent the escape');
     assert.equal(s.tricks.length,1,JSON.stringify(s.tricks.map(t=>t.trickId)));
     const trick=s.tricks[0];
@@ -67,7 +76,7 @@ test('Kickstart negatives: a launch that stays under 1.25 cruise, or a blast wit
     slow.step(240,tick=>{if(tick===20)slow.trap(20,IMPULSE_CHARGES.charge_standard,'charge_standard');});
     const root=slow.root();
     assert.ok(root?.escape?.completed===true,'the plate still saved the pilot');
-    assert.ok(root.nodes.find(n=>n.kind==='launch_retained')?.exitSpeed<1.25*105);
+    assert.ok(root.nodes.find(n=>n.kind==='launch_retained')?.exitSpeed<1.25*cruiseOf(slow.state,slow.player));
     assert.equal(slow.tricks.length,0,JSON.stringify(slow.tricks.map(t=>t.trickId)));
   }finally{slow.close();}
   const safe=await scene({pursuer:false});try{
@@ -76,11 +85,14 @@ test('Kickstart negatives: a launch that stays under 1.25 cruise, or a blast wit
   }finally{safe.close();}
 });
 async function pincer({moving=true,survival=false}={}){
-  // The pursuer closes at 60 from six units off the player's line: its swept pass clears the hull by 1.6.
-  const s=await scene({playerSpeed:140,z:24,closing:60,pursuerOffset:6,survival});
-  const rate=moving?4:0;
+  // The pursuer closes at 120 from 5.5 units off the player's line: its swept pass clears the
+  // hull by ~1.6 (inside the 0.35-radius close-shave band, safely off contact). All speeds ride
+  // the restored fast ceilings — the crossing must exceed 1.25 cruise, so the choreography is
+  // scaled from the pre-restore 140/60 tune.
+  const s=await scene({playerSpeed:280,z:24,closing:120,pursuerOffset:5.5,survival});
+  const rate=moving?8:0;
   s.ship(1,{x:150,z:19},{x:0,z:-rate},{ai:{huntPlayer:true}});s.ship(1,{x:150,z:-19},{x:0,z:rate},{ai:{huntPlayer:true}});
-  s.step(240,tick=>{if(tick===36)s.steerTo({x:150,z:-2},140);});
+  s.step(240,tick=>{if(tick===18)s.steerTo({x:150,z:-2},280);});
   return s;
 }
 test('Needle Thread: a 20-degree correction threads a closing pincer at speed; the subsumed Close Shave is not a second bonus',async()=>{

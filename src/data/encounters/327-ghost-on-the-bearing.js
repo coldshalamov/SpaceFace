@@ -37,7 +37,25 @@ export default defineEncounter(trigger, {
     doctrine: 'balanced',
     formation: 'loose',
   },
-  bark: 'bounty_notice',
+  // Demand mode (ambush script): the ghost voices its contract and opens the timed fork —
+  // buy out the contract, hold the bearing and fight, or burn off it — instead of a silent
+  // stalk that only ever resolves into a sprung fight or a quiet despawn.
+  bark: 'ghost_contract_demand',
+  offerS: 12,
+  timeoutChoice: 'refuse',
+  buyoutCr: 420,                                  // matches the quiet_ghost contract price
+  choices: [
+    { id: 'buyout', label: 'Buy out the contract', needs: 'credits', playerLine: 'I pay the contract price. Take the credits and lose my bearing.' },
+    { id: 'refuse', label: 'Hold the bearing', playerLine: 'Your client overpaid for a warning shot. Come collect.' },
+    { id: 'run', label: 'Burn off the bearing', playerLine: 'No deal. I am already gone.' },
+  ],
+  springBark: 'ghost_spring',
+  ackBarks: {
+    bought: 'ghost_contract_bought_ack',
+    refused: 'ghost_refused_ack',
+    flee: 'ghost_flee_ack',
+    broke: 'ghost_broke_ack',
+  },
   telegraph: 'Sensor ghost blooming. Trust the drive flare.',
   aftermath: {
     flee: 'The ghost reappears on a new bearing with the same lock tone.',

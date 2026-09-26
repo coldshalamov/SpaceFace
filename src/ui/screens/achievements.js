@@ -49,6 +49,20 @@ const ACHIEVEMENT_EMBLEM = Object.freeze({
   same_seed_same_day: 'seed', walked_out: 'undock', paperwork_filed: 'ledger', six_figures: 'credits',
 });
 
+// Every medal is produced art (assets/ui/generated/achievements/, see its manifest): the sheet's medal
+// for each deed; a hidden deed shows its sealed medal until it is earned, then the plain medallion with
+// its glyph.
+const MEDAL_ROOT = (() => {
+  try { return new URL('../../../assets/ui/generated/achievements/', import.meta.url).href; }
+  catch (_) { return '/assets/ui/generated/achievements/'; }
+})();
+function medalArt(row) {
+  if (!row || !row.id) return null;
+  const hiddenEarned = row.hidden && !row.masked;
+  if (hiddenEarned) return { url: MEDAL_ROOT + 'medal-base.webp', glyph: true };
+  return { url: MEDAL_ROOT + 'medal-' + String(row.id).replace(/_/g, '-') + '.webp', glyph: false };
+}
+
 function glyphFor(row, size = 30) {
   if (row && row.masked) return '<span class="con-medal__q">?</span>';
   return dpIcon(ACHIEVEMENT_EMBLEM[row && row.id] || 'check', size);
@@ -138,6 +152,7 @@ export const achievementsScreen = {
 
     const grid = createMedalGrid(stage, {
       glyph: (row) => glyphFor(row),
+      art: medalArt,
       onPick: (id) => this._choose(id),
       onEdge: (dir) => {
         if (dir !== 'up' || !refs) return;
@@ -200,12 +215,13 @@ export const achievementsScreen = {
     if (!read) return;
     const k = medalProgress(row);
     const state = medalState(row);
+    const art = medalArt(row);
     const counted = !row.masked && Number(row.target) > 1;
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const day = row.unlocked ? String(row.status || '').replace(/^Unlocked\s*/, '') : '';
     read.dataset.state = state;
     read.innerHTML = `
-      <div class="con-medal-read__dial" data-state="${state}">${medalDialSvg(k, { focusRing: false })}<span class="con-medal__glyph">${glyphFor(row, 44)}</span></div>
+      <div class="con-medal-read__dial${art ? ' has-art' : ''}${art && art.glyph ? ' has-glyph' : ''}" data-state="${state}">${medalDialSvg(k, { focusRing: false })}${art ? `<img class="con-medal__art" src="${art.url}" alt="" draggable="false" decoding="async">` : ''}<span class="con-medal__glyph">${glyphFor(row, 44)}</span></div>
       <p class="con-medal-read__kicker">${esc(categoryLabel(row.category))} <span aria-hidden="true">·</span> ${esc(state === 'earned' ? 'earned' : state === 'going' ? 'under way' : 'not yet earned')}</p>
       <h2 class="con-medal-read__name">${esc(row.name)}</h2>
       <p class="con-medal-read__line">${esc(row.description)}</p>
@@ -226,10 +242,17 @@ export const achievementsScreen = {
     refs.summary.textContent = achievementSummaryText(rows);
     const section = ACHIEVEMENT_SECTIONS.find((s) => s.id === this._section) || ACHIEVEMENT_SECTIONS[0];
     const visible = rowsForSection(rows, section.id);
+    // nothing the grid shows changed (a store sync, the push's own refresh): leave it, and the
+    // player's focus in it, alone
+    const sig = section.id + '|' + visible.map((r) => `${r.id}:${r.unlocked ? 1 : 0}:${r.current}:${r.status}:${r.name}`).join(',');
+    if (quiet && sig === refs.sig) { refs.scale.update({ instant: true }); return; }
+    refs.sig = sig;
+    const hadFocus = !!(refs.grid.list && typeof refs.grid.list.contains === 'function' && refs.grid.list.contains(globalThis.document && globalThis.document.activeElement));
     refs.grid.list.setAttribute('aria-label', section.id === 'all' ? 'All achievements' : `${section.label} achievements`);
     if (!visible.some((r) => r.id === this._chosen)) this._chosen = defaultMedal(visible);
     refs.stage.dataset.count = String(visible.length);
     refs.grid.set(visible, this._chosen);
+    if (hadFocus) refs.grid.focusChosen();
     const row = visible.find((r) => r.id === this._chosen);
     if (row) this._paintReading(row, { fresh: !quiet });
     else refs.read.innerHTML = '<p class="con-medal-read__line">No achievements in this category yet.</p>';

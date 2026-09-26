@@ -1,9 +1,11 @@
 import { createSaveStage } from '../views/saveFrame.js';
 // Load screen (ARCHITECTURE §4.5, §5; design/specs/09).
-// A LEDGER OF LIVES (design/frontend/ONE_PHOTOGRAPH.md §9.3): the saves are ledger lines down the
-// left; the focused save is a page of its record (where, how rich, how long, when, and the hull's
-// scars, titles, rap sheet and grudge) standing beside the produced picture of its ship. An empty
-// slot is a designed blank, never an empty frame. Keys for Load / Save here / Delete / Export /
+// ORRERY (design/frontend/ORRERY.md §6 Meta): the lives on file are a filmstrip on a curved rail
+// (src/ui/orrery/saveFilmstrip.js), each save a frame of its hull on its own station, an empty slot an
+// open station; the amber Hand swings along the rail to the chosen save. Its hull stands alone on the
+// glass; beside it the page of its record (where, how rich, how long, when, and the hull's scars,
+// titles, rap sheet and grudge): the credits roll, the readings decrypt, and its one primary verb is
+// the Lamp Key (composition: src/ui/orrery/saveLayouts.js). Keys for Load / Save here / Delete / Export /
 // Import / Back; every slot and confirm stays reachable. UI emits game:save/game:load {slot}; the save system owns persistence. Slot index
 // is read defensively from the save system's public API if present, else from localStorage
 // (manifest: SaveLoadScreen reads sf.save.index).
@@ -21,6 +23,11 @@ import { createStageHull, STAGE_HULL_RELEASE_MS } from './stageHull.js';
 import { injectDeckplate, dpMark } from '../deckplate/index.js';
 import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
   from '../kit/computedMaterial.js';
+import { injectSaveLayouts } from '../orrery/saveLayouts.js';
+import { createSaveFilmstrip } from '../orrery/saveFilmstrip.js';
+import { dressLampKey } from '../orrery/lampKey.js';
+import { rollTo, decrypt } from '../orrery/text.js';
+import { hullPosterUrl } from '../hullPosters.js';
 
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
@@ -705,35 +712,60 @@ export const saveLoadScreen = {
   mount(rootEl, ctx) {
 
     injectDeckplate();
+    // ORRERY (design/frontend/ORRERY.md §6 Meta): the saves are a filmstrip on a curved rail under the
+    // chosen save's hull, alone on the glass; the reading beside it pins nothing (the composition sheet
+    // src/ui/orrery/saveLayouts.js lays it out). Forced colours keep the pinned kit page: there the
+    // system palette is the material, and the pins carry its borders.
+    const orr = !forcedColorsActive();
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'of-saveload');
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('aria-label', 'Load');
-    installShell(rootEl);
+    if (orr) { injectSaveLayouts(); rootEl.classList.add('orr-saveload'); } else installShell(rootEl);
 
     // Title: "Load" and the count.
     const title = el('header', 'k-title');
-    pin(title, { 'border-bottom': '0' });
-    const heading = el('h1', 'k-display k-t-title fh-title', 'Load');
-    paintMarking(heading);
+    const heading = el('h1', 'k-display k-t-title', 'Load');
+    if (!orr) { pin(title, { 'border-bottom': '0' }); heading.classList.add('fh-title'); paintMarking(heading); }
     title.appendChild(heading);
     const sub = el('p', 'k-t-emph k-62', '');
     title.appendChild(sub);
     rootEl.appendChild(title);
 
-    // The saves as engraved rows on a plate down the left; rebuilt by _render.
+    // The saves: frames on their stations along the rail (ORRERY), or engraved rows on a plate down
+    // the left (forced colours); rebuilt by _render.
     const hang = el('div', 'k-hang');
-    paintPlate(hang, 'sunk', { padding: '4px', overflow: 'hidden auto' });
+    if (!orr) paintPlate(hang, 'sunk', { padding: '4px', overflow: 'hidden auto' });
     rootEl.appendChild(hang);
+    // The strip is the screen's instrument: scrub it and the save under the Hand comes up on the berth;
+    // a beam runs from the chosen frame to the berth (the ring the hull stands on, or the empty ring).
+    this._film = orr ? createSaveFilmstrip({
+      host: hang,
+      onScrub: (id) => this._select(ctx, id),
+      beamTarget: () => {
+        const st = refs && refs.stage;
+        if (!st || typeof st.getBoundingClientRect !== 'function') return null;
+        const r = st.getBoundingClientRect();
+        if (!(r.width > 0) || !(r.height > 0)) return null;
+        if (st.classList.contains('is-vacant')) {
+          const ring = Math.min(r.width * 0.46, (globalThis.innerHeight || 1080) * 0.52);
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 + ring / 2 };
+        }
+        return { x: r.left + r.width / 2, y: r.top + r.height * 0.88 };
+      },
+    }) : null;
 
     const { stage, caption, shipName, portrait, scars, titles, rapSheet, grudge, objective, credits, fine, actions } = createSaveStage();
     stage.classList.add('sf-save-stage');
-    pin(stage, { background: 'transparent', 'border-width': '0' });
-    paintPlate(caption, 'edge', { 'max-width': '100%', background: 'transparent' });
     caption.classList.add('sf-save-ledger');
     // The slot card's name is a content header (the header voice, set by the sheet), not a title.
-    shipName.classList.add('fh-title', 'sf-slot-card-title');
-    if (portrait) pin(portrait, { 'border-left': '0' });
+    shipName.classList.add('sf-slot-card-title');
+    if (!orr) {
+      pin(stage, { background: 'transparent', 'border-width': '0' });
+      paintPlate(caption, 'edge', { 'max-width': '100%', background: 'transparent' });
+      shipName.classList.add('fh-title');
+      if (portrait) pin(portrait, { 'border-left': '0' });
+    }
     if (objective) objective.classList.add('sf-slot-detail');
     if (fine) fine.classList.add('sf-slot-context');
     // The page of the record, top to bottom: which slot and when (fine), the hull, where the run
@@ -757,9 +789,14 @@ export const saveLoadScreen = {
     const vacant = el('div', 'sf-save-vacant');
     vacant.setAttribute('aria-hidden', 'true');
     vacant.innerHTML = dpMark('mark-save', { size: 'hero' });
+    // ORRERY: the unlit mark gives way to an empty berth ring, named in words.
+    if (orr) vacant.appendChild(el('span', 'sf-save-vacant__word', 'No hull on file'));
     stage.appendChild(vacant);
+    // ORRERY: the reading is its own column beside the hull (not a caption hung off the stage's foot),
+    // and the hull stands alone on the glass: no dock interior behind it, no photograph.
+    if (orr) { caption.remove(); rootEl.appendChild(caption); }
     rootEl.appendChild(stage);
-    this.hull = createStageHull(stage, { rootEl });
+    this.hull = createStageHull(stage, { rootEl, dock: !orr });
     // Loading a save hands the stage to the loading shell for the whole load, and this screen stays
     // laid out underneath it, so the hull kept drifting, linking and uploading on its own WebGL
     // context until flight: the waste the New Game stage had (2.2 s of drift renders, and a second
@@ -791,8 +828,8 @@ export const saveLoadScreen = {
     const unsubCompleted = ctx.bus.on('save:completed', () => { if (refs) this._render(ctx); });
 
     // Foot: Export, Import (the hidden file input stays), Back.
-    const foot = el('footer', 'k-foot of-pause');
-    pin(foot, { 'border-top': '0' });
+    const foot = el('footer', orr ? 'k-foot' : 'k-foot of-pause');
+    if (!orr) pin(foot, { 'border-top': '0' });
     const footWord = (label) => {
       const b = el('button', 'k-word k-word--emph', label);
       b.type = 'button'; b.dataset.action = label.toLowerCase();
@@ -800,9 +837,9 @@ export const saveLoadScreen = {
       return b;
     };
     const bExport = footWord('Export');
-    paintKey(bExport, 'small');
+    if (!orr) paintKey(bExport, 'small');
     const bImport = footWord('Import');
-    paintKey(bImport, 'small');
+    if (!orr) paintKey(bImport, 'small');
     const fileIn = el('input'); fileIn.type = 'file'; fileIn.accept = '.json,application/json'; fileIn.hidden = true;
     foot.appendChild(fileIn);
     const back = footWord('Back');
@@ -815,7 +852,7 @@ export const saveLoadScreen = {
     back.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
 
     refs = {
-      root: rootEl, title, sub, hang, stage, foot, list: null,
+      root: rootEl, title, sub, hang, stage, foot, list: null, orr, factCells: null, arrive: false,
       caption, shipName, portrait, scars, titles, rapSheet, grudge,
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
@@ -880,7 +917,24 @@ export const saveLoadScreen = {
       const item = items.find((entry) => entry.id === row.dataset.id);
       row.classList.add('sf-slot');
       if (!item.occupied) row.classList.add('empty');
-      paintSlotRow(row, item.selected);
+      if (!refs.orr) paintSlotRow(row, item.selected);
+      else {
+        // The frame above the rail: the save's hull as produced art (its starboard elevation); a
+        // hull with no render stands as a quiet ring; an empty station is its corners alone.
+        const frame = el('span', 'sf-slot-frame');
+        frame.setAttribute('aria-hidden', 'true');
+        const art = item.occupied ? hullPosterUrl(slotShipId(slots[item.id], null), 'side') : null;
+        if (art) {
+          const img = el('img', 'sf-slot-thumb');
+          img.alt = '';
+          img.decoding = 'async';
+          img.draggable = false;
+          img.src = art;
+          frame.appendChild(img);
+          frame.classList.add('has-art');
+        } else frame.classList.add(item.occupied ? 'is-filed' : 'is-empty');
+        row.insertBefore(frame, row.firstChild);
+      }
       const name = row.querySelector('.k-row__name');
       if (name) { name.classList.add('sf-slot-name'); if (!item.occupied) name.classList.add('k-38'); }
       const subLine = row.querySelector('.k-row__sub');
@@ -899,9 +953,35 @@ export const saveLoadScreen = {
       const row = event.target && event.target.closest ? event.target.closest('.k-row') : null;
       if (row && row.dataset.id && row.dataset.id !== refs.selected) this._select(ctx, row.dataset.id, { quiet: true });
     });
-    refs.hang.innerHTML = '';
-    refs.hang.appendChild(list);
-    refs.list = list;
+    if (refs.orr && this._film) {
+      // The strip runs left to right, so Left/Right walk it too (the list's roving focus keeps
+      // Up/Down, Home and End); focus arriving on a frame selects it through focusin above.
+      list.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        const all = [...list.querySelectorAll('.k-row')];
+        const at = all.findIndex((row) => row === document.activeElement || row.contains(document.activeElement));
+        if (at < 0) return;
+        event.preventDefault();
+        const next = all[Math.max(0, Math.min(all.length - 1, at + (event.key === 'ArrowRight' ? 1 : -1)))];
+        if (next && next !== all[at]) { next.focus(); cue('move'); }
+      });
+      // Every frame is a stop for the pad: its spatial move only sees tabindex >= 0, and the list's
+      // roving focus parks the frames it is not on at -1, so a controller could never leave the chosen
+      // save. Re-open them after roving's own focusin (registered first, so it runs first).
+      const openStops = () => { for (const row of list.querySelectorAll('.k-row')) row.tabIndex = 0; };
+      list.addEventListener('focusin', openStops);
+      openStops();
+      // Only the old list leaves: the rail the strip draws in the same box stays.
+      if (refs.list && refs.list.parentNode) refs.list.remove();
+      refs.hang.appendChild(list);
+      refs.list = list;
+      this._film.attach(list, { chosen: refs.selected, arrive: refs.arrive });
+      refs.arrive = false;
+    } else {
+      refs.hang.innerHTML = '';
+      refs.hang.appendChild(list);
+      refs.list = list;
+    }
     this._renderStage(ctx);
   },
 
@@ -912,9 +992,10 @@ export const saveLoadScreen = {
       for (const row of refs.list.querySelectorAll('.k-row')) {
         const live = row.dataset.id === id;
         row.setAttribute('aria-selected', String(live));
-        paintSlotRow(row, live);
+        if (!refs.orr) paintSlotRow(row, live);
       }
     }
+    if (this._film) this._film.choose(id);
     if (!quiet) cue('move');
     this._renderStage(ctx);
   },
@@ -947,6 +1028,8 @@ export const saveLoadScreen = {
       : (liveShip && Array.isArray(liveShip.fittings) ? liveShip.fittings : null);
     refs.stage.classList.toggle('is-vacant', !defId);
     refs.stage.dataset.slotState = occupied ? 'filed' : (saveAllowed ? 'open' : 'empty');
+    refs.root.dataset.slotState = refs.stage.dataset.slotState;
+    if (this._film) this._film.relayBeam();
 
     // Which slot, and when: the etched line at the top of the page.
     const badges = occupied ? slotBadges(id, meta, currentSlot, latestOccupiedSlot(refs.slots)) : [];
@@ -992,12 +1075,17 @@ export const saveLoadScreen = {
           ['Played', fmtPlaytime(liveState && liveState.meta && liveState.meta.playtimeS).replace(/ played$/, '') || '—'],
         ]
         : [['Credits', '—', 'figure'], ['Sector', '—'], ['Played', '—'], ['Saved', '—']];
-    refs.facts.innerHTML = '';
-    for (const [label, value, kind] of factRows) {
-      const cell = el('div', 'sf-ledger-fact' + (kind ? ' sf-ledger-fact--' + kind : ''));
-      cell.appendChild(el('dt', '', label));
-      cell.appendChild(el('dd', value === '—' ? 'is-blank' : '', value));
-      refs.facts.appendChild(cell);
+    if (refs.orr) {
+      const creditsN = occupied ? meta.credits : (saveAllowed ? livePlayer && livePlayer.credits : null);
+      this._paintFacts(factRows, Number.isFinite(Number(creditsN)) && creditsN != null ? Number(creditsN) : null);
+    } else {
+      refs.facts.innerHTML = '';
+      for (const [label, value, kind] of factRows) {
+        const cell = el('div', 'sf-ledger-fact' + (kind ? ' sf-ledger-fact--' + kind : ''));
+        cell.appendChild(el('dt', '', label));
+        cell.appendChild(el('dd', value === '—' ? 'is-blank' : '', value));
+        refs.facts.appendChild(cell);
+      }
     }
 
     // The hull as it is in that save (def id + fittings from the envelope when the index has them).
@@ -1024,6 +1112,15 @@ export const saveLoadScreen = {
       row: true, size: 'emph', ariaLabel: slotLabel(id) + ' actions',
       onPick: (action) => this._act(ctx, action, id, meta, occupied),
     });
+    if (refs.orr) {
+      // The save's one primary verb is the screen's Lamp Key; the rest are small verbs with a notch.
+      for (const button of list.querySelectorAll('.k-word')) {
+        if (button.classList.contains('k-word--primary')) dressLampKey(button);
+        else button.classList.add('sf-save-verb', ...(button.dataset.action === 'delete' ? ['sf-save-verb--danger'] : []));
+      }
+      refs.actions.appendChild(list);
+      return;
+    }
     list.classList.add('of-pause');
     for (const button of list.querySelectorAll('.k-word')) {
       const action = button.dataset.action;
@@ -1034,6 +1131,47 @@ export const saveLoadScreen = {
       paintKey(button, kind);
     }
     refs.actions.appendChild(list);
+  },
+
+  /** ORRERY facts: one cell per fact, kept across renders, so the credits roll from the last save's
+   *  figure to this one and a reading that changed decrypts in place (ORRERY §4 #4, #5). */
+  _paintFacts(factRows, creditsN) {
+    if (!refs) return;
+    if (!refs.factCells || refs.factCells.length !== factRows.length) {
+      refs.facts.innerHTML = '';
+      refs.factCells = factRows.map(([, , kind]) => {
+        const cell = el('div', 'sf-ledger-fact' + (kind ? ' sf-ledger-fact--' + kind : ''));
+        const dt = el('dt', '', '');
+        const dd = el('dd', '', '');
+        cell.appendChild(dt);
+        cell.appendChild(dd);
+        let n = null;
+        let u = null;
+        if (kind === 'figure') {
+          n = el('span', 'sf-fact-n', '');
+          u = el('span', 'sf-fact-u', 'CR');
+          dd.appendChild(n);
+          dd.appendChild(u);
+        }
+        refs.facts.appendChild(cell);
+        return { dt, dd, n, u };
+      });
+    }
+    factRows.forEach(([label, value], i) => {
+      const cell = refs.factCells[i];
+      if (!cell) return;
+      if (cell.dt.textContent !== label) cell.dt.textContent = label;
+      const blank = value === '—';
+      cell.dd.classList.toggle('is-blank', blank);
+      if (cell.n) {
+        const next = blank || creditsN == null ? '—' : String(Math.round(creditsN));
+        if (cell.n.dataset.v !== next) { cell.n.dataset.v = next; rollTo(cell.n, next === '—' ? '—' : Number(next)); }
+        cell.u.hidden = next === '—';
+      } else if (cell.dd.dataset.v !== value) {
+        cell.dd.dataset.v = value;
+        decrypt(cell.dd, value, { duration: 300, delay: 70 * i });
+      }
+    });
   },
 
   async _act(ctx, action, id, meta, occupied) {
@@ -1185,10 +1323,13 @@ export const saveLoadScreen = {
     refs.cancelHullRelease();
     refs.clearLoadRequest();
     if (this.hull && this.hull.restore()) refs.shownShipId = null;
+    // ORRERY arrival: the rail draws itself and the frames rise onto their stations, one by one.
+    refs.arrive = !!refs.orr;
     this._render(ctx);
     try {
       settle(refs.title, { from: 'top', state: 'saveLoad:open' });
-      settle(refs.hang, { from: 'left', state: 'saveLoad:open' });
+      if (!refs.orr) settle(refs.hang, { from: 'left', state: 'saveLoad:open' });
+      else settle(refs.caption, { from: 'left', state: 'saveLoad:open' });
       settle(refs.stage, { from: 'right', state: 'saveLoad:open' });
       settle(refs.foot, { from: 'bottom', state: 'saveLoad:open' });
     } catch (e) { /* motion is cosmetic */ }
@@ -1229,6 +1370,7 @@ export const saveLoadScreen = {
       try { refs.unsubCompleted(); } catch (e) { /* bus already gone */ }
     }
     if (this.hull) { this.hull.dispose(); this.hull = null; }
+    if (this._film) { this._film.dispose(); this._film = null; }
     refs = null;
   },
 };

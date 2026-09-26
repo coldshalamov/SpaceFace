@@ -953,3 +953,88 @@ export function apertureHazardZones(sectorId) {
     intensity: 0.6,
   })];
 }
+
+// H1f / C12 — The Metronome (Eris Margin): an authored area-denial emitter on an
+// unyielding 8.00 s sweep (depth-program BUILD_PLAN: "beam plane, sim-clocked 8s
+// period, radiation damage through the hazard system, timing-crossing" — "a pulsar
+// you cross on the beat"). The beam is a rotating denial cone: mass in the wedge is
+// carried mouth-first out of the sweep while it burns. Deterministic off simTime —
+// no RNG, no visit-local state, same law as every machine in this file. The POI is a
+// charted:false scan landmark today; this table is the first thing that plays it.
+export const METRONOME_SECTOR_ID = 'sector_eris_margin';
+export const METRONOME_POI_ID = 'poi_eris_metronome';
+export const METRONOME_LOCAL_POS = Object.freeze({ x: -60, z: 1700 }); // north.js anchor
+export const METRONOME_GLOBAL_POS = Object.freeze(
+  sectorLocalToGlobalForSector(METRONOME_LOCAL_POS, METRONOME_SECTOR_ID),
+);
+export const METRONOME_PERIOD_S = 8;
+// ~0.3-0.5 s in the wedge is a real burn, not a gib — the beat is the game, not the wall.
+export const METRONOME_BEAM_DPS = 60;
+export const METRONOME_FIELD = Object.freeze({
+  id: 'environment_eris_metronome_beam',
+  kind: 'cone',
+  center: METRONOME_GLOBAL_POS,
+  dir: freezeVec(1, 0),
+  radius: 560,
+  strength: 380,
+  falloff: 1.08,
+  halfAngleRad: 0.10,
+  edgeSoftRad: 0.06,
+  sourceId: METRONOME_POI_ID,
+  team: null,
+});
+
+const METRONOME_OMEGA = (Math.PI * 2) / METRONOME_PERIOD_S;
+const _metronomeDirScratch = { x: 1, z: 0 };
+
+// Beam bearing at simTime: one full counterclockwise revolution per period. Pure —
+// the same saved clock drives field dir, predicate, and ETA, so all three agree.
+export function metronomeBeamDir(simTime, out = null) {
+  const result = out || {};
+  const theta = Math.PI * 2 * positiveModulo(finite(simTime), METRONOME_PERIOD_S) / METRONOME_PERIOD_S;
+  result.x = Math.cos(theta);
+  result.z = Math.sin(theta);
+  return result;
+}
+
+// Cone predicate vs. the beam's bearing at simTime — same shape as
+// pointInsideMachineField's cone branch, keyed to the live sweep.
+export function pointInsideMetronomeBeam(point, simTime) {
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return false;
+  const field = METRONOME_FIELD;
+  const dx = point.x - field.center.x;
+  const dz = point.z - field.center.z;
+  const distance = Math.hypot(dx, dz);
+  if (distance >= field.radius) return false;
+  if (distance < 1e-6) return true;
+  const dir = metronomeBeamDir(simTime, _metronomeDirScratch);
+  const forward = (dx * dir.x + dz * dir.z) / distance;
+  if (forward <= 0) return false;
+  const angle = Math.acos(Math.max(-1, Math.min(1, forward)));
+  return angle < field.halfAngleRad + field.edgeSoftRad;
+}
+
+// Seconds until the beam's leading edge next reaches the point's bearing; 0 while
+// the point is already inside the wedge. The "cross on the beat" number.
+export function metronomeBeamEtaAt(point, simTime) {
+  if (pointInsideMetronomeBeam(point, simTime)) return 0;
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return 0;
+  const dx = point.x - METRONOME_FIELD.center.x;
+  const dz = point.z - METRONOME_FIELD.center.z;
+  const bearing = Math.atan2(dz, dx);
+  const dir = metronomeBeamDir(simTime, _metronomeDirScratch);
+  const beamAngle = Math.atan2(dir.z, dir.x);
+  let gap = bearing - beamAngle - METRONOME_FIELD.halfAngleRad;
+  while (gap <= 0) gap += Math.PI * 2;
+  return gap / METRONOME_OMEGA;
+}
+
+export function metronomeHazardZone() {
+  return Object.freeze({
+    id: 'eris_metronome_beam',
+    type: 'debris_current',
+    center: METRONOME_LOCAL_POS,
+    radius: METRONOME_FIELD.radius + 60,
+    intensity: 0.6,
+  });
+}

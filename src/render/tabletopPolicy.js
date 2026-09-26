@@ -648,6 +648,25 @@ export function isCriticalStartingHub(entity) {
   return token === 'place_station_trade_hub' && data.sectorId === 'sector_helios_prime';
 }
 
+/**
+ * The critical-hub privilege is scoped to the hub's own sector. Measured 2026-09-25
+ * (.devshots/landmark-diag): the ~82 MB trade hub held the serial composition queue at rung 1
+ * for 57s+ after the player left Helios, starving the destination sector's authored bodies
+ * behind a station nobody could see. Same keep-alive rule as
+ * shouldKeepPersistentLandmarkResident: outside its sector the hub is an ordinary station.
+ * Before a live sector exists (loading), the startup behaviour stands.
+ */
+export function isCriticalHubInCurrentSector(entity, currentSectorId) {
+  if (!isCriticalStartingHub(entity)) return false;
+  const current = currentSectorId ? String(currentSectorId) : '';
+  if (!current) return true;
+  const data = entity.data || {};
+  // The critical hub IS the Helios trade hub; the fallback keeps an id-matched record with no
+  // sector fields honest rather than homeless.
+  const home = entity.homeSectorId || data.homeSectorId || data.sectorId || 'sector_helios_prime';
+  return String(home) === current;
+}
+
 export function isPersistentLandmark(entity) {
   if (!entity || entity.alive === false) return false;
   if (entity.type !== 'station' && entity.type !== 'planet') return false;

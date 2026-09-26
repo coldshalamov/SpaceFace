@@ -228,6 +228,45 @@ function catchUpFieldRock(rec, simTime) {
   return rec;
 }
 
+// Admission-time overlap guard (the seed-4242 fling class, D50): the promoted body carries the
+// authored scaled collider, so materializing a record whose disc already overlaps a live hull
+// hands the physics owner an interpenetration it resolves with an unclamped positional shove —
+// the hull is yeeted off the sector. A shallow overlap resolves by spawning at the hull's
+// collider skin; a centered, deep, or unsolvable one refuses admission and leaves the record
+// dormant for its caller to skip. The total shift is bounded at one collider radius: past that,
+// the rock would visibly teleport from its drawn dormant position, which is its own defect —
+// refuse instead. The `ram` path is exempt: its trigger already fires at the collider skin and
+// the designed ram bump is velocity-clamped (A6), so a record-position spawn is the contract.
+const ASTEROID_ADMIT_SKIN = 0.05;
+
+function resolveAdmitOverlap(state, pos, colliderR, reason) {
+  if (reason === 'ram') return pos;
+  let x = pos.x;
+  let z = pos.z;
+  const entities = state.entityList || [];
+  for (let pass = 0; pass < 3; pass++) {
+    let worst = null;
+    for (let i = 0; i < entities.length; i++) {
+      const e = entities[i];
+      if (!e || e.alive === false || e.type !== 'ship' || !e.pos) continue;
+      const dx = x - e.pos.x;
+      const dz = z - e.pos.z;
+      const d = Math.sqrt(dx * dx + dz * dz);
+      const need = colliderR + (e.radius || 6) + ASTEROID_ADMIT_SKIN;
+      if (d < need && (!worst || d < worst.d)) worst = { e, dx, dz, d, need };
+    }
+    if (!worst) {
+      const shifted = Math.hypot(x - pos.x, z - pos.z);
+      return shifted <= colliderR ? { x, z } : null;
+    }
+    if (worst.d <= 1e-4) return null;
+    const push = worst.need / worst.d;
+    x = worst.e.pos.x + worst.dx * push;
+    z = worst.e.pos.z + worst.dz * push;
+  }
+  return null;
+}
+
 export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote') {
   if (!state || id == null) return null;
   const live = state.entities && typeof state.entities.get === 'function'
@@ -248,10 +287,13 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
   catchUpFieldRock(rec, simTime);
   const data = rec.data && typeof rec.data === 'object' ? { ...rec.data } : {};
   delete data.fieldResident;
+  const colliderR = asteroidColliderRadius(data.typeId, rec.radius);
+  const admitPos = resolveAdmitOverlap(state, rec.pos, colliderR, reason);
+  if (!admitPos) return null;
   const ent = spawn({
     id: rec.id,
     type: 'asteroid',
-    pos: { x: rec.pos.x, z: rec.pos.z },
+    pos: { x: admitPos.x, z: admitPos.z },
     vel: rec.vel ? { x: rec.vel.x, z: rec.vel.z } : { x: 0, z: 0 },
     rot: rec.rot,
     angVel: rec.angVel,
@@ -260,7 +302,7 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     hull: data.oreHP,
     hullMax: data.oreHPMax,
     collides: true,
-    physicsBody: { radius: asteroidColliderRadius(data.typeId, rec.radius) },
+    physicsBody: { radius: colliderR },
     data,
   });
   if (!ent) return null;

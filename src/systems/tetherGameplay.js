@@ -15,6 +15,7 @@ import {
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
 import { stepLatchRepair } from '../combat/latchRepair.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
+import { modelTruthRopeEnd } from '../data/modelTruth.js';
 import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
 import { createMasslineRuntime } from '../core/constraints/masslineController.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
@@ -476,8 +477,7 @@ export const tetherGameplay = {
       target = promoteAsteroidFieldRock(state, target.id, this.helpers, 'tether') || target;
     }
 
-    // The line always leaves the player's center of mass. A physical constraint attached to a
-    // nose socket applies steering torque by itself, which makes latching silently take over yaw.
+    // Both ends leave the tether socket, or the measured hardpoint when the body has no socket.
     const attachWorlds = contextualAttachmentWorlds(player, target, latch.targetWorld);
     const result = attachments.create({
       defId: TETHER_DEF_ID,
@@ -2512,17 +2512,19 @@ function masslineTargetLabel(target) {
   return type === 'asteroid' ? 'Anchor' : type.charAt(0).toUpperCase() + type.slice(1);
 }
 
-/** Resolve physical world anchors once at latch time. The player endpoint is always COM so the
- * rope cannot become an attitude controller. Dynamic tow payloads also use COM; large static
- * anchors retain the selected surface point so the cable meets the visible object. */
+/** Resolve physical world anchors once at latch time. Each end is the tether socket when the
+ * body has one. A wreck, pod, or any other body with no socket uses the measured hardpoint,
+ * not the entity origin. */
 export function contextualAttachmentWorlds(player, target, acquiredTargetWorld) {
-  const targetWorld = target && TOW_TARGET_COM_TYPES.has(target.type)
-    ? { x: target.pos.x, y: 0, z: target.pos.z }
+  const source = modelTruthRopeEnd(player);
+  const targetEnd = modelTruthRopeEnd(target);
+  const sourceWorld = source
+    ? { x: source.x, y: 0, z: source.z }
+    : { x: player.pos.x, y: 0, z: player.pos.z };
+  const targetWorld = targetEnd
+    ? { x: targetEnd.x, y: 0, z: targetEnd.z }
     : acquiredTargetWorld;
-  return {
-    sourceWorld: { x: player.pos.x, y: 0, z: player.pos.z },
-    targetWorld,
-  };
+  return { sourceWorld, targetWorld };
 }
 
 function combatKernel(host) {

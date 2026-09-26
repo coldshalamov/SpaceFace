@@ -106,7 +106,12 @@ function postIntro(h, branch = 'traders') {
     params: type === 'patrol_clear' ? { clearCount: 1, fValue: 1, taskTime: 5 }
       : { cmdtyId: null, qty: 1, fValue: 1, taskTime: 5 },
   };
-  assert.equal(h.missions.postAndAcceptAuthoredOffer(offer).ok, true);
+  const posted = h.missions.postAndAcceptAuthoredOffer(offer);
+  assert.equal(posted.ok, true);
+  // Live-route saves earn the branch by finishing the intro, not on accept.
+  const intro = h.state.missions.active.find((m) => m.id === posted.missionId);
+  assert.ok(intro);
+  completeMission(h, intro);
 }
 
 function toB7(h) {
@@ -202,6 +207,8 @@ test('B7 pending ending survives Continue without applying a choice', () => {
   h.missions._checkStoryGates();
   // Live offer gate: Deep Reach operation + Ashfall desk, not credits in Helios.
   h.state.story.flags.deep_reach_operation_complete = true;
+  // _advanceStory(beat7) writes the ending-gate flag when the physical op completes.
+  h.state.story.flags.endgame = true;
   h.state.world.currentSectorId = 'sector_ashfall_reach';
   h.bus.emit('dock:docked', { stationId: 'station_ashcache' });
   if (!h.state.story.endgameOffered) h.story._maybeOfferEndgame();

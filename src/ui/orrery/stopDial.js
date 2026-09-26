@@ -224,7 +224,7 @@ export const createStopDial = createStopScale;
  * carry produced art (a hull's holo plan view) with its word above it. Same contract as the scale:
  * it seats the screen's own buttons and follows aria-pressed.
  */
-export function createStopArc({ row, width = 560, radius = 160, span = 84, art = null, artSize = 46 } = {}) {
+export function createStopArc({ row, width = 560, radius = 160, span = 84, art = null, artSize = 46, overshoot = 8 } = {}) {
   const doc = (row && row.ownerDocument) || globalThis.document;
   if (!row || !doc || typeof doc.createElementNS !== 'function' || !row.parentNode) {
     return { el: null, update() {}, dispose() {} };
@@ -249,17 +249,18 @@ export function createStopArc({ row, width = 560, radius = 160, span = 84, art =
   const angles = Array.from({ length: n }, (_, i) => -span / 2 + step * i);
   const pt = (r, a) => [cx + r * Math.sin(a * Math.PI / 180), cy - r * Math.cos(a * Math.PI / 180)];
   const arcPath = (r, a0, a1) => { const [x0, y0] = pt(r, a0); const [x1, y1] = pt(r, a1); return `M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`; };
-  const a0 = -span / 2 - 14;
-  const a1 = span / 2 + 14;
-  face.appendChild(svg('path', { d: arcPath(radius, a0, a1), class: 'orr-bloom orr-hi', 'stroke-width': 5, opacity: '.12' }));
-  face.appendChild(svg('path', { d: arcPath(radius, a0, a1), stroke: 'rgb(236 230 216 / .6)', 'stroke-width': 1.2, fill: 'none' }));
+  const a0 = -span / 2 - overshoot;
+  const a1 = span / 2 + overshoot;
+  // weight, not wire: the dial is a luminous band with a crisp edge, its scale ticks inside it, an inner band
+  face.appendChild(svg('path', { d: arcPath(radius, a0, a1), class: 'orr-band', style: '--orr-w-band:10px; --orr-band-a:.1' }));
+  face.appendChild(svg('path', { d: arcPath(radius, a0, a1), class: 'orr-edge', style: '--orr-edge-a:.62; --orr-w-edge:1.75px' }));
   const fine = [];
-  for (let a = a0 + 2; a < a1; a += 3) { const [x0, y0] = pt(radius, a); const [x1, y1] = pt(radius - 5, a); fine.push(`M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}`); }
-  face.appendChild(svg('path', { d: fine.join(' '), class: 'orr-core orr-faint', 'stroke-width': 1 }));
-  face.appendChild(svg('path', { d: arcPath(radius * 0.42, a0, a1), stroke: 'rgb(232 226 212 / .12)', 'stroke-width': 1, 'stroke-dasharray': '1 5', fill: 'none' }));
+  for (let a = a0 + 2; a < a1; a += 3) { const [x0, y0] = pt(radius - 7, a); const [x1, y1] = pt(radius - 13, a); fine.push(`M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}`); }
+  face.appendChild(svg('path', { d: fine.join(' '), class: 'orr-tick', style: 'stroke:rgb(236 230 216 / .36)' }));
+  face.appendChild(svg('path', { d: arcPath(radius * 0.42, a0, a1), class: 'orr-band', style: '--orr-w-band:5px; --orr-band-a:.05' }));
   const stationTicks = angles.map((a) => {
     const [x0, y0] = pt(radius - 10, a); const [x1, y1] = pt(radius + 8, a);
-    const t = svg('path', { d: `M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}`, class: 'orr-core orr-hi', 'stroke-width': 1.5 });
+    const t = svg('path', { d: `M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}`, class: 'orr-core orr-hi', 'stroke-width': 2.4 });
     face.appendChild(t);
     return t;
   });
@@ -292,8 +293,13 @@ export function createStopArc({ row, width = 560, radius = 160, span = 84, art =
     const [sx, sy] = pt(radius, angles[i]);
     const action = li.querySelector('button').dataset.action;
     const hasArt = !!(art && art[action]);
-    li.style.left = `${sx.toFixed(1)}px`;
-    li.style.top = `${(sy - (hasArt ? artSize + 62 : 48)).toFixed(1)}px`;
+    // a word stands outside the dial on its own station's radius (a word above a station crowds its neighbours)
+    // a word near the top stands outside the dial on its station's radius; a station low on the dial hangs its
+    // word just under the station (a horizontal word beside a steep arc would cross it or leave the column)
+    const low = Math.abs(angles[i]) > 45;
+    const [wx, wy] = pt(radius + 28, angles[i]);
+    li.style.left = `${(hasArt ? sx : low ? sx : wx).toFixed(1)}px`;
+    li.style.top = `${(hasArt ? sy - artSize - 62 : low ? sy + 12 : wy - 12).toFixed(1)}px`;
     if (hasArt) {
       const img = doc.createElement('div');
       img.className = 'orr-stopscale__art';

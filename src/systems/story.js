@@ -625,6 +625,9 @@ export const story = {
     const s = state.story;
     if (!s || s.endgameChoice || s.endgameResolved || (s.flags && s.flags.sandboxContinued)) return;
     if (s.endgameOffered) return;                 // already presented
+    // The offer is a place beat, not a remote notification: it only presents after the player has
+    // reached Ashfall (or already opened the desk/docked the cache that implies it).
+    if (!(s.flags && (s.flags.ashfall_visited || s.flags.deep_reach_ashfall_docked || s.flags.kurtz_desk_opened))) return;
     // One gate shared with the pure evaluator: actual Deep Reach completion, or a ledger held
     // after substantial independent work, and an encountered desk. Money is not permission to end.
     if (!this._endgameGateMet()) return;

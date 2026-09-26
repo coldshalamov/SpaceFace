@@ -430,7 +430,13 @@ test('staging is deterministic on the fixed seed and stages a towable tableau', 
   const scout = rescueActor(h, 'scout');
   assert.equal(!!scout.flags.invuln, false, 'the scout is a leftover lesson body, not invulnerable');
   assert.notEqual(scout._invulnUntil, Infinity, 'spawn must not restamp leftover scout invuln');
-  assert.ok(scout.hull >= 500 && scout.hullMax >= 500, 'high leftover hull so ~20 starter shots do not kill it');
+  // PQ-163.00 receipt leftover: hull 500 was a ~5x sponge overshoot (96 shots to kill) that
+  // invited grinding on a body the beat never asks you to kill. The load-bearing property is
+  // "a ~20-shot starter burst cannot kill the shove target" — a landed hit spends ~5.2 hull
+  // (default difficulty), so 120 survives the ~105-hull burst. The upper bound keeps the
+  // sponge from quietly regrowing; killing it (~24 deliberate shots) stays a restaged retry.
+  assert.ok(scout.hull >= 120 && scout.hullMax >= 120, 'the shove body survives a 20-shot starter burst');
+  assert.ok(scout.hull <= 200 && scout.hullMax <= 200, 'no sponge overshoot: the lesson body is not a 90-shot grind');
   assert.deepEqual(scout.data.weapons, [], 'the scout cannot shoot back');
   assert.equal(scout.data.ai.passive, true, 'the scout never acts tactically');
   assert.equal(scout.mass, 16, 'the scout is light enough for the starter gun to shove');
@@ -712,13 +718,24 @@ test('a destroyed scout during the shove fails and restages instead of walling',
   assert.equal(fresh._invulnUntil, undefined, 'the leftover respawn no longer stamps leftover invuln');
   assert.equal(tutorialLines(h).at(-1), rescueBeatLine('shove'), 'the leftover verb is re-spoken once');
 
-  // The leftover honest cost of that retry: `_respawnRescueSlot` re-rolls a whole leftover tableau
-  // bearing from the leftover CURRENT player position but spawns the leftover scout slot only, so
-  // the leftover wall never moves. The leftover staged scout sits ON the player→asteroid line at
-  // 28 % of the way in (117.6 wu from the leftover wall on seed 47), which is why the leftover
-  // gun's push points at it; the leftover restaged scout has no such relation to the leftover
-  // standing wall. Pin the leftover mechanism (same wall, new bearing), not the leftover RNG float.
+  // PQ-163.00 receipt leftover, FIXED: the restage no longer re-rolls a whole tableau bearing
+  // from the current player position while the wall stands. The fresh scout is placed back on
+  // the STANDING wall's line at the authored 28 % offset (the same readable "push it along
+  // this line" problem as the first attempt), via the pure rescueSlotRespawnTransform.
   assert.equal(h.state.onboarding.rescue.ids.asteroid, asteroidId, 'the leftover wall stands');
+  const player = h.state.entities.get(h.state.playerId);
+  const freshAsteroid = h.state.entities.get(asteroidId);
+  const toWallX = freshAsteroid.pos.x - player.pos.x;
+  const toWallZ = freshAsteroid.pos.z - player.pos.z;
+  const wallDist = Math.hypot(toWallX, toWallZ) || 1;
+  const along = ((fresh.pos.x - player.pos.x) * toWallX + (fresh.pos.z - player.pos.z) * toWallZ) / wallDist;
+  const lateral = Math.abs(
+    (fresh.pos.x - player.pos.x) * (-toWallZ / wallDist)
+    + (fresh.pos.z - player.pos.z) * (toWallX / wallDist),
+  );
+  assert.ok(Math.abs(along - wallDist * 0.72) <= 1e-6,
+    `the fresh scout sits on the wall line 28% in from the wall (got ${along.toFixed(1)} of ${(wallDist * 0.72).toFixed(1)})`);
+  assert.ok(lateral <= 1e-6, `the fresh scout does not strand off the wall line (lateral ${lateral.toFixed(1)})`);
 });
 
 test('a kill before its beat never yanks the rail', () => {

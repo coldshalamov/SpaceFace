@@ -17,6 +17,7 @@
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO } from '../../data/narrative.js';
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
 import { CANONICAL_PORTRAITS, PORTRAIT_ASSET_ROOT } from '../../data/portraits.js';
+import { hullPosterUrl } from '../hullPosters.js';
 import { explorationDiscoveryPlates, galaxyExplorationSummary } from '../../world/explorationJournal.js';
 import { decorateEntityNode } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
@@ -27,7 +28,8 @@ import { injectArchiveLayouts } from '../orrery/archiveLayouts.js';
 import {
   archivePlateSvg, archiveGaugeSvg, archiveScramble, archiveHash, archiveWedgeSvg, archiveZoom, createLadderHand,
 } from '../orrery/archiveInstruments.js';
-import { decrypt } from '../orrery/text.js';
+import { decrypt, rollTo } from '../orrery/text.js';
+import { reducedMotion } from '../orrery/motion.js';
 import { syncScrollExtent } from '../orrery/scrollExtent.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 
@@ -404,6 +406,27 @@ function figureArt(figureKey) {
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
+/**
+ * The codex's produced plates (assets/ui/generated/codex/, manifest beside them): one per story beat;
+ * the endgame's choices stand in the last beat's plate (they are offered at the Deep Reach).
+ */
+const CODEX_PLATE_ROOT = 'assets/ui/generated/codex/';
+function codexPlate(entry) {
+  const id = String(entry && entry.id || '');
+  const beat = /^beat:(\d+)$/.exec(id);
+  if (beat && Number(beat[1]) <= 7) return CODEX_PLATE_ROOT + 'beat' + beat[1] + '.webp';
+  if (id.startsWith('endgame:')) return CODEX_PLATE_ROOT + 'beat7.webp';
+  return null;
+}
+
+/** The ship you fly, as its produced render: the Tessera's pages stand the hull it is today. */
+function flownHullRender(state) {
+  const player = state && state.player;
+  const owned = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const ship = owned[Number(player && player.activeShipIndex) || 0] || owned[0] || null;
+  return ship && ship.defId ? hullPosterUrl(ship.defId, 'hero') : null;
+}
+
 /** "Comms (25/45)" -> "Comms": a section's label without its running count. */
 function sectionTitle(label) {
   return String(label || '').replace(/\s*\(\d+\/\d+\)\s*$/, '');
@@ -514,13 +537,36 @@ export const codexScreen = {
       } catch (_) { /* no observer, no resize */ }
     }
 
-    // Foot: one way back.
+    // Foot: one way back, and the archive's tape — every entry of the open section as a tick you
+    // scrub through with the pointer (or the arrow keys once it has focus); locked ticks read as
+    // cipher under the cursor.
     const foot = el('footer', 'k-foot');
     const close = el('button', 'k-word k-word--emph sf-back', 'Close');
     close.type = 'button'; close.dataset.action = 'close';
     close.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
     foot.appendChild(close);
+    const tape = el('div', 'cx-tape');
+    tape.setAttribute('role', 'slider');
+    tape.setAttribute('aria-label', 'Scrub the archive');
+    tape.setAttribute('aria-orientation', 'horizontal');
+    tape.tabIndex = 0;
+    tape.hidden = true;
+    foot.appendChild(tape);
+    this._tape = tape;
+    this._bindTape(tape);
     rootEl.appendChild(foot);
+
+    // The plate leans toward the pointer (a Tilt Plate), a sheen crossing its art.
+    this._bindTilt(stage);
+    if (!this._platesWarm && typeof Image === 'function') {
+      this._platesWarm = [];
+      for (let i = 0; i <= 7; i += 1) {
+        const warm = new Image();
+        warm.decoding = 'async';
+        warm.src = CODEX_PLATE_ROOT + 'beat' + i + '.webp';
+        this._platesWarm.push(warm);
+      }
+    }
 
     this._regions = { title, hang, stage, foot };
     this._focusByTab = {};
@@ -622,7 +668,6 @@ export const codexScreen = {
     }
     this._body.innerHTML = '';
     this._index.innerHTML = '';
-    this._status.innerHTML = '';
     this._sections = [];
     this._entries = [];
     this._syncTabs();
@@ -644,9 +689,267 @@ export const codexScreen = {
       case 'Archive':  this._renderArchive(ctx); break;
       case 'Ledger':   this._renderLedger(ctx); break;
     }
+    // What was locked the last time this section was drawn and is open now decrypts in place.
+    if (!this._lockedByTab) this._lockedByTab = {};
+    const before = this._lockedByTab[this._activeTab];
+    const lockedNow = new Set(this._entries.filter((entry) => entry.locked).map((entry) => entry.id));
+    this._lockedByTab[this._activeTab] = lockedNow;
+    const opened = before ? this._entries.filter((entry) => !entry.locked && before.has(entry.id)) : [];
     if (!isChromeLess) this._applySearchFilter();
-    else { this._list = null; this._placeHand(); }
+    else { this._list = null; this._placeHand(); this._renderTape([]); }
     this._drawWedge();
+    if (opened.length) this._announceUnlocked(opened);
+  },
+
+  /** Entries that have just unlocked: their names decrypt from cipher to words, their ticks flare. */
+  _announceUnlocked(entries) {
+    for (const entry of entries) {
+      const row = this._list && typeof this._list.querySelector === 'function'
+        ? [...this._list.querySelectorAll('.k-row[data-id]')].find((candidate) => candidate.dataset.id === entry.id) : null;
+      const name = row && row.querySelector('.k-row__name');
+      if (name) decrypt(name, entry.name, { duration: 900 });
+      if (row && row.classList) {
+        row.classList.add('is-unlocking');
+        setTimeout(() => { if (row.classList) row.classList.remove('is-unlocking'); }, 1800);
+      }
+      const tick = this._tape && typeof this._tape.querySelector === 'function'
+        ? [...this._tape.querySelectorAll('.cx-tape__tick')].find((node) => node.dataset.id === entry.id) : null;
+      if (tick && tick.classList) {
+        tick.classList.add('is-unlocking');
+        setTimeout(() => { if (tick.classList) tick.classList.remove('is-unlocking'); }, 1800);
+      }
+      if (entry.id === this._shownId && entry.titleSpan) decrypt(entry.titleSpan, entry.titleText, { duration: 900 });
+    }
+  },
+
+  /** The entry being read in the open section, if any. */
+  _currentEntry() {
+    const id = this._focusByTab && this._focusByTab[this._activeTab];
+    return (this._tapeEntries || []).find((entry) => entry.id === id) || null;
+  },
+
+  /**
+   * The tape: one tick per entry of the open section (after the search), a long tick and a name at
+   * each section's first entry, the cursor on the entry being read. Built with the DOM (no markup
+   * strings), positions as fractions of the tape so no layout is needed to draw it.
+   */
+  _renderTape(sections) {
+    const tape = this._tape;
+    if (!tape) return;
+    const list = sections.flatMap((section) => section.entries);
+    this._tapeEntries = list;
+    tape.innerHTML = '';
+    tape.hidden = list.length < 2;
+    if (list.length < 2) return;
+    const n = list.length;
+    const at = (i) => ((i + 0.5) / n) * 100;
+    const place = (node, pct) => { if (node.style) node.style.left = pct.toFixed(3) + '%'; return node; };
+    tape.appendChild(el('span', 'cx-tape__rule'));
+    // the stretches of the archive the player has opened are lit bands on the rule; locked ones stay dark
+    for (let a = 0; a < n;) {
+      if (list[a].locked) { a += 1; continue; }
+      let b = a;
+      while (b + 1 < n && !list[b + 1].locked) b += 1;
+      const band = place(el('span', 'cx-tape__lit'), (a / n) * 100);
+      if (band.style) band.style.width = (((b - a + 1) / n) * 100).toFixed(3) + '%';
+      tape.appendChild(band);
+      a = b + 1;
+    }
+    const width = typeof tape.getBoundingClientRect === 'function' ? tape.getBoundingClientRect().width : 0;
+    // section names on the tape: the larger sections claim their place first, none overlaps another
+    const starts = [];
+    let first = 0;
+    for (const section of sections) {
+      if (!section.entries.length) continue;
+      starts.push({ name: sectionTitle(section.label), i: first, size: section.entries.length });
+      first += section.entries.length;
+    }
+    const claimed = [];
+    for (const s of [...starts].sort((a, b) => b.size - a.size || a.i - b.i)) {
+      const len = s.name.length * 7.4 + 12;
+      const tick = (at(s.i) / 100) * width;
+      // a name that would run off the tape's end reads leftward from its tick instead
+      const toLeft = width > 0 && tick + len > width;
+      const x0 = toLeft ? tick - len : tick;
+      const x1 = toLeft ? tick : tick + len;
+      if (width && claimed.some(([a, b]) => x0 < b && x1 > a)) continue;
+      claimed.push([x0, x1]);
+      tape.appendChild(place(el('span', 'cx-tape__sec' + (toLeft ? ' is-end' : ''), s.name), at(s.i)));
+    }
+    let i = 0;
+    for (const section of sections) {
+      if (!section.entries.length) continue;
+      section.entries.forEach((entry, k) => {
+        const tick = place(el('span', 'cx-tape__tick' + (entry.locked ? ' is-locked' : '') + (k === 0 ? ' is-major' : '')), at(i));
+        tick.dataset.i = String(i);
+        tick.dataset.id = entry.id;
+        tape.appendChild(tick);
+        if (n <= 14 || (i + 1) % 5 === 0 || i === 0) tape.appendChild(place(el('span', 'cx-tape__num' + (entry.locked ? ' is-locked' : ''), pad2(i + 1)), at(i)));
+        i += 1;
+      });
+    }
+    const cursor = el('span', 'cx-tape__cursor');
+    cursor.appendChild(el('i', 'cx-tape__cursor-pip'));
+    tape.appendChild(cursor);
+    const hover = el('span', 'cx-tape__hover');
+    hover.hidden = true;
+    hover.appendChild(el('span', 'cx-tape__hover-name'));
+    tape.appendChild(hover);
+    this._syncTape();
+  },
+
+  /** Seat the tape's cursor and its slider reading on the entry being read. */
+  _syncTape() {
+    const tape = this._tape;
+    const list = this._tapeEntries || [];
+    if (!tape || list.length < 2) return;
+    const cur = this._currentEntry();
+    const i = Math.max(0, list.indexOf(cur));
+    const cursor = tape.querySelector('.cx-tape__cursor');
+    if (cursor && cursor.style) cursor.style.left = (((i + 0.5) / list.length) * 100).toFixed(3) + '%';
+    for (const tick of tape.querySelectorAll('.cx-tape__tick')) {
+      if (tick.classList && typeof tick.classList.toggle === 'function') tick.classList.toggle('is-now', tick.dataset.i === String(i));
+    }
+    tape.setAttribute('aria-valuemin', '1');
+    tape.setAttribute('aria-valuemax', String(list.length));
+    tape.setAttribute('aria-valuenow', String(i + 1));
+    tape.setAttribute('aria-valuetext', cur ? (cur.locked ? 'Locked entry' : cur.name) + ', ' + (i + 1) + ' of ' + list.length : '');
+  },
+
+  /** Point at tick `i` under the pointer: its name floats over it (cipher when it is locked). */
+  _hoverTape(i) {
+    const tape = this._tape;
+    const hover = tape && tape.querySelector('.cx-tape__hover');
+    if (!hover) return;
+    const list = this._tapeEntries || [];
+    const entry = i >= 0 ? list[i] : null;
+    for (const tick of tape.querySelectorAll('.cx-tape__tick.is-hover')) tick.classList.remove('is-hover');
+    if (!entry) { hover.hidden = true; this._hoverI = -1; return; }
+    if (i === this._hoverI && !hover.hidden) return;
+    this._hoverI = i;
+    const tick = tape.querySelector('.cx-tape__tick[data-i="' + i + '"]');
+    if (tick) tick.classList.add('is-hover');
+    const name = hover.querySelector('.cx-tape__hover-name');
+    hover.hidden = false;
+    hover.classList.toggle('is-locked', !!entry.locked);
+    const pct = ((i + 0.5) / list.length) * 100;
+    if (hover.style) {
+      hover.style.left = pct.toFixed(3) + '%';
+      hover.style.setProperty('--cx-hover-shift', pct < 12 ? '0%' : pct > 88 ? '-100%' : '-50%');
+    }
+    // a locked entry's cipher shuffles each time the cursor lands on it: the archive trying the lock
+    if (name) {
+      if (entry.locked) {
+        const parts = lockedNameParts(entry.id + ':' + (this._hoverTry = (this._hoverTry || 0) + 1), entry.name);
+        name.textContent = parts.code + parts.cipher;
+      } else name.textContent = entry.name;
+    }
+  },
+
+  /** Turn the page to tape entry `i` (a live scrub keeps the page quiet until the pointer lets go). */
+  _scrubTo(i) {
+    const list = this._tapeEntries || [];
+    const entry = list[Math.max(0, Math.min(list.length - 1, i))];
+    if (!entry) return;
+    if (entry.id !== (this._focusByTab && this._focusByTab[this._activeTab])) {
+      cue('move');
+      this._focus(entry.id);
+    }
+  },
+
+  _bindTape(tape) {
+    if (!tape || typeof tape.addEventListener !== 'function') return;
+    const indexAt = (clientX) => {
+      const list = this._tapeEntries || [];
+      if (!list.length || typeof tape.getBoundingClientRect !== 'function') return -1;
+      const r = tape.getBoundingClientRect();
+      const t = (clientX - r.left) / Math.max(1, r.width);
+      return Math.max(0, Math.min(list.length - 1, Math.floor(t * list.length)));
+    };
+    let pending = -1;
+    let frame = 0;
+    const later = globalThis.requestAnimationFrame || ((fn) => setTimeout(fn, 16));
+    const commit = () => { frame = 0; if (pending < 0) return; const i = pending; pending = -1; this._scrubTo(i); };
+    const queue = (i) => { if (i < 0) return; pending = i; if (!frame) frame = later(commit); };
+    const finish = () => {
+      if (!this._scrubbing) return;
+      this._scrubbing = false;
+      tape.classList.remove('is-scrubbing');
+      // the page the scrub stopped on arrives properly: its plate draws, its title decrypts
+      const entry = this._currentEntry();
+      if (entry) { this._shownId = null; this._showEntry(entry); this._placeHand(); }
+    };
+    tape.addEventListener('pointerdown', (ev) => {
+      if (ev.button != null && ev.button !== 0) return;
+      this._scrubbing = true;
+      tape.classList.add('is-scrubbing');
+      try { tape.setPointerCapture(ev.pointerId); } catch (_) { /* synthetic pointer */ }
+      try { tape.focus({ preventScroll: true }); } catch (_) { /* no focus in this host */ }
+      queue(indexAt(ev.clientX));
+      this._hoverTape(indexAt(ev.clientX));
+      if (typeof ev.preventDefault === 'function') ev.preventDefault();
+    });
+    tape.addEventListener('pointermove', (ev) => {
+      const i = indexAt(ev.clientX);
+      this._hoverTape(i);
+      if (this._scrubbing) queue(i);
+    });
+    tape.addEventListener('pointerup', finish);
+    tape.addEventListener('pointercancel', finish);
+    tape.addEventListener('lostpointercapture', finish);
+    tape.addEventListener('pointerleave', () => { if (!this._scrubbing) this._hoverTape(-1); });
+    tape.addEventListener('keydown', (ev) => {
+      const list = this._tapeEntries || [];
+      if (!list.length) return;
+      const i = Math.max(0, list.indexOf(this._currentEntry()));
+      let next = i;
+      if (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') next = i + 1;
+      else if (ev.key === 'ArrowLeft' || ev.key === 'ArrowUp') next = i - 1;
+      else if (ev.key === 'PageDown') next = i + 5;
+      else if (ev.key === 'PageUp') next = i - 5;
+      else if (ev.key === 'Home') next = 0;
+      else if (ev.key === 'End') next = list.length - 1;
+      else return;
+      ev.preventDefault();
+      this._scrubTo(Math.max(0, Math.min(list.length - 1, next)));
+    });
+    tape.addEventListener('wheel', (ev) => {
+      const list = this._tapeEntries || [];
+      if (!list.length || !ev.deltaY) return;
+      ev.preventDefault();
+      const i = Math.max(0, list.indexOf(this._currentEntry()));
+      this._scrubTo(Math.max(0, Math.min(list.length - 1, i + (ev.deltaY > 0 ? 1 : -1))));
+    }, { passive: false });
+  },
+
+  /** The plate leans toward the pointer and a sheen crosses its art (still under reduced motion). */
+  _bindTilt(stage) {
+    if (!stage || typeof stage.addEventListener !== 'function') return;
+    let frame = 0;
+    let last = null;
+    const later = globalThis.requestAnimationFrame || ((fn) => setTimeout(fn, 16));
+    const apply = () => {
+      frame = 0;
+      const plate = this._body && typeof this._body.querySelector === 'function' ? this._body.querySelector('.cx-reader__plate') : null;
+      if (!plate || !plate.style || typeof plate.getBoundingClientRect !== 'function') return;
+      const r = plate.getBoundingClientRect();
+      const inside = last && r.width > 0 && last.x >= r.left && last.x <= r.right && last.y >= r.top && last.y <= r.bottom;
+      if (!inside || reducedMotion()) {
+        plate.style.setProperty('--cx-tilt-x', '0deg');
+        plate.style.setProperty('--cx-tilt-y', '0deg');
+        plate.classList.remove('is-lit');
+        return;
+      }
+      const nx = ((last.x - r.left) / r.width) * 2 - 1;
+      const ny = ((last.y - r.top) / r.height) * 2 - 1;
+      plate.style.setProperty('--cx-tilt-x', (-ny * 6).toFixed(2) + 'deg');
+      plate.style.setProperty('--cx-tilt-y', (nx * 6).toFixed(2) + 'deg');
+      plate.style.setProperty('--cx-sheen-x', ((nx + 1) * 50).toFixed(1) + '%');
+      plate.style.setProperty('--cx-sheen-y', ((ny + 1) * 50).toFixed(1) + '%');
+      plate.classList.add('is-lit');
+    };
+    stage.addEventListener('pointermove', (ev) => { last = { x: ev.clientX, y: ev.clientY }; if (!frame) frame = later(apply); });
+    stage.addEventListener('pointerleave', () => { last = null; if (!frame) frame = later(apply); });
   },
 
   /**
@@ -840,6 +1143,10 @@ export const codexScreen = {
   _renderStatus(ctx) {
     const summary = codexProgressSummary(safeStory(ctx), ctx && ctx.state);
     const box = this._status;
+    // The catalogue is redrawn only when a count changes, so its numerals roll once per change.
+    const signature = summary.items.map((item) => item.key + '=' + item.value).join('|');
+    if (box.dataset && box.dataset.sig === signature && box.firstChild) return;
+    if (box.dataset) box.dataset.sig = signature;
     box.innerHTML = '';
     box.classList.add('cx-index');
     const cap = el('p', 'cx-index__cap', 'Codex Unlock Status');
@@ -880,7 +1187,9 @@ export const codexScreen = {
       if (rest.trim()) dt.appendChild(el('span', 'cx-sr', rest));
       cell.appendChild(dt);
       const dd = el('dd', 'cx-index__n');
-      dd.appendChild(el('span', 'cx-index__num', num));
+      const numeral = el('span', 'cx-index__num', num);
+      if (/^\d+$/.test(num)) rollTo(numeral, Number(num));
+      dd.appendChild(numeral);
       if (of) dd.appendChild(el('span', 'cx-index__of', of));
       cell.appendChild(dd);
       setVar(cell, '--orr-delay', (120 + 50 * i) + 'ms');
@@ -920,6 +1229,7 @@ export const codexScreen = {
       this._body.innerHTML = '';
       this._shownId = null;
       this._placeHand();
+      this._renderTape([]);
       return;
     }
     const remembered = this._focusByTab[this._activeTab];
@@ -975,6 +1285,7 @@ export const codexScreen = {
     if (focus) this._showEntry(focus);
     else { this._body.innerHTML = ''; this._shownId = null; }
     this._placeHand();
+    this._renderTape(sections);
   },
 
   _focus(id) {
@@ -993,6 +1304,7 @@ export const codexScreen = {
     }
     this._showEntry(entry);
     this._placeHand();
+    this._syncTape();
   },
 
   /**
@@ -1015,31 +1327,45 @@ export const codexScreen = {
     // The plate: produced art where the entry has it (a discovery still, a figure's portrait or its
     // faction's crest), else the section's glyph; ringed by the section, one arc per entry.
     const figureKey = String(entry.id).startsWith('figure:') ? entry.id.slice(7) : '';
+    const plateSrc = codexPlate(entry);
+    const hullSrc = this._activeTab === 'Ship' ? flownHullRender(this._ctx && this._ctx.state) : null;
     const art = entry.locked ? null
-      : (entry.image ? { src: entry.image, kind: 'photo' } : figureArt(figureKey));
+      : (entry.image ? { src: entry.image, kind: 'photo' }
+        : (figureArt(figureKey) || (plateSrc ? { src: plateSrc, kind: 'plate' } : null) || (hullSrc ? { src: hullSrc, kind: 'hull' } : null)));
     const plate = el('div', 'cx-chrome cx-reader__plate' + (fresh ? ' is-fresh' : ''));
     plate.setAttribute('aria-hidden', 'true');
-    const aperture = el('div', 'cx-plate__art' + (art ? (art.kind === 'crest' ? ' is-crest' : ' is-photo') : ' is-glyph'));
+    const kind = art ? ' is-' + art.kind : ' is-glyph';
+    const aperture = el('div', 'cx-plate__art' + kind);
+    plate.appendChild(aperture);
+    const rings = (glyph) => {
+      const svgHost = el('div', 'cx-plate__rings');
+      svgHost.innerHTML = archivePlateSvg({
+        segments: inSection.map((candidate) => (candidate.locked ? 'locked' : 'open')),
+        current: at,
+        top: ['Codex', this._activeTab, sectionName].filter(Boolean).join(' · '),
+        bottom: 'Entry ' + pad2(at + 1) + ' of ' + pad2(Math.max(1, inSection.length)),
+        glyph,
+        locked: entry.locked,
+      });
+      return svgHost.firstChild;
+    };
+    const glyphName = entry.locked ? 'locked' : (TAB_GLYPHS[this._activeTab] || 'story');
+    let drawn = rings(art ? '' : glyphName);
+    if (drawn) plate.appendChild(drawn);
     if (art) {
       const img = el('img');
       img.alt = '';
       img.decoding = 'async';
+      // art that fails to load gives its aperture back to the section's glyph
+      img.addEventListener('error', () => {
+        img.remove();
+        aperture.className = 'cx-plate__art is-glyph';
+        const again = rings(glyphName);
+        if (again && drawn && drawn.parentNode === plate) { plate.replaceChild(again, drawn); drawn = again; }
+      }, { once: true });
       img.src = art.src;
       aperture.appendChild(img);
     }
-    plate.appendChild(aperture);
-    const glyph = art ? '' : (entry.locked ? 'locked' : (TAB_GLYPHS[this._activeTab] || 'story'));
-    const svgHost = el('div', 'cx-plate__rings');
-    svgHost.innerHTML = archivePlateSvg({
-      segments: inSection.map((candidate) => (candidate.locked ? 'locked' : 'open')),
-      current: at,
-      top: ['Codex', this._activeTab, sectionName].filter(Boolean).join(' · '),
-      bottom: 'Entry ' + pad2(at + 1) + ' of ' + pad2(Math.max(1, inSection.length)),
-      glyph,
-      locked: entry.locked,
-    });
-    const drawn = svgHost.firstChild;
-    if (drawn) plate.appendChild(drawn);
     article.insertBefore(plate, filed.nextSibling);
     const index = visible.indexOf(entry);
     if (visible.length > 1) {
@@ -1069,7 +1395,8 @@ export const codexScreen = {
   _showEntry(entry) {
     // A new entry arrives: its plate draws, its title decrypts, its lore rises line by line. A
     // re-render of the same entry (a search keystroke, a bus refresh) keeps it still.
-    const fresh = entry.id !== this._shownId;
+    // A scrub flips pages quietly (no decrypt, no rise) until the pointer lets go.
+    const fresh = entry.id !== this._shownId && !this._scrubbing;
     this._shownId = entry.id;
     this._body.innerHTML = '';
     this._dressEntry(entry, fresh);

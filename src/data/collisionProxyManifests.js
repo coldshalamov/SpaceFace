@@ -25,6 +25,7 @@
 // blends). Stations WITHOUT a manifest keep the legacy center-radius dock behavior untouched.
 
 import { modelTruthProxyManifest } from './modelTruth.js';
+import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 
 export const COLLISION_PROXY_SCHEMA_VERSION = 1;
 
@@ -206,12 +207,37 @@ export const COLLISION_PROXY_MANIFESTS = Object.freeze({
 // Resolution helpers
 // -----------------------------------------------------------------------------------------------
 
+// Resolved measured-skin manifests, per entity object. The resolver runs every physics sync
+// (SG-02 compares proxy ids each tick) and every LOS/scan query; building the skin manifest
+// allocates, so a fixed body resolves it once. A replaced data object or proxy id re-resolves.
+const MEASURED_PROXY_CACHE = new WeakMap();
+
+/** True when the measured skin may stand in for this body's collider. Skins are fixed-body
+ * geometry only: a body the physics authority builds as DYNAMIC (ships incl. the player, drones,
+ * payloads, wrecks, chunks, pickups, projectiles) keeps its craft capsule or ball until the
+ * compound-dynamic path is proven deterministic across save/reload. Same rule SG-02 uses to
+ * choose RigidBodyDesc.dynamic() vs fixed(). */
+export function measuredSkinAllowedFor(entity) {
+  return !!entity && !isDynamicPhysicsBodyEntity(entity);
+}
+
 /** Manifest declared on an entity via data.collisionProxy, else null. Manifests activate ONLY for
  * entities that explicitly declare them — the 47a golden scenario declares none. */
 export function resolveCollisionProxyManifest(entity) {
   const data = entity && entity.data;
   const id = data && typeof data.collisionProxy === 'string' ? data.collisionProxy : null;
   const declared = id && COLLISION_PROXY_MANIFESTS[id] || null;
+  // A dynamic body never takes a measured skin, even if an older save stamped `skin:<row>` on
+  // it: the unknown skin id resolves to nothing and the body falls back to its capsule/ball.
+  if (!id || !measuredSkinAllowedFor(entity)) return declared;
+  const cached = MEASURED_PROXY_CACHE.get(entity);
+  if (cached && cached.data === data && cached.id === id && cached.type === entity.type) return cached.manifest;
+  const manifest = resolveMeasuredProxyManifest(entity, id, declared);
+  MEASURED_PROXY_CACHE.set(entity, { data, id, type: entity.type, manifest });
+  return manifest;
+}
+
+function resolveMeasuredProxyManifest(entity, id, declared) {
   let measured = modelTruthProxyManifest(entity);
   // The measured skin replaces the retired hoop, the gate ball, and any hull capsule
   // or rock ball that does not meet the flight-plane tolerance. Gas and other

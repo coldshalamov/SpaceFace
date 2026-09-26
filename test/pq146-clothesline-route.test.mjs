@@ -11,14 +11,21 @@ import {collisionConsequences} from '../src/systems/collisionConsequences.js';
 import {journalFor} from '../src/combat/stuntEvidence.js';
 import {COMBAT_FLAGS} from '../src/data/featureFlags.js';
 
-function body(id,type,x,z,{mass=16,radius=8,hull=100,team=1,vx=0,vz=0}={}){
+function body(id,type,x,z,{mass=16,radius=8,hull=100,team=1,vx=0,vz=0,combatSpeed}={}){
   const dynamic=type!=='asteroid';
   return {id,type,alive:true,team,name:`${type} ${id}`,pos:{x,z},vel:{x:vx,z:vz},rot:0,angVel:0,radius,mass:dynamic?mass:1000000,hull,hullMax:hull,shield:0,armor:0,
+    ...(combatSpeed!=null?{combatSpeed}:{}),
     data:{defId:type==='ship'?'ship_kestrel':null,encounter:{id:'clothesline'}},
     physicsBody:{schemaVersion:1,dynamic,radius,mass:dynamic?mass:1000000,inertiaY:48,ccd:true,revision:0}};
 }
 async function clothesline({pursuerX=-66,rock={x:45,z:-43},slack=false}={}){
-  const player=body(0,'ship',0,0,{team:0,mass:400}),payload=body(1,'ship',35,0,{vz:110,mass:28}),pursuer=body(2,'ship',pursuerX,17,{vx:60,hull:40});
+  // The intercept gate is 0.3 x the struck hull's governed cruise (0.3 x 210 = 63 transverse),
+  // doubled by the ceiling restore from the pre-restore 31.5 tune; the pursuer rides lighter
+  // (8 mass against the same 28-mass 110-speed flail) so the swing arc and the crossing
+  // negatives are unchanged while the transverse transfer crosses the new gate. The pursuer is
+  // also a slow hull class (governed combat speed 95), so its factual wrecking-ball subtag keys
+  // to the terminal closing this corridor actually produces.
+  const player=body(0,'ship',0,0,{team:0,mass:400}),payload=body(1,'ship',35,0,{vz:110,mass:28}),pursuer=body(2,'ship',pursuerX,17,{vx:60,hull:40,mass:8,combatSpeed:95});
   const entities=[player,payload,pursuer,body(3,'asteroid',rock.x,rock.z,{radius:14})];
   const state={playerId:0,entities:new Map(entities.map(e=>[e.id,e])),entityList:entities,mode:'flight',tick:0,simTime:0,combat:{},factions:{},settings:{},player:{}};
   const bus=createBus(),owner=await createSg02DynamicBodyOwner({publishTelemetry:false});owner.syncFromEntities(entities);owner.step(1/60);

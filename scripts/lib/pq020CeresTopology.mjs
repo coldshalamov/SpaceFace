@@ -83,7 +83,7 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // (66 → 108 colliders), and authored counts are otherwise unchanged. Prior digest was
 // efa15466778447cf900b74fee7fa4f483168f7ce1bd826468139e289ffbe5cd0.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'efad9d770b2b8e483a45d23efc3d099b3f08387a2cfdd7b74a956619cee46ce5';
+  '78a37d85d07aa6be57bcf885cd94e0e327246edea1a29b5d0dc46a119d63b38b';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
@@ -99,13 +99,12 @@ const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
     collidable: 0,
     colliders: 0,
   }),
-  // PQ-143.02 six texture one-offs: the abandoned tug, the strut shrine, the pirate ram and the
-  // eight shells of the decades-old pod field (hero + seven scatter parts) are authored dressing
-  // in Ceres Belt (worldOneOffs.js) — non-colliding fx props like the other additive groups,
-  // excluded from the core structural census.
+  // PQ-143.02: the strut shrine, the pirate ram, and the eight pod-field shells are the
+  // non-colliding fx dressing. The yard tug is a physical wreck and leaves the fx census when
+  // the far-actor shelf takes it. Excluded from the core structural census.
   worldOneOff: Object.freeze({
-    entities: 11,
-    byType: Object.freeze({ fx: 11 }),
+    entities: 10,
+    byType: Object.freeze({ fx: 10 }),
     collidable: 0,
     colliders: 0,
   }),

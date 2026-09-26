@@ -25,16 +25,19 @@ export const SIDE_EVENTS = Object.freeze({
   hauler_dock:   Object.freeze({ budget: 0, path: 'inbound-to-docking',    durationS: 45, affinity: Object.freeze(['trade_hub', 'refinery', 'fab', 'mining']) }),
   patrol_launch: Object.freeze({ budget: 1, path: 'outbound-past-traffic', durationS: 60, affinity: Object.freeze(['military', 'trade_hub']) }),
   repair_drone:  Object.freeze({ budget: 0, path: 'hull-crawl',            durationS: 90, affinity: null }),
-  cargo_tractor: Object.freeze({ budget: 0, path: 'docking-orbit',         durationS: 40, affinity: Object.freeze(['trade_hub', 'mining', 'refinery', 'fab']) }),
+  cargo_tractor: Object.freeze({ budget: 0, path: 'docking-orbit',         durationS: 40, affinity: Object.freeze(['trade_hub', 'mining', 'refinery', 'fab', 'blackmarket']) }),
   // A research array slews a calibration boom across its near-field arc and reads the telemetry
   // return: the research station's own line of work, never a launched combat ship. Cosmetic seam
   // (budget 0), same as the other ambient movers.
   sensor_sweep:  Object.freeze({ budget: 0, path: 'dish-arc',              durationS: 70, affinity: Object.freeze(['research']) }),
+  // A black market's business is hulls nobody logs: an unmanifested runner slips in lights-out.
+  // No declared freight (hauler_dock reads wrong here), no patrol — just the den doing den work.
+  quiet_dock:    Object.freeze({ budget: 0, path: 'inbound-to-docking',    durationS: 35, affinity: Object.freeze(['blackmarket']) }),
 });
 
 // Stable id order for the seeded pick (static literal → insertion-order-safe; never Object.keys of
 // a runtime-populated map).
-export const SIDE_EVENT_IDS = Object.freeze(['hauler_dock', 'patrol_launch', 'repair_drone', 'cargo_tractor', 'sensor_sweep']);
+export const SIDE_EVENT_IDS = Object.freeze(['hauler_dock', 'patrol_launch', 'repair_drone', 'cargo_tractor', 'sensor_sweep', 'quiet_dock']);
 
 const TWO_PI = Math.PI * 2;
 

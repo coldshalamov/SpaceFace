@@ -25,6 +25,7 @@ import { icon } from './station/icons.js';
 import { glyphSvg } from './glyphs.js';
 import { wantedReasonText } from './wantedReason.js';
 import { SHIPS } from '../data/ships.js';
+import { catalogHullFacts } from '../systems/ships.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
@@ -1857,7 +1858,8 @@ export function createHud(ctx, alerts) {
     const def = SHIP_BY_ID.get(defId);
     if (!def) return 'Unknown hull';
     const role = ROLE_LABEL[def.role] || def.role || '—';
-    return `${def.name} — ${role}\nTier: ${def.tier}  Hull: ${def.hull}  Shield: ${def.shield}\nCargo cap: ${def.cargo} u  Mass: ${def.mass}\nSlots: ${Object.entries(def.slots || {}).map(([k, v]) => k[0].toUpperCase() + ':' + v.length).join(' ')}`;
+    const facts = catalogHullFacts(defId, p.data.fittings || [], state.player);
+    return `${def.name} — ${role}\nTier: ${def.tier}  Hull: ${facts.hull}  Shield: ${facts.shield}\nCargo cap: ${facts.cargo} u  Mass: ${facts.mass}  Speed: ${Math.round(facts.speed)}\nSlots: ${Object.entries(def.slots || {}).map(([k, v]) => k[0].toUpperCase() + ':' + v.length).join(' ')}`;
   }
 
   // Update tooltip content on mouseenter; the CSS handles show/hide.

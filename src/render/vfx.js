@@ -29,6 +29,7 @@
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
+import { modelTruthPlumeSocketName } from '../data/modelTruth.js';
 import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
@@ -2991,8 +2992,10 @@ export const vfx = {
   _trailSocketWorldPose(e) {
     const sockets = this._trailSocketObjects(e);
     if (sockets.length) return this._trailSocketPoseFromObject(sockets[0]);
+    const socketName = modelTruthPlumeSocketName(e);
+    if (!socketName) return null;
     if (this.helpers.socketWorldPose) {
-      const pose = this.helpers.socketWorldPose(e.id, 'SOCKET_Trail_Main');
+      const pose = this.helpers.socketWorldPose(e.id, socketName);
       if (pose) {
         return this._writeTrailSocketPose(
           pose.x, pose.y || 0, pose.z,
@@ -3001,7 +3004,7 @@ export const vfx = {
       }
     }
     if (this.helpers.socketWorldPos) {
-      const pos = this.helpers.socketWorldPos(e.id, 'SOCKET_Trail_Main');
+      const pos = this.helpers.socketWorldPos(e.id, socketName);
       if (pos) {
         const cf = Math.cos(e && e.rot || 0);
         const sf = Math.sin(e && e.rot || 0);
@@ -3021,13 +3024,16 @@ export const vfx = {
       const childCount = root.children ? root.children.length : 0;
       if (!cache || cache.root !== root || cache.assetState !== assetState
         || cache.compositionId !== compositionId || cache.childCount !== childCount) {
+        const nozzles = [];
         const sockets = [];
         const drivePlumes = [];
         root.traverse((o) => {
           if (!o || !o.userData || o.userData.spacefaceEnergyPlume) return;
-          if (isTrailSocketObject(o)) sockets.push(o);
+          if (isNozzleSocketObject(o)) nozzles.push(o);
+          else if (isTrailSocketObject(o)) sockets.push(o);
           else if (isDrivePlumeAnchor(o)) drivePlumes.push(o);
         });
+        nozzles.sort(sortNozzleAnchors);
         sockets.sort(sortTrailAnchors);
         drivePlumes.sort(sortTrailAnchors);
         cache = view.__vfxTrailSockets = {
@@ -3035,7 +3041,7 @@ export const vfx = {
           assetState,
           compositionId,
           childCount,
-          sockets: sockets.length ? sockets : drivePlumes,
+          sockets: nozzles.length ? nozzles : (sockets.length ? sockets : drivePlumes),
         };
         view.__vfxTrailSocket = { root, socket: cache.sockets[0] || null };
       }
@@ -4678,6 +4684,21 @@ export const vfx = {
     }
     if (lane.includes('branch') || id.includes('branch')) {
       return presentationStyle('#fff8d8', '#f5d06f', SPR_RING, { radial: true, echoRing: true, lightPeak: 4.0, lightDistance: 180, speed0: 18, speedJitter: 32, life0: 0.5 });
+    }
+    // Rated cluster detonation — the whole clump cooked off at once. A hot detonation punch,
+    // deliberately NOT the well's cool cyan sink pulse: this is the ammunition going off.
+    if (id.startsWith('fields.cluster')) {
+      return presentationStyle('#ffffff', '#ff8a40', SPR_FLASH, {
+        radial: true,
+        lightPeak: 4.2,
+        lightDistance: 200,
+        speed0: 56,
+        speedJitter: 48,
+        life0: 0.34,
+        size0: 2.2,
+        size1: 0.15,
+        drag: 1.1,
+      });
     }
     // PQ-012 field deploy/collapse event beats (one-shot punch, NOT the continuous identity — that
     // is the swept force surfaces in _updateFieldGeometry). Distinct per kind; the boundary/direction
@@ -6476,6 +6497,29 @@ export const vfx = {
         '#bfe9ff',
         0,
         0,
+      )) emitted++;
+    } else if (slot.kind === 'quiet_dock') {
+      // Lights-out runner: two thin cold rails at low opacity — running lights dialed down, not
+      // the hauler's warm cargo lamps. A rare dim flash is the only giveaway.
+      emitted += this._spawnStationSideEventStreak(x + nx * 0.42, 0.4, z + nz * 0.42,
+        reducedMotion ? 0.5 : 0.3, 0.16, 1.9, 0.34, '#8aa4b0', 0, 0, dx, dz);
+      emitted += this._spawnStationSideEventStreak(x - nx * 0.42, 0.4, z - nz * 0.42,
+        reducedMotion ? 0.5 : 0.3, 0.16, 1.9, 0.34, '#8aa4b0', 0, 0, dx, dz);
+      if (frame.accentSlot % 5 === 0 && this._spawnSprite(
+        SPR_FLASH,
+        x - dx * 0.8,
+        0.4,
+        z - dz * 0.8,
+        0.12,
+        0.2,
+        0.3,
+        0.42,
+        0,
+        '#7f9aa8',
+        0,
+        0,
+        1.2,
+        Math.atan2(dz, dx),
       )) emitted++;
     }
     return emitted;
@@ -15467,10 +15511,19 @@ export function createSeamMarkerPipelineMesh({ visibleInstances = 0 } = {}) {
 // ---------------------------------------------------------------------------
 // pure helpers (module scope)
 // ---------------------------------------------------------------------------
+function isNozzleSocketObject(object) {
+  if (!object || !object.userData || !object.userData.spacefaceSocket) return false;
+  return /^SOCKET_Engine_/i.test(String(object.name || ''));
+}
+
 function isTrailSocketObject(object) {
   if (!object || !object.userData || !object.userData.spacefaceSocket) return false;
   const name = String(object.name || '');
   return name === 'SOCKET_Trail_Main' || /^SOCKET_Trail_/i.test(name);
+}
+
+function sortNozzleAnchors(a, b) {
+  return String(a && a.name || '').localeCompare(String(b && b.name || ''));
 }
 
 function isDrivePlumeAnchor(object) {

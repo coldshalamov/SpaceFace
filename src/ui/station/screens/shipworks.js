@@ -2,6 +2,7 @@ import { shipworksFrameHtml } from '../../views/stationFrames.js';
 import { injectOrreryShipworks, powerDialSvg } from '../../orrery/shipworksLayouts.js';
 import { createHullSchematic } from '../../orrery/hullSchematic.js';
 import { rollTo } from '../../orrery/text.js';
+import { createSpring } from '../../orrery/motion.js';
 import { svg as orrSvg, arcD as orrArcD, ticksD as orrTicksD, polar as orrPolar } from '../../orrery/svg.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
@@ -32,6 +33,9 @@ import {
   findMasslineHeadConflict,
   fitRefusalText,
   fits,
+  catalogHullFacts,
+  moduleSimMass,
+  moduleSimPrice,
   getDerivedStats,
   hardpointClassOf,
   mountOutputFactor,
@@ -902,7 +906,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function previewShip(defId, fittings, isPlayer, meta) {
-    poster.setHull(defId || null, POSTER_VIEW);
+    poster.setHull(defId || null, posterViewFor(defId));
     ensureMount();
     writeCanvasPreviewMeta(defId, fittings, meta);
     expectedPreviewDefId = defId || null;
@@ -1701,6 +1705,26 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   };
   // the ring the jig drew last, read off its own dial path, with the stage size it was drawn for
   let jigRing = null;
+  // the jig's ring stands on a luminous band (weight, not wire): drawn into the jig's host under its layers
+  let jigBand = null;
+  let jigBandKey = '';
+  function drawJigBand() {
+    const r = host === 'dock' && mode !== 'buy' ? readJigRing() : null;
+    if (!r || !jigHost) { if (jigBand) jigBand.style.display = 'none'; jigBandKey = ''; return; }
+    if (!jigBand) jigBand = orrSvg('svg', { class: 'orr-svg sx-sw__jigband', 'aria-hidden': 'true', focusable: 'false' });
+    if (jigBand.parentNode !== jigHost) {
+      const pool = jigHost.querySelector(':scope > .orr-hull__pool');
+      jigHost.insertBefore(jigBand, pool ? pool.nextSibling : jigHost.firstChild);
+      jigBandKey = '';
+    }
+    jigBand.style.display = '';
+    const key = `${r.hx}|${r.hy}|${r.R}|${r.W}|${r.H}`;
+    if (key === jigBandKey) return;
+    jigBandKey = key;
+    jigBand.setAttribute('viewBox', `0 0 ${r.W} ${r.H}`);
+    jigBand.textContent = '';
+    jigBand.appendChild(orrSvg('path', { d: orrArcD(r.hx, r.hy, r.R, 0, 360), class: 'orr-band' }));
+  }
   function readJigRing() {
     if (!jigHost || !jigHost.classList.contains('orr-hull--on')) return null;
     for (const p of jigHost.querySelectorAll('path.orr-rest')) {
@@ -1846,16 +1870,29 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (saleRing) { saleRing.remove(); saleRing = null; }
       saleZoomKey = '';
       saleLightKey = '';
-      stageEl.classList.remove('has-salering', 'has-viewmarks', 'has-sockets');
+      saleGeo = null;
+      if (bezelTurn !== 0 || saleView !== 'reset') { saleView = 'reset'; turnSpring.set(0, { instant: true }); }
+      stageEl.classList.remove('has-salering', 'has-viewmarks', 'has-sockets', 'is-turning');
       if (canvas && canvas.style) { canvas.style.removeProperty('filter'); canvas.style.removeProperty('translate'); }
       return;
     }
-    if (!saleRing) { saleRing = orrSvg('svg', { class: 'orr-svg sx-sw__salering', 'aria-hidden': 'true', focusable: 'false' }); stageEl.appendChild(saleRing); }
+    if (!saleRing) {
+      saleRing = orrSvg('svg', { class: 'orr-svg sx-sw__salering', 'aria-hidden': 'true', focusable: 'false' });
+      stageEl.appendChild(saleRing);
+    }
+    ensureTurnSurface();
+    // a new hull on the disc arrives facing the centre view
+    if (buyId !== saleTurnHull) {
+      saleTurnHull = buyId;
+      if (bezelTurn !== 0 || saleView !== 'reset') { saleView = 'reset'; turnSpring.set(0, { instant: true }); }
+    }
     saleRing.setAttribute('viewBox', `0 0 ${g.W} ${g.H}`);
     saleRing.textContent = '';
     const f = (n) => Math.round(n * 100) / 100;
     const short = ringShort();
-    saleRing.appendChild(orrSvg('path', { d: orrArcD(g.hx, g.hy, g.R, 0, 360), class: 'orr-core sx-sw__salering-ring', 'stroke-width': 1 }));
+    const ringD = orrArcD(g.hx, g.hy, g.R, 0, 360);
+    saleRing.appendChild(orrSvg('path', { d: ringD, class: 'orr-band sx-sw__salering-band' }));
+    saleRing.appendChild(orrSvg('path', { d: ringD, class: 'orr-edge sx-sw__salering-ring' }));
     // the arcs the scale leaves open: under the caption and under each socket group
     const open = [];
     // the caption on the lower arc leads with the hull's name, then what the column beside does not say:
@@ -1908,22 +1945,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         saleRing.appendChild(word);
       }
     }
-    // the scale: 72 ticks, open where the caption and the sockets stand
-    const shut = (a) => open.some(([a0, a1]) => a >= a0 && a <= a1);
-    let scale = '';
-    for (let i = 0; i < 72; i++) {
-      const a = i * 5;
-      if (shut(a)) continue;
-      const l = i % 6 === 0 ? 8 : 4;
-      const [x0, y0] = orrPolar(g.hx, g.hy, g.R + 6 - l, a); const [x1, y1] = orrPolar(g.hx, g.hy, g.R + 6, a);
-      scale += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
-    }
-    if (scale) saleRing.appendChild(orrSvg('path', { d: scale.trim(), class: 'orr-core sx-sw__salering-ticks', 'stroke-width': 1 }));
-    if (socketPaths.ghost) saleRing.appendChild(orrSvg('path', { d: socketPaths.ghost.trim(), class: 'orr-core sx-sw__socket is-ghost', 'stroke-width': 1 }));
-    if (socketPaths.sale) saleRing.appendChild(orrSvg('path', { d: socketPaths.sale.trim(), class: 'orr-core sx-sw__socket', 'stroke-width': 1.4 }));
-    if (socketPaths.gain) saleRing.appendChild(orrSvg('path', { d: socketPaths.gain.trim(), class: 'orr-core sx-sw__socket is-gain', 'stroke-width': 1.4 }));
+    if (socketPaths.ghost) saleRing.appendChild(orrSvg('path', { d: socketPaths.ghost.trim(), class: 'orr-core sx-sw__socket is-ghost', 'stroke-width': 1.5 }));
+    if (socketPaths.sale) saleRing.appendChild(orrSvg('path', { d: socketPaths.sale.trim(), class: 'orr-core sx-sw__socket', 'stroke-width': 2 }));
+    if (socketPaths.gain) saleRing.appendChild(orrSvg('path', { d: socketPaths.gain.trim(), class: 'orr-core sx-sw__socket is-gain', 'stroke-width': 2 }));
     stageEl.classList.toggle('has-sockets', !!def);
     stageEl.classList.add('has-salering');
+    saleGeo = g;
+    saleOpen = open;
     lightSaleHull(g);
     // the live render is framed to the dial's own square (the canvas stands on the ring in For Sale):
     // at zoom 1 its bounding sphere fills 0.95 of the ring, so the hull stays inside it at every bearing
@@ -1935,38 +1963,194 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     stageEl.style.setProperty('--sw-ring-x', `${Math.round(g.hx)}px`);
     stageEl.style.setProperty('--sw-ring-y', `${Math.round(g.hy)}px`);
     stageEl.style.setProperty('--sw-ring-r', `${Math.round(g.R)}px`);
-    // the view words are marks on the upper arc (left 300, centre 0, right 60 degrees): a tick across the
-    // ring's stroke at each bearing, the word seated beyond it by its nearest corner at R + 12. They stand
-    // wherever a live hull exists or is on its way (the poster yields to it); with no preview they would
-    // be dead controls, so they stand down.
+    // the view words are marks on the bezel; with no live preview they still turn the ring and the render
     const cam = el.querySelector('.sx-sw__camera');
-    const marks = !!(cam && mount);
-    stageEl.classList.toggle('has-viewmarks', marks);
-    if (!marks) return;
-    const angles = { left: 300, reset: 0, right: 60 };
-    if (!cam.querySelector('.is-current')) { const c = cam.querySelector('[data-camera="reset"]'); if (c) c.classList.add('is-current'); }
-    const current = cam.querySelector('[data-camera].is-current');
-    const currentKey = current ? current.getAttribute('data-camera') : 'reset';
-    for (const [key, a] of Object.entries(angles)) {
-      const on = key === currentKey;
-      const [ix, iy] = orrPolar(g.hx, g.hy, g.R - (on ? 7 : 5), a);
-      const [ox, oy] = orrPolar(g.hx, g.hy, g.R + (on ? 8 : 6), a);
-      saleRing.appendChild(orrSvg('path', { d: `M ${f(ix)} ${f(iy)} L ${f(ox)} ${f(oy)}`, class: `orr-core sx-sw__salering-mark${on ? ' is-current' : ''}`, 'stroke-width': on ? 1.5 : 1 }));
+    stageEl.classList.toggle('has-viewmarks', !!cam);
+    drawBezel();
+  }
+
+  // THE TURN (the Shipworks signature): the disc's bezel -- its tick scale and the three view marks --
+  // turns under the fixed plate that carries the caption and the sockets. Drag the ring (or the hull in
+  // it) and the bezel and the ship turn together, one to one; let go and the bezel springs to the view
+  // nearest the top index, whose word lights. LEFT, CENTER and RIGHT are the bezel turned so that mark
+  // stands at the top. Keyboard: the arrow keys on the view words. Reduced motion: every turn snaps.
+  const VIEW_BASE = { left: 300, reset: 0, right: 60 };
+  const VIEW_TURN = { left: 60, reset: 0, right: -60 };
+  const VIEW_ORDER = ['left', 'reset', 'right'];
+  const TURN_LIMIT = 84;
+  let saleGeo = null;
+  let saleOpen = [];
+  let bezelTurn = 0;
+  let saleView = 'reset';
+  let saleTurnHull = '';
+  let turnSettleFrame = 0;
+  const norm360 = (a) => ((a % 360) + 360) % 360;
+  const nearestView = (t) => VIEW_ORDER.reduce((best, k) => (Math.abs(VIEW_TURN[k] - t) < Math.abs(VIEW_TURN[best] - t) ? k : best), 'reset');
+  const turnSpring = createSpring({
+    value: 0,
+    preset: 'swing',
+    onUpdate: (v) => {
+      applyTurn(v);
+      if (v === turnSpring.target && !turnDrag) {
+        if (turnSettleFrame) cancelAnimationFrame(turnSettleFrame);
+        turnSettleFrame = requestAnimationFrame(() => { turnSettleFrame = 0; afterTurnSettle(); });
+      }
+    },
+  });
+  // the hull turns with the bezel, one to one (a clockwise drag turns it clockwise as seen from above)
+  const turnYaw = () => CENTERED_SHIP_YAW - (bezelTurn * Math.PI) / 180;
+  function applyTurn(v) {
+    bezelTurn = Math.max(-TURN_LIMIT - 12, Math.min(TURN_LIMIT + 12, Number(v) || 0));
+    // the live hull turns with the bezel frame by frame while it is on the glass; hidden behind the render,
+    // it takes its bearing once when the bezel settles
+    const liveOnGlass = !poster.has() || poster.isLive();
+    if (liveOnGlass && mount && typeof mount.setYaw === 'function' && stageEl.classList.contains('has-salering')) {
+      try { mount.setYaw(turnYaw()); } catch (_) { /* a mount without yaw keeps its view */ }
     }
+    drawBezel();
+  }
+  // the render a still picture can offer for a view: the starboard elevation for RIGHT, the hero otherwise
+  function posterViewFor(defId) {
+    return mode === 'buy' && saleView === 'right' && hullPosterUrl(defId, 'side') ? 'side' : POSTER_VIEW;
+  }
+  function afterTurnSettle() {
+    saleView = nearestView(bezelTurn);
+    stageEl.dataset.view = saleView;
+    if (mount && typeof mount.setYaw === 'function' && stageEl.classList.contains('has-salering')) {
+      try { mount.setYaw(turnYaw()); } catch (_) { /* a mount without yaw keeps its view */ }
+    }
+    if (mode === 'buy' && buyId && poster.has() && poster.view && poster.view() !== posterViewFor(buyId)) poster.setHull(buyId, posterViewFor(buyId));
+    scheduleSpatialProjection();
+  }
+  function turnToView(view) {
+    if (!(view in VIEW_TURN)) return;
+    saleView = view;
+    turnSpring.set(VIEW_TURN[view]);
+    if (!stageEl.classList.contains('has-salering')) return;
+    // a snap (reduced motion, or already there) still settles the poster and the light
+    if (turnSpring.value === VIEW_TURN[view]) afterTurnSettle();
+  }
+  // the bezel: the scale's ticks (flowing under the plate's open arcs) and the three view marks
+  function drawBezel() {
+    const g = saleGeo;
+    if (!saleRing || !g) return;
+    let bez = saleRing.querySelector(':scope > .sx-sw__bezel');
+    if (!bez) { bez = orrSvg('g', { class: 'sx-sw__bezel' }); saleRing.appendChild(bez); }
+    bez.textContent = '';
+    const f = (n) => Math.round(n * 100) / 100;
+    const inArc = (a, [a0, a1]) => { const x = norm360(a - a0); return x <= norm360(a1 - a0); };
+    const shut = (a) => saleOpen.some((arc) => inArc(a, arc));
+    let minor = ''; let major = '';
+    for (let i = 0; i < 72; i++) {
+      const a = norm360(i * 5 + bezelTurn);
+      if (shut(a)) continue;
+      const isMajor = i % 6 === 0;
+      const [x0, y0] = orrPolar(g.hx, g.hy, g.R + 3, a); const [x1, y1] = orrPolar(g.hx, g.hy, g.R + (isMajor ? 12 : 8), a);
+      const seg = `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
+      if (isMajor) major += seg; else minor += seg;
+    }
+    if (minor) bez.appendChild(orrSvg('path', { d: minor.trim(), class: 'orr-tick sx-sw__bezel-tick' }));
+    if (major) bez.appendChild(orrSvg('path', { d: major.trim(), class: 'orr-tick orr-tick--major sx-sw__bezel-tick' }));
+    const cam = el.querySelector('.sx-sw__camera');
+    if (!cam) return;
+    const current = nearestView(bezelTurn);
+    // a mark that turns down into the plate's sector fades under it (the plate holds the sockets and the caption)
+    const plateFade = (a) => {
+      const x = norm360(a);
+      const into = Math.min(x - 100, 260 - x);
+      return into <= 0 ? 1 : Math.max(0, 1 - into / 14);
+    };
     for (const b of cam.querySelectorAll('[data-camera]')) {
-      const a = angles[b.getAttribute('data-camera')] ?? 0;
-      const [px, py] = orrPolar(g.hx, g.hy, g.R + 12, a);
+      const key = b.getAttribute('data-camera');
+      const a = norm360((VIEW_BASE[key] ?? 0) + bezelTurn);
+      const vis = plateFade(a);
+      const on = key === current;
+      b.classList.toggle('is-current', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.style.opacity = vis >= 1 ? '' : vis.toFixed(2);
+      b.style.pointerEvents = vis < 0.5 ? 'none' : '';
+      if (vis > 0) {
+        if (on) {
+          const [ix, iy] = orrPolar(g.hx, g.hy, g.R - 10, a); const [ox, oy] = orrPolar(g.hx, g.hy, g.R + 9, a);
+          const d = `M ${f(ix)} ${f(iy)} L ${f(ox)} ${f(oy)}`;
+          bez.appendChild(orrSvg('path', { d, class: 'orr-lit-bloom sx-sw__mark' }));
+          bez.appendChild(orrSvg('path', { d, class: 'orr-lit sx-sw__mark' }));
+          const [bx, by] = orrPolar(g.hx, g.hy, g.R, a);
+          bez.appendChild(orrSvg('circle', { cx: f(bx), cy: f(by), r: 8, class: 'orr-bead-bloom' }));
+          bez.appendChild(orrSvg('circle', { cx: f(bx), cy: f(by), r: 4, class: 'orr-bead' }));
+        } else {
+          const [ix, iy] = orrPolar(g.hx, g.hy, g.R - 6, a); const [ox, oy] = orrPolar(g.hx, g.hy, g.R + 8, a);
+          bez.appendChild(orrSvg('path', { d: `M ${f(ix)} ${f(iy)} L ${f(ox)} ${f(oy)}`, class: 'orr-tick orr-tick--major sx-sw__mark', style: `opacity:${vis.toFixed(2)}` }));
+        }
+      }
+      // the word beyond its mark at R + 17, its box anchored continuously round the ring as the bezel turns
+      const [px, py] = orrPolar(g.hx, g.hy, g.R + 17, a);
       const cs = getComputedStyle(b);
       const pl = parseFloat(cs.paddingLeft) || 0; const pr = parseFloat(cs.paddingRight) || 0;
       const pt = parseFloat(cs.paddingTop) || 0; const pb = parseFloat(cs.paddingBottom) || 0;
       const cw = Math.max(0, (b.offsetWidth || 0) - pl - pr); const ch = Math.max(0, (b.offsetHeight || 0) - pt - pb);
       const sx = Math.sin((a * Math.PI) / 180); const sy = -Math.cos((a * Math.PI) / 180);
-      // the corner of the word's text box nearest the ring sits on P
-      const fx = sx > 0.1 ? 0 : sx < -0.1 ? 1 : 0.5;
-      const fy = sy < -0.1 ? 1 : sy > 0.1 ? 0 : 0.5;
+      const fx = 0.5 - 0.5 * Math.max(-1, Math.min(1, sx * 1.6));
+      const fy = 0.5 - 0.5 * Math.max(-1, Math.min(1, sy * 1.6));
       b.style.left = `${Math.round(px - pl - fx * cw)}px`;
       b.style.top = `${Math.round(py - pt - fy * ch)}px`;
     }
+  }
+  // the grip: a disc over the ring and the hull in it (the words stay above it and keep their clicks)
+  let turnEl = null;
+  let turnDrag = null;
+  function ensureTurnSurface() {
+    if (turnEl || typeof document === 'undefined') return;
+    turnEl = document.createElement('div');
+    turnEl.className = 'sx-sw__turn';
+    turnEl.setAttribute('aria-hidden', 'true');
+    stageEl.appendChild(turnEl);
+    const angleAt = (ev) => {
+      const g = saleGeo; const sr = stageEl.getBoundingClientRect();
+      const dx = ev.clientX - (sr.left + g.hx); const dy = ev.clientY - (sr.top + g.hy);
+      return { deg: (Math.atan2(dx, -dy) * 180) / Math.PI, r: Math.hypot(dx, dy) };
+    };
+    turnEl.addEventListener('pointerdown', (ev) => {
+      if (ev.button !== 0 || !saleGeo) return;
+      const p = angleAt(ev);
+      turnSpring.stop();
+      turnDrag = { id: ev.pointerId, last: p.deg, x: ev.clientX, turn: bezelTurn, near: p.r < saleGeo.R * 0.3, t: performance.now(), v: 0 };
+      try { turnEl.setPointerCapture(ev.pointerId); } catch (_) { /* capture is a nicety */ }
+      stageEl.classList.add('is-turning');
+      ev.preventDefault();
+    });
+    turnEl.addEventListener('pointermove', (ev) => {
+      if (!turnDrag || ev.pointerId !== turnDrag.id || !saleGeo) return;
+      const p = angleAt(ev);
+      let delta;
+      if (turnDrag.near || p.r < saleGeo.R * 0.2) delta = (ev.clientX - turnDrag.x) * 0.45;
+      else { delta = p.deg - turnDrag.last; if (delta > 180) delta -= 360; if (delta < -180) delta += 360; }
+      turnDrag.last = p.deg; turnDrag.x = ev.clientX;
+      const now = performance.now();
+      const dt = Math.max(1, now - turnDrag.t) / 1000;
+      turnDrag.t = now;
+      // past the last view the bezel resists
+      const next = turnDrag.turn + delta;
+      const over = Math.max(0, Math.abs(next) - TURN_LIMIT);
+      turnDrag.turn = over > 0 ? Math.sign(next) * (TURN_LIMIT + over * 0.3) : next;
+      turnDrag.v = delta / dt;
+      applyTurn(turnDrag.turn);
+    });
+    const release = (ev) => {
+      if (!turnDrag || (ev && ev.pointerId !== turnDrag.id)) return;
+      const fling = Math.max(-240, Math.min(240, turnDrag.v || 0));
+      const view = nearestView(bezelTurn + fling * 0.12);
+      turnDrag = null;
+      try { turnEl.releasePointerCapture(ev.pointerId); } catch (_) { /* already released */ }
+      stageEl.classList.remove('is-turning');
+      saleView = view;
+      turnSpring.set(bezelTurn, { instant: true });
+      turnSpring.kick(fling);
+      turnSpring.set(VIEW_TURN[view]);
+      if (turnSpring.value === VIEW_TURN[view]) afterTurnSettle();
+    };
+    turnEl.addEventListener('pointerup', release);
+    turnEl.addEventListener('pointercancel', release);
   }
   // the verbs' one home, both modes and both sizes: centred under the ring's caption
   function seatSaleStats(g) {
@@ -2363,6 +2547,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const ringNow = stageRingGeo();
     seatVerbs(ringNow);
     drawFleetCaption(ringNow);
+    drawJigBand();
 
     const pointOf = (index) => {
       if (livePath) {
@@ -2587,17 +2772,19 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const slotSummary = Object.entries(def.slots || {}).filter(([, arr]) => (arr || []).length)
         .map(([t, arr]) => `<span class="sx-spec__hp">${(arr || []).length}×\u00a0${escapeHtml(SLOT_LABEL[t] || t)}</span>`).join('');
       const credits = (ctx.state.player && ctx.state.player.credits) || 0;
-      const afford = def.price <= credits;
+      const facts = catalogHullFacts(def.id);
+      const afford = facts.price <= credits;
       const isOwned = owned().some((s) => s.defId === def.id);
       const availability = shipworksActionAvailability(ctx.state);
       const canBuy = afford && availability.hullEnabled;
       // a key that cannot be pressed still says what it would do; why it cannot stands under it as a label
-      const whyNot = !availability.hullEnabled ? availability.hullLabel : (afford ? '' : `${fmt(def.price - credits)} cr short`);
+      const whyNot = !availability.hullEnabled ? availability.hullLabel : (afford ? '' : `${fmt(facts.price - credits)} cr short`);
       const buyAria = canBuy ? 'Buy ship' : `Buy ship, ${whyNot}`;
       // The stage-right column: the hull's name and class, its price as the hero number, then the hull as
       // readings against the one you fly (each carries your hull's value as its ghost: ice where this hull
       // gains, dim bone where it costs), and Buy as the one primary key. The sockets stand on the disc.
       const mine = activeOwnedDef();
+      const mineFacts = mine ? catalogHullFacts(mine.id) : null;
       const compare = !!(mine && mine.id !== def.id);
       const reading = (label, value, ownValue, unit, lowerIsBetter = false) => {
         const v = Number(value) || 0; const o = Number(ownValue) || 0;
@@ -2611,23 +2798,24 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       sideEl.innerHTML =
         `<h3 class="k-t-sub sx-sw-side__name">${entitySpanHtml('hull:' + def.id, escapeHtml(def.name))}</h3>` +
         `<p class="sx-sw-side__class">${escapeHtml(def.role || 'ship')} \u00b7 T${def.tier}</p>` +
-        `<div class="k-hero sx-sw-side__hero"><span class="k-hero__n">${def.price > 0 ? fmt(def.price) : 'Starter'}</span><span class="k-hero__w">${def.price > 0 ? 'credits' : 'hull'}</span></div>` +
+        `<div class="k-hero sx-sw-side__hero"><span class="k-hero__n">${facts.price > 0 ? fmt(facts.price) : 'Starter'}</span><span class="k-hero__w">${facts.price > 0 ? 'credits' : 'hull'}</span></div>` +
         `<ul class="sx-sw-read" aria-label="${compare ? `Readings against your ${escapeHtml(mine.name)}` : 'Readings'}">` +
-          reading('Hull', def.hull, mine && mine.hull, '') + reading('Shield', def.shield, mine && mine.shield, '') +
-          reading('Cargo', def.cargo, mine && mine.cargo, 'u') + reading('Mass', def.mass, mine && mine.mass, 't', true) +
+          reading('Hull', facts.hull, mineFacts && mineFacts.hull, '') + reading('Shield', facts.shield, mineFacts && mineFacts.shield, '') +
+          reading('Cargo', facts.cargo, mineFacts && mineFacts.cargo, 'u') + reading('Mass', facts.mass, mineFacts && mineFacts.mass, 't', true) +
+          reading('Speed', facts.speed, mineFacts && mineFacts.speed, '') +
         `</ul>` +
         (compare ? `<p class="sx-sw-read__vs">\u2190 your ${escapeHtml(mine.name)}</p>` : '') +
         `<p class="sx-sw-read__hp">Hardpoints: ${slotSummary || '\u2014'}</p>` +
         `<ul class="k-words k-words--row sx-buybar${canBuy || isOwned ? '' : ' is-blocked'}">` +
           (isOwned
             ? `<li><span class="k-word k-word--emph k-38 sx-btn-ghost">In your fleet</span></li>`
-            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${canBuy ? '' : 'disabled'} aria-label="${escapeHtml(buyAria)}">Buy ship${canBuy ? ` <small>${fmt(def.price)} cr</small>` : ''}</button></li>` +
+            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${canBuy ? '' : 'disabled'} aria-label="${escapeHtml(buyAria)}">Buy ship${canBuy ? ` <small>${fmt(facts.price)} cr</small>` : ''}</button></li>` +
               (canBuy ? '' : `<li class="sx-buybar__why" aria-hidden="true">${escapeHtml(whyNot)}</li>`)) +
         `</ul>`;
       dressSide();
       drawBuyRim();
       const priceN = sideEl.querySelector('.sx-sw-side__hero .k-hero__n');
-      if (priceN && def.price > 0) rollTo(priceN, def.price);
+      if (priceN && facts.price > 0) rollTo(priceN, facts.price);
       return;
     }
     // Fleet: the projected nodes on the hull own selection. This lower circuit makes the loadout
@@ -2846,7 +3034,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     } else if (def.slotType === 'utility') {
       add('CLOAK %', def.mods && def.mods.scannerCloak ? def.mods.scannerCloak * 100 : null);
     }
-    add('MASS', def.mass);
+    add('MASS', moduleSimMass(def));
     add('DRAW', def.energyDraw != null ? def.energyDraw : def.energyCost);
     return rows.slice(0, 3);
   }
@@ -3659,6 +3847,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   });
   el.querySelector('.sx-sw__camera').addEventListener('click', (ev) => {
     const control = ev.target.closest('[data-camera]');
+    if (control && stageEl.classList.contains('has-salering')) { turnToView(control.getAttribute('data-camera')); return; }
     if (!control || !mount) return;
     const command = control.getAttribute('data-camera');
     for (const b of control.parentElement.parentElement.querySelectorAll('[data-camera]')) b.classList.toggle('is-current', b === control);
@@ -3666,6 +3855,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     else if (command === 'right') mount.rotateBy(.22);
     else { mount.setYaw(CENTERED_SHIP_YAW); mount.setZoom(1); }
     scheduleSpatialProjection();
+  });
+  el.querySelector('.sx-sw__camera').addEventListener('keydown', (ev) => {
+    if (!stageEl.classList.contains('has-salering') || (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight')) return;
+    const at = VIEW_ORDER.indexOf(saleView);
+    const next = VIEW_ORDER[Math.max(0, Math.min(VIEW_ORDER.length - 1, at + (ev.key === 'ArrowLeft' ? -1 : 1)))];
+    ev.preventDefault();
+    turnToView(next);
+    const word = el.querySelector(`.sx-sw__camera [data-camera="${next}"]`);
+    if (word) word.focus({ preventScroll: true });
   });
   const stageResizeObserver = typeof ResizeObserver !== 'undefined'
     ? new ResizeObserver(() => scheduleSpatialProjection()) : null;
@@ -3734,7 +3932,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const offer = stationShopOffer(def, shopStationId);
       const confirmOpts = describeOutfittingSpendConfirm(def, credits, {
         fitSlotIndex,
-        price: offer ? offer.price : def.price,
+        price: offer ? offer.price : moduleSimPrice(def),
       });
       if (confirmOpts) {
         try { bf.focus({ preventScroll: true }); } catch (_) {

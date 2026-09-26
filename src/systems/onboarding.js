@@ -68,6 +68,7 @@ import {
   rescueRockHitDerelict,
   rescueScoutAtAsteroid,
   rescueScoutEscaped,
+  rescueSlotRespawnTransform,
 } from '../onboarding/rescueOpening.js';
 import {
   FIRST_HOUR_S,
@@ -79,12 +80,15 @@ import {
   buildFirstHourStartedEvent,
   buildFirstHourVerbEvent,
   freshMissingThreeState,
+  makeConeLaneSpec,
+  makeRepulsorClumpSpec,
   makeWellScrapSpec,
   missingThreeBeatLine,
   missingThreeBoosting,
   missingThreeRangeRungId,
   missingThreeStrokeActive,
   missingThreeWithinHour,
+  normalizeMissingThreeState,
 } from '../onboarding/missingThree.js';
 import {
   STORE_SENTENCE,
@@ -395,7 +399,8 @@ export const onboarding = {
     bus.on('tether:latched', (p) => this._onLatchPointer(p || {}));
     bus.on('range:opened', (p) => this._onRangeOpened(p || {}));
     bus.on('ship:boostStart', (p) => this._onMissingThreeBoostStart(p || {}));
-    bus.on('fields:deployed', (p) => this._onMissingThreeWell(p || {}));
+    bus.on('fields:deployed', (p) => this._onMissingThreeFieldDeploy(p || {}));
+    bus.on('fields:coneToggled', (p) => this._onMissingThreeCone(p || {}));
 
     // ── Raid + claimed tableau (thesis-first route, 2026-09-18) ─────────────────────────
     // The momentum kill reads the production whip/tumble event stream; the wanted beat rides
@@ -1362,18 +1367,6 @@ export const onboarding = {
     missions.ensureOnboardingChoiceOffers(stationId);
   },
 
-  // B5: surface three side-by-side offers (HAUL/BOUNTY/SURVEY) through the ordinary mission
-  // authority. No parallel tutorial jobs: these offers accept, track, pay, and receipt normally.
-  _openChoice() {
-    const st = this.state;
-    const ob = st.onboarding;
-    const stationId = ob && ob.choiceStationId || st.ui && st.ui.dockedStationId;
-    if (!stationId) return;
-    const missions = this.registry && this.registry.get && this.registry.get('missions');
-    if (!missions || typeof missions.ensureOnboardingChoiceOffers !== 'function') return;
-    missions.ensureOnboardingChoiceOffers(stationId);
-  },
-
   // ── Rescue opening (PQ-163.00) ────────────────────────────────────────────────────────
   // Three verbs in the drill's silence gaps: swing (after tether), shove (after burst),
   // grab-and-run (after disengage). Each is taught by doing through production events, then
@@ -1873,8 +1866,20 @@ export const onboarding = {
     if (oldId != null && typeof this.helpers.removeEntity === 'function') {
       this.helpers.removeEntity(oldId);
     }
+    // Specs carry the authored stats; placement comes from the STANDING tableau so the
+    // retry is the same readable lesson (PQ-163.00 receipt leftover — a re-rolled bearing
+    // used to strand the fresh scout off the standing wall's line).
     const specs = makeRescueCastSpecs(player.pos, () => onboardingRandom(st));
     makeRescueRockTowable(specs.rock);
+    const placement = rescueSlotRespawnTransform(slot, player.pos, {
+      derelict: this._rescueActor('derelict'),
+      asteroid: this._rescueActor('asteroid'),
+      beacon: this._rescueActor('beacon'),
+    }, () => onboardingRandom(st));
+    if (placement && specs[slot]) {
+      specs[slot].pos = placement.pos;
+      specs[slot].vel = placement.vel;
+    }
     const spawned = this.helpers.spawnEntity(specs[slot]);
     rescue.ids[slot] = spawned && spawned.id != null ? spawned.id : null;
   },
@@ -2352,7 +2357,8 @@ export const onboarding = {
   // ── Missing three (PQ-163.02) — boost, stroke, well in the grab → seam gap ───────────────
   _missingThreeRecord() {
     const ob = this.state && this.state.onboarding;
-    return ob && ob.missingThree ? ob.missingThree : null;
+    const three = ob && ob.missingThree ? ob.missingThree : null;
+    return three ? normalizeMissingThreeState(three) : null;
   },
 
   _missingThree() {
@@ -2367,6 +2373,18 @@ export const onboarding = {
     if (id == null || !this.state.entities) return null;
     const entity = this.state.entities.get(id);
     return entity && entity.alive !== false ? entity : null;
+  },
+
+  _missingThreeActors(slot) {
+    const three = this._missingThreeRecord();
+    const ids = three && three.ids && Array.isArray(three.ids[slot]) ? three.ids[slot] : [];
+    const out = [];
+    for (const id of ids) {
+      if (id == null || !this.state.entities) continue;
+      const entity = this.state.entities.get(id);
+      if (entity && entity.alive !== false) out.push(entity);
+    }
+    return out;
   },
 
   _maybeAdvanceMissingThree() {
@@ -2408,19 +2426,27 @@ export const onboarding = {
     const line = missingThreeBeatLine(key);
     ob.beatAction = line;
     this._sayTutorial(line);
-    ob.rangePromptActive = true;
-    ob.pointedAtRange = true;
-    ob.rangePrompt = RANGE_POINTER_LINE;
-    ob.rangePromptRungId = missingThreeRangeRungId(key);
-    this.bus.emit('onboarding:rangePrompt', {
-      active: true,
-      text: RANGE_POINTER_LINE,
-      rungId: ob.rangePromptRungId,
-      atS: this.state.simTime || 0,
-      beat: key,
-    });
+    // Only verbs with an authored Range rung point at the Range. Repulsor and cone rungs
+    // exist as drill assets but no live rung rows — pointing now would land the player on
+    // the wrong drill, so these two teach without the pointer.
+    const rungId = missingThreeRangeRungId(key);
+    ob.rangePromptActive = rungId != null;
+    ob.pointedAtRange = rungId != null;
+    ob.rangePrompt = rungId != null ? RANGE_POINTER_LINE : null;
+    ob.rangePromptRungId = rungId;
+    if (rungId != null) {
+      this.bus.emit('onboarding:rangePrompt', {
+        active: true,
+        text: RANGE_POINTER_LINE,
+        rungId,
+        atS: this.state.simTime || 0,
+        beat: key,
+      });
+    }
     if (first) this.bus.emit('firsthour:started', buildFirstHourStartedEvent(this.state.simTime || 0));
     if (key === 'well') this._spawnWellScrap();
+    else if (key === 'repulsor') this._spawnRepulsorClump();
+    else if (key === 'cone') this._spawnConeLane();
     this._setMissingThreeWaypoint(true);
     this._refreshBeatPanel();
   },
@@ -2439,16 +2465,49 @@ export const onboarding = {
     three.ids.scrap = spawned && spawned.id != null ? spawned.id : null;
   },
 
+  _spawnRepulsorClump() {
+    const three = this._missingThree();
+    if (!three || !this.helpers || !this.helpers.spawnEntity) return;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return;
+    for (const id of three.ids.clump || []) {
+      if (id != null && typeof this.helpers.removeEntity === 'function') this.helpers.removeEntity(id);
+    }
+    three.ids.clump = [];
+    for (const spec of makeRepulsorClumpSpec(player.pos)) {
+      const spawned = this.helpers.spawnEntity(spec);
+      if (spawned && spawned.id != null) three.ids.clump.push(spawned.id);
+    }
+  },
+
+  _spawnConeLane() {
+    const three = this._missingThree();
+    if (!three || !this.helpers || !this.helpers.spawnEntity) return;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return;
+    for (const id of three.ids.lane || []) {
+      if (id != null && typeof this.helpers.removeEntity === 'function') this.helpers.removeEntity(id);
+    }
+    three.ids.lane = [];
+    for (const spec of makeConeLaneSpec(player.pos, player.rot)) {
+      const spawned = this.helpers.spawnEntity(spec);
+      if (spawned && spawned.id != null) three.ids.lane.push(spawned.id);
+    }
+  },
+
   _removeMissingThreeActors() {
     const three = this.state && this.state.onboarding && this.state.onboarding.missingThree;
     if (!three || !three.ids) return;
     const player = this.state && this.state.player;
-    const id = three.ids.scrap;
-    if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
-      this.helpers.removeEntity(id);
+    const ids = [three.ids.scrap, ...(three.ids.clump || []), ...(three.ids.lane || [])];
+    for (const id of ids) {
+      if (id == null) continue;
+      if (this.helpers && typeof this.helpers.removeEntity === 'function') this.helpers.removeEntity(id);
+      if (player && player.targetId === id) player.targetId = null;
     }
-    if (player && id != null && player.targetId === id) player.targetId = null;
     three.ids.scrap = null;
+    three.ids.clump = [];
+    three.ids.lane = [];
   },
 
   _setMissingThreeWaypoint(force) {
@@ -2463,6 +2522,15 @@ export const onboarding = {
     else if (key === 'well') {
       const scrap = this._missingThreeActor('scrap');
       if (scrap) target = { pos: scrap.pos, label: 'Scrap' };
+    } else if (key === 'repulsor') {
+      const clump = this._missingThreeActors('clump');
+      if (clump.length) target = { pos: clump[0].pos, label: 'Scrap' };
+    } else if (key === 'cone') {
+      const lane = this._missingThreeActors('lane');
+      if (lane.length) {
+        const mid = lane[Math.floor(lane.length / 2)];
+        target = { pos: mid.pos, label: 'Lane' };
+      }
     }
     const existing = st.nav.waypoint;
     if ((!target || !target.pos)) {
@@ -2534,17 +2602,31 @@ export const onboarding = {
     three.lastBoost = true;
   },
 
-  _onMissingThreeWell(payload) {
-    if (!payload || payload.kind !== 'well') return;
-    this._noteVerbUse('well');
+  _onMissingThreeFieldDeploy(payload) {
+    if (!payload || payload.npc) return;
+    const kind = payload.kind;
+    if (kind !== 'well' && kind !== 'repulsor') return;
     const source = this.state?.entities?.get ? this.state.entities.get(payload.sourceId) : null;
     const isPlayer = payload.isPlayer
       || payload.sourceId === this.state?.playerId
       || (source && source.ownerId === this.state?.playerId)
-      || (!payload.npc && !payload.planted && (payload.sourceId == null || payload.sourceId === this.state?.playerId));
-    if (isPlayer) {
+      || (!payload.planted && (payload.sourceId == null || payload.sourceId === this.state?.playerId));
+    if (kind === 'well') {
+      if (!isPlayer) return;
+      this._noteVerbUse('well');
       this._showHint('firstWellDrop', firstUseLine('firstWellDrop') || 'Well deployed. Pull the scrap.', payload);
+      return;
     }
+    if (!isPlayer) return;
+    this._noteVerbUse('repulsor');
+    this._showHint('firstRepulsorDrop', firstUseLine('firstRepulsorDrop') || 'Repulsor out.', payload);
+  },
+
+  _onMissingThreeCone(payload) {
+    if (!payload || payload.active !== true || payload.npc) return;
+    if (payload.sourceId != null && payload.sourceId !== this.state?.playerId) return;
+    this._noteVerbUse('cone');
+    this._showHint('firstConeOn', firstUseLine('firstConeOn') || 'Cone on.', payload);
   },
 
   _resolveMissingThreeDone() {
@@ -2552,6 +2634,8 @@ export const onboarding = {
     const key = three && three.current;
     if (!key) return;
     if (key === 'well' && !this._missingThreeActor('scrap')) this._spawnWellScrap();
+    else if (key === 'repulsor' && this._missingThreeActors('clump').length === 0) this._spawnRepulsorClump();
+    else if (key === 'cone' && this._missingThreeActors('lane').length === 0) this._spawnConeLane();
   },
 
   _missingThreeDone(key) {

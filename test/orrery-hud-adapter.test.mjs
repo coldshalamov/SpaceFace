@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import {
   buildOrdnanceGroups, createCooldownTracker, readOrdnanceModel, readClusterModel,
 } from '../src/ui/orrery/hudAdapter.js';
+import { speedPhase } from '../src/ui/orrery/flightCluster.js';
 import { RAIL_SLOTS } from '../src/ui/powerRail.js';
 
 function fakeState(extra = {}) {
@@ -77,6 +78,45 @@ test('the cooldown tracker turns time-left into a rising fraction', () => {
   assert.equal(frac(5, { state: 'cooling', cooldownMs: 1000 }), 0.75);
   assert.equal(frac(5, { state: 'ready' }), null);
   assert.equal(frac(5, { state: 'cooling', cooldownMs: 2000 }), 0, 'a fresh cooldown restarts the sweep');
+});
+
+test('the speed Scale phases against the displayed reading: asleep, flight, above reference', () => {
+  assert.equal(speedPhase(0, 180), 'rest');
+  assert.equal(speedPhase(0.4, 180), 'rest', 'below a crawl the numeral reads 0 and the instrument sleeps');
+  assert.equal(speedPhase(0.5, 180), 'flight');
+  assert.equal(speedPhase(90, 180), 'flight');
+  assert.equal(speedPhase(180.4, 180), 'flight', 'the displayed numeral (180) is not above reference');
+  assert.equal(speedPhase(180.6, 180), 'over', 'the displayed numeral (181) is above reference — ice');
+  assert.equal(speedPhase(672, 400), 'over', 'travel and tether legitimately exceed the reference');
+  assert.equal(speedPhase(-12, 400), 'rest');
+  assert.equal(speedPhase(90, undefined), 'flight', 'a missing reference reads the 180 default');
+  assert.equal(speedPhase(NaN, 180), 'rest', 'no reading, no light');
+});
+
+test('every ordnance key explains itself: bank sentence, live keys and live state in one tip', () => {
+  const bindings = {
+    chargeThrow: ['KeyY', 'Digit1'], chargeDetonate: ['KeyR', 'Digit2'], tether: ['Space', 'KeyF', 'Digit3'],
+  };
+  const { state } = fakeState();
+  state.player.cargo.items.cmdty_impulse_charge = 0;
+  const ord = readOrdnanceModel(state, createCooldownTracker(), bindings);
+  assert.equal(ord['1'].tip,
+    'Charge — throw an impulse charge that sticks where it lands (1 · Y)\nNo impulse charges in cargo');
+  assert.match(ord['3'].tip, /\(3 · Space · F\)\nReady$/);
+  assert.match(ord['2'].tip, /Nothing armed to detonate$/);
+  // A collapsed node answers "what is in this band" without unfolding it.
+  const groups = buildOrdnanceGroups(bindings);
+  assert.equal(groups[0].tip, 'Ordnance — Charge 1 · Blast 2 · Line 3');
+  assert.equal(groups[0].slots[0].key, '1', 'the shelf reads as the 1–9 hotbar the player reaches for');
+});
+
+test('the Cluster writes each tip to a hoverable, focusable socket (the tier-2 seat)', () => {
+  const src = readFileSync(new URL('../src/ui/orrery/flightCluster.js', import.meta.url), 'utf8');
+  assert.match(src, /k\.setAttribute\('tabindex', '0'\)/, 'a verb key answers keyboard focus');
+  assert.match(src, /k\.setAttribute\(node \? 'data-group' : 'data-slot', id\)/, 'a socket names its verb');
+  assert.match(src, /if \(tip\) k\.setAttribute\('data-why', tip\)/, 'the bank phrase rides the socket');
+  assert.match(src, /if \(tip\) sk\.el\.setAttribute\('data-why', tip\)/, 'the live state line moves with the model');
+  assert.match(src, /pointer-events:auto/, 'a verb key answers the cursor so the reveal can fire');
 });
 
 test('hud.js mounts the Cluster once and feeds it once per frame', () => {

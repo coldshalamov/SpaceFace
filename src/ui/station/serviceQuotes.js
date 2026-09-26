@@ -2,6 +2,7 @@
 // Live dock controls are rendered by stationApp.
 
 import { COMMODITIES } from '../../data/commodities.js';
+import { presenceServiceForStation } from '../../data/factionPresence.js';
 import { SERVICE_PRICES } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { stationControlAttrs } from './stationBindingMap.js';
@@ -383,10 +384,17 @@ export function serviceQuote(type, state, entity) {
   if (type === 'redeem_rights') {
     const rights = Math.max(0, Math.floor(Number(p.salvageRights) || 0));
     const dockedId = (state && state.ui && state.ui.dockedStationId) || null;
-    const stored = state && state.factionPresence && state.factionPresence.servicesByStation
-      ? state.factionPresence.servicesByStation[dockedId] : null;
-    const yard = !!(stored && stored.factionId === 'faction_pitborn'
-      && Array.isArray(stored.services) && stored.services.length > 0);
+    // Same derivation the economy click-path applies (economy.js 'redeem_rights'): live
+    // presence + rep availability — the stored record ignores requiredRep/available, so a
+    // negative-Pitborn player would otherwise see an enabled verb that refuses on click.
+    const reps = {};
+    for (const [fid, row] of Object.entries((state && state.factions) || {})) {
+      reps[fid] = Number(row && row.rep) || 0;
+    }
+    const presence = dockedId ? presenceServiceForStation(dockedId, reps) : null;
+    const yard = !!(presence && presence.factionId === 'faction_pitborn'
+      && Array.isArray(presence.services) && presence.services.length > 0
+      && presence.available !== false);
     if (!yard) {
       return {
         amount: 0, cost: 0,

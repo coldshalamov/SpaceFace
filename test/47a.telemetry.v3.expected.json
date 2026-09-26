@@ -68,7 +68,7 @@
     "audio:cue": 6
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "80b332c7bc8f176c3737a685f7ea6538c9e045bfd5e82e1bb53d48c35ea2e9ab",
+    "authoritativeHash": "9187d8e57a1d24ccf1b94970b3a917a092413895eb5c9e41973c29a6e8d5165a",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -183,12 +183,18 @@
     "12,156 $.economy, 20 $.missions procedural pricing, 3 added $.story ambient-finale fields. ZERO motion fields changed and every phase0ObservedTraceCount is unchanged.",
     "Recorded against a clean git-archive export of HEAD 11b64303f; the uncommitted capital-boss/finale lane moves this hash and re-records when it lands.",
     "Provenance: sim-golden-diff's default --ref crashes on the broken 000b6ff05..dcb805e49^ trees (missing src/data/encounters/mega-heist.js until dcb805e49); pass --ref explicitly. Repeat-20 and reload@600 are deterministic.",
-    "2026-09-22 deliberate re-record over eaa817447..worktree, same window and causes as the legacy envelope. Prior authoritativeHash was 5c84097c2c15ff3493b362a7c92c7cfcdee374e4c6467c770df63db4c50c40ad.",
+    "2026-09-25 deliberate re-record over eaa817447..worktree, same window and causes as the legacy envelope. Prior authoritativeHash was 5c84097c2c15ff3493b362a7c92c7cfcdee374e4c6467c770df63db4c50c40ad.",
     "sim-golden-diff --flight-system v3 --ref eaa817447 reproduces the prior hash exactly; the previous envelope was correct and the harness is deterministic.",
     "Evidence: VERDICT CONTENT_ONLY, 32 snapshot fields moved (24 $.entities[], 4 $.economy, 3 $.story, 1 $.player). ZERO entity pos/vel/rot/angVel/prevPos fields changed after 720 ticks.",
     "Trace counts moved with the intended projectile-flight outcome: projectile:hit 8->17 and combat:damage 8->17 — the retargeted proof-dummy shots now live long enough to land.",
     "entities[2].shield 78->0 and hull 150->128.8 from the extra hits; presentation:cue/cueApplied 12->22, vfxCue/audioCue 4->5, audio:cue 5->6 follow. combat:fire still 17.",
     "Same companion save fix as the legacy envelope: live projectiles persist through save/load (transient restore, finite ttl, remapped ownerId/targetId) and restored actors reclaim saved ids.",
-    "Repeat-20 and reload@60 are deterministic. Recorded against the working tree; constituent lanes may land in separate commits."
+    "Repeat-20 and reload@60 are deterministic. Recorded against the working tree; constituent lanes may land in separate commits.",
+    "2026-09-25 deliberate re-record over a394b7483 (clean HEAD worktree), same window and first cause as the legacy envelope. The prior authoritativeHash was 80b332c7bc8f176c3737a685f7ea6538c9e045bfd5e82e1bb53d48c35ea2e9ab.",
+    "Bisected causal record: 51135a97d (station_io_merc in src/data/sectors.js) is the only remaining drift — identical snapshots through tick 300, first divergence at tick 301 in $.economy only.",
+    "d225c6222 restored reload determinism after the ad1f92053/4f102db53 measured-skin collider bug; reload@60 reproduces the uninterrupted hash exactly.",
+    "Evidence on the fixed tree: repeat-20 deterministic, check:sim:v3:compare reports hashEqual with the ONLY envelope diff being the stale authoritativeHash — zero phase0ObservedTraceCounts moved.",
+    "Recorded against a clean HEAD worktree; the dirty primary tree is excluded.",
+    "Stability note: 6ff452c31 (Measure live hulls) landed during the re-record window and moved only the legacy envelope (uniform remeasured-hull translation); this V3 hash is identical at a394b7483 and 9c3dab1f1."
   ]
 }

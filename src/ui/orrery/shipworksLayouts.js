@@ -20,12 +20,14 @@ export function powerDialSvg({ cap = 0, draws = [], ghost = null, systems = [] }
   const capacity = Math.max(1, Number(cap) || 0);
   let at = from;
   let lit = '';
+  let litBloom = '';
   let notches = '';
   for (const [, draw] of draws) {
     const d = Math.max(0, Number(draw) || 0);
     if (d <= 0) continue;
     const end = Math.min(to, at + span * (d / capacity));
     lit += `<path class="orr-power__lit" d="${arcD(cx, cy, r, at, end)}"/>`;
+    litBloom += `<path class="orr-power__lit-bloom" d="${arcD(cx, cy, r, at, end)}"/>`;
     const [nx0, ny0] = polar(cx, cy, r - 5, end);
     const [nx1, ny1] = polar(cx, cy, r + 5, end);
     notches += `M ${f2(nx0)} ${f2(ny0)} L ${f2(nx1)} ${f2(ny1)} `;
@@ -64,9 +66,12 @@ export function powerDialSvg({ cap = 0, draws = [], ghost = null, systems = [] }
       + `<text class="orr-power__syslabel ${state}" x="${f2(lx)}" y="${f2(ly + 3)}" text-anchor="${anchor}">${escapeXml(word)}${escapeXml(count)}</text>`;
   });
   return `<svg class="orr-power${over ? ' is-over' : ''}" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`
+    + `<path class="orr-power__band" d="${arcD(cx, cy, r, from, to)}"/>`
     + `<path class="orr-power__track" d="${arcD(cx, cy, r, from, to)}"/>`
-    + `<path class="orr-power__ticks" d="${ticksD(cx, cy, r + 4, 4, { len: 4, from, to, inward: false })}"/>`
-    + lit + (notches ? `<path class="orr-power__notch" d="${notches}"/>` : '') + ghostArc + sys
+    + `<path class="orr-power__ticks" d="${ticksD(cx, cy, r + 4, 4, { len: 5, from, to, inward: false })}"/>`
+    + litBloom + lit + (notches ? `<path class="orr-power__notch" d="${notches}"/>` : '')
+    + (at > from ? (() => { const [bx, by] = polar(cx, cy, r, at); return `<circle class="orr-power__bead-bloom" cx="${f2(bx)}" cy="${f2(by)}" r="7.5"/><circle class="orr-power__bead" cx="${f2(bx)}" cy="${f2(by)}" r="3.8"/>`; })() : '')
+    + ghostArc + sys
     + `</svg>`;
 }
 const escapeXml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -829,6 +834,74 @@ ${W}.sx-sw--buying .sx-sw__list[data-overflow="1"][data-fold-head="1"][data-fold
   ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:9.5px !important; letter-spacing:.16em !important; }
   ${W} .orr-sw-readouts .sx-sw-gauge .sx-sw-ghost { font-family:var(--dp-face-body, "Instrument Sans") !important; font-variation-settings:normal !important; font-weight:400 !important; font-size:12.5px !important; margin-left:7px; }
 }
+
+/* ================================ ROUND 15: weight, and the turn ================================= */
+/* nothing on the stage is a wire: the rings are bands under an edge, the ticks carry weight, values are lit */
+${W} .sx-sw__salering { --orr-w-band:7px; --orr-band-a:.09; --orr-edge-a:.5; }
+${W} .sx-sw__salering .sx-sw__salering-ring { stroke:rgb(${BONE} / .5); stroke-width:1.5px; }
+${W} .sx-sw__salering .sx-sw__socket { stroke:rgb(${BONE} / .85); }
+${W} .sx-sw__salering .sx-sw__socket.is-ghost { stroke:rgb(${BONE} / .5); }
+${W} .sx-sw__salering .sx-sw__socket.is-gain { stroke:var(--dp-ice, #8fcbff); }
+/* the grip: the ring lifts under the pointer and while it turns */
+${W} .sx-sw__stage > .sx-sw__turn { display:none; }
+${W} .sx-sw__stage.has-salering > .sx-sw__turn { display:block; position:absolute; z-index:2; border-radius:50%; background:transparent; cursor:grab; touch-action:none;
+  left:calc(var(--sw-ring-x, 50%) - var(--sw-ring-r, 280px) - 18px); top:calc(var(--sw-ring-y, 50%) - var(--sw-ring-r, 280px) - 18px);
+  width:calc(var(--sw-ring-r, 280px) * 2 + 36px); height:calc(var(--sw-ring-r, 280px) * 2 + 36px); }
+${W} .sx-sw__stage.is-turning > .sx-sw__turn { cursor:grabbing; }
+${W} .sx-sw__stage:has(> .sx-sw__turn:hover) > .sx-sw__salering, ${W} .sx-sw__stage.is-turning > .sx-sw__salering { --orr-band-a:.17; --orr-edge-a:.7; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { transition:none !important; }
+/* a view word is light alone: no underline, rule or box under it (the lit mark on the ring says which) */
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera]::after { content:none !important; display:none !important; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { text-decoration:none !important; border:0 !important; box-shadow:none !important; background:none !important; background-image:none !important; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current { color:rgb(252 249 240) !important; }
+/* the live hull re-centres after a turn without a jump */
+${W} .sx-sw__stage.has-salering > .sx-sw__canvas { transition:translate .26s cubic-bezier(.2, .8, .2, 1), opacity .6s linear; }
+${W.replace('html body', 'html.sf-reduce-motion body')} .sx-sw__stage.has-salering > .sx-sw__canvas { transition:none; }
+/* the Fleet jig: its ring stands on a band (drawn under it by the screen), its scale and leaders carry weight,
+   each socket sits in a soft bone halo */
+${W} .orr-sw-jig > .sx-sw__jigband { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; --orr-w-band:7px; --orr-band-a:.1; }
+${W} .orr-sw-jig .orr-hull__dial > path.orr-rest { stroke:rgb(${BONE} / .52) !important; stroke-width:1.5px !important; }
+${W} .orr-sw-jig .orr-hull__dial > path.orr-faint { stroke:rgb(${BONE} / .42) !important; stroke-width:1.5px !important; }
+${W} .orr-sw-jig .orr-hull__dial .orr-drift path { stroke-width:1.5px !important; }
+${W} .orr-sw-jig path.orr-hull__leader { stroke-width:1.5px !important; }
+${W} .orr-sw-jig path.orr-hi:not(.orr-hull__leader) { stroke-width:2px !important; }
+${W} .orr-sw-jig .orr-hull__node .orr-hull__ring { stroke-width:2px !important; }
+${W} .orr-sw-jig .orr-hull__node:not(.is-lit) .orr-hull__glow { stroke:rgb(${BONE}) !important; opacity:.1 !important; }
+/* the fit dial: band, edge, weighted scale, the draw lit with its bead */
+${W} .orr-power__band { fill:none; stroke:rgb(${BONE} / .09); stroke-width:8px; }
+${W} .sx-sw-circuit__core .orr-power .orr-power__track { stroke:rgb(${BONE} / .46) !important; stroke-width:1.5px !important; }
+${W} .orr-power__ticks { stroke:rgb(${BONE} / .5) !important; stroke-width:1.5px !important; }
+${W} .orr-power__lit { stroke-width:3.5px !important; }
+${W} .orr-power__lit-bloom { fill:none; stroke:rgb(255 240 214 / .24); stroke-width:11px; }
+${W} .orr-power.is-over .orr-power__lit-bloom { stroke:rgb(255 80 56 / .24); }
+${W} .orr-power__bead { fill:rgb(252 249 240); } ${W} .orr-power__bead-bloom { fill:rgb(255 240 214 / .26); }
+${W} .orr-power__sys { stroke-width:1.5px !important; }
+/* the handling scales: a luminous band with an edge and weighted ticks; the value lit over its bloom, a bead at its end */
+${W} .sx-sw-bar__track { position:relative !important; overflow:visible !important; height:9px !important; border-radius:5px !important;
+  background:linear-gradient(rgb(${BONE} / .46), rgb(${BONE} / .46)) 0 50% / 100% 1.5px no-repeat,
+    repeating-linear-gradient(90deg, rgb(${BONE} / .42) 0 1.5px, transparent 1.5px 10%) 0 50% / 100% 9px no-repeat,
+    rgb(${BONE} / .085) !important; }
+${W} .sx-sw-bar__track > .k-bar__fill { position:absolute !important; left:0 !important; top:50% !important; height:3.5px !important; margin-top:-1.75px !important; border-radius:2px;
+  background:rgb(248 244 234) !important; overflow:visible !important; }
+${W} .sx-sw-bar__track > .k-bar__fill::before { content:""; position:absolute; left:-2px; right:-2px; top:50%; height:11px; margin-top:-5.5px; border-radius:6px;
+  background:rgb(255 240 214 / .24); translate:none; scale:none; pointer-events:none; }
+${W} .sx-sw-bar__track > .k-bar__fill::after { content:""; position:absolute; right:-4px; top:50%; width:8px; height:8px; margin-top:-4px; border-radius:50%;
+  background:rgb(252 249 240); box-shadow:0 0 0 4px rgb(255 240 214 / .26); translate:none; scale:none; pointer-events:none; }
+/* the ladders: the spine is a band under an edge, each rung's tick carries weight */
+${W} .sx-sw__list { background:linear-gradient(90deg, transparent 4px, rgb(${BONE} / .085) 4px, rgb(${BONE} / .085) 11px, transparent 11px),
+  linear-gradient(90deg, transparent 6.75px, rgb(${BONE} / .46) 6.75px, rgb(${BONE} / .46) 8.25px, transparent 8.25px) !important; }
+${W} .sx-sw-row:not(.is-active, .is-selected, .is-viewed, [aria-pressed='true'], [aria-current='true'])::before { height:1.5px !important; margin-top:-.75px !important; background:rgb(${BONE} / .52) !important; }
+${W} .sx-chooser__list { background:linear-gradient(90deg, transparent 4px, rgb(${BONE} / .085) 4px, rgb(${BONE} / .085) 11px, transparent 11px) 0 0 / 100% 100% no-repeat,
+  linear-gradient(90deg, transparent 6.75px, rgb(${BONE} / .46) 6.75px, rgb(${BONE} / .46) 8.25px, transparent 8.25px) 0 0 / 100% 100% no-repeat,
+  repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1.5px, transparent 1.5px 8px) 4px 0 / 4px 100% no-repeat !important; }
+${W} .sx-modrow:not(:focus-within, :hover)::before { height:1.5px !important; background:rgb(${BONE} / .52) !important; }
+/* the bomb rack's sockets: a 2px ring, not a hairline */
+${W} .sx-sw-rack__cell.is-empty::before { border:2px dashed rgb(${BONE} / .62) !important; }
+/* a disabled key's outline carries the weight of an edge */
+${W} .sx-buybar [data-buyship] > .sx-buykey__rim path { stroke-width:1.5px !important; stroke:rgb(${BONE} / .5) !important; }
+/* the readings need no rule over them */
+@media (min-height:801px) { ${W} .orr-sw-readouts.sx-sw__gauges { background:none !important; } }
+@media (max-height:800px) { ${W} .orr-sw-readouts.sx-sw__gauges { background:linear-gradient(90deg, rgb(${BONE} / .3), rgb(${BONE} / 0)) 0 0 / 100% 1.5px no-repeat !important; } }
 
 `;
 

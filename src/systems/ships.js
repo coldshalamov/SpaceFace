@@ -874,6 +874,37 @@ function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling
  * Folds equipped module modifiers over the hull base, applies player.efficiencyMods, and
  * recomputes handling from mass. Starts the ship at FULL hull/shield/cap.
  */
+/** Module mass the derived-stat fold adds. Cards print this, not a second copy. */
+export function moduleSimMass(def) {
+  const mass = Number(def && def.mass);
+  return Number.isFinite(mass) ? mass : 0;
+}
+
+export function moduleSimPrice(def) {
+  const price = Number(def && def.price);
+  return Number.isFinite(price) ? price : 0;
+}
+
+/** Numbers a hull card is allowed to print. Same function the simulation folds. */
+export function catalogHullFacts(defId, fittings = [], player = null) {
+  const derived = getDerivedStats(defId, fittings, player);
+  const ship = typeof defId === 'string' ? SHIP_BY_ID.get(defId) : defId;
+  const propulsion = derived && derived.propulsion;
+  const speed = propulsion && Number.isFinite(propulsion.combatSpeed) && propulsion.combatSpeed > 0
+    ? propulsion.combatSpeed
+    : (propulsion && Number.isFinite(propulsion.maxSpeed) ? propulsion.maxSpeed : derived.maxSpeed);
+  const weapon = Number.isFinite(derived.weaponDmgMult) ? derived.weaponDmgMult : 1;
+  return {
+    price: ship && Number.isFinite(ship.price) ? ship.price : 0,
+    speed,
+    mass: derived.operationalMass,
+    cargo: derived.cargoCap,
+    shield: derived.shieldMax,
+    hull: derived.hullMax,
+    weapon,
+  };
+}
+
 export function getDerivedStats(defId, fittings = [], player = null) {
   const key = derivedStatsKey(defId, fittings, player);
   const hit = derivedStatsCache.get(key);
@@ -971,7 +1002,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   for (let index = 0, length = equipped.length; index < length; index += 1) {
     const d = equipped[index] || null;
     if (!d) continue;
-    moduleMass += d.mass || 0;
+    moduleMass += moduleSimMass(d);
     continuousDrain += d.energyDraw || 0;
     const mods = d.mods || {};
     shieldFlat += mods.shieldFlat || 0;
