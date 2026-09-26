@@ -829,7 +829,7 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-r
 /* the screen's title on one line, so the chosen hull's name leads the stage */
 #screens .orr-newgame .orr-ng-title { white-space:nowrap !important; font-size:clamp(38px, 2.7vw, 56px) !important; }
 /* the back key's ESC and the run's label clear 4.5:1 */
-#screens .orr-newgame .sf-ng-footer .sf-back::after { color:rgb(232 226 212 / .62) !important; }
+html body #screens .k-screen.orr-newgame .sf-ng-footer .sf-back.k-word::after { color:rgb(232 226 212 / .62) !important; }
 #screens .orr-newgame .sf-ng-route > .k-caps { color:rgb(232 226 212 / .68) !important; }
 /* the pilot name's selection is a phosphor tint on the words, never a grey box */
 #screens .orr-newgame .orr-ng-input::selection { background:transparent !important; color:var(--dp-phos, rgb(223 238 255)) !important; }
@@ -839,6 +839,8 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-r
   text-transform:uppercase !important; color:rgb(232 226 212 / .72) !important; background:none !important; border:0 !important; box-shadow:none !important; padding:0 !important; }
 /* the ring sits lower, so its top reading never shares the fittings' line */
 #screens .orr-newgame > .k-stage > :is(.k-world--stage, .k-stage__poster) { top:31% !important; height:46% !important; }
+/* the hero's box, unscaled, for the instruments that stand round it */
+#screens .orr-newgame > .k-stage > .orr-ng-hero-box { position:absolute; left:15%; top:31%; width:74%; height:46%; pointer-events:none; visibility:hidden; }
 #screens .orr-newgame > .k-stage::before { top:72%; }
 /* the produced poster (before the live hull draws) stands at the live hull's size inside the ring */
 #screens .orr-newgame > .k-stage > .k-stage__poster { transform:scale(1.4); transform-origin:50% 55%; }
@@ -849,8 +851,21 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-r
 }
 @media (max-height:800px) {
   #screens .orr-newgame > .k-stage > :is(.k-world--stage, .k-stage__poster) { top:33% !important; height:35% !important; }
+  #screens .orr-newgame > .k-stage > .orr-ng-hero-box { left:23%; width:66%; top:33%; height:35%; }
   #screens .orr-newgame > .k-stage::before { top:63%; }
 }
+
+/* ================================ NEW GAME v2 r3 ============================================= */
+/* the hull's name, its line and its fittings flow as one column at the stage's top-left: the fittings keep 20px
+   under the line at every size (the stats ring and the run's scale stay absolute over the stage) */
+#screens .orr-newgame .orr-ng-caption > .sf-slot-card-title { position:static !important; }
+#screens .orr-newgame .orr-ng-caption > .k-sentence { position:static !important; margin-top:10px !important; }
+#screens .orr-newgame .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { position:static !important; margin-top:22px !important; top:auto !important; }
+/* the screen's title steps down so the chosen hull's name leads the stage */
+#screens .orr-newgame .orr-ng-title { font-size:clamp(28px, 1.9vw, 40px) !important; }
+/* both columns end together: LAUNCH and its footnote stand at the foot of the form column */
+#screens .k-screen.orr-newgame { grid-template-rows:auto auto minmax(0, 1fr) auto auto !important;
+  grid-template-areas:"title stage" "hang stage" ". stage" "foot stage" "note stage" !important; }
 
 `;
 

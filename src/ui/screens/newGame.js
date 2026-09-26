@@ -706,14 +706,18 @@ export const newGameScreen = {
       const art = {};
       for (const s of NEW_GAME_STARTERS) { const url = hullPosterUrl(s.shipId, 'hero'); if (url) art['starter:' + s.id] = url; }
       // a carousel: the chosen hull stands front-centre under its render, the others at the ring's rear ends
-      this._starterDial = createTurntable({ row: starterWords, host: rootEl, anchor: stage, art, artWidth: 132, carousel: true, hero: '.k-world--stage, .k-stage__poster' });
+      const heroBox = el('div', 'orr-ng-hero-box');
+      heroBox.setAttribute('aria-hidden', 'true');
+      stage.appendChild(heroBox);
+      this._starterDial = createTurntable({ row: starterWords, host: rootEl, anchor: stage, art, artWidth: 132, carousel: true, hero: '.orr-ng-hero-box' });
     }
     rootEl.appendChild(stage);
     // the hull alone inside its ring (ORRERY 6): the stage is the instrument, not a photograph of a dock
-    this.hull = createStageHull(stage, { rootEl, zoom: ORRERY ? STAGE_ZOOM_RING : STAGE_ZOOM, dock: !ORRERY });
+    // ORRERY: the produced poster is the hero (the live mount showed a different pose and light of the same ship)
+    this.hull = createStageHull(stage, { rootEl, zoom: ORRERY ? STAGE_ZOOM_RING : STAGE_ZOOM, dock: !ORRERY, live: !ORRERY });
     if (ORRERY) {
       const statsHost = stage.querySelector('.orr-ng-stats');
-      const heroBox = stage.querySelector('.k-world--stage') || stage.querySelector('.k-stage__poster');
+      const heroBox = stage.querySelector('.orr-ng-hero-box');
       if (statsHost && heroBox) {
         statsHost.textContent = '';
         this._hullRing = createHullRing({ host: statsHost, anchor: heroBox });
@@ -826,7 +830,8 @@ export const newGameScreen = {
     refs.hullName.textContent = (ship && ship.name) || starter.name;
     refs.hullBlurb.textContent = starter.line;
     refs.renderLoadout(starter);
-    if (this.hull && this.hull.hasMount()) {
+    // a poster-only stage has no mount but still shows the picked hull
+    if (this.hull) {
       this.hull.show(starter.shipId, { fittings: starterStageFittings(starter) });
     }
     syncKeys(refs.starterWords);
@@ -891,7 +896,7 @@ export const newGameScreen = {
       settle(refs.stage, { from: 'right', state: 'newGame:open' });
       settle(refs.foot, { from: 'bottom', state: 'newGame:open' });
     } catch (e) { /* motion is cosmetic */ }
-    if (this.hull && this.hull.hasMount()) {
+    if (this.hull) {
       this.hull.activate(ctx);
       this.hull.show(refs.starter.shipId, { fittings: starterStageFittings(refs.starter) });
     }

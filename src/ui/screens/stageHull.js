@@ -27,11 +27,13 @@ function motionReduced(ctx) {
  * @param {number} [o.zoom]
  * @param {() => void} [o.onReady]  fires once the authored hull has drawn (the arrival moment)
  * @param {Function} [o.mountFactory]  the preview mount constructor; tests substitute a fake
+ * @param {boolean} [o.live]  mount the live hull (default); false keeps the produced poster as the stage and mounts a
+ *                              live hull only for a ship with no poster (New Game: the hero never changes ship)
  * @param {boolean} [o.dock]  draw the hull in its dock interior (default); false draws the hull alone on a
  *                              transparent canvas, for a stage that is its own instrument (New Game's ring)
  */
 export function createStageHull(stageEl, {
-  rootEl, zoom = STAGE_HULL_ZOOM, onReady, mountFactory = createShipPreviewMount, dock = true,
+  rootEl, zoom = STAGE_HULL_ZOOM, onReady, mountFactory = createShipPreviewMount, dock = true, live = true,
 } = {}) {
   let canvas = null;
   let mount = null;
@@ -58,7 +60,14 @@ export function createStageHull(stageEl, {
     // and hull stream in); a hull with no render keeps the old behaviour and shows the canvas at once.
     if (stageEl.classList) stageEl.classList.toggle('has-poster', !!url);
   };
-  const setLive = (live) => { if (stageEl.classList) stageEl.classList.toggle('is-live', !!live); };
+  const setLive = (on) => { if (stageEl.classList) stageEl.classList.toggle('is-live', !!on); };
+  // a poster-only stage is ready as soon as it shows its poster: it never goes live, so the poster stays up
+  const posterReady = () => {
+    if (rootEl) rootEl.dataset.kReady = '1';
+    if (readyFired) return;
+    readyFired = true;
+    if (typeof onReady === 'function') onReady();
+  };
 
   const ready = () => {
     setLive(true);
@@ -92,11 +101,14 @@ export function createStageHull(stageEl, {
       console.warn('[stageHull] hull mount unavailable; the screen renders without it', e);
     }
   }
-  mountHull();
+  if (live) mountHull();
 
   function show(defId, o = {}) {
     const next = defId || NEW_GAME.shipId;
     setPoster(next);
+    // poster-only: the produced render IS the stage; a ship without one falls back to the live hull
+    if (!live && !poster.hidden) { posterReady(); return; }
+    if (!live && !mount && !released) mountHull();
     // A different hull is not on the glass until its own authored frame; the poster covers the swap.
     if (!mount || (typeof mount.getDefId === 'function' && mount.getDefId() !== next)) setLive(false);
     if (!mount) return;
@@ -159,7 +171,7 @@ export function createStageHull(stageEl, {
   function dispose() {
     stopDrift();
     if (mount) { try { mount.dispose(); } catch (_) {} mount = null; }
-    if (canvas.parentNode) canvas.remove();
+    if (canvas && canvas.parentNode) canvas.remove();
   }
   // Launch hands the stage to the loading shell for the whole load, but the mount's WebGL context
   // kept drifting, linking and uploading behind it until flight (profiled: 2.4 s of main thread in
@@ -178,7 +190,7 @@ export function createStageHull(stageEl, {
     if (!released) return false;
     released = false;
     setLive(false);
-    mountHull();
+    if (live) mountHull();
     return true;
   }
 
