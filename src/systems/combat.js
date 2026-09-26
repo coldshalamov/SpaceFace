@@ -662,11 +662,13 @@ export const combat = {
     // sentence all read stats.kills and nothing ever wrote it. Same adjudication as the
     // telemetry sink — killerId === playerId only (NPC attrition, drone-owned kills, and the
     // player's own death all excluded); Survival bodies stay run-scoped like the run wallet,
-    // while mission-owned kills still count (missions own the reward, not the fact).
-    if (killedByPlayer && !runOwns) {
+    // while mission-owned kills still count (missions own the reward, not the fact). Ships only,
+    // matching aceMemory — the finale calls this "hulls you broke", and a popped mine, mass seed,
+    // payload, or station is not a hull.
+    if (state.playerId != null && killedByPlayer && !runOwns && t.type === 'ship') {
       const p = state.player || (state.player = {});
-      const stats = p.stats || (p.stats = {});
-      stats.kills = (Number(stats.kills) || 0) + 1;
+      const stats = (p.stats && typeof p.stats === 'object') ? p.stats : (p.stats = {});
+      stats.kills = Math.max(0, Math.floor(Number(stats.kills) || 0)) + 1;
     }
     const authoredRewardEligible = killedByPlayer && !missionOwns && !runOwns;
     const factionLawful = lethal && typeof lethal.factionLawful === 'boolean'

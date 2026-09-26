@@ -136,3 +136,31 @@ test('the player\u2019s own death never self-tallies', () => {
   combat.kill(player, 9, { killerId: 9 });
   assert.equal(state.player.stats.kills, 0);
 });
+
+test('a popped mine is not a hull — non-ship victims never tally', () => {
+  const state = makeState();
+  const mine = { ...makeVictim(9), type: 'mine' };
+  const station = { ...makeVictim(10, { dockRadius: 140 }), type: 'station' };
+  boot(state);
+  combat.kill(mine, 1, { killerId: 1 });
+  combat.kill(station, 1, { killerId: 1 });
+  assert.equal(state.player.stats.kills, 0);
+});
+
+test('a corrupt stats bag fails soft — the tally survives a malformed save', () => {
+  const state = makeState();
+  state.player.stats = 'corrupt';
+  const victim = makeVictim(9);
+  boot(state);
+  combat.kill(victim, 1, { killerId: 1 });
+  assert.equal(state.player.stats.kills, 1);
+});
+
+test('a null playerId cannot count a null killerId', () => {
+  const state = makeState();
+  state.playerId = null;
+  const victim = makeVictim(9);
+  boot(state);
+  combat.kill(victim, null, { killerId: null });
+  assert.equal(state.player.stats.kills, 0);
+});
