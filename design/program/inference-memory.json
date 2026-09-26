@@ -1799,6 +1799,36 @@
       "commit": "3a4700307",
       "status": "integrated",
       "verification": "focused 7/7 green; regression set 50/53 (3 fails attributed to live PQ-153.02 landmark lane — dressingTable spawn machinery + sector semantic hash, see D63)"
+    },
+    {
+      "unit": "INFERENCE-27",
+      "title": "HOLD READS — the hold’s moral color, finally drawn",
+      "lane": "cargo/HUD",
+      "fingerprint": "verb=read,subject=cargo_conscience,sector=any,layer=hud_panel,tempo=ambient,domain=ui",
+      "summary": "BP-12 Cargo Conscience refreshed state.ui.cargoConscience on every cargo change and dock with zero readers. The cargo panel header now renders one lean chip per faction moral read — Quiet favor / Concord risk for narcotics, Frontier goodwill for medicine — while an untagged hold renders nothing. A lean is a read, never a rep delta; additive gauge-row readout, no sim writes.",
+      "files": [
+        "src/ui/cargoConscience.js",
+        "src/ui/hud.js",
+        "test/cargo-conscience-surface.test.mjs"
+      ],
+      "commit": "b17b41678",
+      "status": "integrated",
+      "verification": "focused 7/7 green; check:cargo-conscience, player-facing-labels, ui-screen-imports (56/56) all pass"
+    },
+    {
+      "unit": "INFERENCE-28",
+      "title": "Contract fine print — a third of board offers carry a named term",
+      "lane": "missions",
+      "fingerprint": "verb=sign,subject=contract_clause,sector=any,layer=board_offer,tempo=per_offer,domain=missions",
+      "summary": "CONTRACT_CLAUSES shipped five authored clauses with observer, breach-to-collateral, honor premium, dossier chips and preflight disclosure all live — and attachClauses was never called, so only authored set pieces could carry terms. Board offers now roll the seeded clause first in the term chain. Guards: story/helios/set-piece offers untouched, rescue_priority escort-only (breach unfireable on passenger_transport), no_scan never destinations a scan-post berth (uncompletable, not strict).",
+      "files": [
+        "src/systems/missions.js",
+        "src/systems/contractClauses.js",
+        "test/inference-contract-fine-print.test.mjs"
+      ],
+      "commit": "c39da074c",
+      "status": "integrated",
+      "verification": "focused 7/7 green; sp1-clauses 10/10, docked-customs-post 13/13, check:contract-clauses + check:mission-conditions pass, board neighbors green"
     }
   ],
   "knownDefects": [
