@@ -955,6 +955,13 @@ export function createUnreadyDrawableGuard(renderer) {
   let admissionScene = null;
   let admissionPendingSubjects = null;
   let admissionGl = null;
+  // Per-pass verdict memos: authored meshes share materials and programs, so the
+  // traverse was paying a props.get + program.isReady() GL query per drawable even
+  // though the verdict is identical for every sibling. A material's verdict cannot
+  // change mid-pass (isReady only goes false→true asynchronously), so memoizing the
+  // same-object verdict for the duration of one walk is exact.
+  const unreadyCheckedMaterials = new Set();
+  const unreadyHiddenMaterials = new Set();
 
   function hideUnreadySceneDrawables(scene) {
     if (renderer) renderer.__sfUnreadyDrawGuardDepth = (renderer.__sfUnreadyDrawGuardDepth || 0) + 1;
@@ -980,6 +987,8 @@ export function createUnreadyDrawableGuard(renderer) {
     if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
       return;
     }
+    unreadyCheckedMaterials.clear();
+    unreadyHiddenMaterials.clear();
     admissionGl = renderer && typeof renderer.getContext === 'function'
       ? renderer.getContext() : null;
     const programs = renderer.info && renderer.info.programs;
@@ -1008,6 +1017,8 @@ export function createUnreadyDrawableGuard(renderer) {
       if (!ready) { unreadyProgramsPending = true; break; }
     }
     if (!unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)) return;
+    unreadyCheckedMaterials.clear();
+    unreadyHiddenMaterials.clear();
     admissionScene = scene;
     admissionPendingSubjects = pendingSubjects;
     scene.traverse(hideOneUnreadySceneDrawable);
@@ -1037,6 +1048,13 @@ export function createUnreadyDrawableGuard(renderer) {
 
   function hideIfProgramUnready(object, material, props) {
     if (!material || unreadySceneCount >= UNREADY_SCENE_CAP) return false;
+    if (unreadyCheckedMaterials.has(material)) return false;
+    if (unreadyHiddenMaterials.has(material)) {
+      unreadySceneScratch[unreadySceneCount] = object;
+      unreadySceneCount += 1;
+      object.visible = false;
+      return true;
+    }
     let program = null;
     try {
       const rec = props.get(material);
@@ -1067,16 +1085,23 @@ export function createUnreadyDrawableGuard(renderer) {
             .finally(() => { materialData.__sfPipelineAdmission = false; });
         }
       }
+      unreadyHiddenMaterials.add(material);
       unreadySceneScratch[unreadySceneCount] = object;
       unreadySceneCount += 1;
       object.visible = false;
       return true;
     }
-    if (typeof program.isReady !== 'function') return false;
-    if (programWrapperDead(admissionGl, program)) return false;
+    if (typeof program.isReady !== 'function' || programWrapperDead(admissionGl, program)) {
+      unreadyCheckedMaterials.add(material);
+      return false;
+    }
     let ready = true;
     try { ready = program.isReady() === true; } catch (_) { ready = false; }
-    if (ready) return false;
+    if (ready) {
+      unreadyCheckedMaterials.add(material);
+      return false;
+    }
+    unreadyHiddenMaterials.add(material);
     unreadySceneScratch[unreadySceneCount] = object;
     unreadySceneCount += 1;
     object.visible = false;
