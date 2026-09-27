@@ -47,7 +47,11 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'wingman-radial', screen: 'flight', overlay: 'wingman', backdrop: 'world' },
 
   { id: 'ship', screen: 'ship', backdrop: 'world' },
-  { id: 'footprint', screen: 'footprint', backdrop: 'world' },
+  // Footprint over a lived-in record (tools/ui-bench-footprint.js): wanted by default (heat T3 outside the
+  // search zone, a bounty, three open chains), marked (a bounty only) and clean (a settled record).
+  { id: 'footprint', screen: 'footprint', backdrop: 'world', footprint: 'wanted' },
+  { id: 'footprint-marked', screen: 'footprint', backdrop: 'world', footprint: 'marked' },
+  { id: 'footprint-clean', screen: 'footprint', backdrop: 'world', footprint: 'clean' },
   { id: 'range', screen: 'range', backdrop: 'world' },
   // The chart over the paused flight it was opened from: Helios Prime with its stations, the starter
   // seam's rocks and local traffic (tools/ui-bench-chart.js). `route` plots a course with the game's
