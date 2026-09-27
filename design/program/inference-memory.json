@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "leftover-contact-roster-title",
-      "date": "2026-09-12",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Flight contact strip no longer wears a leftover Local contacts title; the count and rows are the instrument.",
-      "fingerprint": "verb=strip,subject=contact-roster-title,sector=helios,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "b05df66ed6f4fd3a1ca2488a9945693a5fc7d898",
-      "verification": "focused_green"
-    },
-    {
       "id": "leftover-hail-kicker-slogan",
       "date": "2026-09-12",
       "wf": "WF-14",
@@ -1635,6 +1622,19 @@
       "references": [],
       "integration": "live",
       "commit": "3c477fca1",
+      "verification": "focused_green"
+    },
+    {
+      "id": "moral-trap-midrun-reveal",
+      "date": "2026-09-27",
+      "wf": "WF-08",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "The trap's moment of truth now always lands mid-run — undocking presents the fork even on same-sector deliveries, and when a live law sweep catches you first the reveal becomes witnessed, speaking the trap's patrol line with the cutter alongside.",
+      "fingerprint": "verb=reveal,subject=moral-trap,sector=any,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "5932b2402",
       "verification": "focused_green"
     }
   ],
