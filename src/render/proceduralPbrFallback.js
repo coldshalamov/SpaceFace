@@ -5,18 +5,21 @@ const VARIANT_COUNT = 4;
 
 // This is a bounded bridge for legacy GLBs, not a substitute for authored baking. The distinct
 // frequency/response ranges keep unlike materials from collapsing into one universal noise skin.
+// Manufactured surfaces get broad zones only: fine-grain relief (`grain`, default 0) under the
+// top-down camera reads as leather or hammered tin (tools/blender/forge/FORGE.md, look rule 6), so
+// only rock keeps it, and hard-surface normal strength is a whisper.
 const ROLE_RECIPES = Object.freeze({
-  hull:       Object.freeze({ macro: 2, micro: 23, color: 0.035, rough: 0.12, metal: 0.06, normal: 0.24, directional: 0.15, metalMultiplier: 0.78 }),
-  accent:     Object.freeze({ macro: 3, micro: 31, color: 0.045, rough: 0.14, metal: 0.05, normal: 0.20, directional: 0.08, metalMultiplier: 0.74 }),
-  mechanical: Object.freeze({ macro: 4, micro: 47, color: 0.025, rough: 0.11, metal: 0.08, normal: 0.17, directional: 0.72, metalMultiplier: 0.91 }),
-  warning:    Object.freeze({ macro: 3, micro: 29, color: 0.035, rough: 0.16, metal: 0.05, normal: 0.22, directional: 0.20, metalMultiplier: 0.72 }),
-  geology:    Object.freeze({ macro: 5, micro: 19, color: 0.095, rough: 0.18, metal: 0.11, normal: 0.46, directional: 0.05, metalMultiplier: 0.68, fracture: 0.58 }),
-  radiator:   Object.freeze({ macro: 6, micro: 53, color: 0.025, rough: 0.13, metal: 0.08, normal: 0.13, directional: 0.88, metalMultiplier: 0.94 }),
-  docking:    Object.freeze({ macro: 3, micro: 37, color: 0.055, rough: 0.19, metal: 0.09, normal: 0.28, directional: 0.48, metalMultiplier: 0.88 }),
-  ceramic:    Object.freeze({ macro: 4, micro: 41, color: 0.035, rough: 0.15, metal: 0.02, normal: 0.16, directional: 0.06, metalMultiplier: 0.35 }),
-  service:    Object.freeze({ macro: 2, micro: 27, color: 0.065, rough: 0.18, metal: 0.11, normal: 0.25, directional: 0.36, metalMultiplier: 0.82 }),
-  rubber:     Object.freeze({ macro: 6, micro: 61, color: 0.018, rough: 0.08, metal: 0.0, normal: 0.12, directional: 0.10, metalMultiplier: 0.0 }),
-  repair:     Object.freeze({ macro: 2, micro: 17, color: 0.055, rough: 0.20, metal: 0.06, normal: 0.30, directional: 0.22, metalMultiplier: 0.58 }),
+  hull:       Object.freeze({ macro: 2, micro: 23, color: 0.035, rough: 0.12, metal: 0.06, normal: 0.06, directional: 0.15, metalMultiplier: 0.78 }),
+  accent:     Object.freeze({ macro: 3, micro: 31, color: 0.045, rough: 0.14, metal: 0.05, normal: 0.05, directional: 0.08, metalMultiplier: 0.74 }),
+  mechanical: Object.freeze({ macro: 4, micro: 47, color: 0.025, rough: 0.11, metal: 0.08, normal: 0.06, directional: 0.72, metalMultiplier: 0.91 }),
+  warning:    Object.freeze({ macro: 3, micro: 29, color: 0.035, rough: 0.16, metal: 0.05, normal: 0.05, directional: 0.20, metalMultiplier: 0.72 }),
+  geology:    Object.freeze({ macro: 5, micro: 19, color: 0.095, rough: 0.18, metal: 0.11, normal: 0.46, directional: 0.05, metalMultiplier: 0.68, fracture: 0.58, grain: 1 }),
+  radiator:   Object.freeze({ macro: 6, micro: 53, color: 0.025, rough: 0.13, metal: 0.08, normal: 0.06, directional: 0.88, metalMultiplier: 0.94 }),
+  docking:    Object.freeze({ macro: 3, micro: 37, color: 0.055, rough: 0.19, metal: 0.09, normal: 0.07, directional: 0.48, metalMultiplier: 0.88 }),
+  ceramic:    Object.freeze({ macro: 4, micro: 41, color: 0.035, rough: 0.15, metal: 0.02, normal: 0.04, directional: 0.06, metalMultiplier: 0.35 }),
+  service:    Object.freeze({ macro: 2, micro: 27, color: 0.065, rough: 0.18, metal: 0.11, normal: 0.07, directional: 0.36, metalMultiplier: 0.82 }),
+  rubber:     Object.freeze({ macro: 6, micro: 61, color: 0.018, rough: 0.08, metal: 0.0, normal: 0.05, directional: 0.10, metalMultiplier: 0.0 }),
+  repair:     Object.freeze({ macro: 2, micro: 17, color: 0.055, rough: 0.20, metal: 0.06, normal: 0.08, directional: 0.22, metalMultiplier: 0.58 }),
 });
 
 const cache = new Map();
@@ -80,8 +83,9 @@ function periodicField(u, v, recipe, seed) {
   const fractureNoise = tileNoise(u, v, recipe.macro + 3, recipe.macro * 2 + 5, seed + 151);
   const ridge = Math.max(0, 1 - Math.abs(fractureNoise - 0.5) * 9);
   const fracture = recipe.fracture ? ridge * ridge : 0;
+  const grain = recipe.grain || 0;
   const height = macro * 0.38 + meso * 0.30
-    + micro * (0.22 - recipe.directional * 0.08)
+    + micro * (0.22 - recipe.directional * 0.08) * grain
     + brushed * recipe.directional * 0.18 + fracture * (recipe.fracture || 0);
   return { macro, meso, micro, brushed, fracture, height };
 }
@@ -139,7 +143,7 @@ function buildBundle(role, variant) {
       const aoFactor = Math.max(0.38, 1.0 - cavity * 1.6);
       const cavityDarken = 1.0 - cavity * 0.32;
 
-      const colorValue = (238 + 255 * recipe.color * (field.macro * 0.58 + field.meso * 0.30 + field.micro * 0.06 - field.fracture * 0.38)) * cavityDarken;
+      const colorValue = (238 + 255 * recipe.color * (field.macro * 0.58 + field.meso * 0.30 + field.micro * 0.06 * (recipe.grain || 0) - field.fracture * 0.38)) * cavityDarken;
       albedo[offset] = clampByte(colorValue);
       albedo[offset + 1] = clampByte(colorValue);
       albedo[offset + 2] = clampByte(colorValue);
@@ -153,7 +157,7 @@ function buildBundle(role, variant) {
       // glTF/Three multiplies these map channels by the material's authored scalar factor.
       // Keep the maps near unity so the role factor stays authoritative while gaining variation.
       // Red: Ambient Occlusion, Green: Roughness, Blue: Metalness (glTF standard packed ORM)
-      const roughness = 0.82 + recipe.rough * (field.macro * 0.42 + field.meso * 0.30 + field.micro * 0.18 + field.fracture * 0.5);
+      const roughness = 0.82 + recipe.rough * (field.macro * 0.42 + field.meso * 0.30 + field.micro * 0.18 * (recipe.grain || 0) + field.fracture * 0.5);
       const metallic = recipe.metalMultiplier + recipe.metal * (field.macro * 0.54 - field.fracture * 0.3);
       orm[offset] = clampByte(aoFactor * 255);
       orm[offset + 1] = clampByte(roughness * 255);
@@ -203,7 +207,7 @@ export function applyProceduralPbrFallback(material, role, { assetId = null, all
   material.userData = {
     ...(material.userData || {}),
     spacefaceProceduralPbrFallback: Object.freeze({
-      id: 'runtime-role-surface-v1',
+      id: 'runtime-role-surface-v2',
       role,
       variant,
       textureSize: SIZE,
