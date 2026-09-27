@@ -146,6 +146,19 @@ const PLAYER_THREAT_WINDOW_S = 30;
 const PLAYER_THREAT_ESCALATE_HITS = 3;
 const PLAYER_THREAT_SCATTER_WU = 600;
 const PLAYER_THREAT_PROTEST_COOLDOWN_S = 20;
+// INF-U8: the yard sends a truck. A drive-disabled player in served space gets the
+// nearest working tender on a control lease: divert, hold alongside, field-repair the
+// drive through combat:repairSubsystem, bill a flat call-out through economy. Tenders
+// are trucks, not gunships — hot zones hold, WANTED hulls are refused, and a hull the
+// player fixes first is released with no charge.
+const YARD_DISPATCH_DRIVE_ID = 'subsystem_drive';
+const YARD_DISPATCH_RANGE_WU = 3500;
+const YARD_DISPATCH_ARRIVE_WU = 130;
+const YARD_DISPATCH_HOT_WU = 800;
+const YARD_DISPATCH_FEE_CR = 150;
+const YARD_DISPATCH_COOLDOWN_S = 120;
+const YARD_DISPATCH_REPAIR_TICK_S = 1.0;
+const YARD_DISPATCH_HOT_TOAST_S = 20;
 
 /** PQ-045 targets include dressing FX and seam asteroids. Those types are excluded from
  *  forEachLivingWorldActor, so event-time refresh walks the live list. Not a 60 Hz owner loop. */
@@ -817,6 +830,9 @@ export const npcJobsRuntime = {
     this._threatQueryDirty = true;
     this._heliosStarterMinerRecordId = null;
     this._heliosStarterRockId = null;
+    this._yardDispatch = null;
+    this._yardLastDispatchT = -Infinity;
+    this._yardLastRefuseT = -Infinity;
     this._jobIds = null;
     this._jobIdsById = null;
     this._jobIdsDirty = true;
@@ -897,6 +913,12 @@ export const npcJobsRuntime = {
       // (_isJobThreat only fears the wanted), so shot workers kept drilling while the
       // player hosed them down. Damage with the player's signature interrupts directly.
       this.bus.on('combat:damage', (p) => this._onPlayerDamage(p || {}));
+      // INF-U8: the player's own breakdown dispatches the nearest working tender.
+      this.bus.on('combat:subsystemDisabled', (p) => this._onPlayerDriveDown(p || {}));
+      this.bus.on('combat:subsystemEnabled', (p) => this._onPlayerDriveUp(p || {}));
+      // Leases do not survive save/load by design — re-request after Continue when the
+      // drive is still down so a mid-dispatch save cannot strand the player silently.
+      this.bus.on('save:loaded', () => this._onSaveLoadedYardCheck());
       // PQ-195.04: the local consequence. Berth Three's stalled worker resumes (or runs its reduced
       // repair shuttle) on the receiver's OWN committed handoff receipt — never a timer or a cue.
       this.bus.on('heist:receiverCommitted', (receipt) => this._onBerthHandoff(receipt || {}));
@@ -1853,6 +1875,9 @@ export const npcJobsRuntime = {
     this._threatQueryDirty = true;
     this._heliosStarterMinerRecordId = null;
     this._heliosStarterRockId = null;
+    this._yardDispatch = null;
+    this._yardLastDispatchT = -Infinity;
+    this._yardLastRefuseT = -Infinity;
   },
 
   /**
@@ -3304,6 +3329,7 @@ export const npcJobsRuntime = {
       this._threatQueryDirty = true;
       return; // scenery only matters in flight (mirrors traffic)
     }
+    this._stepPlayerTenderDispatch(dt);
     // The Ceres discovery sweeps poll the whole living-actor set. Latency-sensitive arrivals already
     // trigger adoption through wreckEcology:spawned directly, and entity spawn/kill events dirty the
     // sweep, so between events a 60 Hz poll only re-confirms an unchanged answer. Poll on the
@@ -4214,6 +4240,206 @@ export const npcJobsRuntime = {
       if (dx * dx + dz * dz > PLAYER_THREAT_SCATTER_WU * PLAYER_THREAT_SCATTER_WU) continue;
       this.interruptJob(jobId, threat);
     }
+  },
+
+  // ── INF-U8: yard tender dispatch ──────────────────────────────────────────────
+  _onPlayerDriveDown(p) {
+    if (!p || p.subsystemId !== YARD_DISPATCH_DRIVE_ID) return;
+    if (this.state == null || p.targetId !== this.state.playerId) return;
+    this._requestYardDispatch();
+  },
+
+  _onSaveLoadedYardCheck() {
+    if (this.state == null || this._yardDispatch) return;
+    if (!this._playerDriveDownNow()) return;
+    this._requestYardDispatch();
+  },
+
+  // Combat-owned drive truth (same read as contactHail's tender-service check): a stale
+  // disable stamp must never dispatch a truck for a healthy drive after Continue.
+  _playerDriveDownNow() {
+    const state = this.state;
+    const runtime = state && state.combat && state.combat.entities
+      && state.combat.entities[String(state.playerId)];
+    const drive = runtime && runtime.subsystems && runtime.subsystems[YARD_DISPATCH_DRIVE_ID];
+    return !!(drive && (drive.destroyed === true || drive.effectiveDisabled === true));
+  },
+
+  _requestYardDispatch() {
+    if (this._yardDispatch) return;
+    const now = finite(this.state.simTime, 0);
+    if (now - (this._yardLastDispatchT || -Infinity) < YARD_DISPATCH_COOLDOWN_S) return;
+    if (isPlayerWanted(this.state)) {
+      this._yardRefuse(now, 'Yard tender: we don\'t roll for WANTED hulls.');
+      return;
+    }
+    const found = this._nearestYardTender();
+    if (!found) {
+      this._yardRefuse(now, 'No yard tender in range — you\'re on your own.');
+      return;
+    }
+    const claimId = `yard-dispatch:${Number.isInteger(this.state.tick) ? this.state.tick : 0}`;
+    const out = this.claimControl(found.jobId, { claimId, holder: 'yardDispatch' });
+    if (!out || out.granted !== true) return;
+    this._yardDispatch = {
+      jobId: found.jobId, claimId, arrived: false, repaired: false,
+      lastRepairT: -Infinity, hotToastT: -Infinity,
+    };
+    this._yardLastDispatchT = now;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      try {
+        this.bus.emit('toast', { text: 'Yard tender en route — hold still.', kind: 'info', ttl: 4 });
+        this.bus.emit('npcjobs:yardDispatch', { jobId: found.jobId, simTime: now });
+      } catch { /* advisory only */ }
+    }
+  },
+
+  _onPlayerDriveUp(p) {
+    if (!p || p.subsystemId !== YARD_DISPATCH_DRIVE_ID) return;
+    if (this.state == null || p.targetId !== this.state.playerId) return;
+    const dispatch = this._yardDispatch;
+    if (!dispatch) return;
+    const billed = dispatch.repaired === true;
+    this.releaseControl(dispatch.jobId, dispatch.claimId);
+    this._yardDispatch = null;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      try {
+        if (billed) {
+          this.bus.emit('economy:chargeCredits', { amount: YARD_DISPATCH_FEE_CR, reason: 'yard_tender_callout' });
+          this.bus.emit('toast', { text: `Drive's turning over. ${YARD_DISPATCH_FEE_CR}cr on the tab.`, kind: 'good', ttl: 4 });
+        } else {
+          this.bus.emit('toast', { text: 'Already turning over — no charge.', kind: 'info', ttl: 4 });
+        }
+        this.bus.emit('npcjobs:yardDispatchDone', { jobId: dispatch.jobId, billed });
+      } catch { /* advisory only */ }
+    }
+  },
+
+  _yardRefuse(now, text) {
+    if (now - (this._yardLastRefuseT || -Infinity) < YARD_DISPATCH_COOLDOWN_S) return;
+    this._yardLastRefuseT = now;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      try {
+        this.bus.emit('toast', { text, kind: 'warn', ttl: 4 });
+      } catch { /* advisory only */ }
+    }
+  },
+
+  _nearestYardTender() {
+    const playerId = this.state && this.state.playerId;
+    const player = playerId != null && this.state.entities
+      ? this.state.entities.get(playerId)
+      : null;
+    if (!player || !player.pos) return null;
+    const currentSector = this.state.world && this.state.world.currentSectorId;
+    const byId = this._byId();
+    let best = null;
+    let bestD2 = Infinity;
+    let bestId = '';
+    for (const jobId of Object.keys(byId)) {
+      const entry = byId[jobId];
+      if (!entry || !entry.job || entry.job.kind !== NPC_JOB_KIND.TENDER) continue;
+      if (entry.control || entry.job.corrupt || entry.job.phase === NPC_JOB_PHASE.COMPLETE) continue;
+      if (entry.sectorId !== currentSector || entry.entityId == null) continue;
+      const hull = this.state.entities.get(entry.entityId);
+      if (!hull || hull.alive === false || !hull.pos) continue;
+      const dx = hull.pos.x - player.pos.x;
+      const dz = hull.pos.z - player.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > YARD_DISPATCH_RANGE_WU * YARD_DISPATCH_RANGE_WU) continue;
+      if (d2 < bestD2 || (d2 === bestD2 && String(jobId) < bestId)) {
+        best = { jobId, entry, hull };
+        bestD2 = d2;
+        bestId = String(jobId);
+      }
+    }
+    return best;
+  },
+
+  _stepPlayerTenderDispatch(dt) {
+    const dispatch = this._yardDispatch;
+    if (!dispatch) return;
+    const state = this.state;
+    const entry = this._byId()[dispatch.jobId];
+    const player = state.playerId != null && state.entities
+      ? state.entities.get(state.playerId)
+      : null;
+    const hull = entry && entry.entityId != null && state.entities
+      ? state.entities.get(entry.entityId)
+      : null;
+    const valid = entry && entry.control && entry.control.claimId === dispatch.claimId
+      && hull && hull.alive !== false && hull.pos
+      && player && player.alive !== false && player.pos
+      && entry.sectorId === (state.world && state.world.currentSectorId);
+    if (!valid) {
+      const truckLost = entry && (!hull || hull.alive === false);
+      this.releaseControl(dispatch.jobId, dispatch.claimId);
+      this._yardDispatch = null;
+      if (truckLost && this.bus && typeof this.bus.emit === 'function') {
+        try {
+          this.bus.emit('toast', { text: 'We lost the truck.', kind: 'warn', ttl: 4 });
+        } catch { /* advisory only */ }
+      }
+      return;
+    }
+    const now = finite(state.simTime, 0);
+    // Trucks, not gunships: hold clear of a hot breakdown until the sky clears.
+    if (this._yardBreakdownHot(player)) {
+      this._writeIntent(hull, 0, 0, false, hull.rot || 0, true);
+      if (now - dispatch.hotToastT >= YARD_DISPATCH_HOT_TOAST_S) {
+        dispatch.hotToastT = now;
+        if (this.bus && typeof this.bus.emit === 'function') {
+          try {
+            this.bus.emit('toast', { text: 'Tender holding — too hot. Clear them or crawl to me.', kind: 'warn', ttl: 4 });
+          } catch { /* advisory only */ }
+        }
+      }
+      return;
+    }
+    const dx = player.pos.x - hull.pos.x;
+    const dz = player.pos.z - hull.pos.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > YARD_DISPATCH_ARRIVE_WU) {
+      const nx = dist > 1e-6 ? dx / dist : 0;
+      const nz = dist > 1e-6 ? dz / dist : 0;
+      this._writeIntent(hull, nx, nz, dist > 600, Math.atan2(dz, dx));
+      return;
+    }
+    this._writeIntent(hull, 0, 0, false, hull.rot || 0, true);
+    if (!dispatch.arrived) {
+      dispatch.arrived = true;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        try {
+          this.bus.emit('toast', { text: 'Tender alongside — welding.', kind: 'info', ttl: 4 });
+        } catch { /* advisory only */ }
+      }
+    }
+    if (now - dispatch.lastRepairT < YARD_DISPATCH_REPAIR_TICK_S) return;
+    dispatch.lastRepairT = now;
+    dispatch.repaired = true;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      try {
+        this.bus.emit('combat:repairSubsystem', {
+          entityId: state.playerId,
+          subsystemId: YARD_DISPATCH_DRIVE_ID,
+          amount: 10000,
+          reason: 'yard_tender_field_repair',
+        });
+      } catch { /* repair is load-bearing; a bus failure just retries next tick */ }
+    }
+  },
+
+  _yardBreakdownHot(player) {
+    const list = this.state.entityList || [];
+    for (const e of list) {
+      if (!e || e.alive === false || e.type !== 'ship' || e.team !== 1) continue;
+      if (e.data && e.data.ai && e.data.ai.passive === true) continue;
+      if (!e.pos || !player.pos) continue;
+      const dx = e.pos.x - player.pos.x;
+      const dz = e.pos.z - player.pos.z;
+      if (dx * dx + dz * dz <= YARD_DISPATCH_HOT_WU * YARD_DISPATCH_HOT_WU) return true;
+    }
+    return false;
   },
 
   _reconcileThreatResult(entry, resultId) {
