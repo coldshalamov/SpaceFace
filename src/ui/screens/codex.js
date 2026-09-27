@@ -436,6 +436,19 @@ function senderArt(sender) {
   return SIGNAL_STILLS.relay;
 }
 
+/** A host that can draw SVG and measure (the checks mount on minimal documents). */
+function richDom() {
+  return typeof document !== 'undefined' && typeof document.createElementNS === 'function';
+}
+
+/** The ship you fly from above (the Ledger's plate: the hull the ledger is kept aboard). */
+function flownHullTop(state) {
+  const player = state && state.player;
+  const owned = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const ship = owned[Number(player && player.activeShipIndex) || 0] || owned[0] || null;
+  return ship && ship.defId ? hullPosterUrl(ship.defId, 'top') : null;
+}
+
 /** The ship you fly, as its produced render: the Tessera's pages stand the hull it is today. */
 function flownHullRender(state) {
   const player = state && state.player;
@@ -702,6 +715,8 @@ export const codexScreen = {
     if (this._activeTab === 'Ledger' && this._ledgerPanel && this._ledgerPanel.el
         && this._ledgerPanel.el.parentNode === this._body) {
       this._syncTabs();
+      this._filterLedger();
+      this._paintLedgerPlate();
       return;
     }
     // Leaving the Ledger tab: destroy its panel so no listener or image lingers off-tab.
@@ -716,12 +731,13 @@ export const codexScreen = {
     this._syncTabs();
     // The open tab rides on the root so the sheet can set the entry pane's emblem for its kind.
     if (this._codexRoot && this._codexRoot.dataset) this._codexRoot.dataset.tab = String(this._activeTab || '').toLowerCase();
-    // Archive + Ledger are media/panel surfaces, not searchable narrative — hide the chrome.
-    const isChromeLess = this._activeTab === 'Ledger';
-    this._searchWrap.hidden = isChromeLess;
-    this._status.hidden = isChromeLess;
-    if (this._search && !isChromeLess && this._search.value !== this._query) this._search.value = this._query;
-    if (!isChromeLess) this._renderStatus(ctx);
+    // Every tab keeps the instrument: the unlock dials and the search stay (the Ledger's search
+    // reads its own rows, since the ledger is the station's panel, not a set of entries).
+    const isLedger = this._activeTab === 'Ledger';
+    this._searchWrap.hidden = false;
+    this._status.hidden = false;
+    if (this._search && this._search.value !== this._query) this._search.value = this._query;
+    this._renderStatus(ctx);
     switch (this._activeTab) {
       case 'Story':    this._renderStory(ctx); break;
       case 'Comms':    this._renderComms(ctx); break;
@@ -738,8 +754,8 @@ export const codexScreen = {
     const lockedNow = new Set(this._entries.filter((entry) => entry.locked).map((entry) => entry.id));
     this._lockedByTab[this._activeTab] = lockedNow;
     const opened = before ? this._entries.filter((entry) => !entry.locked && before.has(entry.id)) : [];
-    if (!isChromeLess) this._applySearchFilter();
-    else { this._list = null; this._placeHand(); this._renderTape([]); }
+    if (!isLedger) this._applySearchFilter();
+    else { this._list = null; this._placeHand(); this._renderTape([]); this._filterLedger(); this._paintLedgerPlate(); }
     this._drawWedge();
     if (opened.length) this._announceUnlocked(opened);
   },
@@ -1116,6 +1132,54 @@ export const codexScreen = {
     this._ledgerPanel.onShow();
   },
 
+  /** The Ledger's search: its rows are the station panel's, filtered by their own words. */
+  _filterLedger() {
+    const panel = this._ledgerPanel && this._ledgerPanel.el;
+    if (!panel || typeof panel.querySelectorAll !== 'function') return;
+    const query = normalizeSearch(this._query);
+    for (const row of panel.querySelectorAll('.st-ledger-entry')) row.hidden = !!query && !normalizeSearch(row.textContent).includes(query);
+  },
+
+  /**
+   * The Ledger on the plate: the hull the ledger is kept aboard stands in the aperture (dim while the
+   * ledger is empty), one ring of bone, and the ledger's count as the engraving. No blade: the
+   * ledger is read in the column beside it, page by page, not turned on the ring.
+   */
+  _paintLedgerPlate() {
+    const dial = this._dial;
+    if (!dial || !dial.host) return;
+    const model = this._ledgerPanel && this._ledgerPanel.model;
+    const total = model ? Math.max(0, Number(model.total) || 0) : 0;
+    dial.host.hidden = false;
+    if (this._codexRoot) this._codexRoot.dataset.plate = 'on';
+    const src = flownHullTop(this._ctx && this._ctx.state);
+    const aperture = dial.aperture;
+    aperture.className = 'cx-plate__art is-hull is-ledger' + (total ? ' is-filled' : '') + (src ? '' : ' is-empty');
+    const img = aperture.querySelector && aperture.querySelector('img');
+    if (src && (!img || img.getAttribute('src') !== src)) {
+      aperture.textContent = '';
+      const pic = el('img');
+      pic.alt = '';
+      pic.decoding = 'async';
+      pic.src = src;
+      aperture.appendChild(pic);
+    } else if (!src) aperture.textContent = '';
+    dial.rings.innerHTML = archivePlateSvg({
+      entries: [total ? 'read' : 'locked'],
+      current: -1,
+      top: "Codex · The ship's ledger",
+      bottom: total ? total + (total === 1 ? ' entry' : ' entries') + ' filed' : 'Ledger empty',
+    });
+    if (dial.hover) dial.hover.innerHTML = '';
+    if (dial.caption) dial.caption.hidden = true;
+    const plate = dial.plate;
+    plate.classList.add('is-ledger');
+    plate.tabIndex = -1;
+    plate.setAttribute('aria-disabled', 'true');
+    plate.setAttribute('aria-valuetext', total ? "Ship's ledger, " + total + ' entries' : "Ship's ledger, empty");
+    this._alignReading();
+  },
+
   _renderDiscoveries(ctx) {
     const state = ctx && ctx.state;
     const gal = galaxyExplorationSummary(state);
@@ -1421,6 +1485,11 @@ export const codexScreen = {
     if (at < 0) { dial.host.hidden = true; if (this._codexRoot) this._codexRoot.dataset.plate = 'off'; return; }
     dial.host.hidden = false;
     if (this._codexRoot) this._codexRoot.dataset.plate = 'on';
+    if (dial.plate.classList.contains('is-ledger')) {
+      dial.plate.classList.remove('is-ledger');
+      dial.plate.tabIndex = 0;
+      dial.plate.removeAttribute('aria-disabled');
+    }
     if (!this._readIds) this._readIds = new Set();
     if (!entry.locked) this._readIds.add(entry.id);
     const section = this._sectionOf && this._sectionOf.get(entry.id);
@@ -1505,6 +1574,9 @@ export const codexScreen = {
     this._body.innerHTML = '';
     this._dressEntry(entry, fresh);
     this._body.appendChild(entry.article);
+    const turn = entry.article.querySelector && entry.article.querySelector(':scope > .cx-reader__turn');
+    if (turn) this._body.appendChild(turn);
+    this._watchReadEnd(entry.article, fresh);
     if (fresh) {
       if (typeof this._body.scrollTo === 'function') { try { this._body.scrollTo(0, 0); } catch (_) { /* layout-free host */ } }
       if (!entry.locked && entry.titleSpan && !entry.signal) decrypt(entry.titleSpan, entry.titleText, { duration: 300 });
@@ -1519,6 +1591,25 @@ export const codexScreen = {
       entry.article.tabIndex = -1;
       focusCodexDiscoveryEntry(entry.article);
     }
+  },
+
+  /**
+   * A reading longer than the column scrolls inside itself: its rail shows where the view sits and
+   * its foot fades until the last line is in view (the page turn stays put below it).
+   */
+  _watchReadEnd(article, fresh = false) {
+    if (!article || typeof article.addEventListener !== 'function' || !richDom()) return;
+    if (fresh) article.scrollTop = 0;
+    const atEnd = () => {
+      const end = (Number(article.scrollTop) || 0) + (Number(article.clientHeight) || 0) >= (Number(article.scrollHeight) || 0) - 2;
+      article.classList.toggle('is-at-end', end);
+    };
+    if (!article.__cxReadEnd) {
+      article.__cxReadEnd = true;
+      article.addEventListener('scroll', atEnd, { passive: true });
+    }
+    try { syncScrollExtent(article); } catch (_) { /* layout-free host */ }
+    atEnd();
   },
 
   // The 8-beat spine. Beats up to the player's current beatIndex are readable; future beats show
