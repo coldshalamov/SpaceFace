@@ -178,6 +178,7 @@ import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
 import { ensurePerfRuntime } from '../core/perfRuntime.js';
 import { perfCountersRequested } from '../core/perfCounters.js';
+import { shouldSkipFlightDraw } from '../core/presentationFreeze.js';
 import { LOOP_FIXED_DT } from '../core/simulationRunner.js';
 import { installGlInstrumentation } from './glInstrumentation.js';
 import { installDomInstrumentation } from '../ui/domInstrumentation.js';
@@ -14551,6 +14552,10 @@ export const render = {
     // background programs and uploaded their buffers; otherwise bloomScene pays 17 first-use
     // links on Intel/ANGLE in one presented frame.
     if (this.state.mode === 'menu' && this._firstPresentGpuReady !== true) return false;
+    // The fulfillment boarding blackout covers the canvas with an opaque UI surface while the
+    // simulation and its FSM keep advancing underneath — the flight submit is pure waste for the
+    // duration. prepareFrame still ran, so the journal drained and the scene stays hot for resume.
+    if (shouldSkipFlightDraw(this.state)) return false;
     // Entity roots may spawn/rebuild and VFX events may fire between render updates;
     // reassert diagnostic owner seams immediately before draw so nothing leaks a frame.
     try { this.state?.render?.perfEntityIsolation?.reassert?.(); } catch (_) { /* diagnostic only */ }
