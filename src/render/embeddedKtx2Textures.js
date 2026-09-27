@@ -128,6 +128,16 @@ function loadEmbeddedSource(parser, sourceIndex, sourceDef, loader) {
 // the transcoder the same bytes with one copy, and the parser's bufferView cache is never touched.
 // Extension-decoded bufferViews (e.g. EXT_meshopt_compression) keep the parser path.
 function transferableSourceBytes(parser, bufferViewIndex) {
+  // A GLB pre-pass worker (glbPrepass.js) may already have sliced this image's bytes off the calling
+  // thread — the parked buffer transfers straight to the transcoder with no copy here. Serve it once:
+  // a bufferView shared by two image defs falls back to the stock path for the second load rather
+  // than handing the transcoder a detached buffer.
+  const presliced = parser.preslicedSourceBytes;
+  const preslicedBuffer = presliced && presliced.get(bufferViewIndex);
+  if (preslicedBuffer !== undefined) {
+    presliced.delete(bufferViewIndex);
+    return Promise.resolve(preslicedBuffer);
+  }
   const bufferViews = parser.json && parser.json.bufferViews;
   const def = bufferViews && bufferViews[bufferViewIndex];
   const plain = embeddedKtx2DirectSliceEnabled && def

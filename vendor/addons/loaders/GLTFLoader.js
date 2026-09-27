@@ -1604,6 +1604,13 @@ class GLTFMeshoptCompression {
 
 	loadBufferView( index ) {
 
+		// SpaceFace: a GLB pre-pass worker (src/render/glbPrepass.js) may already have decoded this
+		// bufferView off the calling thread and parked the transferred ArrayBuffer on the parser;
+		// serve it — byte-identical to what the decode below would produce.
+		const predecoded = this.parser.predecodedBufferViews;
+		const hit = predecoded && predecoded.get( index );
+		if ( hit !== undefined ) return Promise.resolve( hit );
+
 		const json = this.parser.json;
 		const bufferView = json.bufferViews[ index ];
 
