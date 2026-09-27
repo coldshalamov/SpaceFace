@@ -88,6 +88,18 @@ ${S} #sf-settings-pane { ${PLAIN} backdrop-filter:none !important; -webkit-backd
   justify-self:stretch !important; align-self:stretch !important; max-height:100% !important; min-height:0 !important; overflow:hidden auto !important;
   padding:0 20px 34px 0 !important; margin:0 !important; scrollbar-width:none; position:relative; --sf-fade-edge:0px !important; }
 ${S} #sf-settings-pane::-webkit-scrollbar { display:none; }
+${S} #sf-settings-pane.is-scrolled { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 46px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important;
+  mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 46px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important; }
+${S} #sf-settings-pane .k-row { scroll-margin:40px 0 80px; }
+${S} #sf-settings-pane > p.k-sentence.orr-set-check { display:grid !important; grid-template-columns:var(--orr-label-w, 206px) minmax(0, 1fr); column-gap:22px; align-items:center;
+  min-height:34px; margin:0 0 0 30px !important; max-width:none !important; }
+${S} #sf-settings-pane .orr-set-check__label { ${LABEL} font-size:12px; letter-spacing:.13em; color:rgb(${BONE} / .8); }
+${S} #sf-settings-pane .orr-set-check__sep { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+${S} #sf-settings-pane .orr-set-check__state { position:relative; padding-left:14px; ${LABEL} font-size:12px; letter-spacing:.2em; color:rgb(${BONE} / .62); font-weight:650; }
+${S} #sf-settings-pane .orr-set-check__state::before { content:""; position:absolute; left:1px; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%; background:rgb(${BONE} / .3); }
+${S} #sf-settings-pane .orr-set-check__state[data-state="ready"], ${S} #sf-settings-pane .orr-set-check__state[data-state="on"] { color:rgb(${HOT}); }
+${S} #sf-settings-pane .orr-set-check__state[data-state="ready"]::before, ${S} #sf-settings-pane .orr-set-check__state[data-state="on"]::before { width:6px; height:6px; margin-top:-3px;
+  background:rgb(${HOT}); box-shadow:0 0 7px rgb(255 250 236 / .6); }
 ${S} #sf-settings-pane::before, ${S} #sf-settings-pane::after { content:none !important; display:none !important; }
 ${S} #sf-settings-pane .k-rows { ${PLAIN} position:relative; margin:0 !important; padding:2px 0 !important; max-width:none !important; background:${RAIL_BG} !important; }
 ${S} #sf-settings-pane .k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:var(--orr-label-w, 206px) minmax(0, 1fr) !important;
@@ -103,7 +115,7 @@ ${S} #sf-settings-pane .k-row:focus-within::before { left:6.5px !important; widt
 ${S} #sf-settings-pane .k-row:has(.sf-bind-btn--capture)::before { left:6px !important; width:3px !important; height:24px !important; margin-top:-12px !important;
   background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 10px rgb(255 217 140 / .7) !important; }
 /* a short category spreads its rows over the column: the scales carry it, not a hole under them */
-@media (min-height:900px) { ${S} #sf-settings-pane.is-roomy .k-row { min-height:62px !important; } }
+@media (min-height:900px) { ${S} #sf-settings-pane.is-roomy .k-row { min-height:62px !important; } ${S} #sf-settings-pane.is-roomy.is-sparse .k-row { min-height:76px !important; } }
 ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { ${LABEL} font-size: 12px !important; letter-spacing:.13em !important; line-height:1.3 !important;
   color:rgb(${BONE} / .8) !important; white-space:normal; overflow-wrap:break-word; text-shadow:none !important; }
 ${S} #sf-settings-pane .k-row:is(:focus-within, :hover) > :is(label, span.k-t-body) { color:rgb(${HOT}) !important; }
@@ -179,13 +191,14 @@ ${S} #sf-settings-pane .k-row:has(select:focus) .orr-set-stops > b.is-on { backg
    down its edge, the chosen option lit; the native control stays the control (keys, pad, probes) */
 ${S} #sf-settings-pane select.k-select, ${S} #sf-settings-pane select.k-select::picker(select) { appearance:base-select !important; }
 ${S} #sf-settings-pane select.k-select::picker-icon { display:none; }
-${S} #sf-settings-pane select.k-select::picker(select) { border:0; border-radius:0; padding:14px 0; margin-top:6px; width:max-content; min-width:240px; max-width:440px; right:auto;
+${S} #sf-settings-pane select.k-select::picker(select) { border:0; border-radius:0; padding:14px 0; margin-top:6px; margin-left:-12px; width:max-content; min-width:240px; max-width:440px; right:auto;
   background:linear-gradient(90deg, transparent 13px, rgb(${BONE} / .34) 13px 15px, transparent 15px), rgb(6 8 12);
-  -webkit-mask-image:linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent), linear-gradient(180deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
-  -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent), linear-gradient(180deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
-  mask-composite:intersect; box-shadow:none; color:rgb(${HOT}); }
+  /* opaque glass; only its top and bottom breathe out (inside its own padding), so nothing beneath reads through */
+  -webkit-mask-image:linear-gradient(180deg, transparent, #000 10px, #000 calc(100% - 10px), transparent); mask-image:linear-gradient(180deg, transparent, #000 10px, #000 calc(100% - 10px), transparent);
+  box-shadow:0 18px 40px rgb(0 0 0 / .7); color:rgb(${HOT}); }
 ${S} #sf-settings-pane select.k-select option { position:relative; display:flex; align-items:center; min-height:36px; padding:0 30px 0 34px;
-  background:none; border:0; outline:none !important; box-shadow:none; color:rgb(${BONE} / .78); font-family:var(--dp-face-read, "Instrument Sans"); font-size:14px; font-weight:500; cursor:pointer; }
+  background:none; border:0; outline:none !important; box-shadow:none; color:rgb(${BONE} / .78); font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:14px; font-weight:500; cursor:pointer;
+  text-transform:none !important; letter-spacing:0 !important; font-variation-settings:normal !important; font-stretch:100% !important; }
 ${S} #sf-settings-pane select.k-select option::checkmark { display:none; }
 ${S} #sf-settings-pane select.k-select option::before { content:""; position:absolute; left:10px; top:50%; width:8px; height:1.5px; background:rgb(${BONE} / .5); }
 ${S} #sf-settings-pane select.k-select option:is(:hover, :focus, :focus-visible) { color:rgb(255 253 248); background:linear-gradient(90deg, rgb(${BONE} / .1), rgb(${BONE} / 0)); outline:none !important; }
@@ -294,7 +307,7 @@ ${C} > .k-title > p::after { content:""; width:72px; height:1px; background:line
 ${C} > .orr-cr-drift { position:absolute; left:0; top:0; width:100%; height:100%; z-index:1; pointer-events:none; overflow:hidden; }
 /* the orrery: the emblem (produced art) the reel turns; the sections ride its orbit as bodies and the amber
    Hand catches the one being read. The art sits at rest light; a second, lit copy shows only round the Hand. */
-${C} > .orr-cr-orrery { position:absolute; z-index:1; right:max(-8vw, -140px); top:50%; width:min(86vh, 980px); height:min(86vh, 980px); margin-top:calc(min(86vh, 980px) / -2);
+${C} > .orr-cr-orrery { position:absolute; z-index:1; right:max(-4vw, -80px); top:50%; width:min(80vh, 880px); height:min(80vh, 880px); margin-top:calc(min(80vh, 880px) / -2);
   pointer-events:none; }
 ${C} .orr-cr-orrery > * { position:absolute; inset:0; width:100%; height:100%; }
 ${C} .orr-cr-orrery__art { display:block; background:url("${EMBLEM}") center / contain no-repeat; opacity:.3; transform:rotate(var(--orr-cr-turn, 0deg)); will-change:transform; }
@@ -341,7 +354,7 @@ ${C} .orr-cr-reel { position:relative; max-width:min(660px, 100%); padding:9vh 0
 ${C} .orr-cr-sec { position:relative; scroll-margin-top:9vh; }
 ${C} .orr-cr-sec + .orr-cr-sec { margin-top:86px; }
 ${C} .orr-cr-head { ${LABEL} display:flex; align-items:center; gap:16px; margin:0 0 24px !important; font-size:12px !important; letter-spacing:.28em !important; color:rgb(${HOT}) !important; }
-${C} .orr-cr-head > i { font-style:normal; font-size: 12px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
+${C} .orr-cr-head > i { display:none !important; font-style:normal; font-size: 12px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
 ${C} .orr-cr-head::after { content:""; flex:0 1 180px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / 0)); }
 /* the maker: the name at display size, the build and the trade in labels, one sentence */
 ${C} .of-credits-made { margin:0 0 20px !important; }
@@ -417,8 +430,14 @@ ${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:rgb(255 253 248) !imp
   ${C} > .k-stage { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 5%, #000 90%, transparent 100%) !important;
     mask-image:linear-gradient(180deg, transparent 0, #000 5%, #000 90%, transparent 100%) !important; }
   ${C} .orr-cr-sec { scroll-margin-top:4vh; }
-  ${C} .orr-cr-sec + .orr-cr-sec { margin-top:64px; }
+  ${C} .orr-cr-sec + .orr-cr-sec { margin-top:44px; }
   ${C} .of-credits-rows .k-row__name { font-size:15.5px !important; }
+  ${C} .of-credits-name { font-size:clamp(44px, 7.4vh, 64px) !important; }
+  ${C} .of-credits-ver, ${C} .of-credits-made .k-row__sub { margin-top:10px !important; }
+  ${C} .orr-cr-sec > .k-sentence { font-size:14.5px !important; }
+  ${C} .orr-cr-head { margin-bottom:14px !important; }
+  ${C} .of-credits-rows .k-row { padding-top:8px !important; padding-bottom:8px !important; }
+  ${C} .of-credits-rows .k-row::before { top:18px !important; }
 }
 @media (max-width:900px) {
   ${C} { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"title" "hang" "stage" "foot" !important; }
@@ -548,6 +567,12 @@ export function createCreditsOrrery(doc = globalThis.document, sections = []) {
   });
   s.appendChild(rotor);
   // the Hand: fixed, from the hub back toward the reel, holding the current body at its tip
+  // the stretch of orbit under the Hand is lit (fixed while the plate turns under it)
+  const catchArc = svg('g', { class: 'orr-cr-orrery__catch' });
+  catchArc.appendChild(svg('path', { d: arcD(C0, C0, ORBIT, HAND - 20, HAND + 20), stroke: 'rgb(248 244 234 / .44)', 'stroke-width': 16, fill: 'none', 'stroke-linecap': 'butt' }));
+  catchArc.appendChild(svg('path', { d: arcD(C0, C0, ORBIT + 8, HAND - 20, HAND + 20), stroke: 'rgb(255 253 248 / .95)', 'stroke-width': 3, fill: 'none', 'stroke-linecap': 'round' }));
+  catchArc.appendChild(svg('path', { d: arcD(C0, C0, ORBIT, HAND - 20, HAND + 20), stroke: 'rgb(255 250 236 / .16)', 'stroke-width': 34, fill: 'none', 'stroke-linecap': 'butt' }));
+  s.insertBefore(catchArc, rotor);
   const hand = svg('g', { class: 'orr-cr-orrery__hand' });
   const [h0x, h0y] = polar(C0, C0, 34, HAND);
   const [h1x, h1y] = polar(C0, C0, ORBIT - 24, HAND);
@@ -733,6 +758,39 @@ export function dressSettingsPane(pane, { arrive = false } = {}) {
   }
   const controls = pane.querySelectorAll('.k-row:not([data-orr-kind="head"])').length;
   pane.classList.toggle('is-roomy', controls > 0 && controls <= 10);
+  pane.classList.toggle('is-sparse', controls > 0 && controls <= 8);
+  // the accessibility checklist reads as rows: its item in label caps, its state a word with a bead
+  // (the sentence's text stays exactly what it was: "Contrast: ready")
+  for (const p of pane.querySelectorAll(':scope > p.k-sentence:not(.orr-set-check)')) {
+    const m = /^(.{2,40}):\s*(ready|off|on)$/i.exec(String(p.textContent || '').trim());
+    if (!m || !doc || p.children.length) continue;
+    const label = doc.createElement('span');
+    label.className = 'orr-set-check__label';
+    label.textContent = m[1];
+    const sep = doc.createElement('span');
+    sep.className = 'orr-set-check__sep';
+    sep.textContent = ': ';
+    const state = doc.createElement('b');
+    state.className = 'orr-set-check__state';
+    state.dataset.state = m[2].toLowerCase();
+    state.textContent = m[2];
+    p.textContent = '';
+    p.append(label, sep, state);
+    p.classList.add('orr-set-check');
+  }
+  // the top edge fades once the list has scrolled; a focused row is brought clear of both fades
+  if (!pane.dataset.orrScroll) {
+    pane.dataset.orrScroll = '1';
+    const edge = () => pane.classList.toggle('is-scrolled', (pane.scrollTop || 0) > 4);
+    pane.addEventListener('scroll', edge, { passive: true });
+    pane.addEventListener('focusin', (ev) => {
+      const row = ev.target && typeof ev.target.closest === 'function' ? ev.target.closest('.k-row') : null;
+      if (row && typeof row.scrollIntoView === 'function') {
+        try { row.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' }); } catch (e) { /* layout-less */ }
+      }
+    });
+    edge();
+  }
   try { syncScrollExtent(pane); } catch (e) { /* a shim document has no layout */ }
   if (arrive && !reducedMotion()) {
     let i = 0;

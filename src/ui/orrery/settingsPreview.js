@@ -139,6 +139,9 @@ const CSS = `
 .orr-set-read__kicker::after { content:""; flex:0 0 56px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .4), rgb(${BONE} / 0)); }
 .orr-set-read__name { ${LABEL} font-size:15px; letter-spacing:.2em; color:rgb(248 244 234); display:inline-flex; align-self:flex-start; align-items:center; gap:14px;
   transition:color .5s var(--dp-ease-out, ease-out), text-shadow .5s var(--dp-ease-out, ease-out); }
+/* a row that drives nothing on the instrument: the legend itself takes the bead (no beam) */
+.orr-set-preview.is-unwired .orr-set-read__name::before { content:""; flex:none; width:7px; height:7px; border-radius:50%; background:rgb(248 244 234);
+  box-shadow:0 0 8px rgb(255 250 236 / .6); }
 .orr-set-read__name.is-flash { color:var(--dp-ice, #8fcbff); text-shadow:0 0 14px rgb(143 203 255 / .4); transition:none; }
 .orr-set-read__line { font-family:var(--dp-face-read, "Instrument Sans"); font-size:15.5px; line-height:1.45; color:rgb(${BONE} / .82); max-width:46ch; min-height:1.45em; }
 /* the stage holds one instrument at a time */
@@ -202,7 +205,7 @@ const CSS = `
 .orr-set-hud__scale b .orr-counter__digit { width:.56em; }
 .orr-set-hud__scale b { display:inline-flex; font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 300; font-weight:300; font-size:24px; line-height:1; color:rgb(248 244 234);
   font-variant-numeric:tabular-nums; }
-.orr-set-hud__scale > i { font-style:normal; ${LABEL} font-size: 12px; letter-spacing:.2em; color:rgb(${BONE} / .72); }
+.orr-set-hud__scale > i { display:none; font-style:normal; ${LABEL} font-size: 12px; letter-spacing:.2em; color:rgb(${BONE} / .72); }
 /* overlays the HUD really draws: a damage number, a hint, a caption */
 .orr-set-hud__dmg { position:absolute; font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 420; font-weight:420; font-size:22px;
   color:rgb(248 244 234); text-shadow:0 0 2px rgb(3 4 7), 0 0 8px rgb(3 4 7 / .8); opacity:0; transition:opacity .2s linear; white-space:nowrap; }
@@ -268,6 +271,8 @@ html.sf-reduce-motion .orr-set-preview *, html.sf-reduce-motion .orr-set-preview
 .orr-set-beam.is-live .orr-set-beam__glow { stroke:rgb(143 203 255 / .48); }
 .orr-set-beam.is-live .orr-set-beam__pulse { stroke:rgb(255 255 255); stroke-dasharray:.14 1; opacity:1; animation:orr-set-beam-run 700ms linear infinite; }
 .orr-set-beam .orr-set-beam__end { fill:rgb(248 244 234); }
+.orr-set-beam .orr-set-beam__tip { stroke:rgb(248 244 234); }
+.orr-set-beam.is-live .orr-set-beam__tip { stroke:rgb(236 246 255); }
 .orr-set-beam .orr-set-beam__halo { fill:rgb(${BONE} / .18); }
 .orr-set-beam.is-live .orr-set-beam__end { fill:rgb(236 246 255); }
 .orr-set-beam.is-live .orr-set-beam__halo { fill:rgb(143 203 255 / .3); }
@@ -438,7 +443,12 @@ function buildMixer(doc) {
     /** Where the beam enters a channel: at its engraved name, the head of its ring (the ring carries the light on). */
     terminus(key) {
       const ch = channels.find((c0) => c0.key === key);
-      if (!ch) return key === 'mute' ? svgPointToClient(s, c - 54, c) : null;
+      if (!ch) {
+        if (key !== 'mute') return null;
+        // the hub's left edge, entered level through the quadrant no ring runs in, well above the "100"
+        const t = svgPointToClient(s, c - 36, c - 40);
+        return t ? { ...t, dir: { x: -1, y: 0 }, chevron: true } : null;
+      }
       let len = 48;
       try { len = ch.lab.getComputedTextLength() || len; } catch (e) { /* no layout */ }
       return svgPointToClient(s, c - 14 - len - 8, c - ch.r);
@@ -568,15 +578,17 @@ const RESERVE = Object.freeze({ hint: 26, cap: 40 });
 // which part of the HUD each row drives: a point in the Cluster's own coordinates, or a named overlay
 const HUD_TARGET = Object.freeze({
   fov: 'fov',
-  bloom: [250, 227], 'bloom strength': [250, 227],
+  // a setting of the whole HUD lands on the port above the ring stack, pointing in (never across the arcs)
+  bloom: 'port', 'bloom strength': 'port', 'motion effects': 'port', 'screen shake': 'port',
   'ui scale': 'scale',
   'damage numbers': 'dmg', 'tutorial hints': 'hint',
   'gameplay captions': 'cap', 'caption size': 'cap', 'solid caption backing': 'cap',
   'high contrast': 'speedfoot', 'readable font': 'speedfoot',
-  'motion effects': [105, 350], 'screen shake': [250, 350],
   'flight model': 'drift',
 });
-
+// the port: just outside the heading track's chevron, where the beam meets the ring stack radially (Cluster units)
+const PORT_R = 178;
+const LANE_Y = 146;
 function buildHud(doc) {
   const host = doc.createElement('div');
   host.className = 'orr-set-hud';
@@ -638,6 +650,7 @@ function buildHud(doc) {
   let fovDeg = 60;
   let tabNow = '';
   let focusScale = false;
+  let footCorner = { x: 0, y: 0 };
 
   const compact = () => box.w > 0 && box.w < 620;
   const layout = (s) => {
@@ -659,8 +672,8 @@ function buildHud(doc) {
     hint.style.top = `${f1(Math.max(0, top - hintH))}px`;
     hint.style.left = `${f1(left + 22 * s)}px`;
     hint.style.right = 'auto';
-    dmg.style.left = `${f1(left + 296 * s)}px`;
-    dmg.style.top = `${f1(top + 70 * s)}px`;
+    dmg.style.left = `${f1(left + 300 * s)}px`;
+    dmg.style.top = `${f1(top + (LANE_Y - 14) * s)}px`;
     // the 1.00x footprint: the Cluster's size at scale 1 on this stage
     const unit = s / Math.max(0.1, uiScale);
     const fl = left;
@@ -670,10 +683,13 @@ function buildHud(doc) {
     foot.style.width = `${f1(effW * unit)}px`;
     foot.style.height = `${f1(CL.H * unit)}px`;
     const scaled = Math.abs(uiScale - 1) > 0.01;
-    foot.classList.toggle('is-on', scaled);
+    foot.classList.toggle('is-on', scaled || focusScale);
     scaleRead.classList.toggle('is-on', scaled || focusScale);
-    scaleRead.style.left = `${f1(left)}px`;
-    scaleRead.style.top = `${f1(Math.min(top, ft) - 34)}px`;
+    // the reading stands left of the 1.00x corner, over the beam that lands there, clear of the numeral
+    scaleRead.style.left = `${f1(fl - 14)}px`;
+    scaleRead.style.transform = 'translateX(-100%)';
+    scaleRead.style.top = `${f1(ft - 40)}px`;
+    footCorner = { x: fl, y: ft };
   };
   const fit = () => Math.max(0.2, Math.min(box.w / (compact() ? CL.compactW : CL.W), (box.h - reserveCap() - reserveHint()) / CL.H));
   // room over and under the Cluster only on the tab that draws the hint (Gameplay) or the caption (Access)
@@ -782,23 +798,50 @@ function buildHud(doc) {
     terminus(label) {
       const t = HUD_TARGET[String(label || '').toLowerCase().trim()];
       if (!t) return null;
-      if (Array.isArray(t)) return cluster ? clusterPoint(t[0], t[1]) : null;
+      if (t === 'port' || t === 'drift') {
+        if (!cluster) return null;
+        const a = t === 'drift' ? Math.max(-40, Math.min(40, DRIFT_BY_MODEL[flightModel] || 0)) : 0;
+        const [px, py] = polar(250, 350, PORT_R, a);
+        // arrive radially from outside, down onto the port
+        const p = clusterPoint(px, py);
+        const rad = (a * Math.PI) / 180;
+        return p ? { ...p, dir: { x: Math.sin(rad), y: -Math.cos(rad) }, chevron: true } : null;
+      }
       if (t === 'fov') {
         const half = Math.min(70, fovDeg / 2);
         const [x, y] = polar(FX, FY, FR, -half);
         return svgPointToClient(fov, x, y);
       }
-      if (t === 'scale') return leftMid(scaleRead);
-      if (t === 'drift') {
-        // the velocity pip on the heading track, where the flight model has swung it
-        const [x, y] = polar(250, 350, 154, Math.max(-40, Math.min(40, DRIFT_BY_MODEL[flightModel] || 0)));
-        return cluster ? clusterPoint(x, y) : null;
+      if (t === 'scale') {
+        const r = host.getBoundingClientRect();
+        const z = host.offsetWidth ? r.width / host.offsetWidth : 1;
+        return { x: r.left + footCorner.x * z, y: r.top + footCorner.y * z, dir: { x: -1, y: 0 }, chevron: true };
       }
-      if (t === 'dmg') return dmg.classList.contains('is-on') ? leftMid(dmg) : clusterPoint(296, 80);
+      if (t === 'dmg') return dmg.classList.contains('is-on') ? leftMid(dmg) : (cluster ? clusterPoint(300, LANE_Y) : null);
       if (t === 'hint') return hint.classList.contains('is-on') ? leftMid(hint) : null;
       if (t === 'cap') return cap.classList.contains('is-on') ? leftMid(capSpan) : null;
       if (t === 'speedfoot') return leftMid(frame.querySelector('.orr-cluster__speedfoot')) || (cluster ? clusterPoint(22, 118) : null);
       return null;
+    },
+    /** What the beam must not cross on this stage: the speed numeral, the reads, the overlays not aimed at. */
+    obstacles() {
+      const boxes = [];
+      const add = (n) => { const r = n && n.getBoundingClientRect ? n.getBoundingClientRect() : null; if (r && r.width && r.height) boxes.push(r); };
+      for (const n of frame.querySelectorAll('.orr-cluster__speed .orr-numeral, .orr-cluster__speedfoot, .orr-cluster__read, .orr-cluster__legend, .orr-cluster__key, .orr-cluster__keytag, .orr-cluster__payload')) {
+        if (n.closest && n.closest('[style*="visibility: hidden"]')) continue;
+        add(n);
+      }
+      for (const n of [scaleRead, fovRead, dmg, hint]) if (n.classList.contains('is-on')) add(n);
+      if (fov.classList.contains('is-on')) add(fov);
+      const circles = [];
+      if (cluster) {
+        const fr = frame.getBoundingClientRect();
+        const k = fr.width / CL.W;
+        const c0 = clusterPoint(250, 350);
+        // outside the speed scale's ticks and the heading track's chevron
+        if (c0 && k) circles.push({ x: c0.x, y: c0.y, r: 192 * k });
+      }
+      return { boxes, circles };
     },
     dispose() { scaleSpring?.stop(); cluster?.dispose?.(); },
   };
@@ -865,7 +908,8 @@ export function createSettingsPreview(doc = globalThis.document) {
   const beamA = svg('circle', { r: 3.5, class: 'orr-set-beam__end' });
   const beamHaloB = svg('circle', { r: 9, class: 'orr-set-beam__halo' });
   const beamB = svg('circle', { r: 4.5, class: 'orr-set-beam__end' });
-  beam.append(beamGlow, beamCore, beamPulse, beamHaloA, beamA, beamHaloB, beamB);
+  const beamTip = svg('path', { d: '', class: 'orr-set-beam__tip', fill: 'none', 'stroke-width': 3, 'stroke-linejoin': 'miter', 'stroke-linecap': 'round', display: 'none' });
+  beam.append(beamGlow, beamCore, beamPulse, beamHaloA, beamA, beamHaloB, beamB, beamTip);
   let beamRow = null;
   let beamFrame = 0;
   let liveTimer = 0;
@@ -921,7 +965,18 @@ export function createSettingsPreview(doc = globalThis.document) {
     }
     return hud.terminus(parts.label);
   };
-
+  const obstaclesNow = () => {
+    if (tab === 'Audio') {
+      const boxes = [];
+      for (const n of mixer.el.querySelectorAll('.orr-set-mixer__grad')) {
+        const r = n.getBoundingClientRect();
+        if (r.width && r.height) boxes.push(r);
+      }
+      return { boxes, circles: [] };
+    }
+    if (el.dataset.mode === 'hud') return hud.obstacles();
+    return { boxes: [], circles: [] };
+  };
   const routeBeam = () => {
     beamFrame = 0;
     const root = el.parentElement;
@@ -938,31 +993,119 @@ export function createSettingsPreview(doc = globalThis.document) {
       || beamRow.querySelector(':scope > .k-words--row') || beamRow.querySelector('.sf-bind-btn')
       || beamRow.querySelector(':scope > .k-t-emph') || beamRow.querySelector('select');
     if (!src) { hideBeam(); return; }
-    let tp = terminusOf(beamRow);
-    if (!tp) {
-      const nr = name.getBoundingClientRect();
-      if (!nr.width) { hideBeam(); return; }
-      tp = { x: nr.left, y: nr.top + nr.height / 2 };
-    }
+    // a row that drives nothing on the instrument has no beam: the legend says what it does
+    const tp = terminusOf(beamRow);
+    el.classList.toggle('is-unwired', !tp);
+    if (!tp) { hideBeam(); return; }
     const sr = src.getBoundingClientRect();
     const [sx0, sy] = at(sr.right, rowR.top + rowR.height / 2);
     const [tx0, ty] = at(tp.x, tp.y);
     const [paneRight] = at(pr.right, 0);
     const sx = sx0 + 18;
-    const tx = tx0 - 10;
+    const tx = tp.chevron ? tx0 : tx0 - 10;
     if (tx - sx < 40) { hideBeam(); return; }
-    // a trace: out of the row, along the gutter between the list and the preview, into the part it drives,
-    // its corners cut at 45 degrees like every leader in ORRERY
-    const bx = Math.max(sx + 14, Math.min(tx - 14, paneRight + 12));
-    const dy = ty - sy;
-    const cut = Math.min(14, Math.abs(dy) / 2);
-    const sg = Math.sign(dy) || 1;
+    // keep-outs: no leg runs through a numeral, a read, a scale's words or the ring stack; the lane is
+    // the nearest clear height, and the last leg meets the target along its own approach (radial for a
+    // port) or drops onto it
+    const PAD = 9;
+    const obs = obstaclesNow();
+    const boxes = obs.boxes.map((r) => {
+      const [l, t] = at(r.left, r.top);
+      const [rt, b] = at(r.right, r.bottom);
+      return { l: l - PAD, t: t - PAD, r: rt + PAD, b: b + PAD };
+    }).filter((o) => !(tx >= o.l && tx <= o.r && ty >= o.t && ty <= o.b));
+    const circles = obs.circles.map((c) => { const [cx, cy] = at(c.x, c.y); return { x: cx, y: cy, r: c.r / (zoom || 1) + 4 }; });
+    const dir = tp.dir || null;
+    const segHitsBox = (x0, y0, x1, y1, o) => {
+      let t0 = 0; let t1 = 1;
+      const dx = x1 - x0; const dy = y1 - y0;
+      for (const [p, q] of [[-dx, x0 - o.l], [dx, o.r - x0], [-dy, y0 - o.t], [dy, o.b - y0]]) {
+        if (Math.abs(p) < 1e-9) { if (q < 0) return false; continue; }
+        const r = q / p;
+        if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; }
+      }
+      return t0 <= t1;
+    };
+    const segHitsCircle = (x0, y0, x1, y1, c) => {
+      const dx = x1 - x0; const dy = y1 - y0;
+      const len2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((c.x - x0) * dx + (c.y - y0) * dy) / len2));
+      return Math.hypot(x0 + dx * t - c.x, y0 + dy * t - c.y) < c.r;
+    };
+    const cost = (pts) => {
+      let hits = 0;
+      for (let i = 1; i < pts.length - 1; i += 1) {
+        const [x0, y0] = pts[i];
+        const [x1, y1] = pts[i + 1];
+        for (const o of boxes) if (segHitsBox(x0, y0, x1, y1, o)) hits += 1;
+        // a radial approach enters the ring stack by construction: its last leg is exempt from the circle
+        const radial = dir && i === pts.length - 2 && Math.abs(dir.y) > 0.2;
+        if (!radial) for (const c of circles) if (segHitsCircle(x0, y0, x1, y1, c)) hits += 1;
+      }
+      return hits;
+    };
+    const lanes = new Set([ty]);
+    for (const o of boxes) { lanes.add(o.t - 1); lanes.add(o.b + 1); }
+    for (const c of circles) { lanes.add(c.y - c.r - 1); lanes.add(c.y + c.r + 1); }
+    let best = null;
+    for (const ly of [...lanes].sort((a, b) => Math.abs(a - ty) - Math.abs(b - ty))) {
+      let via;
+      if (dir && Math.abs(dir.y) > 0.2) {
+        const t = (ly - ty) / dir.y;
+        if (t < 8) continue;
+        via = [tx + dir.x * t, ly];
+      } else if (Math.abs(ly - ty) < 0.5) via = [tx, ty];
+      else via = [tx - (dir ? 0 : 0), ly];
+      if (via[0] - sx < 40) continue;
+      const bx = Math.max(sx + 14, Math.min(via[0] - 14, paneRight + 12));
+      const pts = [[sx, sy], [bx, sy], [bx, ly], via];
+      if (Math.hypot(via[0] - tx, via[1] - ty) > 0.5) pts.push([tx, ty]);
+      const hits = cost(pts);
+      if (!best || hits < best.hits) best = { pts, hits };
+      if (hits === 0) break;
+    }
+    if (!best) { hideBeam(); return; }
+    const pts = best.pts;
+    // corners cut at 45 degrees, like every leader in ORRERY
     const r1 = (n) => Math.round(n * 10) / 10;
-    const d = Math.abs(dy) < 2
-      ? `M ${r1(sx)} ${r1(sy)} H ${r1(tx)}`
-      : `M ${r1(sx)} ${r1(sy)} H ${r1(bx - cut)} L ${r1(bx)} ${r1(sy + sg * cut)} V ${r1(ty - sg * cut)} L ${r1(bx + cut)} ${r1(ty)} H ${r1(tx)}`;
+    const clean = pts.filter((p, i) => i === 0 || Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) > 0.5);
+    let d = `M ${r1(clean[0][0])} ${r1(clean[0][1])}`;
+    for (let i = 1; i < clean.length; i += 1) {
+      const [x, y] = clean[i];
+      if (i < clean.length - 1) {
+        const [px, py] = clean[i - 1];
+        const [nx, ny] = clean[i + 1];
+        const lin = Math.hypot(x - px, y - py);
+        const lout = Math.hypot(nx - x, ny - y);
+        const cut = Math.min(14, lin / 2, lout / 2);
+        const ax0 = x - ((x - px) / (lin || 1)) * cut;
+        const ay0 = y - ((y - py) / (lin || 1)) * cut;
+        const bx0 = x + ((nx - x) / (lout || 1)) * cut;
+        const by0 = y + ((ny - y) / (lout || 1)) * cut;
+        d += ` L ${r1(ax0)} ${r1(ay0)} L ${r1(bx0)} ${r1(by0)}`;
+      } else d += ` L ${r1(x)} ${r1(y)}`;
+    }
     for (const p of [beamGlow, beamCore, beamPulse]) p.setAttribute('d', d);
     for (const [n, x, y] of [[beamHaloA, sx, sy], [beamA, sx, sy], [beamHaloB, tx, ty], [beamB, tx, ty]]) { n.setAttribute('cx', r1(x)); n.setAttribute('cy', r1(y)); }
+    // a port ends in a chevron pointing along the last leg, into what it drives; a word ends in a bead
+    if (tp.chevron && clean.length >= 2) {
+      const [px, py] = clean[clean.length - 2];
+      const len = Math.hypot(tx - px, ty - py) || 1;
+      const ux = (tx - px) / len;
+      const uy = (ty - py) / len;
+      const L = 9;
+      const bxp = tx - ux * L;
+      const byp = ty - uy * L;
+      beamTip.setAttribute('d', `M ${r1(bxp - uy * 7)} ${r1(byp + ux * 7)} L ${r1(tx)} ${r1(ty)} L ${r1(bxp + uy * 7)} ${r1(byp - ux * 7)}`);
+      beamTip.removeAttribute('display');
+      beamB.setAttribute('display', 'none');
+      beamHaloB.setAttribute('display', 'none');
+    } else {
+      beamTip.setAttribute('display', 'none');
+      beamB.removeAttribute('display');
+      beamHaloB.removeAttribute('display');
+    }
+    beam.dataset.hits = String(best.hits);
     beam.classList.add('is-on');
   };
   const queueBeam = () => {
