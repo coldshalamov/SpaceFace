@@ -275,6 +275,14 @@
       "asset_id": "SF_WHOLESHIP_HELIOS_SPAN_REACH",
       "part_id": "wholeship_helios_span_reach",
       "npc_root": "SF_M4_HELIOS_SPAN_REACH_ROOT"
+    },
+    "massline_express_liner": {
+      "layout": "player",
+      "file": "massline_express_liner_v1",
+      "asset_id": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+      "part_id": "massline_express_liner_v1",
+      "root": "LINER",
+      "note": "PQ-049 liner, forge-v1 rebuild (tools/blender/forge/ships/massline_express_liner.py): framed operations wedge with structural windshield, stepped faceted pressure drum, dorsal spine, two lit passenger decks, boarding dock, keel tether fairlead, three drives."
     }
   }
 }

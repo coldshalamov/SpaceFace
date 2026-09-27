@@ -3501,48 +3501,6 @@
       "contractNodeCount": 0
     },
     {
-      "id": "wholeship_massline_express_liner_v1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/massline_express_liner_v1.glb",
-      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb",
-      "sourceSha256": "aaa58f10265d08e2eb856c75b9c1f94b991fd1945aa3aa2588ea260c83289690",
-      "releaseSha256": "75bbdc56046f1360904e8355ea131d8adff95bdf80d952e4ba520a580e803d19",
-      "sourceBytes": 12667384,
-      "releaseBytes": 5277236,
-      "textures": 27,
-      "ktx2Textures": 27,
-      "meshoptBufferViews": 48,
-      "contractNodeCount": 22
-    },
-    {
-      "id": "wholeship_massline_express_liner_v1_lod1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/massline_express_liner_v1_lod1.glb",
-      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb",
-      "sourceSha256": "9daeca0eab93429746e2f1f5b5937bfda0527c0379eafa545cf9fc081b479f91",
-      "releaseSha256": "f9d7b5c036b05da9f75909d56a811a526389695e546d049a1014fc009d30ce4e",
-      "sourceBytes": 11984252,
-      "releaseBytes": 5835040,
-      "textures": 27,
-      "ktx2Textures": 27,
-      "meshoptBufferViews": 48,
-      "contractNodeCount": 22
-    },
-    {
-      "id": "wholeship_massline_express_liner_v1_lod2",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/massline_express_liner_v1_lod2.glb",
-      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb",
-      "sourceSha256": "2622d382fd4b838aefb4d3abb9e47e3a856a5c1a80bc2e12add04dad505ca5d6",
-      "releaseSha256": "ea77fb49bc33fe5410f3699cc747f4de937e904af953abd4af887bb5881a849a",
-      "sourceBytes": 5122612,
-      "releaseBytes": 2184064,
-      "textures": 24,
-      "ktx2Textures": 24,
-      "meshoptBufferViews": 43,
-      "contractNodeCount": 21
-    },
-    {
       "id": "wholeship_hornet_production_v1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/hornet_production_v1.glb",
@@ -4437,6 +4395,48 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 83,
       "contractNodeCount": 33
+    },
+    {
+      "id": "wholeship_massline_express_liner_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/massline_express_liner_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb",
+      "sourceSha256": "f5e3c8613d4fadaae62bd88a561f9daa295eb1124f0d0e83bb090023dcce2181",
+      "releaseSha256": "55ebd6560115458dc9b03bc0d9ead386fec55abaff8fd9caa2ba2373bde50fee",
+      "sourceBytes": 1944492,
+      "releaseBytes": 754344,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 52,
+      "contractNodeCount": 26
+    },
+    {
+      "id": "wholeship_massline_express_liner_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/massline_express_liner_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb",
+      "sourceSha256": "3836007db29bd72c795db9248b69a5d4bb569a83e0fe737ebd29dfc786edeaef",
+      "releaseSha256": "8ecc91f99c5bc0faa3b4a086eff7afd4b785241025d9e41ff2a5dd06f7daa9a3",
+      "sourceBytes": 999272,
+      "releaseBytes": 529112,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 52,
+      "contractNodeCount": 26
+    },
+    {
+      "id": "wholeship_massline_express_liner_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/massline_express_liner_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb",
+      "sourceSha256": "feb469f011bb0b222b77ca6c71e5ec78115040c16a58f444e3cd797e3429335c",
+      "releaseSha256": "e2a046e324a7ff6dcf69a8a3738101281276fb680cced85c621cc141478695da",
+      "sourceBytes": 560256,
+      "releaseBytes": 412772,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 48,
+      "contractNodeCount": 25
     }
   ]
 }

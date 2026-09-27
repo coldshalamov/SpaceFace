@@ -7083,10 +7083,12 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_express_candidate",
-      "tris": 54637,
-      "bytes": 12667384,
+      "tris": 33160,
+      "bytes": 1944492,
       "textureSize": 1024,
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -7105,22 +7107,29 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -21,
-          -5.46999979019165,
-          -9.479999542236328
+          -21.219999313354492,
+          -5.45702600479126,
+          -8.843141555786133
         ],
         "max": [
-          19.799999237060547,
-          5.634999752044678,
-          9.479999542236328
+          18.399999618530273,
+          7.331518173217773,
+          9.542439460754395
         ],
         "dimensionsM": [
-          40.79999923706055,
-          11.104999542236328,
-          18.959999084472656
+          39.619998931884766,
+          12.788544178009033,
+          18.385581016540527
         ]
       },
-      "note": "PQ-049 Massline Express Liner. Civic pressure-drum passenger body for the existing Helios express slot. Authored LOD0/1/2; LOD0 is the packaged live body. Not self-accepted."
+      "note": "PQ-049 liner, forge-v1 rebuild (tools/blender/forge/ships/massline_express_liner.py): framed operations wedge with structural windshield, stepped faceted pressure drum, dorsal spine, two lit passenger decks, boarding dock, keel tether fairlead, three drives.",
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      }
     },
     {
       "id": "wholeship_mule_production_v1",

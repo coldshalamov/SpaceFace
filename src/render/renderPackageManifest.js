@@ -2264,12 +2264,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.massline-express-liner-v1",
-    "expectedContentHash": "01a0c4a516fc62cd72de31a0df69f169902f5eb2e9dfc719675559747dc32a9a",
+    "expectedContentHash": "df210a54435c5df887f94600af3bec56463ba9fbe644fadc05a437bfb6e8b913",
     "key": "massline-express-liner-v1",
     "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
     "slot": "hull",
-    "sourceSha256": "75bbdc56046f1360904e8355ea131d8adff95bdf80d952e4ba520a580e803d19",
+    "sourceSha256": "55ebd6560115458dc9b03bc0d9ead386fec55abaff8fd9caa2ba2373bde50fee",
     "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb"
   },
   {
@@ -2464,22 +2464,22 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.massline-express-liner-v1-lod1",
-    "expectedContentHash": "263660aaef75ec39daaa1d3e1bd6d8d56e4c6d728f04d377bdd5dac7e042c059",
+    "expectedContentHash": "3f0c550f94774e06f5cbb19abb0ae30e6b6bf7302b41f1f7a9f3e869be1be6f9",
     "key": "massline-express-liner-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
     "slot": "hull",
-    "sourceSha256": "f9d7b5c036b05da9f75909d56a811a526389695e546d049a1014fc009d30ce4e",
+    "sourceSha256": "8ecc91f99c5bc0faa3b4a086eff7afd4b785241025d9e41ff2a5dd06f7daa9a3",
     "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.massline-express-liner-v1-lod2",
-    "expectedContentHash": "819cc0b5f7d71c22c2dabab94523a58ad8b7b142ca096d8ad98ce7213eded031",
+    "expectedContentHash": "1edbeb5e1f0b5d6cfcfe4dca18e7376c33439275b6724adc24188b3b35e3dd82",
     "key": "massline-express-liner-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
     "slot": "hull",
-    "sourceSha256": "ea77fb49bc33fe5410f3699cc747f4de937e904af953abd4af887bb5881a849a",
+    "sourceSha256": "e2a046e324a7ff6dcf69a8a3738101281276fb680cced85c621cc141478695da",
     "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb"
   },
   {
