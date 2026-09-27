@@ -284,3 +284,22 @@ test('gravity deployments vary consistently while steady fields need no new desc
   assert.notEqual(newSlot.character,b.slots[0].character);assert.ok(Number.isFinite(phase));
   a.dispose();b.dispose();
 });
+
+
+test('NPC tells stay on their owning ship and formation failure never borrows the player',()=>{
+  const state=fixture(),owner=new ActionVfx(new THREE.Scene());
+  state.entities.get(2).data={squadId:'wing'};
+  for(const kind of ['engine_flare','attach_spool','weapon_charge']){
+    assert.equal(owner.emit('ai:telegraph',{entityId:2,targetId:1,kind,durationTicks:30},state),true);
+    const slot=owner.slots.find(s=>s.kind===kind);assert.equal(slot.id,2);assert.equal(slot.sourceId,2);
+    assert.equal(slot.recipe.life,.6);
+  }
+  assert.equal(owner.emit('ai:formationBroken',{leaderId:99,squadId:'wing'},state),true);
+  assert.equal(owner.slots.find(s=>s.event==='ai:formationBroken').id,2);
+  assert.equal(owner.emit('ai:formationBroken',{leaderId:99,squadId:'absent'},state),false);
+  assert.equal(owner.emit('ai:formationBroken',{},state),false);
+  assert.equal(owner.emit('heat:changed',{value:.6,wantedCrossed:false},state),false);
+  assert.equal(owner.emit('heat:changed',{value:.6,wantedCrossed:true},state),true);
+  state.simTime+=.3;owner.update(state);assert.ok(owner.batch.count>0);
+  state.simTime+=2;owner.update(state);assert.equal(owner.live,0);owner.dispose();
+});

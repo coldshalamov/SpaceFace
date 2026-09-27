@@ -4,6 +4,16 @@ import { WORLD_CUE_ACTION_RECIPE, resolveWorldCueReceipt } from './worldCueRecip
 // cosmetic only: never discover collisions, change a body, or fabricate a successful action.
 export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
   'presentation:cue': WORLD_CUE_ACTION_RECIPE,
+  'ai:telegraph': {verb:'command',primitive:'induction',color:0xf4b484,life:1.6,continuous:false,
+    variants:{
+      engine_flare:{verb:'ignition',primitive:'compression',color:0xeac891,life:1.6},
+      attach_spool:{verb:'catch',primitive:'capture',color:0x82cce6,life:1.6,surfaceCapture:true,surfaceWork:true},
+      weapon_charge:{verb:'command',primitive:'induction',color:0xe8ae76,life:1.6,surfaceWork:true},
+    }},
+  'ai:flee': {verb:'vent',primitive:'compression',color:0xdcb99d,life:.85,continuous:false},
+  'ai:formationBroken': {verb:'disrupt',primitive:'induction',color:0xe2a983,life:.8,surfaceWork:true,continuous:false},
+  'player:scannedByPatrol': {verb:'command',primitive:'induction',color:0x85d0da,life:1,surfaceWork:true,continuous:false},
+  'heat:changed': {verb:'catch',primitive:'capture',color:0xf1ac76,life:1,surfaceWork:true,surfaceCapture:true,continuous:false},
   'salvage:cutComplete': {verb:'grind',primitive:'deposition',color:0xf3c286,life:.85,surfaceWork:true,continuous:false},
   'salvage:completed': {verb:'harvest',primitive:'deposition',color:0xc9ba98,life:1.2,continuous:false},
   'pickup:collected': {verb:'transfer',primitive:'connection',color:0xb4e0c0,life:.58,continuous:false},
@@ -34,6 +44,30 @@ const copyPoint = p => ({x:p.x,z:p.z});
 
 export function resolveAdditionalActionVfxReceipt(name,p,state) {
   if(name==='presentation:cue')return resolveWorldCueReceipt(p,state);
+  if(name==='ai:telegraph'||name==='ai:flee'){
+    const source=body(state,p.entityId);if(!point(source?.pos)||source.alive===false)return null;
+    if(name==='ai:telegraph'&&!['engine_flare','attach_spool','weapon_charge'].includes(p.kind))return null;
+    const aft=name==='ai:flee'||p.kind==='engine_flare';
+    const a=(source.rot||0)+(aft?Math.PI:0),r=source.radius||6;
+    return {...p,targetId:source.id,sourceId:source.id,
+      pos:name==='ai:flee'?{x:source.pos.x+Math.cos(a)*r*.9,z:source.pos.z+Math.sin(a)*r*.9}:undefined,
+      bodySurface:!aft,attachToTarget:true,direction:{x:Math.cos(a),z:Math.sin(a)}};
+  }
+  if(name==='ai:formationBroken'){
+    let member=body(state,p.leaderId);
+    if(!member?.alive)member=null;
+    const squadId=p.squadId??p.groupId;
+    if(!member&&squadId!=null)for(const candidate of state.entities?.values?.()||[]){
+      if(candidate.alive!==false&&candidate.data?.squadId===squadId){member=candidate;break;}
+    }
+    if(!point(member?.pos))return null;
+    return {...p,targetId:member.id,sourceId:member.id,bodySurface:true,attachToTarget:true};
+  }
+  if(name==='player:scannedByPatrol'||name==='heat:changed'){
+    if(name==='heat:changed'&&!p.wantedCrossed)return null;
+    const ship=body(state,state.playerId);if(!point(ship?.pos)||ship.alive===false)return null;
+    return {...p,targetId:ship.id,sourceId:ship.id,bodySurface:true,attachToTarget:true};
+  }
   if(name==='salvage:cutComplete'){
     const plate=body(state,p.payloadId),target=body(state,p.targetId);
     return {...p,sourceId:state.playerId,pos:plate?.pos??target?.pos,bodySurface:true,attachToTarget:true};

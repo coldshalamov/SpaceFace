@@ -74,7 +74,8 @@ export class ActionVfx {
     if(this.disposed)return false;
     p=resolveAdditionalActionVfxReceipt(name,p,state);if(!p)return false;
     const entry=ACTION_VFX_RECIPES[name];if(!entry)return false;
-    const recipe=entry.variants?.[p.kind]??entry;
+    const selectedRecipe=entry.variants?.[p.kind]??entry;
+    const recipe=name==='ai:telegraph'?{...selectedRecipe,life:Math.max(.25,Math.min(4,finite(p.durationTicks,90)/60+.1))}:selectedRecipe;
     const id=p.targetId??p.victimId??p.entityId??p.shipId??p.podId??p.asteroidId??p.mineId??p.wreckId??p.ownerId??p.sourceId??p.aId;
     const target=entity(state,id);
     const sourceId=p.sourceId??p.ownerId??p.actorId??p.byId??p.minerId??p.netId
