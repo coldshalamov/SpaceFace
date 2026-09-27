@@ -201,7 +201,7 @@ test('cargo catch contacts the drawn pod face and its members remain outside as 
     const slot=out.slots[0];
     assert.equal(slot.provenance,'model-bounds-surface');
     assert.deepEqual([slot.x,slot.z],[11,30],'contact is on the actual visible face, beyond the smaller physics radius');
-    assert.ok(slot.y>0,'contact occupies the visible upper flank');
+    assert.ok(slot.y>=4,'contact clears the real pod roof at the normal flight camera');
     const verifyOutward=()=>{
       const origin=out.batch.attributes[0],shape=out.batch.attributes[2],path=out.batch.attributes[1];
       for(let i=0;i<3;i++){

@@ -331,6 +331,7 @@ export class ActionPrimitiveComposer {
       this._matter(s,age,reduced,'current',a,r*2.2);
     }else if(family==='capture'){
       const locked=verb==='arm'||verb==='prime',catching=verb==='catch';
+      const seat=s.event==='cargo:caughtByNet'?Math.max(w,r*.64):w;
       // Opposed load-bearing hooks arrive separately, close and unload tangentially.
       for(let i=0;i<3;i++){
         const heading=a+(i-1)*(catching?.58:2.08),arrived=smooth((age-i*.045)/.16);
@@ -339,11 +340,11 @@ export class ActionPrimitiveComposer {
         if(s.recipe.surfaceCapture){
           // The source-facing contact is on an opaque cargo face. All hooks and their
           // release shear stay outside its outward half-space, including their folds.
-          const outward=w*(.80+load*.60),tangent=(i-1)*w*.90;
+          const outward=seat*(.80+load*.60),tangent=(i-1)*seat*.90;
           const x=s.x+Math.cos(a)*outward-Math.sin(a)*tangent;
           const z=s.z+Math.sin(a)*outward+Math.cos(a)*tangent;
-          this._piece(6,x,z,a+Math.PI/2,-w*.72,w*.62,w*.42,w*.44,-w*.38,
-            -shear*w*(.6+i*.25),0,seed+i*1.7,alpha*arrived,1,cutoff+i*.065,.72);
+          this._piece(6,x,z,a+Math.PI/2,-seat*.72,seat*.62,seat*.42,seat*.44,-seat*.38,
+            -shear*seat*(.6+i*.25),0,seed+i*1.7,alpha*arrived,1,cutoff+i*.065,.72);
         }else{
           const distance=r*(.56+load*.42),x=s.x+Math.cos(heading)*distance,z=s.z+Math.sin(heading)*distance;
           this._piece(6,x,z,heading+Math.PI/2,-r*.48,r*.38,w*.58,w*.56,w*.83,
@@ -353,8 +354,8 @@ export class ActionPrimitiveComposer {
       // Inward-curving material bridges only emerge once jaws have taken the load.
       const meet=smooth((age-.14)/.16);
       for(let i=0;i<2;i++){
-        if(s.recipe.surfaceCapture)this._piece(1,s.x+Math.cos(a)*w*.6,s.z+Math.sin(a)*w*.6,
-          a+(i?1:-1)*.42,w*.12,w*1.7,w*.50,w*.40,w*.42*(i?1:-1),0,0,
+        if(s.recipe.surfaceCapture)this._piece(1,s.x+Math.cos(a)*seat*.6,s.z+Math.sin(a)*seat*.6,
+          a+(i?1:-1)*.42,seat*.12,seat*1.7,seat*.50,seat*.40,seat*.42*(i?1:-1),0,0,
           seed+i*2,alpha*meet*.83,1,cutoff,.95);
         else this._piece(1,s.x,s.z,a+(i?1:-1)*.60,-r*.72,r*.38,
           w*.75,w*.52,w*(i?1:-1),0,0,seed+i*2,alpha*meet*.83,1,cutoff,.95);
