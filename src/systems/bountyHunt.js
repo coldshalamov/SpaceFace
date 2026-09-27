@@ -86,13 +86,30 @@ export const bountyHunt = {
 
   // Shooting the victim voids their gratitude. The save still records, but the
   // quarry limps clear without paying the hand that also shot them.
+  // INF-U15: shooting the HUNTER is the opposite — harrying damage accrues as an
+  // assist, and a quarry that escapes a harried hunter pays for the help.
   _onDamage(payload) {
     const state = this.state;
     if (!payload || !state || payload.attackerId !== state.playerId) return;
     const targetId = payload.targetId ?? payload.id ?? payload.victimId;
     if (targetId == null) return;
     const target = state.entities && state.entities.get ? state.entities.get(targetId) : null;
-    if (!target || target.alive === false || !isBountyQuarry(target)) return;
+    if (!target || target.alive === false) return;
+    if (isBountyHunter(target)) {
+      const hh = target.data.bountyHunt || (target.data.bountyHunt = { role: 'hunter' });
+      const contractId = hh.contractId || target.data.contractId || null;
+      if (hh.assistContractId !== contractId) {
+        hh.assistContractId = contractId;
+        hh.playerAssistDmg = 0;
+      }
+      const applied = Number(payload.applied);
+      const amount = Number(payload.amount);
+      const dmg = (Number.isFinite(applied) && applied > 0 ? applied : 0)
+        || (Number.isFinite(amount) && amount > 0 ? amount : 0);
+      if (dmg > 0) hh.playerAssistDmg = (hh.playerAssistDmg || 0) + dmg;
+      return;
+    }
+    if (!isBountyQuarry(target)) return;
     const hunt = target.data.bountyHunt || (target.data.bountyHunt = { role: 'quarry' });
     if (hunt.done || hunt.gratitudeVoid === true) return;
     hunt.gratitudeVoid = true;
@@ -266,7 +283,7 @@ export const bountyHunt = {
     const now = finite(state && state.simTime, 0);
     const refuge = nearestRefugeStation(state, quarry.pos, QT.refugeScan);
     if (refuge && refuge.pos && distance2(quarry.pos, refuge.pos) < QT.refugeRange * QT.refugeRange) {
-      escapeQuarryToRefuge(state, this.bus, quarry, hunter, refuge, contractId, now);
+      escapeQuarryToRefuge(state, this.bus, quarry, hunter, refuge, contractId, now, this.helpers);
       return false;
     }
     if (!hunt.surrendered && Number.isFinite(quarry.hull) && quarry.hullMax > 0
@@ -651,7 +668,9 @@ function distance2(a, b) {
 
 // The quarry made it under the station's guns: the contract goes cold and the
 // hunter breaks off rather than starting a war with the dock authority.
-function escapeQuarryToRefuge(state, bus, quarry, hunter, refuge, contractId, now) {
+// INF-U15: if the player harried the hunter (tracked assist damage) without
+// shooting the quarry, the escape pays gratitude — through the same writers.
+function escapeQuarryToRefuge(state, bus, quarry, hunter, refuge, contractId, now, helpers) {
   const data = quarry.data || (quarry.data = {});
   const hunt = data.bountyHunt || (data.bountyHunt = { role: 'quarry' });
   hunt.done = true;
@@ -671,6 +690,51 @@ function escapeQuarryToRefuge(state, bus, quarry, hunter, refuge, contractId, no
     contractId, quarryId: quarry.id, hunterId: hunter.id,
     stationId: (refuge.data && refuge.data.stationId) || null, at: now,
   });
+  settleEscapeAssist(state, bus, helpers, quarry, hunter, contractId, now);
+}
+
+// INF-U15 v1: the harry-and-escape payoff. A surrendered quarry that escapes
+// still pays the escape rate — the posted bounty was for a kill, and the
+// hunter is alive. v2: the interference is two-sided — the quarry's people
+// remember the help and the hunter's guild remembers the cost, out loud.
+function settleEscapeAssist(state, bus, helpers, quarry, hunter, contractId, now) {
+  const hunt = (quarry && quarry.data && quarry.data.bountyHunt) || {};
+  if (hunt.gratitudeVoid === true) return null;
+  const hh = (hunter && hunter.data && hunter.data.bountyHunt) || {};
+  const assist = hh.assistContractId === contractId ? (hh.playerAssistDmg || 0) : 0;
+  if (!(assist >= QT.escapeAssistDmg)) return null;
+  const paid = QT.escapeGratitudeCr;
+  emit(bus, 'economy:grantCredits', { amount: paid, reason: 'bounty_escape_gratitude', contractId });
+  if (quarry.factionId) {
+    emit(bus, 'faction:repDelta', {
+      factionId: quarry.factionId, delta: QT.escapeGratitudeRep,
+      reason: 'bounty_bought_escape', contractId,
+    });
+  }
+  if (hunter && hunter.factionId) {
+    emit(bus, 'faction:repDelta', {
+      factionId: hunter.factionId, delta: QT.escapeGuildCostRep,
+      reason: 'bounty_cost_contract', contractId,
+    });
+  }
+  emit(bus, 'toast', {
+    text: `${hunt.name || 'The quarry'} wires ${paid} cr — you bought their escape.`,
+    kind: 'good', ttl: 5,
+  });
+  const voice = helpers && helpers.voice;
+  if (voice && typeof voice.say === 'function') {
+    voice.say({
+      channel: 'bark',
+      kind: 'bounty_hunter_spurned',
+      factionId: (hunter && hunter.factionId) || null,
+      text: 'You cost me that contract. The guild keeps a list, and so do I.',
+    });
+  }
+  emit(bus, 'bountyHunt:escapeAssisted', {
+    contractId, quarryId: quarry.id, hunterId: hunter && hunter.id,
+    assist: Math.round(assist), paid, at: now,
+  });
+  return paid;
 }
 
 // Out of hull, out of options: the quarry cuts engines and posts its own bounty on
