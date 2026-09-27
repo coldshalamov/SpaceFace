@@ -1177,6 +1177,247 @@
      ]
     }
    }
+  },
+  "ship_drifter": {
+   "sourceGlb": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+   "sourceGlbSha256": "264DA24452F8144FD098A7B98A165D2E3F6B502C06FAFC4AC0C21310AB9BCF96",
+   "hero": {
+    "file": "ship_drifter.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 84972,
+    "hullSize": [
+     18.62,
+     7.11,
+     3.365
+    ],
+    "longAxis": 0,
+    "marks": {
+     "DRIFTER_LOD0_ROOT": [
+      0.5055,
+      0.5405,
+      48.949
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4637,
+      0.5357,
+      47.316
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.4989,
+      0.6044,
+      49.094
+     ],
+     "SOCKET_Engine_Main": [
+      0.671,
+      0.3587,
+      55.045
+     ],
+     "SOCKET_Mining_Front": [
+      0.2642,
+      0.7528,
+      41.899
+     ],
+     "SOCKET_RCS_Port": [
+      0.5714,
+      0.5361,
+      47.302
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4296,
+      0.4644,
+      49.559
+     ],
+     "SOCKET_Tether_Massline": [
+      0.588,
+      0.3786,
+      51.305
+     ],
+     "SOCKET_Trail_Main": [
+      0.6873,
+      0.3414,
+      55.733
+     ],
+     "SOCKET_Trail_Port": [
+      0.7148,
+      0.3532,
+      55.263
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6603,
+      0.3299,
+      56.204
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.4988,
+      0.3915,
+      47.766
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2607,
+      0.745,
+      41.763
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_drifter.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 47934,
+    "hullSize": [
+     18.62,
+     7.11,
+     3.365
+    ],
+    "longAxis": 0,
+    "marks": {
+     "DRIFTER_LOD0_ROOT": [
+      0.4868,
+      0.5737,
+      55.825
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      55.825
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6621,
+      55.825
+     ],
+     "SOCKET_Engine_Main": [
+      0.1136,
+      0.5638,
+      55.825
+     ],
+     "SOCKET_Mining_Front": [
+      0.901,
+      0.5149,
+      55.825
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      57.979
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      53.671
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4533,
+      55.825
+     ],
+     "SOCKET_Trail_Main": [
+      0.0717,
+      0.5638,
+      55.825
+     ],
+     "SOCKET_Trail_Port": [
+      0.0717,
+      0.5638,
+      56.722
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0717,
+      0.5638,
+      54.928
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3379,
+      55.825
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9055,
+      0.5,
+      55.825
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_drifter.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 32084,
+    "hullSize": [
+     18.62,
+     7.11,
+     3.365
+    ],
+    "longAxis": 0,
+    "marks": {
+     "DRIFTER_LOD0_ROOT": [
+      0.5016,
+      0.5132,
+      56.602
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5016,
+      0.4322,
+      55.86
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5016,
+      0.5,
+      57.492
+     ],
+     "SOCKET_Engine_Main": [
+      0.5016,
+      0.8864,
+      56.502
+     ],
+     "SOCKET_Mining_Front": [
+      0.5016,
+      0.099,
+      56.01
+     ],
+     "SOCKET_RCS_Port": [
+      0.4036,
+      0.5,
+      55.86
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5996,
+      0.5,
+      55.86
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5016,
+      0.6864,
+      55.39
+     ],
+     "SOCKET_Trail_Main": [
+      0.5016,
+      0.9283,
+      56.502
+     ],
+     "SOCKET_Trail_Port": [
+      0.4607,
+      0.9283,
+      56.502
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5424,
+      0.9283,
+      56.502
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5016,
+      0.5,
+      54.228
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5016,
+      0.0945,
+      55.86
+     ]
+    }
+   }
   }
  }
 }

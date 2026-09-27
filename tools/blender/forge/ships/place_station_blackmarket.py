@@ -22,9 +22,9 @@ SHIP_ID = 'place_station_blackmarket'
 COLORS = {
     'paint': '#2a2622',        # grimy hull plate
     'paint2': '#1a1918',       # charcoal steel modules
-    'ceramic': '#1f1c19',      # rock: dark umber stone (machinery texture: no panel seams on stone)
-    'ceramic.shadow': '#141312',  # rock underside facets
-    'ceramic.cut': '#3a342c',  # quarried terrace floors (cut stone, lighter)
+    'ceramic': '#181614',      # rock: dark umber stone (machinery texture: no panel seams on stone)
+    'ceramic.shadow': '#100f0e',  # rock underside facets
+    'ceramic.cut': '#2e2a24',  # quarried terrace floors (cut stone, lighter)
     'stripe': '#1d4643',       # faded teal shanty paint
     'hazard': '#6a4e14',
     'dark': '#121315',
@@ -36,7 +36,7 @@ COLORS = {
 # rocks: name, centre (x, y, z), radius, y squash, flat-top height (terrace), seed
 ROCKS = [
     ('Core', (0.0, 0.0, 0.0), 22.0, 0.72, 15.0, 1),
-    ('Crown', (-15.0, 0.0, 33.0), 14.0, 0.85, 42.0, 2),
+    ('Crown', (-15.0, 0.0, 33.0), 14.0, 0.85, 40.0, 2),
     ('Stern', (-47.0, 0.0, 3.0), 15.5, 0.8, 13.0, 3),
     ('Keel', (-6.0, 0.0, -48.0), 19.0, 0.75, -34.0, 4),
     ('Beak', (25.0, 0.0, 26.0), 9.5, 0.9, 32.0, 5),
@@ -185,6 +185,9 @@ def cliff(s, rng, name, c, r, sq, seed, n):
         boxes(s, f'{name}_CliffNeon', neon, ('glow_red', 'glow_cyan', 'glow_amber')[seed % 3])
 
 
+KEEP_OUT = [(-21.0, -3.0, 4.2), (-13.0, 3.5, 6.0), (25.0, 0.0, 6.5), (-47.0, -3.0, 5.5), (6.0, -6.0, 4.5)]
+
+
 def shanty(s, rng, tag, c, r, sq, flat, top=True, density=1.0):
     """Mismatched modules crowded onto a terrace: stacks of boxes, windows, roof neon, containers."""
     ex, ey, tx, ty = terrace_extent(tag, c, r, sq, flat)
@@ -200,7 +203,8 @@ def shanty(s, rng, tag, c, r, sq, flat, top=True, density=1.0):
             d = rng.uniform(3.0, 5.5)
             cx, cy = x + w / 2, y + d / 2
             # stay inside an ellipse of the terrace
-            if ((cx - tx) / ex) ** 2 + ((cy - ty) / ey) ** 2 < 0.85 and rng.random() < 0.9 * density:
+            clear = all((cx - kx_) ** 2 + (cy - ky_) ** 2 > kr ** 2 for kx_, ky_, kr in KEEP_OUT) or not top
+            if clear and ((cx - tx) / ex) ** 2 + ((cy - ty) / ey) ** 2 < 0.85 and rng.random() < 0.9 * density:
                 floors = rng.choice((1, 1, 2, 2, 3))
                 z = flat
                 yaw = rng.uniform(-0.12, 0.12)
@@ -402,22 +406,47 @@ def build():
 
     # --- neon signs: the warren's advertising, facing the flight lanes ----------------------------
     sign(s, 'SignBeak', (25.0, 0.0, 32.0), 11.0, 4.0, 'glow_red', yaw=0.0)
-    sign(s, 'SignCrown', (-15.0, 3.5, 42.0), 10.0, 3.6, 'glow_cyan', yaw=0.2)
+    sign(s, 'SignCrown', (-13.0, 3.5, 40.0), 10.0, 3.6, 'glow_cyan', yaw=0.2)
     sign(s, 'SignStern', (-47.0, -3.0, 13.0), 9.0, 3.2, 'glow_amber', yaw=-0.25)
     sign(s, 'SignCore', (6.0, -6.0, 15.0), 7.0, 2.6, 'glow_red', yaw=math.pi / 2 - 0.3)
+
+    # --- the Spire: a neon-banded stack of shanty floors on the Crown, the warren's landmark from above
+    sx0, sy0, base = -21.0, -3.0, 40.0
+    spire, sw_, sn_ = [], [], []
+    z = base - 1.0
+    for k, (w, h, fin) in enumerate(((7.0, 3.6, 'paint2'), (6.0, 3.2, 'paint.rust'), (5.2, 3.2, 'stripe'),
+                                     (4.4, 3.0, 'paint2'), (3.4, 2.8, 'paint.olive'))):
+        yaw = 0.25 * ((k % 2) * 2 - 1)
+        spire.append((fin, ((sx0, sy0, z + h / 2), (w, w * 0.8, h), yaw)))
+        c_, s_ = math.cos(yaw), math.sin(yaw)
+        for e in (-1, 1):
+            for j in range(int(w / 0.8)):
+                dx = -w / 2 + 0.4 + (j + 0.5) * (w - 0.8) / int(w / 0.8)
+                py = e * (w * 0.4 + 0.02)
+                sw_.append(((sx0 + dx * c_ - py * s_, sy0 + dx * s_ + py * c_, z + h * 0.55), (0.45, 0.14, 0.5), yaw))
+        sn_.append(((sx0, sy0, z + h + 0.05), (w + 0.25, w * 0.8 + 0.25, 0.22), yaw))
+        z += h
+    for fin in dict.fromkeys(f for f, _ in spire):
+        boxes(s, f'Spire_{fin}', [it for f, it in spire if f == fin], fin, bevel=0.06)
+    boxes(s, 'SpireWin', sw_, 'glow_warm')
+    boxes(s, 'SpireNeon', sn_[::2], 'glow_red')
+    boxes(s, 'SpireNeonC', sn_[1::2], 'glow_cyan')
+    F.cylinder(s, 'SpireMast', (sx0, sy0, z), (sx0, sy0, z + 6.0), 0.3, 0.15, material='gunmetal', segments=8)
+    F.beacon(s, 'Beacon', (sx0, sy0, z), size=0.8)
+    F.light(s, 'SpireTip', (sx0, sy0, z + 6.0), 'glow_red', size=0.5)
 
     # --- patched plates on the rock faces: stolen ivory hull panels bolted over breaches ----------
     patches, bolts = [], []
     for rn, d in (('Core', (0.5, 0.8, 0.1)), ('Core', (-0.5, 0.8, -0.3)), ('Stern', (0.2, 0.9, -0.1)),
                   ('Crown', (0.4, 0.8, -0.2)), ('Core', (0.3, -0.9, -0.2)), ('Stern', (-0.2, -0.9, -0.1)),
                   ('Keel', (0.4, 0.8, 0.2)), ('Keel', (-0.3, -0.85, 0.1))):
-        p = surf(rn, d, 0.99)
+        p = surf(rn, d, 0.97)
         nrm = Vector((d[0], d[1], 0.0)).normalized()
         yaw = math.atan2(nrm.y, nrm.x)
-        patches.append((p, (0.8, 5.0, 3.6), yaw))
+        patches.append((p, (0.8, 3.8, 2.8), yaw))
         side = Vector((-nrm.y, nrm.x, 0.0))
-        for e in (-2.2, 2.2):
-            for dz in (-1.5, 1.5):
+        for e in (-1.6, 1.6):
+            for dz in (-1.1, 1.1):
                 q = Vector(p) + nrm * 0.4 + side * e
                 bolts.append(((q.x, q.y, q.z + dz), (0.3, 0.35, 0.35), yaw))
     boxes(s, 'Patches', patches, 'paint.ivory', bevel=0.1)
@@ -426,12 +455,11 @@ def build():
     # --- lights: nav, beacons, work lamps over the terraces ----------------------------------------
     F.light(s, 'NavPort', (-47.0, 12.5, 3.0), 'glow_red', size=0.7)
     F.light(s, 'NavStarboard', (-47.0, -12.5, 3.0), 'glow_green', size=0.7)
-    F.beacon(s, 'Beacon', (-18.0, -4.0, 42.0), size=0.8)
     F.beacon(s, 'BeaconStern', (-52.0, 5.0, 13.0), finish='glow_red', size=0.6)
     s.detail = 1
-    for p in ((2.0, 6.0, 15.45), (-20.0, -4.0, 42.45), (-42.0, 6.0, 13.45)):
+    for p in ((2.0, 6.0, 15.45), (-12.0, -3.0, 40.45), (-42.0, 6.0, 13.45)):
         F.work_lamp(s, f'Lamp{p}', p, aim=(0.3, -0.3, 0.9), size=0.8)
-    for p in ((-8.0, 5.0, 15.0), (-16.0, -4.0, 42.0), (28.0, 3.0, 32.0)):
+    for p in ((-8.0, 5.0, 15.0), (-10.0, -2.0, 40.0), (28.0, 3.0, 32.0)):
         F.antenna(s, f'Whip{p}', p, 5.0)
     F.cylinder(s, 'StolenDishPost', (-50.0, -4.0, 12.5), (-50.0, -4.0, 15.6), 0.3, material='gunmetal', segments=10)
     F.dish(s, 'StolenDish', (-50.0, -4.0, 15.5), 2.6, 0.9, axis=(0.3, -0.4, 0.86))
