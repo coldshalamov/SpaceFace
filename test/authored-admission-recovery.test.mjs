@@ -4,6 +4,7 @@ import * as THREE from 'three';
 
 import { admitAuthoredAssetTask } from '../src/render/assetLoader.js';
 import {
+  admissionOwnerInactive,
   AUTHORED_ADMISSION_RETRY_BASE_DELAY_MS,
   AUTHORED_ADMISSION_RETRY_MAX,
   retryFailedAuthoredAdmission,
@@ -84,6 +85,22 @@ test('an invisible terminal admission rearms once per backoff window', () => {
     'after the window the poll rearms it for another attempt',
   );
   assert.equal(boundary.userData.authoredAdmissionRetryCount, 2);
+});
+
+test('a "must be retained" instance throw classifies as the owner-lifecycle race, not unavailability', () => {
+  // D72: place admission lost the boundary-owner retain between load and instancing, and the
+  // "must be retained before creating a flight instance" guard landed the boundary at
+  // 'unavailable' — an invisible Helios trade hub for the whole bounded retry window. The throw
+  // is the owner-inactive race one step downstream; a live boundary must re-request, not strand.
+  const live = { alive: true };
+  assert.equal(admissionOwnerInactive({}, live,
+    new Error('Render package sf.render.helios-trade-hub must be retained before creating a flight instance.')), true);
+  assert.equal(admissionOwnerInactive({}, live,
+    new Error('Render package sf.render.kestrel must be retained before creating an instance.')), true);
+  assert.equal(admissionOwnerInactive({}, live,
+    new Error('Render package sf.render.kestrel could not retain flight instance residency.')), false,
+    'a retain-refusal is a different verdict — it stays a real failure');
+  assert.equal(admissionOwnerInactive({}, live, new Error('geometry exploded')), false);
 });
 
 test('admission retries are bounded and never churn a visible fallback', () => {

@@ -2099,7 +2099,11 @@ export function admissionOwnerInactive(options, entity, error = null) {
     if (active === false) return true;
   }
   if (entity && entity.alive === false) return true;
-  return !!(error && /owner became inactive/i.test(String(error.message || error)));
+  // A "must be retained before creating [a flight] instance" throw is the owner-inactive race one
+  // step later: the package can only lose its boundary-owner retain — and become sweepable — when
+  // the admission's residency context ended between library load and instancing (same
+  // classification the whole-ship LOD demotion catch already applies, ~6160).
+  return !!(error && /owner became inactive|must be retained before creating/i.test(String(error.message || error)));
 }
 
 /**
