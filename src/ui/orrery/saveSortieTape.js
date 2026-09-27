@@ -23,10 +23,10 @@ const CSS = `
 .orr-tape__svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; display:block; }
 .orr-tape__legend { font-family:var(--dp-face-label, "Archivo"); font-size:calc(10.5px * var(--tape-k, 1)); font-weight:650; letter-spacing:.24em; fill:rgb(${BONE} / .72); }
 .orr-tape__legend--sub { font-size:calc(10px * var(--tape-k, 1)); letter-spacing:.2em; fill:rgb(${BONE} / .56); }
-.orr-tape__band { fill:rgb(${BONE} / .1); }
-.orr-tape__fill { fill:rgb(${BONE} / .26); }
-.orr-tape__core { fill:none; stroke:rgb(${BONE} / .72); stroke-width:2; }
-.orr-tape__bloom { fill:none; stroke:rgb(${BONE} / .12); stroke-width:10; }
+.orr-tape__base { fill:none; stroke:rgb(${BONE} / .34); stroke-width:1.6; }
+.orr-tape__played-bloom { fill:none; stroke:rgb(${BONE} / .13); stroke-linecap:round; }
+.orr-tape__played-band { fill:none; stroke:rgb(${BONE} / .3); stroke-linecap:round; }
+.orr-tape__played-core { fill:none; stroke:rgb(${BONE} / .78); stroke-width:2.2; stroke-linecap:round; }
 .orr-tape__minor { fill:none; stroke:rgb(${BONE} / .38); stroke-width:1.3; }
 .orr-tape__major { fill:none; stroke:rgb(${BONE} / .72); stroke-width:2; }
 .orr-tape__time { font-family:var(--dp-face-numeral, "Archivo"); font-size:calc(11px * var(--tape-k, 1)); font-weight:560; letter-spacing:.06em; fill:rgb(${BONE} / .7); }
@@ -72,7 +72,7 @@ export function fmtSortieTime(s) {
   const m = Math.floor((t % 3600) / 60);
   const sec = t % 60;
   if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${String(sec).padStart(2, '0')}s`;
+  if (m > 0) return `${m}m ${sec}s`;
   return `${sec}s`;
 }
 
@@ -95,17 +95,19 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   host.tabIndex = 0;
   const layer = svg('svg', { class: 'orr-svg orr-tape__svg', 'aria-hidden': 'true', focusable: 'false' });
   const staticG = svg('g');
-  const fillRect = svg('rect', { class: 'orr-tape__fill', x: 0, y: 0, width: 0, height: 0 });
+  const playedG = svg('g');
+  const playedBloom = svg('path', { class: 'orr-tape__played-bloom', d: 'M 0 0' });
+  const playedBand = svg('path', { class: 'orr-tape__played-band', d: 'M 0 0' });
+  const playedCore = svg('path', { class: 'orr-tape__played-core', d: 'M 0 0' });
+  playedG.append(playedBloom, playedBand, playedCore);
   const handG = svg('g');
-  layer.append(fillRect, staticG, handG);
+  layer.append(staticG, playedG, handG);
   const read = doc.createElement('div');
   read.className = 'orr-tape__read';
   read.setAttribute('aria-hidden', 'true');
-  const readT = doc.createElement('span');
-  readT.className = 'orr-tape__read-t';
   const readW = doc.createElement('span');
   readW.className = 'orr-tape__read-w';
-  read.append(readT, readW);
+  read.append(readW);
   host.append(layer, read);
 
   let model = { lengthS: null, events: [], killLabel: '' };
@@ -136,19 +138,20 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     geoK = k;
     const bandH = Math.round(14 * k);
     const bandBot = bandTop + bandH;
-    geo = { W, H, x0, x1, bandTop, bandBot };
+    const mid = bandTop + bandH / 2;
+    geo = { W, H, x0, x1, bandTop, bandBot, mid, k };
     staticG.append(
       Object.assign(svg('text', { x: 0, y: bandTop + 4, class: 'orr-tape__legend' }), { textContent: 'LAST SORTIE' }),
       Object.assign(svg('text', { x: 0, y: bandTop + 20, class: 'orr-tape__legend orr-tape__legend--sub' }), { textContent: 'BLACK BOX' }),
     );
-    // the channel: a lit band with a core under it and a bloom
-    staticG.appendChild(svg('rect', { class: 'orr-tape__band', x: f(x0), y: bandTop, width: f(x1 - x0), height: bandH }));
-    staticG.appendChild(svg('path', { class: 'orr-tape__bloom', d: `M ${f(x0)} ${bandBot} L ${f(x1)} ${bandBot}` }));
-    staticG.appendChild(svg('path', { class: 'orr-tape__core', d: `M ${f(x0)} ${bandBot} L ${f(x1)} ${bandBot}` }));
+    // the ruler: a baseline the length of the sortie; the played length is drawn over it as light
+    staticG.appendChild(svg('path', { class: 'orr-tape__base', d: `M ${f(x0)} ${f(mid)} L ${f(x1)} ${f(mid)}` }));
+    playedBloom.setAttribute('stroke-width', f(14 * k));
+    playedBand.setAttribute('stroke-width', f(6 * k));
     if (empty()) {
+      for (const p of [playedBloom, playedBand, playedCore]) p.setAttribute('d', 'M 0 0');
       staticG.appendChild(Object.assign(svg('text', { x: f((x0 + x1) / 2), y: bandTop - 12, 'text-anchor': 'middle', class: 'orr-tape__empty' }),
         { textContent: 'NO FLIGHT RECORD FOR THIS SORTIE' }));
-      fillRect.setAttribute('width', 0);
       read.hidden = true;
       host.setAttribute('aria-disabled', 'true');
       host.setAttribute('aria-valuetext', 'No flight record');
@@ -171,8 +174,8 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     for (let t = 0; t <= L + 1e-6; t += minor) {
       const isMajor = Math.abs(t / major - Math.round(t / major)) < 1e-6;
       const xx = f(x(t));
-      if (isMajor) majD.push(`M ${xx} ${bandBot} L ${xx} ${bandBot + 11 * k}`);
-      else minD.push(`M ${xx} ${bandBot} L ${xx} ${bandBot + 5 * k}`);
+      if (isMajor) majD.push(`M ${xx} ${f(mid)} L ${xx} ${f(bandBot + 11 * k)}`);
+      else minD.push(`M ${xx} ${f(mid)} L ${xx} ${f(mid + 7 * k)}`);
       if (isMajor && x1 - x(t) > killW + 14 && (t === 0 || x(t) - x0 > 96 * k)) {
         staticG.appendChild(Object.assign(svg('text', { x: xx, y: f(bandBot + 26 * k), 'text-anchor': t === 0 ? 'start' : 'middle', class: 'orr-tape__time' }),
           { textContent: t === 0 ? 'LAUNCH' : tickTime(t) }));
@@ -223,9 +226,6 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     handG.appendChild(svg('circle', { class: 'orr-tape__hand-glow', cx: 0, cy: bandTop + bandH / 2, r: 12 }));
     const cyb = bandTop + bandH / 2;
     handG.appendChild(svg('path', { class: 'orr-tape__hand-bead', d: `M 0 ${cyb - 7} L 7 ${cyb} L 0 ${cyb + 7} L -7 ${cyb} Z` }));
-    fillRect.setAttribute('y', bandTop);
-    fillRect.setAttribute('height', bandH);
-    fillRect.setAttribute('x', f(x0));
     place(false);
   }
 
@@ -243,15 +243,16 @@ export function createSortieTape({ host, onScrub = null } = {}) {
 
   function place(notify = true) {
     if (!geo || empty()) return;
-    const cx = x(cursor);
-    handG.setAttribute('transform', `translate(${f(cx)} 0)`);
-    fillRect.setAttribute('width', f(Math.max(0, cx - geo.x0)));
     const atEnd = cursor >= model.lengthS - 0.5;
+    const cx = Math.min(x(cursor), geo.x1 - 22 * geo.k);
+    handG.setAttribute('transform', `translate(${f(cx)} 0)`);
+    const played = cx - geo.x0 > 2 ? `M ${f(geo.x0)} ${f(geo.mid)} L ${f(cx)} ${f(geo.mid)}` : 'M 0 0';
+    for (const p of [playedBloom, playedBand, playedCore]) p.setAttribute('d', played);
     const ev = atEnd ? null : eventAt(cursor);
-    readT.textContent = fmtSortieTime(cursor);
-    readW.textContent = atEnd ? (model.killLabel || 'The loss') : ev ? ev.label : '';
-    readW.classList.toggle('is-threat', atEnd || !!(ev && ev.threat));
-    read.style.top = `${f(geo.bandBot + 36 * geoK)}px`;
+    readW.textContent = ev ? ev.label : '';
+    read.hidden = !ev;
+    readW.classList.toggle('is-threat', !!(ev && ev.threat));
+    read.style.top = `${f(geo.bandBot + 32 * geoK)}px`;
     // the readout rides the cursor, held inside the tape
     const rw = read.offsetWidth || 0;
     const half = rw / 2;
@@ -260,7 +261,7 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     host.setAttribute('aria-valuemin', '0');
     host.setAttribute('aria-valuemax', String(Math.round(model.lengthS)));
     host.setAttribute('aria-valuenow', String(Math.round(cursor)));
-    host.setAttribute('aria-valuetext', `${fmtSortieTime(cursor)}${readW.textContent ? ', ' + readW.textContent : ''}`);
+    host.setAttribute('aria-valuetext', `${fmtSortieTime(cursor)}${atEnd ? ', ' + (model.killLabel || 'the loss') : ev ? ', ' + ev.label : ''}`);
     if (notify && typeof onScrub === 'function') onScrub(cursor, ev, atEnd);
   }
 

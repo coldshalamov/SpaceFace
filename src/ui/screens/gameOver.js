@@ -592,7 +592,8 @@ export const gameOverScreen = {
       bead.setAttribute('transform', `rotate(${deg.toFixed(2)})`);
     }
     if (this._hubScrubT) this._hubScrubT.textContent = fmtSortieTime(t);
-    if (this._hubScrubW) this._hubScrubW.textContent = ev ? ev.label : 'Into the sortie';
+    // the hub reads the time; the moment's word rides the tape's Hand (one place each)
+    if (this._hubScrubW) this._hubScrubW.textContent = 'Into the sortie';
   },
 
   /** The ring the career record stands round: the career's time as one closed track with a bezel of
@@ -733,10 +734,12 @@ export const gameOverScreen = {
     const values = {
       cause: receipt && (receipt.fatalSummary || receipt.cause) || death.cause,
       lifespan: death.lifespan,
+      // "aft hull, main drive · shield 0% · armour 0% · hull 0%": where it struck, then what was left
       damage: receipt ? [
-        receipt.direction,
-        String(receipt.dominantLayer || 'hull').toUpperCase(),
-        receipt.subsystemId && String(receipt.subsystemId).replace(/_/g, ' ').toUpperCase(),
+        [
+          [receipt.direction, String(receipt.dominantLayer || 'hull').toUpperCase()].filter(Boolean).join(' '),
+          receipt.subsystemId && String(receipt.subsystemId).replace(/_/g, ' ').toUpperCase(),
+        ].filter(Boolean).join(', '),
         receipt.vitalsPct && `shield ${receipt.vitalsPct.shield}% · armour ${receipt.vitalsPct.armor}% · hull ${receipt.vitalsPct.hull}%`,
       ].filter(Boolean).join(' · ') : 'Unresolved',
       dock: recovery.stationName || 'No recovery route',
