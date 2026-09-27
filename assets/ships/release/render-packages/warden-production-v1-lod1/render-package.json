@@ -16,15 +16,15 @@
         0,
         1,
         0,
-        0.800000011920929,
-        0.25,
+        2.813347578048706,
+        3.5244998931884766,
         0,
         1
       ],
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
-        3,
-        10
+        0,
+        20
       ],
       "parentNodeId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "worldTransform": [
@@ -40,8 +40,8 @@
         0,
         1,
         0,
-        0.800000011920929,
-        0.25,
+        2.813347578048706,
+        3.5244998931884766,
         0,
         1
       ]
@@ -62,15 +62,15 @@
         0,
         1,
         0,
-        -0.4000000059604645,
-        -1.350000023841858,
+        -0.5567693710327148,
+        -1.9500000476837158,
         0,
         1
       ],
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
-        3,
-        11
+        0,
+        21
       ],
       "parentNodeId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "worldTransform": [
@@ -86,8 +86,8 @@
         0,
         1,
         0,
-        -0.4000000059604645,
-        -1.350000023841858,
+        -0.5567693710327148,
+        -1.9500000476837158,
         0,
         1
       ]
@@ -108,15 +108,15 @@
         0,
         1,
         0,
-        -8.800000190734863,
-        0.07999999821186066,
+        -19.899999618530273,
+        0.25,
         0,
         1
       ],
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
-        3,
-        12
+        0,
+        22
       ],
       "parentNodeId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "worldTransform": [
@@ -132,8 +132,8 @@
         0,
         1,
         0,
-        -8.800000190734863,
-        0.07999999821186066,
+        -19.899999618530273,
+        0.25,
         0,
         1
       ]
@@ -154,15 +154,15 @@
         0,
         1,
         0,
-        9.399999618530273,
-        -0.15000000596046448,
+        20.00646209716797,
+        3.374499797821045,
         0,
         1
       ],
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
-        3,
-        13
+        0,
+        23
       ],
       "parentNodeId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "worldTransform": [
@@ -178,8 +178,8 @@
         0,
         1,
         0,
-        9.399999618530273,
-        -0.15000000596046448,
+        20.00646209716797,
+        3.374499797821045,
         0,
         1
       ]
@@ -200,15 +200,15 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        2.700000047683716,
+        -0.5567693710327148,
+        3.5244998931884766,
+        -3.75,
         1
       ],
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
-        3,
-        14
+        0,
+        24
       ],
       "parentNodeId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "worldTransform": [
@@ -224,9 +224,9 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        2.700000047683716,
+        -0.5567693710327148,
+        3.5244998931884766,
+        -3.75,
         1
       ]
     },
@@ -246,15 +246,15 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        -2.700000047683716,
+        -0.5567693710327148,
+        3.5244998931884766,
+        3.75,
         1
       ],
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
-        3,
-        15
+        0,
+        25
       ],
       "parentNodeId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "worldTransform": [
@@ -270,9 +270,55 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        -2.700000047683716,
+        -0.5567693710327148,
+        3.5244998931884766,
+        3.75,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.824591636657715,
+        4.524499893188477,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentNodeId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.824591636657715,
+        4.524499893188477,
+        0,
         1
       ]
     },
@@ -292,15 +338,15 @@
         0,
         1,
         0,
-        -9.199999809265137,
-        0.07999999821186066,
+        -21.720001220703125,
+        0.25,
         0,
         1
       ],
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
-        3,
-        16
+        0,
+        27
       ],
       "parentNodeId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "worldTransform": [
@@ -316,8 +362,8 @@
         0,
         1,
         0,
-        -9.199999809265137,
-        0.07999999821186066,
+        -21.720001220703125,
+        0.25,
         0,
         1
       ]
@@ -338,15 +384,15 @@
         0,
         1,
         0,
-        -9,
-        0.07999999821186066,
-        1.75,
+        -21.720001220703125,
+        0.25,
+        -1.5625,
         1
       ],
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
-        3,
-        17
+        0,
+        28
       ],
       "parentNodeId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "worldTransform": [
@@ -362,9 +408,9 @@
         0,
         1,
         0,
-        -9,
-        0.07999999821186066,
-        1.75,
+        -21.720001220703125,
+        0.25,
+        -1.5625,
         1
       ]
     },
@@ -384,15 +430,15 @@
         0,
         1,
         0,
-        -9,
-        0.07999999821186066,
-        -1.75,
+        -21.720001220703125,
+        0.25,
+        1.5625,
         1
       ],
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
-        3,
-        18
+        0,
+        29
       ],
       "parentNodeId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "worldTransform": [
@@ -408,9 +454,9 @@
         0,
         1,
         0,
-        -9,
-        0.07999999821186066,
-        -1.75,
+        -21.720001220703125,
+        0.25,
+        1.5625,
         1
       ]
     },
@@ -430,15 +476,15 @@
         0,
         1,
         0,
-        0.6000000238418579,
-        1.75,
+        -0.5567693710327148,
+        8.99899959564209,
         0,
         1
       ],
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
-        3,
-        19
+        0,
+        30
       ],
       "parentNodeId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "worldTransform": [
@@ -454,8 +500,8 @@
         0,
         1,
         0,
-        0.6000000238418579,
-        1.75,
+        -0.5567693710327148,
+        8.99899959564209,
         0,
         1
       ]
@@ -476,15 +522,15 @@
         0,
         1,
         0,
-        8.800000190734863,
-        0.25,
+        20.106462478637695,
+        3.5244998931884766,
         0,
         1
       ],
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
-        3,
-        20
+        0,
+        31
       ],
       "parentNodeId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "worldTransform": [
@@ -500,8 +546,8 @@
         0,
         1,
         0,
-        8.800000190734863,
-        0.25,
+        20.106462478637695,
+        3.5244998931884766,
         0,
         1
       ]
@@ -519,333 +565,564 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ba38731ce29ad7d64a14521c65d632efabd59837e804d6756b66a3953b371755",
-  "dynamicGroups": [],
+  "contentHash": "4f97ca322acbb9d874e6d745dbc2475c07160c39128b7e80132a327cb27c9e1f",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-armor-port-armor.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-armor-port-armor"
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-drive-core"
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-nav-port"
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-armor.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-armor"
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-livery.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-livery"
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-mechanical"
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-mechanicaldark.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-mechanicaldark"
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-armor.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-armor"
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-glow-red.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-glow-red"
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-mechanical"
+    }
+  ],
   "geometry": [
     {
       "bounds": {
         "max": [
-          9.699999809265137,
-          1.2003967761993408,
-          2.700303792953491
+          20.50613784790039,
+          9.00859546661377,
+          6.256613254547119
         ],
         "min": [
-          -9.600000381469727,
-          -1.2003967761993408,
-          -2.700303792953491
+          -21.620895385742188,
+          -1.9978913068771362,
+          -6.256659030914307
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cba3c3363c185d85f1ccc82970df05a9c73952c19eb9d253388ac17950b1e092",
+      "geometryHash": "888671323850d2b4dd134c48f4691f3f07e443ac80c2df61d2631b416ade846e",
       "id": "sf.render.warden-production-v1-lod1.node.collision-hull.primitive.0",
-      "indexCount": 30,
+      "indexCount": 900,
       "indexed": true,
       "materialHash": null,
       "materialPipelineKey": "non-render",
-      "meshName": "COLLISION_HULL_MESH",
+      "meshName": "COLLISION_HULL.001",
       "nodeId": "sf.render.warden-production-v1-lod1.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 7
+      "vertexCount": 883
     },
     {
       "bounds": {
         "max": [
-          0.9482294321060181,
-          1.2986911535263062,
-          2.4374642372131348
+          20.500219345092773,
+          6.545926570892334,
+          6.117138862609863
         ],
         "min": [
-          -1.0187188386917114,
-          0.23257677257061005,
-          -0.5187320709228516
+          -19.000045776367188,
+          -1.9985809326171875,
+          -5.61588716506958
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fabc824fba1ec6928dea932053ffb03f1548c50f24e8dcc9b62241563a9f770f",
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-accent.primitive.0",
-      "indexCount": 72,
-      "indexed": true,
-      "materialHash": "9a5688d10df354dd60ece3a67890d0f4e95eb10263c8f60ed337de26f260fec8",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.087",
-      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-accent",
-      "primitiveIndex": 0,
-      "vertexCount": 16
-    },
-    {
-      "bounds": {
-        "max": [
-          4.639999866485596,
-          2.290827751159668,
-          2.706645965576172
-        ],
-        "min": [
-          -11.131999969482422,
-          -0.7666292190551758,
-          -2.7175512313842773
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fb44e4ee5dda692f23906bf1f4435a754b51b55b6e00863142cd2e3d31f57199",
+      "geometryHash": "995838dd0204507445dce8a75e67c2d9727bcf6f48dfae7a0c9131d28968569d",
       "id": "sf.render.warden-production-v1-lod1.node.lod0-armor.primitive.0",
-      "indexCount": 4680,
+      "indexCount": 5568,
       "indexed": true,
-      "materialHash": "61e8fbc2177a0e6c2bbd655f548c1f7bba456190c77c0fcc5e9ac9982988b90f",
+      "materialHash": "9446f9f5b354774e6890c2b229eccd88530faa3145840a24595c979eebbc5440",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder",
+      "meshName": "LOD0_Armor.001",
       "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 874
+      "vertexCount": 1994
     },
     {
       "bounds": {
         "max": [
-          4.796665191650391,
-          2.324833393096924,
-          0.7200687527656555
+          -7,
+          5.92004919052124,
+          0.13965268433094025
         ],
         "min": [
-          0.8034853339195251,
-          1.2810518741607666,
-          -0.7175832390785217
+          -18.439998626708984,
+          2.5219504833221436,
+          -0.13965268433094025
         ]
       },
       "drawMode": 4,
-      "geometryHash": "abc5a0103702495633d81cce89d6864f1e0e33fa2be8f03f51ea040374796e28",
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-canopy.primitive.0",
-      "indexCount": 174,
+      "geometryHash": "af0c9a61673bf9533e019b7df568d1647b353d7d256b97fe2fc9317af931809b",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-beacon-amber.primitive.0",
+      "indexCount": 72,
       "indexed": true,
-      "materialHash": "e6c3a55ca9fec0f5967eb6ecb79b1e29c898d5f9c6b4a6f7bd79406abdab911b",
-      "materialPipelineKey": "blend",
-      "meshName": "Canopy_Glass_Mesh",
-      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-canopy",
-      "primitiveIndex": 0,
-      "vertexCount": 33
-    },
-    {
-      "bounds": {
-        "max": [
-          -10.505989074707031,
-          0.7230553030967712,
-          2.4430136680603027
-        ],
-        "min": [
-          -10.73801040649414,
-          -0.5630552768707275,
-          -2.4430134296417236
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0ca71ee7af110ac8bdc5cfb36be1a38be45c575c3f1fc079ee1f8d220c2c631c",
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-ceramic.primitive.0",
-      "indexCount": 540,
-      "indexed": true,
-      "materialHash": "5d74f67d76bd5747492c9e09d78ffed1b0257405ece8d447aec91a3728ab5ee6",
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
-      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-ceramic",
+      "meshName": "LOD0_Beacon_Amber.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          9.987324714660645,
-          1.2936937808990479,
-          2.4907021522521973
+          -3.8168959617614746,
+          0.7465071617080367,
+          -5.251985862736998
         ],
         "min": [
-          -9.132468223571777,
-          -1.1196937561035156,
-          -2.4907021522521973
+          -15.198457717895508,
+          -0.1996696083261168,
+          -6.118967220301332
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ab40ddbf0318a9a1fe0c9ee48b48c3f53a1cbeb853c2e850acc063338a64225",
+      "geometryHash": "aabad3b7fcaad1f693a2385c90363b9feaaf6e4fd4689a71a076fad018669752",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-armor-port-armor.primitive.0",
+      "indexCount": 264,
+      "indexed": true,
+      "materialHash": "9446f9f5b354774e6890c2b229eccd88530faa3145840a24595c979eebbc5440",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_ARMOR_PORT_Armor.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-armor-port-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 87
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.24981958371994,
+          0.9926554282192825,
+          5.0403079111129045
+        ],
+        "min": [
+          -19.52516477602127,
+          -0.4926564414982437,
+          -5.040308086201549
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "af4a11fee4226e855b4189c839055bb21c73d2ade0dc1cda71926cd4b9a53611",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-drive-core.primitive.0",
+      "indexCount": 264,
+      "indexed": true,
+      "materialHash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_DRIVE_CORE.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 98
+    },
+    {
+      "bounds": {
+        "max": [
+          18.59000015258789,
+          1.763104112876194,
+          -0.3608989182473228
+        ],
+        "min": [
+          -15.449999809265137,
+          0.7948958556525536,
+          -6.24910106625547
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ca48d58ff0efa600a5bbdd8e5053ff744aba23214aa5c81b81c383dffd63b4d7",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-nav-port.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_PORT.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          18.59000015258789,
+          1.763104112876194,
+          6.24910106625547
+        ],
+        "min": [
+          -15.449999809265137,
+          0.7948958556525536,
+          0.3608989182473228
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ff7e0a3a2a06381e677817c63c693387317a3b449f96651c98a5591c4c1d32c2",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-nav-starboard.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_STARBOARD.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -11.217034339904785,
+          1.8379283494485412,
+          -4.283041851635574
+        ],
+        "min": [
+          -12.869966506958008,
+          1.3160745554434266,
+          -5.616959674243332
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3c67c3fc533cc339bd4f13ea180c5edafc91eeb95a7b18ef722ddba8ec37d804",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-armor.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "9446f9f5b354774e6890c2b229eccd88530faa3145840a24595c979eebbc5440",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SECONDARY_TURRET_Armor.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 52
+    },
+    {
+      "bounds": {
+        "max": [
+          -11.245999813079834,
+          1.3275900907914777,
+          -4.195999622344971
+        ],
+        "min": [
+          -12.754000186920166,
+          1.2348098926145892,
+          -5.703999996185303
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9100d5ef519849a5a1d26514ecc78c29a259dff506115b806f573153d6adccf1",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-livery.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "5f1665af9bea6e76fa8bf43890e9e5067fffee6e119a896644074219941ea092",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SECONDARY_TURRET_Livery.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.04199504852295,
+          1.8727535907764963,
+          -4.2540917762246195
+        ],
+        "min": [
+          -12.696000099182129,
+          0.9100464280108878,
+          -5.645907842305654
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6e6f5fadb48638efceb6d3ce522ae4bcffd2c9e6668dc1a917f6dd94d89c8047",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-mechanical.primitive.0",
+      "indexCount": 483,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SECONDARY_TURRET_Mechanical.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 241
+    },
+    {
+      "bounds": {
+        "max": [
+          -8.972399711608887,
+          1.6374119258344957,
+          -4.254019384639986
+        ],
+        "min": [
+          -12.696000099182129,
+          0.9101240300714186,
+          -5.645980233890287
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "04a01c10309eba287ade21914bbdce52cd9c369ebe079889f6f0e2bc53a9abc9",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-mechanicaldark.primitive.0",
+      "indexCount": 261,
+      "indexed": true,
+      "materialHash": "dcd4cd59c7ce3b6ef6ecbe52006f79a915ed520a93b9de115d857062c4b56c57",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SECONDARY_TURRET_MechanicalDark.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 115
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.483929173821758,
+          8.950868212830564,
+          0.41605913639068604
+        ],
+        "min": [
+          -6.296383364325215,
+          8.500087178099612,
+          -0.4384324848651886
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "52eacd7af95100e2a86c3fe11d30251cfdf09c16d8080be10f90688ddf9fd357",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-armor.primitive.0",
+      "indexCount": 66,
+      "indexed": true,
+      "materialHash": "9446f9f5b354774e6890c2b229eccd88530faa3145840a24595c979eebbc5440",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SENSOR_MAST_Armor.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 34
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.829999923706055,
+          9.016329884096182,
+          0.07000017166137695
+        ],
+        "min": [
+          -5.970000267028809,
+          8.983670115903818,
+          -0.07000017166137695
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0bcfeed5853f94322ccb19e21b5b85e7c5746d611f07f591e2dde080624e2e89",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-glow-red.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SENSOR_MAST_glow_red.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-glow-red",
+      "primitiveIndex": 0,
+      "vertexCount": 8
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.274920515535763,
+          8.600191697175879,
+          1.2999999523162842
+        ],
+        "min": [
+          -6.041185327054569,
+          6.4001063260479985,
+          -1.2999999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "46dfc032ac1d8ecd81ba4016b0180b854d8f7791f9ee9dbc09fd8e21aa20f1e0",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-mechanical.primitive.0",
+      "indexCount": 78,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SENSOR_MAST_Mechanical.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 54
+    },
+    {
+      "bounds": {
+        "max": [
+          20.500219345092773,
+          5.8003973960876465,
+          5.999120235443115
+        ],
+        "min": [
+          -19.00006866455078,
+          -1.186621904373169,
+          -5.999120712280273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fef0e24235dd82cc8779c3889d8f40c3fe88e74109d074cc6e2d3913ab471dbf",
       "id": "sf.render.warden-production-v1-lod1.node.lod0-hull.primitive.0",
-      "indexCount": 1098,
+      "indexCount": 5538,
       "indexed": true,
-      "materialHash": "d9df6bdbd93761527519ff7adaa921fdb4cb6d1de1c8207b30ae8e6c528d98c4",
+      "materialHash": "21a98d48bd7070c8f5f58f2ff8dc072ff50831426ed217b22a1af78eef36800b",
       "materialPipelineKey": "opaque",
-      "meshName": "Pressure_Hull_Mesh",
+      "meshName": "LOD0_Hull.001",
       "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 207
+      "vertexCount": 1753
     },
     {
       "bounds": {
         "max": [
-          7.5,
-          2.031937837600708,
-          2.9001004695892334
+          9.59999942779541,
+          5.250056743621826,
+          1.8747276067733765
         ],
         "min": [
-          -10.883743286132812,
-          -1.3500381708145142,
-          -2.89717173576355
+          -11,
+          3.949943780899048,
+          -1.8747276067733765
         ]
       },
       "drawMode": 4,
-      "geometryHash": "81c2adad93eaed7bb11975f7e510348b8e83fda25b1cc35de67dde9dab0bbe01",
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-mechanical.primitive.0",
-      "indexCount": 10428,
+      "geometryHash": "854bed99aad4308f3df722e5df17c5dbcd8d10aa93c68cec53811380d4aac1b5",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-lights-cyan.primitive.0",
+      "indexCount": 216,
       "indexed": true,
-      "materialHash": "fe199604c81459594049f23c2ef869c6d7e765b79031a95481bf195c7240c317",
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.010",
+      "meshName": "LOD0_Lights_Cyan.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          16.152664184570312,
+          5.644501209259033,
+          6.045858860015869
+        ],
+        "min": [
+          -15.329999923706055,
+          -0.18950101733207703,
+          -6.045858860015869
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9a28ba3a9eadc1909c210f81c619ebe8e624db2235c2fe542be1e521cfe0f865",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-lights-warm.primitive.0",
+      "indexCount": 8820,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Warm.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 5880
+    },
+    {
+      "bounds": {
+        "max": [
+          17.600000381469727,
+          5.7969865798950195,
+          5.704262733459473
+        ],
+        "min": [
+          -19.350000381469727,
+          -1.9477747678756714,
+          -5.704262733459473
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "31a89f89ef346af79d500cdf0584f4fa05c9c62e495fe9a479ae7823422fbb35",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-livery.primitive.0",
+      "indexCount": 6372,
+      "indexed": true,
+      "materialHash": "5f1665af9bea6e76fa8bf43890e9e5067fffee6e119a896644074219941ea092",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 2332
+    },
+    {
+      "bounds": {
+        "max": [
+          17.696199417114258,
+          7.199515342712402,
+          6.170646667480469
+        ],
+        "min": [
+          -21.5,
+          -1.4466876983642578,
+          -6.170646667480469
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3cdb1c3524d3cdcf10a79da677041d429bb920befbb0db1b7e8958d5fffdf762",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-mechanical.primitive.0",
+      "indexCount": 15759,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical.001",
       "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 2112
+      "vertexCount": 7196
     },
     {
       "bounds": {
         "max": [
-          -0.6503430604934692,
-          1.474230408668518,
-          2.716510772705078
+          20.506181716918945,
+          4.5860371589660645,
+          6.215369701385498
         ],
         "min": [
-          -10.42650032043457,
-          -0.8362201452255249,
-          -2.7165110111236572
+          -21.6200008392334,
+          -1.497556209564209,
+          -6.215369701385498
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2c02aff62829756e543fd3140b6254dd595698533687c5c8ed2cfb2923663a42",
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-radiator.primitive.0",
-      "indexCount": 1218,
+      "geometryHash": "ecf39cf67623ee85cda9059d3f5572ecc405b133e3b415d0a3cdc8c91411c100",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 10089,
       "indexed": true,
-      "materialHash": "1119c6ecb65cca176db69c7b1c06fcd935dcc0ab47b717d16b1b4222496f0dec",
+      "materialHash": "dcd4cd59c7ce3b6ef6ecbe52006f79a915ed520a93b9de115d857062c4b56c57",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.008",
-      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-radiator",
+      "meshName": "LOD0_MechanicalDark.001",
+      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 263
-    },
-    {
-      "bounds": {
-        "max": [
-          4.6454057693481445,
-          2.272723436355591,
-          2.135744094848633
-        ],
-        "min": [
-          -10.192276000976562,
-          0.24588346481323242,
-          -2.135744094848633
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a4fe41cf3e772e20fa3cc2fbbe814e946aa60063a5e5fd0984038e14ea1c3591",
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-remaster-material-brushedmetal-remasternickel.primitive.0",
-      "indexCount": 1962,
-      "indexed": true,
-      "materialHash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Remaster_WardenCasemateGallery-1_NickelSeam",
-      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-remaster-material-brushedmetal-remasternickel",
-      "primitiveIndex": 0,
-      "vertexCount": 423
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.5855000019073486,
-          0.893887460231781,
-          1.8481510877609253
-        ],
-        "min": [
-          -10.2311372756958,
-          0.313413143157959,
-          -1.8481510877609253
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e631de070ffccf872e7866b4a75f5521a854b39d09e8768045b7d74ff6dcecfd",
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-remaster-material-mechanical-remasterheatcopper.primitive.0",
-      "indexCount": 330,
-      "indexed": true,
-      "materialHash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Remaster_WardenCasemateGallery-1_CoolantReturn",
-      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-remaster-material-mechanical-remasterheatcopper",
-      "primitiveIndex": 0,
-      "vertexCount": 65
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.024999976158142,
-          0.6914324164390564,
-          2.110114336013794
-        ],
-        "min": [
-          -9.47499942779541,
-          0.385069340467453,
-          -2.110114336013794
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "870dd407a73674be8a5f98f5e225b3b2cf4f8ebd077a89c349f81220fe2c79d3",
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-remaster-material-mechanical-remasteroxidized.primitive.0",
-      "indexCount": 348,
-      "indexed": true,
-      "materialHash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Remaster_WardenCasemateGallery-1_OxidizedLiner",
-      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-remaster-material-mechanical-remasteroxidized",
-      "primitiveIndex": 0,
-      "vertexCount": 68
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.1726726293563843,
-          0.3271712064743042,
-          2.9202709197998047
-        ],
-        "min": [
-          -10.977828979492188,
-          -0.16717122495174408,
-          -2.920271158218384
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "eeab786096465fe20f5519b2623c695190d6b66d3b8f138be47303e87429f39d",
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-thruster.primitive.0",
-      "indexCount": 630,
-      "indexed": true,
-      "materialHash": "1862618cc668036602c2f268bd533e2052e9d348d3eaa5a94b7ba2998823799b",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.007",
-      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-thruster",
-      "primitiveIndex": 0,
-      "vertexCount": 123
-    },
-    {
-      "bounds": {
-        "max": [
-          1.3391540050506592,
-          1.5363483428955078,
-          0.628309428691864
-        ],
-        "min": [
-          0.3217165768146515,
-          1.2796822786331177,
-          -0.6261919140815735
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "179b889b0cb1dfe1690e0ca2608160e79ff530979e314c782303ecfc716f4a3e",
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-warning.primitive.0",
-      "indexCount": 204,
-      "indexed": true,
-      "materialHash": "87280e6da392c5338b594db640ccb61ebb5c3d1445d7841bbd50ac4d4548473a",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.086",
-      "nodeId": "sf.render.warden-production-v1-lod1.node.lod0-warning",
-      "primitiveIndex": 0,
-      "vertexCount": 40
+      "vertexCount": 4424
     }
   ],
   "hlods": [],
@@ -853,87 +1130,205 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1119c6ecb65cca176db69c7b1c06fcd935dcc0ab47b717d16b1b4222496f0dec",
-      "id": "material:1119c6ecb65cca176db69c7b",
-      "name": "Material_Radiator",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "1862618cc668036602c2f268bd533e2052e9d348d3eaa5a94b7ba2998823799b",
-      "id": "material:1862618cc668036602c2f268",
-      "name": "Material_Thruster",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "5d74f67d76bd5747492c9e09d78ffed1b0257405ece8d447aec91a3728ab5ee6",
-      "id": "material:5d74f67d76bd5747492c9e09",
-      "name": "Material_Ceramic",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "61e8fbc2177a0e6c2bbd655f548c1f7bba456190c77c0fcc5e9ac9982988b90f",
-      "id": "material:61e8fbc2177a0e6c2bbd655f",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "87280e6da392c5338b594db640ccb61ebb5c3d1445d7841bbd50ac4d4548473a",
-      "id": "material:87280e6da392c5338b594db6",
-      "name": "Material_Warning",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
-      "id": "material:8ab96250fdee6299bd749485",
-      "name": "Material_Mechanical_RemasterHeatCopper",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "9a5688d10df354dd60ece3a67890d0f4e95eb10263c8f60ed337de26f260fec8",
-      "id": "material:9a5688d10df354dd60ece3a6",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
-      "id": "material:bc5362fa29283f47ae662c67",
-      "name": "Material_BrushedMetal_RemasterNickel",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "d9df6bdbd93761527519ff7adaa921fdb4cb6d1de1c8207b30ae8e6c528d98c4",
-      "id": "material:d9df6bdbd93761527519ff7a",
+      "hash": "21a98d48bd7070c8f5f58f2ff8dc072ff50831426ed217b22a1af78eef36800b",
+      "id": "material:21a98d48bd7070c8f5f58f2f",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "e6c3a55ca9fec0f5967eb6ecb79b1e29c898d5f9c6b4a6f7bd79406abdab911b",
-      "id": "material:e6c3a55ca9fec0f5967eb6ec",
-      "name": "Material_Canopy",
-      "pipelineKey": "opaque:double",
+      "hash": "5f1665af9bea6e76fa8bf43890e9e5067fffee6e119a896644074219941ea092",
+      "id": "material:5f1665af9bea6e76fa8bf438",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
-      "id": "material:eed6e8ec396ecaf2032f9016",
-      "name": "Material_Mechanical_RemasterOxidized",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "fe199604c81459594049f23c2ef869c6d7e765b79031a95481bf195c7240c317",
-      "id": "material:fe199604c81459594049f23c",
+      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "id": "material:7dbce0f058ce69aeee64664b",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "id": "material:85add90c89b799ae69ad3e2f",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "9446f9f5b354774e6890c2b229eccd88530faa3145840a24595c979eebbc5440",
+      "id": "material:9446f9f5b354774e6890c2b2",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "dcd4cd59c7ce3b6ef6ecbe52006f79a915ed520a93b9de115d857062c4b56c57",
+      "id": "material:dcd4cd59c7ce3b6ef6ecbe52",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "id": "material:f64dcbc7e999cc81995955b9",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -962,57 +1357,8 @@
       "mergeBoundary": "COLLISION_HULL",
       "nodeName": "COLLISION_HULL",
       "nodePath": [
-        3,
+        0,
         0
-      ],
-      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-accent",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Accent",
-      "nodeName": "LOD0_Accent",
-      "nodePath": [
-        3,
-        1
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -1060,7 +1406,56 @@
       "mergeBoundary": "LOD0_Armor",
       "nodeName": "LOD0_Armor",
       "nodePath": [
-        3,
+        0,
+        1
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
         2
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
@@ -1086,99 +1481,540 @@
       ]
     },
     {
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-canopy",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-armor-port-armor",
       "localTransform": [
-        1,
+        5.690780878067017,
         0,
         0,
         0,
         0,
-        1,
+        5.690780878067017,
         0,
         0,
         0,
         0,
-        1,
+        5.690780878067017,
         0,
-        0,
-        0,
-        0,
+        -9.507676839828491,
+        0.27341877669095993,
+        -5.685476541519165,
         1
       ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD0_Canopy",
-      "nodeName": "LOD0_Canopy",
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_ARMOR_PORT_Armor",
+      "nodeName": "LOD0_HOOK_ARMOR_PORT_Armor",
       "nodePath": [
-        3,
+        0,
         3
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
-      "role": "immutable",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
       "worldTransform": [
-        1,
+        5.690780878067017,
         0,
         0,
         0,
         0,
-        1,
+        5.690780878067017,
         0,
         0,
         0,
         0,
-        1,
+        5.690780878067017,
+        0,
+        -9.507676839828491,
+        0.27341877669095993,
+        -5.685476541519165,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-drive-core",
+      "localTransform": [
+        5.040307998657227,
         0,
         0,
         0,
+        0,
+        5.040307998657227,
+        0,
+        0,
+        0,
+        0,
+        5.040307998657227,
+        0,
+        -18.387492179870605,
+        0.2499994933605194,
+        -8.754432201385498e-8,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_DRIVE_CORE",
+      "nodeName": "LOD0_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        5.040307998657227,
+        0,
+        0,
+        0,
+        0,
+        5.040307998657227,
+        0,
+        0,
+        0,
+        0,
+        5.040307998657227,
+        0,
+        -18.387492179870605,
+        0.2499994933605194,
+        -8.754432201385498e-8,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-nav-port",
+      "localTransform": [
+        17.019999980926514,
+        0,
+        0,
+        0,
+        0,
+        17.019999980926514,
+        0,
+        0,
+        0,
+        0,
+        17.019999980926514,
+        0,
+        1.570000171661377,
+        1.2789999842643738,
+        -3.304999992251396,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+      "nodeName": "LOD0_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        17.019999980926514,
+        0,
+        0,
+        0,
+        0,
+        17.019999980926514,
+        0,
+        0,
+        0,
+        0,
+        17.019999980926514,
+        0,
+        1.570000171661377,
+        1.2789999842643738,
+        -3.304999992251396,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-nav-starboard",
+      "localTransform": [
+        17.019999980926514,
+        0,
+        0,
+        0,
+        0,
+        17.019999980926514,
+        0,
+        0,
+        0,
+        0,
+        17.019999980926514,
+        0,
+        1.570000171661377,
+        1.2789999842643738,
+        3.304999992251396,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        17.019999980926514,
+        0,
+        0,
+        0,
+        0,
+        17.019999980926514,
+        0,
+        0,
+        0,
+        0,
+        17.019999980926514,
+        0,
+        1.570000171661377,
+        1.2789999842643738,
+        3.304999992251396,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-armor",
+      "localTransform": [
+        0.8264660835266113,
+        0,
+        0,
+        0,
+        0,
+        0.8264660835266113,
+        0,
+        0,
+        0,
+        0,
+        0.8264660835266113,
+        0,
+        -12.043500423431396,
+        1.5770014524459839,
+        -4.950000762939453,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SECONDARY_TURRET_Armor",
+      "nodeName": "LOD0_HOOK_SECONDARY_TURRET_Armor",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        0.8264660835266113,
+        0,
+        0,
+        0,
+        0,
+        0.8264660835266113,
+        0,
+        0,
+        0,
+        0,
+        0.8264660835266113,
+        0,
+        -12.043500423431396,
+        1.5770014524459839,
+        -4.950000762939453,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-livery",
+      "localTransform": [
+        0.754000186920166,
+        0,
+        0,
+        0,
+        0,
+        0.754000186920166,
+        0,
+        0,
+        0,
+        0,
+        0.754000186920166,
+        0,
+        -12,
+        1.2811999917030334,
+        -4.949999809265137,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SECONDARY_TURRET_Livery",
+      "nodeName": "LOD0_HOOK_SECONDARY_TURRET_Livery",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        0.754000186920166,
+        0,
+        0,
+        0,
+        0,
+        0.754000186920166,
+        0,
+        0,
+        0,
+        0,
+        0.754000186920166,
+        0,
+        -12,
+        1.2811999917030334,
+        -4.949999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-mechanical",
+      "localTransform": [
+        1.8270025253295898,
+        0,
+        0,
+        0,
+        0,
+        1.8270025253295898,
+        0,
+        0,
+        0,
+        0,
+        1.8270025253295898,
+        0,
+        -10.868997573852539,
+        1.391400009393692,
+        -4.949999809265137,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SECONDARY_TURRET_Mechanical",
+      "nodeName": "LOD0_HOOK_SECONDARY_TURRET_Mechanical",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        1.8270025253295898,
+        0,
+        0,
+        0,
+        0,
+        1.8270025253295898,
+        0,
+        0,
+        0,
+        0,
+        1.8270025253295898,
+        0,
+        -10.868997573852539,
+        1.391400009393692,
+        -4.949999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-mechanicaldark",
+      "localTransform": [
+        1.861800193786621,
+        0,
+        0,
+        0,
+        0,
+        1.861800193786621,
+        0,
+        0,
+        0,
+        0,
+        1.861800193786621,
+        0,
+        -10.834199905395508,
+        1.2737679779529572,
+        -4.949999809265137,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SECONDARY_TURRET_MechanicalDark",
+      "nodeName": "LOD0_HOOK_SECONDARY_TURRET_MechanicalDark",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        1.861800193786621,
+        0,
+        0,
+        0,
+        0,
+        1.861800193786621,
+        0,
+        0,
+        0,
+        0,
+        1.861800193786621,
+        0,
+        -10.834199905395508,
+        1.2737679779529572,
+        -4.949999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-armor",
+      "localTransform": [
+        0.4272458106279373,
+        0,
+        0,
+        0,
+        0,
+        0.4272458106279373,
+        0,
+        0,
+        0,
+        0,
+        0.4272458106279373,
+        0,
+        -5.890156269073486,
+        8.725477695465088,
+        -0.011186674237251282,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SENSOR_MAST_Armor",
+      "nodeName": "LOD0_HOOK_SENSOR_MAST_Armor",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        0.4272458106279373,
+        0,
+        0,
+        0,
+        0,
+        0.4272458106279373,
+        0,
+        0,
+        0,
+        0,
+        0.4272458106279373,
+        0,
+        -5.890156269073486,
+        8.725477695465088,
+        -0.011186674237251282,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-glow-red",
+      "localTransform": [
+        0.07000017166137695,
+        0,
+        0,
+        0,
+        0,
+        0.07000017166137695,
+        0,
+        0,
+        0,
+        0,
+        0.07000017166137695,
+        0,
+        -5.900000095367432,
+        9,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SENSOR_MAST_glow_red",
+      "nodeName": "LOD0_HOOK_SENSOR_MAST_glow_red",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        0.07000017166137695,
+        0,
+        0,
+        0,
+        0,
+        0.07000017166137695,
+        0,
+        0,
+        0,
+        0,
+        0.07000017166137695,
+        0,
+        -5.900000095367432,
+        9,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-ceramic",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-mechanical",
       "localTransform": [
-        1,
+        1.2999999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.2999999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.2999999523162842,
         0,
-        0,
-        0,
+        -5.658052921295166,
+        7.5001490116119385,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Ceramic",
-      "nodeName": "LOD0_Ceramic",
+      "mergeBoundary": "LOD0_HOOK_SENSOR_MAST_Mechanical",
+      "nodeName": "LOD0_HOOK_SENSOR_MAST_Mechanical",
       "nodePath": [
-        3,
-        4
+        0,
+        13
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
-      "role": "immutable",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
       "worldTransform": [
-        1,
+        1.2999999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.2999999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.2999999523162842,
         0,
-        0,
-        0,
+        -5.658052921295166,
+        7.5001490116119385,
         0,
         1
       ]
@@ -1207,8 +2043,155 @@
       "mergeBoundary": "LOD0_Hull",
       "nodeName": "LOD0_Hull",
       "nodePath": [
-        3,
-        5
+        0,
+        14
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Cyan",
+      "nodeName": "LOD0_Lights_Cyan",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Warm",
+      "nodeName": "LOD0_Lights_Warm",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
+      "nodePath": [
+        0,
+        17
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -1256,8 +2239,8 @@
       "mergeBoundary": "LOD0_Mechanical",
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
-        3,
-        6
+        0,
+        18
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -1282,7 +2265,7 @@
       ]
     },
     {
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-radiator",
+      "id": "sf.render.warden-production-v1-lod1.node.lod0-mechanicaldark",
       "localTransform": [
         1,
         0,
@@ -1302,253 +2285,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Radiator",
-      "nodeName": "LOD0_Radiator",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
-        3,
-        7
-      ],
-      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
-      "worldTransform": [
-        1,
         0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-remaster-material-brushedmetal-remasternickel",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
-      "nodeName": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
-      "nodePath": [
-        0
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-remaster-material-mechanical-remasterheatcopper",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
-      "nodeName": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
-      "nodePath": [
-        2
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-remaster-material-mechanical-remasteroxidized",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
-      "nodeName": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
-      "nodePath": [
-        1
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-thruster",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Thruster",
-      "nodeName": "LOD0_Thruster",
-      "nodePath": [
-        3,
-        8
-      ],
-      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.warden-production-v1-lod1.node.lod0-warning",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Warning",
-      "nodeName": "LOD0_Warning",
-      "nodePath": [
-        3,
-        9
+        19
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -1587,8 +2328,8 @@
         0,
         1,
         0,
-        0.800000011920929,
-        0.25,
+        2.813347578048706,
+        3.5244998931884766,
         0,
         1
       ],
@@ -1596,8 +2337,8 @@
       "mergeBoundary": "SOCKET_Camera_Focus",
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
-        3,
-        10
+        0,
+        20
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -1615,8 +2356,8 @@
         0,
         1,
         0,
-        0.800000011920929,
-        0.25,
+        2.813347578048706,
+        3.5244998931884766,
         0,
         1
       ]
@@ -1636,8 +2377,8 @@
         0,
         1,
         0,
-        -0.4000000059604645,
-        -1.350000023841858,
+        -0.5567693710327148,
+        -1.9500000476837158,
         0,
         1
       ],
@@ -1645,8 +2386,8 @@
       "mergeBoundary": "SOCKET_Cargo_Ventral",
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
-        3,
-        11
+        0,
+        21
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -1664,8 +2405,8 @@
         0,
         1,
         0,
-        -0.4000000059604645,
-        -1.350000023841858,
+        -0.5567693710327148,
+        -1.9500000476837158,
         0,
         1
       ]
@@ -1685,8 +2426,8 @@
         0,
         1,
         0,
-        -8.800000190734863,
-        0.07999999821186066,
+        -19.899999618530273,
+        0.25,
         0,
         1
       ],
@@ -1694,8 +2435,8 @@
       "mergeBoundary": "SOCKET_Engine_Main",
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
-        3,
-        12
+        0,
+        22
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -1713,8 +2454,8 @@
         0,
         1,
         0,
-        -8.800000190734863,
-        0.07999999821186066,
+        -19.899999618530273,
+        0.25,
         0,
         1
       ]
@@ -1734,8 +2475,8 @@
         0,
         1,
         0,
-        9.399999618530273,
-        -0.15000000596046448,
+        20.00646209716797,
+        3.374499797821045,
         0,
         1
       ],
@@ -1743,8 +2484,8 @@
       "mergeBoundary": "SOCKET_Mining_Front",
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
-        3,
-        13
+        0,
+        23
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -1762,8 +2503,8 @@
         0,
         1,
         0,
-        9.399999618530273,
-        -0.15000000596046448,
+        20.00646209716797,
+        3.374499797821045,
         0,
         1
       ]
@@ -1783,17 +2524,17 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        2.700000047683716,
+        -0.5567693710327148,
+        3.5244998931884766,
+        -3.75,
         1
       ],
       "materialPipelineKey": "root",
       "mergeBoundary": "SOCKET_RCS_Port",
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
-        3,
-        14
+        0,
+        24
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -1811,9 +2552,9 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        2.700000047683716,
+        -0.5567693710327148,
+        3.5244998931884766,
+        -3.75,
         1
       ]
     },
@@ -1832,17 +2573,17 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        -2.700000047683716,
+        -0.5567693710327148,
+        3.5244998931884766,
+        3.75,
         1
       ],
       "materialPipelineKey": "root",
       "mergeBoundary": "SOCKET_RCS_Starboard",
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
-        3,
-        15
+        0,
+        25
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -1860,9 +2601,58 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        -2.700000047683716,
+        -0.5567693710327148,
+        3.5244998931884766,
+        3.75,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.warden-production-v1-lod1.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.824591636657715,
+        4.524499893188477,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.warden-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.824591636657715,
+        4.524499893188477,
+        0,
         1
       ]
     },
@@ -1881,8 +2671,8 @@
         0,
         1,
         0,
-        -9.199999809265137,
-        0.07999999821186066,
+        -21.720001220703125,
+        0.25,
         0,
         1
       ],
@@ -1890,8 +2680,8 @@
       "mergeBoundary": "SOCKET_Trail_Main",
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
-        3,
-        16
+        0,
+        27
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -1909,8 +2699,8 @@
         0,
         1,
         0,
-        -9.199999809265137,
-        0.07999999821186066,
+        -21.720001220703125,
+        0.25,
         0,
         1
       ]
@@ -1930,17 +2720,17 @@
         0,
         1,
         0,
-        -9,
-        0.07999999821186066,
-        1.75,
+        -21.720001220703125,
+        0.25,
+        -1.5625,
         1
       ],
       "materialPipelineKey": "root",
       "mergeBoundary": "SOCKET_Trail_Port",
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
-        3,
-        17
+        0,
+        28
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -1958,9 +2748,9 @@
         0,
         1,
         0,
-        -9,
-        0.07999999821186066,
-        1.75,
+        -21.720001220703125,
+        0.25,
+        -1.5625,
         1
       ]
     },
@@ -1979,17 +2769,17 @@
         0,
         1,
         0,
-        -9,
-        0.07999999821186066,
-        -1.75,
+        -21.720001220703125,
+        0.25,
+        1.5625,
         1
       ],
       "materialPipelineKey": "root",
       "mergeBoundary": "SOCKET_Trail_Starboard",
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
-        3,
-        18
+        0,
+        29
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -2007,9 +2797,9 @@
         0,
         1,
         0,
-        -9,
-        0.07999999821186066,
-        -1.75,
+        -21.720001220703125,
+        0.25,
+        1.5625,
         1
       ]
     },
@@ -2028,8 +2818,8 @@
         0,
         1,
         0,
-        0.6000000238418579,
-        1.75,
+        -0.5567693710327148,
+        8.99899959564209,
         0,
         1
       ],
@@ -2037,8 +2827,8 @@
       "mergeBoundary": "SOCKET_Utility_Dorsal",
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
-        3,
-        19
+        0,
+        30
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -2056,8 +2846,8 @@
         0,
         1,
         0,
-        0.6000000238418579,
-        1.75,
+        -0.5567693710327148,
+        8.99899959564209,
         0,
         1
       ]
@@ -2077,8 +2867,8 @@
         0,
         1,
         0,
-        8.800000190734863,
-        0.25,
+        20.106462478637695,
+        3.5244998931884766,
         0,
         1
       ],
@@ -2086,8 +2876,8 @@
       "mergeBoundary": "SOCKET_Weapon_Front",
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
-        3,
-        20
+        0,
+        31
       ],
       "parentId": "sf.render.warden-production-v1-lod1.node.warden-lod1-root",
       "role": "immutable",
@@ -2105,8 +2895,8 @@
         0,
         1,
         0,
-        8.800000190734863,
-        0.25,
+        20.106462478637695,
+        3.5244998931884766,
         0,
         1
       ]
@@ -2135,7 +2925,7 @@
       "mergeBoundary": "WARDEN_LOD1_ROOT",
       "nodeName": "WARDEN_LOD1_ROOT",
       "nodePath": [
-        3
+        0
       ],
       "parentId": null,
       "role": "immutable",
@@ -2162,49 +2952,49 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "1291b9792f9937eec5797dcafacfaad6f25c8a5300371567c7387f70bc918b00"
+      "sha256": "662c0f7e8bfe1a375c102607f0f3d0ede0e83720c33c6af2c6be018f23cbf794"
     },
     "sourceGlb": {
-      "bytes": 96228,
-      "sha256": "f019ad624dc52b9d30180ce20d1f384f84830b83804597aac9e25431bd5624d2",
+      "bytes": 668136,
+      "sha256": "9d1249be494e36f819ff87866b78df582c8bab47e407fc776ee95750557b3831",
       "uri": "warden_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 189651,
-      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
+      "bytes": 194750,
+      "sha256": "9e3f6dbeca3fc05adce40418ba5bae195a5dad7e28e78769b1e8ba69c602c3b8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 194812,
-    "sha256": "3bbd1880fd6fbc484298c36bcf9f2da0e7b20e7cddb0dd5a3176f08974d32a08",
+    "bytes": 1003992,
+    "sha256": "4ef1dcdbca4f2801e340cd9093ca60c3dd9477ca7d2b1e147449e8bf5de782d6",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.5723376274108887,
-        0.48739761114120483,
-        -1.1920928955078125e-7
+        -0.5573568344116211,
+        3.508874475739497,
+        -0.00002288818359375
       ],
       "max": [
-        9.987324714660645,
-        2.324833393096924,
-        2.9202709197998047
+        20.506181716918945,
+        9.016329884096182,
+        6.256613254547119
       ],
       "min": [
-        -11.131999969482422,
-        -1.3500381708145142,
-        -2.920271158218384
+        -21.620895385742188,
+        -1.9985809326171875,
+        -6.256659030914307
       ],
       "size": [
-        21.119324684143066,
-        3.674871563911438,
-        5.8405420780181885
+        42.12707710266113,
+        11.01491081671337,
+        12.513272285461426
       ]
     },
     "hidden": [
-      5
+      2
     ],
     "legacyPart": false,
     "markers": [
@@ -2222,20 +3012,34 @@
           0,
           1,
           0,
-          0.800000011920929,
-          0.25,
+          2.813347578048706,
+          3.5244998931884766,
           0,
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 15,
+        "planIndex": 22,
         "tags": {
           "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
           "socketRole": "camera"
         },
         "userData": {
           "name": "SOCKET_Camera_Focus",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Camera_Focus",
             "recordIds": [
@@ -2260,20 +3064,34 @@
           0,
           1,
           0,
-          -0.4000000059604645,
-          -1.350000023841858,
+          -0.5567693710327148,
+          -1.9500000476837158,
           0,
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 16,
+        "planIndex": 23,
         "tags": {
           "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
           "socketRole": "cargo"
         },
         "userData": {
           "name": "SOCKET_Cargo_Ventral",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Cargo_Ventral",
             "recordIds": [
@@ -2298,20 +3116,34 @@
           0,
           1,
           0,
-          -8.800000190734863,
-          0.07999999821186066,
+          -19.899999618530273,
+          0.25,
           0,
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 17,
+        "planIndex": 24,
         "tags": {
           "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
           "socketRole": "engine"
         },
         "userData": {
           "name": "SOCKET_Engine_Main",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Engine_Main",
             "recordIds": [
@@ -2336,20 +3168,34 @@
           0,
           1,
           0,
-          9.399999618530273,
-          -0.15000000596046448,
+          20.00646209716797,
+          3.374499797821045,
           0,
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 18,
+        "planIndex": 25,
         "tags": {
           "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
           "socketRole": "mining"
         },
         "userData": {
           "name": "SOCKET_Mining_Front",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Mining_Front",
             "recordIds": [
@@ -2374,20 +3220,34 @@
           0,
           1,
           0,
-          -1.2000000476837158,
-          0.15000000596046448,
-          2.700000047683716,
+          -0.5567693710327148,
+          3.5244998931884766,
+          -3.75,
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 19,
+        "planIndex": 26,
         "tags": {
           "socket": true,
-          "socketRole": "attachment"
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
         },
         "userData": {
           "name": "SOCKET_RCS_Port",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_RCS_Port",
             "recordIds": [
@@ -2412,20 +3272,34 @@
           0,
           1,
           0,
-          -1.2000000476837158,
-          0.15000000596046448,
-          -2.700000047683716,
+          -0.5567693710327148,
+          3.5244998931884766,
+          3.75,
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 20,
+        "planIndex": 27,
         "tags": {
           "socket": true,
-          "socketRole": "attachment"
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
         },
         "userData": {
           "name": "SOCKET_RCS_Starboard",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_RCS_Starboard",
             "recordIds": [
@@ -2450,20 +3324,86 @@
           0,
           1,
           0,
-          -9.199999809265137,
-          0.07999999821186066,
+          -9.824591636657715,
+          4.524499893188477,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 28,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.warden-production-v1-lod1.anchor.socket-tether-massline",
+              "sf.render.warden-production-v1-lod1.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -21.720001220703125,
+          0.25,
           0,
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 21,
+        "planIndex": 29,
         "tags": {
           "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
           "socketRole": "vfx"
         },
         "userData": {
           "name": "SOCKET_Trail_Main",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Main",
             "recordIds": [
@@ -2488,20 +3428,34 @@
           0,
           1,
           0,
-          -9,
-          0.07999999821186066,
-          1.75,
+          -21.720001220703125,
+          0.25,
+          -1.5625,
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 22,
+        "planIndex": 30,
         "tags": {
           "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
           "socketRole": "vfx"
         },
         "userData": {
           "name": "SOCKET_Trail_Port",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Port",
             "recordIds": [
@@ -2526,20 +3480,34 @@
           0,
           1,
           0,
-          -9,
-          0.07999999821186066,
-          -1.75,
+          -21.720001220703125,
+          0.25,
+          1.5625,
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 23,
+        "planIndex": 31,
         "tags": {
           "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
           "socketRole": "vfx"
         },
         "userData": {
           "name": "SOCKET_Trail_Starboard",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Starboard",
             "recordIds": [
@@ -2564,20 +3532,34 @@
           0,
           1,
           0,
-          0.6000000238418579,
-          1.75,
+          -0.5567693710327148,
+          8.99899959564209,
           0,
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 24,
+        "planIndex": 32,
         "tags": {
           "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
           "socketRole": "utility"
         },
         "userData": {
           "name": "SOCKET_Utility_Dorsal",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Utility_Dorsal",
             "recordIds": [
@@ -2602,20 +3584,34 @@
           0,
           1,
           0,
-          8.800000190734863,
-          0.25,
+          20.106462478637695,
+          3.5244998931884766,
           0,
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 25,
+        "planIndex": 33,
         "tags": {
           "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
           "socketRole": "weapon"
         },
         "userData": {
           "name": "SOCKET_Weapon_Front",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Weapon_Front",
             "recordIds": [
@@ -2628,55 +3624,52 @@
       }
     ],
     "materialProfileRoles": {
-      "accent": 1,
-      "ceramic": 1,
+      "accent": 2,
       "drive": 1,
-      "glass": 1,
-      "hull": 2,
-      "mechanical": 4,
-      "radiator": 1,
-      "warning": 1
+      "hull": 5,
+      "mechanical": 5,
+      "signal": 6
     },
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 2,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 3,
-        "role": "mechanical"
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "accent"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "glass"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "ceramic"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -2686,20 +3679,55 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "radiator"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "drive"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "warning"
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 26,
+    "nodeCount": 34,
     "primitives": [
       {
         "canopy": false,
@@ -2721,67 +3749,10 @@
           0,
           1
         ],
-        "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
-        "planIndex": 1,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+        "name": "LOD0_Armor",
         "planIndex": 3,
         "tags": {
           "canopy": false,
-          "chamfered": true,
           "lod": "lod0"
         }
       },
@@ -2805,91 +3776,336 @@
           0,
           1
         ],
-        "name": "LOD0_Accent",
+        "name": "LOD0_Beacon_Amber",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.690780878067017,
+          0,
+          0,
+          0,
+          0,
+          5.690780878067017,
+          0,
+          0,
+          0,
+          0,
+          5.690780878067017,
+          0,
+          -9.507676839828491,
+          0.27341877669095993,
+          -5.685476541519165,
+          1
+        ],
+        "name": "LOD0_HOOK_ARMOR_PORT_Armor",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "damageRole": "armor",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.040307998657227,
+          0,
+          0,
+          0,
+          0,
+          5.040307998657227,
+          0,
+          0,
+          0,
+          0,
+          5.040307998657227,
+          0,
+          -18.387492179870605,
+          0.2499994933605194,
+          -8.754432201385498e-8,
+          1
+        ],
+        "name": "LOD0_HOOK_DRIVE_CORE",
         "planIndex": 6,
         "tags": {
           "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            5.040307998657227,
+            0,
+            0,
+            0,
+            0,
+            5.040307998657227,
+            0,
+            0,
+            0,
+            0,
+            5.040307998657227,
+            0,
+            -18.387492179870605,
+            0.2499994933605194,
+            -8.754432201385498e-8,
+            1
+          ],
           "lod": "lod0"
         }
       },
       {
         "canopy": false,
         "matrix": [
-          1,
+          17.019999980926514,
           0,
           0,
           0,
           0,
-          1,
+          17.019999980926514,
           0,
           0,
           0,
           0,
-          1,
+          17.019999980926514,
           0,
-          0,
-          0,
-          0,
+          1.570000171661377,
+          1.2789999842643738,
+          -3.304999992251396,
           1
         ],
-        "name": "LOD0_Armor",
+        "name": "LOD0_HOOK_NAV_PORT",
         "planIndex": 7,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": true,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Canopy",
-        "planIndex": 8,
-        "tags": {
-          "canopy": true,
+          "damageRole": "navLight",
           "lod": "lod0"
         }
       },
       {
         "canopy": false,
         "matrix": [
-          1,
+          17.019999980926514,
           0,
           0,
           0,
           0,
-          1,
+          17.019999980926514,
           0,
           0,
           0,
           0,
-          1,
+          17.019999980926514,
           0,
-          0,
-          0,
-          0,
+          1.570000171661377,
+          1.2789999842643738,
+          3.304999992251396,
           1
         ],
-        "name": "LOD0_Ceramic",
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.8264660835266113,
+          0,
+          0,
+          0,
+          0,
+          0.8264660835266113,
+          0,
+          0,
+          0,
+          0,
+          0.8264660835266113,
+          0,
+          -12.043500423431396,
+          1.5770014524459839,
+          -4.950000762939453,
+          1
+        ],
+        "name": "LOD0_HOOK_SECONDARY_TURRET_Armor",
         "planIndex": 9,
         "tags": {
           "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.754000186920166,
+          0,
+          0,
+          0,
+          0,
+          0.754000186920166,
+          0,
+          0,
+          0,
+          0,
+          0.754000186920166,
+          0,
+          -12,
+          1.2811999917030334,
+          -4.949999809265137,
+          1
+        ],
+        "name": "LOD0_HOOK_SECONDARY_TURRET_Livery",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.8270025253295898,
+          0,
+          0,
+          0,
+          0,
+          1.8270025253295898,
+          0,
+          0,
+          0,
+          0,
+          1.8270025253295898,
+          0,
+          -10.868997573852539,
+          1.391400009393692,
+          -4.949999809265137,
+          1
+        ],
+        "name": "LOD0_HOOK_SECONDARY_TURRET_Mechanical",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.861800193786621,
+          0,
+          0,
+          0,
+          0,
+          1.861800193786621,
+          0,
+          0,
+          0,
+          0,
+          1.861800193786621,
+          0,
+          -10.834199905395508,
+          1.2737679779529572,
+          -4.949999809265137,
+          1
+        ],
+        "name": "LOD0_HOOK_SECONDARY_TURRET_MechanicalDark",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4272458106279373,
+          0,
+          0,
+          0,
+          0,
+          0.4272458106279373,
+          0,
+          0,
+          0,
+          0,
+          0.4272458106279373,
+          0,
+          -5.890156269073486,
+          8.725477695465088,
+          -0.011186674237251282,
+          1
+        ],
+        "name": "LOD0_HOOK_SENSOR_MAST_Armor",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07000017166137695,
+          0,
+          0,
+          0,
+          0,
+          0.07000017166137695,
+          0,
+          0,
+          0,
+          0,
+          0.07000017166137695,
+          0,
+          -5.900000095367432,
+          9,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_SENSOR_MAST_glow_red",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.2999999523162842,
+          0,
+          0,
+          0,
+          0,
+          1.2999999523162842,
+          0,
+          0,
+          0,
+          0,
+          1.2999999523162842,
+          0,
+          -5.658052921295166,
+          7.5001490116119385,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_SENSOR_MAST_Mechanical",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
           "lod": "lod0"
         }
       },
@@ -2914,7 +4130,88 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 10,
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Lights_Cyan",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Lights_Warm",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Livery",
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2941,7 +4238,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 11,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2967,65 +4264,10 @@
           0,
           1
         ],
-        "name": "LOD0_Radiator",
-        "planIndex": 12,
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 21,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Thruster",
-        "planIndex": 13,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Warning",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
           "lod": "lod0"
         }
       }
@@ -3034,43 +4276,51 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/warden_production_v1_lod1.glb"
   },
-  "runtimeHash": "6988b1515d403592690b471b73642a269fe9723f18a7199886715f5773e03883",
+  "runtimeHash": "6057af2919355a13b75438fc674c76bf113a193035d75c3f10842a8efb2bff27",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          9.987324714660645,
-          2.324833393096924,
-          2.9202709197998047
+          20.506181716918945,
+          9.016329884096182,
+          6.256613254547119
         ],
         "min": [
-          -11.131999969482422,
-          -1.3500381708145142,
-          -2.920271158218384
+          -21.620895385742188,
+          -1.9985809326171875,
+          -6.256659030914307
         ]
       },
       "id": "sf.render.warden-production-v1-lod1.body",
       "nodeIds": [
         "sf.render.warden-production-v1-lod1.node.collision-hull",
-        "sf.render.warden-production-v1-lod1.node.lod0-accent",
         "sf.render.warden-production-v1-lod1.node.lod0-armor",
-        "sf.render.warden-production-v1-lod1.node.lod0-canopy",
-        "sf.render.warden-production-v1-lod1.node.lod0-ceramic",
+        "sf.render.warden-production-v1-lod1.node.lod0-beacon-amber",
+        "sf.render.warden-production-v1-lod1.node.lod0-hook-armor-port-armor",
+        "sf.render.warden-production-v1-lod1.node.lod0-hook-drive-core",
+        "sf.render.warden-production-v1-lod1.node.lod0-hook-nav-port",
+        "sf.render.warden-production-v1-lod1.node.lod0-hook-nav-starboard",
+        "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-armor",
+        "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-livery",
+        "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-mechanical",
+        "sf.render.warden-production-v1-lod1.node.lod0-hook-secondary-turret-mechanicaldark",
+        "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-armor",
+        "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-glow-red",
+        "sf.render.warden-production-v1-lod1.node.lod0-hook-sensor-mast-mechanical",
         "sf.render.warden-production-v1-lod1.node.lod0-hull",
+        "sf.render.warden-production-v1-lod1.node.lod0-lights-cyan",
+        "sf.render.warden-production-v1-lod1.node.lod0-lights-warm",
+        "sf.render.warden-production-v1-lod1.node.lod0-livery",
         "sf.render.warden-production-v1-lod1.node.lod0-mechanical",
-        "sf.render.warden-production-v1-lod1.node.lod0-radiator",
-        "sf.render.warden-production-v1-lod1.node.lod0-remaster-material-brushedmetal-remasternickel",
-        "sf.render.warden-production-v1-lod1.node.lod0-remaster-material-mechanical-remasterheatcopper",
-        "sf.render.warden-production-v1-lod1.node.lod0-remaster-material-mechanical-remasteroxidized",
-        "sf.render.warden-production-v1-lod1.node.lod0-thruster",
-        "sf.render.warden-production-v1-lod1.node.lod0-warning",
+        "sf.render.warden-production-v1-lod1.node.lod0-mechanicaldark",
         "sf.render.warden-production-v1-lod1.node.socket-camera-focus",
         "sf.render.warden-production-v1-lod1.node.socket-cargo-ventral",
         "sf.render.warden-production-v1-lod1.node.socket-engine-main",
         "sf.render.warden-production-v1-lod1.node.socket-mining-front",
         "sf.render.warden-production-v1-lod1.node.socket-rcs-port",
         "sf.render.warden-production-v1-lod1.node.socket-rcs-starboard",
+        "sf.render.warden-production-v1-lod1.node.socket-tether-massline",
         "sf.render.warden-production-v1-lod1.node.socket-trail-main",
         "sf.render.warden-production-v1-lod1.node.socket-trail-port",
         "sf.render.warden-production-v1-lod1.node.socket-trail-starboard",

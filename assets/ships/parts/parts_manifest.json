@@ -6280,19 +6280,19 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_colossus",
-      "tris": 56910,
-      "bytes": 2960140,
+      "tris": 58136,
+      "bytes": 3525476,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent",
-        "warning": "Material_Warning",
-        "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -6310,19 +6310,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -13.132000183461342,
-          -1.5999999716877937,
-          -3.3199996948242188
+          -26.92018699645996,
+          -2.3138718605041504,
+          -13.108247756958008
         ],
         "max": [
-          12,
-          2.580000162124634,
-          3.319999933242798
+          26.58051109313965,
+          9.7524995803833,
+          13.108311653137207
         ],
         "dimensionsM": [
-          25.132000183461344,
-          4.1800001338124275,
-          6.639999628067017
+          53.50069808959961,
+          12.066371440887451,
+          26.216559410095215
         ]
       },
       "note": "Fleet remaster production Colossus. Live player battlecruiser. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -6546,18 +6546,19 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_span_dmc.glb",
-      "tris": 60808,
-      "bytes": 28690116,
+      "tris": 50326,
+      "bytes": 2997776,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN",
-        "Gun_Assembly"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -6568,25 +6569,27 @@
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.324999809265137,
-          -2.3000001907348633,
-          -4.625
+          -14.621007919311523,
+          -2.0200002193450928,
+          -4.7643046379089355
         ],
         "max": [
-          14.149999618530273,
-          3.5606014728546143,
-          4.625
+          14.600387573242188,
+          3.1312243938446045,
+          4.7643046379089355
         ],
         "dimensionsM": [
-          28.47499942779541,
-          5.8606016635894775,
-          9.25
+          29.22139549255371,
+          5.151224613189697,
+          9.528609275817871
         ]
       },
       "note": "PQ-193.09 — live Helios Span carrying the DMC orebox faction kit. Donor hull is the accepted Span. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_helios_span_dmc_orebox_v01.glb."
@@ -6597,18 +6600,19 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_span_mts.glb",
-      "tris": 59678,
-      "bytes": 27768480,
+      "tris": 50326,
+      "bytes": 2997776,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN",
-        "Gun_Assembly"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -6619,25 +6623,27 @@
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.324999809265137,
-          -2.3000001907348633,
-          -4.460000038146973
+          -14.621007919311523,
+          -2.0200002193450928,
+          -4.7643046379089355
         ],
         "max": [
-          14.149999618530273,
-          3.9600000381469727,
-          4.460000038146973
+          14.600387573242188,
+          3.1312243938446045,
+          4.7643046379089355
         ],
         "dimensionsM": [
-          28.47499942779541,
-          6.260000228881836,
-          8.920000076293945
+          29.22139549255371,
+          5.151224613189697,
+          9.528609275817871
         ]
       },
       "note": "PQ-193.09 — live Helios Span carrying the MTS sealed faction kit. Donor hull is the accepted Span. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_helios_span_mts_sealed_v01.glb."
@@ -6648,18 +6654,19 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_span_reach.glb",
-      "tris": 58062,
-      "bytes": 28372704,
+      "tris": 50326,
+      "bytes": 2997684,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN",
-        "Gun_Assembly"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -6670,25 +6677,27 @@
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.66249942779541,
-          -2.3000001907348633,
-          -4.460000038146973
+          -14.621007919311523,
+          -2.0200002193450928,
+          -4.7643046379089355
         ],
         "max": [
-          14.149999618530273,
-          3.252204179763794,
-          4.460000038146973
+          14.600387573242188,
+          3.1312243938446045,
+          4.7643046379089355
         ],
         "dimensionsM": [
-          28.812499046325684,
-          5.552204370498657,
-          8.920000076293945
+          29.22139549255371,
+          5.151224613189697,
+          9.528609275817871
         ]
       },
       "note": "PQ-193.09 — live Helios Span carrying the Reach scrap faction kit. Donor hull is the accepted Span. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_helios_span_reach_scrap_v01.glb."
@@ -7013,19 +7022,20 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_leviathan",
-      "tris": 56910,
-      "bytes": 2958032,
+      "tris": 51960,
+      "bytes": 3368012,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent",
-        "warning": "Material_Warning",
         "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -7043,19 +7053,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.632000183461342,
-          -1.8499999716877937,
-          -3.620000123977661
+          -30.90021324157715,
+          -2.9000000953674316,
+          -16.563074111938477
         ],
         "max": [
-          13.5,
-          2.830000162124634,
-          3.619999885559082
+          30.20081901550293,
+          14.526885986328125,
+          16.563074111938477
         ],
         "dimensionsM": [
-          28.132000183461344,
-          4.6800001338124275,
-          7.240000009536743
+          61.10103225708008,
+          17.426886081695557,
+          33.12614822387695
         ]
       },
       "note": "Fleet remaster production Leviathan. Live player flagship. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -7736,19 +7746,19 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_warden",
-      "tris": 53604,
-      "bytes": 3137648,
+      "tris": 45694,
+      "bytes": 2864924,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent",
-        "warning": "Material_Warning",
-        "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -7766,19 +7776,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -11.131999967332359,
-          -1.3499999716877937,
-          -2.9200003147125244
+          -21.620927810668945,
+          -2,
+          -6.255528926849365
         ],
         "max": [
-          10,
-          2.330000162124634,
-          2.9200000762939453
+          20.50646209716797,
+          9.058894157409668,
+          6.255528926849365
         ],
         "dimensionsM": [
-          21.13199996733236,
-          3.6800001338124275,
-          5.84000039100647
+          42.127389907836914,
+          11.058894157409668,
+          12.51105785369873
         ]
       },
       "note": "Fleet remaster production Warden. Live player gunship. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -7857,19 +7867,19 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/wasp_free_militia.glb",
-      "tris": 16878,
-      "bytes": 13334208,
+      "tris": 62316,
+      "bytes": 3312292,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
-        "accent": "Material_Accent",
-        "warning": "Material_Warning",
         "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -7887,19 +7897,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -10,
-          -1.3799999952316284,
-          -8.081830024719238
+          -10.720288276672363,
+          -0.9003759026527405,
+          -8.079795837402344
         ],
         "max": [
-          12,
-          2.324737071990967,
-          8.081830024719238
+          10.90018367767334,
+          1.75,
+          8.079795837402344
         ],
         "dimensionsM": [
-          22,
-          3.704737067222595,
-          16.163660049438477
+          21.620471954345703,
+          2.6503759026527405,
+          16.159591674804688
         ]
       },
       "note": "PQ-193.09 — live Wasp carrying the Free militia faction kit. Pirate Wasp slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_wasp_free_militia_v01.glb."
@@ -7910,19 +7920,19 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/wasp_mts_escort.glb",
-      "tris": 23696,
-      "bytes": 14390752,
+      "tris": 62316,
+      "bytes": 3312240,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
-        "accent": "Material_Accent",
-        "warning": "Material_Warning",
         "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -7940,19 +7950,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -10,
-          -1.3799999952316284,
-          -8.081830024719238
+          -10.720288276672363,
+          -0.9003759026527405,
+          -8.079795837402344
         ],
         "max": [
-          12,
-          4.8603434562683105,
-          8.081830024719238
+          10.90018367767334,
+          1.75,
+          8.079795837402344
         ],
         "dimensionsM": [
-          22,
-          6.240343451499939,
-          16.163660049438477
+          21.620471954345703,
+          2.6503759026527405,
+          16.159591674804688
         ]
       },
       "note": "PQ-193.09 — live Wasp carrying the MTS escort faction kit. Pirate Wasp slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_wasp_mts_escort_v01.glb."
@@ -7963,19 +7973,19 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/wasp_scn_patrol.glb",
-      "tris": 23866,
-      "bytes": 14421468,
+      "tris": 62316,
+      "bytes": 3312240,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
-        "accent": "Material_Accent",
-        "warning": "Material_Warning",
         "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -7993,19 +8003,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -10,
-          -1.3799999952316284,
-          -8.081830024719238
+          -10.720288276672363,
+          -0.9003759026527405,
+          -8.079795837402344
         ],
         "max": [
-          12,
-          2.380000114440918,
-          8.081830024719238
+          10.90018367767334,
+          1.75,
+          8.079795837402344
         ],
         "dimensionsM": [
-          22,
-          3.7600001096725464,
-          16.163660049438477
+          21.620471954345703,
+          2.6503759026527405,
+          16.159591674804688
         ]
       },
       "note": "PQ-193.09 — live Wasp carrying the SCN patrol faction kit. Pirate Wasp slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_wasp_scn_patrol_v01.glb."

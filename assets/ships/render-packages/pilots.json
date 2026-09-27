@@ -3428,9 +3428,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_colossus_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/colossus_production_v1.glb",
-      "releaseSha256": "d603b2bf4008893239a74a933a5605b5ed39659eb733337447948ce5ea2d0197",
-      "releaseBytes": 655040,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "38ea9d49d5fac669ee4034b411938ead6e184a1cdc41e5d9147b5243f41752e6",
+      "releaseBytes": 1127552,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/colossus-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/colossus-production-v1/render-package.json",
       "sceneRoot": true
@@ -3482,9 +3488,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_leviathan_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/leviathan_production_v1.glb",
-      "releaseSha256": "a1cb28cce750f663b7c66c8e805dd7e14af3b9b28ea88e01f02115d888cb81cb",
-      "releaseBytes": 645816,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "ced0e43ce95d9ddbbcc4d04e2572fbfe1f1f8b9b655edcc55c428fb225293942",
+      "releaseBytes": 1077388,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/leviathan-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/leviathan-production-v1/render-package.json",
       "sceneRoot": true
@@ -3539,9 +3551,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_warden_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/warden_production_v1.glb",
-      "releaseSha256": "1ba41fd39bcfb309761d6ab469d2460cb66317fcf4d894ab52abf91c5de42d9a",
-      "releaseBytes": 719988,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "53b28bfbc7b6336b4e7964191f65dbce3e0190554f5b6a283ba13a9273e98436",
+      "releaseBytes": 953196,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/warden-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/warden-production-v1/render-package.json",
       "sceneRoot": true
@@ -3614,9 +3632,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_span_dmc",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_span_dmc.glb",
-      "releaseSha256": "29fa6ef443c0f8d38d9bdff79d54dc5e8e52a62d52660914d56fceacd3706802",
-      "releaseBytes": 14552960,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "e82ab730003e44404c25be7a055b9d7100c8f2c8f7ba548a8d4823c4872a407a",
+      "releaseBytes": 1101064,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/helios-span-dmc",
       "metadataUrl": "assets/ships/release/render-packages/helios-span-dmc/render-package.json",
       "sceneRoot": true
@@ -3629,9 +3653,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_span_mts",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_span_mts.glb",
-      "releaseSha256": "17b9b3a0b7e181071d6ab6805c8c57c6d2757083196604bbc6288add229ca378",
-      "releaseBytes": 14664840,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "467da36f34cf91ce087e76e641e15baef544afea47950d4c3bde14b271812466",
+      "releaseBytes": 1101064,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/helios-span-mts",
       "metadataUrl": "assets/ships/release/render-packages/helios-span-mts/render-package.json",
       "sceneRoot": true
@@ -3644,9 +3674,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_span_reach",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_span_reach.glb",
-      "releaseSha256": "3c1562eb80a71beeadc5ed6c314d59e178a8f30939206df986132f66ddf3bbfc",
-      "releaseBytes": 14538288,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "91849a472fd5457d629491fc9a223e29f18e037ca2608aedc901393074e0230c",
+      "releaseBytes": 1101112,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/helios-span-reach",
       "metadataUrl": "assets/ships/release/render-packages/helios-span-reach/render-package.json",
       "sceneRoot": true
@@ -3659,9 +3695,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_free_militia",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_free_militia.glb",
-      "releaseSha256": "4b11b62538b30224d12fda59769d1a3ac44c4f31533752b7582b0fa50961b6e7",
-      "releaseBytes": 13628216,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "b91022dfdc49e681520b2a81509c76b7fd9a96ad9bfdd8a273dbfbe37b130e87",
+      "releaseBytes": 1102072,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/wasp-free-militia",
       "metadataUrl": "assets/ships/release/render-packages/wasp-free-militia/render-package.json",
       "sceneRoot": true
@@ -3674,9 +3716,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_mts_escort",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_mts_escort.glb",
-      "releaseSha256": "a3f4e38b504fa756040aee82f889544cbc6cedd58fac31e02601a1dee8be26f4",
-      "releaseBytes": 13861764,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "9e3d9baa1591d1272a3ba4be9a5be4915885030281e7f56aadb94a856ea7a981",
+      "releaseBytes": 1102076,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/wasp-mts-escort",
       "metadataUrl": "assets/ships/release/render-packages/wasp-mts-escort/render-package.json",
       "sceneRoot": true
@@ -3689,9 +3737,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_wasp_scn_patrol",
       "sourceUrl": "assets/ships/release/parts/wholeships/wasp_scn_patrol.glb",
-      "releaseSha256": "524b512b2a18e3b980cd143aa1980c05aaba31aca8ee5fe020d7f561a7e2b493",
-      "releaseBytes": 13861140,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "9d2ccc4e080afbb9fef2ad20b28c6864632c10dff6972925ae961b4817e6906f",
+      "releaseBytes": 1102020,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/wasp-scn-patrol",
       "metadataUrl": "assets/ships/release/render-packages/wasp-scn-patrol/render-package.json",
       "sceneRoot": true
@@ -3854,9 +3908,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_warden_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/warden_production_v1_lod1.glb",
-      "releaseSha256": "f019ad624dc52b9d30180ce20d1f384f84830b83804597aac9e25431bd5624d2",
-      "releaseBytes": 96228,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "9d1249be494e36f819ff87866b78df582c8bab47e407fc776ee95750557b3831",
+      "releaseBytes": 668136,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/warden-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/warden-production-v1-lod1/render-package.json",
       "sceneRoot": true
@@ -3869,9 +3929,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_warden_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/warden_production_v1_lod2.glb",
-      "releaseSha256": "48a89e453436f66d5d8c439768957a91e2de86c1152b768e12a4ed99bfeda350",
-      "releaseBytes": 67984,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "fd7f5b2c08bec59b8350de13d2190732443340ae23938cb9e871392c32f4bcab",
+      "releaseBytes": 490688,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/warden-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/warden-production-v1-lod2/render-package.json",
       "sceneRoot": true
@@ -4158,11 +4224,17 @@
       "releaseAssetId": "wholeship_colossus_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/colossus_production_v1_lod1.glb",
       "rootNode": "COLOSSUS_LOD1_ROOT",
-      "dynamicNameIncludes": [],
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/colossus-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/colossus-production-v1-lod1/render-package.json",
-      "releaseBytes": 87304,
-      "releaseSha256": "fac31d3d4bd05b44944efba8dd3109c7cae3bce4d4963491911222c1b3fb1053"
+      "releaseBytes": 734528,
+      "releaseSha256": "666be4c846bdec627a2af44026856573e86ab571215156699365c8c09f313d97"
     },
     {
       "key": "colossus-production-v1-lod2",
@@ -4173,11 +4245,17 @@
       "releaseAssetId": "wholeship_colossus_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/colossus_production_v1_lod2.glb",
       "rootNode": "COLOSSUS_LOD2_ROOT",
-      "dynamicNameIncludes": [],
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/colossus-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/colossus-production-v1-lod2/render-package.json",
-      "releaseBytes": 59068,
-      "releaseSha256": "8f2f7edffb7b3f42c9c029f75b04e9bbd39128dd56aca6b3225ee8529fc61b01"
+      "releaseBytes": 530968,
+      "releaseSha256": "607b063ccba63cf9e600d1a5e7448cfee300a169530b15872f75fc9ad73f0536"
     },
     {
       "key": "ironback-production-v1-lod1",
@@ -4230,11 +4308,17 @@
       "releaseAssetId": "wholeship_leviathan_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/leviathan_production_v1_lod1.glb",
       "rootNode": "LEVIATHAN_LOD1_ROOT",
-      "dynamicNameIncludes": [],
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/leviathan-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/leviathan-production-v1-lod1/render-package.json",
-      "releaseBytes": 86188,
-      "releaseSha256": "aa27152c9c9dd6cf2101824cd498bab59ef2449eb02f6858bc56ec9bd7f82a5d"
+      "releaseBytes": 745468,
+      "releaseSha256": "3ba95812a76c1f1466d3a82acd09eb8fb86fec24d888a0fda893b723f7291360"
     },
     {
       "key": "leviathan-production-v1-lod2",
@@ -4244,12 +4328,18 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_leviathan_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/leviathan_production_v1_lod2.glb",
-      "rootNode": "LEVIATHAN_LOD0_ROOT",
-      "dynamicNameIncludes": [],
+      "rootNode": "LEVIATHAN_LOD2_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/leviathan-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/leviathan-production-v1-lod2/render-package.json",
-      "releaseBytes": 310840,
-      "releaseSha256": "5e061fd91e662872c3d1a5aecaf63a669725ac4684eb264e95b6ccfa41fdf000"
+      "releaseBytes": 540464,
+      "releaseSha256": "77f547fa2c312aece7253ca56aa62440c540acf5266594b701157c734c4e8375"
     }
   ]
 }

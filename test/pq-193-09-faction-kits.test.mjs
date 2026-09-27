@@ -30,6 +30,21 @@ function names(rel) {
   return new Set((parsed.gltf.nodes || []).map((node) => node.name).filter(Boolean));
 }
 
+// Faction kits are forge variants (tools/blender/forge/variant.py): the same hull under the
+// operator's paint, so the evidence is the operator colour, not a bolted-on kit node.
+function hullColor(rel, materialName) {
+  const parsed = parseStrictEmbeddedGlb(readFileSync(resolve(ROOT, 'assets/ships/parts', rel)), rel);
+  const material = (parsed.gltf.materials || []).find((m) => m.name === materialName);
+  return material ? JSON.stringify(material.pbrMetallicRoughness?.baseColorFactor) : null;
+}
+
+function isForgeVariantOf(rel, baseRel, materialName) {
+  const parsed = parseStrictEmbeddedGlb(readFileSync(resolve(ROOT, 'assets/ships/parts', rel)), rel);
+  const forge = parsed.gltf.asset?.extras?.spacefaceAsset?.surfaceGeometryRemaster === 'forge-v1';
+  const color = hullColor(rel, materialName);
+  return forge && color != null && color !== hullColor(baseRel, materialName);
+}
+
 test('Span haulers carry DMC/MTS/Reach kits; unknown factions keep the live Span', () => {
   const plain = visual({ trafficRole: 'hauler', defId: 'ship_mule' }, 'faction_scn');
   const dmc = visual({ trafficRole: 'hauler', defId: 'ship_mule' }, 'faction_dmc');
@@ -45,9 +60,10 @@ test('Span haulers carry DMC/MTS/Reach kits; unknown factions keep the live Span
   assert.equal(reach.file, 'wholeships/helios_span_reach.glb');
   assert.equal(trader.file, 'wholeships/helios_span_dmc.glb');
   assert.equal(isPackagedLiveWholeShipFile(dmc.file), true);
-  assert.ok(names(dmc.file).has('LOD0_VAR_DMC_orebox_port_fwd'));
-  assert.ok(names(mts.file).has('LOD0_VAR_MTS_clamshell_mid'));
-  assert.ok(names(reach.file).has('LOD0_VAR_REACH_plate0'));
+  for (const variant of [dmc, mts, reach]) {
+    assert.ok(isForgeVariantOf(variant.file, 'wholeships/helios_span.glb', 'Material_Armor'),
+      `${variant.file} carries its operator's freight colour on the Span hull`);
+  }
   assert.ok(names(dmc.file).has('SF_M4_HELIOS_SPAN_DMC_ROOT'));
   assert.ok(!names(dmc.file).has('SF_M4_HELIOS_SPAN_ROOT'));
 });
@@ -69,9 +85,10 @@ test('Wasp patrol and escort carry faction kits; pirate and player Wasp stay the
   assert.equal(pirate.file, 'wholeships/wasp_production_v1.glb');
   assert.equal(player.file, 'wholeships/wasp_production_v1.glb');
   assert.equal(lancer.file, 'wholeships/wasp_production_v1.glb');
-  assert.ok(names(patrol.file).has('LOD0_VAR_SCN_band'));
-  assert.ok(names(escort.file).has('LOD0_VAR_MTS_clamshell_fore'));
-  assert.ok(names(militia.file).has('LOD0_VAR_FREE_pod'));
+  for (const variant of [patrol, escort, militia]) {
+    assert.ok(isForgeVariantOf(variant.file, 'wholeships/wasp_production_v1.glb', 'Material_Hull'),
+      `${variant.file} carries its operator's paint on the Wasp hull`);
+  }
 });
 
 test('the three trade-hub overlays on disk bind to Free/MTS/SCN hubs and stay garnish', () => {

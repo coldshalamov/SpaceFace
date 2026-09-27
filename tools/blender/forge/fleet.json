@@ -233,6 +233,48 @@
       "asset_id": "SF_WHOLESHIP_HELIOS_ARCLIGHT",
       "part_id": "wholeship_helios_arclight",
       "npc_root": "SF_M4_HELIOS_ARCLIGHT_ROOT"
+    },
+    "wasp_scn_patrol": {
+      "layout": "npc",
+      "file": "wasp_scn_patrol",
+      "asset_id": "SF_WASP_SCN_PATROL",
+      "part_id": "wholeship_wasp_scn_patrol",
+      "npc_root": "WASP_SCN_PATROL_ROOT"
+    },
+    "wasp_mts_escort": {
+      "layout": "npc",
+      "file": "wasp_mts_escort",
+      "asset_id": "SF_WASP_MTS_ESCORT",
+      "part_id": "wholeship_wasp_mts_escort",
+      "npc_root": "WASP_MTS_ESCORT_ROOT"
+    },
+    "wasp_free_militia": {
+      "layout": "npc",
+      "file": "wasp_free_militia",
+      "asset_id": "SF_WASP_FREE_MILITIA",
+      "part_id": "wholeship_wasp_free_militia",
+      "npc_root": "WASP_FREE_MILITIA_ROOT"
+    },
+    "helios_span_dmc": {
+      "layout": "npc",
+      "file": "helios_span_dmc",
+      "asset_id": "SF_WHOLESHIP_HELIOS_SPAN_DMC",
+      "part_id": "wholeship_helios_span_dmc",
+      "npc_root": "SF_M4_HELIOS_SPAN_DMC_ROOT"
+    },
+    "helios_span_mts": {
+      "layout": "npc",
+      "file": "helios_span_mts",
+      "asset_id": "SF_WHOLESHIP_HELIOS_SPAN_MTS",
+      "part_id": "wholeship_helios_span_mts",
+      "npc_root": "SF_M4_HELIOS_SPAN_MTS_ROOT"
+    },
+    "helios_span_reach": {
+      "layout": "npc",
+      "file": "helios_span_reach",
+      "asset_id": "SF_WHOLESHIP_HELIOS_SPAN_REACH",
+      "part_id": "wholeship_helios_span_reach",
+      "npc_root": "SF_M4_HELIOS_SPAN_REACH_ROOT"
     }
   }
 }
