@@ -133,8 +133,11 @@ void main(){
   float light=.40+.60*abs(dot(normalize(vNormal),normalize(vec3(-.4,.8,.3))));
   float grazing=1.0-abs(dot(normalize(vNormal),normalize(cameraPosition-vWorld)));
   vec3 pigment=vTint.rgb*(.12+.15*flow)*(1.0-dark*.75)*light;
-  vec3 emission=vTint.rgb*hot*vAction.w*uFlash*(1.3+.30*grazing)
-    +vec3(.50,.72,.83)*pow(hot*.43,3.0)*vAction.w*uFlash;
+  // Optical coverage stays translucent; the small transported crests must still
+  // carry HDR energy after alpha compositing, or the volume reads like dyed plastic.
+  float core=pow(max(0.0,hot-.52),2.0);
+  vec3 emission=vTint.rgb*hot*vAction.w*uFlash*(3.7+.65*grazing)
+    +mix(vec3(1.0),vTint.rgb,.24)*core*2.2*vAction.w*uFlash;
   float coverage=min(.68,body+hot*.13)*(1.0-dark*.28);
   float alpha=edge*ends*arrival*cutoff*vTint.a*coverage;
   if(alpha<.003)discard;

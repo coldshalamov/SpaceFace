@@ -328,7 +328,7 @@ export class FieldForcePresentation {
   }
   _seed(s,seed,motion){
     const phase=seed?.phase||'active';this.style=2;this.flow=0;this.orientation=s.angle;
-    const r=Math.min(s.radius*.33,14);
+    const r=Math.min(s.radius*.43,20);
     const now=this.releasing?s.release:this.time;
     const lockSpan=Math.max(.001,finite(seed?.activeAt,now)-finite(seed?.lockAt,now));
     const progress=phase==='locking'?clamp01((now-finite(seed?.lockAt,now))/lockSpan):1;
@@ -336,27 +336,35 @@ export class FieldForcePresentation {
     const warning=phase==='warning';
     const remaining=warning?clamp01((finite(seed?.expireAt,now)-now)/Math.max(.001,finite(seed?.expireAt,now)-finite(seed?.warnAt,now))):1;
     if(warning)this.tint=COLORS.get(0xffc36c);
-    // Four lifted, rectangular clamp jaws. No circular reticle and no false ambient suction.
+    // A lock is a strained construction, not four solid blocks or an orbiting ring.
+    // Opposed forks take up load at different rates. Bridging charge only exists
+    // once the forks have seated; released members shear apart in the shared shader.
     for(let i=0;i<4;i++){
-      this.phaseOffset=i/4;this.role=FIELD_ROLE.JAW;
-      const a=i*Math.PI/2,ca=Math.cos(a),sa=Math.sin(a),rr=r*(1+open*.65),w=r*.28;
-      const radialX=ca*rr,radialZ=sa*rr;
-      this._member('plate');
-      this._line(radialX+sa*w,radialZ-ca*w,radialX-sa*w,radialZ+ca*w,r*.23,r*.24);
+      const takeup=(s.character-.5)*.09;
+      this.phaseOffset=i*.237;this.role=FIELD_ROLE.JAW;
+      const a=i*Math.PI/2,ca=Math.cos(a),sa=Math.sin(a);
+      const rr=r*(1+open*.42+takeup),w=r*(.31+(i%2)*.035);
+      // Long curved jaws expose a bevel and an empty dark channel between them.
       this._member('spar');
       for(let edge=-1;edge<=1;edge+=2){
-        this._line(ca*rr*.68-sa*w*edge,sa*rr*.68+ca*w*edge,
-          ca*rr-sa*w*edge,sa*rr+ca*w*edge,r*.12,r*.11);
+        this._line(ca*rr*.31-sa*w*.58*edge,sa*rr*.31+ca*w*.58*edge,
+          ca*rr-sa*w*edge,sa*rr+ca*w*edge,r*.135,r*.18,1,
+          edge*r*(.15+takeup),.72);
       }
-      // The inner tooth is the only hot member: it is what the warning phase drains.
-      this._member('edge');
-      const tooth=r*.48,span=r*.24*remaining;
-      this._line(ca*tooth+sa*span,sa*tooth-ca*span,ca*tooth-sa*span,sa*tooth+ca*span,r*.14,r*.13);
+      this._member('plate');
+      this._line(ca*rr+sa*w,sa*rr-ca*w,ca*rr-sa*w,sa*rr+ca*w,
+        r*.16,r*.24,.82,-r*.16,.78);
+      // A bowed working bridge takes the strain across each fork. Its travelling
+      // edge cools in place as warning drains the load; the span never retracts.
+      this._member('edge');this.phaseOffset+=.117;this.role=FIELD_ROLE.CREST;
+      const tooth=rr*.57,span=w*.77;
+      this._line(ca*tooth+sa*span,sa*tooth-ca*span,ca*tooth-sa*span,sa*tooth+ca*span,
+        r*.105,r*.31,(.22+.78*remaining),r*(.16+takeup),.70);
     }
   }
-  _line(x0,z0,x1,z1,width,lift=0,alpha=1){
+  _line(x0,z0,x1,z1,width,lift=0,alpha=1,bow=0,taper=0){
     const ca=Math.cos(this.orientation),sa=Math.sin(this.orientation);
-    this._surface(1,Math.atan2(z1-z0,x1-x0),0,0,Math.hypot(x1-x0,z1-z0),width,lift,0,this.phaseOffset,0,0,alpha,ca*x0-sa*z0,sa*x0+ca*z0);
+    this._surface(1,Math.atan2(z1-z0,x1-x0),0,0,Math.hypot(x1-x0,z1-z0),width,lift,bow,this.phaseOffset,0,taper,alpha,ca*x0-sa*z0,sa*x0+ca*z0);
   }
 
   inspect(){

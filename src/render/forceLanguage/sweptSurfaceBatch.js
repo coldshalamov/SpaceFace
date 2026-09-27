@@ -172,7 +172,14 @@ void main(){
         // strokes; on release each jaw shears sideways and lifts, never recedes
         // by replaying its initial slide in reverse.
         float stroke=max(0.0,sin(motionTime*3.7+localPhase));
-        relative+=outward*uMotion*iShape.y*((1.0-activation)*2.6+stroke*flex*.32);
+        // Only an already seated pair can carry a bridge. Its opposing travelling
+        // deflection is independent of the forks' take-up; no CPU buffer animation.
+        if(role>1.5&&role<2.5){
+          envelope*=mature;
+          relative+=tangent*uMotion*iShape.y*mature*sin(t*PI)*sin(motionTime*2.3+t*7.0+localPhase)*.74;
+          height+=uMotion*iShape.y*mature*sin(t*PI)*cos(motionTime*1.7+t*5.0+localPhase);
+        }
+        relative+=outward*uMotion*iShape.y*((1.0-activation)*2.6+stroke*flex*.72);
         relative+=tangent*uMotion*iShape.y*detach*(1.8+fract(iBehavior.z)*2.2);
         height+=uMotion*iShape.y*(mature*.38*sin(motionTime*2.2+localPhase)+detach*(.8+t));
       }else if(kind<2.5){
