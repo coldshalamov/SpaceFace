@@ -985,9 +985,9 @@ test('real authority: an inbound burn-speed approach berths promptly', async () 
 test('real authority: a latched hull at the soak drift state re-opens the stop plan', async () => {
   // Place the hull ~143 wu from the corridor-mouth aim (the soak's autopilot.distance) on a
   // tangential vector — inside the stopping bound, where the settle floor is the only gate.
-  // The aim is the resolved skin mouth (322.5° lane), not the retired procedural mouth; the
-  // drift sign carries it across open space — the +lat mirror drifts into the arm-11/arm-12
-  // spar pocket (gap 18 wu < hull diameter), a wedge this contract does not defend.
+  // The aim is the resolved skin mouth (322.5° lane), not the retired procedural mouth. This
+  // `-lat` drift sign stays on the open side; the `+lat` mirror crosses into the arm-11/arm-12
+  // spar pocket (gap 18 wu < hull diameter) and is covered by its own regression below (D77).
   const rig = await createAutopilotApproachRig({
     startPos: skinPos(121.5 + 143),
     startVel: skinVel(0, -82.6),
@@ -1020,6 +1020,34 @@ test('real authority: a latched hull at the soak drift state re-opens the stop p
     assert.ok(creepStarted, 'the drift must shed speed and re-arm the settle latch');
     assert.ok(brakeFlips <= 8,
       `settled creep must not duty-cycle the brake (${brakeFlips} edges — the governed cap must sit under the re-engage floor)`);
+  } finally {
+    rig.dispose();
+  }
+});
+
+// D77: the `+lat` mirror of the soak drift — the same latch, opposite sign — crosses into the
+// arm-11/arm-12 spar pocket instead of open space. If berth proximity alone claims capture there,
+// the capture assist and the autopilot berth stage both push the hull deeper into the narrowing
+// wedge (gap 18 wu < hull diameter 28) and it dead-sticks at v≈0 forever. Berth membership now
+// requires a clear line to the berth, so the flight computer falls back to the corridor mouth and
+// pulls the hull back out through the gap.
+test('real authority: the +lat spar-pocket drift recovers and berths (D77)', async () => {
+  const rig = await createAutopilotApproachRig({
+    startPos: skinPos(121.5 + 143),
+    startVel: skinVel(0, +82.6),
+  });
+  const { state, player, berth } = rig;
+  try {
+    rig.autopilot.brakeSettled = true;
+    let berthedAt = null;
+    for (let t = 0; t < 240 * 60; t++) {
+      rig.stepCraft(t);
+      if (state.dockingCorridor && state.dockingCorridor.phase === 'berthed') { berthedAt = t; break; }
+    }
+    assert.ok(berthedAt != null,
+      `the +lat spar-pocket drift must recover and berth (ended ${Math.hypot(player.pos.x, player.pos.z).toFixed(0)} wu from target, speed ${Math.hypot(player.vel.x, player.vel.z).toFixed(0)})`);
+    assert.ok(Math.hypot(player.pos.x - berth.x, player.pos.z - berth.z) <= SKIN.docking.berth.dockRadius,
+      'the recovered hull must settle inside the berth dock gate');
   } finally {
     rig.dispose();
   }

@@ -480,7 +480,15 @@ export function corridorStateFor(manifest, entity, pos, vel) {
   // Capture lane: capsule along the corridor axis from the berth outward to the outer gate. Ships
   // hugging the berth (any bearing) also count — the deck inside the ring gap is part of the lane.
   const inLane = along >= berthRadius * 0.9 && along <= captureOuter && lateral <= captureHalfWidth;
-  const nearBerth = distToBerth <= Math.max(docking.berth.dockRadius * 2.5, captureHalfWidth);
+  // D77: berth proximity alone must not claim capture through station structure. A hull wedged in
+  // an inter-spar armpit sits inside the near-berth radius but on the far side of a spar from the
+  // berth; berth-proximity membership — and the autopilot berth stage that keys off it — then aims
+  // the capture assist and the flight computer straight into the narrowing wedge and the hull
+  // dead-sticks at v≈0. Require a clear line from the hull to the berth (or an actual lane seat,
+  // which stands on its own). The line test is manifest-agnostic, so a measured skin's real arm
+  // fan is respected exactly like the authored procedural silhouette.
+  const nearBerth = distToBerth <= Math.max(docking.berth.dockRadius * 2.5, captureHalfWidth)
+    && (inLane || !berthLineBlocked(manifest, entity, pos, berth));
   const inCapture = inLane || nearBerth;
 
   // Heading gate: velocity must point roughly INBOUND (opposite the outbound axis). Ships at or
@@ -842,6 +850,106 @@ function distanceToSegment(p, a, b) {
   const cx = a.x + abx * t;
   const cz = a.z + abz * t;
   return Math.hypot(p.x - cx, p.z - cz);
+}
+
+// -----------------------------------------------------------------------------------------------
+// Berth line-of-sight (D77)
+//
+// The berth-proximity capture claim is only honest when the hull can actually reach the berth: a
+// hull parked in an inter-spar pocket is inside the near-berth radius yet separated from the berth
+// by a spar. These helpers test that line against the station's own compound proxy, in cache-
+// friendly terms: geometry is expanded once per (manifest, entity, bearing) into normalized local
+// space, and only two points are transformed per query — no per-tick mesh rebuild.
+// -----------------------------------------------------------------------------------------------
+
+const EXPANDED_PRIMITIVE_CACHE = new WeakMap();
+
+function expandedPrimitivesCached(manifest, entity, corridorDeg) {
+  const cached = EXPANDED_PRIMITIVE_CACHE.get(manifest);
+  if (cached && cached.entity === entity && cached.corridorDeg === corridorDeg) return cached.primitives;
+  const primitives = expandProxyPrimitives(manifest, { corridorBearingDeg: corridorDeg, entity });
+  EXPANDED_PRIMITIVE_CACHE.set(manifest, { entity, corridorDeg, primitives });
+  return primitives;
+}
+
+/** True when a straight line from `pos` to `berth` passes through the station's own proxy geometry.
+ * Points are transformed into the manifest's normalized local frame; radii are already normalized. */
+function berthLineBlocked(manifest, entity, pos, berth) {
+  const scale = positive(proxyScaleFor(entity, manifest), 1);
+  const rot = finite(entity && entity.rot);
+  const c = Math.cos(rot);
+  const s = Math.sin(rot);
+  const px = finite(entity && entity.pos && entity.pos.x);
+  const pz = finite(entity && entity.pos && entity.pos.z);
+  const toLocal = (x, z) => {
+    const dx = finite(x) - px;
+    const dz = finite(z) - pz;
+    return { x: (dx * c + dz * s) / scale, z: (-dx * s + dz * c) / scale };
+  };
+  const a = toLocal(pos && pos.x, pos && pos.z);
+  const b = toLocal(berth && berth.x, berth && berth.z);
+  const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
+  const primitives = expandedPrimitivesCached(manifest, entity, corridorDeg);
+  for (const primitive of primitives) {
+    if (segmentBlockedByPrimitive(a, b, primitive)) return true;
+  }
+  return false;
+}
+
+function segmentBlockedByPrimitive(a, b, primitive) {
+  if (!primitive) return false;
+  if (primitive.kind === 'circle') {
+    return primitive.r > 0 && distanceToSegment(primitive, a, b) < primitive.r;
+  }
+  if (primitive.kind === 'capsule') {
+    const start = { x: finite(primitive.ax), z: finite(primitive.az) };
+    const end = { x: finite(primitive.bx), z: finite(primitive.bz) };
+    if (segmentsIntersect(a, b, start, end)) return true;
+    const r = finite(primitive.r);
+    return r > 0 && Math.min(
+      distanceToSegment(start, a, b),
+      distanceToSegment(end, a, b),
+      distanceToSegment(a, start, end),
+      distanceToSegment(b, start, end),
+    ) < r;
+  }
+  if (primitive.kind === 'obb') return segmentCrossesObb(a, b, primitive);
+  return false;
+}
+
+function segmentsIntersect(a, b, c, d) {
+  if (Math.max(a.x, b.x) < Math.min(c.x, d.x) || Math.max(c.x, d.x) < Math.min(a.x, b.x)
+    || Math.max(a.z, b.z) < Math.min(c.z, d.z) || Math.max(c.z, d.z) < Math.min(a.z, b.z)) return false;
+  const cross = (p, q, r) => (q.x - p.x) * (r.z - p.z) - (r.x - p.x) * (q.z - p.z);
+  return cross(a, b, c) * cross(a, b, d) <= 0 && cross(c, d, a) * cross(c, d, b) <= 0;
+}
+
+/** Slab test in the OBB's local frame; the OBB is a normalized-local primitive (`angleDeg`). */
+function segmentCrossesObb(a, b, primitive) {
+  const rad = finite(primitive.angleDeg) * DEG;
+  const c = Math.cos(-rad);
+  const s = Math.sin(-rad);
+  const rotate = (v) => ({
+    x: (v.x - primitive.x) * c - (v.z - primitive.z) * s,
+    z: (v.x - primitive.x) * s + (v.z - primitive.z) * c,
+  });
+  const from = rotate(a);
+  const to = rotate(b);
+  let low = 0;
+  let high = 1;
+  for (const [axis, half] of [['x', primitive.hx], ['z', primitive.hz]]) {
+    const d = to[axis] - from[axis];
+    if (Math.abs(d) < 1e-9) {
+      if (Math.abs(from[axis]) > half) return false;
+      continue;
+    }
+    const t1 = (-half - from[axis]) / d;
+    const t2 = (half - from[axis]) / d;
+    low = Math.max(low, Math.min(t1, t2));
+    high = Math.min(high, Math.max(t1, t2));
+    if (low > high) return false;
+  }
+  return high > 0 && low < 1;
 }
 
 function distanceToFootprint(point, footprint) {
