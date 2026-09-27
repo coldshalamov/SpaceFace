@@ -1096,7 +1096,7 @@ export function resolveRicochet(ax, az, nx, nz, out = null) {
 // Mining beam spool envelope: a beam driven straight off the mining input popped on/off (B10).
 // Attack is shorter than release, and stopping from mid-spool fades from the current power.
 export const MINING_BEAM_ATTACK_S = 0.07;
-export const MINING_BEAM_RELEASE_S = 0.10;
+export const MINING_BEAM_RELEASE_S = 0.98;
 
 
 export const vfx = {
@@ -8128,7 +8128,8 @@ export const vfx = {
 
     const shaderShared = {
       time: { value: 0 }, flow: { value: 1 }, power: { value: 0 }, motion: { value: 1 },
-      verb: { value: 0 },
+      verb: { value: 0 }, stop: { value: -1 }, seed: { value: 0 },
+      contactRadius: { value: 5 }, targetRadius: { value: 6 },
       start: { value: new THREE.Vector3() }, end: { value: new THREE.Vector3() },
       coreRadius: { value: 0.8 }, sheathRadius: { value: 2.5 },
     };
@@ -8136,7 +8137,9 @@ export const vfx = {
     installToolConduitShader(mat2, shaderShared, 'sheath');
 
     this._miningBeam = {
-      mesh, glow, active: false, t: 0, attack: 0, release: 0, color: '#60d0ff', shaderShared,
+      mesh, glow, active: false, t: 0, attack: 0, release: 0, serial: 0, sparkAcc: 0,
+      sourceAnchor: { x: 0, z: 0 }, targetAnchor: { x: 0, z: 0 },
+      socketPoint: new THREE.Vector3(), sourceSocket: null, color: '#60d0ff', shaderShared,
     };
   },
 
@@ -8148,10 +8151,15 @@ export const vfx = {
     if (!this._miningBeam) return;
     const beam = this._miningBeam;
     // Retargeting mid-beam must not re-spool: the attack only resets on an inactive -> active edge.
-    if (!beam.active) beam.attack = 0;
+    if (!beam.active) {
+      beam.attack = 0; beam.t = 0; beam.sparkAcc = 0;
+      beam.shaderShared.seed.value = (++beam.serial * 2.399963 + String(p?.targetId || '').length * .71) % 6.283185;
+      const player = this.helpers?.player?.() || this._ent(this.state.playerId);
+      beam.sourceSocket = player?.view?.root?.getObjectByName?.('SOCKET_Mining_Front') || null;
+    }
+    beam.shaderShared.stop.value = -1;
     beam.release = 0;
     beam.active = true;
-    beam.t = 0;
     this._miningBeam.targetId = (p && p.targetId) || null;
     this._miningBeam.verb = (p && p.verb) || 'extract';
     beam.shaderShared.verb.value = beam.verb === 'cut' ? 1 : beam.verb === 'repair' ? 2 : beam.verb === 'transfer' ? 3 : 0;
@@ -8173,139 +8181,75 @@ export const vfx = {
 
   _onMiningStop() {
     if (!this._miningBeam) return;
-    // The authoritative state is off immediately (perf gates read `active`), but the visible beam
-    // keeps a short release tail so the shutdown reads as the conduit winding down, not a cut (B10).
-    this._miningBeam.active = false;
-    this._miningBeam.release = 1;
+    const beam = this._miningBeam;
+    if (!beam.active) return;
+    // Stop feeding immediately; already launched matter clears the chord before the work faces cool.
+    beam.active = false;
+    beam.release = 1;
+    beam.shaderShared.stop.value = beam.t;
   },
 
-  // Called each frame from update() to move conduit endpoints between ship and contact.
   _updateMiningBeam(dt) {
     const beam = this._miningBeam;
-    if (!beam) return;
+    if (!beam || (!beam.active && beam.release <= 0)) return;
     const accessibility = resolveVfxAccessibilityProfile(this.state?.settings);
-    const flashScale = accessibility.id === 'reduced-flash'
-      || accessibility.id === 'reduced-motion-and-flash' ? 0.58 : 1;
-    if (!beam.active) {
-      // Release tail: no geometry chase and no transport advance; the shared power scalar winds
-      // down and the pair is hidden when it reaches zero.
-      beam.release = Math.max(0, beam.release - dt / MINING_BEAM_RELEASE_S);
-      if (beam.shaderShared) beam.shaderShared.power.value = beam.release * flashScale;
-      if (beam.release <= 0) {
-        beam.mesh.visible = false;
-        beam.glow.visible = false;
-      }
-      return;
-    }
+    const reduced = accessibility.id.includes('motion');
     beam.t += dt;
-    beam.attack = Math.min(1, beam.attack + dt / MINING_BEAM_ATTACK_S);
-    if (beam.shaderShared) {
-      beam.shaderShared.time.value = beam.t;
-      beam.shaderShared.power.value = beam.attack * flashScale;
-      // extract draws refined matter into the hold; every other verb delivers energy to the rock.
-      beam.shaderShared.flow.value = (beam.verb === 'extract') ? -1 : 1;
-    }
-
-    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
-    if (!player || !player.alive) { this._onMiningStop(); return; }
-
+    beam.shaderShared.time.value = beam.t;
+    beam.shaderShared.power.value = accessibility.flashOpacityScale;
+    beam.shaderShared.motion.value = reduced ? .12 : 1;
+    beam.shaderShared.flow.value = beam.verb === 'extract' ? -1 : 1;
+    if (!beam.active) {
+      beam.release = Math.max(0, beam.release - dt / MINING_BEAM_RELEASE_S);
+      if (beam.release <= 0) { beam.mesh.visible = beam.glow.visible = false; return; }
+    } else beam.attack = Math.min(1, beam.attack + dt / MINING_BEAM_ATTACK_S);
+    const player = this.helpers?.player?.() || this._ent(this.state.playerId);
     const target = beam.targetId ? this._ent(beam.targetId) : null;
-    if (!target || !target.alive) { this._onMiningStop(); return; }
-
-    const verb = beam.verb || 'extract';
-    const reduced = this.state && this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
-
-    const cf = Math.cos(player.rot), sf = Math.sin(player.rot);
-    const fwd = (player.radius || 6) * 0.7;
-    const sxG = player.pos.x + cf * fwd, szG = player.pos.z + sf * fwd;
-
-    const dx = sxG - target.pos.x, dz = szG - target.pos.z;
-    const dist = Math.hypot(dx, dz) || 1;
-    const r = target.radius || 6;
-    const txG = target.pos.x + (dx / dist) * r, tzG = target.pos.z + (dz / dist) * r;
-    const sLocal = this._toLocalXZ(sxG, szG, this._spawnLocalXZ);
-    const tLocal = this._toLocalXZ(txG, tzG, this._entityLocalXZ);
-    const sx = sLocal.x, sz = sLocal.z;
-    const tx = tLocal.x, tz = tLocal.z;
-
-    const nx = -(dz / dist), nz = (dx / dist);
-    let pulse = 1.0;
-    let w = 0.8;
-    let gw = 2.5;
-
-    if (verb === 'cut') {
-      w = 0.4;
-      gw = 1.2;
-    } else if (verb === 'repair') {
-      w = 0.5;
-      gw = 1.5;
-      pulse = reduced ? 1.0 : (1.0 + 0.15 * Math.sin(beam.t * 8));
-    } else if (verb === 'transfer') {
-      w = 0.9;
-      gw = 2.2;
-      pulse = reduced ? 1.0 : (1.0 + 0.1 * Math.sin(beam.t * 6));
-    } else { // extract
-      pulse = reduced ? 1.0 : (1.0 + 0.3 * Math.sin(beam.t * 12));
-      w = 0.8 * pulse;
-      gw = 2.5 * pulse;
+    if (!player?.alive || !target?.alive) { this._onMiningStop(); return; }
+    const alpha = this._renderInterpolationAlpha();
+    const source = presentedAnchorXZ(player, alpha, beam.sourceAnchor);
+    const destination = presentedAnchorXZ(target, alpha, beam.targetAnchor);
+    const heading = presentedAnchorRot(player, alpha);
+    let sxG = source.x + Math.cos(heading) * (player.radius || 6) * .82;
+    let szG = source.z + Math.sin(heading) * (player.radius || 6) * .82, sy = 1.5;
+    const pose = this.helpers?.socketWorldPose?.(player.id, 'SOCKET_Mining_Front');
+    if (pose) { sxG = pose.x; szG = pose.z; sy = pose.y || 0; }
+    else if (beam.sourceSocket?.parent) {
+      beam.sourceSocket.updateWorldMatrix(true, false);
+      beam.sourceSocket.getWorldPosition(beam.socketPoint);
+      const global = beam.sourceAnchor;
+      global.x = beam.socketPoint.x; global.z = beam.socketPoint.z;
+      this._frameMembrane?.toGlobal(global, global);
+      sxG = global.x; szG = global.z; sy = beam.socketPoint.y;
     }
-    // Spool width is the other half of the attack/release: the conduit grows out of the bell and
-    // collapses back into it, while the power scalar handles radiance.
-    w *= beam.attack;
-    gw *= beam.attack;
-
-    beam.shaderShared.start.value.set(sx, 1.5, sz);
-    beam.shaderShared.end.value.set(tx, 1.5, tz);
-    beam.shaderShared.coreRadius.value = w;
-    beam.shaderShared.sheathRadius.value = gw;
-    beam.shaderShared.motion.value = reduced ? 0 : 1;
+    const dx = sxG - destination.x, dz = szG - destination.z, dist = Math.hypot(dx, dz) || 1;
+    const r = target.radius || 6;
+    const txG = destination.x + dx / dist * r, tzG = destination.z + dz / dist * r;
+    const start = this._toLocalXZ(sxG, szG, this._spawnLocalXZ);
+    const end = this._toLocalXZ(txG, tzG, this._entityLocalXZ);
+    beam.shaderShared.start.value.set(start.x, sy, start.z);
+    beam.shaderShared.end.value.set(end.x, 1.5, end.z);
+    const verb = beam.verb || 'extract';
+    // Substantial three-dimensional channels, independent of arrival/cutoff. The shader moves
+    // material through them and articulates the receiving surface, including the cooling tail.
+    beam.shaderShared.coreRadius.value = verb === 'cut' ? 1.4 : verb === 'repair' ? 2.5 : 2.8;
+    beam.shaderShared.sheathRadius.value = verb === 'cut' ? 2.3 : verb === 'repair' ? 3.5 : 4.2;
+    beam.shaderShared.contactRadius.value = Math.max(3.6, Math.min(8, r * .65));
+    beam.shaderShared.targetRadius.value = r;
     beam.mesh.visible = beam.glow.visible = true;
-    beam.mesh.material.opacity = verb === 'cut' ? 0.9 : 0.68;
-    beam.glow.material.opacity = verb === 'cut' ? 0.24 : 0.30;
-
-    if (verb === 'cut') {
-      // Welding shower: a spray of bright sparks fanning off the contact seam — mostly along the
-      // hull tangent with some backward scatter — plus a persistent hot bead at the kerf. Dense
-      // enough to read as industrial cutting against the dark, not a lone tracer.
-      const seamAngle = Math.atan2(nx, nz); // hull tangent at the contact point
-      const sparkCount = reduced ? 1 : 2;
-      for (let k = 0; k < sparkCount; k++) {
-        if (Math.random() < 0.85) {
-          // Fan along the seam (tangent) with a bias away from the hull face.
-          const along = Math.atan2(-dz, -dx);
-          const a = (Math.random() < 0.6)
-            ? seamAngle + (Math.random() - 0.5) * 1.1 + (Math.random() < 0.5 ? Math.PI : 0)
-            : along + (Math.random() - 0.5) * 0.9;
-          const sp = 14 + Math.random() * 26;
-          this._spawnProjectileTrailStreak(txG, 0.5, tzG, 0.28 + Math.random() * 0.22,
-            0.07, 0.5, 0.9, Math.random() < 0.6 ? '#fffaf0' : '#ffc35c',
-            Math.cos(a) * sp, Math.sin(a) * sp,
-            Math.cos(a), Math.sin(a));
-        }
-      }
-      if (Math.random() < (reduced ? 0.25 : 0.5)) {
-        this._spawnSprite(SPR_FLASH, txG, 0.5, tzG, 0.16, 0.5, 1.6, 0.9, 0, '#fff6e0', 0, 0, 0, 0);
-      }
-    } else if (verb === 'repair') {
-      if (Math.random() < (reduced ? 0.2 : 0.5)) {
-        const beadOffset = (Math.random() - 0.5) * (target.radius || 6) * 0.4;
-        const bx = txG + nx * beadOffset, bz = tzG + nz * beadOffset;
-        this._spawnSprite(SPR_FLASH, bx, 0.5, bz, 0.4, 0.5, 0.8, 0.8, 0, '#ffc35c', 0, 0, 0, 0);
-      }
-    } else if (verb === 'transfer') {
-      if (Math.random() < (reduced ? 0.3 : 0.6)) {
-        const frac = (beam.t * 2 + Math.random()) % 1.0;
-        const px = sxG + (txG - sxG) * frac, pz = szG + (tzG - szG) * frac;
-        this._spawnParticle(px, pz, nx * 2, nz * 2, 0.2, 0.8, 0.0, '#39d0ff', '#d7e6ff', 2.0, 0, 0);
-      }
-    } else { // extract
-      if (Math.random() < (reduced ? 0.3 : 0.6)) {
-        const frac = Math.random();
-        const px = sxG + (txG - sxG) * frac, pz = szG + (tzG - szG) * frac;
-        const drift = 3 + Math.random() * 5;
-        this._c0.set('#ffffff'); this._c1.set(beam.color);
-        this._spawnParticle(px, pz, (Math.random() - 0.5) * drift, (Math.random() - 0.5) * drift,
-          0.15 + Math.random() * 0.15, 1.0, 0.0, this._c0, this._c1, 4.0, 0, 0);
+    beam.mesh.material.opacity = verb === 'cut' ? .82 : .72;
+    beam.glow.material.opacity = .24;
+    if (verb === 'cut' && beam.active && !reduced) {
+      // Fixed cadence and seeded direction avoid frame-rate dependent spark showers.
+      beam.sparkAcc += dt;
+      if (beam.sparkAcc >= .055) {
+        beam.sparkAcc %= .055;
+        const k = Math.floor(beam.t / .055), phase = beam.shaderShared.seed.value + k * 2.399963;
+        const angle = Math.atan2(dz, dx) + Math.sin(phase) * 1.15;
+        const speed = 16 + 14 * (.5 + .5 * Math.sin(phase * 1.7));
+        this._spawnProjectileTrailStreak(txG, 1.6, tzG, .32, .16, 1.6, .8,
+          k % 3 ? '#ffc35c' : '#fff1da', Math.cos(angle) * speed, Math.sin(angle) * speed,
+          Math.cos(angle), Math.sin(angle));
       }
     }
   },
