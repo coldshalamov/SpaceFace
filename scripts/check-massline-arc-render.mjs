@@ -428,7 +428,8 @@ function assertReleasePairingAndDestinationLifecycle() {
     'precondition: a valid paired release owns a visible echo');
   boundary.bus.emit('save:loaded', {});
   assert.equal(boundary.system._masslineReleaseArc.mesh.visible, false);
-  assert.equal(boundary.system._masslineReleaseArc.mesh.geometry.drawRange.count, 0);
+  assert.equal(boundary.system._masslineReleaseArc.mesh.count, 0,
+    'the instanced surface drains to zero live folds');
   assert.equal(boundary.system._masslineReleaseToken.active, false,
     'save boundaries drain both geometry and transaction identity');
 }
@@ -437,7 +438,8 @@ function assertReleasePairingAndDestinationLifecycle() {
 //    reuses one geometry allocation, and freezes (rather than vanishing) under reduced motion.
 function assertCapturedReleaseAnnulusAndStaticReducedMotion() {
   const h = createHarness({ throwState: capturedThrowState() });
-  const positions = h.system._masslineReleaseArc.scratch.geometry.positions;
+  // The instanced slot pool is the one allocation: the receiver must never reallocate per frame.
+  const positions = h.system._masslineReleaseArc.matter.batch.attributes[0].array;
   frames(h, 4);
   const arc = h.system._masslineReleaseArc;
   assert.equal(arc.mesh.visible, true);
@@ -445,11 +447,11 @@ function assertCapturedReleaseAnnulusAndStaticReducedMotion() {
   assert.equal(arc.scratch.plan.targetId, h.destination.id);
   assert.equal(arc.scratch.plan.centerX, h.destination.pos.x);
   assert.equal(arc.scratch.plan.centerZ, h.destination.pos.z);
-  assert.ok(arc.mesh.geometry.drawRange.count > 0);
+  assert.ok(arc.mesh.count > 0, 'the annulus is drawing live folds');
 
   h.state.settings.video.motionReduce = true;
   frames(h, 2);
-  assert.equal(arc.scratch.geometry.positions, positions, 'the annulus must reuse its position pool');
+  assert.equal(arc.matter.batch.attributes[0].array, positions, 'the annulus must reuse its slot pool');
   assert.equal(arc.scratch.plan.reducedMotion, true);
   assert.equal(arc.scratch.plan.cadenceHz, 0, 'reduced motion keeps a static spatial marker');
 
