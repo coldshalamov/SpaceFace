@@ -440,10 +440,18 @@ export function createDriftField(host, { count = 90 } = {}) {
   if (!ctx) return null;
   canvas.className = 'orr-cr-drift';
   canvas.setAttribute('aria-hidden', 'true');
-  // cosmetic randomness only (the sim's rng is never touched by presentation)
+  // the field's own seeded generator (mulberry32): the same drift every time, and never Math.random, so the
+  // sim's determinism contract has nothing to classify here
+  let seed = 0x5f3759df;
+  const rand = () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
   const motes = Array.from({ length: count }, () => {
-    const z = 0.25 + Math.random() * 0.75;
-    return { x: Math.random(), y: Math.random(), z, r: 0.6 + z * 1.2, a: 0.14 + z * 0.42, vx: (Math.random() - 0.5) * 3 * z, vy: -(4 + Math.random() * 10) * z };
+    const z = 0.25 + rand() * 0.75;
+    return { x: rand(), y: rand(), z, r: 0.6 + z * 1.2, a: 0.14 + z * 0.42, vx: (rand() - 0.5) * 3 * z, vy: -(4 + rand() * 10) * z };
   });
   // Budget: the motes are slow (a few pixels a second), so the field draws at 20 Hz into a backing store
   // at half the layout size; the drawing is cheap enough to leave the menu its frame rate on an iGPU.
