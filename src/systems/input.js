@@ -49,6 +49,7 @@ import { createMasslineInputGrammar } from './masslineInputGrammar.js';
 import { wrapAngle } from '../core/rng.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 import { TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
+import { isHostileToPlayer } from './scanner.js';
 
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
 // so the ship's own yaw controller (rate caps, banking, class tuning) shapes the actual turn.
@@ -1399,7 +1400,11 @@ export function selectedWorldSiteTarget(state) {
 
 /**
  * True when the active tether payload should steal RMB for throwArm.
- * Ships/drones = combat throw (case D). Fracture chunks / tow payloads = throw-mass (case C).
+ * HOSTILE ships/drones = combat throw (case D). Fracture chunks / tow payloads = throw-mass (case C).
+ * A non-hostile casualty keeps RMB as the mining beam: the WF-05 rope-and-weld latches a limping
+ * hull precisely so the beam can hold the weld (mining.weldableHullForBeam), and this function's
+ * own call-site contract at the RMB arbitration always said "hostile ship/drone" — the code below
+ * is what made it true. A latched hostile still throws exactly as before.
  * Parent asteroids and wrecks keep RMB as the mining/salvage beam so latched extraction works.
  */
 function isThrowArmPayload(state) {
@@ -1407,7 +1412,11 @@ function isThrowArmPayload(state) {
   if (!tether || !tether.active || tether.targetId == null) return false;
   const target = state.entities && state.entities.get && state.entities.get(tether.targetId);
   if (!target || target.alive === false) return false;
-  if (target.type === 'ship' || target.type === 'drone') return true;
+  if (target.type === 'ship' || target.type === 'drone') {
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    // Missing player or unreadable hostility fails closed to the beam (tend, don't throw).
+    return !!(player && isHostileToPlayer(target, player.team, state));
+  }
   if (target.type === 'asteroid' && target.data && target.data.isChunk) return true;
   if (target.type === 'payload') return true;
   return false;
