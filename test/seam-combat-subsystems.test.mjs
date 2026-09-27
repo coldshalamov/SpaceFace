@@ -78,6 +78,24 @@ test('sensor destruction blocks weapon bursts through derived runtime capabiliti
   }
 });
 
+test('restored runtime without the pending count still applies transitions', () => {
+  const { entity, runtime, context, bus } = bootShip();
+  try {
+    scheduleSubsystemTransition(runtime.subsystems.subsystem_power, context.state.tick, true, 'core_hit', 1, runtime);
+    // A save written before the count field existed restores the runtime verbatim —
+    // the pending transition is present but the count is absent.
+    const restored = JSON.parse(JSON.stringify(runtime));
+    delete restored.pendingSubsystemTransitionCount;
+    const changed = applyPendingSubsystemTransitions(context, entity, restored);
+    assert.equal(changed, true);
+    assert.equal(restored.subsystems.subsystem_power.destroyed, true);
+    assert.equal(restored.pendingSubsystemTransitionCount, 0);
+    assert.equal(restored.capabilities.drive, false);
+  } finally {
+    bus.clear();
+  }
+});
+
 test('missing runtime does not block weapons or mutate combat tables', () => {
   const { state, entity } = bootShip();
   const before = JSON.stringify(state.combat.entities);

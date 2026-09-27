@@ -20,7 +20,18 @@ export function applyPendingSubsystemTransitions(context, entity, runtime) {
   const tick = state.tick >>> 0;
   // Quiet combatants: no pending transitions and no dirty modifier flag → skip the
   // sorted-subsystem walk entirely (profile: applyPending under combat prePhysics).
-  const hasPending = (runtime.pendingSubsystemTransitionCount | 0) > 0;
+  let pendingCount = runtime.pendingSubsystemTransitionCount | 0;
+  if (!Number.isInteger(runtime.pendingSubsystemTransitionCount) || pendingCount < 0) {
+    // Restored saves or hand-built runtimes can carry pendings without the count
+    // (the field postdates the save schema) — recount once so they apply.
+    pendingCount = 0;
+    for (const id in runtime.subsystems) {
+      const subsystem = runtime.subsystems[id];
+      if (subsystem && subsystem.pendingTransition) pendingCount += 1;
+    }
+    runtime.pendingSubsystemTransitionCount = pendingCount;
+  }
+  const hasPending = pendingCount > 0;
   const dirty = runtime.statusModifiersDirty === true;
   if (!hasPending && !dirty) return false;
   let changed = false;
