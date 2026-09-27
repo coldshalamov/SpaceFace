@@ -95,7 +95,7 @@ PERF-07 Electron modernization (live + wave-1 flags + `glflags`), PERF-08 GPU co
 | PERF-79 buffer policy | `bufpolicy` |
 | PERF-46 texture residency evict | `texevict` |
 | PERF-58 speedline residual | `speedline` |
-| PERF-31/119 landmark demotion | `landmarks` |
+| PERF-31/119 landmark demotion | `landmarks` — KEPT `4eeb2633` (runway-bounded residency) |
 
 Wave-2 lanes still running cover: entityList demotion (TABLE_AUTHORITY lane A — the named
 "next 50%"), calendar straddle, shaderwarm v2, prefetch depth, shared decode pool, shadowcast
