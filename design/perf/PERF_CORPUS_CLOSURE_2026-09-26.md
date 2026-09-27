@@ -83,7 +83,9 @@ PERF-07 Electron modernization (live + wave-1 flags + `glflags`), PERF-08 GPU co
 | PERF-36/76 lane collapse, PERF-90 packed-ORM, ABI 25% | `progkeys` |
 | PERF-89 sim-hitch attribution | `simattr` |
 | PERF-69 GL flags, PERF-70 ANGLE, PERF-92 present parity | `glflags` |
-| PERF-73 prod probes off | `probeoff` |
+| PERF-73 prod probes off | CLOSED-with-evidence — audit 2026-09-26: GPU timers opt-in (`createGpuTimers` capability-check only, `renderer.js:5670`), hitch attribution + per-step measurement default-off (`perfRuntime.js:325-360`), per-system timing already prime-stratified (~¼ tax, the intended product instrumentation). Nothing left default-on that is debug-only. |
+| PERF-67 state-change sort | CLOSED-with-evidence — render-submit census: three's `painterSortStable` already keys `material.id` before z and `useProgram`/`bindTexture` dedup exists; the ~100 live program switches are genuinely distinct programs. The lever is program-count collapse → `progkeys`. |
+| PERF-58 speedline residual | CLOSED-with-evidence — `speedLineStrokeCache.js` ships alloc-free stroke fill + quantized-rgba cache + unit-space gradient cache; skip-on-late-present already shipped. OffscreenCanvas worker gated on a measured 2D pole that no census has named. |
 | PERF-65 audio table cull | `audiocull` |
 | PERF-93/94 residual fat-list walks | `fatlist` |
 | PERF-59 scene-graph flatten | `scenegraph` |
