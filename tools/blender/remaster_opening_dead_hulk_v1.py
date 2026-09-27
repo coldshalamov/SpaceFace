@@ -1506,7 +1506,12 @@ def stamp_and_validate_glb_contract(target: Path, contract: dict) -> None:
 
     def expand_accessor_bounds(accessor, world, lo, hi):
         low, high = accessor.get("min"), accessor.get("max")
-        if not (isinstance(low, list) and isinstance(high, list)):
+        finite3 = lambda v: (
+            isinstance(v, list)
+            and len(v) == 3
+            and all(math.isfinite(float(c)) for c in v)
+        )
+        if not (finite3(low) and finite3(high)):
             return
         for cx in (low[0], high[0]):
             for cy in (low[1], high[1]):
@@ -1526,8 +1531,16 @@ def stamp_and_validate_glb_contract(target: Path, contract: dict) -> None:
                 accessor_index = primitive.get("attributes", {}).get("POSITION")
                 if accessor_index is None:
                     continue
+                accessor = accessors[accessor_index]
+                low, high = accessor.get("min"), accessor.get("max")
+                if not (
+                    isinstance(low, list) and isinstance(high, list)
+                    and len(low) == 3 and len(high) == 3
+                    and all(math.isfinite(float(c)) for c in low + high)
+                ):
+                    continue
                 if not expand_accessor_vertices(accessor_index, world, bound_min, bound_max):
-                    expand_accessor_bounds(accessors[accessor_index], world, bound_min, bound_max)
+                    expand_accessor_bounds(accessor, world, bound_min, bound_max)
         for child in node.get("children", []):
             visit_node(child, world)
 
@@ -1535,10 +1548,11 @@ def stamp_and_validate_glb_contract(target: Path, contract: dict) -> None:
     scenes = gltf.get("scenes", [])
     for scene_root in scenes[gltf.get("scene", 0)].get("nodes", []):
         visit_node(scene_root, identity)
-    if all(math.isfinite(v) for v in bound_min + bound_max):
-        contract["boundsDimensionsM"] = [
-            bound_max[axis] - bound_min[axis] for axis in range(3)
-        ]
+    if not all(math.isfinite(v) for v in bound_min + bound_max):
+        raise RuntimeError(f"export produced no measurable POSITION bounds: {target}")
+    contract["boundsDimensionsM"] = [
+        bound_max[axis] - bound_min[axis] for axis in range(3)
+    ]
 
     nodes = gltf.get("nodes", [])
     root_node = next((node for node in nodes if node.get("name") == ROOT_NAME), None)
