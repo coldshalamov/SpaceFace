@@ -108,6 +108,30 @@ heading, longitudinal interval, width, height, bow, side offset, pressure radius
 opacity, material arrival, supply cutoff, and heat. Do not encode a second gameplay boundary
 in decorative reach. Keep a separate inspectable gameplay range.
 
+The low-level call has this exact order (angles are radians; lengths are world units):
+
+```js
+composer.piece(kind, x, z, heading, start, end, width, height,
+  bow, sideOffset, reach, phase, opacity, arrival, cutoff, heat);
+```
+
+Use `ACTION_PRIMITIVES` for `kind`. `slot.recipe.color` is a retained `THREE.Color`;
+`slot.y`, `slot.seed`, `slot.born`, and `slot.recipe.life` supply height, stable character,
+birth time, and lifetime. Begin the batch once, assign `composer.slot`, submit every member,
+then end the batch once. Use the same shader warmup as `ActionVfx`.
+
+- `start/end` are distances along the heading except for **pressure**, where they are angles
+  on an open arc and `reach` is its radius.
+- **Connection** uses `reach = -1/+1` for opposing open shoulders; `0` makes a closed charge
+  parcel. Give the shoulders unequal widths and phases instead of overlapping equal copies.
+- `arrival` advances from 0 to 1 along material coordinates; `cutoff` advances from -0.1 to
+  1.1 after supply stops. They control transported material, never whole-object scale.
+- `phase` offsets internal motion. `opacity` controls optical coverage; `heat` controls crest
+  radiance. More heat cannot repair an unreadable silhouette or a buried contact.
+
+See `bombDetonationVfx.js` for a bounded multi-event owner and `masslineReleaseMatter.js`
+for two small complete compositions. Those examples include cleanup and rebase handling.
+
 ## Origin, scale, and environment
 
 1. Prefer the actual named model socket. Preserve its rotating local offset; a port isn't a
