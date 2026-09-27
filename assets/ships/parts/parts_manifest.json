@@ -3804,11 +3804,12 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_blackmarket.glb",
-      "tris": 36996,
-      "bytes": 9637344,
+      "tris": 55980,
+      "bytes": 6760232,
       "textureSize": 1024,
       "tintable": {
-        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"
       },
       "note": "Black-Market Warren — contraband_warren; authored station family, PBR, explicit LOD0/1/2. LOD0 36996 tris / 5 draw groups.",
@@ -3840,19 +3841,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -65.78519533411867,
-          -58.25519561767578,
-          -18.81732177734375
+          -62.70553207397461,
+          -63.415489196777344,
+          -16.577632904052734
         ],
         "max": [
-          56.1318473815918,
-          58.25519561767578,
-          15.698038101196289
+          43.06789016723633,
+          60.974998474121094,
+          16.244068145751953
         ],
         "dimensionsM": [
-          121.91704271571047,
-          116.51039123535156,
-          34.51535987854004
+          105.77342224121094,
+          124.39048767089844,
+          32.82170104980469
         ]
       },
       "triangleMetric": "lod0"

@@ -52,12 +52,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.blackmarket",
-    "expectedContentHash": "8a2dfb774161e5aa3e10aa0e25b1bf40a8d693b3dd8200bc3f92ba6e1ab90493",
+    "expectedContentHash": "771df0e9ce7145fe96bc01b525f6ede9592df9949a4527e9c66ce03b510137b5",
     "key": "blackmarket",
     "metadataUrl": "assets/ships/release/render-packages/blackmarket/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_BLACKMARKET",
     "slot": "place",
-    "sourceSha256": "b5db4f7e31a8d0e2d6e0f239136b4aaa704ae30464fcb7c9eaee5759cf163744",
+    "sourceSha256": "a3a92a8869ad424c3abf9a95882a7a5f21c12b495f6bb3eeb1f0a6e36b039161",
     "sourceUrl": "assets/ships/release/parts/places/place_station_blackmarket.glb"
   },
   {

@@ -311,6 +311,15 @@ def build_stacks(s):
             F.ring(s, f'StackCollar{k}{int(zb)}', (x, y, zb), 4.9 - (zb - 16) * 0.012, 0.35, axis=(0, 0, 1),
                    material='paint.graphite', segments=24, sides=4)
         F.light(s, f'StackBeacon{k}', (x + 3.9, y, top + 0.2), 'glow_red', size=0.7)
+    # high gantry: a catwalk truss linking the four stacks at the old charging level, a lamp at each stack
+    c, w = truss_segs((-26.2, -38.0, 30.0), (-26.2, 38.0, 30.0), 2.2, 2.0, 16)
+    beams(s, 'GantryChords', c, 0.4, material='paint.graphite')
+    beams(s, 'GantryWebs', w, 0.22, material='paint2')
+    cat = [((-24.9, y, 31.2), (0.5, 0.5, 0.4), 0.0) for y in (-38.0, -22.0, 0.0, 22.0, 38.0)]
+    cluster(s, 'GantryLamps', cat, 'glow_amber')
+    for y in (-38.0, 38.0):
+        beams(s, f'GantryHanger{y:+.0f}', [((-26.2, y, 29.0), (HX0 - 0.5, y * 0.98, HZ1 + 0.4))], 0.7,
+              material='paint.graphite')
     # a slag conveyor gallery along the flank, joining the stack feet
     beams(s, 'SlagGallery', [((-31.0, -40.0, -6.0), (-31.0, 40.0, -6.0))], 3.4, material='paint2', h=2.8)
     gal = [((-31.0 + 1.75, y, -5.6), (0.12, 1.0, 0.7), 0.0) for y in range(-38, 39, 3)]

@@ -2318,20 +2318,6 @@
       }
     },
     {
-      "id": "place_station_blackmarket",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_station_blackmarket.glb",
-      "release": "assets/ships/release/parts/places/place_station_blackmarket.glb",
-      "sourceSha256": "8913fad91d1c7bba8029305f124cdb99470ec8ef93ccee71b8823720c0059b34",
-      "releaseSha256": "b5db4f7e31a8d0e2d6e0f239136b4aaa704ae30464fcb7c9eaee5759cf163744",
-      "sourceBytes": 9637344,
-      "releaseBytes": 7632420,
-      "textures": 15,
-      "ktx2Textures": 15,
-      "meshoptBufferViews": 65,
-      "contractNodeCount": 18
-    },
-    {
       "id": "place_tanker_coupling",
       "kind": "part:places",
       "source": "assets/incubator/everyday_space_kit/source/tanker_coupling.glb",
@@ -4412,6 +4398,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 151,
       "contractNodeCount": 41
+    },
+    {
+      "id": "place_station_blackmarket",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_station_blackmarket.glb",
+      "release": "assets/ships/release/parts/places/place_station_blackmarket.glb",
+      "sourceSha256": "85eab8f07d1c99043edb7a6208fc02ab053557b386c2b448bd066e8d16259a41",
+      "releaseSha256": "a3a92a8869ad424c3abf9a95882a7a5f21c12b495f6bb3eeb1f0a6e36b039161",
+      "sourceBytes": 6760232,
+      "releaseBytes": 2086344,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 184,
+      "contractNodeCount": 52
     }
   ]
 }
