@@ -20,7 +20,7 @@ import { ActionVfx } from '../../src/render/actionVfx.js';
 export const GAMEPLAY_WEAPON_SCENARIOS = Object.freeze({
   pulse: 5.2, 'thermal-bolt': 6.5, 'siege-lance': 7, railgun: 4.6, 'shield-impact': 2.2,
   autocannon: 6.5, 'emp-disruptor': 6.5, concussion: 6.5, missile: 8.5,
-  'vector-mine': 5, 'combat-beam': 5.5,
+  'vector-mine': 5, 'combat-beam': 5.5, flak:5, torpedo:9,
 });
 const WEAPON_IDS = Object.freeze({
   pulse: 'wpn_pulse_laser_s', 'thermal-bolt': 'wpn_plasma_cannon_m',
@@ -28,6 +28,7 @@ const WEAPON_IDS = Object.freeze({
   autocannon: 'wpn_autocannon_s', 'emp-disruptor': 'wpn_emp_disruptor_m',
   concussion: 'wpn_concussion_cannon_m', missile: 'wpn_missile_rack_m',
   'vector-mine': 'wpn_vector_mine_m', 'combat-beam': 'wpn_beam_laser_m',
+  flak:'wpn_flak_turret_s',torpedo:'wpn_torpedo_l',
 });
 const STEP = 1 / 60;
 const LAUNCH_AT = 12 * STEP;

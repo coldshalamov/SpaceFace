@@ -37,17 +37,30 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     render: { ...state.render, scene: root, camera, renderer, viewport: { height: viewportHeight } },
   };
   const owner = Object.create(vfx);
+  // Keep the real subscription table: diagnostic inputs use the same event -> handler
+  // route as gameplay. Unsupported receipts must fail loudly rather than draw a stand-in.
+  const listeners = new Map();
+  const bus = {
+    on(name, callback) {
+      let set = listeners.get(name);
+      if (!set) listeners.set(name, set = new Set());
+      set.add(callback);
+      return () => set.delete(callback);
+    },
+    off(name, callback) { listeners.get(name)?.delete(callback); },
+    emit(name, payload) { for (const callback of listeners.get(name) || []) callback(payload); },
+  };
   for (const name of UNRELATED_CONSTRUCTORS) owner[name] = NOOP;
   const quarks = new QuarksVfxSystem();
   quarks.attach(root);
   owner._initWeaponPresenter = function initDestructionDebris() {
     this._weaponPresenter = { quarks, dispose: () => quarks.dispose() };
   };
-  // No gameplay bus is installed in this visual laboratory. The actual destruction entry points
-  // below still run their complete presentation recipe; audio/feel intents have no observer here.
+  // The isolated bus installs production VFX subscribers. Audio and gameplay systems
+  // are absent; emitted presentation inputs cannot mutate the real game or player saves.
   owner.init({
     state: privateState,
-    bus: { on: () => NOOP, off: NOOP, emit: NOOP },
+    bus,
     helpers: { player: () => privateState.entities?.get(privateState.playerId) || null },
   });
 
@@ -80,6 +93,12 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     privateState.entities = state.entities;
     privateState.playerId = state.playerId;
     privateState.world = state.world;
+    privateState.fields = state.fields;
+    privateState.player = state.player;
+    privateState.massSeed = state.massSeed;
+    privateState.massline2 = state.massline2;
+    privateState.beacons = state.beacons;
+    privateState.tick = state.tick;
     owner._syncFrameMembrane();
     accessibility = resolveVfxAccessibilityProfile(privateState.settings);
     owner._gas.setAccessibility(accessibility);
@@ -94,6 +113,8 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     owner._decayEventLights(dt);
     owner._arcadeStructural.update(dt, camera, viewportHeight);
     owner._gas.update(privateState.simTime, camera);
+    owner._actionVfx?.update(privateState);
+    owner._bombDetonationVfx?.update(privateState);
     // Newer destruction builds may split the structural rupture layer from the shared phased
     // pool. Keep this adapter forward-compatible without inventing a lab-only renderer.
     // ExplosionRupture consumes the absolute simulation clock and accessibility settings.
@@ -114,6 +135,8 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
       gasBodies: owner._gas.mesh.count,
       quarksBatches: quarks.renderer.batches.length,
       structured: owner._arcadeStructural.stats(),
+      action: owner._actionVfx?.inspect?.() || null,
+      bombTransients: owner._bombDetonationVfx?.stats || null,
       rupture: typeof owner._explosionRupture?.inspect === 'function'
         ? owner._explosionRupture.inspect()
         : null,
@@ -141,6 +164,9 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     owner._initArcadeStructural();
     owner._arcadeStructural.clear();
     owner._gas.clear();
+    owner._actionVfx?.clear();
+    owner._bombDetonationVfx?.clear();
+    if(owner._actionVfx)owner._actionVfx.serial=seed;
     if (typeof owner._explosionRupture?.clear === 'function') owner._explosionRupture.clear();
     else if (typeof owner._explosionRupture?.reset === 'function') owner._explosionRupture.reset();
     quarks.reset();
@@ -178,6 +204,16 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     fired++;
     return inspect();
   }
+  function fireEvent(name, receipt = {}) {
+    if (disposed) throw new Error('Production VFX event adapter is disposed');
+    if (!listeners.get(name)?.size) throw new Error(`No production VFX subscriber for ${name}`);
+    syncContext();
+    privateState.simTime = Number.isFinite(state.simTime) ? state.simTime : lastTime;
+    owner._t = privateState.simTime;
+    seeded(() => { bus.emit(name, receipt); publish(0); });
+    fired++;
+    return inspect();
+  }
   function update(dt) {
     if (disposed) return;
     const nextTime = Number.isFinite(state.simTime) ? state.simTime : lastTime + Math.max(0, dt || 0);
@@ -209,5 +245,5 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     disposed = true;
   }
   reset({ seed, time: lastTime });
-  return { root, fire, update, reset, inspect, dispose };
+  return { root, fire, fireEvent, update, reset, inspect, dispose };
 }
