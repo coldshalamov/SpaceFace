@@ -213,6 +213,31 @@ ${H} .sf-entity-link { text-decoration:none !important; box-shadow:none !importa
 ${H} .orr-help-factions { position:relative; display:grid; grid-template-columns:minmax(0, 1.25fr) minmax(300px, .75fr); column-gap:clamp(20px, 3vw, 64px); align-items:center; height:100%; min-height:0; }
 ${H} .orr-help-factions__orbit { position:relative; height:100%; min-height:0; --orr-band-a:.3; --orr-w-band:11px; --orr-edge-a:.6; }
 
+/* PAD FOCUS: the pad moves focus programmatically, so the accessibility sheet draws a lamp-coloured
+   ring box round whatever holds it. On Help that would be a box and a second amber; each control shows
+   pad focus in its own light instead (the same marks as keyboard focus). */
+html.sf-gamepad-focus ${H} :is(button, a, input, select, [tabindex]):focus { outline:none !important; box-shadow:none !important; }
+html.sf-gamepad-focus ${H} .orr-help__tabs .sf-tab:focus { color:rgb(255 255 255) !important; }
+html.sf-gamepad-focus ${H} .orr-help__tabs .sf-tab:focus:not([aria-selected="true"])::before { left:6px !important; width:3px !important; height:20px !important; margin-top:-10px !important;
+  background:rgb(255 255 255) !important; box-shadow:0 0 8px rgb(255 250 236 / .55) !important; }
+html.sf-gamepad-focus ${H} .orr-help__tabs .sf-tab[aria-selected="true"]:focus { text-decoration:underline 2px rgb(255 255 255 / .8); text-underline-offset:7px; }
+html.sf-gamepad-focus ${H} .orr-help-ladder__item:focus .orr-help-ladder__name { color:rgb(255 255 255); }
+html.sf-gamepad-focus ${H} .orr-help-ladder__item:focus:not([aria-selected="true"])::before { left:6px; width:3px; height:20px; margin-top:-10px; background:rgb(255 255 255); box-shadow:0 0 8px rgb(255 250 236 / .55); }
+html.sf-gamepad-focus ${H} .orr-hrig__st:focus .orr-hrig__verb { color:rgb(255 255 255); }
+html.sf-gamepad-focus ${H} .orr-hrig__st:focus .orr-hrig__glyph::before { background:rgb(248 244 234 / .3); }
+html.sf-gamepad-focus ${H} :is(.orr-hrig__devword, .orr-hreg__secword):focus { color:rgb(255 255 255); }
+html.sf-gamepad-focus ${H} :is(.orr-hrig__devword, .orr-hreg__secword):focus::after { height:3px; background:rgb(255 255 255); }
+html.sf-gamepad-focus ${H} .orr-help__close:focus .orr-help__close-word { color:rgb(255 255 255); text-shadow:0 0 18px rgb(255 250 236 / .35); }
+html.sf-gamepad-focus ${H} .orr-help__close:focus .orr-hkey::after { background:rgb(255 255 255); left:-5px; right:-5px; }
+html.sf-gamepad-focus ${H} :is(.orr-hloop__body, .orr-hmix__rock):focus::before { box-shadow:inset 0 0 0 3px rgb(255 255 255), 0 0 12px rgb(255 250 236 / .5); }
+html.sf-gamepad-focus ${H} .orr-hmix__lbl:focus .orr-hmix__lbl-name { color:rgb(255 255 255); text-decoration:underline 2px rgb(255 255 255 / .6); text-underline-offset:4px; }
+html.sf-gamepad-focus ${H} .orr-crest:focus > img, ${H} .orr-crest:focus-visible > img { opacity:.9; transform:scale(1.14); }
+html.sf-gamepad-focus ${H} .orr-crest:focus::before, ${H} .orr-crest:focus-visible::before { display:block; }
+html.sf-gamepad-focus ${H} .orr-crest:focus .orr-crest__name { color:rgb(248 244 234); }
+html.sf-gamepad-focus ${H} .orr-hscale:focus .orr-hi__edge { stroke:rgb(255 255 255); }
+html.sf-gamepad-focus ${H} .orr-hreg__scroll:focus .orr-hreg__list { background-color:rgb(248 244 234 / .03); }
+html.sf-gamepad-focus ${H} .orr-help-reading__name.sf-entity-link:focus { color:rgb(255 255 255) !important; text-shadow:0 0 22px rgb(255 250 236 / .3); }
+${H} .orr-hmix__lbl:focus-visible { outline:none; }
 @media (max-width:1500px) {
   ${H} .orr-hreg__secword { letter-spacing:.12em; }
   ${H} .orr-help__tabs .sf-tab { padding-left:56px !important; letter-spacing:.14em !important; font-size:12px !important; }

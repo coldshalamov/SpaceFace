@@ -99,13 +99,13 @@ const CSS = `
   transform-origin:50% 50%; }
 .orr-hrig__hull { filter:drop-shadow(0 10px 18px rgb(0 0 0 / .7)); opacity:0; transition:opacity .5s var(--dp-ease-out, ease-out); }
 .orr-hrig__hull.is-ready { opacity:1; }
-.orr-hrig__ghost { opacity:0; mix-blend-mode:screen; transition:transform .52s cubic-bezier(.34, 1.36, .64, 1), opacity .2s linear; }
-.orr-hrig__ghost.is-lit { opacity:.62; }
+.orr-hrig__ghost { opacity:0; visibility:hidden; mix-blend-mode:screen; transition:transform .52s cubic-bezier(.34, 1.36, .64, 1), opacity .2s linear, visibility 0s linear .52s; }
+.orr-hrig__ghost.is-lit { opacity:.62; visibility:visible; transition-delay:0s; }
 .orr-hrig__glows { position:absolute; inset:0; pointer-events:none; z-index:4; }
 .orr-hrig__over { z-index:5; }
-.orr-hrig__glow { position:absolute; left:0; top:0; pointer-events:none; opacity:0; border-radius:50%;
-  transition:opacity .16s linear, transform .42s cubic-bezier(.34, 1.36, .64, 1); }
-.orr-hrig__glow.is-lit { opacity:1; }
+.orr-hrig__glow { position:absolute; left:0; top:0; pointer-events:none; opacity:0; visibility:hidden; border-radius:50%;
+  transition:opacity .16s linear, transform .42s cubic-bezier(.34, 1.36, .64, 1), visibility 0s linear .16s; }
+.orr-hrig__glow.is-lit { opacity:1; visibility:visible; transition-delay:0s; }
 .orr-hrig__glow--plume { background:radial-gradient(50% 50% at 50% 22%, rgb(255 255 255), rgb(236 247 255 / .9) 12%, rgb(${ICE} / .6) 30%, rgb(${ICE} / .2) 62%, rgb(${ICE} / 0));
   transform-origin:50% 0; transform:scaleY(.25); }
 .orr-hrig__glow--plume.is-lit { transform:scaleY(1); }
@@ -130,6 +130,8 @@ const CSS = `
 .orr-hrig .orr-hrig__beam-bloom { stroke:rgb(${ICE} / .55); stroke-width:14px; stroke-dasharray:.26 1.4; stroke-dashoffset:.26; }
 .orr-hrig .orr-hrig__beam.is-run, .orr-hrig .orr-hrig__beam-bloom.is-run { animation:orr-hrig-beam var(--orr-beam-ms, 900ms) cubic-bezier(.4, .1, .6, .9) forwards; }
 @keyframes orr-hrig-beam { 0% { opacity:1; stroke-dashoffset:.2; } 90% { opacity:1; } 100% { opacity:0; stroke-dashoffset:-1.02; } }
+.orr-hrig .orr-hrig__gate { fill:none; stroke:rgb(236 247 255 / .0); stroke-linecap:butt; transition:stroke .16s linear; }
+.orr-hrig .orr-hrig__gate.is-lit { stroke:rgb(236 247 255 / .78); }
 .orr-hrig .orr-hrig__mark-ring { fill:rgb(4 6 9 / .7); stroke:rgb(${BONE} / .78); stroke-width:1.6px; transition:stroke .16s linear, fill .16s linear; }
 .orr-hrig .orr-hrig__mark-core { fill:rgb(${HOT} / .9); transition:fill .16s linear; }
 .orr-hrig .orr-hrig__mark.is-lit .orr-hrig__mark-ring { stroke:rgb(${ICE}); fill:rgb(${ICE} / .28); }
@@ -142,8 +144,8 @@ const CSS = `
 .orr-hrig .orr-hrig__tick { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1.5px; stroke-linecap:butt; }
 .orr-hrig .orr-hrig__tick--major { stroke:rgb(${BONE} / .8); stroke-width:2px; }
 .orr-hrig .orr-hrig__bandtext text { font-size:12px; font-weight:700; letter-spacing:.3em; fill:rgb(${HOT}); }
-.orr-hrig .orr-hrig__fx { opacity:0; transition:opacity .16s linear; }
-.orr-hrig .orr-hrig__fx.is-lit { opacity:1; }
+.orr-hrig .orr-hrig__fx { opacity:0; visibility:hidden; transition:opacity .16s linear, visibility 0s linear .16s; }
+.orr-hrig .orr-hrig__fx.is-lit { opacity:1; visibility:visible; transition-delay:0s; }
 .orr-hrig .orr-hrig__fx-line { fill:none; stroke:rgb(236 247 255); stroke-width:2.4px; stroke-linecap:round; }
 .orr-hrig .orr-hrig__fx-bloom { fill:none; stroke:rgb(${ICE} / .34); stroke-width:10px; stroke-linecap:round; }
 .orr-hrig .orr-hrig__fx-fill { fill:rgb(${ICE} / .16); stroke:none; }
@@ -583,7 +585,8 @@ export function createControlsRig(host, { onPreview = null, onDevice = null } = 
     const beams = svg('g', {});
     const marksG = svg('g', {});
     const fxG = svg('g', {});
-    over.append(fxG, halos, bands, cores, beams, marksG);
+    const gatesG = svg('g', {});
+    over.append(gatesG, fxG, halos, bands, cores, beams, marksG);
     for (const a of anchors) {
       const [px, py] = at(P[a.spec.part]);
       const lim = Rout * 0.94;
@@ -600,7 +603,11 @@ export function createControlsRig(host, { onPreview = null, onDevice = null } = 
       bands.appendChild(rise(band, 300));
       cores.appendChild(rise(core, 300));
       beams.append(bloom, beam);
-      leads.set(a.spec.id, { band, core, beam, bloom });
+      // where the leader crosses the berth, the band lights while the verb is held
+      const cross = ((Math.atan2(rx - cx, -(ry - cy)) * 180) / Math.PI + 360) % 360;
+      const gate = svg('path', { d: arcD(cx, cy, Rb, cross - 7, cross + 7), class: 'orr-hrig__gate', 'stroke-width': bandW });
+      gatesG.appendChild(gate);
+      leads.set(a.spec.id, { band, core, beam, bloom, gate });
     }
     const partNames = new Set(model.stations.map((s) => s.part));
     for (const part of partNames) {
@@ -626,7 +633,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null } = 
     // throttle: the drive blooms aft
     {
       const [dx, dy] = at(P.drive);
-      glow('drive', 'plume', dx - Lh * 0.11, dy - Lh * 0.02, Lh * 0.22, Lh * 0.38);
+      glow('drive', 'plume', dx - Lh * 0.13, dy - Lh * 0.02, Lh * 0.26, Lh * 0.5);
       const [bx, by] = at(P.bloom);
       // boost: a longer, wider bloom and a ring at the nozzle
       glow('bloom', 'plume', bx - Lh * 0.17, by - Lh * 0.03, Lh * 0.34, Lh * 0.62);
@@ -744,7 +751,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null } = 
     const btn = stationEls.get(id);
     if (btn) btn.classList.toggle('is-lit', on);
     const l = leads.get(id);
-    if (l) { l.core.classList.toggle('is-lit', on); l.band.classList.toggle('is-lit', on); }
+    if (l) { l.core.classList.toggle('is-lit', on); l.band.classList.toggle('is-lit', on); if (l.gate) l.gate.classList.toggle('is-lit', on); }
     // a part stays lit while any station that drives it is held
     const partOn = on || [...held.keys()].some((k) => { const s = specOf(k); return s && s.part === spec.part; });
     const mk = markEls.get(spec.part);
