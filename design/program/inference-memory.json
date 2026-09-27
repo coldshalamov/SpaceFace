@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "iron-maw-arena-lore",
-      "date": "2026-09-16",
-      "wf": "WF-04",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Ashfall boss arena scans now surface the authored Iron Maw lore lines",
-      "fingerprint": "verb=scan,subject=boss-arena,sector=ashfall-reach,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "441f7061b",
-      "verification": "focused_green"
-    },
-    {
       "id": "wreck-cathedral-identity",
       "date": "2026-09-16",
       "wf": "WF-04",
@@ -1635,6 +1622,19 @@
       "references": [],
       "integration": "live",
       "commit": "524ddb204",
+      "verification": "focused_green"
+    },
+    {
+      "id": "wf05-beam-tender",
+      "date": "2026-09-27",
+      "wf": "WF-05",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "A limping, non-hostile hull (hull at or below 85% of max) joins the mining beam's ordinary aim-biased scan and can be welded shut for credits under the same heat gauge — and the rope-and-weld is now wired on the default route: latched to a casualty, RMB/LT stays the mining beam (isThrowArmPayload no longer claims non-hostile ship/drone latches) so you latch, winch, and hold the weld to full; latched to a hostile, RMB still arms the throw exactly as before. The hull closing fires one cooled weld-out thanks.",
+      "fingerprint": "verb=tend,subject=mining-beam+massline-route,sector=any-flight,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "9c5a1bc05",
       "verification": "focused_green"
     }
   ],
