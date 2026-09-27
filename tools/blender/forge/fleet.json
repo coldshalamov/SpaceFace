@@ -184,6 +184,55 @@
         "retained_lod_family_member",
         "retained_lod_family_member"
       ]
+    },
+    "apron_shuttle": {
+      "layout": "npc",
+      "file": "apron_shuttle",
+      "asset_id": "SF_WHOLESHIP_APRON_SHUTTLE",
+      "part_id": "wholeship_apron_shuttle",
+      "npc_root": "SF_NPCWORK_APRON_SHUTTLE_ROOT"
+    },
+    "rescue_lifter": {
+      "layout": "npc",
+      "file": "rescue_lifter",
+      "asset_id": "SF_WHOLESHIP_RESCUE_LIFTER",
+      "part_id": "wholeship_rescue_lifter",
+      "npc_root": "SF_NPCWORK_RESCUE_LIFTER_ROOT"
+    },
+    "prospector_skiff": {
+      "layout": "npc",
+      "file": "prospector_skiff",
+      "asset_id": "SF_WHOLESHIP_PROSPECTOR_SKIFF",
+      "part_id": "wholeship_prospector_skiff",
+      "npc_root": "SF_NPCWORK_PROSPECTOR_SKIFF_ROOT"
+    },
+    "scrap_sweeper": {
+      "layout": "npc",
+      "file": "scrap_sweeper",
+      "asset_id": "SF_WHOLESHIP_SCRAP_SWEEPER",
+      "part_id": "wholeship_scrap_sweeper",
+      "npc_root": "SF_NPCWORK_SCRAP_SWEEPER_ROOT"
+    },
+    "volatiles_tanker": {
+      "layout": "npc",
+      "file": "volatiles_tanker",
+      "asset_id": "SF_WHOLESHIP_VOLATILES_TANKER",
+      "part_id": "wholeship_volatiles_tanker",
+      "npc_root": "SF_NPCWORK_VOLATILES_TANKER_ROOT"
+    },
+    "inspection_cutter": {
+      "layout": "npc",
+      "file": "inspection_cutter",
+      "asset_id": "SF_WHOLESHIP_INSPECTION_CUTTER",
+      "part_id": "wholeship_inspection_cutter",
+      "npc_root": "SF_NPCWORK_INSPECTION_CUTTER_ROOT"
+    },
+    "helios_arclight": {
+      "layout": "npc",
+      "file": "helios_arclight",
+      "asset_id": "SF_WHOLESHIP_HELIOS_ARCLIGHT",
+      "part_id": "wholeship_helios_arclight",
+      "npc_root": "SF_M4_HELIOS_ARCLIGHT_ROOT"
     }
   }
 }
