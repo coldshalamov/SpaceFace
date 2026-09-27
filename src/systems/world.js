@@ -2343,6 +2343,10 @@ export const world = {
         placeId,
         visualRadius,
         placeRadius: visualRadius,
+        ...(finitePositive(poi.placeScale) ? { placeScale: Number(poi.placeScale) } : {}),
+        ...(finitePositive(poi.placeTargetRadius)
+          ? { placeTargetRadius: Number(poi.placeTargetRadius) }
+          : {}),
         homeSectorId: sector.id,
         ...(poi.flavorTargetRef ? { flavorTargetRef: String(poi.flavorTargetRef) } : {}),
         ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),

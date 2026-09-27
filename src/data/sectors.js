@@ -234,6 +234,8 @@ const CORE_SECTORS = [
         pos: { x: -330, z: 1060 },
         landmarkGlb: 'place_maintenance_gantry',
         visualRadius: 30,
+        // D54 hero-landmark scale: twin spires read ~110 WU, not a ship-sized prop.
+        placeTargetRadius: 110,
         factionId: 'faction_choir',
         scannerSignalKind: 'archive',
         flavorTargetRef: 'landmark_c13e_resonant_cathedral',
@@ -401,6 +403,8 @@ const CORE_SECTORS = [
         pos: { x: 300, z: -550 },
         landmarkGlb: 'place_dead_hulk',
         visualRadius: 34,
+        // D54 hero-landmark scale: the welded-hull fortress reads ~150 WU.
+        placeTargetRadius: 150,
         factionId: 'faction_reach',
         scannerSignalKind: 'archive',
         flavorTargetRef: 'landmark_c13d_skerris_throne',

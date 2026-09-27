@@ -3312,11 +3312,16 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
       ? record.bounds.size.map((value) => Number(value) || 0)
       : [authoredLength]),
   );
-  const scale = censusScale != null
-    ? censusScale
-    : (Number.isFinite(targetRadius) && targetRadius > 0
-      ? (targetRadius * 2) / authoredEnvelope
-      : (Number.isFinite(rawScale) && rawScale > 0 ? rawScale : 1));
+  const targetScale = Number.isFinite(targetRadius) && targetRadius > 0
+    ? (targetRadius * 2) / authoredEnvelope
+    : null;
+  const authoredScale = Number.isFinite(rawScale) && rawScale > 0 ? rawScale : null;
+  // A POI's declared draw size is authored placement intent and outranks the
+  // census ratio — the POI's entity radius is its gameplay footprint, not the
+  // monument's authored scale.
+  const scale = data.poi === true
+    ? (targetScale ?? authoredScale ?? censusScale ?? 1)
+    : (censusScale ?? targetScale ?? authoredScale ?? 1);
   instantiatePart(record, root, {
     position: [0, 0, 0],
     rotation: [0, 0, 0],
