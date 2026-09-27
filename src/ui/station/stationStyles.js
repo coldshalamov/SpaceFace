@@ -32,11 +32,17 @@ export function ensureStylesheet() {
     link.id = style.id;
     link.rel = 'stylesheet';
     link.href = style.href;
+    // insert after a node without relying on Element.after (headless test documents stub a minimal DOM)
+    const placeAfter = (node) => {
+      if (typeof node.after === 'function') node.after(link);
+      else if (node.parentNode && typeof node.parentNode.insertBefore === 'function') node.parentNode.insertBefore(link, node.nextSibling || null);
+      else document.head.appendChild(link);
+    };
     if (slot) {
-      slot.after(link);
+      placeAfter(slot);
     } else {
       const anchor = document.getElementById('sf-deckplate-style');
-      if (anchor) anchor.after(link);
+      if (anchor) placeAfter(anchor);
       else document.head.appendChild(link);
     }
     slot = link;
