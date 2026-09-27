@@ -1271,9 +1271,15 @@
       "slot": "place",
       "releaseAssetId": "place_mining_drone",
       "sourceUrl": "assets/ships/release/parts/places/place_mining_drone.glb",
-      "releaseSha256": "940168ee3e32f2374ffec768daebc83c5119c02df2a0091212e7992a4efe6839",
-      "releaseBytes": 2781476,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "2b64b357621af5dd78681a095682cd41b3ac92cd3cf63ac887840b79f751c3cf",
+      "releaseBytes": 673748,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/mining-drone",
       "metadataUrl": "assets/ships/release/render-packages/mining-drone/render-package.json",
       "sceneRoot": true

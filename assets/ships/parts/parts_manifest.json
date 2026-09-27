@@ -3528,12 +3528,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_mining_drone.glb",
-      "tris": 19124,
-      "bytes": 4158284,
+      "tris": 21618,
+      "bytes": 1446400,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Accent"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "thruster": "Material_Thruster"
       },
       "note": "Opening-route industrial prop V3 2026-08-18 — adopted the parked opening_drone_v1 rebuild, then v2 construction repair (plate seams + latch hardware, helical 3-ring brazed-carbide cutter, seated RCS pods with recessed throats, debris shield, coolant hardlines) and v3 service finish (crown rails/fasteners, asymmetric data/coolant runs, grease collar, optic hood, tow bolts) plus tangent-safe and 32k-LOD0 budget discipline. 7 semantic materials, authored LOD0/1/2 8716/6704/2504, root/socket/HOOK_Spin/HOOK_Emissive preserved; Builder tools/blender/remaster_opening_mining_drone_v3.py; maps drone_* in assets/ships/opening_route_props/textures/opening_infra_v1.",
       "factionAccentVariants": {
@@ -3554,29 +3556,26 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Spin",
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
         "SOCKET_Mining_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.40000009536743164,
-          -0.12148261070251465,
-          -1.1949999928474426
+          -0.32026347517967224,
+          -0.2107013314962387,
+          -1.2090013027191162
         ],
         "max": [
-          4.599999904632568,
-          1.3025000095367432,
-          1.1950000524520874
+          4.600203037261963,
+          1.4831327199935913,
+          1.2090013027191162
         ],
         "dimensionsM": [
-          5,
-          1.4239826202392578,
-          2.39000004529953
+          4.920466512441635,
+          1.69383405148983,
+          2.4180026054382324
         ]
       }
     },

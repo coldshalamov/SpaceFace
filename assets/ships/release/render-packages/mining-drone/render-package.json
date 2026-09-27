@@ -24,9 +24,9 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        20
+        34
       ],
-      "parentNodeId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentNodeId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "worldTransform": [
         1,
         0,
@@ -48,738 +48,915 @@
     }
   ],
   "assetId": "sf.render.mining-drone",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.mining-drone.collision",
+      "nodeId": "sf.render.mining-drone.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "32582bcc25316bc598ea870658e3d014c372e829d131d0595d09f868a8f34814",
-  "dynamicGroups": [],
+  "contentHash": "a3b3d5815cae246d016451e2e01596493a0643fa6e557e1c69abddefb2c908ce",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.mining-drone.node.lod0-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mining-drone.node.lod0-hook-drive-core"
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod0-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mining-drone.node.lod0-hook-nav-port"
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod0-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mining-drone.node.lod0-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod1-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mining-drone.node.lod1-hook-drive-core"
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod1-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mining-drone.node.lod1-hook-nav-port"
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod1-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mining-drone.node.lod1-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mining-drone.node.lod2-hook-drive-core"
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mining-drone.node.lod2-hook-nav-port"
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mining-drone.node.lod2-hook-nav-starboard"
+    }
+  ],
   "geometry": [
     {
       "bounds": {
         "max": [
-          3.3900182843208313,
-          1.0599911212921143,
-          0.23999999463558197
+          4.6000285148620605,
+          1.4832053184509277,
+          1.2091089487075806
         ],
         "min": [
-          3.1499816738069057,
-          0.8400088548660278,
-          -0.23999999463558197
+          -0.32004255056381226,
+          -0.21007265150547028,
+          -1.2091089487075806
         ]
       },
       "drawMode": 4,
-      "geometryHash": "07e80673813c30fc7ec1e93769eceaa311c91fb2c5a205ad8588bcf53d8992d1",
-      "id": "sf.render.mining-drone.node.lod0-drone-material-accent.primitive.0",
-      "indexCount": 324,
+      "geometryHash": "a3e70f392d465d314fd542aadde5aea359e3946182030105532e0fb83e1539a3",
+      "id": "sf.render.mining-drone.node.collision-hull.primitive.0",
+      "indexCount": 900,
       "indexed": true,
-      "materialHash": "7677b697e0b7e45551b7975f81086995ef6e5da50c0f5f2c88f6f235c652acf0",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.057",
-      "nodeId": "sf.render.mining-drone.node.lod0-drone-material-accent",
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.mining-drone.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 800
     },
     {
       "bounds": {
         "max": [
-          2.96444034576416,
-          0.9531447887420654,
-          0.9744043350219727
+          4.050000190734863,
+          1.1399569511413574,
+          1.2089617252349854
         ],
         "min": [
-          0.2990837097167969,
-          0.37951600551605225,
-          -0.9744042158126831
+          -0.3199999928474426,
+          -0.18903414905071259,
+          -1.2089617252349854
         ]
       },
       "drawMode": 4,
-      "geometryHash": "67933b25401bf8689d53d4096505b079b802a7868a084e87253bb3c8fdcd27e7",
-      "id": "sf.render.mining-drone.node.lod0-drone-material-cable.primitive.0",
-      "indexCount": 3888,
+      "geometryHash": "68a167905856abe797895b58fc5c7d8a5404ddf651e4365c3f7dc4e94b2e9f55",
+      "id": "sf.render.mining-drone.node.lod0-armor.primitive.0",
+      "indexCount": 17139,
       "indexed": true,
-      "materialHash": "d5d7a0f1d8c50f436c817d9d4728667e1bcf2e5098c69724a7d44a327681a4a7",
+      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.031",
-      "nodeId": "sf.render.mining-drone.node.lod0-drone-material-cable",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.mining-drone.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1152
+      "vertexCount": 5450
     },
     {
       "bounds": {
         "max": [
-          2.25,
-          1.2749978303909302,
-          0.8900059461593628
+          2.601722478866577,
+          1.4373788833618164,
+          0.17996066808700562
         ],
         "min": [
-          0.020000040531158447,
-          0.25000226497650146,
-          -0.8900059461593628
+          0.6136000156402588,
+          0.967029869556427,
+          -0.17996066808700562
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f2a7893deed8433820b97949da41f03ccec7f5664118723c4d7b642e165e4f3",
-      "id": "sf.render.mining-drone.node.lod0-drone-material-hull.primitive.0",
+      "geometryHash": "2231cc3e4eb1c30fdfe9e21569b3db17a3218d7cbf451d1a0bda7458abc244e5",
+      "id": "sf.render.mining-drone.node.lod0-beacon-amber.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "21ab054efd2f9de577b4d13ac90adcb8c9ba50edfd448a23d97542e0a0517a55",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.mining-drone.node.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 200
+    },
+    {
+      "bounds": {
+        "max": [
+          4.599964141845703,
+          1.1100000143051147,
+          0.6600000262260437
+        ],
+        "min": [
+          3.998074531555176,
+          -0.21000003814697266,
+          -0.6600000262260437
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "746b531cbddcb938ebf4ee032031b1a46b1f690f37a3dbf7e41530c75fca301d",
+      "id": "sf.render.mining-drone.node.lod0-brushedmetal.primitive.0",
+      "indexCount": 1908,
+      "indexed": true,
+      "materialHash": "b356a9a7dd2bf1eca7a16e7d577e946116d2834795b1a90e518413bc0dc9578a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.mining-drone.node.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 800
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1400760363647686,
+          0.5553368343440025,
+          1.0853999853134155
+        ],
+        "min": [
+          0.2899240303924334,
+          0.3446631716164619,
+          -1.0853999853134155
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b6ce533452bd7f9ba5c6e20fe8ea2cd712f614408ef6bbc121dfd158ae256817",
+      "id": "sf.render.mining-drone.node.lod0-hook-drive-core.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.mining-drone.node.lod0-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          2.440000057220459,
+          1.2544015007068594,
+          -0.3650651301687374
+        ],
+        "min": [
+          -0.1850000023841858,
+          0.6320985598514597,
+          -1.04993483168429
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ed7baa2e5e1618e676558cfa8bf314f2255403a7f0cf5786a045ae9ddc3df1ac",
+      "id": "sf.render.mining-drone.node.lod0-hook-nav-port.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_PORT",
+      "nodeId": "sf.render.mining-drone.node.lod0-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          2.440000057220459,
+          0.688036771481222,
+          1.0500524538826177
+        ],
+        "min": [
+          0.5099999904632568,
+          0.6319632809708654,
+          0.9699474674392511
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d70464b2a012870f408d570bd8c612110476de4d5b9988dbd37649b5c6b3aa10",
+      "id": "sf.render.mining-drone.node.lod0-hook-nav-starboard.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.mining-drone.node.lod0-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          3.0494093894958496,
+          0.9099947810173035,
+          1.1950035095214844
+        ],
+        "min": [
+          -0.31948667764663696,
+          0.21785300970077515,
+          -1.1950035095214844
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eabc1f2ac2eb0cef838bebc2c3534c553ff43692aa13acb92cef084e2c6305ca",
+      "id": "sf.render.mining-drone.node.lod0-hull.primitive.0",
+      "indexCount": 6771,
+      "indexed": true,
+      "materialHash": "beff8781ffcc5601c1177fe61ecf1ad82fc44a3ed9f4cde5053405b5a36a77bb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.mining-drone.node.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 2027
+    },
+    {
+      "bounds": {
+        "max": [
+          2.6599957942962646,
+          0.9800106883049011,
+          0.2800000011920929
+        ],
+        "min": [
+          2.620004415512085,
+          0.919989287853241,
+          -0.2800000011920929
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5a485ba4fc6b7b13a70ca217fba40024b6065d6a2baacd484f46c3bfa62a4221",
+      "id": "sf.render.mining-drone.node.lod0-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Cyan",
+      "nodeId": "sf.render.mining-drone.node.lod0-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.4000000953674316,
+          1.435558795928955,
+          1.1925702095031738
+        ],
+        "min": [
+          -0.23000000417232513,
+          0.011675269342958927,
+          -1.1925702095031738
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3de0ae561808e1404ab65947253099d896879072f97d1630d79df8e315222296",
+      "id": "sf.render.mining-drone.node.lod0-mechanical.primitive.0",
+      "indexCount": 10386,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.mining-drone.node.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 3274
+    },
+    {
+      "bounds": {
+        "max": [
+          4.150000095367432,
+          1.4832067489624023,
+          1.1797354221343994
+        ],
+        "min": [
+          -0.1599999964237213,
+          -0.11007406562566757,
+          -1.1797354221343994
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "26415692edaf547523b43f283f5cb0846c6e539fb89c4a229c9b6e57cfd9bd96",
+      "id": "sf.render.mining-drone.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 2988,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.mining-drone.node.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 1160
+    },
+    {
+      "bounds": {
+        "max": [
+          3.83003568649292,
+          1.0835981369018555,
+          0.8100000023841858
+        ],
+        "min": [
+          2.3399641513824463,
+          -0.183598130941391,
+          -0.8100000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d88267afbfc106b2f818073be34f41864a1f6e3709cc44c0398a179bc8168885",
+      "id": "sf.render.mining-drone.node.lod0-warning.primitive.0",
       "indexCount": 1056,
       "indexed": true,
-      "materialHash": "e264ea04ee6e7f7cb035f47d70d7a00ed674d00a115b171d6c5c8bcf1e914dc6",
+      "materialHash": "94130d3712ec2f09e6854233d9d727de00b0b6e6b0ab6c299d4c1fa26d290c17",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.mining-drone.node.lod0-drone-material-hull",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.mining-drone.node.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 320
+      "vertexCount": 506
     },
     {
       "bounds": {
         "max": [
-          2.0134363174438477,
-          0.9899441003799438,
-          0.3959854543209076
+          4.050023555755615,
+          1.1399962902069092,
+          1.208341360092163
         ],
         "min": [
-          0.3913491368293762,
-          0.9340018630027771,
-          -0.3959854543209076
+          -0.3198554217815399,
+          -0.1884244829416275,
+          -1.2079147100448608
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dacf6e735d971382a3fa7a90c4151452c518fe3b8768ab96ffc79cb9e6f71a9a",
-      "id": "sf.render.mining-drone.node.lod0-drone-material-hull.primitive.1",
-      "indexCount": 60,
+      "geometryHash": "0a559306ee5a274472ef23352558eaf75105b9f7040fadf9699ab80a4c9f8c9c",
+      "id": "sf.render.mining-drone.node.lod1-armor.primitive.0",
+      "indexCount": 5784,
       "indexed": true,
-      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.mining-drone.node.lod0-drone-material-hull",
-      "primitiveIndex": 1,
-      "vertexCount": 40
-    },
-    {
-      "bounds": {
-        "max": [
-          3.2849998474121094,
-          1.3024200201034546,
-          1.17510187625885
-        ],
-        "min": [
-          -0.40000009536743164,
-          -0.0499199740588665,
-          -1.1751019954681396
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "f98b3dc2ab8399c7eb27e73b031e202b2ff3a3a8295bd5d41c9c260b3e51d890",
-      "id": "sf.render.mining-drone.node.lod0-drone-material-mechanical.primitive.0",
-      "indexCount": 8436,
-      "indexed": true,
-      "materialHash": "a8532eec610cd106a924e1b9e43a16eee641c856371967c5505f93345b20eacf",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.042",
-      "nodeId": "sf.render.mining-drone.node.lod0-drone-material-mechanical",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.mining-drone.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2768
+      "vertexCount": 1848
     },
     {
       "bounds": {
         "max": [
-          1.3899592161178589,
-          1.1500433683395386,
-          0.9599999785423279
+          2.601722478866577,
+          1.4373390674591064,
+          0.17998479306697845
         ],
         "min": [
-          0.22004076838493347,
-          0.8699566721916199,
-          -0.9599999785423279
+          0.6133335828781128,
+          0.9674124717712402,
+          -0.17998479306697845
         ]
       },
       "drawMode": 4,
-      "geometryHash": "abe00c7284b563c0fde62cb30d6af5f58050e65857b277100f76827bb8179c8c",
-      "id": "sf.render.mining-drone.node.lod0-drone-material-radiator.primitive.0",
-      "indexCount": 1620,
+      "geometryHash": "f471bfd2d9e83fe67192509318681ed08670db194a435fdcb6a171c9efcbfe55",
+      "id": "sf.render.mining-drone.node.lod1-beacon-amber.primitive.0",
+      "indexCount": 414,
       "indexed": true,
-      "materialHash": "f5d2ca1685db9bd40ea260c0e03c3fcba06a820c55545dde2a655db5b474b81b",
+      "materialHash": "21ab054efd2f9de577b4d13ac90adcb8c9ba50edfd448a23d97542e0a0517a55",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.025",
-      "nodeId": "sf.render.mining-drone.node.lod0-drone-material-radiator",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.mining-drone.node.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 480
+      "vertexCount": 148
     },
     {
       "bounds": {
         "max": [
-          3.995000123977661,
-          1.2900797128677368,
-          1.1950328350067139
+          4.600058555603027,
+          1.1100000143051147,
+          0.6600000262260437
         ],
         "min": [
-          -0.3875000476837158,
-          0.2479202300310135,
-          -1.1950327157974243
+          3.9980077743530273,
+          -0.21000003814697266,
+          -0.6600000262260437
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6ce0f0e98fad775a79454c501102ddf2365459c019dd2493132f051befde8f3b",
-      "id": "sf.render.mining-drone.node.lod0-drone-material-safety.primitive.0",
-      "indexCount": 6204,
+      "geometryHash": "d6e3b57e0953bbfdd473b2600a04406db6f5016c30c215c7595dfa157479a3bf",
+      "id": "sf.render.mining-drone.node.lod1-brushedmetal.primitive.0",
+      "indexCount": 1860,
       "indexed": true,
-      "materialHash": "16b54ae6cadeefaf909e67915b83dce756056a5ee15893cd381521eb8cb1cdf5",
+      "materialHash": "b356a9a7dd2bf1eca7a16e7d577e946116d2834795b1a90e518413bc0dc9578a",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.mining-drone.node.lod0-drone-material-safety",
+      "meshName": "LOD1_BrushedMetal",
+      "nodeId": "sf.render.mining-drone.node.lod1-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 1904
+      "vertexCount": 784
     },
     {
       "bounds": {
         "max": [
-          3.337966203689575,
-          1.1031008958816528,
-          0.47025585174560547
+          2.140003081880323,
+          0.5555655930792587,
+          1.086389858275652
         ],
         "min": [
-          2.453561782836914,
-          0.8738579154014587,
-          -0.4702557325363159
+          0.2900204691069205,
+          0.34443456189281774,
+          -1.086389821022749
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1973946e64699a1181c991b99356d08efb83aac6dc71b8bf3fa4dbb8894f2502",
-      "id": "sf.render.mining-drone.node.lod0-drone-material-safety.primitive.1",
-      "indexCount": 60,
+      "geometryHash": "73784485ed58c011fca32bd7801cd46c92ee2c12db22354b87d52348d8c2d780",
+      "id": "sf.render.mining-drone.node.lod1-hook-drive-core.primitive.0",
+      "indexCount": 138,
       "indexed": true,
-      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "materialHash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.mining-drone.node.lod0-drone-material-safety",
-      "primitiveIndex": 1,
-      "vertexCount": 40
-    },
-    {
-      "bounds": {
-        "max": [
-          4.599999904632568,
-          1.2415202260017395,
-          0.6799741983413696
-        ],
-        "min": [
-          3.10999995470047,
-          -0.12152022123336792,
-          -0.6799741387367249
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "424ba1b36cc6ac51e02fc9afc4b60bcb82fe9df917dbb4a2a8348636544a1a39",
-      "id": "sf.render.mining-drone.node.lod0-drone-material-tool.primitive.0",
-      "indexCount": 4788,
-      "indexed": true,
-      "materialHash": "ddaf06d89b98ca9722f4983812a6dae5bf4780e11df66312f61085356c5ae09f",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.021",
-      "nodeId": "sf.render.mining-drone.node.lod0-drone-material-tool",
+      "meshName": "LOD1_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.mining-drone.node.lod1-hook-drive-core",
       "primitiveIndex": 0,
-      "vertexCount": 1846
+      "vertexCount": 54
     },
     {
       "bounds": {
         "max": [
-          3.7630279064178467,
-          0.423272967338562,
-          0.7672674059867859
+          2.440000057220459,
+          0.688036771481222,
+          -0.9699474674392511
         ],
         "min": [
-          2.4869894981384277,
-          0.15669690072536469,
-          -0.7672684788703918
+          0.5099999904632568,
+          0.6319632809708654,
+          -1.0500524538826177
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f792a7b337cace2e3df8c89464ed070e933fecd2ba117e8b40fd492f987018d",
-      "id": "sf.render.mining-drone.node.lod0-remaster-material-mechanical-brushednickel.primitive.0",
-      "indexCount": 648,
+      "geometryHash": "75c8963875c6c5d93d1c9ab1c8bdb23fec32e42494cbcb6091fd428e5f14e24c",
+      "id": "sf.render.mining-drone.node.lod1-hook-nav-port.primitive.0",
+      "indexCount": 72,
       "indexed": true,
-      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
-      "meshName": "Remaster_DroneToolClevis-1",
-      "nodeId": "sf.render.mining-drone.node.lod0-remaster-material-mechanical-brushednickel",
+      "meshName": "LOD1_HOOK_NAV_PORT",
+      "nodeId": "sf.render.mining-drone.node.lod1-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.369999885559082,
-          1.2525017261505127,
-          0.42555761337280273
+          2.440000057220459,
+          0.688036771481222,
+          1.0500524538826177
         ],
         "min": [
-          0.4242600202560425,
-          0.14164477586746216,
-          -0.42555755376815796
+          0.5099999904632568,
+          0.6319632809708654,
+          0.9699474674392511
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0f189147edba0ea75a576770af717fe0c78f42995402338f074b1127a6c2f9d",
-      "id": "sf.render.mining-drone.node.lod0-remaster-material-mechanical-shadowenamel.primitive.0",
-      "indexCount": 456,
+      "geometryHash": "5a37de45798212510565764e56239cc348dfd2d41e8c8b42bd119598fa6c5b12",
+      "id": "sf.render.mining-drone.node.lod1-hook-nav-starboard.primitive.0",
+      "indexCount": 72,
       "indexed": true,
-      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
       "materialPipelineKey": "opaque",
-      "meshName": "Remaster_DroneToolBore",
-      "nodeId": "sf.render.mining-drone.node.lod0-remaster-material-mechanical-shadowenamel",
+      "meshName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.mining-drone.node.lod1-hook-nav-starboard",
       "primitiveIndex": 0,
-      "vertexCount": 264
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          3.3900182843208313,
-          1.0599911212921143,
-          0.23999999463558197
+          3.049838066101074,
+          0.9098681211471558,
+          0.8400323987007141
         ],
         "min": [
-          3.1499816738069057,
-          0.8400088548660278,
-          -0.23999999463558197
+          -0.3198554217815399,
+          0.21797388792037964,
+          -0.8400324583053589
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1acb00bfa500727fdeca1be14dcbd5f662a7c18e46e8dbc67b89c5425fa97789",
-      "id": "sf.render.mining-drone.node.lod1-drone-material-accent.primitive.0",
-      "indexCount": 324,
+      "geometryHash": "126b9530acf7903ba1140c775138963352399b4e5c4cdf7ebb4a9676590ba126",
+      "id": "sf.render.mining-drone.node.lod1-hull.primitive.0",
+      "indexCount": 1200,
       "indexed": true,
-      "materialHash": "7677b697e0b7e45551b7975f81086995ef6e5da50c0f5f2c88f6f235c652acf0",
+      "materialHash": "beff8781ffcc5601c1177fe61ecf1ad82fc44a3ed9f4cde5053405b5a36a77bb",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.120",
-      "nodeId": "sf.render.mining-drone.node.lod1-drone-material-accent",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.mining-drone.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 369
     },
     {
       "bounds": {
         "max": [
-          2.965019464492798,
-          0.9534607529640198,
-          0.9746328592300415
+          2.6599957942962646,
+          0.9800106883049011,
+          0.2800000011920929
         ],
         "min": [
-          0.2990378141403198,
-          0.37904655933380127,
-          -0.974632740020752
+          2.620004415512085,
+          0.919989287853241,
+          -0.2800000011920929
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f037e3b9c6d8f10bfdd069ed68f2de65d8f7e33ea34a9d9dcd8564e5fa01427d",
-      "id": "sf.render.mining-drone.node.lod1-drone-material-cable.primitive.0",
-      "indexCount": 2592,
+      "geometryHash": "2130db47bf7a314e3e59c23711f05bf15d4a3f9fcec95b416c5af7b8bb38c16e",
+      "id": "sf.render.mining-drone.node.lod1-lights-cyan.primitive.0",
+      "indexCount": 36,
       "indexed": true,
-      "materialHash": "d5d7a0f1d8c50f436c817d9d4728667e1bcf2e5098c69724a7d44a327681a4a7",
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.104",
-      "nodeId": "sf.render.mining-drone.node.lod1-drone-material-cable",
+      "meshName": "LOD1_Lights_Cyan",
+      "nodeId": "sf.render.mining-drone.node.lod1-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 768
+      "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          2.25,
-          1.2749978303909302,
-          0.8900059461593628
+          3.3994243144989014,
+          1.4356306791305542,
+          1.1925510168075562
         ],
         "min": [
-          0.020000040531158447,
-          0.2500022351741791,
-          -0.8900059461593628
+          -0.02500000037252903,
+          0.012540713883936405,
+          -1.19212007522583
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e56e032703783dd25360d3c6b5851aa2017298053d54b7a6e521099b6c8f7fa",
-      "id": "sf.render.mining-drone.node.lod1-drone-material-hull.primitive.0",
-      "indexCount": 972,
+      "geometryHash": "45a1ed7153e09da00e8668e97486f81fa81afcb345decd662a252c2ee55fcf7f",
+      "id": "sf.render.mining-drone.node.lod1-mechanical.primitive.0",
+      "indexCount": 4125,
       "indexed": true,
-      "materialHash": "e264ea04ee6e7f7cb035f47d70d7a00ed674d00a115b171d6c5c8bcf1e914dc6",
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.078",
-      "nodeId": "sf.render.mining-drone.node.lod1-drone-material-hull",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.mining-drone.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 288
+      "vertexCount": 1379
     },
     {
       "bounds": {
         "max": [
-          3.2849998474121094,
-          1.1641660928726196,
-          1.1751019954681396
+          4.150000095367432,
+          1.4830656051635742,
+          1.1798304319381714
         ],
         "min": [
-          -0.40000009536743164,
-          -0.050072118639945984,
-          -1.17510187625885
+          -0.10999999940395355,
+          -0.10993289202451706,
+          -1.1798304319381714
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cab73ce32a01702f73e926367227061e01d557f8ab9340159e5de113f56cf2f8",
-      "id": "sf.render.mining-drone.node.lod1-drone-material-mechanical.primitive.0",
-      "indexCount": 7164,
+      "geometryHash": "559e1b22fb11e76cff9aa3a3aa121d8567c2ba05ed967af838b03f0a1bfde061",
+      "id": "sf.render.mining-drone.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 1413,
       "indexed": true,
-      "materialHash": "a8532eec610cd106a924e1b9e43a16eee641c856371967c5505f93345b20eacf",
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.086",
-      "nodeId": "sf.render.mining-drone.node.lod1-drone-material-mechanical",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.mining-drone.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 2244
+      "vertexCount": 539
     },
     {
       "bounds": {
         "max": [
-          1.3899592161178589,
-          1.1500433683395386,
-          0.9599999785423279
+          4.030396461486816,
+          1.0884320735931396,
+          0.8094612956047058
         ],
         "min": [
-          0.22004076838493347,
-          0.8699566721916199,
-          -0.9599999785423279
+          2.3399999141693115,
+          -0.18843206763267517,
+          -0.8095369338989258
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c2a034a9bdc14a97bec0ec0d0d54bd6efbf29245e8957ce35bf549ca45c1f685",
-      "id": "sf.render.mining-drone.node.lod1-drone-material-radiator.primitive.0",
-      "indexCount": 972,
+      "geometryHash": "de330ee75015bf649a9be8ecd51100c88803978c0f563840e4815fb55e33c078",
+      "id": "sf.render.mining-drone.node.lod1-warning.primitive.0",
+      "indexCount": 390,
       "indexed": true,
-      "materialHash": "f5d2ca1685db9bd40ea260c0e03c3fcba06a820c55545dde2a655db5b474b81b",
+      "materialHash": "94130d3712ec2f09e6854233d9d727de00b0b6e6b0ab6c299d4c1fa26d290c17",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.100",
-      "nodeId": "sf.render.mining-drone.node.lod1-drone-material-radiator",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.mining-drone.node.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 288
+      "vertexCount": 184
     },
     {
       "bounds": {
         "max": [
-          3.995000123977661,
-          1.2899484634399414,
-          1.1951018571853638
+          4.045712947845459,
+          1.139936089515686,
+          1.2058099508285522
         ],
         "min": [
-          0.09500002861022949,
-          0.2500515878200531,
-          -1.1951018571853638
+          -0.32026347517967224,
+          -0.18836432695388794,
+          -1.2045577764511108
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3a93d1073dece9607f3ee406050be5fe3910641ff217822b9c8e7c2d9c3cf9f9",
-      "id": "sf.render.mining-drone.node.lod1-drone-material-safety.primitive.0",
-      "indexCount": 5232,
+      "geometryHash": "d99081ae6495fdaaa166b828f9de3d44e2bb372c86c9a05640d383de075e9ce5",
+      "id": "sf.render.mining-drone.node.lod2-armor.primitive.0",
+      "indexCount": 2160,
       "indexed": true,
-      "materialHash": "16b54ae6cadeefaf909e67915b83dce756056a5ee15893cd381521eb8cb1cdf5",
+      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.047",
-      "nodeId": "sf.render.mining-drone.node.lod1-drone-material-safety",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.mining-drone.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1472
+      "vertexCount": 864
     },
     {
       "bounds": {
         "max": [
-          4.599999904632568,
-          1.2399741411209106,
-          0.6799741983413696
+          2.601722478866577,
+          1.435840129852295,
+          0.18060649931430817
         ],
         "min": [
-          3.10999995470047,
-          -0.11997419595718384,
-          -0.6799741387367249
+          0.6111331582069397,
+          0.9690385460853577,
+          -0.18000441789627075
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a338bf12427eee61102490f17f8f16438b83f7c36bd982529eff6ed8e9803280",
-      "id": "sf.render.mining-drone.node.lod1-drone-material-tool.primitive.0",
-      "indexCount": 2856,
+      "geometryHash": "3f60a124a420b53096a9a7f19d15aa00c5c4ec2316607663bf11f8cb77ed8f7e",
+      "id": "sf.render.mining-drone.node.lod2-beacon-amber.primitive.0",
+      "indexCount": 180,
       "indexed": true,
-      "materialHash": "ddaf06d89b98ca9722f4983812a6dae5bf4780e11df66312f61085356c5ae09f",
+      "materialHash": "21ab054efd2f9de577b4d13ac90adcb8c9ba50edfd448a23d97542e0a0517a55",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.057",
-      "nodeId": "sf.render.mining-drone.node.lod1-drone-material-tool",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.mining-drone.node.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 997
+      "vertexCount": 83
     },
     {
       "bounds": {
         "max": [
-          3.7630279064178467,
-          0.423272967338562,
-          0.7672674059867859
+          4.600215911865234,
+          1.1098440885543823,
+          0.6584994792938232
         ],
         "min": [
-          2.4869894981384277,
-          0.15669690072536469,
-          -0.7672684788703918
+          3.9979162216186523,
+          -0.2107013314962387,
+          -0.6584994792938232
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f792a7b337cace2e3df8c89464ed070e933fecd2ba117e8b40fd492f987018d",
-      "id": "sf.render.mining-drone.node.lod1-remaster-material-mechanical-brushednickel.primitive.0",
-      "indexCount": 648,
+      "geometryHash": "e3707087502273ab50d4c4689d92680ccab023063b3059b0560e1cd8acba7da7",
+      "id": "sf.render.mining-drone.node.lod2-brushedmetal.primitive.0",
+      "indexCount": 1158,
       "indexed": true,
-      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
+      "materialHash": "b356a9a7dd2bf1eca7a16e7d577e946116d2834795b1a90e518413bc0dc9578a",
       "materialPipelineKey": "opaque",
-      "meshName": "Remaster_DroneToolClevis-1.001",
-      "nodeId": "sf.render.mining-drone.node.lod1-remaster-material-mechanical-brushednickel",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.mining-drone.node.lod2-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 582
     },
     {
       "bounds": {
         "max": [
-          4.369999885559082,
-          1.2525017261505127,
-          0.42555761337280273
+          2.1402375400502947,
+          0.5601356061739426,
+          1.089855819940567
         ],
         "min": [
-          0.4242600202560425,
-          0.14164477586746216,
-          -0.42555755376815796
+          0.2899689375917647,
+          0.3422615793900985,
+          -1.0866924226284027
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0f189147edba0ea75a576770af717fe0c78f42995402338f074b1127a6c2f9d",
-      "id": "sf.render.mining-drone.node.lod1-remaster-material-mechanical-shadowenamel.primitive.0",
-      "indexCount": 456,
+      "geometryHash": "8561079ee40106e39cb8067c91947e670b6f7ec3d047e6b486488a00a445fdc2",
+      "id": "sf.render.mining-drone.node.lod2-hook-drive-core.primitive.0",
+      "indexCount": 51,
       "indexed": true,
-      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "materialHash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
       "materialPipelineKey": "opaque",
-      "meshName": "Remaster_DroneToolBore.001",
-      "nodeId": "sf.render.mining-drone.node.lod1-remaster-material-mechanical-shadowenamel",
+      "meshName": "LOD2_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.mining-drone.node.lod2-hook-drive-core",
       "primitiveIndex": 0,
-      "vertexCount": 264
+      "vertexCount": 25
     },
     {
       "bounds": {
         "max": [
-          3.3900182843208313,
-          1.0599911212921143,
-          0.23999999463558197
+          2.440000057220459,
+          0.688036771481222,
+          -0.9699474674392511
         ],
         "min": [
-          3.1499816738069057,
-          0.8400088548660278,
-          -0.23999999463558197
+          0.5099999904632568,
+          0.6319632809708654,
+          -1.0500524538826177
         ]
       },
       "drawMode": 4,
-      "geometryHash": "876794992f7ac214daeb1ba96f90f92bec5e81ffa19b7dff6229496ef41d787a",
-      "id": "sf.render.mining-drone.node.lod2-drone-material-accent.primitive.0",
-      "indexCount": 132,
+      "geometryHash": "75c8963875c6c5d93d1c9ab1c8bdb23fec32e42494cbcb6091fd428e5f14e24c",
+      "id": "sf.render.mining-drone.node.lod2-hook-nav-port.primitive.0",
+      "indexCount": 72,
       "indexed": true,
-      "materialHash": "7677b697e0b7e45551b7975f81086995ef6e5da50c0f5f2c88f6f235c652acf0",
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.173",
-      "nodeId": "sf.render.mining-drone.node.lod2-drone-material-accent",
+      "meshName": "LOD2_HOOK_NAV_PORT",
+      "nodeId": "sf.render.mining-drone.node.lod2-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 56
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          2.9650535583496094,
-          0.9534833431243896,
-          0.9745646119117737
+          2.440000057220459,
+          0.688036771481222,
+          1.0500524538826177
         ],
         "min": [
-          1.4149465560913086,
-          0.6865167617797852,
-          -0.9745645523071289
+          0.5099999904632568,
+          0.6319632809708654,
+          0.9699474674392511
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e021bd4b11bd634128360c4eb379b097bf6b3e46965df06fbd866cd4d976ce32",
-      "id": "sf.render.mining-drone.node.lod2-drone-material-cable.primitive.0",
-      "indexCount": 264,
+      "geometryHash": "5a37de45798212510565764e56239cc348dfd2d41e8c8b42bd119598fa6c5b12",
+      "id": "sf.render.mining-drone.node.lod2-hook-nav-starboard.primitive.0",
+      "indexCount": 72,
       "indexed": true,
-      "materialHash": "d5d7a0f1d8c50f436c817d9d4728667e1bcf2e5098c69724a7d44a327681a4a7",
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.159",
-      "nodeId": "sf.render.mining-drone.node.lod2-drone-material-cable",
+      "meshName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.mining-drone.node.lod2-hook-nav-starboard",
       "primitiveIndex": 0,
-      "vertexCount": 108
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          2.25,
-          1.2749978303909302,
-          0.8900059461593628
+          3.0498666763305664,
+          0.9092891812324524,
+          0.8387685418128967
         ],
         "min": [
-          0.020000040531158447,
-          0.2500022351741791,
-          -0.8900059461593628
+          -0.32026347517967224,
+          0.21812812983989716,
+          -0.8390455842018127
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c74b8180ad9077c9c0b3e5366c5c6b4631e393deb22c7a953ade439d825fb29a",
-      "id": "sf.render.mining-drone.node.lod2-drone-material-hull.primitive.0",
-      "indexCount": 396,
+      "geometryHash": "5d9fe172bc757ce8f0e55a89dda024a664e169110007bc5d0968ff679c5fda94",
+      "id": "sf.render.mining-drone.node.lod2-hull.primitive.0",
+      "indexCount": 606,
       "indexed": true,
-      "materialHash": "e264ea04ee6e7f7cb035f47d70d7a00ed674d00a115b171d6c5c8bcf1e914dc6",
+      "materialHash": "beff8781ffcc5601c1177fe61ecf1ad82fc44a3ed9f4cde5053405b5a36a77bb",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.134",
-      "nodeId": "sf.render.mining-drone.node.lod2-drone-material-hull",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.mining-drone.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 162
+      "vertexCount": 207
     },
     {
       "bounds": {
         "max": [
-          3.2849998474121094,
-          1.1716175079345703,
-          1.1751019954681396
+          2.646665573120117,
+          0.9800106883049011,
+          0.2800000309944153
         ],
         "min": [
-          -0.40000009536743164,
-          -0.05161755159497261,
-          -1.17510187625885
+          2.6333351135253906,
+          0.919989287853241,
+          -0.2800000309944153
         ]
       },
       "drawMode": 4,
-      "geometryHash": "efbadbc6eb2684eca0680d6993f680fb50a1eb46a34dfc9c5818b02e51db5500",
-      "id": "sf.render.mining-drone.node.lod2-drone-material-mechanical.primitive.0",
-      "indexCount": 2976,
+      "geometryHash": "ff77fb038c83ede5f51fe1d691600c9bbf4bb96d9c395378993282e3fa75325f",
+      "id": "sf.render.mining-drone.node.lod2-lights-cyan.primitive.0",
+      "indexCount": 12,
       "indexed": true,
-      "materialHash": "a8532eec610cd106a924e1b9e43a16eee641c856371967c5505f93345b20eacf",
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.142",
-      "nodeId": "sf.render.mining-drone.node.lod2-drone-material-mechanical",
+      "meshName": "LOD2_Lights_Cyan",
+      "nodeId": "sf.render.mining-drone.node.lod2-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 1287
+      "vertexCount": 8
     },
     {
       "bounds": {
         "max": [
-          1.3899592161178589,
-          1.1500433683395386,
-          0.9599999785423279
+          3.3968141078948975,
+          1.4359188079833984,
+          1.1928117275238037
         ],
         "min": [
-          0.22004076838493347,
-          0.8699566721916199,
-          -0.9599999785423279
+          -0.02500000037252903,
+          0.01516684703528881,
+          -1.192130208015442
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f564fa56ba050ffdfeaadc83a273de6932b473bd45436ad5d227e71ef7ea6d9d",
-      "id": "sf.render.mining-drone.node.lod2-drone-material-radiator.primitive.0",
-      "indexCount": 264,
+      "geometryHash": "ab491c8acb2a14779ca85f612be37188a5142ff414aeb6ef824ccc7b1e74c212",
+      "id": "sf.render.mining-drone.node.lod2-mechanical.primitive.0",
+      "indexCount": 1779,
       "indexed": true,
-      "materialHash": "f5d2ca1685db9bd40ea260c0e03c3fcba06a820c55545dde2a655db5b474b81b",
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.156",
-      "nodeId": "sf.render.mining-drone.node.lod2-drone-material-radiator",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.mining-drone.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 100
+      "vertexCount": 807
     },
     {
       "bounds": {
         "max": [
-          3.995000123977661,
-          1.2899484634399414,
-          1.1951018571853638
+          4.150115013122559,
+          1.4810024499893188,
+          1.1870671510696411
         ],
         "min": [
-          0.09500002861022949,
-          0.2500515878200531,
-          -1.1951018571853638
+          -0.10999999940395355,
+          -0.10839861631393433,
+          -1.1752574443817139
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b94f0e1480470ed7b4b92a956ba524c5afadc86356824106783911399e87650b",
-      "id": "sf.render.mining-drone.node.lod2-drone-material-safety.primitive.0",
-      "indexCount": 1896,
+      "geometryHash": "1e27c502b47a2b8f5c783f3d6ee96a048cc5ad947eaec66d574d671b696ae892",
+      "id": "sf.render.mining-drone.node.lod2-mechanicaldark.primitive.0",
+      "indexCount": 627,
       "indexed": true,
-      "materialHash": "16b54ae6cadeefaf909e67915b83dce756056a5ee15893cd381521eb8cb1cdf5",
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.067",
-      "nodeId": "sf.render.mining-drone.node.lod2-drone-material-safety",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.mining-drone.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 762
+      "vertexCount": 269
     },
     {
       "bounds": {
         "max": [
-          4.599999904632568,
-          1.1714187264442444,
-          0.6684828400611877
+          4.045712947845459,
+          1.088464617729187,
+          0.8045486807823181
         ],
         "min": [
-          3.10999995470047,
-          -0.10849791765213013,
-          -0.6800063848495483
+          2.3399999141693115,
+          -0.18846462666988373,
+          -0.8045487403869629
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1604a1b219911fe677104a5a551254c56817ace6cfc5d5c6a0a0ba94b4b568e6",
-      "id": "sf.render.mining-drone.node.lod2-drone-material-tool.primitive.0",
-      "indexCount": 1584,
+      "geometryHash": "11dece73457cbeaf772dd5df6d3d3d84a475e0e304c7722e8c3a870d74d70252",
+      "id": "sf.render.mining-drone.node.lod2-warning.primitive.0",
+      "indexCount": 261,
       "indexed": true,
-      "materialHash": "ddaf06d89b98ca9722f4983812a6dae5bf4780e11df66312f61085356c5ae09f",
+      "materialHash": "94130d3712ec2f09e6854233d9d727de00b0b6e6b0ab6c299d4c1fa26d290c17",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.077",
-      "nodeId": "sf.render.mining-drone.node.lod2-drone-material-tool",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.mining-drone.node.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 666
-    },
-    {
-      "bounds": {
-        "max": [
-          3.7630279064178467,
-          0.423272967338562,
-          0.7672674059867859
-        ],
-        "min": [
-          2.4869894981384277,
-          0.15669690072536469,
-          -0.7672684788703918
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9f792a7b337cace2e3df8c89464ed070e933fecd2ba117e8b40fd492f987018d",
-      "id": "sf.render.mining-drone.node.lod2-remaster-material-mechanical-brushednickel.primitive.0",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
-      "materialPipelineKey": "opaque",
-      "meshName": "Remaster_DroneToolClevis-1.002",
-      "nodeId": "sf.render.mining-drone.node.lod2-remaster-material-mechanical-brushednickel",
-      "primitiveIndex": 0,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          4.369999885559082,
-          1.2525017261505127,
-          0.42555761337280273
-        ],
-        "min": [
-          0.4242600202560425,
-          0.14164477586746216,
-          -0.42555755376815796
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d0f189147edba0ea75a576770af717fe0c78f42995402338f074b1127a6c2f9d",
-      "id": "sf.render.mining-drone.node.lod2-remaster-material-mechanical-shadowenamel.primitive.0",
-      "indexCount": 456,
-      "indexed": true,
-      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
-      "materialPipelineKey": "opaque",
-      "meshName": "Remaster_DroneToolBore.002",
-      "nodeId": "sf.render.mining-drone.node.lod2-remaster-material-mechanical-shadowenamel",
-      "primitiveIndex": 0,
-      "vertexCount": 264
+      "vertexCount": 112
     }
   ],
   "hlods": [],
@@ -787,303 +964,236 @@
   "lods": [],
   "materials": [
     {
-      "hash": "16b54ae6cadeefaf909e67915b83dce756056a5ee15893cd381521eb8cb1cdf5",
-      "id": "material:16b54ae6cadeefaf909e6791",
-      "name": "Material_Safety",
+      "hash": "21ab054efd2f9de577b4d13ac90adcb8c9ba50edfd448a23d97542e0a0517a55",
+      "id": "material:21ab054efd2f9de577b4d13a",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "id": "material:7d49b2b274926ec08348a5fd",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "drone_safety_surface_basecolor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_safety_surface_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_safety_surface_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_safety_surface_orm",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "7677b697e0b7e45551b7975f81086995ef6e5da50c0f5f2c88f6f235c652acf0",
-      "id": "material:7677b697e0b7e45551b7975f",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "drone_sensor_optic_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "srgb",
-          "name": "drone_sensor_optic_emissive",
-          "slot": "emissive",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_sensor_optic_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_sensor_optic_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_sensor_optic_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
-      "id": "material:a3835271b1d8aa0e92a83e88",
-      "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_ShadowEnamel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "a8532eec610cd106a924e1b9e43a16eee641c856371967c5505f93345b20eacf",
-      "id": "material:a8532eec610cd106a924e1b9",
+      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "id": "material:7dbce0f058ce69aeee64664b",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "drone_structural_alloy_basecolor",
+          "name": "forge_machinery_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_structural_alloy_orm",
+          "name": "forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_structural_alloy_normal",
+          "name": "forge_machinery_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_structural_alloy_orm",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "d5d7a0f1d8c50f436c817d9d4728667e1bcf2e5098c69724a7d44a327681a4a7",
-      "id": "material:d5d7a0f1d8c50f436c817d9d",
-      "name": "Material_Cable",
+      "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "id": "material:85add90c89b799ae69ad3e2f",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "94130d3712ec2f09e6854233d9d727de00b0b6e6b0ab6c299d4c1fa26d290c17",
+      "id": "material:94130d3712ec2f09e6854233",
+      "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "drone_cable_polymer_basecolor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_cable_polymer_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_cable_polymer_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_cable_polymer_orm",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "ddaf06d89b98ca9722f4983812a6dae5bf4780e11df66312f61085356c5ae09f",
-      "id": "material:ddaf06d89b98ca9722f49838",
-      "name": "Material_Tool",
+      "hash": "b356a9a7dd2bf1eca7a16e7d577e946116d2834795b1a90e518413bc0dc9578a",
+      "id": "material:b356a9a7dd2bf1eca7a16e7d",
+      "name": "Material_BrushedMetal",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "drone_cutter_carbide_basecolor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_cutter_carbide_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_cutter_carbide_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_cutter_carbide_orm",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "e264ea04ee6e7f7cb035f47d70d7a00ed674d00a115b171d6c5c8bcf1e914dc6",
-      "id": "material:e264ea04ee6e7f7cb035f47d",
+      "hash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "id": "material:be05a75f6364bf5672ea6503",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "beff8781ffcc5601c1177fe61ecf1ad82fc44a3ed9f4cde5053405b5a36a77bb",
+      "id": "material:beff8781ffcc5601c1177fe6",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "drone_painted_armor_basecolor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_painted_armor_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_painted_armor_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_painted_armor_orm",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "f5d2ca1685db9bd40ea260c0e03c3fcba06a820c55545dde2a655db5b474b81b",
-      "id": "material:f5d2ca1685db9bd40ea260c0",
-      "name": "Material_Radiator",
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
       "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "drone_radiator_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_radiator_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_radiator_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_radiator_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
+      "textures": []
     },
     {
-      "hash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
-      "id": "material:ffe807b15567637e0a14ecd2",
-      "name": "Material_Mechanical_BrushedNickel",
+      "hash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "id": "material:f64dcbc7e999cc81995955b9",
+      "name": "Material_Thruster",
       "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_BrushedNickel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
+      "textures": []
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.mining-drone.node.drone-sensor-brow",
+      "id": "sf.render.mining-drone.node.collision-hull",
       "localTransform": [
         1,
         0,
@@ -1097,19 +1207,19 @@
         0,
         1,
         0,
-        2.4000000953674316,
-        1.0499999523162842,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "root",
-      "mergeBoundary": "Drone_Sensor_Brow",
-      "nodeName": "Drone_Sensor_Brow",
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
       "nodePath": [
         0,
         0
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -1125,14 +1235,14 @@
         0,
         1,
         0,
-        2.4000000953674316,
-        1.0499999523162842,
+        0,
+        0,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.hook-emissive",
+      "id": "sf.render.mining-drone.node.lod0-armor",
       "localTransform": [
         1,
         0,
@@ -1146,19 +1256,19 @@
         0,
         1,
         0,
-        3.200000047683716,
-        0.44999998807907104,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "root",
-      "mergeBoundary": "HOOK_Emissive",
-      "nodeName": "HOOK_Emissive",
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
       "nodePath": [
         0,
         1
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -1174,14 +1284,14 @@
         0,
         1,
         0,
-        3.200000047683716,
-        0.44999998807907104,
+        0,
+        0,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.hook-spin",
+      "id": "sf.render.mining-drone.node.lod0-beacon-amber",
       "localTransform": [
         1,
         0,
@@ -1195,19 +1305,19 @@
         0,
         1,
         0,
-        2.799999952316284,
-        0.44999998807907104,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "root",
-      "mergeBoundary": "HOOK_Spin",
-      "nodeName": "HOOK_Spin",
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
       "nodePath": [
         0,
         2
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -1223,14 +1333,14 @@
         0,
         1,
         0,
-        2.799999952316284,
-        0.44999998807907104,
+        0,
+        0,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod0-drone-material-accent",
+      "id": "sf.render.mining-drone.node.lod0-brushedmetal",
       "localTransform": [
         1,
         0,
@@ -1250,63 +1360,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Drone_Material_Accent",
-      "nodeName": "LOD0_Drone_Material_Accent",
-      "nodePath": [
-        0,
-        1,
-        0
-      ],
-      "parentId": "sf.render.mining-drone.node.hook-emissive",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mining-drone.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        3.200000047683716,
-        0.44999998807907104,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mining-drone.node.lod0-drone-material-cable",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Drone_Material_Cable",
-      "nodeName": "LOD0_Drone_Material_Cable",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
       "nodePath": [
         0,
         3
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -1329,154 +1389,154 @@
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod0-drone-material-hull",
+      "id": "sf.render.mining-drone.node.lod0-hook-drive-core",
       "localTransform": [
-        1,
+        1.0853999853134155,
         0,
         0,
         0,
         0,
-        1,
+        1.0853999853134155,
         0,
         0,
         0,
         0,
-        1,
+        1.0853999853134155,
         0,
-        0,
-        0,
+        1.215000033378601,
+        0.45000000298023224,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Drone_Material_Hull",
-      "nodeName": "LOD0_Drone_Material_Hull",
+      "mergeBoundary": "LOD0_HOOK_DRIVE_CORE",
+      "nodeName": "LOD0_HOOK_DRIVE_CORE",
       "nodePath": [
         0,
         4
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
-      "role": "immutable",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
-        1,
+        1.0853999853134155,
         0,
         0,
         0,
         0,
-        1,
+        1.0853999853134155,
         0,
         0,
         0,
         0,
-        1,
+        1.0853999853134155,
         0,
-        0,
-        0,
+        1.215000033378601,
+        0.45000000298023224,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod0-drone-material-mechanical",
+      "id": "sf.render.mining-drone.node.lod0-hook-nav-port",
       "localTransform": [
-        1,
+        1.3125000298023224,
         0,
         0,
         0,
         0,
-        1,
+        1.3125000298023224,
         0,
         0,
         0,
         0,
-        1,
+        1.3125000298023224,
         0,
-        0,
-        0,
-        0,
+        1.1275000274181366,
+        0.9432500302791595,
+        -0.7074999809265137,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Drone_Material_Mechanical",
-      "nodeName": "LOD0_Drone_Material_Mechanical",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+      "nodeName": "LOD0_HOOK_NAV_PORT",
       "nodePath": [
         0,
         5
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
-      "role": "immutable",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
-        1,
+        1.3125000298023224,
         0,
         0,
         0,
         0,
-        1,
+        1.3125000298023224,
         0,
         0,
         0,
         0,
-        1,
+        1.3125000298023224,
         0,
-        0,
-        0,
-        0,
+        1.1275000274181366,
+        0.9432500302791595,
+        -0.7074999809265137,
         1
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod0-drone-material-radiator",
+      "id": "sf.render.mining-drone.node.lod0-hook-nav-starboard",
       "localTransform": [
-        1,
+        0.9650000333786011,
         0,
         0,
         0,
         0,
-        1,
+        0.9650000333786011,
         0,
         0,
         0,
         0,
-        1,
+        0.9650000333786011,
         0,
-        0,
-        0,
-        0,
+        1.475000023841858,
+        0.6600000262260437,
+        1.0099999606609344,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Drone_Material_Radiator",
-      "nodeName": "LOD0_Drone_Material_Radiator",
+      "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
         6
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
-      "role": "immutable",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
-        1,
+        0.9650000333786011,
         0,
         0,
         0,
         0,
-        1,
+        0.9650000333786011,
         0,
         0,
         0,
         0,
-        1,
+        0.9650000333786011,
         0,
-        0,
-        0,
-        0,
+        1.475000023841858,
+        0.6600000262260437,
+        1.0099999606609344,
         1
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod0-drone-material-safety",
+      "id": "sf.render.mining-drone.node.lod0-hull",
       "localTransform": [
         1,
         0,
@@ -1496,13 +1556,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Drone_Material_Safety",
-      "nodeName": "LOD0_Drone_Material_Safety",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
       "nodePath": [
         0,
         7
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -1525,7 +1585,7 @@
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod0-drone-material-tool",
+      "id": "sf.render.mining-drone.node.lod0-lights-cyan",
       "localTransform": [
         1,
         0,
@@ -1545,209 +1605,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Drone_Material_Tool",
-      "nodeName": "LOD0_Drone_Material_Tool",
-      "nodePath": [
-        0,
-        2,
-        0
-      ],
-      "parentId": "sf.render.mining-drone.node.hook-spin",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mining-drone.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        2.799999952316284,
-        0.44999998807907104,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mining-drone.node.lod0-remaster-material-mechanical-brushednickel",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Remaster_Material_Mechanical_BrushedNickel",
-      "nodeName": "LOD0_Remaster_Material_Mechanical_BrushedNickel",
-      "nodePath": [
-        1
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mining-drone.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mining-drone.node.lod0-remaster-material-mechanical-shadowenamel",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Remaster_Material_Mechanical_ShadowEnamel",
-      "nodeName": "LOD0_Remaster_Material_Mechanical_ShadowEnamel",
-      "nodePath": [
-        2
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mining-drone.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mining-drone.node.lod1-drone-material-accent",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Drone_Material_Accent",
-      "nodeName": "LOD1_Drone_Material_Accent",
-      "nodePath": [
-        0,
-        1,
-        1
-      ],
-      "parentId": "sf.render.mining-drone.node.hook-emissive",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mining-drone.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        3.200000047683716,
-        0.44999998807907104,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mining-drone.node.lod1-drone-material-cable",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Drone_Material_Cable",
-      "nodeName": "LOD1_Drone_Material_Cable",
+      "mergeBoundary": "LOD0_Lights_Cyan",
+      "nodeName": "LOD0_Lights_Cyan",
       "nodePath": [
         0,
         8
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -1770,7 +1634,7 @@
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod1-drone-material-hull",
+      "id": "sf.render.mining-drone.node.lod0-mechanical",
       "localTransform": [
         1,
         0,
@@ -1790,13 +1654,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Drone_Material_Hull",
-      "nodeName": "LOD1_Drone_Material_Hull",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
         9
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -1819,7 +1683,7 @@
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod1-drone-material-mechanical",
+      "id": "sf.render.mining-drone.node.lod0-mechanicaldark",
       "localTransform": [
         1,
         0,
@@ -1839,13 +1703,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Drone_Material_Mechanical",
-      "nodeName": "LOD1_Drone_Material_Mechanical",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
         10
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -1868,7 +1732,7 @@
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod1-drone-material-radiator",
+      "id": "sf.render.mining-drone.node.lod0-warning",
       "localTransform": [
         1,
         0,
@@ -1888,13 +1752,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Drone_Material_Radiator",
-      "nodeName": "LOD1_Drone_Material_Radiator",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
         11
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -1917,7 +1781,7 @@
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod1-drone-material-safety",
+      "id": "sf.render.mining-drone.node.lod1-armor",
       "localTransform": [
         1,
         0,
@@ -1937,13 +1801,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Drone_Material_Safety",
-      "nodeName": "LOD1_Drone_Material_Safety",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
         12
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -1966,7 +1830,7 @@
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod1-drone-material-tool",
+      "id": "sf.render.mining-drone.node.lod1-beacon-amber",
       "localTransform": [
         1,
         0,
@@ -1986,209 +1850,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Drone_Material_Tool",
-      "nodeName": "LOD1_Drone_Material_Tool",
-      "nodePath": [
-        0,
-        2,
-        1
-      ],
-      "parentId": "sf.render.mining-drone.node.hook-spin",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mining-drone.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        2.799999952316284,
-        0.44999998807907104,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mining-drone.node.lod1-remaster-material-mechanical-brushednickel",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Remaster_Material_Mechanical_BrushedNickel",
-      "nodeName": "LOD1_Remaster_Material_Mechanical_BrushedNickel",
-      "nodePath": [
-        5
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mining-drone.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mining-drone.node.lod1-remaster-material-mechanical-shadowenamel",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Remaster_Material_Mechanical_ShadowEnamel",
-      "nodeName": "LOD1_Remaster_Material_Mechanical_ShadowEnamel",
-      "nodePath": [
-        3
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mining-drone.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mining-drone.node.lod2-drone-material-accent",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Drone_Material_Accent",
-      "nodeName": "LOD2_Drone_Material_Accent",
-      "nodePath": [
-        0,
-        1,
-        2
-      ],
-      "parentId": "sf.render.mining-drone.node.hook-emissive",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mining-drone.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        3.200000047683716,
-        0.44999998807907104,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mining-drone.node.lod2-drone-material-cable",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Drone_Material_Cable",
-      "nodeName": "LOD2_Drone_Material_Cable",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
       "nodePath": [
         0,
         13
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -2211,7 +1879,7 @@
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod2-drone-material-hull",
+      "id": "sf.render.mining-drone.node.lod1-brushedmetal",
       "localTransform": [
         1,
         0,
@@ -2231,13 +1899,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Drone_Material_Hull",
-      "nodeName": "LOD2_Drone_Material_Hull",
+      "mergeBoundary": "LOD1_BrushedMetal",
+      "nodeName": "LOD1_BrushedMetal",
       "nodePath": [
         0,
         14
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -2260,154 +1928,154 @@
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod2-drone-material-mechanical",
+      "id": "sf.render.mining-drone.node.lod1-hook-drive-core",
       "localTransform": [
-        1,
+        1.0863898396492004,
         0,
         0,
         0,
         0,
-        1,
+        1.0863898396492004,
         0,
         0,
         0,
         0,
-        1,
+        1.0863898396492004,
         0,
-        0,
-        0,
-        0,
+        1.2150117754936218,
+        0.4500000774860382,
+        1.862645149230957e-8,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Drone_Material_Mechanical",
-      "nodeName": "LOD2_Drone_Material_Mechanical",
+      "mergeBoundary": "LOD1_HOOK_DRIVE_CORE",
+      "nodeName": "LOD1_HOOK_DRIVE_CORE",
       "nodePath": [
         0,
         15
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
-      "role": "immutable",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
-        1,
+        1.0863898396492004,
         0,
         0,
         0,
         0,
-        1,
+        1.0863898396492004,
         0,
         0,
         0,
         0,
-        1,
+        1.0863898396492004,
         0,
-        0,
-        0,
-        0,
+        1.2150117754936218,
+        0.4500000774860382,
+        1.862645149230957e-8,
         1
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod2-drone-material-radiator",
+      "id": "sf.render.mining-drone.node.lod1-hook-nav-port",
       "localTransform": [
-        1,
+        0.9650000333786011,
         0,
         0,
         0,
         0,
-        1,
+        0.9650000333786011,
         0,
         0,
         0,
         0,
-        1,
+        0.9650000333786011,
         0,
-        0,
-        0,
-        0,
+        1.475000023841858,
+        0.6600000262260437,
+        -1.0099999606609344,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Drone_Material_Radiator",
-      "nodeName": "LOD2_Drone_Material_Radiator",
+      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+      "nodeName": "LOD1_HOOK_NAV_PORT",
       "nodePath": [
         0,
         16
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
-      "role": "immutable",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
-        1,
+        0.9650000333786011,
         0,
         0,
         0,
         0,
-        1,
+        0.9650000333786011,
         0,
         0,
         0,
         0,
-        1,
+        0.9650000333786011,
         0,
-        0,
-        0,
-        0,
+        1.475000023841858,
+        0.6600000262260437,
+        -1.0099999606609344,
         1
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod2-drone-material-safety",
+      "id": "sf.render.mining-drone.node.lod1-hook-nav-starboard",
       "localTransform": [
-        1,
+        0.9650000333786011,
         0,
         0,
         0,
         0,
-        1,
+        0.9650000333786011,
         0,
         0,
         0,
         0,
-        1,
+        0.9650000333786011,
         0,
-        0,
-        0,
-        0,
+        1.475000023841858,
+        0.6600000262260437,
+        1.0099999606609344,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Drone_Material_Safety",
-      "nodeName": "LOD2_Drone_Material_Safety",
+      "mergeBoundary": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD1_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
         17
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
-      "role": "immutable",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
-        1,
+        0.9650000333786011,
         0,
         0,
         0,
         0,
-        1,
+        0.9650000333786011,
         0,
         0,
         0,
         0,
-        1,
+        0.9650000333786011,
         0,
-        0,
-        0,
-        0,
+        1.475000023841858,
+        0.6600000262260437,
+        1.0099999606609344,
         1
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod2-drone-material-tool",
+      "id": "sf.render.mining-drone.node.lod1-hull",
       "localTransform": [
         1,
         0,
@@ -2427,14 +2095,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Drone_Material_Tool",
-      "nodeName": "LOD2_Drone_Material_Tool",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
       "nodePath": [
         0,
-        2,
-        2
+        18
       ],
-      "parentId": "sf.render.mining-drone.node.hook-spin",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -2450,14 +2117,14 @@
         0,
         1,
         0,
-        2.799999952316284,
-        0.44999998807907104,
+        0,
+        0,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod2-remaster-material-mechanical-brushednickel",
+      "id": "sf.render.mining-drone.node.lod1-lights-cyan",
       "localTransform": [
         1,
         0,
@@ -2477,12 +2144,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Remaster_Material_Mechanical_BrushedNickel",
-      "nodeName": "LOD2_Remaster_Material_Mechanical_BrushedNickel",
+      "mergeBoundary": "LOD1_Lights_Cyan",
+      "nodeName": "LOD1_Lights_Cyan",
       "nodePath": [
-        6
+        0,
+        19
       ],
-      "parentId": null,
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -2505,7 +2173,7 @@
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.lod2-remaster-material-mechanical-shadowenamel",
+      "id": "sf.render.mining-drone.node.lod1-mechanical",
       "localTransform": [
         1,
         0,
@@ -2525,12 +2193,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Remaster_Material_Mechanical_ShadowEnamel",
-      "nodeName": "LOD2_Remaster_Material_Mechanical_ShadowEnamel",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
       "nodePath": [
-        4
+        0,
+        20
       ],
-      "parentId": null,
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -2553,7 +2222,644 @@
       ]
     },
     {
-      "id": "sf.render.mining-drone.node.place-mining-drone",
+      "id": "sf.render.mining-drone.node.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-hook-drive-core",
+      "localTransform": [
+        1.0882741212844849,
+        0,
+        0,
+        0,
+        0,
+        1.0882741212844849,
+        0,
+        0,
+        0,
+        0,
+        1.0882741212844849,
+        0,
+        1.2151032388210297,
+        0.45119859278202057,
+        0.0015816986560821533,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_DRIVE_CORE",
+      "nodeName": "LOD2_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1.0882741212844849,
+        0,
+        0,
+        0,
+        0,
+        1.0882741212844849,
+        0,
+        0,
+        0,
+        0,
+        1.0882741212844849,
+        0,
+        1.2151032388210297,
+        0.45119859278202057,
+        0.0015816986560821533,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-hook-nav-port",
+      "localTransform": [
+        0.9650000333786011,
+        0,
+        0,
+        0,
+        0,
+        0.9650000333786011,
+        0,
+        0,
+        0,
+        0,
+        0.9650000333786011,
+        0,
+        1.475000023841858,
+        0.6600000262260437,
+        -1.0099999606609344,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
+      "nodeName": "LOD2_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        0.9650000333786011,
+        0,
+        0,
+        0,
+        0,
+        0.9650000333786011,
+        0,
+        0,
+        0,
+        0,
+        0.9650000333786011,
+        0,
+        1.475000023841858,
+        0.6600000262260437,
+        -1.0099999606609344,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-hook-nav-starboard",
+      "localTransform": [
+        0.9650000333786011,
+        0,
+        0,
+        0,
+        0,
+        0.9650000333786011,
+        0,
+        0,
+        0,
+        0,
+        0.9650000333786011,
+        0,
+        1.475000023841858,
+        0.6600000262260437,
+        1.0099999606609344,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        0.9650000333786011,
+        0,
+        0,
+        0,
+        0,
+        0.9650000333786011,
+        0,
+        0,
+        0,
+        0,
+        0.9650000333786011,
+        0,
+        1.475000023841858,
+        0.6600000262260437,
+        1.0099999606609344,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Cyan",
+      "nodeName": "LOD2_Lights_Cyan",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.node.lod2-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "localTransform": [
         1,
         0,
@@ -2573,8 +2879,8 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "place_mining_drone",
-      "nodeName": "place_mining_drone",
+      "mergeBoundary": "SF_PLACE_MINING_DRONE_ROOT",
+      "nodeName": "SF_PLACE_MINING_DRONE_ROOT",
       "nodePath": [
         0
       ],
@@ -2597,104 +2903,6 @@
         0,
         0,
         0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mining-drone.node.place-mining-drone-bolt-1",
-      "localTransform": [
-        -1.3435885648505064e-7,
-        0.9999999657714511,
-        0,
-        0,
-        -0.9999999657714511,
-        -1.3435885648505064e-7,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        -0.3400000035762787,
-        1.25,
-        -0.7523999810218811,
-        1
-      ],
-      "materialPipelineKey": "root",
-      "mergeBoundary": "place_mining_drone_Bolt_1",
-      "nodeName": "place_mining_drone_Bolt_1",
-      "nodePath": [
-        0,
-        18
-      ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mining-drone.body",
-      "worldTransform": [
-        -1.3435885648505064e-7,
-        0.9999999657714511,
-        0,
-        0,
-        -0.9999999657714511,
-        -1.3435885648505064e-7,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        -0.3400000035762787,
-        1.25,
-        -0.7523999810218811,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mining-drone.node.place-mining-drone-bolt-2",
-      "localTransform": [
-        -1.3435885648505064e-7,
-        0.9999999657714511,
-        0,
-        0,
-        -0.9999999657714511,
-        -1.3435885648505064e-7,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        1.4656000137329102,
-        1.25,
-        0.6384000182151794,
-        1
-      ],
-      "materialPipelineKey": "root",
-      "mergeBoundary": "place_mining_drone_Bolt_2",
-      "nodeName": "place_mining_drone_Bolt_2",
-      "nodePath": [
-        0,
-        19
-      ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mining-drone.body",
-      "worldTransform": [
-        -1.3435885648505064e-7,
-        0.9999999657714511,
-        0,
-        0,
-        -0.9999999657714511,
-        -1.3435885648505064e-7,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        1.4656000137329102,
-        1.25,
-        0.6384000182151794,
         1
       ]
     },
@@ -2723,9 +2931,9 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        20
+        34
       ],
-      "parentId": "sf.render.mining-drone.node.place-mining-drone",
+      "parentId": "sf.render.mining-drone.node.sf-place-mining-drone-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining-drone.body",
       "worldTransform": [
@@ -2750,118 +2958,52 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "e9fe1e1e50f638bb1d1e74dd76e5920abd7eff03a098fdef8918667d24654374"
+      "sha256": "1822a82cc66e98de508c7ccb66a723007f6171dffe76e5c9a5aec7b1670926e7"
     },
     "sourceGlb": {
-      "bytes": 2781476,
-      "sha256": "940168ee3e32f2374ffec768daebc83c5119c02df2a0091212e7992a4efe6839",
+      "bytes": 673748,
+      "sha256": "2b64b357621af5dd78681a095682cd41b3ac92cd3cf63ac887840b79f751c3cf",
       "uri": "place_mining_drone.glb"
     },
     "sourceManifest": {
-      "bytes": 189651,
-      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
+      "bytes": 196306,
+      "sha256": "a00769709dfa4ec3abef045dade5464aeec0446f169279a5859265e141ebe450",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3190396,
-    "sha256": "243a28d21bc83b9af321c06bedaecc9b87feb1202b7d6ecc890f32d14633c828",
+    "bytes": 1085180,
+    "sha256": "a22df6de584cd8c07b31c3329d0c707dce883a6a4e836228175b39a579c13c43",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        2.0999999046325684,
-        0.5904498994350433,
+        2.139976218342781,
+        0.6362527087330818,
         0
       ],
       "max": [
-        4.599999904632568,
-        1.3024200201034546,
-        1.1951018571853638
+        4.600215911865234,
+        1.4832067489624023,
+        1.2091089487075806
       ],
       "min": [
-        -0.40000009536743164,
-        -0.12152022123336792,
-        -1.1951018571853638
+        -0.32026347517967224,
+        -0.2107013314962387,
+        -1.2091089487075806
       ],
       "size": [
-        5,
-        1.4239402413368225,
-        2.3902037143707275
+        4.920479387044907,
+        1.693908080458641,
+        2.418217897415161
       ]
     },
-    "hidden": [],
+    "hidden": [
+      2
+    ],
     "legacyPart": false,
     "markers": [
-      {
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          3.200000047683716,
-          0.44999998807907104,
-          0,
-          1
-        ],
-        "name": "HOOK_Emissive",
-        "planIndex": 3,
-        "tags": {},
-        "userData": {
-          "name": "HOOK_Emissive",
-          "spacefaceHook": true,
-          "spacefaceRenderPackageSemantic": {
-            "rawNodeName": "HOOK_Emissive",
-            "recordIds": [
-              "sf.render.mining-drone.node.hook-emissive"
-            ],
-            "schema": "spaceface.renderPackageSemantic.v1"
-          }
-        }
-      },
-      {
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          2.799999952316284,
-          0.44999998807907104,
-          0,
-          1
-        ],
-        "name": "HOOK_Spin",
-        "planIndex": 7,
-        "tags": {},
-        "userData": {
-          "name": "HOOK_Spin",
-          "spacefaceHook": true,
-          "spacefaceRenderPackageSemantic": {
-            "rawNodeName": "HOOK_Spin",
-            "recordIds": [
-              "sf.render.mining-drone.node.hook-spin"
-            ],
-            "schema": "spaceface.renderPackageSemantic.v1"
-          }
-        }
-      },
       {
         "matrix": [
           1,
@@ -2882,7 +3024,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 32,
+        "planIndex": 36,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2913,31 +3055,47 @@
       }
     ],
     "materialProfileRoles": {
-      "accent": 3,
-      "hull": 12,
-      "mechanical": 11,
-      "radiator": 3
+      "drive": 3,
+      "hull": 7,
+      "mechanical": 9,
+      "signal": 12,
+      "warning": 3
     },
     "materialProfiles": [
       {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "accent"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "accent"
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2947,42 +3105,52 @@
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
-        "role": "radiator"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 19,
+        "planIndex": 15,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2992,7 +3160,7 @@
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3002,12 +3170,12 @@
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "radiator"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "hull"
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -3017,7 +3185,7 @@
       {
         "allowTextures": true,
         "planIndex": 26,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3027,12 +3195,27 @@
       {
         "allowTextures": true,
         "planIndex": 28,
-        "role": "radiator"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 29,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3047,25 +3230,10 @@
       {
         "allowTextures": true,
         "planIndex": 35,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 36,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 37,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 38,
-        "role": "mechanical"
+        "role": "warning"
       }
     ],
-    "nodeCount": 39,
+    "nodeCount": 37,
     "primitives": [
       {
         "canopy": false,
@@ -3082,12 +3250,39 @@
           0,
           1,
           0,
-          3.200000047683716,
-          0.44999998807907104,
+          0,
+          0,
           0,
           1
         ],
-        "name": "LOD0_Drone_Material_Accent",
+        "name": "LOD0_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -3109,43 +3304,118 @@
           0,
           1,
           0,
-          3.200000047683716,
-          0.44999998807907104,
+          0,
+          0,
           0,
           1
         ],
-        "name": "LOD1_Drone_Material_Accent",
+        "name": "LOD0_BrushedMetal",
         "planIndex": 5,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0853999853134155,
           0,
           0,
           0,
           0,
-          1,
+          1.0853999853134155,
           0,
           0,
           0,
           0,
-          1,
+          1.0853999853134155,
           0,
-          3.200000047683716,
-          0.44999998807907104,
+          1.215000033378601,
+          0.45000000298023224,
           0,
           1
         ],
-        "name": "LOD2_Drone_Material_Accent",
+        "name": "LOD0_HOOK_DRIVE_CORE",
         "planIndex": 6,
         "tags": {
           "canopy": false,
-          "lod": "lod2"
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.0853999853134155,
+            0,
+            0,
+            0,
+            0,
+            1.0853999853134155,
+            0,
+            0,
+            0,
+            0,
+            1.0853999853134155,
+            0,
+            1.215000033378601,
+            0.45000000298023224,
+            0,
+            1
+          ],
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.3125000298023224,
+          0,
+          0,
+          0,
+          0,
+          1.3125000298023224,
+          0,
+          0,
+          0,
+          0,
+          1.3125000298023224,
+          0,
+          1.1275000274181366,
+          0.9432500302791595,
+          -0.7074999809265137,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9650000333786011,
+          0,
+          0,
+          0,
+          0,
+          0.9650000333786011,
+          0,
+          0,
+          0,
+          0,
+          0.9650000333786011,
+          0,
+          1.475000023841858,
+          0.6600000262260437,
+          1.0099999606609344,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
         }
       },
       {
@@ -3163,13 +3433,13 @@
           0,
           1,
           0,
-          2.799999952316284,
-          0.44999998807907104,
+          0,
+          0,
           0,
           1
         ],
-        "name": "LOD0_Drone_Material_Tool",
-        "planIndex": 8,
+        "name": "LOD0_Hull",
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3190,43 +3460,16 @@
           0,
           1,
           0,
-          2.799999952316284,
-          0.44999998807907104,
+          0,
+          0,
           0,
           1
         ],
-        "name": "LOD1_Drone_Material_Tool",
-        "planIndex": 9,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          2.799999952316284,
-          0.44999998807907104,
-          0,
-          1
-        ],
-        "name": "LOD2_Drone_Material_Tool",
+        "name": "LOD0_Lights_Cyan",
         "planIndex": 10,
         "tags": {
           "canopy": false,
-          "lod": "lod2"
+          "lod": "lod0"
         }
       },
       {
@@ -3249,7 +3492,7 @@
           0,
           1
         ],
-        "name": "LOD0_Drone_Material_Cable",
+        "name": "LOD0_Mechanical",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -3276,7 +3519,34 @@
           0,
           1
         ],
-        "name": "Cube001",
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -3303,11 +3573,11 @@
           0,
           1
         ],
-        "name": "Cube001_1",
+        "name": "LOD1_Armor",
         "planIndex": 14,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "lod": "lod1"
         }
       },
       {
@@ -3330,11 +3600,11 @@
           0,
           1
         ],
-        "name": "LOD0_Drone_Material_Mechanical",
+        "name": "LOD1_Beacon_Amber",
         "planIndex": 15,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "lod": "lod1"
         }
       },
       {
@@ -3357,65 +3627,113 @@
           0,
           1
         ],
-        "name": "LOD0_Drone_Material_Radiator",
+        "name": "LOD1_BrushedMetal",
         "planIndex": 16,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "lod": "lod1"
         }
       },
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0863898396492004,
           0,
           0,
           0,
           0,
-          1,
+          1.0863898396492004,
           0,
           0,
           0,
           0,
-          1,
+          1.0863898396492004,
           0,
-          0,
-          0,
-          0,
+          1.2150117754936218,
+          0.4500000774860382,
+          1.862645149230957e-8,
           1
         ],
-        "name": "Cylinder001",
+        "name": "LOD1_HOOK_DRIVE_CORE",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.0863898396492004,
+            0,
+            0,
+            0,
+            0,
+            1.0863898396492004,
+            0,
+            0,
+            0,
+            0,
+            1.0863898396492004,
+            0,
+            1.2150117754936218,
+            0.4500000774860382,
+            1.862645149230957e-8,
+            1
+          ],
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9650000333786011,
+          0,
+          0,
+          0,
+          0,
+          0.9650000333786011,
+          0,
+          0,
+          0,
+          0,
+          0.9650000333786011,
+          0,
+          1.475000023841858,
+          0.6600000262260437,
+          -1.0099999606609344,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
         "planIndex": 18,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "damageRole": "navLight",
+          "lod": "lod1"
         }
       },
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9650000333786011,
           0,
           0,
           0,
           0,
-          1,
+          0.9650000333786011,
           0,
           0,
           0,
           0,
-          1,
+          0.9650000333786011,
           0,
-          0,
-          0,
-          0,
+          1.475000023841858,
+          0.6600000262260437,
+          1.0099999606609344,
           1
         ],
-        "name": "Cylinder001_1",
+        "name": "LOD1_HOOK_NAV_STARBOARD",
         "planIndex": 19,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "damageRole": "navLight",
+          "lod": "lod1"
         }
       },
       {
@@ -3438,7 +3756,7 @@
           0,
           1
         ],
-        "name": "LOD1_Drone_Material_Cable",
+        "name": "LOD1_Hull",
         "planIndex": 20,
         "tags": {
           "canopy": false,
@@ -3465,7 +3783,7 @@
           0,
           1
         ],
-        "name": "LOD1_Drone_Material_Hull",
+        "name": "LOD1_Lights_Cyan",
         "planIndex": 21,
         "tags": {
           "canopy": false,
@@ -3492,7 +3810,7 @@
           0,
           1
         ],
-        "name": "LOD1_Drone_Material_Mechanical",
+        "name": "LOD1_Mechanical",
         "planIndex": 22,
         "tags": {
           "canopy": false,
@@ -3519,7 +3837,7 @@
           0,
           1
         ],
-        "name": "LOD1_Drone_Material_Radiator",
+        "name": "LOD1_MechanicalDark",
         "planIndex": 23,
         "tags": {
           "canopy": false,
@@ -3546,7 +3864,7 @@
           0,
           1
         ],
-        "name": "LOD1_Drone_Material_Safety",
+        "name": "LOD1_Warning",
         "planIndex": 24,
         "tags": {
           "canopy": false,
@@ -3573,7 +3891,7 @@
           0,
           1
         ],
-        "name": "LOD2_Drone_Material_Cable",
+        "name": "LOD2_Armor",
         "planIndex": 25,
         "tags": {
           "canopy": false,
@@ -3600,7 +3918,7 @@
           0,
           1
         ],
-        "name": "LOD2_Drone_Material_Hull",
+        "name": "LOD2_Beacon_Amber",
         "planIndex": 26,
         "tags": {
           "canopy": false,
@@ -3627,7 +3945,7 @@
           0,
           1
         ],
-        "name": "LOD2_Drone_Material_Mechanical",
+        "name": "LOD2_BrushedMetal",
         "planIndex": 27,
         "tags": {
           "canopy": false,
@@ -3637,54 +3955,102 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0882741212844849,
           0,
           0,
           0,
           0,
-          1,
+          1.0882741212844849,
           0,
           0,
           0,
           0,
-          1,
+          1.0882741212844849,
           0,
-          0,
-          0,
-          0,
+          1.2151032388210297,
+          0.45119859278202057,
+          0.0015816986560821533,
           1
         ],
-        "name": "LOD2_Drone_Material_Radiator",
+        "name": "LOD2_HOOK_DRIVE_CORE",
         "planIndex": 28,
         "tags": {
           "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.0882741212844849,
+            0,
+            0,
+            0,
+            0,
+            1.0882741212844849,
+            0,
+            0,
+            0,
+            0,
+            1.0882741212844849,
+            0,
+            1.2151032388210297,
+            0.45119859278202057,
+            0.0015816986560821533,
+            1
+          ],
           "lod": "lod2"
         }
       },
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9650000333786011,
           0,
           0,
           0,
           0,
-          1,
+          0.9650000333786011,
           0,
           0,
           0,
           0,
-          1,
+          0.9650000333786011,
           0,
-          0,
-          0,
-          0,
+          1.475000023841858,
+          0.6600000262260437,
+          -1.0099999606609344,
           1
         ],
-        "name": "LOD2_Drone_Material_Safety",
+        "name": "LOD2_HOOK_NAV_PORT",
         "planIndex": 29,
         "tags": {
           "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9650000333786011,
+          0,
+          0,
+          0,
+          0,
+          0.9650000333786011,
+          0,
+          0,
+          0,
+          0,
+          0.9650000333786011,
+          0,
+          1.475000023841858,
+          0.6600000262260437,
+          1.0099999606609344,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
           "lod": "lod2"
         }
       },
@@ -3708,95 +4074,64 @@
           0,
           1
         ],
-        "name": "LOD0_Remaster_Material_Mechanical_BrushedNickel",
+        "name": "LOD2_Hull",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Lights_Cyan",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
         "planIndex": 33,
         "tags": {
           "canopy": false,
-          "chamfered": true,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Remaster_Material_Mechanical_ShadowEnamel",
-        "planIndex": 34,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD1_Remaster_Material_Mechanical_ShadowEnamel",
-        "planIndex": 35,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_Remaster_Material_Mechanical_ShadowEnamel",
-        "planIndex": 36,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
           "lod": "lod2"
         }
       },
@@ -3820,12 +4155,11 @@
           0,
           1
         ],
-        "name": "LOD1_Remaster_Material_Mechanical_BrushedNickel",
-        "planIndex": 37,
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 34,
         "tags": {
           "canopy": false,
-          "chamfered": true,
-          "lod": "lod1"
+          "lod": "lod2"
         }
       },
       {
@@ -3848,11 +4182,10 @@
           0,
           1
         ],
-        "name": "LOD2_Remaster_Material_Mechanical_BrushedNickel",
-        "planIndex": 38,
+        "name": "LOD2_Warning",
+        "planIndex": 35,
         "tags": {
           "canopy": false,
-          "chamfered": true,
           "lod": "lod2"
         }
       }
@@ -3861,57 +4194,59 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_mining_drone.glb"
   },
-  "runtimeHash": "e60a30eed55ca39e2910cad7d89aefcb32a3a1add1ba532450e9652db925b6a9",
+  "runtimeHash": "ebf4c36fc10112d7f894db34511864fd7f43573b671a070ec8d06c67e9dc8900",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          4.599999904632568,
-          1.3024200201034546,
-          1.1951018571853638
+          4.600215911865234,
+          1.4832067489624023,
+          1.2091089487075806
         ],
         "min": [
-          -0.40000009536743164,
-          -0.12152022123336792,
-          -1.1951018571853638
+          -0.32026347517967224,
+          -0.2107013314962387,
+          -1.2091089487075806
         ]
       },
       "id": "sf.render.mining-drone.body",
       "nodeIds": [
-        "sf.render.mining-drone.node.drone-sensor-brow",
-        "sf.render.mining-drone.node.hook-emissive",
-        "sf.render.mining-drone.node.hook-spin",
-        "sf.render.mining-drone.node.lod0-drone-material-accent",
-        "sf.render.mining-drone.node.lod0-drone-material-cable",
-        "sf.render.mining-drone.node.lod0-drone-material-hull",
-        "sf.render.mining-drone.node.lod0-drone-material-mechanical",
-        "sf.render.mining-drone.node.lod0-drone-material-radiator",
-        "sf.render.mining-drone.node.lod0-drone-material-safety",
-        "sf.render.mining-drone.node.lod0-drone-material-tool",
-        "sf.render.mining-drone.node.lod0-remaster-material-mechanical-brushednickel",
-        "sf.render.mining-drone.node.lod0-remaster-material-mechanical-shadowenamel",
-        "sf.render.mining-drone.node.lod1-drone-material-accent",
-        "sf.render.mining-drone.node.lod1-drone-material-cable",
-        "sf.render.mining-drone.node.lod1-drone-material-hull",
-        "sf.render.mining-drone.node.lod1-drone-material-mechanical",
-        "sf.render.mining-drone.node.lod1-drone-material-radiator",
-        "sf.render.mining-drone.node.lod1-drone-material-safety",
-        "sf.render.mining-drone.node.lod1-drone-material-tool",
-        "sf.render.mining-drone.node.lod1-remaster-material-mechanical-brushednickel",
-        "sf.render.mining-drone.node.lod1-remaster-material-mechanical-shadowenamel",
-        "sf.render.mining-drone.node.lod2-drone-material-accent",
-        "sf.render.mining-drone.node.lod2-drone-material-cable",
-        "sf.render.mining-drone.node.lod2-drone-material-hull",
-        "sf.render.mining-drone.node.lod2-drone-material-mechanical",
-        "sf.render.mining-drone.node.lod2-drone-material-radiator",
-        "sf.render.mining-drone.node.lod2-drone-material-safety",
-        "sf.render.mining-drone.node.lod2-drone-material-tool",
-        "sf.render.mining-drone.node.lod2-remaster-material-mechanical-brushednickel",
-        "sf.render.mining-drone.node.lod2-remaster-material-mechanical-shadowenamel",
-        "sf.render.mining-drone.node.place-mining-drone",
-        "sf.render.mining-drone.node.place-mining-drone-bolt-1",
-        "sf.render.mining-drone.node.place-mining-drone-bolt-2",
+        "sf.render.mining-drone.node.collision-hull",
+        "sf.render.mining-drone.node.lod0-armor",
+        "sf.render.mining-drone.node.lod0-beacon-amber",
+        "sf.render.mining-drone.node.lod0-brushedmetal",
+        "sf.render.mining-drone.node.lod0-hook-drive-core",
+        "sf.render.mining-drone.node.lod0-hook-nav-port",
+        "sf.render.mining-drone.node.lod0-hook-nav-starboard",
+        "sf.render.mining-drone.node.lod0-hull",
+        "sf.render.mining-drone.node.lod0-lights-cyan",
+        "sf.render.mining-drone.node.lod0-mechanical",
+        "sf.render.mining-drone.node.lod0-mechanicaldark",
+        "sf.render.mining-drone.node.lod0-warning",
+        "sf.render.mining-drone.node.lod1-armor",
+        "sf.render.mining-drone.node.lod1-beacon-amber",
+        "sf.render.mining-drone.node.lod1-brushedmetal",
+        "sf.render.mining-drone.node.lod1-hook-drive-core",
+        "sf.render.mining-drone.node.lod1-hook-nav-port",
+        "sf.render.mining-drone.node.lod1-hook-nav-starboard",
+        "sf.render.mining-drone.node.lod1-hull",
+        "sf.render.mining-drone.node.lod1-lights-cyan",
+        "sf.render.mining-drone.node.lod1-mechanical",
+        "sf.render.mining-drone.node.lod1-mechanicaldark",
+        "sf.render.mining-drone.node.lod1-warning",
+        "sf.render.mining-drone.node.lod2-armor",
+        "sf.render.mining-drone.node.lod2-beacon-amber",
+        "sf.render.mining-drone.node.lod2-brushedmetal",
+        "sf.render.mining-drone.node.lod2-hook-drive-core",
+        "sf.render.mining-drone.node.lod2-hook-nav-port",
+        "sf.render.mining-drone.node.lod2-hook-nav-starboard",
+        "sf.render.mining-drone.node.lod2-hull",
+        "sf.render.mining-drone.node.lod2-lights-cyan",
+        "sf.render.mining-drone.node.lod2-mechanical",
+        "sf.render.mining-drone.node.lod2-mechanicaldark",
+        "sf.render.mining-drone.node.lod2-warning",
+        "sf.render.mining-drone.node.sf-place-mining-drone-root",
         "sf.render.mining-drone.node.socket-mining-front"
       ]
     }

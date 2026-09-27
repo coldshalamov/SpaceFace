@@ -3174,20 +3174,6 @@
       "contractNodeCount": 22
     },
     {
-      "id": "place_mining_drone",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_mining_drone.glb",
-      "release": "assets/ships/release/parts/places/place_mining_drone.glb",
-      "sourceSha256": "e8db8fb05bfc091022ea770e4d9c113f5198117775bce589e90b24ba8b72dc64",
-      "releaseSha256": "940168ee3e32f2374ffec768daebc83c5119c02df2a0091212e7992a4efe6839",
-      "sourceBytes": 4158284,
-      "releaseBytes": 2781476,
-      "textures": 28,
-      "ktx2Textures": 28,
-      "meshoptBufferViews": 99,
-      "contractNodeCount": 30
-    },
-    {
       "id": "place_station_billboard",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_station_billboard.glb",
@@ -4431,6 +4417,20 @@
       "textures": 6,
       "ktx2Textures": 6,
       "meshoptBufferViews": 117,
+      "contractNodeCount": 34
+    },
+    {
+      "id": "place_mining_drone",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_mining_drone.glb",
+      "release": "assets/ships/release/parts/places/place_mining_drone.glb",
+      "sourceSha256": "29956452714daadb55c4c68c5ac1951a94d34cb0c25885d4ecce02e5eb72bc8f",
+      "releaseSha256": "2b64b357621af5dd78681a095682cd41b3ac92cd3cf63ac887840b79f751c3cf",
+      "sourceBytes": 1446400,
+      "releaseBytes": 673748,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 120,
       "contractNodeCount": 34
     }
   ]
