@@ -140,11 +140,19 @@ test('authored visual admission awaits exact pipelines and hidden-LOD GPU reside
   });
 
   assert.deepEqual(calls, [['pipelines', root], ['residency', root]]);
-  assert.deepEqual(result, {
-    skipped: false,
-    pipelines: { skipped: false, programCount: 12 },
-    gpuResidency: { skipped: false, textures: 21 },
-  });
+  assert.deepEqual(
+    { skipped: result.skipped, pipelines: result.pipelines, gpuResidency: result.gpuResidency },
+    {
+      skipped: false,
+      pipelines: { skipped: false, programCount: 12 },
+      gpuResidency: { skipped: false, textures: 21 },
+    },
+  );
+  // The receipt also carries its sub-phase evidence for the serial admission lane
+  // (frame-solid probe job phase split): timing fields are part of the shape now.
+  for (const key of ['policiesMs', 'compileMs', 'residencyMs']) {
+    assert.ok(Number.isFinite(result[key]), `the receipt carries its ${key} sub-phase evidence`);
+  }
   await assert.rejects(
     partsLibrary.prepareAuthoredVisualPipelines(root, {
       prepareAuthoredPipelines: async () => { throw new Error('pipeline rejected'); },
