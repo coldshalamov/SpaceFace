@@ -8826,11 +8826,13 @@ export const render = {
       }
       // Chunks grow by power-of-two rebuilds; a rebuild allocates a fresh instanceMatrix buffer,
       // i.e. a bufferData the fight would pay mid-round. Size every live bucket to the field's
-      // total poolable count per variant while still behind the shell.
+      // total poolable count per variant while still behind the shell — and hand the same census
+      // to the variant warm below so a chunk created for a variant with no live rocks yet is born
+      // at field size rather than the 64 default it would otherwise outgrow mid-round.
+      const requiredByVariant = [0, 0, 0, 0, 0];
       const fieldRecords = state.world && state.world.asteroidField
         && Array.isArray(state.world.asteroidField.rocks) ? state.world.asteroidField.rocks : null;
       if (fieldRecords && this._asteroidInstancePool) {
-        const requiredByVariant = [0, 0, 0, 0, 0];
         const countRock = (rock) => {
           if (!rock || rock.alive === false) return;
           const data = rock.data || {};
@@ -8867,7 +8869,8 @@ export const render = {
         // compile batch line each.
         try {
           warmAsteroidInstanceVariants(this._asteroidInstancePool,
-            [0, 1, 2, 3, 4].map((variant) => asteroidLeafResources('ast_common_rock', variant)));
+            [0, 1, 2, 3, 4].map((variant) => asteroidLeafResources('ast_common_rock', variant)),
+            requiredByVariant);
         } catch (error) {
           console.warn('[render] asteroid instance pool warm failed', error);
         }
