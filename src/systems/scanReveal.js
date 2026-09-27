@@ -12,6 +12,14 @@ import { buildShipScanReveal, buildWreckScanReveal, sameScanReveal } from '../da
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 
 const INVESTIGATED_CAP = 64;
+// INF-U14: the survey pays. Deep investigations used to end in a toast — the
+// scan:wreckInvestigated event had no listeners at all. Now the first deep read
+// of a loss-linked wreck files a cartography claim through the canonical credit
+// writer, cold cases pay a premium, and surveyed-field milestones post chart
+// bonuses. Generic debris (no ledger loss behind it) still pays nothing.
+const CARTOGRAPHY_BOUNTY_CR = 150;
+const CARTOGRAPHY_COLD_MULT = 2;
+const CARTOGRAPHY_MILESTONE_CR = Object.freeze({ 3: 200, 6: 450, 10: 800 });
 
 export const scanReveal = {
   name: 'scanReveal',
@@ -74,12 +82,14 @@ export const scanReveal = {
         this.bus.emit('scan:wreckRevealed', reveal);
         if (reveal.quality === 'deep' && reveal.lossId && !known) {
           recordInvestigated(state, reveal, loss, now);
+          const paid = this._fileCartographyClaim(state, reveal, loss, now);
           this.bus.emit('scan:wreckInvestigated', {
             entityId: entity.id,
             lossId: reveal.lossId,
             story: reveal.story,
             salvageHint: reveal.salvageHint,
             cold: reveal.cold,
+            paid,
             at: now,
           });
           this._surveyMilestone(state, loss, now);
@@ -88,8 +98,31 @@ export const scanReveal = {
     }
   },
 
+  // INF-U14 v1: the first deep read of a loss-linked wreck files a cartography
+  // claim. Cold cases (stripped pools, nothing left to loot) pay double — the
+  // chart is the only value left in them. Recorded BEFORE paying so a re-scan
+  // can never double-claim; economy stays the sole credit writer.
+  _fileCartographyClaim(state, reveal, loss, now) {
+    const cold = reveal.cold === true;
+    const paid = CARTOGRAPHY_BOUNTY_CR * (cold ? CARTOGRAPHY_COLD_MULT : 1);
+    const sectorId = (loss && loss.sectorId)
+      || (state.world && state.world.currentSectorId) || null;
+    this.bus.emit('economy:grantCredits', {
+      amount: paid, reason: 'survey_cartography',
+      lossId: reveal.lossId, sectorId, cold, at: now,
+    });
+    this.bus.emit('toast', {
+      text: cold
+        ? `Cold case closed — cartography office pays ${paid} cr for the chart.`
+        : `Survey logged — cartography office pays ${paid} cr.`,
+      kind: 'good', ttl: 4,
+    });
+    return paid;
+  },
+
   // A surveyed field stays surveyed: toast the count when a sector's investigated
   // losses cross 3 / 6 / 10. Milestones persist in the same memory, one toast each.
+  // INF-U14 v2: each milestone also posts a chart bonus through the same writer.
   _surveyMilestone(state, loss, now) {
     const memory = ensureMemory(state);
     const sectorId = (loss && loss.sectorId) || 'unknown';
@@ -105,8 +138,17 @@ export const scanReveal = {
     const sec = state.world && state.world.sectors && state.world.sectors[sectorId];
     const name = (sec && sec.name) || 'this debris field';
     if (this.bus && typeof this.bus.emit === 'function') {
+      const bonus = CARTOGRAPHY_MILESTONE_CR[tier] || 0;
+      if (bonus > 0) {
+        this.bus.emit('economy:grantCredits', {
+          amount: bonus, reason: 'survey_chart_bonus',
+          sectorId, tier, count, at: now,
+        });
+      }
       this.bus.emit('toast', {
-        text: `Debris field surveyed: ${count} wrecks identified in ${name}.`,
+        text: bonus > 0
+          ? `Debris field surveyed: ${count} wrecks identified in ${name} — chart bonus ${bonus} cr.`
+          : `Debris field surveyed: ${count} wrecks identified in ${name}.`,
         kind: 'good', ttl: 4,
       });
     }
