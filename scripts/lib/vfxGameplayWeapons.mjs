@@ -99,6 +99,8 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
   function syncContext() {
     privateState.settings = state.settings || { video: {}, accessibility: {} };
     privateState.simTime = clock;
+    privateState.fields = state.fields;
+    privateState.massSeed = state.massSeed;
     const profile = resolveVfxAccessibilityProfile(privateState.settings);
     shieldCarrier.position.copy(shipMesh.position);
     shieldCarrier.quaternion.copy(shipMesh.quaternion);
@@ -163,6 +165,8 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
     shieldBubble.material.uniforms.uFlash.value = 0;
     shieldPool.shield.material.uniforms.uShellTime.value = 0;
     privateState.simTime = clock;
+    privateState.fields = state.fields;
+    privateState.massSeed = state.massSeed;
     seeded(() => {
       presenter = new WeaponVfxPresenter({ scene: root, state: privateState, helpers: { socketWorldPose } });
       presenter.discharges.sequence = seed;
@@ -374,9 +378,9 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
         armedAt: shot.armedAt, releaseAt: shot.releaseAt,
         physicalTravelSeconds: shot.travel } : null, events: events.slice(), live,
       contacts: ship ? Array.from(readShieldContacts(ship.id, contactData) || contactData) : [],
-      // The lab uses the normal bloom path. Haze is owned and aged here, but needs the optional
-      // production render graph to composite; it is never replaced by a lab-only distortion pass.
-      distortionComposited: false,
+      // Same native distortion composition as default gameplay bloom.
+      // Report a rendered producer, not merely a field attached to the scene.
+      distortionComposited: Boolean(state.render?.bloom?.diagnostics?.().passFamilies?.distortion),
     };
   }
   function dispose() {
