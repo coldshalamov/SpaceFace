@@ -774,12 +774,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.military",
-    "expectedContentHash": "19d37102edd95353f7b01ba304328fdeb7cc0feff5f437f543d2a8d03f84c503",
+    "expectedContentHash": "9646e6e7b58a1e561725d2d1315d2d1da95856de118f7f1a6167226079c56312",
     "key": "military",
     "metadataUrl": "assets/ships/release/render-packages/military/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_MILITARY",
     "slot": "place",
-    "sourceSha256": "1e6aba53552785209453b990c41ea8df8fa554ce2f052c55b27da96669aae9f4",
+    "sourceSha256": "8a5869b8ab23522bb3ad2ded7f80c5c78098712704c7d5672b7bbb0f5be72b50",
     "sourceUrl": "assets/ships/release/parts/places/place_station_military.glb"
   },
   {

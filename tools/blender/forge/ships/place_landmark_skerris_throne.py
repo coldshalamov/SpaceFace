@@ -456,7 +456,7 @@ def build_skull(s, lights):
                              bevel=0.0))
         # cheekbone plates
         cheek = [(5.0, sgn * 9.0), (9.5, sgn * 8.0), (12.0, sgn * 14.0), (7.0, sgn * 13.5)]
-        parts.append(F.plate(s, f'Cheek{sgn:+d}', ccw(cheek), z0=2.9, thickness=1.6, material='paint', chamfer=0.4,
+        parts.append(F.plate(s, f'Cheek{sgn:+d}', ccw(cheek), z0=2.9, thickness=1.6, material='paint2', chamfer=0.4,
                              bevel=0.06))
     nasal = [(8.0, 0.0), (12.8, -2.8), (13.6, 0.0), (12.8, 2.8)]
     parts.append(F.plate(s, 'Nasal', ccw(nasal), z0=2.9, thickness=0.5, material='dark', bevel=0.0))

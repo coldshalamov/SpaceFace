@@ -1259,9 +1259,15 @@
       "slot": "place",
       "releaseAssetId": "place_station_military",
       "sourceUrl": "assets/ships/release/parts/places/place_station_military.glb",
-      "releaseSha256": "1e6aba53552785209453b990c41ea8df8fa554ce2f052c55b27da96669aae9f4",
-      "releaseBytes": 4459816,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "8a5869b8ab23522bb3ad2ded7f80c5c78098712704c7d5672b7bbb0f5be72b50",
+      "releaseBytes": 1736064,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/military",
       "metadataUrl": "assets/ships/release/render-packages/military/render-package.json",
       "sceneRoot": true

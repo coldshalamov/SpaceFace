@@ -3084,20 +3084,6 @@
       "contractNodeCount": 22
     },
     {
-      "id": "place_station_military",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_station_military.glb",
-      "release": "assets/ships/release/parts/places/place_station_military.glb",
-      "sourceSha256": "08fb2bf5eb90bdbd9a49933f29067769b7bcd998975562ca30c9d313b56db0ef",
-      "releaseSha256": "1e6aba53552785209453b990c41ea8df8fa554ce2f052c55b27da96669aae9f4",
-      "sourceBytes": 8863396,
-      "releaseBytes": 4459816,
-      "textures": 36,
-      "ktx2Textures": 36,
-      "meshoptBufferViews": 141,
-      "contractNodeCount": 39
-    },
-    {
       "id": "place_station_trade_hub",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_station_trade_hub.glb",
@@ -4412,6 +4398,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 175,
       "contractNodeCount": 48
+    },
+    {
+      "id": "place_station_military",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_station_military.glb",
+      "release": "assets/ships/release/parts/places/place_station_military.glb",
+      "sourceSha256": "3694d9f4a34fbb8c4f3996905f6fd15eb27d7a939f1cd3df8457b432376c68a7",
+      "releaseSha256": "8a5869b8ab23522bb3ad2ded7f80c5c78098712704c7d5672b7bbb0f5be72b50",
+      "sourceBytes": 5544356,
+      "releaseBytes": 1736064,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 149,
+      "contractNodeCount": 42
     }
   ]
 }

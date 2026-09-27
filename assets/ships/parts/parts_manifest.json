@@ -3924,12 +3924,15 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_military.glb",
-      "tris": 112602,
-      "bytes": 8863396,
+      "tris": 79861,
+      "bytes": 5544356,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Accent"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy"
       },
       "note": "Coalition Bastion — armored_bastion; authored station family, PBR, explicit LOD0/1/2. LOD0 25724 tris / 5 draw groups.",
       "factionAccentVariants": {
@@ -3960,19 +3963,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -41,
-          -35.900001525878906,
-          -20.850000381469727
+          -40.10000228881836,
+          -40.13999938964844,
+          -21.29314613342285
         ],
         "max": [
-          33.45000076293945,
-          40.781158447265625,
-          12.100000381469727
+          36,
+          39.157501220703125,
+          21.293237686157227
         ],
         "dimensionsM": [
-          74.45000076293945,
-          76.68115997314453,
-          32.95000076293945
+          76.10000228881836,
+          79.29750061035156,
+          42.58638381958008
         ]
       }
     },

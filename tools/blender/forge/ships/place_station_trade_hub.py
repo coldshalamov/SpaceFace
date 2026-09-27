@@ -345,8 +345,8 @@ def build_drum_details(s):
         F.light(s, f'TowerCyan{k}', (x, y, 31.9), 'glow_cyan', size=0.35)
     F.antenna(s, 'CrownMastA', polar(10.5, 135, ROOF_Z1), 4.0)
     F.antenna(s, 'CrownMastB', polar(10.5, 315, ROOF_Z1), 3.2, tip='glow_green')
-    for k in range(4):
-        F.vent(s, f'CrownVent{k}', polar(9.5, 22.5 + 90 * k, ROOF_Z1 + 0.05), (2.4, 1.6, 0.3), slats=5)
+    for k in range(2):
+        F.vent(s, f'CrownVent{k}', polar(9.5, 22.5 + 180 * k, ROOF_Z1 + 0.05), (2.4, 1.6, 0.3), slats=5)
     lower = radial_windows(12.2, 3.6, 40, (0.7, 0.45))
     cluster(s, 'KeelWin', lower, 'glow_warm')
     F.light(s, 'KeelBeacon', (CX, 0, -5.6), 'glow_amber', size=0.8)
@@ -407,7 +407,7 @@ def build_berths(s):
         # gangway from the ship's inboard flank to the concourse
         half = 2.3 if kind == 'F' else 1.55
         F.box(s, f'Gang{k}', polar((17.0 + r - half) / 2, a, BERTH_Z - 0.2), (r - half - 17.0 + 0.6, 1.8, 1.6),
-              material='paint.graphite', rot_z=math.radians(a), bevel=0.06)
+              material='paint.graphite', rot_z=math.radians(a), bevel=0.0)
         F.band(s, f'Gang{k}', polar((17.0 + r - half) / 2, a, 0), (math.cos(math.radians(a)), math.sin(math.radians(a)), 0),
                0.5, 'paint2')
     # two freighters moored either side of the approach pier
@@ -418,7 +418,7 @@ def build_berths(s):
             freighter(s, f'PierShip{k}', cargo=(('paint', 'paint2', 'paint') if k == 0 else ('paint2', 'paint.primer', 'paint2')))
             cradle(s, f'PierShip{k}', 16.0, 1.9)
         sy = 1 if y > 0 else -1
-        F.box(s, f'PierGang{k}', (33.0, sy * 4.45, BERTH_Z - 0.2), (1.8, 2.9, 1.6), material='paint.graphite', bevel=0.06)
+        F.box(s, f'PierGang{k}', (33.0, sy * 4.45, BERTH_Z - 0.2), (1.8, 2.9, 1.6), material='paint.graphite', bevel=0.0)
 
 
 def container_stack(s, name, center, heading, cols, rows, levels, pattern):
