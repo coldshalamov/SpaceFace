@@ -290,6 +290,84 @@
       "asset_id": "place_cargo_pod_standard",
       "part_id": "place_cargo_pod_standard",
       "note": "Forge-v1 cargo pod (tools/blender/forge/ships/place_cargo_pod_standard.py): ribbed teal intermodal container, charcoal frame and corner castings, hazard bands, grapple lug, status lamps."
+    },
+    "place_station_refinery": {
+      "layout": "place",
+      "file": "place_station_refinery",
+      "asset_id": "SF_PLACE_STATION_REFINERY",
+      "part_id": "place_station_refinery"
+    },
+    "place_station_mining": {
+      "layout": "place",
+      "file": "place_station_mining",
+      "asset_id": "SF_PLACE_STATION_MINING",
+      "part_id": "place_station_mining"
+    },
+    "place_station_fab": {
+      "layout": "place",
+      "file": "place_station_fab",
+      "asset_id": "SF_PLACE_STATION_FAB",
+      "part_id": "place_station_fab"
+    },
+    "place_station_military": {
+      "layout": "place",
+      "file": "place_station_military",
+      "asset_id": "SF_PLACE_STATION_MILITARY",
+      "part_id": "place_station_military"
+    },
+    "place_station_research": {
+      "layout": "place",
+      "file": "place_station_research",
+      "asset_id": "SF_PLACE_STATION_RESEARCH",
+      "part_id": "place_station_research"
+    },
+    "place_station_blackmarket": {
+      "layout": "place",
+      "file": "place_station_blackmarket",
+      "asset_id": "SF_PLACE_STATION_BLACKMARKET",
+      "part_id": "place_station_blackmarket"
+    },
+    "place_gate_jump_ring": {
+      "layout": "place",
+      "file": "place_gate_jump_ring",
+      "asset_id": "SF_PLACE_GATE_JUMP_RING",
+      "part_id": "place_gate_jump_ring"
+    },
+    "place_lane_beacon": {
+      "layout": "place",
+      "file": "place_lane_beacon",
+      "asset_id": "SF_PLACE_HELIOS_SUPPORT_GANTRY",
+      "part_id": "place_lane_beacon"
+    },
+    "place_nav_buoy": {
+      "layout": "place",
+      "file": "place_nav_buoy",
+      "asset_id": "SF_PLACE_HELIOS_NAV_SPIRE",
+      "part_id": "place_nav_buoy"
+    },
+    "place_mining_drone": {
+      "layout": "place",
+      "file": "place_mining_drone",
+      "asset_id": "SF_PART_PLACE_MINING_DRONE",
+      "part_id": "place_mining_drone"
+    },
+    "place_worklight_tower": {
+      "layout": "place",
+      "file": "place_worklight_tower",
+      "asset_id": "place_worklight_tower",
+      "part_id": "place_worklight_tower"
+    },
+    "place_container_rack": {
+      "layout": "place",
+      "file": "place_container_rack",
+      "asset_id": "place_container_rack",
+      "part_id": "place_container_rack"
+    },
+    "place_sensor_mast": {
+      "layout": "place",
+      "file": "place_sensor_mast",
+      "asset_id": "place_sensor_mast",
+      "part_id": "place_sensor_mast"
     }
   }
 }
