@@ -312,6 +312,20 @@ vec4 fieldVolume(){
   float tearing=0.56*filteredWave(t*21.0-flow*direction*2.4+sin(v*6.0+phase)*1.8)
     +0.44*filteredWave(v*9.0+t*9.0-flow*direction*1.5+phase);
   float chargePatch=smoothstep(0.34,0.78,tearing);
+  bool accretion=kind>1.5&&kind<2.5;
+  if(accretion){
+    // Accretion has dense travelling parcels with real openings between them.
+    // Cross-flow curls shear each parcel differently; a constant luminous shoulder
+    // would otherwise turn the large footprint into three uninterrupted cloth sails.
+    float stream=t*38.0+flow*4.1+phase;
+    float curl=sin(warped*8.0+stream*.43+sin(t*17.0-flow*1.7+phase)*1.8);
+    float parcel=.48*filteredWave(stream*.53+curl*1.9)
+      +.34*filteredWave(stream*1.17+warped*9.0-curl)
+      +.18*filteredWave(stream*2.63-warped*17.0+phase);
+    float parcelAA=max(fwidth(parcel),.025);
+    chargePatch=smoothstep(.49-.105-parcelAA,.49+.105+parcelAA,parcel);
+    ignition*=.38+.62*filteredWave(stream+curl*2.0);
+  }
   float innerPresence=1.0-smoothstep(0.16,0.72,vFieldReach);
   float opticalDepth=sectionMass*(0.07+chargePatch*(0.22+0.25*bulk))*(0.46+0.54*innerPresence);
   float edge=1.0-smoothstep(0.89,1.0,abs(v));
@@ -337,6 +351,11 @@ vec4 fieldVolume(){
     // Mechanical mass keeps a restrained body and charge that traverses its raised edges.
     body*=0.36;hot=shoulder*(0.24+0.85*bulk);
     absorbed=max(absorbed,0.42);
+  }
+  if(accretion){
+    hot=(shoulder*(.16+2.25*ignition)+.26*ignition)*(.06+.94*chargePatch);
+    body*=.32+.68*chargePatch;
+    absorbed*=.07+.93*chargePatch;
   }
   // Mature colliding streams develop secondary knots; their cadence is slower
   // than ignition and cannot appear in the build stage.
