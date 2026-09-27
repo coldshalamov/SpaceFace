@@ -13,9 +13,9 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'repair_tender'
 COLORS = {
-    'paint': '#7a4424',    # tender copper (Helios key light lifts values ~2.5x: author dark)
-    'paint2': '#948e82',   # workshop ivory
-    'stripe': '#3e2718',   # dark copper livery line
+    'paint': '#60341c',    # tender copper (Helios key light lifts values ~2.5x: author dark)
+    'paint2': '#868074',   # workshop ivory
+    'stripe': '#33200f',   # dark copper livery line
     'hazard': '#c8901e',
 }
 
@@ -112,7 +112,8 @@ def build():
          material='gunmetal', bevel=0.02)
     F.cylinder(s, 'Torch', (WR[0] + 0.45, WR[1] - 0.38, 1.6), TIP + (1.6,), 0.16, 0.07, material='bare',
                segments=14, mirror=True)
-    F.light(s, 'WeldTip', TIP + (1.6,), 'glow_cyan', size=0.24, mirror=True)
+    F.light(s, 'WeldTip', TIP + (1.6,), 'glow_cyan', size=0.34, mirror=True)
+    F.light(s, 'ToolLamp', (WR[0] + 0.3, WR[1] - 0.2, 1.9), 'glow_cyan', size=0.14, mirror=True)
 
     # --- Parts racks down both flanks ---------------------------------------------------------------
     s.detail = 1

@@ -15,9 +15,9 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'ironback'
 COLORS = {
-    'paint': '#2e3236',    # iron grey carapace (brief #4a4e52, authored darker: the key light lifts ~2.5x)
-    'paint2': '#4a1d16',   # oxide-red underbody and mandibles (brief #6e2e24, same calibration)
-    'stripe': '#4a1d16',
+    'paint': '#2b3036',    # iron grey carapace (brief #4a4e52, authored darker: the key light lifts ~2.5x)
+    'paint2': '#401a14',   # oxide-red underbody and mandibles (brief #6e2e24, same calibration)
+    'stripe': '#401a14',
     'hazard': '#9c6c16',   # safety yellow, deep so the key light never clips it
     'dark': '#1a1c1f',
 }
@@ -69,22 +69,30 @@ def build():
 
     # --- carapace: overlapping iron shells, each tucked under the one ahead ------------------------
     segs = [  # name, x0, x1, w_rear, w_front, ht_rear, ht_front
-        ('Shell5', -8.5, -6.7, 2.0, 1.92, 0.82, 0.76),
-        ('Shell4', -7.0, -4.85, 2.45, 2.2, 1.0, 0.9),
-        ('Shell3', -5.2, -2.85, 2.82, 2.48, 1.16, 1.02),
-        ('Shell2', -3.2, -0.8, 3.02, 2.62, 1.28, 1.12),
-        ('Shell1', -1.15, 1.5, 3.08, 2.68, 1.37, 1.2),
+        ('Shell5', -8.5, -6.7, 1.9, 1.88, 0.82, 0.76),
+        ('Shell4', -7.0, -4.85, 2.5, 2.24, 1.0, 0.9),
+        ('Shell3', -5.2, -2.85, 2.98, 2.6, 1.16, 1.02),
+        ('Shell2', -3.2, -0.8, 3.22, 2.8, 1.28, 1.12),
+        ('Shell1', -1.15, 1.5, 3.28, 2.84, 1.37, 1.2),
     ]
     for name, x0, x1, wr, wf, hr, hf in segs:
         shell(s, name, x0, x1, wr, wf, hr, hf, zc=0.32)
         # dorsal seam: the split between the two wing cases, a sunk dark groove
         F.band(s, name, (0, 0, 0), (0, 1, 0), 0.2, 'dark', facing=(0, 0, 1), min_facing=0.4, inset=0.015,
                depth=-0.05)
+        # oxide-red rim round the shell's skirt: the underbody colour wraps up to the overlap edge
+        F.band(s, name, (0, 0, 0.42), (0, 0, 1), 0.34, 'paint2')
+        # raised armour plate either side of the seam: a second layer on every shell
+        if x1 - x0 > 2.0:
+            F.panel(s, name, (x0 + (x1 - x0) * 0.5, 0.95), ((x1 - x0) * 0.5, 0.95), 'paint', inset=0.05, depth=0.05,
+                    mirror=False)
+            F.panel(s, name, (x0 + (x1 - x0) * 0.5, -0.95), ((x1 - x0) * 0.5, 0.95), 'paint', inset=0.05,
+                    depth=0.05)
     # pronotum: the big shield over the hopper, rounded forward like a beetle's thorax
     F.loft(s, 'Pronotum', [
-        dict(x=1.2, w=2.85, ht=1.2, hb=0.14, zc=0.32, n=2.8),
-        dict(x=1.5, w=3.0, ht=1.47, hb=0.2, zc=0.32, n=2.8),
-        dict(x=3.2, w=2.7, ht=1.42, hb=0.2, zc=0.32, n=2.8),
+        dict(x=1.2, w=3.05, ht=1.2, hb=0.14, zc=0.32, n=2.8),
+        dict(x=1.5, w=3.2, ht=1.47, hb=0.2, zc=0.32, n=2.8),
+        dict(x=3.2, w=2.85, ht=1.42, hb=0.2, zc=0.32, n=2.8),
         dict(x=4.2, w=2.2, ht=1.25, hb=0.2, zc=0.32, n=2.6),
         dict(x=4.75, w=1.5, ht=1.0, hb=0.18, zc=0.32, n=2.4),
         dict(x=4.95, w=1.05, ht=0.7, hb=0.14, zc=0.32, n=2.2),
@@ -92,6 +100,7 @@ def build():
     F.band(s, 'Pronotum', (0, 0, 0), (0, 1, 0), 0.2, 'dark', facing=(0, 0, 1), min_facing=0.4, inset=0.015,
            depth=-0.05)
     F.band(s, 'Pronotum', (4.45, 0, 0), (1, 0, 0), 0.3, 'hazard', inset=0.015, depth=0.02)
+    F.band(s, 'Pronotum', (0, 0, 0.42), (0, 0, 1), 0.34, 'paint2')
 
     # --- ore hopper: two hatch lids on the pronotum, hazard frames --------------------------------
     for y in (0.78, -0.78):

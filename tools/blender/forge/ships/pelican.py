@@ -21,14 +21,21 @@ COLORS = {
 }
 
 
-def vwall(s, name, profile, y, thickness, material='paint2', mirror=False, bevel=0.02):
-    """Local helper (the kit has no vertical plate): a side-profile polygon (x, z) extruded across Y."""
+def vwall(s, name, profile, y, thickness, material='paint2', mirror=False, bevel=0.02, y_end=None):
+    """Local helper (the kit has no vertical plate): a side-profile polygon (x, z) extruded across Y.
+    y_end tapers the wall in plan: its centre runs from y at the aft-most x to y_end at the fore-most x."""
     import bmesh
+    xa = min(p[0] for p in profile)
+    xb = max(p[0] for p in profile)
 
-    def build(yc):
+    def build(sign):
         bm = bmesh.new()
-        a = [bm.verts.new((x, yc - thickness / 2, z)) for (x, z) in profile]
-        b = [bm.verts.new((x, yc + thickness / 2, z)) for (x, z) in profile]
+
+        def yc(x):
+            t = (x - xa) / (xb - xa)
+            return sign * (y + ((y_end if y_end is not None else y) - y) * t)
+        a = [bm.verts.new((x, yc(x) - thickness / 2, z)) for (x, z) in profile]
+        b = [bm.verts.new((x, yc(x) + thickness / 2, z)) for (x, z) in profile]
         bm.faces.new(a)
         bm.faces.new(list(reversed(b)))
         n = len(profile)
@@ -37,9 +44,9 @@ def vwall(s, name, profile, y, thickness, material='paint2', mirror=False, bevel
             bm.faces.new((a[i], b[i], b[j], a[j]))
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
         return bm
-    obj = s.add(F._new_object(name, build(y), s.slots([material]), bevel=bevel, smooth_angle=30.0))
+    obj = s.add(F._new_object(name, build(1), s.slots([material]), bevel=bevel, smooth_angle=30.0))
     if mirror:
-        s.add(F._new_object(name + '_M', build(-y), s.slots([material]), bevel=bevel, smooth_angle=30.0))
+        s.add(F._new_object(name + '_M', build(-1), s.slots([material]), bevel=bevel, smooth_angle=30.0))
     return obj
 
 
@@ -58,17 +65,20 @@ def build():
     ], material='paint', belly='paint2', back_material='dark', front_material='dark', count=64)
     F.band(s, 'Body', (-3.6, 0, 0), (1, 0, 0), 0.45, 'stripe', inset=0.02, depth=0.02)
     F.panel(s, 'Body', (-1.7, 0.0), (2.2, 1.6), 'paint', inset=0.05, depth=0.04)
-    F.panel(s, 'Body', (-4.5, 0.0), (1.1, 1.2), 'dark', inset=0.03, depth=-0.03)
-    F.canopy(s, 'Canopy', x0=-0.5, x1=1.35, w=0.95, h=0.42, z=1.18, peak=0.55, n=2.6)
+    F.canopy(s, 'Canopy', x0=-0.6, x1=1.25, w=1.15, h=0.45, z=1.12, peak=0.55, n=2.6)
 
     # --- The bill: open-topped scoop with a short upper mandible -------------------------------
     # Floor (dark inside, orange underside) and orange side walls that sweep down to a lip.
-    F.plate(s, 'JawFloor', [(1.2, 1.3), (1.2, -1.3), (6.6, -1.3), (7.3, -0.9), (7.5, 0.0), (7.3, 0.9), (6.6, 1.3)],
+    F.plate(s, 'JawFloor', [(1.2, 1.4), (1.2, -1.4), (6.3, -1.08), (6.9, -0.8), (7.1, 0.0), (6.9, 0.8), (6.3, 1.08)],
             z0=-0.85, thickness=0.22, material='paint2', top_material='dark', chamfer_bottom=0.12)
-    vwall(s, 'JawWall', [(1.0, -0.85), (7.2, -0.85), (7.2, -0.35), (5.6, 0.2), (2.2, 0.5), (1.0, 0.55)], 1.28, 0.24,
-          'paint2', mirror=True)
-    F.box(s, 'JawLip', (7.35, 0.0, -0.6), (0.34, 2.2, 0.55), material='paint2', bevel=0.06, taper=0.9)
-    F.box(s, 'LipNail', (7.55, 0.0, -0.78), (0.3, 0.5, 0.3), material='gunmetal', bevel=0.04)
+    vwall(s, 'JawWall', [(1.0, -0.85), (6.95, -0.85), (6.95, -0.35), (5.4, 0.2), (2.2, 0.5), (1.0, 0.55)], 1.34, 0.24,
+          'paint2', mirror=True, y_end=1.0)
+    F.band(s, 'JawWall', (6.1, 0, 0), (1, 0, 0), 0.32, 'hazard', mirror=True)
+    F.box(s, 'JawLip', (7.0, 0.0, -0.6), (0.36, 2.0, 0.55), material='paint2', bevel=0.06, taper=0.9)
+    F.box(s, 'LipNail', (7.22, 0.0, -0.8), (0.34, 0.5, 0.32), material='gunmetal', bevel=0.04)
+    # Jaw hinge knuckles where the bill meets the head.
+    F.cylinder(s, 'Hinge', (1.5, 1.2, 0.05), (1.5, 1.62, 0.05), 0.3, material='gunmetal', mirror=True,
+               cap_material='dark')
     # Upper mandible hood over the back of the mouth.
     F.loft(s, 'Mandible', [
         dict(x=0.9, w=1.45, ht=0.5, hb=0.12, zc=0.5, n=3.2),
@@ -117,6 +127,7 @@ def build():
 
     s.detail = 1
     F.vent(s, 'Vent', (-4.4, 0.95, 1.2), (1.1, 0.4, 0.1), mirror=True)
+    F.vent(s, 'SpineVent', (-4.5, 0.0, 1.38), (1.2, 0.8, 0.1), axis='y')
     F.rcs(s, 'RCS', (0.2, 1.95, 0.2), size=0.34, mirror=True)
     F.antenna(s, 'Mast', (-3.0, -0.7, 1.6), 0.9, tip='glow_red')
     F.sensor_dome(s, 'Dome', (-2.8, 0.7, 1.62), 0.28)
