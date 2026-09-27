@@ -4,6 +4,10 @@ One kit, one surface language, one review loop. A ship differs from another ship
 never by which agent or pipeline made it. If you are about to build, remaster or fix a ship body,
 this is the page.
 
+Around the kit: workflows (new places, interface art, merges, parallel agents), rules, budgets and
+the open backlog live in [`design/program/GRAPHICS_PROGRAM.md`](../../../design/program/GRAPHICS_PROGRAM.md);
+agent brief templates in [`briefs/`](./briefs/).
+
 ## Why
 
 The fleet used to come from a dozen builders (factory lofts, MTX scripts, kitbash iterations, per-ship
