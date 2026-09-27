@@ -19528,7 +19528,7 @@
       "priority": 9833,
       "title": "B13 headed jitter + combat-ecology-roles pin",
       "kind": "acceptance_repair",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19538,7 +19538,10 @@
       "checks": [
         "node --test test/combat-ecology-roles.test.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-206.03-RECEIPT.md",
+        "design/program/roadmap/receipts/PQ-137-11-jitter-REPORT.md"
+      ],
       "brief": "Complete B13 by measuring jitter on the headed route, and repair the two pre-existing combat-ecology-roles failures (ghost preferredRange data vs pin) without re-recording a golden to hide drift."
     },
     {
