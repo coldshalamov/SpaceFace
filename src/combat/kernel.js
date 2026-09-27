@@ -12,6 +12,52 @@ import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
 
 const KERNELS = new WeakMap();
 
+// Quiet open flight: every living combatant still paid ensureCombatant + status/
+// pending/cool/sync under prePhysics even when heat/statuses/actions were idle.
+// Latch skips the entity walk; wakes on spawn/destroy, action, status schedule,
+// damage, repair, scaled physics response / sink, or 0.5 s rescan.
+let COMBAT_PREPHYSICS_QUIET_LATCH = true;
+export function setCombatPrePhysicsQuietLatchForBench(enabled) {
+  COMBAT_PREPHYSICS_QUIET_LATCH = enabled !== false;
+}
+export function getCombatPrePhysicsQuietLatchForBench() {
+  return COMBAT_PREPHYSICS_QUIET_LATCH !== false;
+}
+
+const COMBAT_PREPHYSICS_QUIET_RESCAN_S = 0.5;
+
+function publishCombatPrePhysicsQuiet(state, latched) {
+  const rt = state.combatRuntime || (state.combatRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
+function combatRuntimeBusy(runtime) {
+  if (!runtime) return false;
+  if (runtime.heat > 0) return true;
+  if (runtime.statusModifiersDirty === true) return true;
+  const pending = runtime.pendingStatuses;
+  if (pending && pending.length) return true;
+  const statuses = runtime.statuses;
+  if (statuses) {
+    for (const _ in statuses) return true;
+  }
+  const response = runtime.physicsResponse;
+  if (response && (response.massScale !== 1 || response.inertiaScale !== 1)) return true;
+  const subs = runtime.subsystems;
+  if (subs) {
+    for (const id in subs) {
+      if (subs[id] && subs[id].pendingTransition) return true;
+    }
+  }
+  return false;
+}
+
+function hasActiveActionKeys(active) {
+  if (!active) return false;
+  for (const _ in active) return true;
+  return false;
+}
+
 export function getCombatKernel(ctx, options = {}) {
   if (!ctx || !ctx.state) throw new TypeError('Combat kernel requires ctx.state');
   let kernel = KERNELS.get(ctx.state);
@@ -36,8 +82,22 @@ export function createCombatKernel(ctx, options = {}) {
   const context = { state, bus, helpers, registry: ctx.registry || null, catalog, currentAttackerId: null };
   const attachments = createAttachmentService(context);
   const attachmentContext = { ...context, attachments };
-  const statuses = createStatusService(context);
-  const routeDamage = createDamageRouter(context, statuses, {
+  const statusesRaw = createStatusService(context);
+  // Wake wrappers: action/status services freeze their method tables, so rebind via
+  // thin facades rather than mutating the frozen exports.
+  const statuses = {
+    schedule(targetEntity, runtime, application, source) {
+      noteCombatPrePhysicsWake();
+      return statusesRaw.schedule(targetEntity, runtime, application, source);
+    },
+    advance(targetEntity, runtime, routeDamageArg) {
+      return statusesRaw.advance(targetEntity, runtime, routeDamageArg);
+    },
+    clear(targetEntity, runtime, statusId) {
+      return statusesRaw.clear(targetEntity, runtime, statusId);
+    },
+  };
+  const routeDamageRaw = createDamageRouter(context, statuses, {
     onKill: (target, killerId, lethal) => {
       if (hooks.onKill) hooks.onKill(target, killerId, lethal);
       else {
@@ -46,7 +106,21 @@ export function createCombatKernel(ctx, options = {}) {
       }
     },
   });
-  const actions = createActionService(context, attachments, routeDamage);
+  const routeDamage = (payload) => {
+    noteCombatPrePhysicsWake();
+    return routeDamageRaw(payload);
+  };
+  const actionsRaw = createActionService(context, attachments, routeDamage);
+  const actions = {
+    requestAction(request) {
+      noteCombatPrePhysicsWake();
+      return actionsRaw.requestAction(request);
+    },
+    advance() { return actionsRaw.advance(); },
+    inspect(actorId) { return actionsRaw.inspect(actorId); },
+    cancelActive(actorId, reason) { return actionsRaw.cancelActive(actorId, reason); },
+    phaseAt(actionId, tick) { return actionsRaw.phaseAt(actionId, tick); },
+  };
   const subscriptions = [];
   let sortedCacheTick = -1;
   let sortedCacheRevision = 0;
@@ -59,6 +133,16 @@ export function createCombatKernel(ctx, options = {}) {
   // the kernel-owned fill array never escapes to callers. Saves a fresh array per tick per pass.
   const sourceScratch = [];
   const pushSourceEntity = (entity) => { sourceScratch.push(entity); };
+  let quietLatch = null;
+
+  function noteCombatPrePhysicsWake() {
+    if (!quietLatch) {
+      publishCombatPrePhysicsQuiet(state, false);
+      return;
+    }
+    quietLatch = null;
+    publishCombatPrePhysicsQuiet(state, false);
+  }
 
   for (const entity of sortedEntitiesForTick()) initializeEntity(entity);
   if (bus && typeof bus.on === 'function') {
@@ -114,6 +198,27 @@ export function createCombatKernel(ctx, options = {}) {
   return kernel;
 
   function prePhysics(dt) {
+    const indexVersion = combatTickIndexVersion(state);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (
+      COMBAT_PREPHYSICS_QUIET_LATCH !== false
+      && quietLatch
+      && quietLatch.membership === indexVersion
+      && quietLatch.cacheRevision === sortedCacheRevision
+      && now < quietLatch.rescanAt
+    ) {
+      // Keep postPhysics from re-walking when the roster is unchanged this tick.
+      if (sortedCache) {
+        sortedCacheTick = state.tick;
+        sortedCacheSeenRevision = sortedCacheRevision;
+        sortedCacheIndexVersion = indexVersion;
+      }
+      actions.advance();
+      publishCombatPrePhysicsQuiet(state, true);
+      return;
+    }
+
+    let sawBusy = false;
     for (const entity of sortedEntitiesForTick()) {
       if (!entity.alive || !participatesInCombat(state, entity)) continue;
       const runtime = ensureCombatant(state, entity, catalog);
@@ -121,8 +226,10 @@ export function createCombatKernel(ctx, options = {}) {
       const statusChanged = statuses.advance(entity, runtime, routeDamage);
       if (statusChanged) recomputeCombatantModifiers(context, entity, runtime, attachments);
       const response = runtime.physicsResponse;
-      if (isDynamicPhysicsBodyEntity(entity) && response
-        && (response.massScale !== 1 || response.inertiaScale !== 1)) {
+      const scaledResponse = !!(response
+        && (response.massScale !== 1 || response.inertiaScale !== 1));
+      if (isDynamicPhysicsBodyEntity(entity) && scaledResponse) {
+        sawBusy = true;
         writePhysicsBodyResponse(entity, response);
       }
       if (isDynamicPhysicsBodyEntity(entity)) {
@@ -130,8 +237,29 @@ export function createCombatKernel(ctx, options = {}) {
       }
       coolCombatHeat(entity, runtime, dt);
       syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));
+      if (!sawBusy && (statusChanged || combatRuntimeBusy(runtime))) sawBusy = true;
     }
     actions.advance();
+    const combatActions = state.combat && state.combat.actions;
+    if (
+      (combatActions && combatActions.requests && combatActions.requests.length)
+      || hasActiveActionKeys(combatActions && combatActions.activeByActor)
+    ) {
+      sawBusy = true;
+    }
+
+    if (COMBAT_PREPHYSICS_QUIET_LATCH !== false && !sawBusy) {
+      quietLatch = {
+        membership: combatTickIndexVersion(state),
+        cacheRevision: sortedCacheRevision,
+        rescanAt: now + COMBAT_PREPHYSICS_QUIET_RESCAN_S,
+        armedTick: state.tick | 0,
+      };
+      publishCombatPrePhysicsQuiet(state, true);
+    } else {
+      quietLatch = null;
+      publishCombatPrePhysicsQuiet(state, false);
+    }
   }
 
   function postPhysics() {
@@ -170,6 +298,7 @@ export function createCombatKernel(ctx, options = {}) {
   }
 
   function repair(entityId, subsystemId, amount, reason = 'repair') {
+    noteCombatPrePhysicsWake();
     const entity = getEntity(entityId);
     if (!entity || !entity.alive) return { ok: false, reason: 'entity_missing' };
     const runtime = ensureCombatant(state, entity, catalog);
@@ -263,6 +392,7 @@ export function createCombatKernel(ctx, options = {}) {
     sortedCacheRevision++;
     sortedCacheTick = -1;
     sortedCache = null;
+    noteCombatPrePhysicsWake();
   }
 
   function dispose() {
