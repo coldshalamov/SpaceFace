@@ -17,6 +17,10 @@ implementing + A/B on this branch), **REJECTED** (evidence receipt exists or fre
 not-the-pole), **GATED** (legally admissible but blocked on an evidence gate this headless box
 cannot produce — owner-GPU headed fly), **ILLEGAL** (violates picture contract).
 
+**Status 2026-09-27: sweep complete.** Every LANE verdict resolved (kept/rejected per lane —
+Round-10 table in PERF_MASTER_PLAN_2026-09-26.md); only the GATED items in §8 remain, all of
+which require hardware this headless box doesn't have.
+
 ## 1. Hitch campaign (PQ-129) — leaf-by-leaf
 
 | Leaf | Work | Verdict |
@@ -78,27 +82,27 @@ PERF-07 Electron modernization (live + wave-1 flags + `glflags`), PERF-08 GPU co
 
 ## 5. Option-space remainder → wave-3 lanes
 
-| Item | Lane |
+| Item | Lane / verdict |
 |---|---|
-| PERF-36/76 lane collapse, PERF-90 packed-ORM, ABI 25% | `progkeys` |
-| PERF-89 sim-hitch attribution | `simattr` |
-| PERF-69 GL flags, PERF-70 ANGLE, PERF-92 present parity | `glflags` |
+| PERF-36/76 lane collapse, PERF-90 packed-ORM, ABI 25% | `progkeys` — KEPT (see master plan) |
+| PERF-89 sim-hitch attribution | `simattr` — KEPT |
+| PERF-69 GL flags, PERF-70 ANGLE, PERF-92 present parity | `glflags` — KEPT |
 | PERF-73 prod probes off | CLOSED-with-evidence — audit 2026-09-26: GPU timers opt-in (`createGpuTimers` capability-check only, `renderer.js:5670`), hitch attribution + per-step measurement default-off (`perfRuntime.js:325-360`), per-system timing already prime-stratified (~¼ tax, the intended product instrumentation). Nothing left default-on that is debug-only. |
 | PERF-67 state-change sort | CLOSED-with-evidence — render-submit census: three's `painterSortStable` already keys `material.id` before z and `useProgram`/`bindTexture` dedup exists; the ~100 live program switches are genuinely distinct programs. The lever is program-count collapse → `progkeys`. |
 | PERF-58 speedline residual | CLOSED-with-evidence — `speedLineStrokeCache.js` ships alloc-free stroke fill + quantized-rgba cache + unit-space gradient cache; skip-on-late-present already shipped. OffscreenCanvas worker gated on a measured 2D pole that no census has named. |
-| PERF-65 audio table cull | `audiocull` |
-| PERF-93/94 residual fat-list walks | `fatlist` |
-| PERF-59 scene-graph flatten | `scenegraph` |
-| PERF-77/102 hidden-screen unload | `hiddenskip` |
-| PERF-74 idle admission | `idleadmit` |
-| PERF-67 state-change sort | `drawsort` |
-| PERF-79 buffer policy | `bufpolicy` |
-| PERF-46 texture residency evict | `texevict` |
-| PERF-58 speedline residual | `speedline` |
+| PERF-65 audio table cull | `audiocull` — KEPT `c2540dcc` |
+| PERF-93/94 residual fat-list walks | `fatlist` — KEPT `df9a6f79` (47a hash identical) |
+| PERF-59 scene-graph flatten | `scenegraph` — KEPT `65c69d70` |
+| PERF-77/102 hidden-screen unload | `hiddenskip` — KEPT |
+| PERF-74 idle admission | `idleadmit` — KEPT `68e71f10` (probe p99 −45%) |
+| PERF-67 state-change sort (submit-side) | `drawsort` — CLOSED earlier (painter-sort evidence above) |
+| PERF-79 buffer policy | `bufpolicy` — KEPT `84f732d5` |
+| PERF-46 texture residency evict | `texevict` — REJECTED with evidence (chain already works; plateau probe 28.5→7.5 MiB, exactly-once disposes) |
+| PERF-58 speedline residual | `speedline` — CLOSED earlier (evidence above) |
 | PERF-31/119 landmark demotion | `landmarks` — KEPT `4eeb2633` (runway-bounded residency) |
 
-Wave-2 lanes still running cover: entityList demotion (TABLE_AUTHORITY lane A — the named
-"next 50%"), calendar straddle, shaderwarm v2, prefetch depth, shared decode pool, shadowcast
+Wave-2 lanes (all adjudicated — verdicts in the master plan Round-10 table): entityList
+demotion, calendar straddle, shaderwarm v2, prefetch depth, shared decode pool, shadowcast
 (PERF-37), memoff (buffer→disk), lodrebuild (84 MB stale), marginmemo, gltfworker (PERF-63).
 
 ## 6. Explicitly closed — worthless/negative/illegal
