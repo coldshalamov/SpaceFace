@@ -34,7 +34,8 @@ COLORS = {
     'hazard': '#a8861c',
     'paint.graphite': '#23282e',  # charcoal
     'paint.primer': '#4a4f4a',    # weathered freight grey
-    'paint.hall': '#8e8674',      # hall roofs: ivory a step down so the wide ring does not glare in plan
+    'paint.hall': '#8e8674',
+    'paint.apron': '#1a1d21',     # harbour floor, darker than the charcoal so hulls and lights pop      # hall roofs: ivory a step down so the wide ring does not glare in plan
     'dark': '#15181c',
 }
 
@@ -311,7 +312,6 @@ def build_drum(s):
                bevel=0.0)
     F.dish(s, 'Dish', (CX - 8.5, 5.5, 31.0), 2.6, 0.8, axis=(-0.5, 0.4, 1.0), material='gunmetal', face='paint')
     F.sensor_dome(s, 'SensorA', (CX + 8.5, -6.0, ROOF_Z1), 1.4)
-    F.sensor_dome(s, 'SensorB', (CX - 3.0, -10.0, ROOF_Z1), 1.0)
     # the drum stands on the apron: buttresses between the apron and the concourse
     for k in range(12):
         a = 15 + 30 * k
@@ -362,14 +362,12 @@ def build_drum_details(s):
         x, y, _ = polar(7.4, 7.5 + 15 * k)
         dl.append(((x, y, ROOF_Z1 + 0.05), (0.4, 0.4, 0.1), 0.0))
     cluster(s, 'CrownDeckLights', dl, 'glow_warm')
-    lower = radial_windows(12.2, 3.6, 40, (0.7, 0.45))
-    cluster(s, 'KeelWin', lower, 'glow_warm')
     F.light(s, 'KeelBeacon', (CX, 0, -5.6), 'glow_amber', size=0.8)
 
 
 def build_apron(s):
     # the harbour floor: a charcoal apron annulus with an underframe
-    ring_body(s, 'Apron', APRON_R0, APRON_R1, APRON_Z0, APRON_Z1, 0, 360, 96, top='paint.graphite',
+    ring_body(s, 'Apron', APRON_R0, APRON_R1, APRON_Z0, APRON_Z1, 0, 360, 96, top='paint.apron',
               outer='paint.graphite', inner='paint.graphite', bottom='gunmetal', bevel=0.0)
     F.ring(s, 'ApronEdge', (CX, 0, APRON_Z1), APRON_R1 - 0.2, 0.22, axis=(0, 0, 1), material='hazard', segments=96,
            sides=6)
@@ -402,11 +400,9 @@ def pad(s, n, center, heading, size):
 def build_berths(s):
     """Courtyard berths on the diagonals and along the pier; every hull on saddles and a gangway."""
     berths = [  # (angle, radius, kind)
-        (45.0, 28.0, 'F'), (135.0, 28.0, 'F'), (225.0, 28.0, 'S'), (315.0, 28.0, 'F'),
-        (112.0, 29.5, 'S'), (248.0, 29.5, 'S'),
+        (45.0, 28.0, 'F'), (135.0, 29.5, 'S'), (225.0, 29.5, 'S'), (315.0, 28.0, 'F'),
     ]
-    cargos = [('paint2', 'paint', 'paint2'), ('paint', 'paint2', 'paint.primer'), None,
-              ('paint.primer', 'paint2', 'paint2')]
+    cargos = [('paint2', 'paint', 'paint2'), None, None, ('paint.primer', 'paint2', 'paint2')]
     for k, (a, r, kind) in enumerate(berths):
         pos = polar(r, a, BERTH_Z)
         heading = a + 90.0
@@ -500,7 +496,8 @@ def gantry(s, name, a, r0, r1, z_top, trolley_t=0.5, load=None):
 
 
 def build_yards(s):
-    yards = [(72.0, 'A'), (160.0, 'B'), (200.0, 'C'), (288.0, 'D'), (26.0, 'E'), (334.0, 'F')]
+    yards = [(72.0, 'A'), (160.0, 'B'), (200.0, 'C'), (288.0, 'D'), (26.0, 'E'), (334.0, 'F'), (110.0, 'G'),
+             (250.0, 'H')]
     pats = {
         'A': lambda i, j, l: ('paint2', 'paint', 'paint.primer')[(i + j + l) % 3] if l < (2 if i != 1 else 3) else None,
         'B': lambda i, j, l: ('paint2', 'paint2', 'paint')[(i * 2 + j + l) % 3] if l < 2 - (i == 0 and j == 1) else None,
@@ -508,11 +505,13 @@ def build_yards(s):
         'D': lambda i, j, l: ('paint.primer', 'paint2', 'paint')[(i + j * 2 + l) % 3] if l < 2 else None,
         'E': lambda i, j, l: ('paint2', 'paint')[(i + j + l) % 2] if l < 2 - (i == 1 and j == 0) else None,
         'F': lambda i, j, l: ('paint', 'paint2')[(i + l) % 2] if l < 1 + (j == 0) else None,
+        'G': lambda i, j, l: ('paint2', 'paint.primer', 'paint')[(i + j + 2 * l) % 3] if l < 2 - (i == 0 and j == 0) else None,
+        'H': lambda i, j, l: ('paint', 'paint2')[(i + 2 * j + l) % 2] if l < 1 + (i == 1) else None,
     }
     for a, key in yards:
         r = 29.0 if key not in 'EF' else 31.0
         heading = a + 90.0
-        cols, rows = (2, 3) if key not in 'EF' else (2, 2)
+        cols, rows = (2, 3) if key not in 'EFGH' else (2, 2)
         container_stack(s, f'Yard{key}', polar(r, a, APRON_Z1), heading, cols, rows, 3, pats[key])
     gantry(s, 'CraneA', 72.0, 22.0, 36.0, 17.2, 0.35, load='paint2')
     gantry(s, 'CraneC', 200.0, 22.0, 36.0, 17.2, 0.7, load=None)
@@ -539,7 +538,7 @@ def build_ring(s):
                      material='paint.hall', steps=3, chamfer=0.3, bevel=0.05)
         am = math.radians((b0 + b1) / 2)
         F.band(s, f'Hall{k}', polar(45.0, (b0 + b1) / 2, 0), (-math.sin(am), math.cos(am), 0), 1.1, 'glass',
-               facing=(0, 0, 1), min_facing=0.6, inset=0.04, depth=-0.06)
+               facing=(0, 0, 1), min_facing=0.6)
     # teal inlay walk round the outer edge, amber-edged
     ring_body(s, 'TealWalk', RING_R1 - 3.0, RING_R1 - 1.2, RING_Z1, RING_Z1 + 0.2, a0 + 0.6, a1 - 0.6, 96,
               top='paint2', outer='paint2', inner='paint2', bottom='paint2', cap='paint2', bevel=0.0)
@@ -568,7 +567,7 @@ def build_ring(s):
         a = side * (MOUTH + 3.4)
         c = polar((RING_R0 + RING_R1) / 2 + 1.0, a)
         F.box(s, f'Head{side:+d}', (c[0], c[1], (APRON_Z1 + ROOF_Z1) / 2 - 1.0), (RING_R1 - RING_R0 + 1.5, 7.2,
-              ROOF_Z1 - APRON_Z1 - 1.8), material='paint', rot_z=math.radians(a), bevel=0.15)
+              ROOF_Z1 - APRON_Z1 - 1.8), material='paint', rot_z=math.radians(a), bevel=0.0)
         F.band(s, f'Head{side:+d}', (0, 0, 16.0), (0, 0, 1), 1.6, 'hazard', inset=0.06, depth=0.15)
         F.band(s, f'Head{side:+d}', (0, 0, 12.2), (0, 0, 1), 0.8, 'paint2', inset=0.05, depth=0.12)
         F.box(s, f'HeadCap{side:+d}', (c[0], c[1], ROOF_Z1 - 0.4), (RING_R1 - RING_R0 + 0.5, 6.4, 1.0),
@@ -597,7 +596,7 @@ def build_ring_details(s):
     skip_heads = lambda a: in_mouth(a) or abs(((a + 180) % 360) - 180) < MOUTH + 7.5  # noqa: E731
     out = []
     for z in (19.9, 23.2, 25.3):
-        out += radial_windows(RING_R1, z, 150, (1.35, 0.5), skip=skip_heads)
+        out += radial_windows(RING_R1, z, 140, (1.4, 0.5), skip=skip_heads)
     # the teal band row stays dark on z 21.3, the 22.7 row is a thin strip
     cluster(s, 'RingWinOut', out, 'glow_warm')
     inn = []
@@ -640,20 +639,10 @@ def build_ring_details(s):
         x, y, _ = polar(RING_R1 - 0.35, a)
         rim.append(((x, y, RING_Z1 + 0.2), (0.3, 0.5, 0.25), math.radians(a)))
     cluster(s, 'RimLights', rim, 'glow_amber')
-    # roof plant between halls: vents and little antenna masts
-    for k in range(0, 22, 4):
-        aa = a0 + (k + 1.0) * span
-        F.vent(s, f'HallVent{k}', polar(RING_R1 - 5.9, aa - span * 0.5, RING_Z1 + 0.12), (1.8, 2.2, 0.3), slats=4)
+    # little antenna masts on the inner hall edge
     for k, aa in enumerate((64.0, 118.0, 244.0, 298.0)):
         F.antenna(s, f'RingMast{k}', polar(RING_R0 + 1.6, aa, ROOF_Z1), 3.0,
                   tip='glow_red' if aa < 180 else 'glow_green')
-    # work lamps on the inner edge lighting the harbour floor
-    for k in range(4):
-        a = 45 + 90 * k + 22.0
-        x, y, _ = polar(RING_R0 - 0.3, a)
-        dx, dy = -(x - CX), -y
-        ln = math.hypot(dx, dy)
-        F.work_lamp(s, f'RingLamp{k}', (x, y, RING_Z0 - 0.8), aim=(dx / ln * 0.6, dy / ln * 0.6, 0.5), size=1.0)
     hw = []
     for side in (1, -1):
         a = side * (MOUTH + 3.4)
@@ -683,7 +672,7 @@ def build_spokes(s):
     for a in SPOKES:
         r0, r1 = 12.0, RING_R0 + 1.0
         c = polar((r0 + r1) / 2, a, 24.8)
-        F.box(s, f'Spoke{a:.0f}', c, (r1 - r0, 8.4, 6.2), material='paint', rot_z=math.radians(a), bevel=0.15)
+        F.box(s, f'Spoke{a:.0f}', c, (r1 - r0, 8.4, 6.2), material='paint', rot_z=math.radians(a), bevel=0.0)
         F.band(s, f'Spoke{a:.0f}', polar(22.0, a, 0), (math.cos(math.radians(a)), math.sin(math.radians(a)), 0), 1.2,
                'paint2', inset=0.05, depth=0.14)
         F.band(s, f'Spoke{a:.0f}', polar(31.0, a, 0), (math.cos(math.radians(a)), math.sin(math.radians(a)), 0), 1.2,
@@ -782,6 +771,105 @@ def build_pier_details(s):
     cluster(s, 'LaneLights', lane, 'glow_cyan')
 
 
+def build_terminal(s):
+    """The freight terminal: a squared warehouse stern at -X opposite the harbour mouth (the SCN booms
+    root into it and the free-port skirts close on its face)."""
+    x0, x1, hy = -57.0, -40.0, 30.0
+    z0, z1 = 12.0, 26.5
+    F.box(s, 'Terminal', ((x0 + x1) / 2, 0, (z0 + z1) / 2), (x1 - x0, 2 * hy, z1 - z0), material='paint', bevel=0.2)
+    F.band(s, 'Terminal', (0, 0, 22.2), (0, 0, 1), 1.1, 'paint2', inset=0.06, depth=0.18)
+    F.band(s, 'Terminal', (0, 0, 13.2), (0, 0, 1), 0.7, 'hazard', inset=0.05, depth=0.12)
+    F.panel(s, 'Terminal', (x0 + 5.0, 0.0), (6.0, 2 * hy - 6.0), 'paint.graphite', inset=0.08, depth=0.12)
+    F.box(s, 'TerminalKeel', ((x0 + x1) / 2 + 1.0, 0, z0 - 1.0), (x1 - x0 - 4.0, 2 * hy - 8.0, 2.0),
+          material='paint.graphite', bevel=0.1)
+    F.box(s, 'TerminalFoot', (CX - APRON_R1 - 0.5, 0, (APRON_Z0 + z0) / 2 + 0.2), (7.0, 16.0, z0 - APRON_Z0 + 0.8),
+          material='paint.graphite', bevel=0.1)
+    # three lit freight bays on the outer face with hazard jambs
+    for k, y in enumerate((-19.0, 0.0, 19.0)):
+        F.box(s, f'Bay{k}', (x0 - 0.05, y, 17.6), (0.5, 12.0, 7.0), material='dark', bevel=0.0)
+        F.box(s, f'BayGlow{k}', (x0 - 0.2, y, 14.4), (0.5, 11.4, 0.5), material='glow_warm', bevel=0.0)
+        for e in (-1, 1):
+            F.box(s, f'BayJamb{k}{e:+d}', (x0 - 0.35, y + e * 6.3, 17.6), (0.8, 0.8, 7.6), material='hazard', bevel=0.0)
+    # quay jibs on the roof swinging out over the bays, one lifting a container
+    for k, y in enumerate((-19.0, 19.0)):
+        F.box(s, f'JibPost{k}', (x0 + 4.0, y, z1 + 1.4), (1.6, 1.6, 2.8), material='paint.graphite', bevel=0.0)
+        beam(s, f'Jib{k}', (x0 + 5.5, y, z1 + 3.1), (x0 - 6.5, y, z1 + 3.1), 1.0, material='paint')
+        F.band(s, f'Jib{k}', (x0 - 5.0, y, 0), (1, 0, 0), 0.8, 'hazard')
+        F.cylinder(s, f'JibLine{k}', (x0 - 5.5, y, z1 + 2.6), (x0 - 5.5, y, z1 - 3.0 - 4.0 * k), 0.1,
+                   material='gunmetal', segments=6, bevel=0.0)
+        F.box(s, f'JibLoad{k}', (x0 - 5.5, y, z1 - 4.4 - 4.0 * k), (2.4, 5.8, 2.4), material=('paint2', 'paint')[k],
+              bevel=0.04)
+
+
+def build_terminal_details(s):
+    x0, x1, hy = -57.0, -40.0, 30.0
+    win = []
+    for z in (19.6, 24.4):
+        for i in range(22):
+            y = -hy + 1.6 + i * (2 * hy - 3.2) / 21
+            if any(abs(y - b) < 6.8 for b in (-19.0, 0.0, 19.0)) and z < 22:
+                continue
+            win.append(((x0 - 0.06, y, z), (0.12, 1.2, 0.55), 0.0))
+        for side in (1, -1):
+            for i in range(6):
+                win.append(((x0 + 1.8 + i * 1.9, side * (hy + 0.06), z), (1.2, 0.12, 0.55), 0.0))
+    cluster(s, 'TerminalWin', win, 'glow_warm')
+    F.light(s, 'TermNavP', (x0 - 0.3, hy - 0.5, 26.3), 'glow_red', size=0.8)
+    F.light(s, 'TermNavS', (x0 - 0.3, -hy + 0.5, 26.3), 'glow_green', size=0.8)
+    F.beacon(s, 'TermBeacon', (x0 + 9.0, 0, 26.5), 'glow_amber', size=0.8)
+
+
+MOORINGS = (45.0, 135.0, 225.0, 315.0)
+MOOR_Z = 14.6
+
+
+def build_moorings(s):
+    """Four low mooring arms on the diagonals: truss arms hung under the ring out to r 72, each ending in
+    a lit mooring platform; the two aft arms hold freighters alongside."""
+    for k, a in enumerate(MOORINGS):
+        rad = Vector((math.cos(math.radians(a)), math.sin(math.radians(a)), 0))
+        tang = Vector((-rad.y, rad.x, 0))
+        F.box(s, f'MoorRoot{k}', polar(51.5, a, (MOOR_Z + RING_Z0) / 2 + 0.3), (5.0, 5.6, RING_Z0 - MOOR_Z + 2.0),
+              material='paint.graphite', rot_z=math.radians(a), bevel=0.1)
+        truss(s, f'MoorArm{k}', polar(50.0, a, MOOR_Z), polar(68.5, a, MOOR_Z), 3.0, 2.4, 6, material='gunmetal')
+        F.box(s, f'MoorDeck{k}', polar(60.0, a, MOOR_Z + 1.55), (16.0, 3.6, 0.5), material='paint.graphite',
+              rot_z=math.radians(a), bevel=0.0)
+        F.box(s, f'MoorHead{k}', polar(71.5, a, MOOR_Z + 0.2), (7.0, 7.0, 3.8), material='paint', rot_z=math.radians(a),
+              bevel=0.2)
+        F.band(s, f'MoorHead{k}', (0, 0, MOOR_Z + 1.0), (0, 0, 1), 0.7, 'paint2', inset=0.05, depth=0.12)
+        F.box(s, f'MoorCap{k}', polar(71.5, a, MOOR_Z + 2.4), (5.4, 5.4, 0.6), material='paint.graphite',
+              rot_z=math.radians(a), bevel=0.05)
+        if a in (135.0, 225.0):
+            side = 1 if a == 135.0 else -1
+            c = Vector(polar(61.0, a, MOOR_Z)) + tang * side * 5.6
+            with Placed(s, tuple(c), a):
+                freighter(s, f'MoorShip{k}', cargo=(('paint2', 'paint2', 'paint') if k == 1 else
+                                                    ('paint', 'paint.primer', 'paint2')))
+            g = Vector(polar(61.0, a, MOOR_Z)) + tang * side * 2.3
+            F.box(s, f'MoorGang{k}', tuple(g), (1.8, 2.4, 1.4), material='paint.graphite', rot_z=math.radians(a),
+                  bevel=0.0)
+            for u in (-5.0, 5.0):
+                q = Vector(polar(61.0 + u, a, MOOR_Z)) + tang * side * 2.6
+                F.box(s, f'MoorClamp{k}{u:+.0f}', tuple(q), (1.2, 3.0, 1.0), material='paint.graphite',
+                      rot_z=math.radians(a), bevel=0.0)
+        else:
+            container_stack(s, f'MoorStack{k}', polar(71.5, a, MOOR_Z + 2.7), a + 90.0, 1, 2, 1,
+                            lambda i, j, l: ('paint2', 'paint')[j])
+
+
+def build_mooring_details(s):
+    lights = []
+    for k, a in enumerate(MOORINGS):
+        tang = Vector((-math.sin(math.radians(a)), math.cos(math.radians(a)), 0))
+        for i in range(6):
+            for e in (-1, 1):
+                p = Vector(polar(53.5 + i * 3.0, a, MOOR_Z + 1.9)) + tang * e * 1.55
+                lights.append((tuple(p), (0.35, 0.35, 0.2), 0.0))
+        F.beacon(s, f'MoorBeacon{k}', tuple(Vector(polar(73.5, a, MOOR_Z + 2.7)) + tang * 1.8),
+                 'glow_amber' if k % 2 == 0 else ('glow_red' if a < 180 else 'glow_green'), size=0.7)
+    cluster(s, 'MoorLights', lights, 'glow_amber')
+
+
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
@@ -792,11 +880,15 @@ def build():
     build_pier(s)
     build_berths(s)
     build_yards(s)
+    build_terminal(s)
+    build_moorings(s)
     s.detail = 1
     build_drum_details(s)
     build_ring_details(s)
     build_spoke_details(s)
     build_pier_details(s)
+    build_terminal_details(s)
+    build_mooring_details(s)
     s.detail = 0
     return s
 

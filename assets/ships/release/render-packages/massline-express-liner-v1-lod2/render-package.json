@@ -185,6 +185,52 @@
       ]
     },
     {
+      "id": "sf.render.massline-express-liner-v1-lod2.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19.799999237060547,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19.799999237060547,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.massline-express-liner-v1-lod2.anchor.socket-rcs-port",
       "kind": "socket",
       "localTransform": [
@@ -208,7 +254,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        17
+        18
       ],
       "parentNodeId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "worldTransform": [
@@ -254,7 +300,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        18
+        19
       ],
       "parentNodeId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "worldTransform": [
@@ -300,7 +346,7 @@
       "nodeName": "SOCKET_Service_Starboard",
       "nodePath": [
         0,
-        19
+        20
       ],
       "parentNodeId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "worldTransform": [
@@ -346,7 +392,7 @@
       "nodeName": "SOCKET_Tether_Keel",
       "nodePath": [
         0,
-        20
+        21
       ],
       "parentNodeId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "worldTransform": [
@@ -364,6 +410,52 @@
         0,
         0.3499999940395355,
         -5.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod2.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.779999732971191,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.779999732971191,
+        0.10000000149011612,
         0,
         1
       ]
@@ -392,7 +484,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        21
+        23
       ],
       "parentNodeId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "worldTransform": [
@@ -438,7 +530,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        22
+        24
       ],
       "parentNodeId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "worldTransform": [
@@ -484,7 +576,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        23
+        25
       ],
       "parentNodeId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "worldTransform": [
@@ -530,7 +622,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        24
+        26
       ],
       "parentNodeId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "worldTransform": [
@@ -576,7 +668,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        25
+        27
       ],
       "parentNodeId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "worldTransform": [
@@ -611,7 +703,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1edbeb5e1f0b5d6cfcfe4dca18e7376c33439275b6724adc24188b3b35e3dd82",
+  "contentHash": "e4aabe663deb2cac8cb298521a19a4994154b5efbad5f86fc8e537a657657da9",
   "dynamicGroups": [
     {
       "id": "sf.render.massline-express-liner-v1-lod2.node.lod0-hook-drive-core.dynamic",
@@ -2078,6 +2170,55 @@
       ]
     },
     {
+      "id": "sf.render.massline-express-liner-v1-lod2.node.socket-mining-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19.799999237060547,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mining_Front",
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19.799999237060547,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.massline-express-liner-v1-lod2.node.socket-rcs-port",
       "localTransform": [
         1,
@@ -2102,7 +2243,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        17
+        18
       ],
       "parentId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "role": "immutable",
@@ -2151,7 +2292,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        18
+        19
       ],
       "parentId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "role": "immutable",
@@ -2200,7 +2341,7 @@
       "nodeName": "SOCKET_Service_Starboard",
       "nodePath": [
         0,
-        19
+        20
       ],
       "parentId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "role": "immutable",
@@ -2249,7 +2390,7 @@
       "nodeName": "SOCKET_Tether_Keel",
       "nodePath": [
         0,
-        20
+        21
       ],
       "parentId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "role": "immutable",
@@ -2269,6 +2410,55 @@
         0,
         0.3499999940395355,
         -5.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod2.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.779999732971191,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.779999732971191,
+        0.10000000149011612,
         0,
         1
       ]
@@ -2298,7 +2488,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        21
+        23
       ],
       "parentId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "role": "immutable",
@@ -2347,7 +2537,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        22
+        24
       ],
       "parentId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "role": "immutable",
@@ -2396,7 +2586,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        23
+        25
       ],
       "parentId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "role": "immutable",
@@ -2445,7 +2635,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        24
+        26
       ],
       "parentId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "role": "immutable",
@@ -2494,7 +2684,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        25
+        27
       ],
       "parentId": "sf.render.massline-express-liner-v1-lod2.node.liner-lod2-root",
       "role": "immutable",
@@ -2521,22 +2711,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "ac0a56bcc4190841afaa701f0dda6bff2e9b9f87ae9e1c9e20b3b19c1ba33fab"
+      "sha256": "2b981f4b962f3a4fdd177a96c936264e436d631ed6c4e344060c2ec836c972c3"
     },
     "sourceGlb": {
-      "bytes": 412772,
-      "sha256": "e2a046e324a7ff6dcf69a8a3738101281276fb680cced85c621cc141478695da",
+      "bytes": 413136,
+      "sha256": "715f3e14659f1b77d551d8f36d7ddc694c7e17f0afe29b16c0c5c6bdb7dc2b1e",
       "uri": "massline_express_liner_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 195823,
-      "sha256": "6a5de585fff3e4544e6572555191776d9e5196731a7dc717b776779456adfe5f",
+      "bytes": 197520,
+      "sha256": "41174f74f609e8b752137f78648dbd038755e37857acdf0bd8850caae0f5b820",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 540324,
-    "sha256": "c8e4984d7e8a598c2ad99d8166f820f3792428bb161bebb7bc289ded7ba5d4ea",
+    "bytes": 541232,
+    "sha256": "c177b4ef30b0957d7ea8fc548498a65238198903c911ef6e5a72e57711e2b377",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2789,13 +2979,65 @@
           0,
           1,
           0,
+          19.799999237060547,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod2.anchor.socket-mining-front",
+              "sf.render.massline-express-liner-v1-lod2.node.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           8.800000190734863,
           0.8500000238418579,
           9.020000457763672,
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 19,
+        "planIndex": 20,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2847,7 +3089,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 20,
+        "planIndex": 21,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2899,7 +3141,7 @@
           1
         ],
         "name": "SOCKET_Service_Starboard",
-        "planIndex": 21,
+        "planIndex": 22,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2951,7 +3193,7 @@
           1
         ],
         "name": "SOCKET_Tether_Keel",
-        "planIndex": 22,
+        "planIndex": 23,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2997,13 +3239,65 @@
           0,
           1,
           0,
+          -9.779999732971191,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod2.anchor.socket-tether-massline",
+              "sf.render.massline-express-liner-v1-lod2.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           -20.850000381469727,
           0.3799999952316284,
           0,
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 23,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3055,7 +3349,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 24,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3107,7 +3401,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 25,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3159,7 +3453,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 26,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3211,7 +3505,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 27,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3319,7 +3613,7 @@
         "role": "warning"
       }
     ],
-    "nodeCount": 28,
+    "nodeCount": 30,
     "primitives": [
       {
         "canopy": false,
@@ -3671,7 +3965,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb"
   },
-  "runtimeHash": "e9a76260e4c92b128ef244093bd9d0abb0d457f03a8bd0116d1f1c862e95a112",
+  "runtimeHash": "95a314af9ba72fe75ca0ff09a043b91dec64ab0d123869e0720766b6c9e0d491",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3707,10 +4001,12 @@
         "sf.render.massline-express-liner-v1-lod2.node.socket-cargo-ventral",
         "sf.render.massline-express-liner-v1-lod2.node.socket-dock-port",
         "sf.render.massline-express-liner-v1-lod2.node.socket-engine-main",
+        "sf.render.massline-express-liner-v1-lod2.node.socket-mining-front",
         "sf.render.massline-express-liner-v1-lod2.node.socket-rcs-port",
         "sf.render.massline-express-liner-v1-lod2.node.socket-rcs-starboard",
         "sf.render.massline-express-liner-v1-lod2.node.socket-service-starboard",
         "sf.render.massline-express-liner-v1-lod2.node.socket-tether-keel",
+        "sf.render.massline-express-liner-v1-lod2.node.socket-tether-massline",
         "sf.render.massline-express-liner-v1-lod2.node.socket-trail-main",
         "sf.render.massline-express-liner-v1-lod2.node.socket-trail-port",
         "sf.render.massline-express-liner-v1-lod2.node.socket-trail-starboard",

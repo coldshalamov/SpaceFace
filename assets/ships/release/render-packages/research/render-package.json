@@ -197,7 +197,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f461610b32098a586fbf536268f0482e95a9a4af0b577bc7d0a9a53949666b41",
+  "contentHash": "6ef2ccf703fc7d88963509eedf2cf38c18be8b5ffce0c662068f270d6a04a41d",
   "dynamicGroups": [
     {
       "id": "sf.render.research.node.lod0-hook-nav-port.dynamic",
@@ -270,7 +270,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "27509b3da58fb5c813939570901c219fbb48e7de773d3c62d1c69602e7987205",
+      "geometryHash": "c46350106fc01513bd866b472be27e1a7e3fbd9bad4229b6f4e95ced36c17c91",
       "id": "sf.render.research.node.lod0-armor.primitive.0",
       "indexCount": 50268,
       "indexed": true,
@@ -420,7 +420,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f12a5e0da68654f99485146407c9740c32be105e7a52df6283bfdf27aa604689",
+      "geometryHash": "81ed55770801cbea7b2120537890d94a46a7a1a340f49b51ea38d2a245cfdabb",
       "id": "sf.render.research.node.lod0-hull.primitive.0",
       "indexCount": 53910,
       "indexed": true,
@@ -595,7 +595,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fd29affa9292f1a039baafd7b93464768d11fd229f969361c5df897a5c101d2a",
+      "geometryHash": "30b118537bb71e82f6b94fadfdd76d895b6e158a4b4ee1a493bf00dc48e647e0",
       "id": "sf.render.research.node.lod1-armor.primitive.0",
       "indexCount": 18498,
       "indexed": true,
@@ -745,7 +745,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5b5a9665211a60a96fbbf79e67812808819d814a1c5b2ad1a7850e601fcba01e",
+      "geometryHash": "44e491311e8cd67deb2b19c3ea41fb74fe09b866d2657142bfeb4453748a36c8",
       "id": "sf.render.research.node.lod1-hull.primitive.0",
       "indexCount": 22770,
       "indexed": true,
@@ -895,7 +895,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "db3b11a4babe582623eeee4c6022cd58465c536b738efdba754e42869845b21c",
+      "geometryHash": "2e0ab815685bff5d7d3fa18c95b791cba338b0cffc0aa4d1e531684a68e1f4a9",
       "id": "sf.render.research.node.lod2-armor.primitive.0",
       "indexCount": 8523,
       "indexed": true,
@@ -1045,16 +1045,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "929838b5224d0ec592162eda012ccf8898a5bdb62a03991463225d6f5b56a8c1",
+      "geometryHash": "0f4a8b1aa430c94766b303c3703f1ae147790ca3598fef0fd9d0bbab838e9b07",
       "id": "sf.render.research.node.lod2-hull.primitive.0",
-      "indexCount": 9756,
+      "indexCount": 9759,
       "indexed": true,
       "materialHash": "eb05aa5c6d801a3de4d8ae14c30868dfba6c3065db75c85000e2b4865ebb5b18",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.research.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 3646
+      "vertexCount": 3647
     },
     {
       "bounds": {
@@ -1070,16 +1070,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e3edc0404164bacfbf8dcf4334344d0e695c8dc6d55c18551e272fbe81c4ba4d",
+      "geometryHash": "ff29a327e3c616560024ace775ffe79a3795603ddbaaa53c92e3c8204cd8f8d3",
       "id": "sf.render.research.node.lod2-lights-cyan.primitive.0",
-      "indexCount": 339,
+      "indexCount": 333,
       "indexed": true,
       "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Cyan",
       "nodeId": "sf.render.research.node.lod2-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 227
+      "vertexCount": 221
     },
     {
       "bounds": {
@@ -1095,7 +1095,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee61effe25a7d7b1c29b43d9d31e147aace992c92becd018341a1d6d07a001bd",
+      "geometryHash": "6a329476e9606e18cdff4a644a80a4f165aa5d58a4227aa7ef787ec5ffddb87a",
       "id": "sf.render.research.node.lod2-lights-warm.primitive.0",
       "indexCount": 4236,
       "indexed": true,
@@ -1104,7 +1104,7 @@
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.research.node.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 2910
+      "vertexCount": 2906
     },
     {
       "bounds": {
@@ -1145,7 +1145,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "405aa638f038a1569d3a6a1861a86fa8b86ff31111effd51d56c335e6e420118",
+      "geometryHash": "3ef7be87189f1c48f3a55df07c51cdf90df2ffbb564a0ddc44b38f6d2da11b4b",
       "id": "sf.render.research.node.lod2-mechanical.primitive.0",
       "indexCount": 7614,
       "indexed": true,
@@ -1154,7 +1154,7 @@
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.research.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 5492
+      "vertexCount": 5488
     },
     {
       "bounds": {
@@ -3566,19 +3566,19 @@
       "sha256": "7b991f5c4e62ef2559f579d2d43c6d46645c02b52b895efae7140cbe89cfff09"
     },
     "sourceGlb": {
-      "bytes": 2148260,
-      "sha256": "ef4c86ae0f05071eaf7689ea7957855ce463c33a26c0ffc85f5b48c6ebb52919",
+      "bytes": 2147980,
+      "sha256": "556eb0b0d63eb757bba4a0fe6aff58eb6786036023c4be8ac13c88e8033fa0d2",
       "uri": "place_station_research.glb"
     },
     "sourceManifest": {
-      "bytes": 197282,
-      "sha256": "f88f115ec3ab84e209df97f96d5a7acfe054070e82f0e0f6b126563cb0a4ee61",
+      "bytes": 197520,
+      "sha256": "17b463abc0276cf177c233e5a7e59ca76ff93a686a4ba3dfe342faab23673ef7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 4299540,
-    "sha256": "259e424459090800f9afc89b28e2d378bc73256baf173a9b3517ae0166fb8641",
+    "bytes": 4297696,
+    "sha256": "4f99523b698912f6a63bd95c23295a09a0b1c64dff01713f838a6dc7df2e5f30",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4973,7 +4973,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_research.glb"
   },
-  "runtimeHash": "aadf3e7da3ba577342c4111cda6fe68726cc16fcaa202838ee41bed443cd2823",
+  "runtimeHash": "ffb6f89af93ea8d63c682db8fa479a085774595fd57f0260e2a0b247af9bf978",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

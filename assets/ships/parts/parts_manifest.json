@@ -3868,7 +3868,7 @@
       "priority": "P1",
       "file": "places/place_station_fab.glb",
       "tris": 49896,
-      "bytes": 5637264,
+      "bytes": 5637492,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3990,7 +3990,7 @@
       "priority": "P1",
       "file": "places/place_station_mining.glb",
       "tris": 40140,
-      "bytes": 4590784,
+      "bytes": 4590488,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4051,7 +4051,7 @@
       "priority": "P0",
       "file": "places/place_station_refinery.glb",
       "tris": 59568,
-      "bytes": 6326188,
+      "bytes": 6326616,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -4112,7 +4112,7 @@
       "priority": "P1",
       "file": "places/place_station_research.glb",
       "tris": 66360,
-      "bytes": 6706204,
+      "bytes": 6705568,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7119,7 +7119,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_express_candidate",
       "tris": 33160,
-      "bytes": 1944492,
+      "bytes": 1944856,
       "textureSize": 1024,
       "hooks": [
         "HOOK_DRIVE_CORE"
@@ -7129,10 +7129,12 @@
         "SOCKET_Cargo_Ventral",
         "SOCKET_Dock_Port",
         "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
         "SOCKET_Service_Starboard",
         "SOCKET_Tether_Keel",
+        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",

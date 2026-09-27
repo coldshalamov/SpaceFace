@@ -330,6 +330,28 @@ def build_walls(s, windows, lights):
                       rot_z=yaw, bevel=0.05)
 
 
+def build_rams(s):
+    """Ram spikes: captured nose cones and blade plates welded outward along the curtain wall."""
+    spikes = []
+    for i, (a, b, lower, upper, hs) in enumerate(WALLS):
+        ax, ay, _, _ = NODES[a]
+        bx, by, _, _ = NODES[b]
+        d = Vector((bx - ax, by - ay, 0))
+        mid = Vector(((ax + bx) / 2, (ay + by) / 2, 0))
+        out = d.cross(Vector((0, 0, 1))).normalized()
+        if out.dot(mid) < 0:
+            out = -out
+        W = 5.2 + 1.6 * rnd(i)
+        for f in (0.2, 0.4, 0.6, 0.8):
+            p = Vector((ax, ay, 0)) + d * f + out * (W * 0.8)
+            ln = 7.0 + 4.0 * rnd(i * 4 + int(f * 10))
+            z = DECK_Z + 1.5 + 2.0 * rnd(i + int(f * 10))
+            spikes.append((Vector((p.x, p.y, z)), Vector((p.x, p.y, z)) + out * ln + Vector((0, 0, -1.5))))
+    for k, (p0, p1) in enumerate(spikes):
+        F.cylinder(s, f'Ram{k}', tuple(p0), tuple(p1), 1.0, 0.08, material='paint2' if k % 3 else 'paint',
+                   segments=6, bevel=0.0)
+
+
 def build_bastions(s, lights):
     for i, (x, y, r, top) in enumerate(NODES):
         # a reactor drum stood on end: rust body, black collar, sodium slit ring
@@ -628,6 +650,7 @@ def build():
     build_deck(s)
     build_walls(s, windows, lights)
     build_bastions(s, lights)
+    build_rams(s)
     build_throne(s, windows, lights)
     build_bridges(s)
     build_yard(s, windows, lights)

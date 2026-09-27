@@ -2623,6 +2623,488 @@
      ]
     }
    }
+  },
+  "ship_warden": {
+   "sourceGlb": "assets/ships/parts/wholeships/warden_production_v1.glb",
+   "sourceGlbSha256": "6F0208449A09C0D093BC3120EB4D07AF7E828700EECFC327F71223679D18B119",
+   "hero": {
+    "file": "ship_warden.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 106510,
+    "hullSize": [
+     42.126,
+     12.5,
+     11.049
+    ],
+    "longAxis": 0,
+    "marks": {
+     "WARDEN_LOD0_ROOT": [
+      0.4944,
+      0.6065,
+      110.546
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      107.007
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6547,
+      111.755
+     ],
+     "SOCKET_Engine_Main": [
+      0.6721,
+      0.4048,
+      125.336
+     ],
+     "SOCKET_Mining_Front": [
+      0.2565,
+      0.7564,
+      94.202
+     ],
+     "SOCKET_RCS_Port": [
+      0.5555,
+      0.5281,
+      107.564
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4464,
+      0.4729,
+      111.494
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5891,
+      0.3808,
+      116.057
+     ],
+     "SOCKET_Trail_Main": [
+      0.6863,
+      0.3892,
+      126.698
+     ],
+     "SOCKET_Trail_Port": [
+      0.7073,
+      0.3985,
+      125.879
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6656,
+      0.3801,
+      127.517
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3389,
+      107.302
+     ],
+     "SOCKET_Weapon_Front": [
+      0.255,
+      0.753,
+      94.066
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_warden.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 70224,
+    "hullSize": [
+     42.126,
+     12.5,
+     11.049
+    ],
+    "longAxis": 0,
+    "marks": {
+     "WARDEN_LOD0_ROOT": [
+      0.5112,
+      0.6547,
+      126.379
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      126.379
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.7403,
+      126.379
+     ],
+     "SOCKET_Engine_Main": [
+      0.1109,
+      0.6437,
+      126.379
+     ],
+     "SOCKET_Mining_Front": [
+      0.9137,
+      0.5066,
+      126.379
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      130.129
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      122.629
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4561,
+      126.379
+     ],
+     "SOCKET_Trail_Main": [
+      0.0743,
+      0.6437,
+      126.379
+     ],
+     "SOCKET_Trail_Port": [
+      0.0743,
+      0.6437,
+      127.942
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0743,
+      0.6437,
+      124.817
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.2597,
+      126.379
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9157,
+      0.5,
+      126.379
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_warden.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 39502,
+    "hullSize": [
+     42.126,
+     12.5,
+     11.049
+    ],
+    "longAxis": 0,
+    "marks": {
+     "WARDEN_LOD0_ROOT": [
+      0.5,
+      0.4888,
+      129.904
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      126.379
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      131.854
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.8891,
+      129.654
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0863,
+      126.529
+     ],
+     "SOCKET_RCS_Port": [
+      0.4246,
+      0.5,
+      126.379
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5754,
+      0.5,
+      126.379
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      125.379
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9257,
+      129.654
+     ],
+     "SOCKET_Trail_Port": [
+      0.4686,
+      0.9257,
+      129.654
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5314,
+      0.9257,
+      129.654
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      120.905
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0843,
+      126.379
+     ]
+    }
+   }
+  },
+  "ship_colossus": {
+   "sourceGlb": "assets/ships/parts/wholeships/colossus_production_v1.glb",
+   "sourceGlbSha256": "0AF3B8A6A381F3B06A7657587D7DF86606A79FFF505069A455E5F1D48D6B6375",
+   "hero": {
+    "file": "ship_colossus.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 129122,
+    "hullSize": [
+     53.5,
+     26.216,
+     12.066
+    ],
+    "longAxis": 0,
+    "marks": {
+     "COLOSSUS_LOD0_ROOT": [
+      0.4987,
+      0.585,
+      140.486
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      135.897
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6335,
+      141.534
+     ],
+     "SOCKET_Engine_Main": [
+      0.6839,
+      0.3784,
+      160.29
+     ],
+     "SOCKET_Mining_Front": [
+      0.255,
+      0.7569,
+      119.517
+     ],
+     "SOCKET_RCS_Port": [
+      0.5928,
+      0.547,
+      134.979
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4125,
+      0.4557,
+      143.221
+     ],
+     "SOCKET_Tether_Massline": [
+      0.589,
+      0.3833,
+      147.437
+     ],
+     "SOCKET_Trail_Main": [
+      0.6865,
+      0.3757,
+      160.604
+     ],
+     "SOCKET_Trail_Port": [
+      0.7213,
+      0.391,
+      158.887
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6523,
+      0.3607,
+      162.321
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3617,
+      136.666
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2538,
+      0.7542,
+      119.381
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_colossus.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 56096,
+    "hullSize": [
+     53.5,
+     26.216,
+     12.066
+    ],
+    "longAxis": 0,
+    "marks": {
+     "COLOSSUS_LOD0_ROOT": [
+      0.5027,
+      0.6285,
+      160.5
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      160.5
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.7068,
+      160.5
+     ],
+     "SOCKET_Engine_Main": [
+      0.0813,
+      0.6199,
+      160.5
+     ],
+     "SOCKET_Mining_Front": [
+      0.9158,
+      0.5052,
+      160.5
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      168.365
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      152.635
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.46,
+      160.5
+     ],
+     "SOCKET_Trail_Main": [
+      0.0747,
+      0.6199,
+      160.5
+     ],
+     "SOCKET_Trail_Port": [
+      0.0747,
+      0.6199,
+      163.777
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0747,
+      0.6199,
+      157.223
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.2932,
+      160.5
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9174,
+      0.5,
+      160.5
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_colossus.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 49272,
+    "hullSize": [
+     53.5,
+     26.216,
+     12.066
+    ],
+    "longAxis": 0,
+    "marks": {
+     "COLOSSUS_LOD0_ROOT": [
+      0.5,
+      0.4973,
+      164.219
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      160.5
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      166.483
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9187,
+      163.969
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0842,
+      160.65
+     ],
+     "SOCKET_RCS_Port": [
+      0.3754,
+      0.5,
+      160.5
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.6246,
+      0.5,
+      160.5
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      159.343
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9253,
+      163.969
+     ],
+     "SOCKET_Trail_Port": [
+      0.4481,
+      0.9253,
+      163.969
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5519,
+      0.9253,
+      163.969
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      154.517
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0826,
+      160.5
+     ]
+    }
+   }
   }
  }
 }

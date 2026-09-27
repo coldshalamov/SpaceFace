@@ -38,10 +38,10 @@ COLORS = {
 }
 
 HX0, HX1 = -22.0, 22.0          # furnace hall plan
-HY0, HY1 = -48.0, 48.0
+HY0, HY1 = -64.0, 64.0
 HZ0, HZ1 = -6.0, 14.0           # wall base / eaves
-SPIRE_Y = 60.0
-SPIRE_Z0, SPIRE_Z1 = 22.0, 112.0
+SPIRE_Y = 76.0
+SPIRE_Z0, SPIRE_Z1 = 22.0, 106.0
 ARCH_Z0 = 40.0                  # arch springs from the spires here
 ARCH_LEAN = math.radians(27.0)  # the arch leans out over the hall toward +X
 
@@ -295,7 +295,7 @@ def build_hall_details(s):
 
 def build_stacks(s):
     """Four furnace stacks on the -X flank, flue ducts into the hall, embers still glowing."""
-    for k, y in enumerate((-33.0, -11.0, 11.0, 33.0)):
+    for k, y in enumerate((-45.0, -15.0, 15.0, 45.0)):
         x = -31.0
         top = 56.0 if k in (1, 2) else 48.0
         lathe(s, f'Stack{k}', (x, y), [
@@ -315,17 +315,17 @@ def build_stacks(s):
                    material='paint.graphite', segments=24, sides=4)
         F.light(s, f'StackBeacon{k}', (x + 3.9, y, top + 0.2), 'glow_red', size=0.7)
     # high gantry: a catwalk truss linking the four stacks at the old charging level, a lamp at each stack
-    c, w = truss_segs((-26.2, -38.0, 30.0), (-26.2, 38.0, 30.0), 2.2, 2.0, 16)
+    c, w = truss_segs((-26.2, -50.0, 30.0), (-26.2, 50.0, 30.0), 2.2, 2.0, 20)
     beams(s, 'GantryChords', c, 0.4, material='paint.graphite')
     beams(s, 'GantryWebs', w, 0.22, material='paint2')
-    cat = [((-24.9, y, 31.2), (0.5, 0.5, 0.4), 0.0) for y in (-38.0, -22.0, 0.0, 22.0, 38.0)]
+    cat = [((-24.9, y, 31.2), (0.5, 0.5, 0.4), 0.0) for y in (-50.0, -30.0, 0.0, 30.0, 50.0)]
     cluster(s, 'GantryLamps', cat, 'glow_amber')
-    for y in (-38.0, 38.0):
+    for y in (-50.0, 50.0):
         beams(s, f'GantryHanger{y:+.0f}', [((-26.2, y, 29.0), (HX0 - 0.5, y * 0.98, HZ1 + 0.4))], 0.7,
               material='paint.graphite')
     # a slag conveyor gallery along the flank, joining the stack feet
-    beams(s, 'SlagGallery', [((-31.0, -40.0, -6.0), (-31.0, 40.0, -6.0))], 3.4, material='paint2', h=2.8)
-    gal = [((-31.0 + 1.75, y, -5.6), (0.12, 1.0, 0.7), 0.0) for y in range(-38, 39, 3)]
+    beams(s, 'SlagGallery', [((-31.0, -52.0, -6.0), (-31.0, 52.0, -6.0))], 3.4, material='paint2', h=2.8)
+    gal = [((-31.0 + 1.75, y, -5.6), (0.12, 1.0, 0.7), 0.0) for y in range(-50, 51, 3)]
     cluster(s, 'GalleryWin', gal, 'glow_amber')
 
 
@@ -465,8 +465,8 @@ def build_arch(s):
     """The resonance arch: a lune of two arcs (outer and inner), each a pair of rails, joined by
     organ-pipe ribs; five magenta tuning rings; a resonator bell hung from the crown."""
     y0 = SPIRE_Y - spire_r(ARCH_Z0) - 0.2
-    n = 48
-    outer_h, inner_h = 44.0, 30.0
+    n = 56
+    outer_h, inner_h = 50.0, 34.0
     thetas = [math.pi * i / n for i in range(n + 1)]
     for x_off in (-3.6, 3.6):
         path_sweep(s, f'ArchOuter{x_off:+.0f}', [arch_point(0, t, y0, outer_h, x_off) for t in thetas], 1.6, 2.2,
