@@ -24,17 +24,33 @@ capture a selected action with the [capture driver](../../scripts/capture-vfx-ga
 ```powershell
 python scripts/capture-vfx-gameplay-demo.py --scenario well --video
 python scripts/capture-vfx-gameplay-demo.py --all --output .devshots/vfx-gameplay-review
-python scripts/capture-vfx-gameplay-demo.py --scenario capital-rupture --continuous-video --continuous-fps 30 --continuous-max-seconds 3
+python scripts/capture-vfx-gameplay-demo.py --scenario capital-rupture --continuous-video --continuous-fps 60
 python scripts/capture-vfx-gameplay-demo.py --scenario singularity --context open --view wide
+python scripts/capture-vfx-gameplay-demo.py --all --continuous-video --width 960 --height 540 --seed-variant 41 --context-variant open --output .devshots/vfx-sequence-review
+# Compare the bundled browser with Playwright's new Chromium headless channel:
+python scripts/capture-vfx-gameplay-demo.py --scenario singularity --continuous-video --continuous-max-seconds 0.5 --continuous-fps 60 --width 960 --height 540 --browser-channel chromium --output .devshots/vfx-channel-bench
 ```
 
 The driver uses Python Playwright and saves diagnostic output under
 `.devshots/vfx-gameplay-demo/`. The page exposes `window.__vfxDemo` for deterministic
 selection and time sampling; pause playback before automated sampling.
-`--video` produces a labeled phase reel. `--continuous-video` records the first selected case
-at normal speed, with every displayed frame sampled from the same 60 Hz simulation. Its default
-30 fps and duration cap bound capture cost; 24 and 60 fps are also available. Use the interactive
-page for unlimited continuous playback. Weapon samples follow actual flight and contact times.
+`--video` produces a labeled phase reel. `--continuous-video` records every selected case at
+normal speed, with every displayed frame sampled from the same 60 Hz simulation. It defaults to
+60 fps; 24 and 30 fps are available. Capture is checkpointed in `manifest.json` at bounded chunk
+intervals and can resume with `--resume`. `--continuous-max-seconds` is an explicit cap: capped
+sequences are reported as truncated instead of being silently mistaken for complete lifecycles.
+`timeline.html` is a compact contact sheet linking native canvas phase frames, raw continuous
+frames, and any encoded MP4s. Continuous frames are retained only with
+`--retain-continuous-frames`; otherwise bounded chunks are encoded and temporary PNGs are
+removed. Repeat `--scenario` to select several cases; `--all` selects the whole page catalog.
+Add `--seed-variant` or `--context-variant` to capture a cross-product of deterministic
+seed/context variants. Use the interactive page for unlimited continuous playback.
+`--browser-channel default` keeps the bundled Playwright Chromium; `chromium`, `chrome`, and
+`msedge` select an installed Playwright channel for a controlled renderer comparison. The
+manifest records the browser version, WebGL debug vendor/renderer when exposed, source/module
+hashes, exact capture configuration, wall time, and per-chunk frame throughput. Resume rejects
+changed source or configuration so frames from an older production build are not reused.
+Weapon samples follow actual flight and contact times.
 Rock fracture, armor breach, volatile fuel, ship collision, and capital rupture use native
 cause-specific receipts. Capital destruction uses the released Colossus and its real radius/mass.
 The `open` context moves actual bodies beyond the field instead of disabling the environment
