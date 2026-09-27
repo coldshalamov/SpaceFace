@@ -30,6 +30,15 @@ const REACTOR_CORE_BURST_RADIUS = 60;
 const REACTOR_CORE_BURST_DMG = 8;
 const REACTOR_CORE_EJECT_SPEED = 30;
 const REACTOR_CORE_WARN_S = 8;
+// INF-U19: crews clear a cooking reactor. A live bomb that gunfire has cooked —
+// or that is seconds from popping on its own timer — sends nearby working
+// ships running. Hostiles hold their attack runs and burn with the wreck,
+// which is still the U7 payoff; the player's own wing holds formation.
+const COOKER_WARN_S = 8;
+const COOKER_FLEE_R = 420;
+const COOKER_BOOST_R = 200;
+const COOKER_CORE_WARN_S = 6;
+const COOKER_CORE_FLEE_R = 220;
 
 /** Bench A/B: production default ON. Quiet latch skips salvage unstable-reactor
  * entities.values() census when no live unstable reactors remain. Soft-GPU fps not
@@ -104,6 +113,7 @@ export const salvageActions = {
     this._state = ctx && ctx.state;
     this._bus = ctx && ctx.bus;
     this._registry = ctx && ctx.registry;
+    this._helpers = (ctx && ctx.helpers) || {};
     this._unstableQuiet = null;
     this._unstableWakeSeq = 0;
     this._onEntitySpawned = (p) => this._annotate(p && p.entity);
@@ -286,6 +296,8 @@ export const salvageActions = {
     if (!list) return;
 
     let liveUnstable = 0;
+    const cookers = [];
+    const now = state.simTime || 0;
     for (const entity of list) {
       if (!isWreck(entity) || entity.alive === false) continue;
       const unstable = entity.data && entity.data.unstableReactor;
@@ -299,10 +311,30 @@ export const salvageActions = {
         continue;
       }
       if ((state.simTime || 0) >= unstable.dueAt) this._burst(entity, unstable, state);
+      // INF-U19 v1: a cooked fuse — or a virgin timer inside the warning window —
+      // is a cooker. Towed bombs stay out: the tow is the player's weapon.
+      if (!unstable.burst && entity.pos
+        && (unstable.triggeredBy != null || (unstable.dueAt - now) <= COOKER_WARN_S)) {
+        cookers.push({ id: `wreck:${entity.id}`, x: entity.pos.x, z: entity.pos.z, until: unstable.dueAt, ent: entity });
+      }
     }
 
     // INF-U13 v2: fuse sweep after the wreck census; hot cores hold the latch open.
     const hotCores = this._sweepCoreFuses(state, state.simTime || 0);
+    // INF-U19 v3: a hot ejected core inside its own warning window clears ships too.
+    if (hotCores > 0) {
+      for (const entity of state.entityList || []) {
+        if (!entity || entity.alive === false || entity.type !== 'pickup' || !entity.pos) continue;
+        const data = entity.data;
+        if (!data || data.ventedCore !== true) continue;
+        const left = (Number.isFinite(data.cooledAt) ? data.cooledAt : Infinity) - now;
+        if (left > 0 && left <= COOKER_CORE_WARN_S) {
+          cookers.push({ id: `core:${entity.id}`, x: entity.pos.x, z: entity.pos.z, until: data.cooledAt, ent: entity, core: true });
+        }
+      }
+    }
+    if (cookers.length) this._clearCookers(state, cookers, now);
+    else this._releaseCookerFlight(state);
 
     if (SALVAGE_UNSTABLE_QUIET_LATCH !== false) {
       const membership = entityIndexVersion(state);
@@ -325,6 +357,134 @@ export const salvageActions = {
     if (!tether || !tether.active || tether.targetId !== entity.id) return false;
     const player = playerEntity(state);
     return distance(player && player.pos, entity.pos) >= TETHER_AWAY_DISTANCE;
+  },
+
+  // INF-U19 v1: steer every non-hostile ship in the flee radius away from the
+  // nearest cooker. Runs only on ticks with a live cooker, so quiet flight
+  // never pays the ship walk.
+  _clearCookers(state, cookers, now) {
+    for (const ship of state.entityList || []) {
+      if (!ship || ship.alive === false || !ship.pos) continue;
+      if (ship.type !== 'ship' && ship.type !== 'drone') continue;
+      if (ship.id === state.playerId) continue;
+      const data = ship.data || (ship.data = {});
+      const ai = data.ai || (data.ai = {});
+      const intent = data.intent || (data.intent = {});
+      if (this._holdsThroughCooker(ship, ai, intent)) {
+        this._releaseCookerShip(ship);
+        continue;
+      }
+      let best = null;
+      let bestD2 = Infinity;
+      for (const c of cookers) {
+        const r = c.core ? COOKER_CORE_FLEE_R : COOKER_FLEE_R;
+        const dx = ship.pos.x - c.x;
+        const dz = ship.pos.z - c.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 < r * r && d2 < bestD2) { bestD2 = d2; best = c; }
+      }
+      if (!best) {
+        this._releaseCookerShip(ship);
+        continue;
+      }
+      const dist = Math.sqrt(bestD2) || 1;
+      if (intent.mode !== 'salvage_cooker_flee') {
+        intent.mode = 'salvage_cooker_flee';
+        this._squawkCooker(ship, best, now);
+      }
+      intent.aimAngle = Math.atan2(ship.pos.z - best.z, ship.pos.x - best.x);
+      intent.moveZ = 1;
+      intent.moveX = 0;
+      intent.boost = dist < COOKER_BOOST_R;
+      intent.fire = false;
+      ai._cookerFlee = { id: best.id, until: (Number.isFinite(best.until) ? best.until : now) + 1.5 };
+      this._panicDrop(state, ship, best, now);
+    }
+  },
+
+  // Hostiles hold their attack runs and burn with the wreck; the bounty chase,
+  // the dock queue, and the player's own wing run their own brains.
+  _holdsThroughCooker(ship, ai, intent) {
+    if (ai.forcePlayerTarget || ai.huntPlayer) return true;
+    if (Array.isArray(ai.hostileTeams) && ai.hostileTeams.includes(0)) return true;
+    if (typeof intent.mode === 'string' && intent.mode.indexOf('bounty_') === 0) return true;
+    if (ship.team === 0) return true;
+    if (ai.docked || ship.data.docked || (ship.flags && ship.flags.docked)) return true;
+    return false;
+  },
+
+  _releaseCookerFlight(state) {
+    for (const ship of state.entityList || []) {
+      if (!ship || !ship.data) continue;
+      const ai = ship.data.ai;
+      if ((ship.data.intent && ship.data.intent.mode === 'salvage_cooker_flee')
+        || (ai && ai._cookerFlee)) {
+        this._releaseCookerShip(ship);
+      }
+    }
+  },
+
+  _releaseCookerShip(ship) {
+    const data = ship.data || {};
+    if (data.ai && data.ai._cookerFlee) delete data.ai._cookerFlee;
+    const intent = data.intent;
+    if (intent && intent.mode === 'salvage_cooker_flee') {
+      intent.mode = 'resume';
+      intent.moveX = 0;
+      intent.moveZ = 0;
+      intent.boost = false;
+    }
+  },
+
+  // INF-U19 v2: one warning per cooker, out loud, from the first hull that runs.
+  _squawkCooker(ship, cooker, now) {
+    const bag = cooker.core
+      ? (cooker.ent.data || (cooker.ent.data = {}))
+      : (cooker.ent.data.unstableReactor || (cooker.ent.data.unstableReactor = {}));
+    if (bag.cookerWarned) return;
+    bag.cookerWarned = true;
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('toast', {
+        text: "Reactor's cooking — the crew is clearing the wreck!",
+        kind: 'warn', ttl: 4,
+      });
+      this._bus.emit('salvage:cookerFlight', {
+        cookerId: cooker.id, shipId: ship.id, core: cooker.core === true, at: now,
+      });
+    }
+    const voice = this._helpers && this._helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        kind: 'salvage_cooker_flee',
+        factionId: ship.factionId || null,
+        text: "Reactor's going — clear the wreck!",
+      });
+    }
+  },
+
+  // INF-U19 v2: a fleeing working hull shakes one unit loose — warships run clean.
+  _panicDrop(state, ship, cooker, now) {
+    const ai = ship.data.ai;
+    if (!ai || ai._cookerDropped === cooker.id) return;
+    ai._cookerDropped = cooker.id;
+    const role = String(ai.archetype || ship.data.role || '').toLowerCase();
+    if (role && !/miner|hauler|salv|tender|trader|courier|prospect|survey|sweeper|shuttle/.test(role)) return;
+    if (!this._bus || typeof this._bus.emit !== 'function') return;
+    const edge = (ship.radius || 8) + 4;
+    this._bus.emit('entity:spawnRequest', {
+      spec: {
+        type: 'pickup',
+        pos: { x: (ship.pos.x || 0) + edge, z: ship.pos.z || 0 },
+        vel: { x: (ship.vel && ship.vel.x) || 0, z: (ship.vel && ship.vel.z) || 0 },
+        radius: 2, mass: 0.2, collides: true,
+        data: {
+          kind: 'cargo', commodityId: 'cmdty_scrap_metal', amount: 1,
+          despawnAt: now + 90,
+          scanLabel: 'Shaken loose',
+        },
+      },
+    });
   },
 
   // INF-U7 v1: gunfire cooks the fuse. Applied damage shortens dueAt; a single
