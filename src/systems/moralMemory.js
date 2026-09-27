@@ -42,6 +42,8 @@ export function rememberMoralDebt(state, payload = {}) {
     escalationTier: Math.max(1, Math.min(3, Math.trunc(finite(payload.escalationTier, 1)))),
     source: payload.source || 'moralMemory:remember',
   };
+  // An explicit disposition wins (an execution is never a misunderstanding); otherwise the seed rolls.
+  if (payload.disposition === 'ally' || payload.disposition === 'vengeful') debt.disposition = payload.disposition;
   memory.mercyCount += 1;
   memory.debts[id] = debt;
   memory.order.push(id);
@@ -76,6 +78,24 @@ export function revealMoralDebt(state, id) {
   if (!debt || debt.status !== 'pending') return null;
   debt.status = 'revealed';
   debt.revealedAt = finite(state.simTime, 0);
+  return debt;
+}
+
+export function pendingMoralDebt(state, id) {
+  const memory = ensureMoralMemory(state);
+  const debt = memory.debts[String(id || '')];
+  return debt && debt.status === 'pending' ? debt : null;
+}
+
+// A terminal close that is not a comeback: custody, death-in-custody, pardon. The h7
+// moral-return picker only reads pending debts, so settling blocks every return path.
+export function settleMoralDebt(state, id, how = 'custody') {
+  const memory = ensureMoralMemory(state);
+  const debt = memory.debts[String(id || '')];
+  if (!debt || debt.status !== 'pending') return null;
+  debt.status = 'settled';
+  debt.settledHow = String(how || 'custody');
+  debt.settledAt = finite(state.simTime, 0);
   return debt;
 }
 
