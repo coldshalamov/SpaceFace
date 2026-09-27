@@ -33,6 +33,118 @@ export function scanQualityForDistance(distance) {
   return distance <= SCAN_REVEAL_FULL_RADIUS ? 'full' : 'class';
 }
 
+// Wreck investigation tiers share the ship bands: a far pulse sees a silhouette,
+// a near pulse names the loss, a close pulse reads the manifest. Generic debris with
+// no ledger provenance never borrows a story — it reads class-only at every tier.
+export function wreckQualityForDistance(distance) {
+  if (!(distance <= SCAN_REVEAL_CLASS_RADIUS)) return null;
+  if (distance <= SCAN_REVEAL_DEEP_RADIUS) return 'deep';
+  if (distance <= SCAN_REVEAL_FULL_RADIUS) return 'identified';
+  return 'contact';
+}
+
+const WRECK_FACTION_WORD = {
+  faction_scn: 'Concord',
+  faction_concord: 'Concord',
+  faction_reach: 'Reach',
+  faction_dmc: 'Drift',
+  faction_drift: 'Drift',
+  faction_quiet: 'the Quiet',
+  faction_mts: 'MTS',
+  faction_free: 'Frontier',
+};
+
+const WRECK_LOSS_NOUN = {
+  outpost: 'outpost',
+  fleet: 'fleet vessel',
+  drone: 'mining drone',
+  ship: 'ship',
+  trader: 'hauler',
+};
+
+export function wreckStoryForLoss(loss, sectorName) {
+  if (!loss) return null;
+  const who = WRECK_FACTION_WORD[loss.factionId] || 'unmarked';
+  const noun = WRECK_LOSS_NOUN[loss.kind] || 'hauler';
+  const verb = loss.kind === 'outpost' ? 'was raided' : 'went dark';
+  const article = WRECK_FACTION_WORD[loss.factionId] ? 'A' : 'An';
+  return `${article} ${who} ${noun} ${verb} near ${sectorName || 'unknown space'}.`;
+}
+
+function wreckPoolLots(entity) {
+  const pool = entity && entity.data && entity.data.salvagePool;
+  if (!pool || typeof pool !== 'object') return [];
+  return Object.entries(pool)
+    .filter(([, qty]) => (Number(qty) || 0) > 0)
+    .map(([id, qty]) => ({ id, qty: Math.floor(Number(qty)) }))
+    .sort((a, b) => b.qty - a.qty || String(a.id).localeCompare(String(b.id)));
+}
+
+export function wreckSalvageHintForEntity(entity) {
+  const lots = wreckPoolLots(entity);
+  if (!lots.length) return 'picked clean';
+  const total = lots.reduce((s, lot) => s + lot.qty, 0);
+  return `${lots[0].id} (${total}u aboard)`;
+}
+
+export function buildWreckScanReveal(entity, state, options = {}) {
+  if (!entity || entity.type !== 'wreck') return null;
+  if (!entity.alive || !entity.pos) return null;
+  const origin = options.origin || options.pos;
+  const distance = scanRevealDistance(origin, entity);
+  const quality = wreckQualityForDistance(distance);
+  if (!quality) return null;
+
+  const data = entity.data || {};
+  const now = finite(options.now, state && state.simTime || 0);
+  const loss = options.loss || null;
+  const provenance = data.provenance || null;
+  const lossId = (loss && loss.lossId) || (provenance && provenance.lossId) || null;
+  const reveal = {
+    entityId: entity.id,
+    kind: 'wreck',
+    revealedAt: now,
+    quality,
+    rangeWu: Math.round(distance),
+    lossId,
+    wreckClass: data.wreckClass || null,
+    wreckLabel: data.wreckClassLabel || data.scanLabel || 'Unidentified wreck',
+    story: null,
+    factionId: (loss && loss.factionId) || (provenance && provenance.factionId) || null,
+    simDay: (loss && Number.isFinite(loss.simDay)) ? loss.simDay : null,
+    daysAgo: null,
+    cargoHint: (loss && loss.cargoHint) || (provenance && provenance.cargoHint) || null,
+    salvageHint: null,
+    cold: false,
+    cause: data.interventionCause || null,
+    recognized: false,
+  };
+  // Memory pays: an investigated loss reads its story even at contact range.
+  if (quality === 'contact') {
+    if (loss && options.known) {
+      reveal.story = wreckStoryForLoss(loss, options.sectorName || null);
+      reveal.recognized = true;
+    }
+    return reveal;
+  }
+  // Identified+: the story only when a ledger entry actually backs it.
+  if (loss) {
+    const sector = options.sectorName
+      || (state && state.world && state.world.sectors && state.world.sectors[loss.sectorId]
+        && state.world.sectors[loss.sectorId].name)
+      || null;
+    reveal.story = wreckStoryForLoss(loss, sector);
+    const daySeconds = 600;
+    const today = Math.floor(now / daySeconds);
+    reveal.daysAgo = Number.isFinite(loss.simDay) ? Math.max(0, today - loss.simDay) : null;
+  }
+  if (quality === 'deep') {
+    reveal.salvageHint = wreckSalvageHintForEntity(entity);
+    reveal.cold = wreckPoolLots(entity).length === 0;
+  }
+  return reveal;
+}
+
 export function shipDefForScan(entity) {
   const data = entity && entity.data || {};
   const defId = data.defId || data.shipId || entity.shipId || data.hullId;
@@ -142,6 +254,7 @@ export function buildShipScanReveal(entity, state, options = {}) {
 export function scanRevealFingerprint(reveal) {
   if (!reveal) return '';
   return JSON.stringify({
+    kind: reveal.kind || 'ship',
     quality: reveal.quality,
     shipId: reveal.shipId,
     shipName: reveal.shipName,
@@ -153,6 +266,14 @@ export function scanRevealFingerprint(reveal) {
     cargoHint: reveal.cargoHint,
     weakPoint: reveal.weakPoint,
     loadout: reveal.loadout,
+    lossId: reveal.lossId,
+    wreckClass: reveal.wreckClass,
+    wreckLabel: reveal.wreckLabel,
+    story: reveal.story,
+    salvageHint: reveal.salvageHint,
+    cold: reveal.cold,
+    cause: reveal.cause,
+    recognized: reveal.recognized,
   });
 }
 
