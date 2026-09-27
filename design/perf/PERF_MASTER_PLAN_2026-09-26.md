@@ -496,3 +496,4 @@ per-lane entries above.
 ### Round 10 CI adjudication addendum
 - `sim-loot-audit` (new red on merged tip): **master-side** — identical `unique_mirrorjaw_pulse` unreserved issue, `definitionHash f00f64fa`, `rollHash c00e6f48` reproduced on origin/master `2259117e5` worktree. Not introduced by any lane merge.
 - Master `2259117e5..c1208d79c` merged clean (0 conflicts, 0 render-package changes, pilots fresh 267); `63df33c89` owner-side combat-phase memoization included; 47a hash stays `f3583c50`. Owner claimed PQ-040/PQ-025 acceptance lanes on master — consistent with closure doc GATED verdicts.
+| decodepool | **KEPT** `7992679b` — shared cross-decoder FIFO semaphore (cap `max(2, cores-2)`) over the two sole worker intakes (KTX2 `postMessage`, meshopt `decodeGltfBufferAsync`); idle capacity flows to whichever decoder has work; dispose reclaim + no-double-wrap guards | merged; node --check clean; harness-proven 7-section semantics; render-side only |
