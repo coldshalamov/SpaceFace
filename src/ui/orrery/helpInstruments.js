@@ -28,7 +28,7 @@ const f = (n) => Math.round(n * 100) / 100;
 
 const CSS = `
 .orr-hi-svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
-.orr-hi-svg .orr-hi__band { fill:none; stroke:rgb(${BONE} / var(--orr-band-a, .27)); stroke-linecap:butt; }
+.orr-hi-svg .orr-hi__band { fill:none; stroke:rgb(${BONE} / var(--orr-band-a, .3)); stroke-linecap:butt; }
 .orr-hi-svg .orr-hi__edge { fill:none; stroke:rgb(${BONE} / .58); stroke-width:1.6px; }
 .orr-hi-svg .orr-hi__notch { fill:none; stroke:rgb(5 7 10 / .92); stroke-width:1.6px; stroke-linecap:butt; }
 .orr-hi-svg .orr-hi__tick { fill:none; stroke:rgb(${BONE} / .45); stroke-width:1.5px; stroke-linecap:butt; }
@@ -44,7 +44,7 @@ const CSS = `
 .orr-hi-svg .orr-hi__pulse-bloom { fill:none; stroke:rgb(${ICE} / .45); stroke-width:12px; stroke-linecap:round; stroke-dasharray:.14 1.2; stroke-dashoffset:.14; animation:orr-hi-pulse 2.8s cubic-bezier(.45, 0, .55, 1) infinite; }
 @keyframes orr-hi-pulse { 0% { stroke-dashoffset:.12; opacity:0; } 8% { opacity:1; } 86% { opacity:1; } 100% { stroke-dashoffset:-1.04; opacity:0; } }
 .orr-hi-rise { animation:orr-hi-rise .46s var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
-@keyframes orr-hi-rise { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+@keyframes orr-hi-rise { from { opacity:0; translate:0 6px; } to { opacity:1; translate:none; } }
 html.sf-reduce-motion .orr-hi-rise { animation:none; }
 html.sf-reduce-motion .orr-hi-svg .orr-hi__pulse, html.sf-reduce-motion .orr-hi-svg .orr-hi__pulse-bloom { animation:none; display:none; }
 
@@ -54,7 +54,7 @@ html.sf-reduce-motion .orr-hi-svg .orr-hi__pulse, html.sf-reduce-motion .orr-hi-
   background:radial-gradient(closest-side, rgb(5 7 10 / .82), rgb(5 7 10 / .6) 60%, rgb(5 7 10 / 0)); }
 .orr-hloop__body { all:unset; box-sizing:border-box; position:absolute; left:0; top:0; z-index:3; width:34px; height:34px; margin:-17px 0 0 -17px; border-radius:50%; cursor:pointer;
   display:flex; align-items:center; justify-content:center; }
-.orr-hloop__num { ${LABEL} font-size:12px; letter-spacing:.06em; color:rgb(${HOT}); position:relative; z-index:1; font-variant-numeric:tabular-nums; }
+.orr-hloop__num { ${LABEL} font-size:clamp(12px, .56vw, 14px); letter-spacing:.06em; color:rgb(${HOT}); position:relative; z-index:1; font-variant-numeric:tabular-nums; }
 .orr-hloop__body::before { content:""; position:absolute; inset:0; border-radius:50%; background:rgb(5 7 10 / .92); box-shadow:inset 0 0 0 2px rgb(${BONE} / .66); transition:box-shadow .16s linear, background .16s linear; }
 .orr-hloop__body:hover::before { box-shadow:inset 0 0 0 2px rgb(${HOT}); }
 .orr-hloop__body:focus-visible { outline:none; }
@@ -68,16 +68,16 @@ html.sf-reduce-motion .orr-hi-svg .orr-hi__pulse, html.sf-reduce-motion .orr-hi-
 .orr-hloop__centre { position:absolute; z-index:2; transform:translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; text-align:center; }
 .orr-hloop__big { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250; font-weight:250; line-height:.86;
   font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.02em; color:var(--dp-phos, #dfeeff); }
-.orr-hloop__of { ${LABEL} font-size:12px; letter-spacing:.3em; color:rgb(${BONE} / .72); }
+.orr-hloop__of { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.3em; color:rgb(${BONE} / .72); }
 .orr-hloop__read { position:absolute; z-index:2; display:flex; flex-direction:column; gap:0; }
 .orr-hloop__read::before { content:""; position:absolute; z-index:-1; left:-40px; right:-60px; top:-30px; bottom:-30px; pointer-events:none;
   background:radial-gradient(closest-side, rgb(5 7 10 / .7), rgb(5 7 10 / .4) 60%, rgb(5 7 10 / 0)); }
-.orr-hloop__kicker { margin:0 0 8px; ${LABEL} font-size:12px; letter-spacing:.26em; color:rgb(${BONE} / .72); }
+.orr-hloop__kicker { margin:0 0 8px; ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.26em; color:rgb(${BONE} / .72); }
 .orr-hloop__title { margin:0 0 18px; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800;
   font-size:clamp(24px, 2vw, 40px); line-height:1; letter-spacing:.02em; text-transform:uppercase; color:rgb(${HOT}); }
 .orr-hloop__steps { list-style:none; margin:0; padding:0; position:relative; }
 .orr-hloop__step { position:relative; display:flex; align-items:baseline; gap:14px; padding:9px 0 9px 40px; ${BODY} font-size:clamp(15px, .8vw, 19px); line-height:1.35; color:rgb(${HOT}); }
-.orr-hloop__step b { ${LABEL} font-size:12px; letter-spacing:.12em; color:rgb(${BONE} / .76); font-variant-numeric:tabular-nums; flex:none; width:22px; }
+.orr-hloop__step b { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.12em; color:rgb(${BONE} / .76); font-variant-numeric:tabular-nums; flex:none; width:22px; }
 .orr-hloop__why { margin:22px 0 0; max-width:520px; ${BODY} font-size:clamp(14px, .76vw, 18px); line-height:1.5; color:rgb(${BONE} / .86); }
 .orr-hloop__why::before { content:"Why it pays"; display:block; margin:0 0 6px; ${LABEL} font-size:12px; letter-spacing:.24em; color:rgb(${BONE} / .72); }
 .orr-hloop.is-off > * { display:none; }
@@ -94,7 +94,7 @@ html.sf-reduce-motion .orr-hi-svg .orr-hi__pulse, html.sf-reduce-motion .orr-hi-
 .orr-hdial__tier > span { ${LABEL} font-size:clamp(12px, .64vw, 16px); letter-spacing:.3em; color:rgb(${BONE} / .76); }
 .orr-hdial__g { position:absolute; z-index:2; display:flex; flex-direction:column; gap:3px; pointer-events:none; white-space:nowrap; }
 .orr-hdial__g.is-left { align-items:flex-end; text-align:right; }
-.orr-hdial__g-name { ${LABEL} font-size:12px; letter-spacing:.22em; color:rgb(${BONE} / .74); }
+.orr-hdial__g-name { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.22em; color:rgb(${BONE} / .74); }
 .orr-hdial__g-val { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 320; font-weight:320; font-size:clamp(24px, 1.5vw, 34px);
   line-height:1; letter-spacing:-.01em; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
 .orr-hdial__g-val small { font-size:.5em; margin-left:4px; ${LABEL} letter-spacing:.14em; color:rgb(${BONE} / .76); }
@@ -105,10 +105,10 @@ html.sf-reduce-motion .orr-hi-svg .orr-hi__pulse, html.sf-reduce-motion .orr-hi-
 .orr-hscale::before { content:""; position:absolute; z-index:-1; left:-24px; right:-24px; top:-10px; bottom:-10px; pointer-events:none;
   background:radial-gradient(60% 70% at 50% 60%, rgb(5 7 10 / .66), rgb(5 7 10 / 0)); }
 .orr-hscale:focus-visible .orr-hi__edge { stroke:rgb(255 255 255); }
-.orr-hscale__title { position:absolute; left:0; top:0; ${LABEL} font-size:12px; letter-spacing:.26em; color:rgb(${BONE} / .76); pointer-events:none; }
-.orr-hscale__read { position:absolute; top:0; transform:translateX(-50%); display:flex; align-items:baseline; gap:10px; white-space:nowrap; pointer-events:none; transition:left .34s cubic-bezier(.34, 1.36, .64, 1); }
+.orr-hscale__title { position:absolute; left:0; top:0; ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.26em; color:rgb(${BONE} / .76); pointer-events:none; }
+.orr-hscale__read { position:absolute; top:0; transform:translateX(-50%); display:flex; align-items:flex-end; gap:10px; white-space:nowrap; pointer-events:none; transition:left .34s cubic-bezier(.34, 1.36, .64, 1); }
 .orr-hscale__read b { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 320; font-weight:320; font-size:clamp(26px, 1.7vw, 38px); line-height:1; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
-.orr-hscale__read > span { ${LABEL} font-size:12px; letter-spacing:.2em; color:rgb(${HOT}); }
+.orr-hscale__read > span { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.2em; color:rgb(${HOT}); padding-bottom:3px; }
 .orr-hscale__ghost { position:absolute; bottom:0; transform:translateX(-50%); ${LABEL} font-size:12px; letter-spacing:.14em; color:rgb(255 255 255); white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .12s linear; }
 .orr-hscale.is-hover .orr-hscale__ghost { opacity:1; }
 .orr-hscale .orr-hi-svg text { font-family:var(--dp-face-label, "Archivo"); font-size:12px; font-weight:650; letter-spacing:.12em; fill:rgb(${BONE} / .76); }
@@ -130,11 +130,11 @@ html.sf-reduce-motion .orr-hscale__read { transition:none; }
 .orr-hmix__rock:focus-visible::before { box-shadow:inset 0 0 0 3px rgb(255 255 255), 0 0 12px rgb(255 250 236 / .5); }
 .orr-hmix__rock[aria-pressed="true"]::before { background:rgb(${HOT}); box-shadow:0 0 16px rgb(255 244 222 / .5); }
 .orr-hmix__rock.is-above .orr-hmix__rock-name { top:auto; bottom:calc(100% + 10px); }
-.orr-hmix__rock-name { position:absolute; left:50%; top:calc(100% + 10px); transform:translateX(-50%); ${LABEL} font-size:12px; letter-spacing:.16em; color:rgb(${BONE} / .8); white-space:nowrap; pointer-events:none; text-shadow:0 0 8px rgb(4 6 9 / .95); }
+.orr-hmix__rock-name { position:absolute; left:50%; top:calc(100% + 10px); transform:translateX(-50%); ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.16em; color:rgb(${BONE} / .8); white-space:nowrap; pointer-events:none; text-shadow:0 0 8px rgb(4 6 9 / .95); }
 .orr-hmix__rock[aria-pressed="true"] .orr-hmix__rock-name, .orr-hmix__rock:is(:hover, :focus-visible) .orr-hmix__rock-name { color:rgb(255 255 255); }
 .orr-hmix__centre { position:absolute; z-index:2; transform:translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; gap:6px; pointer-events:none; text-align:center; }
 .orr-hmix__centre > b { line-height:1.05; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800; font-size:clamp(16px, 1.1vw, 24px); letter-spacing:.06em; text-transform:uppercase; color:rgb(${HOT}); }
-.orr-hmix__centre > span { ${LABEL} font-size:12px; letter-spacing:.22em; color:rgb(${BONE} / .76); }
+.orr-hmix__centre > span { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.22em; color:rgb(${BONE} / .76); }
 .orr-hmix__lbl { all:unset; box-sizing:border-box; position:absolute; z-index:3; display:flex; flex-direction:column; gap:1px; white-space:nowrap; cursor:pointer; }
 .orr-hmix__lbl.is-left { align-items:flex-end; text-align:right; }
 .orr-hmix__lbl-name { ${BODY} font-size:clamp(14px, .74vw, 18px); color:rgb(${HOT}); line-height:1.2; }
@@ -150,7 +150,7 @@ html.sf-reduce-motion .orr-hscale__read { transition:none; }
 .orr-htoken__glyph { position:absolute; color:rgb(${HOT}); filter:drop-shadow(0 0 14px rgb(255 244 222 / .35)); }
 .orr-htoken__glyph svg { width:100%; height:100%; display:block; stroke-width:.9px; }
 .orr-htoken__glyph.is-foe { color:#ff7a66; }
-.orr-htoken__word { position:absolute; transform:translate(-50%, -50%); ${LABEL} font-size:12px; letter-spacing:.24em; color:rgb(${BONE} / .76); white-space:nowrap; pointer-events:none; }
+.orr-htoken__word { position:absolute; transform:translate(-50%, -50%); ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.24em; color:rgb(${BONE} / .76); white-space:nowrap; pointer-events:none; }
 `;
 
 function injectStyle(doc) {
@@ -190,7 +190,7 @@ function rise(node, delay, on) {
 }
 
 /** A band ring with ticks cut through it (an annulus you could grip), plus its edges. */
-function bandRing(g, cx, cy, r, w, { a = 0.27, notches = 72, from = 0, to = 360 } = {}) {
+function bandRing(g, cx, cy, r, w, { a = 0.3, notches = 72, from = 0, to = 360 } = {}) {
   g.appendChild(svg('path', { d: arcD(cx, cy, r, from, to), class: 'orr-hi__band', style: `stroke-width:${w}px; --orr-band-a:${a}` }));
   if (notches) g.appendChild(svg('path', { d: ticksD(cx, cy, r + w / 2, notches, { len: w, inward: true, from, to }), class: 'orr-hi__notch' }));
   g.appendChild(svg('path', { d: arcD(cx, cy, r + w / 2, from, to), class: 'orr-hi__edge' }));
@@ -299,16 +299,26 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
       b.style.left = `${f(x)}px`;
       b.style.top = `${f(y)}px`;
       const name = b.querySelector('.orr-hloop__name');
-      const [lx, ly] = polar(0, 0, small ? 30 : 36, deg);
       const a = ((deg % 360) + 360) % 360;
-      // names face outward; the one at the gate is named in the reading, so its ring name rests
-      const east = a > 20 && a < 160;
-      const west = a > 200 && a < 340;
-      name.style.left = east ? `${f(17 + lx)}px` : west ? 'auto' : '50%';
-      name.style.right = west ? `${f(17 - lx)}px` : 'auto';
-      name.style.top = `${f(17 + ly)}px`;
-      name.style.transform = east || west ? 'translateY(-50%)' : `translate(-50%, ${a <= 20 || a >= 340 ? '-100%' : '0'})`;
-      name.style.opacity = i === selected && Math.abs(v - selected) < 0.3 ? '0' : '1';
+      // every name reads away from the reading on the right: bodies on the west half name themselves
+      // to their left; the two on the east half name themselves above (upper) or below (lower), their
+      // words running left over the ring; the body at the gate is named in the reading instead
+      const west = a > 182 && a < 358;
+      const upper = a <= 90 || a >= 358;
+      const off = small ? 20 : 24;
+      name.style.textAlign = 'right';
+      if (west) {
+        name.style.left = 'auto'; name.style.right = '44px'; name.style.top = '50%'; name.style.transform = 'translateY(-50%)';
+      } else {
+        // clear of the ring: above its crown for the upper body, below its keel for the lower one
+        const crown = cy - R - geo.bandW / 2 - 10;
+        const keel = cy + R + geo.bandW / 2 + 10;
+        const topPx = upper ? Math.min(y - off + 6, crown) - (y - 17) : Math.max(y + off - 6, keel) - (y - 17);
+        name.style.left = 'auto'; name.style.right = '17px'; name.style.top = `${f(topPx)}px`;
+        name.style.transform = upper ? 'translateY(-100%)' : 'none';
+      }
+      const nearGate = Math.abs(((a - GATE + 540) % 360) - 180) < 38;
+      name.style.opacity = nearGate ? '0' : '1';
     });
   }
 
@@ -371,9 +381,10 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
     if (W < 360 || H < 260) { host.classList.add('is-off'); geo = null; return; }
     host.classList.remove('is-off');
     const small = W < 900 || H < 480;
-    const R = Math.max(110, Math.min(H * 0.36, W * 0.2));
-    const bandW = small ? 10 : 14;
-    const nameRoom = small ? 150 : 210;
+    const bandW = small ? 12 : 14;
+    const nameRoom = small ? 140 : 190;
+    // the reading needs its own column (about 360px) right of the gate
+    const R = Math.max(110, Math.min(H * 0.36, W * 0.21, (W - nameRoom - (small ? 70 : 110) - 380) / 2));
     const cx = nameRoom + R;
     const cy = H / 2;
     geo = { W, H, R, cx, cy, bandW, small };
@@ -385,16 +396,16 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
     const pd = R * 3;
     Object.assign(pool.style, { left: `${f(cx - pd / 2)}px`, top: `${f(cy - pd / 2)}px`, width: `${f(pd)}px`, height: `${f(pd)}px` });
     const g = svg('g', {});
-    bandRing(g, cx, cy, R, bandW, { a: 0.27, notches: 72 });
+    bandRing(g, cx, cy, R, bandW, { a: 0.3, notches: 72 });
     // the inner scale, drifting; the gate's major tick
     const drift = svg('g', { class: 'orr-drift', style: `transform-origin:${f(cx)}px ${f(cy)}px; --orr-drift-s:600s` });
     drift.appendChild(svg('path', { d: ticksD(cx, cy, R - bandW / 2 - 8, 90, { len: 3, major: 15, majorLen: 9, inward: true }), class: 'orr-hi__tick', style: 'stroke:rgb(236 230 216 / .34)' }));
     g.appendChild(drift);
-    g.appendChild(svg('path', { d: arcD(cx, cy, R * 0.46, 0, 360), class: 'orr-hi__edge', style: 'stroke:rgb(236 230 216 / .3)' }));
+    g.appendChild(svg('path', { d: arcD(cx, cy, R * 0.54, 0, 360), class: 'orr-hi__edge', style: 'stroke:rgb(236 230 216 / .3)' }));
     under.appendChild(rise(g, 0, arriveNow));
     // the Hand: from the centre's ring to the gate, the screen's one amber
     handG = svg('g', {});
-    const [h0x, h0y] = polar(cx, cy, R * 0.46 + 6, GATE);
+    const [h0x, h0y] = polar(cx, cy, R * 0.54 + 6, GATE);
     const [h1x, h1y] = polar(cx, cy, R - bandW / 2 - 22, GATE);
     handG.appendChild(svg('path', { d: `M ${f(h0x)} ${f(h0y)} L ${f(h1x)} ${f(h1y)}`, class: 'orr-hi__hand-bloom' }));
     handG.appendChild(svg('path', { d: `M ${f(h0x)} ${f(h0y)} L ${f(h1x)} ${f(h1y)}`, class: 'orr-hi__hand' }));
@@ -535,7 +546,7 @@ export function createHullDial(host, { maxima = {} } = {}) {
     if (!ship || W < 300 || H < 260) { host.classList.add('is-off'); geo = null; return; }
     host.classList.remove('is-off');
     const small = W < 620 || H < 460;
-    const R = Math.max(100, Math.min(H * 0.4, (W - (small ? 200 : 236)) / 2));
+    const R = Math.max(100, Math.min(H * 0.36, (W - (small ? 200 : 236)) / 2));
     const cx = W / 2;
     const cy = H / 2;
     const bandW = small ? 12 : 16;
@@ -549,7 +560,7 @@ export function createHullDial(host, { maxima = {} } = {}) {
     Object.assign(pool.style, { left: `${f(cx - pd / 2)}px`, top: `${f(cy - pd / 2)}px`, width: `${f(pd)}px`, height: `${f(pd)}px` });
     const g = svg('g', {});
     // the gauge tracks: five bands with ticks cut through, a quiet inner ring
-    GAUGES.forEach((_, i) => bandRing(g, cx, cy, R, bandW, { a: 0.27, notches: 40, from: startOf(i), to: startOf(i) + span }));
+    GAUGES.forEach((_, i) => bandRing(g, cx, cy, R, bandW, { a: 0.3, notches: 40, from: startOf(i), to: startOf(i) + span }));
     g.appendChild(svg('path', { d: arcD(cx, cy, R - bandW - 14, 0, 360), class: 'orr-hi__edge', style: 'stroke:rgb(236 230 216 / .26)' }));
     const drift = svg('g', { class: 'orr-drift orr-drift--rev', style: `transform-origin:${f(cx)}px ${f(cy)}px; --orr-drift-s:720s` });
     drift.appendChild(svg('path', { d: ticksD(cx, cy, R + bandW / 2 + 16, 120, { len: 3, major: 10, majorLen: 8, inward: true }), class: 'orr-hi__tick', style: 'stroke:rgb(236 230 216 / .3)' }));
@@ -679,9 +690,12 @@ export function createPriceScale(host, { items = [], onPick = () => {} } = {}) {
     bandBloom.setAttribute('d', `M ${f(xa)} ${f(y)} L ${f(xb)} ${f(y)}`);
     beadEl.setAttribute('cx', f(x));
     beadEl.setAttribute('cy', f(y));
-    read.style.left = `${f(Math.max(120, Math.min(geo.W - 160, x)))}px`;
     rollTo(readNum, c.basePrice);
     readName.textContent = `cr · ${c.name}`;
+    // the reading follows the bead, but never over the scale's own title
+    const half = (read.offsetWidth || 200) / 2;
+    const minX = (title.offsetWidth || 0) + half + 28;
+    read.style.left = `${f(Math.max(minX, Math.min(geo.W - half - 8, x)))}px`;
     for (const [id, el] of goodEls) el.setAttribute('d', tickD(byPrice.find((q) => q.id === id), id === selectedId));
     host.setAttribute('aria-valuetext', `${c.name}, ${c.basePrice} credits`);
     host.setAttribute('aria-valuenow', String(c.basePrice));
@@ -1046,13 +1060,13 @@ export function createGoodToken(host, { glyph = () => '' } = {}) {
     const W = host.clientWidth || 0;
     const H = host.clientHeight || 0;
     if (!data || W < 160 || H < 160) { layer.textContent = ''; return; }
-    const R = Math.min(W, H) * 0.36;
+    const R = Math.min(Math.min(W, H) * 0.34, 250);
     const cx = W / 2;
     const cy = H / 2;
     layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
     layer.textContent = '';
     const g = svg('g', { class: !arrived && !reducedMotion() ? 'orr-spin-in' : '', style: `transform-origin:${f(cx)}px ${f(cy)}px` });
-    bandRing(g, cx, cy, R, Math.max(12, R * 0.08), { a: 0.27, notches: 60 });
+    bandRing(g, cx, cy, R, Math.max(12, R * 0.08), { a: 0.3, notches: 60 });
     g.appendChild(svg('path', { d: arcD(cx, cy, R * 0.72, 0, 360), class: 'orr-hi__edge', style: 'stroke:rgb(236 230 216 / .3)' }));
     const drift = svg('g', { class: 'orr-drift', style: `transform-origin:${f(cx)}px ${f(cy)}px; --orr-drift-s:700s` });
     drift.appendChild(svg('path', { d: ticksD(cx, cy, R + Math.max(12, R * 0.08) / 2 + 14, 90, { len: 3, major: 15, majorLen: 8, inward: true }), class: 'orr-hi__tick', style: 'stroke:rgb(236 230 216 / .32)' }));

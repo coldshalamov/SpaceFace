@@ -99,8 +99,8 @@ const CSS = `
   transform-origin:50% 50%; }
 .orr-hrig__hull { filter:drop-shadow(0 10px 18px rgb(0 0 0 / .7)); opacity:0; transition:opacity .5s var(--dp-ease-out, ease-out); }
 .orr-hrig__hull.is-ready { opacity:1; }
-.orr-hrig__ghost { opacity:0; mix-blend-mode:screen; filter:brightness(1.6) saturate(.2); transition:transform .52s cubic-bezier(.34, 1.36, .64, 1), opacity .2s linear; }
-.orr-hrig__ghost.is-lit { opacity:.34; }
+.orr-hrig__ghost { opacity:0; mix-blend-mode:screen; transition:transform .52s cubic-bezier(.34, 1.36, .64, 1), opacity .2s linear; }
+.orr-hrig__ghost.is-lit { opacity:.62; }
 .orr-hrig__glows { position:absolute; inset:0; pointer-events:none; z-index:4; }
 .orr-hrig__over { z-index:5; }
 .orr-hrig__glow { position:absolute; left:0; top:0; pointer-events:none; opacity:0; border-radius:50%;
@@ -136,12 +136,12 @@ const CSS = `
 .orr-hrig .orr-hrig__mark.is-lit .orr-hrig__mark-core { fill:rgb(255 255 255); }
 
 /* the berth */
-.orr-hrig .orr-hrig__band { fill:none; stroke:rgb(${BONE} / var(--orr-band-a, .27)); }
+.orr-hrig .orr-hrig__band { fill:none; stroke:rgb(${BONE} / var(--orr-band-a, .3)); }
 .orr-hrig .orr-hrig__edge { fill:none; stroke:rgb(${BONE} / .58); stroke-width:1.6px; }
 .orr-hrig .orr-hrig__notch { fill:none; stroke:rgb(5 7 10 / .92); stroke-linecap:butt; }
 .orr-hrig .orr-hrig__tick { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1.5px; stroke-linecap:butt; }
 .orr-hrig .orr-hrig__tick--major { stroke:rgb(${BONE} / .8); stroke-width:2px; }
-.orr-hrig .orr-hrig__bandtext text { font-size:11px; font-weight:700; letter-spacing:.3em; fill:rgb(${HOT}); }
+.orr-hrig .orr-hrig__bandtext text { font-size:12px; font-weight:700; letter-spacing:.3em; fill:rgb(${HOT}); }
 .orr-hrig .orr-hrig__fx { opacity:0; transition:opacity .16s linear; }
 .orr-hrig .orr-hrig__fx.is-lit { opacity:1; }
 .orr-hrig .orr-hrig__fx-line { fill:none; stroke:rgb(236 247 255); stroke-width:2.4px; stroke-linecap:round; }
@@ -209,7 +209,7 @@ const CSS = `
 .orr-hrig__padsvg .orr-hrig__pb-band { fill:none; stroke:rgb(${BONE} / .27); stroke-width:7px; stroke-linecap:round; stroke-linejoin:round; }
 .orr-hrig__padsvg .orr-hrig__pb-edge { fill:none; stroke:rgb(${BONE} / .6); stroke-width:1.6px; stroke-linecap:round; stroke-linejoin:round; }
 .orr-hrig__padsvg .orr-hrig__pb-arc { fill:none; stroke:rgb(${BONE} / .6); stroke-width:4px; stroke-linecap:round; transition:stroke .12s linear; }
-.orr-hrig__padsvg text { font-family:var(--dp-face-label, "Archivo"); font-size:10px; font-weight:700; letter-spacing:.06em; fill:rgb(${HOT}); text-anchor:middle; dominant-baseline:central; }
+.orr-hrig__padsvg text { font-family:var(--dp-face-label, "Archivo"); font-size:var(--orr-pad-fs, 12px); font-weight:700; letter-spacing:.06em; fill:rgb(${HOT}); text-anchor:middle; dominant-baseline:central; }
 .orr-hrig__padsvg .is-lit .orr-hrig__pb, .orr-hrig__padsvg .orr-hrig__pb.is-lit { fill:rgb(${ICE} / .5); stroke:rgb(255 255 255); }
 .orr-hrig__padsvg .is-lit .orr-hrig__pb-arc, .orr-hrig__padsvg .orr-hrig__pb-arc.is-lit { stroke:rgb(236 247 255); }
 .orr-hrig__padsvg .is-lit text { fill:rgb(255 255 255); }
@@ -222,7 +222,7 @@ const CSS = `
 .orr-hrig__whisper.is-none { color:rgb(${BONE} / .86); }
 
 .orr-hrig__rise { animation:orr-hrig-rise .5s var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
-@keyframes orr-hrig-rise { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+@keyframes orr-hrig-rise { from { opacity:0; translate:0 6px; } to { opacity:1; translate:none; } }
 .orr-hrig__spin { transform-box:view-box; animation:orr-spin-in 760ms var(--dp-ease-out, ease-out) both; }
 
 html.sf-reduce-motion .orr-hrig .orr-hrig__beam, html.sf-reduce-motion .orr-hrig .orr-hrig__beam-bloom { display:none; }
@@ -450,10 +450,12 @@ export function createControlsRig(host, { onPreview = null, onDevice = null } = 
     host.classList.toggle('is-small', small);
     if (!echoLine.classList.contains('is-live')) restEcho();
     // the foot holds the device words, the echo line and (with a pad) the drawn pad
-    const padW = Math.round(Math.max(220, Math.min(330, W * 0.3)));
+    const padW = Math.round(Math.max(210, Math.min(300, W * 0.24)));
     const padH = Math.round(padW * 150 / 308);
     pad.root.setAttribute('width', padW);
     pad.root.setAttribute('height', padH);
+    // the pad's lettering stays at 12px on screen whatever the drawing's scale
+    pad.root.style.setProperty('--orr-pad-fs', `${f(12.5 * 308 / padW)}px`);
     const footH = device === 'pad' ? padH + 6 : 42;
     const top = small ? 4 : 10;
     const availH = H - footH - top - (small ? 8 : 18);
@@ -472,7 +474,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null } = 
     const block = colW.L + gap + S * 0.98 + gap + colW.R;
     const cx = Math.max(0, (W - block) / 2) + colW.L + gap + S * 0.49;
     const cy = top + availH / 2;
-    const bandW = Math.round(Math.max(9, Math.min(16, S * 0.03)));
+    const bandW = Math.round(Math.max(14, Math.min(22, S * 0.03)));
     const Rb = S * 0.49 - bandW / 2;         // band centre radius
     const Rout = Rb + bandW / 2;
     const Rin = Rb - bandW / 2;
@@ -487,11 +489,16 @@ export function createControlsRig(host, { onPreview = null, onDevice = null } = 
     Object.assign(pool.style, { left: `${f(cx - poolD / 2)}px`, top: `${f(cy - poolD / 2)}px`, width: `${f(poolD)}px`, height: `${f(poolD)}px` });
     const floorD = S * 0.9;
     Object.assign(floor.style, { left: `${f(cx - floorD / 2)}px`, top: `${f(cy - floorD / 2)}px`, width: `${f(floorD)}px`, height: `${f(floorD)}px` });
-    const url = hullPosterUrl(model.hullId, 'top') || hullPosterUrl('ship_kestrel', 'top');
-    for (const img of [hull, ghost]) {
-      if (img.getAttribute('src') !== url) img.src = url;
-      Object.assign(img.style, { left: `${f(x0)}px`, top: `${f(y0)}px`, width: `${f(S)}px`, height: `${f(S)}px` });
-    }
+    const hullId = hullPosterUrl(model.hullId, 'top') ? model.hullId : 'ship_kestrel';
+    const url = hullPosterUrl(hullId, 'top');
+    if (hull.getAttribute('src') !== url) hull.src = url;
+    Object.assign(hull.style, { left: `${f(x0)}px`, top: `${f(y0)}px`, width: `${f(S)}px`, height: `${f(S)}px` });
+    // the ghost that swings through a turn is the hull's holo plate (the plan view as instrument light),
+    // framed tighter than the render: its hull spans 0.956 of its frame against the render's 0.847
+    const holo = hullPosterUrl(hullId, 'holo');
+    const gS = holo ? S * (HULL_SPAN / 0.956) : S;
+    if (ghost.getAttribute('src') !== (holo || url)) ghost.src = holo || url;
+    Object.assign(ghost.style, { left: `${f(cx - gS / 2)}px`, top: `${f(cy - gS / 2)}px`, width: `${f(gS)}px`, height: `${f(gS)}px` });
     const arriveNow = !arrived && !reducedMotion();
     const rise = (node, delay) => { if (arriveNow) { node.classList.add('orr-hrig__rise'); node.style.setProperty('--orr-delay', `${delay}ms`); } return node; };
 
@@ -507,7 +514,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null } = 
     berth.appendChild(svg('path', { d: arcD(cx, cy, Rin, 0, 360), class: 'orr-hrig__edge', style: 'stroke:rgb(236 230 216 / .36)' }));
     berth.appendChild(svg('path', { d: ticksD(cx, cy, Rout + 2, 12, { len: 0, major: 1, majorLen: small ? 6 : 9, inward: false }), class: 'orr-hrig__tick orr-hrig__tick--major' }));
     // BOW and AFT ride inside the band, bright on its light
-    const tsize = small ? 9 : 11;
+    const tsize = 12;
     const bandText = svg('g', { class: 'orr-hrig__bandtext' });
     const bow = circularText(cx, cy, Rb - tsize * 0.36, 'BOW', { startDeg: -90, size: tsize, anchor: 'middle' });
     const aft = circularText(cx, cy, Rb + tsize * 0.36, 'AFT', { startDeg: 180 + 90, size: tsize, anchor: 'middle', upright: true });

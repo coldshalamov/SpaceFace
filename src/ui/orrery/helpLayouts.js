@@ -18,12 +18,12 @@ const PLAIN = 'background:none !important; border:0 !important; border-image:non
 const HAND = 'clip-path:polygon(0 0, 100% 50%, 0 100%, 30% 50%) !important;';
 // WEIGHT: a spine is a 2px line over a 7px band of bone .27 (measured ~2:1 on the glass).
 const SPINE = `linear-gradient(90deg, transparent 7px, rgb(${BONE} / .55) 7px, rgb(${BONE} / .55) 9px, transparent 9px) 0 0 / 100% 100% no-repeat,
-    linear-gradient(90deg, transparent 4.5px, rgb(${BONE} / .27) 4.5px, rgb(${BONE} / .27) 11.5px, transparent 11.5px) 0 0 / 100% 100% no-repeat,
+    linear-gradient(90deg, transparent 4.5px, rgb(${BONE} / .3) 4.5px, rgb(${BONE} / .3) 11.5px, transparent 11.5px) 0 0 / 100% 100% no-repeat,
     repeating-linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 2px 0 / 5px 100% no-repeat`;
 
 const CSS = `
 /* ------------------------------------------------ the frame ------------------------------------ */
-${H} { grid-template-columns:clamp(172px, 12.2vw, 236px) minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) auto !important;
+${H} { grid-template-columns:clamp(172px, 12.2vw, 300px) minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) auto !important;
   grid-template-areas:"title title" "hang stage" "foot stage" !important;
   padding:clamp(34px, 5.4vh, 76px) 5vw clamp(30px, 4.6vh, 64px) !important;
   column-gap:clamp(26px, 3vw, 64px) !important; row-gap:clamp(14px, 3vh, 40px) !important; }
@@ -132,7 +132,7 @@ ${H} .orr-hreg__fine { margin:10px 0 0; padding-left:30px; font-family:var(--dp-
 ${H} .orr-hreg .orr-extent::before { left:7px; width:2px; }
 
 /* ------------------------------------------------ the shared ladder + reading ------------------ */
-${H} .orr-help-list { position:relative; display:grid; grid-template-columns:clamp(250px, 19vw, 360px) minmax(0, 1fr); grid-template-rows:minmax(0, 1fr);
+${H} .orr-help-list { position:relative; display:grid; grid-template-columns:clamp(222px, 18.5vw, 360px) minmax(0, 1fr); grid-template-rows:minmax(0, 1fr);
   column-gap:clamp(24px, 3vw, 64px); height:100%; min-height:0; }
 ${H} .orr-help-list--goods { grid-template-rows:auto minmax(0, 1fr); row-gap:clamp(10px, 2vh, 24px); }
 ${H} .orr-help-list--goods > .orr-help-scale { grid-column:1 / -1; }
@@ -143,13 +143,13 @@ ${H} .orr-help-list__hero { position:relative; height:100%; min-height:0; min-wi
 ${H} .orr-help-loops { position:relative; height:100%; min-height:0; }
 /* ORES: the mix fills the stage; its reading runs under it as one line of terms */
 ${H} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr); grid-template-rows:minmax(0, 1fr) auto; row-gap:8px; align-items:stretch; }
-${H} .orr-help-list--ores .orr-help-reading { max-width:none; display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:clamp(24px, 3vw, 60px); align-items:start; padding:0 0 4px 40px; }
+${H} .orr-help-list--ores .orr-help-reading { max-width:none; display:grid; grid-template-columns:auto minmax(0, 1fr); grid-template-rows:auto minmax(0, 1fr); column-gap:clamp(24px, 3vw, 60px); align-items:start; padding:0 0 4px 40px; }
 ${H} .orr-help-list--ores .orr-help-reading > .orr-help-reading__kicker { grid-column:1; }
 ${H} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { grid-column:1; font-size:clamp(22px, 1.7vw, 34px); }
 ${H} .orr-help-list--ores .orr-help-terms { grid-column:2; grid-row:1 / span 2; margin:0; grid-template-columns:auto minmax(0, 1fr) auto minmax(0, 1fr); column-gap:18px; }
 ${H} .orr-help-search.sf-lc { margin:0 0 12px !important; padding:0 !important; }
 ${H} .orr-help-search .sf-lc__search { ${PLAIN} width:100% !important; max-width:none !important; min-height:38px; padding:6px 2px 8px 30px !important; box-sizing:border-box;
-  font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif !important; font-size:14px !important; color:rgb(${HOT}) !important;
+  font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif !important; font-size:clamp(14px, .73vw, 18px) !important; color:rgb(${HOT}) !important;
   background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 100% / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .1) 0 0) 0 calc(100% - 2px) / 100% 7px no-repeat !important; }
 ${H} .orr-help-search .sf-lc__search::placeholder { color:rgb(${BONE} / .66) !important; }
 ${H} .orr-help-search .sf-lc__search:focus { background:linear-gradient(rgb(255 255 255) 0 0) 0 100% / 100% 2px no-repeat, linear-gradient(rgb(${HOT} / .16) 0 0) 0 calc(100% - 2px) / 100% 8px no-repeat !important; }
@@ -161,7 +161,7 @@ ${H} .orr-help-ladder { ${PLAIN} position:relative; flex:1 1 auto; min-height:0;
   -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent); }
 ${H} .orr-help-ladder[data-overflow="0"] { -webkit-mask-image:none; mask-image:none; }
 ${H} .orr-help-ladder::-webkit-scrollbar { display:none; }
-${H} .orr-help-ladder__head { position:relative; display:flex; align-items:center; gap:10px; padding:14px 0 6px 30px; ${LABEL} font-size:12px !important; letter-spacing:.24em; color:rgb(${HOT}); }
+${H} .orr-help-ladder__head { position:relative; display:flex; align-items:center; gap:10px; padding:14px 0 6px 30px; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.24em; color:rgb(${HOT}); }
 ${H} .orr-help-ladder__head:first-child { padding-top:4px; }
 ${H} .orr-help-ladder__head::before { content:""; position:absolute; left:2px; top:calc(50% + 4px); width:16px; height:2px; background:rgb(${HOT} / .9); }
 ${H} .orr-help-ladder__head:first-child::before { top:calc(50%); }
@@ -169,10 +169,10 @@ ${H} .orr-help-ladder__glyph { display:inline-flex; width:18px; height:18px; col
 ${H} .orr-help-ladder__glyph svg { width:18px; height:18px; }
 ${H} .orr-help-ladder__rung { margin:0; list-style:none; }
 ${H} .orr-help-ladder__item { all:unset; box-sizing:border-box; position:relative; display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; column-gap:12px; width:100%;
-  min-height:34px; padding:5px 4px 5px 44px; cursor:pointer; }
+  min-height:clamp(34px, 1.8vw, 44px); padding:5px 4px 5px 44px; cursor:pointer; }
 ${H} .orr-help-ladder__item::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:2px; margin-top:-1px; background:rgb(${BONE} / .55); transition:width .16s, background .16s; }
-${H} .orr-help-ladder__name { font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:14px; line-height:1.25; color:rgb(${BONE} / .82); transition:color .16s linear; }
-${H} .orr-help-ladder__fig { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 500; font-size:13px; font-variant-numeric:tabular-nums; color:rgb(${BONE} / .72); text-transform:none; }
+${H} .orr-help-ladder__name { font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(14px, .73vw, 18px); line-height:1.25; color:rgb(${BONE} / .82); transition:color .16s linear; }
+${H} .orr-help-ladder__fig { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 500; font-size:clamp(13px, .68vw, 17px); font-variant-numeric:tabular-nums; color:rgb(${BONE} / .72); text-transform:none; }
 ${H} .orr-help-ladder__fig.is-foe { color:#ff7a66; }
 ${H} .orr-help-ladder__item:hover .orr-help-ladder__name, ${H} .orr-help-ladder__item:focus-visible .orr-help-ladder__name { color:rgb(255 255 255); }
 ${H} .orr-help-ladder__item:hover::before { width:14px; background:rgb(${HOT}); }
@@ -186,32 +186,32 @@ ${H} .orr-help-empty { margin:10px 0 0 30px !important; font-size:14px !importan
 ${H} .orr-help-ladder ~ .orr-extent, ${H} .orr-help-ladder > .orr-extent { }
 
 /* the reading: no panel; a pool of shade, the figure, a ledger of terms */
-${H} .orr-help-reading { position:relative; z-index:2; max-width:560px; }
+${H} .orr-help-reading { position:relative; z-index:2; max-width:clamp(420px, 26vw, 640px); }
 ${H} .orr-help-reading::before { content:""; position:absolute; z-index:-1; left:-60px; right:-60px; top:-40px; bottom:-40px; pointer-events:none;
   background:radial-gradient(closest-side, rgb(5 7 10 / .8), rgb(5 7 10 / .5) 60%, rgb(5 7 10 / 0)); }
-${H} .orr-help-reading__kicker { margin:0 0 6px; ${LABEL} font-size:12px !important; letter-spacing:.24em; color:rgb(${BONE} / .72); }
+${H} .orr-help-reading__kicker { margin:0 0 6px; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.24em; color:rgb(${BONE} / .72); }
 ${H} .orr-help-reading__name { margin:0 0 6px; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800;
   font-size:clamp(24px, 2.1vw, 40px); line-height:1; letter-spacing:.02em; text-transform:uppercase; color:rgb(${HOT}); }
 ${H} .orr-help-reading__name.sf-entity-link { text-decoration:none !important; box-shadow:none !important; border:0 !important; color:rgb(${HOT}) !important; cursor:pointer; }
 ${H} .orr-help-reading__name.sf-entity-link:is(:hover, :focus-visible) { color:rgb(255 255 255) !important; outline:none; text-shadow:0 0 22px rgb(255 250 236 / .3); }
-${H} .orr-help-reading__sub { margin:0 0 14px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:15px; color:rgb(${BONE} / .84); }
+${H} .orr-help-reading__sub { margin:0 0 14px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(15px, .78vw, 19px); color:rgb(${BONE} / .84); }
 ${H} .orr-help-terms { margin:14px 0 0; padding:0; display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:22px; row-gap:0; }
 ${H} .orr-help-terms__row { display:contents; }
-${H} .orr-help-terms dt, ${H} .orr-help-terms__k { ${LABEL} font-size:12px !important; letter-spacing:.18em; color:rgb(${BONE} / .72); padding:7px 0; margin:0; }
-${H} .orr-help-terms dd { margin:0; padding:5px 0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:15px; line-height:1.4; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
+${H} .orr-help-terms dt, ${H} .orr-help-terms__k { ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .72); padding:7px 0; margin:0; }
+${H} .orr-help-terms dd { margin:0; padding:5px 0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(15px, .78vw, 19px); line-height:1.4; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
 ${H} .orr-help-terms__row.is-against dd { color:#ff7a66; }
 ${H} .orr-help-reading__legal { display:flex; align-items:baseline; gap:22px; margin:8px 0 0; }
 ${H} .orr-help-legal { ${LABEL} font-size:13px !important; letter-spacing:.18em; color:rgb(${HOT}); }
 ${H} .orr-help-legal.is-foe { color:#ff7a66; }
 ${H} .orr-help-legal.is-goal { color:rgb(${HOT}); text-decoration:underline 2px rgb(${BONE} / .5); text-underline-offset:6px; }
-${H} .orr-help-reading__body { margin:14px 0 0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:15px; line-height:1.5; color:rgb(${HOT}); }
-${H} .orr-help-reading__lore { margin:8px 0 0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-style:italic; font-size:14px; line-height:1.5; color:rgb(${BONE} / .8); }
+${H} .orr-help-reading__body { margin:14px 0 0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(15px, .78vw, 19px); line-height:1.5; color:rgb(${HOT}); }
+${H} .orr-help-reading__lore { margin:8px 0 0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-style:italic; font-size:clamp(14px, .73vw, 18px); line-height:1.5; color:rgb(${BONE} / .8); }
 /* entity links on this screen read as bone, never a web underline or a second amber */
 ${H} .sf-entity-link { text-decoration:none !important; box-shadow:none !important; }
 
 /* FACTIONS: the orbit beside its reading */
 ${H} .orr-help-factions { position:relative; display:grid; grid-template-columns:minmax(0, 1.25fr) minmax(300px, .75fr); column-gap:clamp(20px, 3vw, 64px); align-items:center; height:100%; min-height:0; }
-${H} .orr-help-factions__orbit { position:relative; height:100%; min-height:0; --orr-band-a:.27; --orr-w-band:11px; --orr-edge-a:.6; }
+${H} .orr-help-factions__orbit { position:relative; height:100%; min-height:0; --orr-band-a:.3; --orr-w-band:11px; --orr-edge-a:.6; }
 
 @media (max-width:1500px) {
   ${H} .orr-hreg__secword { letter-spacing:.12em; }
