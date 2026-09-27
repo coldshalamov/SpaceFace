@@ -126,6 +126,27 @@ export const gateControlDirector = {
     // Optional scan wing.
     if ((scene.scanWing | 0) > 0) this._spawnWing(state, scene, gateKey, day, now, live);
     g.scene = live;
+
+    // Verdict is durable journalism, not a second consequence channel: the comms line, toll
+    // charge, and wing spawn above already ARE the visible outcomes — this event lets the
+    // Chronicler (and any future listener) record exactly what gate control decided and what
+    // physically manifested, instead of the verdict evaporating with the scene.
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('gate:verdict', {
+        gateKey,
+        sectorId,
+        gateTo,
+        type: scene.type,
+        factionId,
+        security,
+        wanted,
+        tollAmount: scene.tollAmount | 0,
+        scanWing: scene.scanWing | 0,
+        wingShips: live.entityIds.length,
+        comms: scene.comms || null,
+        t: now,
+      });
+    }
   },
 
   _spawnWing(state, scene, gateKey, day, now, live) {

@@ -23,6 +23,7 @@
 //   routed through the combat kernel (shield then hull); isolated ticks fall back to the same
 //   vitals order and may kill.
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
+import { FACTION_META } from '../data/factions.js';
 import { separateSkinOverlaps } from '../data/modelTruth.js';
 import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
@@ -245,6 +246,21 @@ const UNFILED_JUMP_RETURN = 'sector_helios_prime';
 const SCAN_RANGE = 400;         // wu POI auto-detect radius
 const SECTOR_SCAN_TIME = 2.0;   // s to complete a sector scan
 const FUEL_REFUND_FRAC = 0.5;   // refunded on aborted charge
+const DAY_SECONDS = 600;        // core time contract (mirrors sectorSim)
+const WIRE_REPORT_COOLDOWN_S = 300; // min simTime gap between wire reports for one sector
+
+// sectorSim intel copy reads faction identity from the signal packet; FACTION_META carries the
+// short names already (single lookup, never re-derived per call).
+const FACTION_SHORT_NAMES = new Map(FACTION_META.map((f) => [f.id, f.short || f.name || f.id]));
+
+/** One bounded phrase for a 0..1 danger read — the lane-brief and wire-report vocabulary. */
+function laneDangerPhrase(danger) {
+  if (danger >= 0.82) return 'contested space — heavy raider presence';
+  if (danger >= 0.62) return 'dangerous lanes';
+  if (danger >= 0.42) return 'light pirate pressure';
+  if (danger >= 0.22) return 'quiet lanes';
+  return 'dead quiet';
+}
 
 // Free-flight membership hysteresis. The Voronoi membership test is a knife edge; a player
 // patrolling rocks on a border used to flip residency every oscillation across it (measured:
@@ -470,6 +486,7 @@ export const world = {
     this._hazardSet = new Set();      // hazard zone indices the player is currently inside
     this._hazardNextSet = new Set();  // scratch set reused while computing the next frame
     this._burnVentToastAtS = -Infinity; // scanBlocked vent-toast throttle (one per surge beat)
+    this._wireReportAt = new Map();     // sectorId → simTime; bounds offscreen wire reports
     // Floating-origin scratch (allocation-free no-shift path).
     this._frameOriginScratch = { x: 0, z: 0 };
     // Ensure coordinate membrane defaults exist even if state was hand-built.
@@ -537,6 +554,12 @@ export const world = {
       this._onDurableEntityKilled(p || {});
     });
     bus.on('sectorsim:embodiment', (p) => this._onSectorEmbodiment(p || {}));
+    // sectorSim's intel/reconcile channels were emitted and dropped before this binding — the
+    // offscreen field computed danger/market/ownership shifts nothing ever showed the player.
+    // Entry intel becomes one lane-brief comms line; offscreen threshold crossings surface as
+    // bounded 'news' wire reports; long-absence reconcile becomes a "while away" line.
+    bus.on('sectorsim:intel', (p) => this._onSectorSimIntel(p || {}));
+    bus.on('sectorsim:reconcile', (p) => this._onSectorSimReconcile(p || {}));
   },
 
   /** Cache sectorSim recipes only. Live entities remain forbidden on this event boundary. */
@@ -547,6 +570,83 @@ export const world = {
     const result = consumeEmbodimentPayload(current, payload);
     worldState.embodiment = result.cache;
     return result.accepted;
+  },
+
+  /**
+   * sectorSim 'intel' facts → player-facing lines. `sector_entry` intel describes the sector just
+   * entered (one comms line per arrival; a continuous Voronoi handoff never emits this). Other
+   * sectors' threshold crossings become 'news' wire reports bounded per sector by simTime.
+   * All copy derives from the event's deterministic signal — no RNG, no wall clock.
+   */
+  _onSectorSimIntel(p) {
+    const signal = p && p.signal;
+    const sectorId = p && p.sectorId;
+    if (!signal || typeof sectorId !== 'string' || !sectorId) return;
+    if (!Number.isFinite(signal.danger)) return;
+    const name = String(p.sectorName || sectorId);
+    const danger = Math.max(0, Math.min(1, signal.danger));
+    const factionId = signal.dominantFactionId || signal.ownerId || null;
+    const faction = FACTION_SHORT_NAMES.get(factionId) || null;
+    const parts = [laneDangerPhrase(danger)];
+    if (faction && (Number(signal.dominantInfluence) || 0) >= 0.35) parts.push(`${faction} holds the lane`);
+    if (Number.isFinite(signal.pricePressure) && signal.pricePressure > 0.18) parts.push('prices running hot');
+    else if (Number.isFinite(signal.pricePressure) && signal.pricePressure < -0.18) parts.push('markets glutted');
+
+    if (p.reason === 'sector_entry') {
+      if (sectorId !== (this.state.world && this.state.world.currentSectorId)) return;
+      const transit = p.transit;
+      if (transit && Number.isFinite(transit.incidentChance) && transit.incidentChance >= 0.35) {
+        parts.push('departure corridor unstable');
+      }
+      this.bus.emit('voice:say', {
+        id: `lane-brief:${sectorId}`,
+        channel: 'comms',
+        kind: 'lane_brief',
+        ttl: 6,
+        text: `LANE BRIEF · ${name.toUpperCase()} — ${parts.join('; ')}.`,
+      });
+      return;
+    }
+
+    // Offscreen threshold crossing — the wire. The emitter already caps candidates/day; this
+    // per-sector cooldown keeps a churning field from re-reporting the same beat every quantum.
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const last = this._wireReportAt.get(sectorId);
+    if (Number.isFinite(last) && now - last < WIRE_REPORT_COOLDOWN_S) return;
+    this._wireReportAt.set(sectorId, now);
+    const headline = Number.isFinite(signal.contestMargin) && signal.contestMargin < 0.12
+      ? 'control contested'
+      : danger >= 0.6 ? 'raider pressure climbing'
+        : danger <= 0.2 ? 'lanes calming'
+          : signal.pricePressure > 0.18 ? 'shortage reported'
+            : signal.pricePressure < -0.18 ? 'surplus reported' : 'conditions shifting';
+    this.bus.emit('voice:say', {
+      id: `wire:${sectorId}`,
+      channel: 'news',
+      kind: 'wire_report',
+      ttl: 5,
+      text: `WIRE · ${name}: ${headline}${faction ? ` — ${faction} territory` : ''}.`,
+    });
+  },
+
+  /**
+   * Long-absence reconcile (>1 day): the field kept running while the player was gone — one
+   * "while away" line naming the sector's current drift read. SimTime-derived, emit-only.
+   */
+  _onSectorSimReconcile(p) {
+    const sectorId = p && p.sectorId;
+    if (typeof sectorId !== 'string' || !sectorId) return;
+    if (sectorId !== (this.state.world && this.state.world.currentSectorId)) return;
+    const signal = p.signal;
+    if (!signal || !Number.isFinite(signal.danger)) return;
+    const days = Math.max(1, Math.floor((Number(p.elapsedSimT) || 0) / DAY_SECONDS));
+    const factionId = signal.dominantFactionId || signal.ownerId || null;
+    const faction = FACTION_SHORT_NAMES.get(factionId) || null;
+    this.bus.emit('toast', {
+      text: `While away (${days}d): ${p.sectorName || sectorId} — ${laneDangerPhrase(Math.max(0, Math.min(1, signal.danger)))}${faction ? `; ${faction} holds the lane` : ''}.`,
+      kind: 'info',
+      ttl: 6,
+    });
   },
 
   /**

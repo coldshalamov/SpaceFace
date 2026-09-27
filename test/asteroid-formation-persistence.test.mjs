@@ -27,6 +27,7 @@ import {
   DISCOVERED_RECORD_FIELDS,
   FORMATIONS_SCHEMA_VERSION,
 } from '../src/systems/asteroidFormations.js';
+import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 
 // Independent literal for §13b: hash32(47, 'sector_test_alpha', 0, 'formations').
 const SEED_LITERAL_47_ALPHA_0 = 232166868;
@@ -289,11 +290,21 @@ test('A02 §11: the save owner carries the formations key end-to-end', () => {
 });
 
 test('A02 §12: the registry runs asteroidFormations immediately after asteroidSites', () => {
-  const src = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
-  assert.ok(/asteroidSites, asteroidFormations, wingmen, intervention/.test(src),
-    'SYSTEMS places the knowledge owner beside the site owner');
-  assert.ok(/asteroidSites, asteroidFormations, wingmen, crafting/.test(src),
-    'UPDATE_ORDER places it beside the site owner');
+  // The ordering contract lives in the authoritative manifest — registry.js materialises its
+  // SYSTEMS/UPDATE_ORDER from PRODUCTION_INIT_ORDER/PRODUCTION_UPDATE_ORDER. Assert the id
+  // adjacency directly so a source-formatting refactor cannot silently break the pin.
+  const initIdx = PRODUCTION_INIT_ORDER.indexOf('asteroidSites');
+  assert.deepEqual(
+    PRODUCTION_INIT_ORDER.slice(initIdx, initIdx + 4),
+    ['asteroidSites', 'asteroidFormations', 'wingmen', 'intervention'],
+    'INIT order places the knowledge owner beside the site owner',
+  );
+  const updIdx = PRODUCTION_UPDATE_ORDER.indexOf('asteroidSites');
+  assert.deepEqual(
+    PRODUCTION_UPDATE_ORDER.slice(updIdx, updIdx + 4),
+    ['asteroidSites', 'asteroidFormations', 'wingmen', 'crafting'],
+    'UPDATE_ORDER places it beside the site owner',
+  );
 });
 
 // ── §13 stable physical identity (the 4891099a..edca7c7e review's central finding) ─────────────

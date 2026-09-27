@@ -9,7 +9,9 @@ const FACT_KEYS = ['event', 'stage', 't', 'tick', 'sectorId', 'sectorName', 'zon
 const DETAILS = new Set(['cause', 'playerCaused', 'surface', 'victimClass', 'factionLawful', 'pos',
   'markerId', 'wreckId', 'victimId', 'sourceKind', 'commodityId', 'qty', 'total', 'kind',
   'provenanceMissing', 'transition', 'aceId', 'crew', 'count', 'returnTier', 'encounterId',
-  'level', 'previousLevel', 'reason', 'tier', 'cleared', 'found', 'outcome', 'missionId']);
+  'level', 'previousLevel', 'reason', 'tier', 'cleared', 'found', 'outcome', 'missionId',
+  'manifestId', 'podCount', 'telegraphS', 'formationId', 'gateTo', 'tollAmount', 'wingShips',
+  'wanted', 'inbound']);
 const STORY_KEYS = ['id', 'sequence', 'createdAt', 'updatedAt', 'nodes', 'edges', 'groups',
   'revision', 'signature', 'announcedRevision', 'newsRevision', 'newsAt', 'radioRevision'];
 const COUNTS = ['collisionKills', 'rescues', 'aceDefeats'];
@@ -24,6 +26,9 @@ const EVENT_STAGES = Object.freeze({
   'salvage:reactorVented': ['reactor'], 'salvage:reactorTowedClear': ['reactor'],
   'salvage:reactorBurst': ['reactor'], 'aftermath:causeRecorded': ['cause'],
   'aftermath:remedied': ['remedy'],
+  'freight:cargoSpilled': ['spill'], 'encounter:ambientPredationTelegraph': ['predation'],
+  'formation:discovered': ['survey'], 'gate:verdict': ['gate'],
+  'claim:freightDelivered': ['delivery'],
 });
 function check(ok, message) { if (!ok) throw new TypeError(`Invalid Chronicler snapshot: ${message}`); }
 function object(value, keys, path) {

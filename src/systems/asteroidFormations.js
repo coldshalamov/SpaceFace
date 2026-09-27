@@ -115,11 +115,19 @@ export const asteroidFormations = {
     if (!state.formations) state.formations = makeDefaultFormations();
     this._normalize(state.formations);
 
-    // Transient caches only — never serialized.
-    this._rt = { model: null, sectorId: null, epoch: -1, seed: 0 };
+    // Transient caches only — never serialized. `surveyed` is the set of body keys the scan
+    // pulse has highlighted this epoch; discovery durable state lives in state.formations, so
+    // this set may be dropped freely (a re-survey simply re-completes against durable records).
+    this._rt = { model: null, sectorId: null, epoch: -1, seed: 0, surveyed: new Set() };
 
     this.bus.on('sector:enter', () => { this._invalidate(); });
     this.bus.on('save:loaded', () => { this._invalidate(); });
+    // Reachability (default route): the scanner's sector pulse stamps scanHighlightUntil on every
+    // asteroid it resolves, then emits scan:completed. A formation whose members have ALL been
+    // highlighted (cumulatively, within this epoch) is surveyed → durably discovered. Cumulative
+    // because a formation can span beyond one pulse radius; epoch-scoped because a re-rolled field
+    // is genuinely new knowledge to earn.
+    this.bus.on('scan:completed', (p) => this._onScanCompleted(p || {}));
   },
 
   newGame() {
@@ -175,7 +183,7 @@ export const asteroidFormations = {
   // ── transient derivation ───────────────────────────────────────────────────────────────────
 
   _invalidate() {
-    this._rt = { model: null, sectorId: null, epoch: -1, seed: 0 };
+    this._rt = { model: null, sectorId: null, epoch: -1, seed: 0, surveyed: new Set() };
   },
 
   _currentEpoch(sectorId) {
@@ -204,8 +212,43 @@ export const asteroidFormations = {
       asteroids.push(e);
     }
     const model = buildAsteroidFormations(asteroids, { seed, keyOf: formationBodyKey });
-    this._rt = { model, sectorId, epoch, seed };
+    this._rt = { model, sectorId, epoch, seed, surveyed: rt.surveyed || new Set() };
     return model;
+  },
+
+  /**
+   * scan:completed → formation discovery. The scanner has already stamped every resolved
+   * asteroid's scanHighlightUntil this tick, so a body key joins the surveyed set iff its rock
+   * was inside a pulse's near radius. A formation is discovered the first scan on which ALL of
+   * its member bodies have been surveyed this epoch — discover() itself is idempotent, so
+   * already-known formations cost one map lookup.
+   */
+  _onScanCompleted(p) {
+    const found = p && p.found;
+    if (!found || !(found.asteroids > 0)) return;
+    const model = this.currentModel();
+    if (!model.count) return;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const surveyed = this._rt.surveyed;
+    let added = false;
+    const list = indexedTypeScan(this.state, 'asteroids');
+    for (const e of list) {
+      if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+      const data = e.data;
+      if (!data || !(Number(data.scanHighlightUntil) > now)) continue;
+      const key = formationBodyKey(e);
+      if (!surveyed.has(key)) { surveyed.add(key); added = true; }
+    }
+    if (!added) return; // no new bodies surveyed → no formation can newly complete
+    const known = this.state.formations && this.state.formations.discovered;
+    for (const f of model.formations) {
+      if (known && known[f.id]) continue;
+      let all = f.memberIds.length > 0;
+      for (const mid of f.memberIds) {
+        if (!surveyed.has(mid)) { all = false; break; }
+      }
+      if (all) this.discover(f.id);
+    }
   },
 
   // ── discovery (the one durable write) ──────────────────────────────────────────────────────
@@ -233,7 +276,14 @@ export const asteroidFormations = {
     };
     formations.discovered[formationId] = record;
     formations.order.push(formationId);
-    if (this.bus) this.bus.emit('formation:discovered', { formationId, sectorId: record.observed.sectorId });
+    if (this.bus) this.bus.emit('formation:discovered', {
+      formationId,
+      sectorId: record.observed.sectorId,
+      designation: record.designation || null,
+      archetype: record.archetype || null,
+      archetypeName: record.archetypeName || null,
+      count: Number.isFinite(record.count) ? record.count : null,
+    });
     return record;
   },
 
