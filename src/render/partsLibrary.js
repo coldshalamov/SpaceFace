@@ -32,7 +32,7 @@ import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
 import { attachRetroMounts } from './thruster/retroMounts.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
-import { freezeStaticChildMatrices } from './staticChildMatrices.js';
+import { freezeStaticChildMatrices, freezeStaticTransformRoot } from './staticChildMatrices.js';
 import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
 import {
@@ -110,7 +110,11 @@ import {
   takeCachedStaticBatchGeometry,
 } from './staticBatchGeometryCache.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
-import { canonicalizeAuthoredProgramState } from './programCanon.js';
+import {
+  canonicalizeAuthoredProgramState,
+  mountCanonicalProgramSpecimens,
+  settleCanonicalProgramSpecimens,
+} from './programCanon.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../data/collisionProxyManifests.js';
 import {
@@ -2908,6 +2912,9 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   // still relies on for failure controls. The authored GLB root batches itself inside
   // buildPlacePropRoot when it arrives; the hidden substrate keeps its shared primitives intact.
   freezeStaticChildMatrices(stationed);
+  // The boundary root's own pose arrives only via mount/seat/snapshot writers, which recompose
+  // it through the matrixAutoUpdate === false dirty hook (PERF-59).
+  freezeStaticTransformRoot(stationed);
   return stationed;
 }
 
@@ -3017,6 +3024,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   const placed = attachPlaceHlod(boundary, entity);
   optimizeStaticBatchesForRoot(placed);
   freezeStaticChildMatrices(placed);
+  freezeStaticTransformRoot(placed);
   return placed;
 }
 
@@ -3247,6 +3255,7 @@ function commitAuthoredPlaceBoundary(
   // buildAuthoredPlaceRoot already batches the authored meshes before binding their LODs and
   // specialized materials. Re-batching here replaces those meshes and leaves stale LOD bindings.
   freezeStaticChildMatrices(authored.root);
+  freezeStaticTransformRoot(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
   boundary.userData.authoredReadableFallbackRetained = false;
@@ -4901,6 +4910,12 @@ function authoredUpgradeConcurrencyLimit() {
   });
 }
 
+// Per-lane bound on speculative decode chains: the next few queued jobs of each lane warm the
+// same `url::slot` cache the admission call reads, so the serial slot stops paying fetch+decode
+// for a job whose turn already arrived. Kept small — each chain pins decoded assets in residency
+// until its job settles, and a cancelled job's warm-up is the waste the bound exists to cap.
+const AUTHORED_JOB_PREFETCH_DEPTH = 2;
+
 function primeNextAuthoredAssetPlan(state) {
   const liveState = authoredRuntimeState();
   if (!state || !liveState || liveState.mode !== 'flight') return;
@@ -4928,33 +4943,43 @@ function primeNextAuthoredAssetPlan(state) {
     });
     return;
   }
-  // Only prepare the job that is about to be admitted. The old loop started a preload Promise for
+  // Only prepare the jobs nearest the serial slot. The old loop started a preload Promise for
   // every queued ship, which effectively asked the serial decode lane to process the whole live
-  // galaxy while the player was already flying. One-job lookahead keeps the same authored asset and
-  // exact composition, but bounds decode/GPU residency demand to the next relevant boundary.
-  // The lookahead is not ship-only anymore: place/station/fx/payload jobs pay the same fetch+decode
-  // inside the serial slot when they arrive cold. Keep the bound at one chain per lane — the next
-  // ship and the next non-ship each warm, so a non-ship head cannot starve the ship behind it.
-  let shipLaneDone = false;
-  let otherLaneDone = false;
+  // galaxy while the player was already flying. Bounded lookahead keeps the same authored asset
+  // and exact composition, but caps speculative decode/GPU residency demand to the next few
+  // boundaries. The lookahead is not ship-only: place/station/fx/payload jobs pay the same
+  // fetch+decode inside the serial slot when they arrive cold. The bound is per lane —
+  // AUTHORED_JOB_PREFETCH_DEPTH ship jobs and non-ship jobs warm ahead of admission, so a
+  // non-ship head cannot starve the ships behind it. Every warmed chain joins the decode lane
+  // as an ambient entry, so a deadline splice (admitted job, urgent LOD demotion) still passes.
+  let shipLaneWarmed = 0;
+  let otherLaneWarmed = 0;
   for (const job of state.jobs) {
-    if (shipLaneDone && otherLaneDone) break;
+    if (shipLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH
+        && otherLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH) break;
     if (!jobStillNeeded(state, job)) {
       const index = state.jobs.indexOf(job);
       if (index >= 0) state.jobs.splice(index, 1);
       cancelQueuedJob(state, job);
       continue;
     }
-    if (job.prefetchPromise || !job.entity || !job.renderer) continue;
+    if (!job.entity || !job.renderer) continue;
     const isShip = job.entity.type === 'ship';
-    if (isShip ? shipLaneDone : otherLaneDone) continue;
+    if (isShip ? shipLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH
+        : otherLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH) continue;
+    if (job.prefetchPromise) {
+      // Warming from an earlier prime still occupies a lane slot — the bound is over the next N
+      // warm plans per lane, not the count this one call begins.
+      if (isShip) shipLaneWarmed += 1; else otherLaneWarmed += 1;
+      continue;
+    }
     const prefetch = startAuthoredJobAssetPrefetch(job);
     if (!prefetch) continue;
     job.prefetchPromise = prefetch;
     job.prefetchPromise.catch((error) => {
       job.prefetchError = error && error.message ? error.message : String(error);
     });
-    if (isShip) shipLaneDone = true; else otherLaneDone = true;
+    if (isShip) shipLaneWarmed += 1; else otherLaneWarmed += 1;
   }
 }
 
@@ -5643,6 +5668,9 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   configureRealtimeCanopyMaterials(root);
   configureTransparentSinglePassSurfaces(root);
   canonicalizeAuthoredProgramState(root);
+  // Retained program specimens ride this admission's own compile (cache-hit binds, no extra
+  // links) and keep each covered program key alive after the boundary's materials release.
+  const programSpecimenMount = mountCanonicalProgramSpecimens(root);
   const policiesMs = Math.max(0, monotonicNow() - policiesStartedAtMs);
   const tier1 = tier1CausalCounters();
   if (tier1) {
@@ -5651,9 +5679,14 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
     if (typeof prepareResidency === 'function') tier1.countPipelinePreparation('gpu-residency', 1);
   }
   const compileStartedAtMs = monotonicNow();
-  const pipelines = typeof preparePipelines === 'function'
-    ? await preparePipelines(root)
-    : { skipped: true, reason: 'pipeline compiler unavailable' };
+  let pipelines;
+  try {
+    pipelines = typeof preparePipelines === 'function'
+      ? await preparePipelines(root)
+      : { skipped: true, reason: 'pipeline compiler unavailable' };
+  } finally {
+    settleCanonicalProgramSpecimens(root, programSpecimenMount);
+  }
   const compileMs = Math.max(0, monotonicNow() - compileStartedAtMs);
   assertAuthoredVisualPreparationActive(options, 'after-pipeline-compile');
   if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
@@ -5752,7 +5785,10 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     if (prefetchedLibrary) {
       try { await prefetchedLibrary; } catch { /* live admission below is authoritative */ }
     }
-    const library = await preloadAuthoredAssetsForEntity(renderer, entity, options);
+    const library = await preloadAuthoredAssetsForEntity(renderer, entity, {
+      ...options,
+      admissionDeadline: true,
+    });
     endAdmissionPhase(phaseTimings, 'decode', decodeStartedAtMs);
     const compositionStartedAtMs = monotonicNow();
     try {
@@ -5807,6 +5843,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
             ...options,
             renderer,
             scene,
+            committedAuthored: authored,
           });
         }
       } finally {
@@ -6031,13 +6068,27 @@ async function disposeAbandonedWholeShipLodRoot(composed) {
   }
 }
 
-function installWholeShipLodFamilyController(boundary, entity, setActive, options = {}) {  if (!boundary || !entity || entity.isPlayer === true) return false;
+export function installWholeShipLodFamilyController(boundary, entity, setActive, options = {}) {  if (!boundary || !entity || entity.isPlayer === true) return false;
   const selection = wholeShipVisualForEntity(entity, { ...options, requiredWholeShip: true });
   const family = selection && selection.lodFamily;
   if (!canInstallWholeShipLodFamily(entity, selection)) return false;
-  if (boundary.userData.wholeShipLodFamilyInstalled) return false;
+  if (boundary.userData.wholeShipLodFamilyInstalled) {
+    // The commit already swapped a fresh root in; a refresh failure must not reject this
+    // admission — the stale retained roots stay covered by the teardown hook.
+    try {
+      const refresh = boundary.userData.refreshWholeShipLodFamily;
+      if (typeof refresh === 'function') refresh(options.committedAuthored || null);
+    } catch (error) {
+      console.warn('[partsLibrary] whole-ship LOD family refresh failed', error);
+    }
+    return false;
+  }
 
   const roots = Object.create(null);
+  // Composed authored records carry resources that live outside the node tree (package-instance
+  // pins, flight-template holds, owner-local GPU objects); keep them per resident level so
+  // teardown can release them even after a swap detached the level's root.
+  const retainedComposed = new Map();
   let activeLevel = 'lod0';
   let pendingLevel = null;
   // Whole-ship LOD demotions are intentionally started from the normal per-frame selector, but
@@ -6055,11 +6106,67 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
   };
   roots.lod0 = findActiveRoot();
   if (!roots.lod0) return false;
+  if (options.committedAuthored && options.committedAuthored.root === roots.lod0) {
+    retainedComposed.set('lod0', options.committedAuthored);
+  }
 
   const baseUpdate = boundary.userData.updateLod;
   boundary.userData.wholeShipLodFamily = family;
   boundary.userData.wholeShipLodFamilyInstalled = true;
   boundary.userData.wholeShipLodActiveLevel = 'lod0';
+  // Boundary-scoped so soak probes can inspect the live swap-back cache; teardown re-detaches it.
+  boundary.userData.wholeShipLodRoots = roots;
+  boundary.userData.wholeShipLodRetainedComposed = retainedComposed;
+
+  const releaseComposedRetained = (composed) => {
+    void Promise.resolve()
+      .then(() => disposePreparedAuthoredShip(composed))
+      .catch((error) => console.info('[partsLibrary] whole-ship LOD retained-level cleanup failed', error));
+  };
+
+  // Demoted-level roots stay retained-but-detached for instant swap-back; the teardown traversal
+  // only reaches attached children, so each stale retained root re-attaches into the dying tree
+  // to take the identical per-node disposal, then its composed record releases authored-level
+  // pins once the traversal has finished.
+  boundary.userData.disposeWholeShipLodRetained = () => {
+    for (const level of Object.keys(roots)) {
+      const root = roots[level];
+      const composed = retainedComposed.get(level) || null;
+      delete roots[level];
+      retainedComposed.delete(level);
+      if (!root) continue;
+      if (root.parent !== boundary) boundary.add(root);
+      if (composed) releaseComposedRetained(composed);
+    }
+  };
+
+  // A re-commit swaps in a fresh authored root while this controller persists. Every retained
+  // root belongs to the superseded admission — dispose it rather than retaining both generations
+  // — then rebind lod0 to the freshly committed root.
+  boundary.userData.refreshWholeShipLodFamily = (committedAuthored = null) => {
+    for (const level of Object.keys(roots)) {
+      const root = roots[level];
+      const composed = retainedComposed.get(level) || null;
+      delete roots[level];
+      retainedComposed.delete(level);
+      if (!root) continue;
+      if (root.parent === boundary) boundary.remove(root);
+      if (composed) {
+        releaseComposedRetained(composed);
+      } else {
+        try { disposeDetachedObject(root); }
+        catch (error) { console.warn('[partsLibrary] whole-ship LOD stale root cleanup failed', error); }
+      }
+    }
+    const fresh = findActiveRoot();
+    roots.lod0 = fresh;
+    if (committedAuthored && committedAuthored.root === fresh) {
+      retainedComposed.set('lod0', committedAuthored);
+    }
+    activeLevel = 'lod0';
+    boundary.userData.wholeShipLodActiveLevel = 'lod0';
+    return !!fresh;
+  };
 
   const swapTo = (level) => {
     const next = roots[level];
@@ -6078,6 +6185,8 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
   };
 
   boundary.userData.updateLod = (level) => {
+    // Teardown clears the retained map; a dead boundary's selector must not schedule new loads.
+    if (!roots.lod0) return;
     const requested = normalizeRequestedLod(level);
     if (typeof baseUpdate === 'function') baseUpdate(requested);
     const transition = resolveWholeShipLodTransition(activeLevel, requested, {
@@ -6117,6 +6226,9 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
           // residency owner the package is only cache/bootstrap-owned and a sweep can evict it
           // between load and createInstance ("must be retained before creating an instance").
           residencyOwner: boundary,
+          // A demotion is presentation-path work on a live boundary: splice its plan decode ahead
+          // of queued ambient prefetch/runway entries so deep lookahead cannot delay the swap.
+          admissionDeadline: true,
         });
         const publicationWait = waitForOpeningGraphPublicationRelease();
         if (publicationWait) await publicationWait;
@@ -6146,6 +6258,7 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
           return;
         }
         roots[requested] = composed.root;
+        retainedComposed.set(requested, composed);
         if (shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) swapTo(requested);
       } catch (error) {
         // A throw after compose abandons the same uploaded root — dispose before logging.
@@ -6457,25 +6570,57 @@ function admitEntityPlan(renderer, options, library, plan) {
     lanes = new Map();
     planAdmissionByRenderer.set(renderer, lanes);
   }
-  const previous = lanes.get(partRoot) || Promise.resolve();
-  const task = previous.catch(() => {}).then(async () => {
-    // Re-check only after earlier demand has committed its records. Checking before joining the lane
-    // permits duplicate decodes; copying slot arrays outside the lane permits last-writer data loss.
-    if (!libraryHasPreloadPlan(library, plan)) {
-      await loadPlanIntoLibrary(renderer, options, library, plan);
+  let lane = lanes.get(partRoot);
+  if (!lane) {
+    lane = { running: false, queued: [] };
+    lanes.set(partRoot, lane);
+  }
+  return new Promise((resolve, reject) => {
+    const entry = {
+      deadline: options && options.admissionDeadline === true,
+      run: async () => {
+        // Re-check only after earlier demand has committed its records. Checking before joining
+        // the lane permits duplicate decodes; copying slot arrays outside the lane permits
+        // last-writer data loss.
+        if (!libraryHasPreloadPlan(library, plan)) {
+          await loadPlanIntoLibrary(renderer, options, library, plan);
+        }
+        return library;
+      },
+      resolve,
+      reject,
+    };
+    // The lane stays serial, but not every caller sits on the player's deadline: prefetch and
+    // runway decodes are ambient warm-up while the admitted upgrade job is the presentation
+    // path itself. A deadline entry splices ahead of queued ambient entries — the running
+    // task and earlier deadline entries keep their order.
+    if (entry.deadline) {
+      let index = lane.queued.length;
+      while (index > 0 && !lane.queued[index - 1].deadline) index--;
+      lane.queued.splice(index, 0, entry);
+    } else {
+      lane.queued.push(entry);
     }
-    return library;
+    pumpEntityPlanLane(lanes, partRoot, lane);
   });
-  lanes.set(partRoot, task);
-  const cleanup = () => {
-    if (lanes.get(partRoot) === task) lanes.delete(partRoot);
-  };
-  return task.then((value) => {
-    cleanup();
-    return value;
+}
+
+function pumpEntityPlanLane(lanes, partRoot, lane) {
+  if (lane.running) return;
+  const entry = lane.queued.shift();
+  if (!entry) {
+    lanes.delete(partRoot);
+    return;
+  }
+  lane.running = true;
+  entry.run().then((value) => {
+    lane.running = false;
+    entry.resolve(value);
+    pumpEntityPlanLane(lanes, partRoot, lane);
   }, (error) => {
-    cleanup();
-    throw error;
+    lane.running = false;
+    entry.reject(error);
+    pumpEntityPlanLane(lanes, partRoot, lane);
   });
 }
 
@@ -10413,6 +10558,8 @@ function createInstanceChunk(scene, pool, ordinal, options = {}) {
     ordinal,
     scene,
     packageAdmission: null,
+    matrixSerial: 0,
+    submitPolicyMemo: null,
   };
   if (options.deferScenePublication === true) {
     chunk.packageAdmission = {
@@ -10567,6 +10714,9 @@ function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
 function writeInstanceChunkMatrix(chunk, index, matrix) {
   assertDynamicBufferOwnerWritable(chunk.dynamicBufferOwner);
   chunk.mesh.setMatrixAt(index, matrix);
+  // Every visibleIndices add/remove pairs with a write through this choke point, so the
+  // serial versions the submitted-matrix contents the chunk submit-policy verdict reads.
+  chunk.matrixSerial = (chunk.matrixSerial || 0) + 1;
   markDynamicBufferItems(chunk.dynamicBufferOwner, AUTHORED_INSTANCE_MATRIX, index);
 }
 

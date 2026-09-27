@@ -3,6 +3,7 @@
 import { makeShipEntitySpec } from './ships.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { isSurvivalRunLive } from './adventureMigration.js';
+import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 
 const WRECK = 'wreck_choir_tender';
 const SECTOR = 'sector_helios_prime';
@@ -29,7 +30,7 @@ export function createChoirReliefBerth(owner) {
   const actor = (role) => {
     const cached = actors.get(role);
     if (cached?.alive && state.entities.get(cached.id) === cached) return cached;
-    const found = state.entityList.find((e) => e.alive && e.data?.worldRecordId === recordId(role));
+    const found = indexedWorldRecordEntity(state, recordId(role));
     if (found) actors.set(role, found);
     return found || null;
   };
@@ -54,8 +55,16 @@ export function createChoirReliefBerth(owner) {
     });
     return result?.ok === true;
   };
-  const station = () => state.entityList.find((e) => e.alive && e.type === 'station'
-    && e.data?.stationId === 'station_helios');
+  const station = () => {
+    const index = state.entityIndex;
+    const indexed = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && index.byStationId instanceof Map
+      ? index.byStationId.get('station_helios')
+      : null;
+    if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
+    return (state.entityList || []).find((e) => e.alive && e.type === 'station'
+      && e.data?.stationId === 'station_helios');
+  };
   const spawn = (role, pos) => {
     const existing = actor(role);
     if (existing || own()[`${role}Lost`] || own().evacuated) return existing;

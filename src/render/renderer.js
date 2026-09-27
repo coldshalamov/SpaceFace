@@ -8,7 +8,7 @@ import { pickNextContactCompileSubject } from './nextContactWarm.js';
 import { pickDecodeRunwayCandidates } from './decodeRunwayPick.js';
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
 import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
-import { CAMERA_NEAR_MARGIN_WU, modelTruthSlideOutside } from '../data/modelTruth.js';
+import { CAMERA_NEAR_MARGIN_WU, modelTruthPlanarRadius, modelTruthSlideOutside } from '../data/modelTruth.js';
 import { createSpaceBackground } from './spaceBackground.js';
 import * as parallaxLayers from './parallaxLayers.js';
 import {
@@ -17,6 +17,7 @@ import {
 } from './sectorVisualTransition.js';
 import {
   createSpaceReflectionEnvironment,
+  SPACE_REFLECTION_PMREM_CUBE_SIZE,
   SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
 } from './spaceReflectionEnvironment.js';
 import {
@@ -88,6 +89,7 @@ import {
   OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID,
   PART_LIBRARY_CONTRACT,
 } from './partsLibrary.js';
+import { clearCanonicalProgramSpecimens } from './programCanon.js';
 import {
   bindAuthoredAssetPerfCounters,
   listDecodedAuthoredParts,
@@ -137,7 +139,7 @@ import {
   resolveWorldPresentationEntity,
 } from '../world/presentationSources.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
-import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
@@ -153,7 +155,7 @@ import {
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
 import { projectedWidthPx } from './lod.js';
-import { resolveWebGlRendererFlags } from './presentPath.js';
+import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
   openingSubjectIdentity,
@@ -176,6 +178,7 @@ import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
 import { ensurePerfRuntime } from '../core/perfRuntime.js';
 import { perfCountersRequested } from '../core/perfCounters.js';
+import { shouldSkipFlightDraw } from '../core/presentationFreeze.js';
 import { LOOP_FIXED_DT } from '../core/simulationRunner.js';
 import { installGlInstrumentation } from './glInstrumentation.js';
 import { installDomInstrumentation } from '../ui/domInstrumentation.js';
@@ -239,6 +242,7 @@ import {
 import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
 import { shouldRefreshRealtimeShadowMap } from './shadowPresentCadence.js';
 import {
+  armCallbackAfterPresent,
   collectCompileSubjects,
   compileSubjectsAcrossPresents,
   revealSubjectForCompile,
@@ -278,6 +282,7 @@ import {
   yieldToBrowser,
   yieldToNextPresent,
 } from './startupGpuResidency.js';
+import { rehydrateDetachedPackages } from './packageCpuDetach.js';
 import {
   collectOpeningSubmissionLeaves,
   combineOpeningProducerCensuses,
@@ -921,6 +926,24 @@ function entityHasAuthoredResidentRoot(entity) {
   return typeof authoredState === 'string' && authoredState.startsWith('authored');
 }
 
+/** True while an entity's visual root is mid-admission — a decode already paid for.
+ * Inside the landmark keep runway it counts as resident so an evict poll cannot
+ * restart the paid decode by dropping the root it is streaming into. */
+function entityHasAuthoredPendingRoot(entity) {
+  const root = entity && (entity.mesh || (entity.view && entity.view.root)) || null;
+  const authoredState = root && root.userData ? root.userData.authoredAssetState : null;
+  return isAuthoredPendingStatus(authoredState);
+}
+
+/** Keep-distance for the landmark residency bound, measured from the live look-at
+ * like the rest of the keep/evict radii; Infinity without a player or position. */
+function landmarkKeepDistanceWu(entity, state) {
+  const player = playerEntityForRenderState(state);
+  if (!player || !player.pos || !entity || !entity.pos) return Infinity;
+  const delta = tableLookAtDelta(state, player.pos, entity.pos, _residencyLookDelta);
+  return Math.hypot(delta.x, delta.z);
+}
+
 function inboundDecodeRadius(state, radius = null) {
   const numeric = Number(radius);
   if (radius != null && Number.isFinite(numeric)) return numeric;
@@ -996,7 +1019,9 @@ function playerPlanarDistance(entity, state) {
 function isInboundDecodeHull(entity, state, radius = null) {
   if (!entity || entity.alive === false) return false;
   if (entity.isPlayer === true || (state && entity.id === state.playerId)) return false;
-  if (entity.type !== 'ship' && entity.type !== 'wreck' && entity.type !== 'drone') return false;
+  const stationBoundary = entity.type === 'station';
+  if (!stationBoundary
+      && entity.type !== 'ship' && entity.type !== 'wreck' && entity.type !== 'drone') return false;
   // Promote and catch-up are player-centered. tableLookAtDelta follows the
   // leftover chase focus, so a relocate leaves the hull "beyond the table"
   // until the camera crawls 10k+ WU. Cook from the player, not the look-at.
@@ -1006,11 +1031,16 @@ function isInboundDecodeHull(entity, state, radius = null) {
   }
   // An explicit radius is a hysteresis caller's bound (evict/admit edge). Keep it
   // a pure disc test; prediction only extends the default admission radius.
-  if (radius != null) return false;
+  // Stations are exempt: a boundary evicted on the disc alone mid-compose would
+  // restart a paid decode, so the station evict edge runs the approach clause.
+  if (radius != null && !stationBoundary) return false;
   // Approach-aware admission: a hull closing on the glass inside the promote
   // horizon gets its decode+build chain started while it is still outside the
   // static circle. entityTimeToGlassSeconds extrapolates shelved far rows from
   // lastExactT first — their stored pos is stale for anything that kept moving.
+  // Stations approach on the full authored decode runway — the same horizon
+  // kickDecodeRunwayAssets decodes them on — while hulls keep the promote horizon.
+  const horizon = stationBoundary ? TABLE_DECODE_RUNWAY_SECONDS : TABLE_PROMOTE_HORIZON_SECONDS;
   const player = playerEntityForRenderState(state);
   if (!player || !player.pos) return false;
   const env = renderAdmissionEnv(state);
@@ -1019,9 +1049,9 @@ function isInboundDecodeHull(entity, state, radius = null) {
     entity,
     env,
     state,
-    TABLE_PROMOTE_HORIZON_SECONDS,
+    horizon,
     pad,
-  ) <= TABLE_PROMOTE_HORIZON_SECONDS;
+  ) <= horizon;
 }
 
 /** Hold the cooked GPU working set so first-flight travel cannot evict+rebuild it. */
@@ -1168,6 +1198,9 @@ export function isEntityRenderRelevant(entity, state, radius = null, options = n
     mode: state && state.mode,
     currentSectorId: state && state.world && state.world.currentSectorId,
     authoredResident: entityHasAuthoredResidentRoot(entity),
+    authoredPending: entityHasAuthoredPendingRoot(entity),
+    distanceWu: landmarkKeepDistanceWu(entity, state),
+    travelSpeedWu: tableTravelSpeed(state),
   })) return true;
   const tier = entity.activity && entity.activity.presentationTier;
   const activityFrame = state && state.render && state.render.activityFrame;
@@ -1843,6 +1876,10 @@ const CAMERA_CLEARANCE_MIN_SPAN_WU = 120;
 // bounds return null so a corrupt subtree can never push the camera off the world.
 const CAMERA_CLEARANCE_MAX_SPAN_WU = 14000;
 const CAMERA_CLEARANCE_KINDS = new Set(['station', 'place', 'asteroid', 'wreck']);
+// How long a latched "no slide" keep-out verdict may live. Membership changes that no serial
+// covers (an authored mesh settling, a collides flag flipping on) resolve within this bound —
+// shorter than the camera's own adopt hold, and the same cadence reconcileMeshResidency polls at.
+const CAMERA_KEEP_OUT_LATCH_TTL_S = 0.25;
 // Whole-boundary AABBs are the right floor for compact structures. Above this span — the
 // authored mega-stations are ~1300 WU across — one box reports the city's tallest tower as
 // the floor for every XZ inside the footprint, pinning the camera at ~380 WU for the entire
@@ -2053,10 +2090,17 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
 /**
  * Slide the chase camera in the plane so its near point stays outside a measured shell.
  * Unsettled meshes are ignored, same as the roof. The ship is not moved.
+ *
+ * The "no slide" outcome is latched like _seamMarkersRelevant: re-deriving it every frame is a
+ * full entity walk plus per-shell skin allocations, and while the near point stays inside its
+ * recorded slack the answer cannot change. The latch breaks on entity-index membership and mesh
+ * bind/unbind, erodes by the near point's own displacement, and expires on a wall-clock bound so
+ * a settling mesh or an accelerating hull cannot hold a stale identity answer.
  */
 export function cameraKeepOutTarget(owner, camX, camZ, focusX, focusZ, camY) {
   const meshes = owner && owner._meshes;
-  const entities = owner && owner.state && owner.state.entities;
+  const state = owner && owner.state;
+  const entities = state && state.entities;
   if (!entities || typeof entities.values !== 'function') return { x: camX, z: camZ };
   const dx = (Number(focusX) || 0) - camX;
   const dy = -(Number(camY) || 0);
@@ -2065,14 +2109,62 @@ export function cameraKeepOutTarget(owner, camX, camZ, focusX, focusZ, camY) {
   const t = Math.min(1, 1 / len);
   const nearX = camX + dx * t;
   const nearZ = camZ + dz * t;
+  const v = entityIndexVersion(state);
+  const meshV = owner._meshesVersion || 0;
+  // Wall clock, not sim time: authored admission commits keep running while the sim is frozen,
+  // and a settle is exactly the version-free membership change the ttl exists to bound.
+  const now = (typeof performance !== 'undefined' && Number.isFinite(performance.now()))
+    ? performance.now() / 1000
+    : Date.now() / 1000;
+  const last = owner._keepOutLatch;
+  if (last && last.v === v && last.meshV === meshV && last.versionMode === (v !== null)) {
+    const mdx = nearX - last.nearX;
+    const mdz = nearZ - last.nearZ;
+    if (mdx * mdx + mdz * mdz <= last.slack * last.slack && now - last.t <= last.ttl) {
+      return { x: camX, z: camZ };
+    }
+  }
   const solids = [];
+  let slack = Infinity;
+  let solidSpeed = 0;
   for (const entity of entities.values()) {
     if (!entity || entity.alive === false || entity.collides === false || !entity.pos) continue;
     const mesh = meshes && typeof meshes.get === 'function' ? meshes.get(entity.id) : null;
     if (!mesh || !mesh.userData || clearanceBoundUnsettled(mesh.userData)) continue;
     solids.push(entity);
+    // Slack in the slide's own metric: only a shell wide enough to swallow the near point
+    // participates (the span gate inside modelTruthSlideOutside), and its planar bound is the
+    // rotation-invariant outer reach — the 1.35 matches the sampled cap in colliderRadiusAt.
+    const planar = modelTruthPlanarRadius(entity);
+    const span = planar * 2;
+    if (span < CAMERA_CLEARANCE_MIN_SPAN_WU || span > CAMERA_CLEARANCE_MAX_SPAN_WU) continue;
+    const ex = Number(entity.pos.x) || 0;
+    const ez = Number(entity.pos.z) || 0;
+    const reach = planar * 1.35;
+    const s = Math.hypot(nearX - ex, nearZ - ez) - reach - CAMERA_NEAR_MARGIN_WU;
+    if (s < slack) slack = s;
+    const vel = entity.vel;
+    const spd = vel
+      ? Math.hypot(Number(vel.x) || 0, Number(vel.z) || 0)
+      : 0;
+    if (spd > solidSpeed) solidSpeed = spd;
   }
   const slid = modelTruthSlideOutside(solids, nearX, nearZ, CAMERA_NEAR_MARGIN_WU);
+  if (slid.x === nearX && slid.z === nearZ && slack > 0) {
+    // Only the identity outcome is reusable — a real slide answer is content-position dependent.
+    owner._keepOutLatch = {
+      v,
+      meshV,
+      nearX,
+      nearZ,
+      slack,
+      t: now,
+      ttl: Math.min(CAMERA_KEEP_OUT_LATCH_TTL_S, slack / Math.max(solidSpeed, 1e-3)),
+      versionMode: v !== null,
+    };
+  } else {
+    owner._keepOutLatch = null;
+  }
   return { x: camX + (slid.x - nearX), z: camZ + (slid.z - nearZ) };
 }
 
@@ -4054,8 +4146,10 @@ export function createSectorBoundaryGenerationManager(options = {}) {
 }
 
 function scheduleSectorBoundaryBuildTurn(callback) {
-  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(callback);
-  else setTimeout(callback, 0);
+  // Boundary builds are ambient admission work: each turn runs budgeted mount/prepare steps and
+  // mounts land hidden until the publisher reveals them. Inside the rAF callback they ran on the
+  // frame's pre-present budget; after the present at background priority they cannot delay it.
+  armCallbackAfterPresent(callback);
 }
 
 /** Transactionally attach one prepared hidden boundary to render/presentation ownership. Binding
@@ -4952,8 +5046,22 @@ export const render = {
       video: state.settings && state.settings.video,
       preserveDrawingBuffer: devShot,
     });
+    // three r184 hardcodes alpha:true in the contextAttributes it requests from getContext
+    // itself, so the opaque canvas only takes effect when the context is created here. A
+    // null or attribute-less result (headless/mock canvas, unsupported GL) falls back to
+    // three's own creation path, which keeps its original context-error semantics.
+    let glContext = null;
+    try {
+      const candidate = canvas && typeof canvas.getContext === 'function'
+        ? canvas.getContext('webgl2', resolveWebGlContextAttributes(glFlags))
+        : null;
+      if (candidate && typeof candidate.getContextAttributes === 'function') glContext = candidate;
+    } catch (_) {
+      glContext = null;
+    }
     const renderer = new THREE.WebGLRenderer({
       canvas,
+      context: glContext || undefined,
       antialias: glFlags.antialias,
       alpha: glFlags.alpha === true,
       powerPreference: glFlags.powerPreference,
@@ -5049,6 +5157,12 @@ export const render = {
     // before whichever post route draws. RenderGraph's AO path renders this scene twice per
     // frame; with the flag on, every render pass re-walked every Object3D.
     scene.matrixWorldAutoUpdate = false;
+    // PERF-59: the scene's own transform is never written, but the default compose still set
+    // matrixWorldNeedsUpdate every frame — which forced=true propagated to every child and
+    // defeated both the static-subtree prune (sfMatrixFrozen) and the matrixWorldAutoUpdate
+    // write skip. With the compose off, the per-frame walk only rewrites subtrees whose nodes
+    // actually re-posed this frame.
+    scene.matrixAutoUpdate = false;
     const dynamicBuffers = createDynamicBufferCoordinator(scene);
     this._dynamicBuffers = dynamicBuffers;
     state.render.dynamicBufferRanges = dynamicBuffers.getDiagnostics();
@@ -5177,6 +5291,8 @@ export const render = {
         this._sessionLiveSectorCookedId = null;
         if (state.render) state.render.sessionLiveSectorCookedId = null;
         this._authoredPreparationEpoch++;
+        // Program pins die with the context; let the next admissions re-mint specimens.
+        clearCanonicalProgramSpecimens();
         this._sectorBoundaryPreparations?.abortAll('webgl-context-lost');
         dynamicBuffers.handleContextLost();
         const preparedPoolResources = prepareAuthoredInstancePoolsForContextLoss(scene, renderer);
@@ -5333,6 +5449,17 @@ export const render = {
             this._invalidatePostOptionsCache();
             this._syncPostOptions(true);
             if (this._assetResidency) this._assetResidency.handleContextRestored();
+            // Refill detached render-package CPU payloads BEFORE any restored-context render
+            // (env bake, link-force warm pass, residency re-upload) can re-upload them empty.
+            // Re-fetch is a force-cache disk hit on the content-hash-immutable render.glb; the
+            // serial per-package decode is deliberately sequential, not a decode storm.
+            try {
+              await rehydrateDetachedPackages({ yieldToMain: yieldToBrowser });
+            } catch (rehydrateError) {
+              if (typeof console !== 'undefined') {
+                console.warn('[render] context-restore package rehydrate failed', rehydrateError);
+              }
+            }
             const restoredPostRoute = this._selectPostRoute({ allowContextRecovery: true });
             // Dummy catalog precompile is illegal mid-flight, including restore.
             // Compile the live scene that already owns the table, then yield so
@@ -5936,6 +6063,7 @@ export const render = {
         const local = this._frameMembrane.toLocal(entity.pos, _meshLocalXZ);
         boundary.position.set(local.x, 0, local.z);
         boundary.rotation.y = -entity.rot;
+        if (boundary.matrixAutoUpdate === false) boundary.updateMatrix();
         if (entity.type === 'ship' || entity.type === 'station') {
           attachContactShadow(boundary, entity);
           const lodLevel = boundary.userData && boundary.userData.lod
@@ -5992,6 +6120,7 @@ export const render = {
             const local = this._frameMembrane.toLocal(entity.pos, _meshLocalXZ);
             boundary.position.set(local.x, 0, local.z);
             boundary.rotation.y = -entity.rot;
+            if (boundary.matrixAutoUpdate === false) boundary.updateMatrix();
           },
           meshes: this._meshes,
           bindPresentationMesh: (entity, boundary) => this._bindPresentationMesh(entity, boundary),
@@ -8740,11 +8869,13 @@ export const render = {
       }
       // Chunks grow by power-of-two rebuilds; a rebuild allocates a fresh instanceMatrix buffer,
       // i.e. a bufferData the fight would pay mid-round. Size every live bucket to the field's
-      // total poolable count per variant while still behind the shell.
+      // total poolable count per variant while still behind the shell — and hand the same census
+      // to the variant warm below so a chunk created for a variant with no live rocks yet is born
+      // at field size rather than the 64 default it would otherwise outgrow mid-round.
+      const requiredByVariant = [0, 0, 0, 0, 0];
       const fieldRecords = state.world && state.world.asteroidField
         && Array.isArray(state.world.asteroidField.rocks) ? state.world.asteroidField.rocks : null;
       if (fieldRecords && this._asteroidInstancePool) {
-        const requiredByVariant = [0, 0, 0, 0, 0];
         const countRock = (rock) => {
           if (!rock || rock.alive === false) return;
           const data = rock.data || {};
@@ -8781,7 +8912,8 @@ export const render = {
         // compile batch line each.
         try {
           warmAsteroidInstanceVariants(this._asteroidInstancePool,
-            [0, 1, 2, 3, 4].map((variant) => asteroidLeafResources('ast_common_rock', variant)));
+            [0, 1, 2, 3, 4].map((variant) => asteroidLeafResources('ast_common_rock', variant)),
+            requiredByVariant);
         } catch (error) {
           console.warn('[render] asteroid instance pool warm failed', error);
         }
@@ -12554,6 +12686,7 @@ export const render = {
         reflectionEnv = createSpaceReflectionEnvironment(THREE);
         envTarget = pmrem.fromScene(
           reflectionEnv.scene, SPACE_REFLECTION_PMREM_SIGMA_RADIANS, 0.1, 1000,
+          { size: SPACE_REFLECTION_PMREM_CUBE_SIZE },
         );
       }
       this._envMapSource = iblSource;
@@ -13003,6 +13136,7 @@ export const render = {
       const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
       m.position.set(local.x, 0, local.z);
       m.rotation.y = -e.rot;
+      if (m.matrixAutoUpdate === false) m.updateMatrix();
       if (e.type === 'ship' || e.type === 'station') {
         attachContactShadow(m, e);
         const lodLevel = m.userData && m.userData.lod ? m.userData.lod.level : null;
@@ -13098,6 +13232,7 @@ export const render = {
     const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
     m.position.set(local.x, 0, local.z);
     m.rotation.y = -e.rot;
+    if (m.matrixAutoUpdate === false) m.updateMatrix();
     // carry the bank pose so the rebuilt hull doesn't momentarily sit level mid-turn
     const hull = m.userData && m.userData.hull;
     if (hull && e.bank != null) hull.rotation.x = e.bank;
@@ -13925,7 +14060,6 @@ export const render = {
     const originSeq = (this.state.world && this.state.world.frameOriginSeq) | 0;
     const fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
     const fieldCount = field && Array.isArray(field.rocks) ? field.rocks.length : 0;
-    const fieldKey = `${originSeq}:${fieldVersion}:${fieldCount}`;
     let posedField = 0;
     const poseRow = (row) => {
       if (!row || row.alive === false || !row.pos) return false;
@@ -13934,23 +14068,33 @@ export const render = {
       const local = this._frameMembrane.toLocal(row.pos, _meshLocalXZ);
       mesh.position.set(local.x, 0, local.z);
       mesh.rotation.y = -(row.rot || 0);
+      if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
       return true;
     };
-    if (this._worldFieldPoseKey !== fieldKey && field && Array.isArray(field.rocks)) {
+    if ((this._worldFieldPoseOriginSeq !== originSeq
+        || this._worldFieldPoseVersion !== fieldVersion
+        || this._worldFieldPoseCount !== fieldCount)
+      && field && Array.isArray(field.rocks)) {
       for (let i = 0; i < field.rocks.length; i++) {
         if (poseRow(field.rocks[i])) posedField++;
       }
-      this._worldFieldPoseKey = fieldKey;
+      this._worldFieldPoseOriginSeq = originSeq;
+      this._worldFieldPoseVersion = fieldVersion;
+      this._worldFieldPoseCount = fieldCount;
       if (posedField) invalidateAsteroidInstancePool(this._asteroidInstancePool);
     }
     // Same gate the field rows use: dressingTable.version bumps on add/drop, frameOriginSeq on
     // an origin shift, so a steady-state frame skips the per-row toLocal writes entirely.
     const dressingVersion = dressing && Number.isFinite(dressing.version) ? dressing.version : 0;
     const dressingCount = dressing && Array.isArray(dressing.rows) ? dressing.rows.length : 0;
-    const dressingKey = `${originSeq}:${dressingVersion}:${dressingCount}`;
-    if (dressing && Array.isArray(dressing.rows) && this._worldDressingPoseKey !== dressingKey) {
+    if (dressing && Array.isArray(dressing.rows)
+      && (this._worldDressingPoseOriginSeq !== originSeq
+        || this._worldDressingPoseVersion !== dressingVersion
+        || this._worldDressingPoseCount !== dressingCount)) {
       for (let i = 0; i < dressing.rows.length; i++) poseRow(dressing.rows[i]);
-      this._worldDressingPoseKey = dressingKey;
+      this._worldDressingPoseOriginSeq = originSeq;
+      this._worldDressingPoseVersion = dressingVersion;
+      this._worldDressingPoseCount = dressingCount;
     }
     return posedField;
   },
@@ -14473,6 +14617,10 @@ export const render = {
     // background programs and uploaded their buffers; otherwise bloomScene pays 17 first-use
     // links on Intel/ANGLE in one presented frame.
     if (this.state.mode === 'menu' && this._firstPresentGpuReady !== true) return false;
+    // The fulfillment boarding blackout covers the canvas with an opaque UI surface while the
+    // simulation and its FSM keep advancing underneath — the flight submit is pure waste for the
+    // duration. prepareFrame still ran, so the journal drained and the scene stays hot for resume.
+    if (shouldSkipFlightDraw(this.state)) return false;
     // Entity roots may spawn/rebuild and VFX events may fire between render updates;
     // reassert diagnostic owner seams immediately before draw so nothing leaks a frame.
     try { this.state?.render?.perfEntityIsolation?.reassert?.(); } catch (_) { /* diagnostic only */ }
@@ -15986,6 +16134,9 @@ function disposeObject(obj) {
   detachStashedStaleWebGlDisposeListeners([obj]);
   obj.traverse((c) => {
     if (!c) return;
+    // Release the vendored maintained shadow-caster registry entry: a flagged-but-torn-down
+    // object would stay pinned by the registry Set otherwise.
+    c.castShadow = false;
     // A boundary torn down while its publication-deferred authored payload is still parked
     // owns the preparedAuthoredRoots registration for that detached tree. Firing the installed
     // disposer here unregisters those roots; skipping it leaves every context root — composed
@@ -15996,6 +16147,11 @@ function disposeObject(obj) {
     if (typeof disposePresentation === 'function') disposePresentation();
     const releaseResidency = c.userData && c.userData.releaseAuthoredAssetResidency;
     if (typeof releaseResidency === 'function') releaseResidency('render-boundary-disposed');
+    // Whole-ship LOD boundaries retain demoted-level roots detached for instant swap-back, so
+    // this traversal never reaches them. The boundary's hook re-attaches each stale retained
+    // root into the dying tree; the children loop then applies the identical teardown grammar.
+    const disposeLodRetained = c.userData && c.userData.disposeWholeShipLodRetained;
+    if (typeof disposeLodRetained === 'function') disposeLodRetained();
     // Instance-pool slots hold `slot.owner -> c`; THREE's `removed` event only reaches the
     // outermost detached root, so owner nodes nested under this tree never drain their pool
     // slots from the listener. Draining here releases the slot and lets the chunk retire.

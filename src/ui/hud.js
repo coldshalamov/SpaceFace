@@ -1779,6 +1779,7 @@ export function createHud(ctx, alerts) {
   const elCargo = center.querySelector('[data-k=cargo]');
   const elCredits = center.querySelector('[data-k=credits]');
   const elWeapons = center.querySelector('[data-k=weapons]');
+  const elWpnstat = center.querySelector('#sf-wpnstat');
   const elRole = center.querySelector('[data-k=role]');
   const elTetherStat = center.querySelector('#sf-tetherstat');
   const elTether = center.querySelector('[data-k=tether]');
@@ -4100,7 +4101,7 @@ export function createHud(ctx, alerts) {
         const tgtLocked = isLocked && combat && combat.lockTarget === tid;
         setClass(lockDiamond, 'locked-tgt', tgtLocked);
         const shape = targetBracketShape(tgt, isHostileToPlayer(tgt, p ? p.team : 0, state));
-        if (lockDiamond.dataset.shape !== shape) lockDiamond.dataset.shape = shape;
+        setAttr(lockDiamond, 'data-shape', shape);
         const innerDiamond = lockDiamond._sfInner || (lockDiamond._sfInner = lockDiamond.firstElementChild);
         if (innerDiamond) {
           const spin = shape === 'bracket-friendly' ? ' rotate(45deg)' : '';
@@ -4286,6 +4287,7 @@ export function createHud(ctx, alerts) {
   let overviewStamp = 0;               // marks the rows touched by the current reconcile pass
   let overviewFooter = null;           // retained overflow footer (detached when there is no overflow)
   let overviewFooterAttached = false;
+  let overviewCountMode = false;       // JS-side latch for the sf-overview--count class
   const _overviewContacts = [];        // retained scratch: cleared per call, never reallocated
   const _overviewOrder = [];           // retained scratch: this sample's rows, in display order
   let _overviewIdScratch = new Set();  // retained scratch: swapped with _knownContactIds each call
@@ -4552,7 +4554,7 @@ export function createHud(ctx, alerts) {
     // The threat channel (FRONTEND_PROGRAM §2, option B): red is reserved for threat, so the HUD
     // publishes one state the threat lamp and the red-only marks read — clear / contact / near.
     const threatState = nearbyHostile ? 'near' : (hostileContacts ? 'contact' : 'clear');
-    if (root.dataset.threat !== threatState) root.dataset.threat = threatState;
+    setAttr(root, 'data-threat', threatState);
     let nearestHostile = Infinity;
     for (const c of contacts) if (c.hostile && c.dist < nearestHostile) nearestHostile = c.dist;
     threatReadout.state = threatState;
@@ -4595,7 +4597,10 @@ export function createHud(ctx, alerts) {
     });
     if (!expanded) {
       setDisplay(elOverview, true, 'flex');
-      elOverview.classList.add('sf-overview--count');
+      if (!overviewCountMode) {
+        overviewCountMode = true;
+        elOverview.classList.add('sf-overview--count');
+      }
       const countText = formatRosterCount(contacts);
       if (!overviewFooter) {
         overviewFooter = document.createElement('div');
@@ -4611,7 +4616,10 @@ export function createHud(ctx, alerts) {
       }
       return;
     }
-    elOverview.classList.remove('sf-overview--count');
+    if (overviewCountMode) {
+      overviewCountMode = false;
+      elOverview.classList.remove('sf-overview--count');
+    }
     contacts.sort((a, b) => {
       const bandDelta = contactDisplayBand(a, targetId) - contactDisplayBand(b, targetId);
       if (bandDelta) return bandDelta;
@@ -5488,8 +5496,12 @@ export function createHud(ctx, alerts) {
   }
 
   const ORRERY_RECEIPT_INSET = 30;
+  // Both roots are static index.html markup: resolve each once, retrying only while absent.
+  let toastsLaneEl = null;
+  let alertsEl = null;
   function placeReceiptLane() {
-    const laneRoot = document.getElementById('toasts');
+    if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
+    const laneRoot = toastsLaneEl;
     if (!laneRoot) return;
     const w = typeof window !== 'undefined' ? window.innerWidth : 1280;
     const h = typeof window !== 'undefined' ? window.innerHeight : 720;
@@ -5530,8 +5542,11 @@ export function createHud(ctx, alerts) {
   function placeFlightReadouts(w, h) {
     const boxes = flightInstrumentRects(w, h);
     unplaceFlightBox(speedGaugeEl);
-    unplaceFlightBox(document.getElementById('sf-wpnstat'));
-    const dock = document.querySelector('#alerts .sf-alert--dock');
+    unplaceFlightBox(elWpnstat);
+    if (alertsEl === null) alertsEl = document.getElementById('alerts');
+    // The dock alert is created/removed by alerts.js — a query must run each slow tick, but
+    // scoped to the small #alerts subtree instead of a document-wide selector match.
+    const dock = alertsEl ? alertsEl.querySelector('.sf-alert--dock') : null;
     if (dock) placeFlightBox(dock, boxes.dockPrompt);
   }
 

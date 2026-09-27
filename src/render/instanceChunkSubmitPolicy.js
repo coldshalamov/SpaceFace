@@ -38,6 +38,58 @@ export function nearestSubmittedInstanceDistanceSq(chunk, playerX = 0, playerZ =
   return nearestSubmittedInstanceMetrics(chunk, playerX, playerZ).nearestSq;
 }
 
+// Signed margin between the nearest submitted instance and the cast threshold, in the
+// metric shouldInstanceChunkCastShadow will actually apply: axis distance when a finite
+// castRadius is supplied (the verdict path that wins), euclidean otherwise.
+function castVerdictSlack(nearest, options) {
+  const axisRadius = Number(options && options.castRadius);
+  if (Number.isFinite(nearest.nearestAxis) && Number.isFinite(axisRadius) && axisRadius > 0) {
+    return axisRadius - nearest.nearestAxis;
+  }
+  const radiusSq = Number(options && options.castRadiusSq);
+  const limitSq = Number.isFinite(radiusSq) && radiusSq > 0 ? radiusSq : SHADOW_CAST_RADIUS_SQ;
+  return Math.sqrt(limitSq) - Math.sqrt(nearest.nearestSq);
+}
+
+// Between chunk matrix writes the verdict can only flip when the player's world-unit
+// displacement since the last evaluation exceeds the recorded slack, so clean chunks
+// skip the visibleIndices walk until that margin is spent.
+function nearestSubmittedInstanceMetricsMemoized(chunk, options, submitted, opaque) {
+  const playerX = Number(options && options.playerX) || 0;
+  const playerZ = Number(options && options.playerZ) || 0;
+  const serial = chunk.matrixSerial || 0;
+  const memo = chunk.submitPolicyMemo;
+  if (memo
+      && memo.serial === serial
+      && memo.submitted === submitted
+      && memo.opaque === opaque
+      && memo.castRadius === (options && options.castRadius)
+      && memo.castRadiusSq === (options && options.castRadiusSq)) {
+    const dx = playerX - memo.playerX;
+    const dz = playerZ - memo.playerZ;
+    const moved = Math.sqrt(dx * dx + dz * dz);
+    if (moved === 0 || moved < Math.abs(memo.slack)) {
+      memo.slack -= Math.sign(memo.slack) * moved;
+      memo.playerX = playerX;
+      memo.playerZ = playerZ;
+      return memo.nearest;
+    }
+  }
+  const nearest = nearestSubmittedInstanceMetrics(chunk, playerX, playerZ);
+  chunk.submitPolicyMemo = {
+    serial,
+    submitted,
+    opaque,
+    castRadius: options && options.castRadius,
+    castRadiusSq: options && options.castRadiusSq,
+    playerX,
+    playerZ,
+    slack: castVerdictSlack(nearest, options),
+    nearest,
+  };
+  return nearest;
+}
+
 export function isOpaqueInstancePoolMaterial(material) {
   if (!material) return false;
   if (material.transparent === true) return false;
@@ -83,9 +135,10 @@ export function applyInstanceChunkSubmitPolicy(chunk, options = {}) {
   }
 
   const material = (chunk.pool && chunk.pool.material) || mesh.material;
-  const nearest = nearestSubmittedInstanceMetrics(chunk, options.playerX, options.playerZ);
+  const opaque = isOpaqueInstancePoolMaterial(material);
+  const nearest = nearestSubmittedInstanceMetricsMemoized(chunk, options, submitted, opaque);
   const nextCast = shouldInstanceChunkCastShadow({
-    opaque: isOpaqueInstancePoolMaterial(material),
+    opaque,
     submittedCount: submitted,
     nearestDistanceSq: nearest.nearestSq,
     nearestAxisDistance: nearest.nearestAxis,

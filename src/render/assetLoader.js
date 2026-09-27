@@ -14,6 +14,7 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
+import { sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 import { createRenderPackageLoader, startMeshoptWorkerPool } from './renderPackageLoader.js';
 import {
   renderPackagePilotForAssetId,
@@ -305,7 +306,14 @@ async function createDefaultKtx2Loader() {
   const { KTX2Loader } = await import('three/addons/loaders/KTX2Loader.js');
   const ktx2 = new KTX2Loader();
   ktx2.setTranscoderPath(ASSET_RUNTIME_DECODER_CONTRACT.ktx2TranscoderPath);
-  return configureCspSafeKtx2Loader(ktx2);
+  const configured = configureCspSafeKtx2Loader(ktx2);
+  // Warm the transcoder while the runtime is still being assembled: the WASM fetch and
+  // worker creator install otherwise sit inside the first texture decode's critical path.
+  // A failed warm clears the latch so the first real decode retries instead of inheriting
+  // a rejected pending promise.
+  const warm = configured.init();
+  warm.catch(() => { if (configured.transcoderPending === warm) configured.transcoderPending = null; });
+  return configured;
 }
 
 /**
@@ -318,6 +326,17 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
   if (!ktx2 || !ktx2.workerPool || typeof ktx2.workerPool.setWorkerCreator !== 'function') {
     throw new TypeError('CSP-safe KTX2 setup requires a KTX2Loader worker pool.');
   }
+  // KTX2 transcode is the widest stage of a texture-dense package decode — one task per
+  // image over the pool, so a 15-texture ship package serializes into ~4 waves on the
+  // stock 4-worker pool. Scale the pool with real core headroom; small hosts keep the
+  // stock 4 (decode workers share cores with the present thread, and the meshopt lane
+  // holds its own <=4 co-cap).
+  if (typeof ktx2.workerPool.setWorkerLimit === 'function') {
+    const cores = (typeof navigator !== 'undefined' && Number.isFinite(navigator.hardwareConcurrency))
+      ? navigator.hardwareConcurrency
+      : 4;
+    ktx2.workerPool.setWorkerLimit(Math.max(4, Math.min(8, cores - 2)));
+  }
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const WorkerImpl = options.WorkerImpl || globalThis.Worker;
   const MessageEventImpl = options.MessageEventImpl || globalThis.MessageEvent;
@@ -326,6 +345,36 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
     || ASSET_RUNTIME_DECODER_CONTRACT.ktx2TranscoderPath;
   const wasmUrl = options.wasmUrl || `${transcoderPath}basis_transcoder.wasm`;
   let disposed = false;
+  // The pool's own width is only a per-decoder cap — a KTX2 burst overlapping a meshopt burst
+  // would still field more busy workers than the host has spare cores. Route task intake
+  // through the shared cross-decoder budget (FIFO, so the pool's own queue order is unchanged);
+  // when KTX2 is the only decoder working it still uses the whole budget. Tasks still queued on
+  // the budget when the loader is disposed return their token and never dispatch, matching the
+  // stock pool's dropped-queue semantics (their callers never settle either way).
+  const decodeBudget = options.decodeBudget || sharedDecodeTaskBudget();
+  const pendingPoolTasks = new Set();
+  const pool = ktx2.workerPool;
+  if (typeof pool.postMessage === 'function' && pool.spacefaceDecodeBudgetGated !== true) {
+    const postTask = pool.postMessage.bind(pool);
+    pool.spacefaceDecodeBudgetGated = true;
+    pool.postMessage = (msg, transfer) => decodeBudget.acquire().then((release) => {
+      if (disposed) {
+        release();
+        return new Promise(() => {});
+      }
+      const task = {};
+      task.settle = () => { if (pendingPoolTasks.delete(task)) release(); };
+      pendingPoolTasks.add(task);
+      let result;
+      try {
+        result = postTask(msg, transfer);
+      } catch (error) {
+        task.settle();
+        throw error;
+      }
+      return Promise.resolve(result).finally(task.settle);
+    });
+  }
 
   ktx2.workerSourceURL = workerUrl;
   ktx2.transcoderBinary = null;
@@ -357,6 +406,9 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
   ktx2.dispose = function disposeCspSafeKtx2Transcoder() {
     if (disposed) return;
     disposed = true;
+    // Terminated workers never answer, so settle gated tasks here to return their tokens;
+    // without this every task in flight at dispose would leak a budget slot.
+    for (const task of pendingPoolTasks) task.settle();
     this.workerPool.dispose();
     this.transcoderBinary = null;
     this.transcoderPending = null;

@@ -1321,8 +1321,9 @@ export const masslineHud = {
     if (dom.strainPill) setStyle(dom.strainPill, 'display', 'none');
     this._lineLoad = null;
     // The panel gates itself on tether.active, not on flight/docked — hide it explicitly here so
-    // it never outlives the flight HUD (docked, flag off, dead player).
-    if (this._cadenceReadout) this._cadenceReadout.element.hidden = true;
+    // it never outlives the flight HUD (docked, flag off, dead player). hide() keeps the
+    // readout's JS-side last-value caches authoritative.
+    if (this._cadenceReadout) this._cadenceReadout.hide();
   },
 
   _ensureDom() {

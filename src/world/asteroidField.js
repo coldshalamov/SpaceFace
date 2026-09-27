@@ -5,6 +5,7 @@
 import { allocateEntityId, makeEntity, clearEntityRuntime } from '../core/entity.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
+import { indexedTypeScan } from './livingWorldViews.js';
 import { advanceResourceBody } from './worldCatchup.js';
 
 export const ASTEROID_FIELD_SCHEMA = 'spaceface.asteroidField.v1';
@@ -243,7 +244,7 @@ function resolveAdmitOverlap(state, pos, colliderR, reason) {
   if (reason === 'ram') return pos;
   let x = pos.x;
   let z = pos.z;
-  const entities = state.entityList || [];
+  const entities = indexedTypeScan(state, 'ships');
   for (let pass = 0; pass < 3; pass++) {
     let worst = null;
     for (let i = 0; i < entities.length; i++) {

@@ -2324,6 +2324,14 @@ export const lawSecurity = {
 
   _dwellWeirPods(step, state, weir) {
     const dwell = this._weirPodDwell || (this._weirPodDwell = new Map());
+    // Same payload-bucket proof as the cone census: no payloads → the walk sees no pods, `seen`
+    // stays empty, and the prune below would drop every dwell row anyway.
+    const index = state && state.entityIndex;
+    if (index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.payloads) && index.payloads.length === 0) {
+      dwell.clear();
+      return;
+    }
     const list = state.entityList || [];
     const seen = new Set();
     for (let i = 0; i < list.length; i++) {
@@ -2356,6 +2364,13 @@ export const lawSecurity = {
   _updateCustomsScanCones(dt, state) {
     const step = Number(dt);
     if (!(step > 0) || !state) return;
+    // Empty-payloads early-out: pods are only ever `type === 'payload'` entities, so a live
+    // index with an empty payloads bucket proves pods.length would end 0 and the join below
+    // returns without writes. Same gate as _catchPodsInNets; fixtures without the index keep
+    // the full job-interactable census.
+    const index = state.entityIndex;
+    if (index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.payloads) && index.payloads.length === 0) return;
     const pods = this._coneScratchPods;
     const occluders = this._coneScratchOccluders;
     const scanners = this._coneScratchScanners;

@@ -140,7 +140,13 @@ function figures(p, value) {
 export function setKitGauge(el, value, reference) {
   if (!el) return;
   const p = parts(el);
-  const sourceText = p.source?.textContent ?? String(value);
+  // The 10 Hz source text is written only through setText (hud.js), which mirrors the
+  // written value on el._sfText — read that instead of a per-frame textContent DOM read.
+  // Until the first write _sfText is undefined, so fall back to the markup text once.
+  const sourceEl = p.source;
+  const sourceText = sourceEl
+    ? (sourceEl._sfText !== undefined ? sourceEl._sfText : sourceEl.textContent)
+    : String(value);
   const referenceChanged = !Object.is(p.referenceValue, reference);
   if (Object.is(p.value, value) && !referenceChanged && p.sourceText === sourceText) return;
   p.value = value; p.referenceValue = reference; p.sourceText = sourceText;

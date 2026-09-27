@@ -44,6 +44,21 @@ export function shouldSkipFullTickSystems(state) {
 }
 
 /**
+ * True while an opaque UI surface fully covers the flight canvas but the simulation
+ * must keep ticking — the fulfillment boarding blackout (`ui.fulfillmentBlackoutActive`)
+ * advances its deterministic FSM on simTime, so freezing systems would strand it. The
+ * GL submit is still pure waste: keep prepareFrame draining the presentation journal
+ * (the scene stays hot for resume) and skip only the draw.
+ */
+export function shouldSkipFlightDraw(state) {
+  // Flight only: during loading the draw call is the cook itself, and menu/pause states
+  // are already caught by shouldFreezeFlightSubmit before this is reached.
+  if (!state || state.mode !== 'flight') return false;
+  const ui = state.ui;
+  return !!(ui && ui.fulfillmentBlackoutActive === true);
+}
+
+/**
  * True when the frozen canvas is holding a picture nothing else may draw over.
  *
  * Two freezes are not menus. The loading route owns the boot shell, and a sector-shell admission is

@@ -3,11 +3,9 @@
 // run on extra catch-up steps. Near owners run on the primary tick, not catch-up.
 
 import {
-  CALENDAR_CLOCK_COHORT_STRIDE,
-  CALENDAR_CLOCK_COHORTS,
   CALENDAR_CLOCK_PERIOD_TICKS,
   SYSTEM_CLOCK,
-  calendarCohortIndex,
+  calendarCohortTickMod,
   getSystemCapability,
   getSystemClock,
 } from '../runtime/authoritativeSystemManifest.js';
@@ -20,19 +18,20 @@ export function isCatchupPresentationSkip(state) {
 }
 
 /**
- * Calendar ticks are straddled: cohort c runs when tick%period === c*stride ({0,10,20}
- * for 30/3). Boot ticks (<=1) and a clockWake.calendar wake run every cohort.
- * Without a systemName this answers "does ANY calendar cohort run this tick".
+ * Calendar ticks are straddled: cohort c's owners are spread across tick%period ∈
+ * [c*stride, c*stride+stride-1] ({0..9,10..19,20..29} for 30/3) — anchored owners keep the
+ * cohort base tick, the rest carry a sub-phase. Boot ticks (<=1) and a clockWake.calendar
+ * wake run every owner. Without a systemName this answers "does ANY calendar owner run
+ * this tick" — under the spread that is every tick.
  */
 export function isCalendarTick(state, systemName) {
   if (state && state.clockWake && state.clockWake.calendar === true) return true;
   const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
   if (tick <= 1) return true;
-  const period = CALENDAR_CLOCK_PERIOD_TICKS;
-  const mod = ((tick % period) + period) % period;
-  if (mod % CALENDAR_CLOCK_COHORT_STRIDE !== 0) return false;
   if (systemName == null) return true;
-  return calendarCohortIndex(systemName) === (mod / CALENDAR_CLOCK_COHORT_STRIDE) | 0;
+  const mod = ((tick % CALENDAR_CLOCK_PERIOD_TICKS) + CALENDAR_CLOCK_PERIOD_TICKS)
+    % CALENDAR_CLOCK_PERIOD_TICKS;
+  return calendarCohortTickMod(systemName) === mod;
 }
 
 export function shouldSkipSystemOnCatchup(systemName, state) {
@@ -58,20 +57,19 @@ export function shouldSkipSystemThisStep(systemName, state) {
 }
 
 /**
- * Partition an update list once at host init. Production primary ticks iterate `combat`
- * (table + near + glass) so calendar names are not even visited. On a cohort tick the
- * queue is `cohortQueues[c]` — every non-calendar system plus cohort c's calendar owners,
- * in original update order, so the straddle only changes WHEN a calendar owner fires,
- * never its position relative to the rest of the tick. Boot ticks (<=1) and
- * clockWake.calendar keep `all`; catch-up extra steps keep `table`.
+ * Partition an update list once at host init. `tickQueues[m]` is the queue for a primary
+ * tick with tick%period === m: every non-calendar system plus the calendar owners whose
+ * firing mod is m (cohort base + sub-phase), all in original update order — so a moved
+ * calendar owner keeps its position relative to the rest of the tick. Boot ticks (<=1)
+ * and clockWake.calendar keep `all`; catch-up extra steps keep `table`.
  */
 export function partitionUpdateSystems(systems) {
   const all = [];
   const table = [];
   const combat = [];
   const calendar = [];
-  const cohortQueues = [];
-  for (let c = 0; c < CALENDAR_CLOCK_COHORTS; c++) cohortQueues.push([]);
+  const tickQueues = [];
+  for (let m = 0; m < CALENDAR_CLOCK_PERIOD_TICKS; m++) tickQueues.push([]);
   const list = Array.isArray(systems) ? systems : [];
   for (let i = 0; i < list.length; i++) {
     const system = list[i];
@@ -81,13 +79,13 @@ export function partitionUpdateSystems(systems) {
     if (clock === SYSTEM_CLOCK.TABLE) table.push(system);
     if (clock === SYSTEM_CLOCK.CALENDAR) {
       calendar.push(system);
-      cohortQueues[calendarCohortIndex(system.name)].push(system);
+      tickQueues[calendarCohortTickMod(system.name)].push(system);
     } else {
       combat.push(system);
-      for (let c = 0; c < CALENDAR_CLOCK_COHORTS; c++) cohortQueues[c].push(system);
+      for (let m = 0; m < CALENDAR_CLOCK_PERIOD_TICKS; m++) tickQueues[m].push(system);
     }
   }
-  return { all, table, combat, calendar, cohortQueues };
+  return { all, table, combat, calendar, tickQueues: calendar.length ? tickQueues : null };
 }
 
 export function updateQueueForThisStep(partitions, state) {
@@ -99,10 +97,7 @@ export function updateQueueForThisStep(partitions, state) {
   if (tick <= 1) return partitions.all;
   const mod = ((tick % CALENDAR_CLOCK_PERIOD_TICKS) + CALENDAR_CLOCK_PERIOD_TICKS)
     % CALENDAR_CLOCK_PERIOD_TICKS;
-  if (mod % CALENDAR_CLOCK_COHORT_STRIDE === 0) {
-    return partitions.cohortQueues[(mod / CALENDAR_CLOCK_COHORT_STRIDE) | 0] || partitions.combat;
-  }
-  return partitions.combat;
+  return (partitions.tickQueues && partitions.tickQueues[mod]) || partitions.combat;
 }
 
 export function shouldRunSystemThisStep(systemName, state) {

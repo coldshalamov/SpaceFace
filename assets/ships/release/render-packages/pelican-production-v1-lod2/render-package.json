@@ -519,7 +519,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "45203b29d282ad96bc87c24f06bba1d2157f578fba8abcb2c16f1a7a7f078f50",
+  "contentHash": "deed5db3ffa35f55b7a434df8868fba515cc5eb2eb455f858877e03810251d71",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1392,7 +1392,7 @@
     },
     "sourceManifest": {
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -2149,7 +2149,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/pelican_production_v1_lod2.glb"
   },
-  "runtimeHash": "c5e1cbeded7be50dfbc88504a695fe24f22c0e29cbfe92e459440d6198766fb4",
+  "runtimeHash": "2fc0c40f03bd158c310293ada1dd49675111e686803663eb02f369aad930d29f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

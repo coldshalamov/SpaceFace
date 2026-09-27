@@ -199,8 +199,12 @@ export function reserveAsteroidInstanceCapacity(pool, requiredByVariant) {
  * @param {object} pool
  * @param {Array<{variant:number, geometry:object, material:object}>} resources - shared leaf
  *   geometry/material per variant (the exact objects registerAsteroidBaseLeaf binds)
+ * @param {Array<number>} [requiredByVariant] - optional per-variant capacity floor (the cook's
+ *   field census). A chunk created or rebound here must not come up short of it, and a rebind
+ *   must never shrink a bucket the reserve pass already sized — either mistake hands the
+ *   power-of-two rebuild (a fresh instanceMatrix bufferData) back to a live registration.
  */
-export function warmAsteroidInstanceVariants(pool, resources) {
+export function warmAsteroidInstanceVariants(pool, resources, requiredByVariant) {
   if (!pool || pool.disposed || !Array.isArray(resources)) return 0;
   let warmed = 0;
   for (const res of resources) {
@@ -228,7 +232,12 @@ export function warmAsteroidInstanceVariants(pool, resources) {
       warmed += 1;
       continue;
     }
-    ensureCapacity(pool, bucket, 1, bucket.mesh != null);
+    // Create/rebind at the larger of the bucket's current capacity and the field census —
+    // never below either: a bare 1 would shrink a reserved (or previously grown) empty bucket
+    // back to the 64 default and return its next growth rebuild to a mid-round registration.
+    const censusFloor = Array.isArray(requiredByVariant)
+      ? Math.max(0, Math.trunc(Number(requiredByVariant[variant]) || 0)) : 0;
+    ensureCapacity(pool, bucket, Math.max(1, bucket.capacity | 0, censusFloor), bucket.mesh != null);
     if (bucket.mesh) warmed += 1;
   }
   return warmed;

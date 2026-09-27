@@ -95,6 +95,9 @@ export const core = {
       }
       return true;
     };
+    // Multi-corpse removal for sweep/despawn bursts; indices are list positions, applied
+    // highest-first exactly like the callers' reverse walks.
+    const removeEntitiesAtIndices = (indices, opts) => this._removeEntitiesAtIndices(indices, state, opts);
     const queryRadius = (pos, r, out = []) => {
       out.length = 0;
       const hash = state.spatialHash;
@@ -162,7 +165,7 @@ export const core = {
       return entity ? publishPresentation('recordVisual', entity) : 0;
     };
     Object.assign(ctx.helpers, {
-      spawnEntity, getEntity, removeEntity, queryRadius, player,
+      spawnEntity, getEntity, removeEntity, removeEntitiesAtIndices, queryRadius, player,
       entityIndex: () => ensureEntityIndex(state),
       markEntityVisualChanged,
       requestPresentationRebuild,
@@ -303,6 +306,45 @@ export const core = {
     return true;
   },
 
+  // Batch twin of _removeEntityAtIndex for multi-corpse ticks: same per-corpse bookkeeping and
+  // the same swap-pop applied highest-index-first, but the index strip runs once via
+  // removeEntitiesFromIndex instead of re-scanning every bucket per corpse.
+  _removeEntitiesAtIndices(indices, state, opts) {
+    const list = state.entityList;
+    if (!Array.isArray(list) || !indices || indices.length === 0) return 0;
+    indices.sort((a, b) => b - a);
+    const corpses = this._corpseScratch || (this._corpseScratch = []);
+    corpses.length = 0;
+    for (let k = 0; k < indices.length; k++) {
+      const i = indices[k];
+      const e = list[i];
+      if (!e) continue;
+      e.alive = false;
+      clearEntityRuntime(e);
+      this._publishPresentation?.('recordDestroy', e);
+      markDirty(state, e.id, DIRTY.MEMBERSHIP);
+      const destroyed = {
+        id: e.id,
+        type: e.type,
+        pos: { x: e.pos.x, z: e.pos.z },
+        radius: e.radius,
+        factionId: e.factionId,
+      };
+      if (opts && opts.reason) destroyed.reason = opts.reason;
+      this.bus.queue('entity:destroyed', destroyed);
+      state.entities.delete(e.id);
+      // Same recycle guard as the single path: ledger-held ids come back when the row dies.
+      if (!worldLedgerHoldsId(state.world, e.id)) state.freeIds.push(e.id);
+      const last = list.pop();
+      if (i < list.length) list[i] = last;
+      corpses.push(e);
+    }
+    if (corpses.length === 0) return 0;
+    removeEntitiesFromIndex(state.entityIndex, corpses);
+    if (opts && opts.immediate === true) markEntityIndexSourceSynced(state.entityIndex, list);
+    return corpses.length;
+  },
+
   // End-of-step: TTL/despawn, sweep dead entities, recycle ids, flush deferred events.
   lifetimeSweep(dt, state) {
     const docked = !!(state.ui && state.ui.docked);
@@ -367,11 +409,18 @@ export const core = {
     if (tier1 && tier1.isEnabled()) {
       tier1.countEntityVisits(list.length, 'lifetime-sweep');
     }
+    // Collect corpse slots before mutating: removal order stays the backward walk's
+    // highest-index-first sequence, and multi-corpse ticks pay one index pass instead of
+    // one ~30-bucket strip per corpse.
+    const corpseIndices = this._lifetimeCorpseIndices || (this._lifetimeCorpseIndices = []);
+    corpseIndices.length = 0;
     for (let i = list.length - 1; i >= 0; i--) {
       const e = list[i];
       if (e && e.id === state.playerId) continue;
-      if (e && !e.alive) this._removeEntityAtIndex(i, state);
+      if (e && !e.alive) corpseIndices.push(i);
     }
+    if (corpseIndices.length === 1) this._removeEntityAtIndex(corpseIndices[0], state);
+    else if (corpseIndices.length > 1) this._removeEntitiesAtIndices(corpseIndices, state);
     if (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1) {
       markEntityIndexSourceSynced(state.entityIndex, list);
     }
@@ -422,6 +471,7 @@ function ensureEntityIndex(state) {
     radarContacts: [],
     radarAsteroids: [],
     byStationId: new Map(),
+    byWorldRecordId: new Map(),
     _indexedIds: new Set(),
     _sourceList: null,
     _sourceLength: -1,
@@ -482,6 +532,10 @@ function repairEntityIndex(index) {
   if (!Array.isArray(index.radarContacts)) index.radarContacts = [];
   if (!Array.isArray(index.radarAsteroids)) index.radarAsteroids = [];
   if (!(index.byStationId instanceof Map)) index.byStationId = new Map();
+  if (!(index.byWorldRecordId instanceof Map)) {
+    index.byWorldRecordId = new Map();
+    index.ready = false;
+  }
   if (!(index._indexedIds instanceof Set)) {
     index._indexedIds = new Set();
     index.ready = false;
@@ -526,6 +580,7 @@ function clearEntityIndex(index) {
   index.radarContacts.length = 0;
   index.radarAsteroids.length = 0;
   index.byStationId.clear();
+  index.byWorldRecordId.clear();
   index._indexedIds.clear();
   index._volatileReady = false;
 }
@@ -560,6 +615,11 @@ function appendEntityIndex(index, e) {
       && e.type !== 'masslineSnare' && e.type !== 'masslineSnareAnchor') {
     if (e.type === 'asteroid') index.radarAsteroids.push(e);
     else index.radarContacts.push(e);
+  }
+  // First holder wins, matching the entities-map walk every worldRecordId lookup used to run.
+  const worldRecordId = e.data && e.data.worldRecordId;
+  if (worldRecordId != null && !index.byWorldRecordId.has(worldRecordId)) {
+    index.byWorldRecordId.set(worldRecordId, e);
   }
 
   switch (e.type) {
@@ -693,6 +753,22 @@ function removeEntityIndex(index, e) {
       }
     }
   }
+  // Vacated worldRecordId slots remap to the next live holder so map lookups answer the same
+  // entity the entityList walk would have found (duplicate keepers exist for malformed rows).
+  const worldRecordId = e.data && e.data.worldRecordId;
+  if (worldRecordId != null && index.byWorldRecordId.get(worldRecordId) === e) {
+    index.byWorldRecordId.delete(worldRecordId);
+    const source = index._sourceList;
+    if (Array.isArray(source)) {
+      for (const survivor of source) {
+        if (survivor && survivor !== e && survivor.alive !== false
+          && survivor.data && survivor.data.worldRecordId === worldRecordId) {
+          index.byWorldRecordId.set(worldRecordId, survivor);
+          break;
+        }
+      }
+    }
+  }
   if (removedSpatialStatic) index.spatialStaticVersion++;
   if (removedPhysicsStatic) index.physicsStaticVersion++;
   index.version++;
@@ -706,6 +782,110 @@ function removeFromIndexArray(list, e) {
     return true;
   }
   return false;
+}
+
+// Batch counterpart of removeEntityIndex for multi-corpse ticks (sweep, sector despawn). One
+// membership filter per bucket drops the whole corpse set while preserving survivor order
+// exactly as the sequential indexOf+splice pass did — same final index state, and the version
+// counters keep their exact per-corpse increments.
+function removeEntitiesFromIndex(index, corpses) {
+  if (!index || !index.__spacefaceEntityIndexV1 || !corpses || corpses.length === 0) return;
+  repairEntityIndex(index);
+  // Corpses whose id is no longer indexed were already stripped once — same early-return
+  // removeEntityIndex applies per entity, so they must not be filtered a second time.
+  const removed = new Set();
+  let indexed = 0;
+  for (let i = 0; i < corpses.length; i++) {
+    const e = corpses[i];
+    if (!e || (e.id != null && !index._indexedIds.has(e.id))) continue;
+    if (e.id != null) index._indexedIds.delete(e.id);
+    removed.add(e);
+    indexed++;
+  }
+  if (indexed === 0) return;
+  removeCorpsesFromIndexArray(index.collidables, removed);
+  index.spatialStaticVersion += removeCorpsesFromIndexArray(index.spatialStatics, removed);
+  removeCorpsesFromIndexArray(index.spatialDynamics, removed);
+  removeCorpsesFromIndexArray(index.physicsBodies, removed);
+  index.physicsStaticVersion += removeCorpsesFromIndexArray(index.physicsStatics, removed);
+  removeCorpsesFromIndexArray(index.physicsDynamics, removed);
+  removeCorpsesFromIndexArray(index.movables, removed);
+  removeCorpsesFromIndexArray(index.radarContacts, removed);
+  removeCorpsesFromIndexArray(index.radarAsteroids, removed);
+  removeCorpsesFromIndexArray(index.ships, removed);
+  removeCorpsesFromIndexArray(index.drones, removed);
+  removeCorpsesFromIndexArray(index.shipLike, removed);
+  removeCorpsesFromIndexArray(index.projectiles, removed);
+  removeCorpsesFromIndexArray(index.pickups, removed);
+  removeCorpsesFromIndexArray(index.payloads, removed);
+  removeCorpsesFromIndexArray(index.stations, removed);
+  removeCorpsesFromIndexArray(index.dockStations, removed);
+  removeCorpsesFromIndexArray(index.gates, removed);
+  removeCorpsesFromIndexArray(index.asteroids, removed);
+  removeCorpsesFromIndexArray(index.mineables, removed);
+  removeCorpsesFromIndexArray(index.wrecks, removed);
+  removeCorpsesFromIndexArray(index.fx, removed);
+  removeCorpsesFromIndexArray(index.mines, removed);
+  removeCorpsesFromIndexArray(index.vectorMines, removed);
+  removeCorpsesFromIndexArray(index.snares, removed);
+  removeCorpsesFromIndexArray(index.charges, removed);
+  removeCorpsesFromIndexArray(index.bombs, removed);
+  removeCorpsesFromIndexArray(index.statics, removed);
+  removeCorpsesFromIndexArray(index.damageables, removed);
+  removeCorpsesFromIndexArray(index.aiShips, removed);
+  removeCorpsesFromIndexArray(index.weaponShips, removed);
+  // Station-slot remap lands on the first surviving live station with the same stationId —
+  // the sequential rescans also skipped dead stations, so the outcome is identical.
+  for (let i = 0; i < corpses.length; i++) {
+    const e = corpses[i];
+    if (!e || e.type !== 'station' || !removed.has(e)) continue;
+    const stationId = e.data && e.data.stationId;
+    if (stationId && index.byStationId.get(stationId) === e) {
+      index.byStationId.delete(stationId);
+      for (const station of index.stations) {
+        if (station && station.alive && station.data && station.data.stationId === stationId) {
+          index.byStationId.set(stationId, station);
+          break;
+        }
+      }
+    }
+  }
+  // Same remap for worldRecordId slots, one shared rescan for the whole corpse set — the
+  // sequential path re-scanned the list per vacated key, the batch scans it once.
+  let vacatedWorldRecordIds = null;
+  for (let i = 0; i < corpses.length; i++) {
+    const e = corpses[i];
+    if (!e || !removed.has(e)) continue;
+    const worldRecordId = e.data && e.data.worldRecordId;
+    if (worldRecordId != null && index.byWorldRecordId.get(worldRecordId) === e) {
+      index.byWorldRecordId.delete(worldRecordId);
+      (vacatedWorldRecordIds || (vacatedWorldRecordIds = new Set())).add(worldRecordId);
+    }
+  }
+  if (vacatedWorldRecordIds && Array.isArray(index._sourceList)) {
+    for (const survivor of index._sourceList) {
+      if (!survivor || survivor.alive === false || !survivor.data) continue;
+      const key = survivor.data.worldRecordId;
+      if (key != null && vacatedWorldRecordIds.has(key) && !index.byWorldRecordId.has(key)) {
+        index.byWorldRecordId.set(key, survivor);
+      }
+    }
+  }
+  index.version += indexed;
+}
+
+// In-place order-preserving removal of every corpse in `removed` from one index bucket.
+// Returns the dropped count so the version counters keep sequential semantics.
+function removeCorpsesFromIndexArray(list, removed) {
+  if (!Array.isArray(list)) return 0;
+  let w = 0, dropped = 0;
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i];
+    if (removed.has(e)) { dropped++; continue; }
+    list[w++] = e;
+  }
+  if (dropped) list.length = w;
+  return dropped;
 }
 
 function reconcileEntityIndexSource(index, list) {

@@ -694,19 +694,30 @@ export function isPersistentLandmark(entity) {
  * — an authored station body already standing in the current sector is kept. Still never built
  * from far (`authoredResident` is required), and off-screen roots are still not submitted, so the
  * keep is memory only.
+ *
+ * The keep is bounded by the same runway the approach rebuild decodes on
+ * (TABLE_DECODE_RUNWAY_SECONDS × tableTravelSpeed — 2160 WU at the 160 WU/s floor):
+ * an in-sector landmark kept at ANY distance made off-table resident meshes climb
+ * without bound. Past it an authored place demotes to a map fact and the approach
+ * chain (`kickDecodeRunwayAssets` + `isInboundDecodeHull`) re-decodes it on the way
+ * in. A root mid-admission (`authoredPending`) counts as resident inside the
+ * runway so the evict edge cannot restart a paid decode.
  */
 export function shouldKeepPersistentLandmarkResident(entity, options = {}) {
   if (!entity) return false;
   if (options.forceRender === true || options.neverCull === true) return true;
   if (options.withinResidency === true) return true;
   if (options.mode === 'loading' && isCriticalStartingHub(entity)) return true;
-  if (options.authoredResident !== true) return false;
+  if (options.authoredResident !== true && options.authoredPending !== true) return false;
   if (!isPersistentLandmark(entity) && entity.type !== 'station') return false;
   const currentSectorId = options.currentSectorId ? String(options.currentSectorId) : '';
   if (!currentSectorId) return false;
   const data = entity.data || {};
   const sectorId = entity.homeSectorId || data.homeSectorId || data.sectorId || null;
-  return !!sectorId && String(sectorId) === currentSectorId;
+  if (!sectorId || String(sectorId) !== currentSectorId) return false;
+  const travel = Math.max(TABLE_REFERENCE_SPEED_WU, Number(options.travelSpeedWu) || 0);
+  const distance = Number(options.distanceWu);
+  return Number.isFinite(distance) && distance <= TABLE_DECODE_RUNWAY_SECONDS * travel;
 }
 
 export function emptyTableCensus() {

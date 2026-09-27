@@ -226,7 +226,8 @@ export const flightV3 = {
       ? applyFeelEnvelope(resolvedProfile, hullIdFromEntity(entity), entity.flightClass)
       : resolvedProfile;
     const runtime = propulsionRuntime(entity, baseProfile);
-    let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer, dt);
+    let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer, dt,
+      isPlayer ? _stepInputPlayer : _stepInputNpc);
     const tether = isPlayer && state.player && state.player.tether;
     let profile = isPlayer && state.input?.autoFire
       ? applyAutoTargetHelmProfile(baseProfile)
@@ -303,7 +304,7 @@ export const flightV3 = {
       }
     }
 
-    const body = bodySnapshot(entity, profile);
+    const body = bodySnapshotInto(entity, profile, _stepBody);
     let orbitAssist = null;
     if (isPlayer) {
       const anchor = tether && tether.targetId != null && state.entities
@@ -327,14 +328,13 @@ export const flightV3 = {
       });
       if (orbitAssist.active) input = orbitAssist.input;
     }
-    const result = stepPropulsion({
-      dt,
-      body,
-      input,
-      profile,
-      runtime,
-      environment: resolveFlightEnvironment(entity, state),
-    });
+    _stepArgs.dt = dt;
+    _stepArgs.body = body;
+    _stepArgs.input = input;
+    _stepArgs.profile = profile;
+    _stepArgs.runtime = runtime;
+    _stepArgs.environment = resolveFlightEnvironmentInto(entity, state, _stepEnv);
+    const result = stepPropulsion(_stepArgs);
     const cryoScale = helmControlScaleFromCombat(state, entity.id);
     const helmCommand = cryoScale < 1
       ? scaleHelmCommandForCryoLock(
@@ -343,13 +343,12 @@ export const flightV3 = {
         cryoLockStickLive(input),
       )
       : result;
-    writePhysicsControl(entity, {
-      source: isPlayer ? 'player-flight-v3' : 'npc-flight-v3',
-      mode: input.assistMode,
-      force: helmCommand.force,
-      torque: helmCommand.torque,
-      maxSpeed: result.maxSpeed,
-    });
+    _stepCtl.source = isPlayer ? 'player-flight-v3' : 'npc-flight-v3';
+    _stepCtl.mode = input.assistMode;
+    _stepCtl.force = helmCommand.force;
+    _stepCtl.torque = helmCommand.torque;
+    _stepCtl.maxSpeed = result.maxSpeed;
+    writePhysicsControl(entity, _stepCtl);
     if (helmCommand.impulse) queuePhysicsImpulse(entity, helmCommand.impulse);
     entity.data = entity.data || {};
     assignPropulsionRuntime(entity, result.runtime, input.boost);
@@ -499,23 +498,25 @@ export const flightV3 = {
   _publishPlayerDiagnostics(player, state) {
     const profile = resolvePropulsionProfile(player, state);
     const frame = player._flightFrame || {};
-    const telemetry = computeFlightTelemetry({ body: bodySnapshot(player, profile), profile, control: { telemetry: player._flightFrame } });
+    _diagArgs.body = bodySnapshotInto(player, profile, _diagBody);
+    _diagArgs.profile = profile;
+    _diagControl.telemetry = player._flightFrame;
+    const telemetry = computeFlightTelemetry(_diagArgs);
     const stop = telemetry.braking;
     const mode = frame.mode || 'assisted';
-    Object.assign(this._diag, {
-      shipId: player.id,
-      driveId: profile.id,
-      family: profile.family,
-      mode,
-      assistMode: mode,
-      assistStrength: flightAssistStrength(frame, mode),
-      speed: telemetry.speed,
-      forwardSpeed: telemetry.forwardSpeed,
-      lateralSpeed: telemetry.lateralSpeed,
-      driftAngle: telemetry.driftAngle,
-      stopDistance: Math.min(stop.directDistance, stop.flipBurnDistance),
-      stopTimeS: Math.min(stop.directTimeS, stop.flipBurnTimeS),
-    });
+    const d = this._diag;
+    d.shipId = player.id;
+    d.driveId = profile.id;
+    d.family = profile.family;
+    d.mode = mode;
+    d.assistMode = mode;
+    d.assistStrength = flightAssistStrength(frame, mode);
+    d.speed = telemetry.speed;
+    d.forwardSpeed = telemetry.forwardSpeed;
+    d.lateralSpeed = telemetry.lateralSpeed;
+    d.driftAngle = telemetry.driftAngle;
+    d.stopDistance = Math.min(stop.directDistance, stop.flipBurnDistance);
+    d.stopTimeS = Math.min(stop.directTimeS, stop.flipBurnTimeS);
     state.flightRuntime = state.flightRuntime || {};
     state.flightRuntime.diagnostics = this._diag;
     state.flightRuntime.telemetry = telemetry;
@@ -678,7 +679,31 @@ function travelDriveCooldownInput(drive) {
   return { ...drive, state: 'cooldown', breakReason: 'energy' };
 }
 
-function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG02_INPUT_DT) {
+// Retained per-tick propulsion packet for _stepCraft: the adapter literals below (input, body,
+// environment, the step args, the physics-control write) are consumed synchronously —
+// stepPropulsion reads them before returning, writePhysicsControl copies fields into the
+// entity's retained control record, and nothing downstream stores a reference. Player and NPC
+// get separate input packets so player-only modifier keys (travelDrive, velocityVectoring,
+// massline momentum fields) can never linger into an NPC's input.
+const _stepBody = { pos: null, vel: null, rot: 0, angVel: 0, mass: 1, inertia: 1, radius: 0 };
+const _envFieldDefault = { x: 1, z: 0 };
+const _stepEnvDir = { x: 1, z: 0 };
+const _stepEnv = { particulateDensity: 0, dragCoefficient: 0.00002, fieldDirection: _stepEnvDir, fieldStrength: 0 };
+const _stepInputPlayer = {
+  throttle: 0, strafe: 0, turn: 0, boost: false, boostPressed: false, boostReleased: false,
+  brake: false, assistMode: 'assisted',
+};
+const _stepInputNpc = {
+  throttle: 0, strafe: 0, turn: 0, boost: false, boostPressed: false, boostReleased: false,
+  brake: false, assistMode: 'assisted',
+};
+const _stepArgs = { dt: 0, body: null, input: null, profile: null, runtime: null, environment: _stepEnv };
+const _stepCtl = { source: 'npc-flight-v3', mode: 'assisted', force: null, torque: 0, maxSpeed: 0 };
+const _diagBody = { pos: null, vel: null, rot: 0, angVel: 0, mass: 1, inertia: 1, radius: 0 };
+const _diagControl = { telemetry: null };
+const _diagArgs = { body: null, profile: null, control: _diagControl };
+
+function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG02_INPUT_DT, out = null) {
   const boost = !!raw.boost;
   const previousBoost = !!runtime.previousBoost;
   let turn = finite(raw.turnIntent ?? raw.turn, 0);
@@ -698,18 +723,26 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
     rt.cmdThrottle = throttle;
     rt.cmdStrafe = strafe;
   }
-  return {
-    throttle,
-    strafe,
-    turn: clamp(turn, -1, 1),
-    boost,
-    boostPressed: boost && !previousBoost,
-    boostReleased: !boost && previousBoost,
-    brake: !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && !raw.drawFlight?.active && throttle < -0.55)),
-    assistMode: resolveAssistMode(entity, state, raw),
-    ...(isPlayer && raw.drawFlight?.active && state.input?.autoFire
-      ? { drawFlight: raw.drawFlight } : {}),
-  };
+  const o = out || {};
+  o.throttle = throttle;
+  o.strafe = strafe;
+  o.turn = clamp(turn, -1, 1);
+  o.boost = boost;
+  o.boostPressed = boost && !previousBoost;
+  o.boostReleased = !boost && previousBoost;
+  o.brake = !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && !raw.drawFlight?.active && throttle < -0.55));
+  o.assistMode = resolveAssistMode(entity, state, raw);
+  o.drawFlight = isPlayer && raw.drawFlight?.active && state.input?.autoFire ? raw.drawFlight : undefined;
+  // Reset every key downstream code may have written last tick: autopilot/orbit-assist
+  // substitution and the massline/travelDrive/vectoring blocks above write optional keys onto
+  // the packet, so a reused scratch must drop them before they can leak into the next craft.
+  o.travelDrive = undefined;
+  o.velocityVectoring = undefined;
+  o.physicsEarnedMomentum = undefined;
+  o.earnedMomentumDecayTauS = undefined;
+  o.earnedMomentumAssistScale = undefined;
+  o.coastAssistScale = undefined;
+  return o;
 }
 
 function approachScalar(current, target, maxDelta) {
@@ -1332,29 +1365,35 @@ function assignFlightFrame(entity, result, mode) {
   return frame;
 }
 
-function bodySnapshot(entity, profile) {
+function bodySnapshotInto(entity, profile, out) {
   const physicsBody = entity.physicsBody || {};
   const derived = entity.data && entity.data.derived && entity.data.derived.flightModel;
-  return {
-    pos: entity.pos,
-    vel: entity.vel,
-    rot: entity.rot,
-    angVel: entity.angVel,
-    mass: positive(physicsBody.mass, positive(entity.mass, positive(profile.mass, 1))),
-    inertia: positive(physicsBody.inertiaY, positive(entity.flightModel && entity.flightModel.inertia, positive(derived && derived.inertia, 1))),
-    radius: positive(entity.radius, positive(physicsBody.radius, 0)),
-  };
+  const o = out || {};
+  o.pos = entity.pos;
+  o.vel = entity.vel;
+  o.rot = entity.rot;
+  o.angVel = entity.angVel;
+  o.mass = positive(physicsBody.mass, positive(entity.mass, positive(profile.mass, 1)));
+  o.inertia = positive(physicsBody.inertiaY, positive(entity.flightModel && entity.flightModel.inertia, positive(derived && derived.inertia, 1)));
+  o.radius = positive(entity.radius, positive(physicsBody.radius, 0));
+  return o;
 }
 
-function resolveFlightEnvironment(entity, state) {
+function resolveFlightEnvironmentInto(entity, state, out) {
   const sector = state.world && state.world.currentSector;
   const hazard = state.flightEnvironment || {};
-  return {
-    particulateDensity: Math.max(0, finite(hazard.particulateDensity, sector && sector.particulateDensity || 0)),
-    dragCoefficient: Math.max(0, finite(hazard.dragCoefficient, 0.00002)),
-    fieldDirection: hazard.fieldDirection || (sector && sector.fieldDirection) || { x: 1, z: 0 },
-    fieldStrength: Math.max(0, finite(hazard.fieldStrength, sector && sector.fieldStrength || 0)),
-  };
+  const o = out || {};
+  o.particulateDensity = Math.max(0, finite(hazard.particulateDensity, sector && sector.particulateDensity || 0));
+  o.dragCoefficient = Math.max(0, finite(hazard.dragCoefficient, 0.00002));
+  // Copy x/z rather than hand the shared hazard/sector object through — the scratch packet must
+  // not let a live state object be mutated-or-retained through an alias. The kernel re-normalizes.
+  const dir = hazard.fieldDirection || (sector && sector.fieldDirection) || _envFieldDefault;
+  const dirOut = o.fieldDirection || (o.fieldDirection = {});
+  dirOut.x = dir.x;
+  dirOut.z = dir.z;
+  o.fieldDirection = dirOut;
+  o.fieldStrength = Math.max(0, finite(hazard.fieldStrength, sector && sector.fieldStrength || 0));
+  return o;
 }
 
 function applyResourceDelta(entity, delta) {
@@ -1476,14 +1515,18 @@ const _thrustNozzlePool = Array.from({ length: 4 }, () => ({ role: '', strength:
 
 function thrustNozzles(throttle, strafe, brake, out, pool) {
   let n = 0;
-  const write = (role, strength, angle) => { const o = pool[n++]; o.role = role; o.strength = strength; o.angle = angle; };
-  if (throttle > 0.025) write('main', Math.min(1, throttle), 0);
-  if (brake) {
-    write('reverse-left', 1, Math.PI * 0.75);
-    write('reverse-right', 1, -Math.PI * 0.75);
+  if (throttle > 0.025) {
+    const o = pool[n++]; o.role = 'main'; o.strength = Math.min(1, throttle); o.angle = 0;
   }
-  if (strafe > 0.025) write('strafe-right', Math.min(1, strafe), -Math.PI / 2);
-  else if (strafe < -0.025) write('strafe-left', Math.min(1, -strafe), Math.PI / 2);
+  if (brake) {
+    let o = pool[n++]; o.role = 'reverse-left'; o.strength = 1; o.angle = Math.PI * 0.75;
+    o = pool[n++]; o.role = 'reverse-right'; o.strength = 1; o.angle = -Math.PI * 0.75;
+  }
+  if (strafe > 0.025) {
+    const o = pool[n++]; o.role = 'strafe-right'; o.strength = Math.min(1, strafe); o.angle = -Math.PI / 2;
+  } else if (strafe < -0.025) {
+    const o = pool[n++]; o.role = 'strafe-left'; o.strength = Math.min(1, -strafe); o.angle = Math.PI / 2;
+  }
   out.length = n;
   return out;
 }

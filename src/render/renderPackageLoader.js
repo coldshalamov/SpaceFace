@@ -13,7 +13,14 @@ import {
   getAssetResidency,
 } from './assetResidency.js';
 import * as THREE from 'three';
+import { sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
+import { sharedGlbPrepasser } from './glbPrepass.js';
+import {
+  createPackageDetachManifest,
+  dropPackageDetachManifest,
+  packageDetachDiagnostics,
+} from './packageCpuDetach.js';
 
 const ABSOLUTE_URL_RE = /^[a-z][a-z\d+.-]*:/i;
 const SHA256_RE = /^[a-f0-9]{64}$/;
@@ -209,6 +216,7 @@ export function createRenderPackageLoader(options = {}) {
               entry.evicted = true;
               loaded.markEvicted();
               if (cache.get(contentHash) === entry) cache.delete(contentHash);
+              dropPackageDetachManifest(contentHash);
             },
           });
         } catch (error) {
@@ -220,6 +228,18 @@ export function createRenderPackageLoader(options = {}) {
         entry.request = null;
         if (!retained) {
           throw new Error(`Render package ${metadata.assetId} load was released before decode completed.`);
+        }
+        // Mark the package's textures for post-upload CPU-payload detach. The manifest pairs each
+        // texture with its ordinal in the deterministic resource walk so a context restore can
+        // re-decode the immutable render.glb and refill the same texture objects. Detach is
+        // opportunistic: a manifest failure must not fail an otherwise-good package load.
+        try {
+          entry.detachManifest = createPackageDetachManifest(loaded, {
+            redecode: () => decodeGlb(renderUrl, metadata),
+            collectResources: collectImmutableResources,
+          });
+        } catch (error) {
+          if (typeof console !== 'undefined') console.warn('[renderPackageLoader] cpu detach manifest failed', error);
         }
         return loaded;
       });
@@ -290,7 +310,10 @@ export function createRenderPackageLoader(options = {}) {
   function dispose(reason = 'render-package-loader-disposed') {
     if (disposed) return false;
     disposed = true;
-    for (const entry of cache.values()) releasePackageOwner(entry, reason);
+    for (const entry of cache.values()) {
+      releasePackageOwner(entry, reason);
+      dropPackageDetachManifest(entry.metadata.contentHash);
+    }
     return true;
   }
 
@@ -300,6 +323,7 @@ export function createRenderPackageLoader(options = {}) {
       disposed,
       cacheEntries: cache.size,
       residency: residency.canonicalDiagnostics(),
+      cpuDetach: packageDetachDiagnostics(),
     });
   }
 
@@ -957,6 +981,27 @@ export function startMeshoptWorkerPool(MeshoptDecoder) {
     // The KTX2 transcoder already owns a 4-worker pool; keep this lane capped so decode bursts
     // cannot evict the present thread's neighbours on small hosts.
     MeshoptDecoder.useWorkers(Math.max(1, Math.min(4, cores - 1)));
+    // The per-decoder cap alone still lets a meshopt burst plus a KTX2 burst oversubscribe
+    // cores; route worker decodes through the shared cross-decoder budget (FIFO, so the
+    // decoder's own least-pending dispatch order is unchanged). decodeGltfBufferAsync is the
+    // pool's only intake — the sync decoders and the no-worker fallback stay main-thread.
+    const decodeGltfBufferAsync = MeshoptDecoder.decodeGltfBufferAsync;
+    if (typeof decodeGltfBufferAsync === 'function' && decodeGltfBufferAsync.spacefaceDecodeBudgetGated !== true) {
+      const gated = function gatedMeshoptDecodeGltfBufferAsync(count, size, source, mode, filter) {
+        return sharedDecodeTaskBudget().acquire().then((release) => {
+          let result;
+          try {
+            result = decodeGltfBufferAsync.call(this, count, size, source, mode, filter);
+          } catch (error) {
+            release();
+            throw error;
+          }
+          return Promise.resolve(result).finally(release);
+        });
+      };
+      gated.spacefaceDecodeBudgetGated = true;
+      MeshoptDecoder.decodeGltfBufferAsync = gated;
+    }
     meshoptWorkerPoolStarted = true;
   } catch (error) {
     console.warn('[renderPackageLoader] meshopt worker decode unavailable; decoding on the present thread', error);
@@ -966,7 +1011,28 @@ export function startMeshoptWorkerPool(MeshoptDecoder) {
 function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
   return async (url, metadata) => {
     if (typeof fetchImpl !== 'function') throw new Error('Render package loader requires fetch to load render.glb.');
-    const bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata);
+    let bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata);
+
+    // Structural pre-pass (glbPrepass.js): the verified GLB goes to a worker by transfer, which
+    // batch-decodes every meshopt bufferView and slices embedded image bytes, then transfers it all
+    // back in one reply — replacing ~200 per-bufferView worker round trips plus one main-thread
+    // memcpy per texture. The stock parse below then serves identical bytes from parser maps; when
+    // the worker declines or is unavailable, `buffer` is simply the GLB as fetched.
+    let buffer = bytes.buffer;
+    let predecodedBufferViews = null;
+    let preslicedSourceBytes = null;
+    if (bytes.byteOffset === 0 && bytes.byteLength === buffer.byteLength) {
+      const prepared = await sharedGlbPrepasser().prepass(buffer);
+      if (prepared === null) {
+        // The worker died holding the buffer; re-read (packages are content-hash immutable).
+        bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata);
+        buffer = bytes.buffer;
+      } else {
+        buffer = prepared.glb;
+        predecodedBufferViews = prepared.bufferViews;
+        preslicedSourceBytes = prepared.sourceBytes;
+      }
+    }
 
     defaultDecoderModules ||= Promise.all([
       import('three/addons/loaders/GLTFLoader.js'),
@@ -975,8 +1041,15 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
     const [{ GLTFLoader }, { MeshoptDecoder }] = await defaultDecoderModules;
     startMeshoptWorkerPool(MeshoptDecoder);
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+    if ((predecodedBufferViews && predecodedBufferViews.size) || (preslicedSourceBytes && preslicedSourceBytes.size)) {
+      loader.register((parser) => {
+        parser.predecodedBufferViews = predecodedBufferViews;
+        parser.preslicedSourceBytes = preslicedSourceBytes;
+        return { name: 'SpaceFaceGlbPrepass' };
+      });
+    }
     if (typeof configureGltfLoader === 'function') await configureGltfLoader(loader, metadata);
-    return loader.parseAsync(bytes.buffer, resourceBaseUrl(url));
+    return loader.parseAsync(buffer, resourceBaseUrl(url));
   };
 }
 
@@ -984,7 +1057,7 @@ function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
-function collectImmutableResources(root, stats = null) {
+export function collectImmutableResources(root, stats = null) {
   const resources = new Set();
   root.traverse((object) => {
     if (stats) stats.nodes++;

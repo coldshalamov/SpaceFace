@@ -47,7 +47,7 @@ import {
   readTensionPolicy, tensionAccrualScale, tensionCandidateRank, tensionPacingBlockReason,
 } from '../ai/tensionPolicy.js';
 import { hash32, mulberry32 } from '../core/rng.js';
-import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { ZONE_CERES_THROUGHLINE } from '../data/authoredPlaces.js';
 import {
@@ -2024,7 +2024,7 @@ export const encounterDirector = {
     const entities = state.entities;
     if (!entities) return;
 
-    for (const ent of entities.values()) {
+    for (const ent of indexedShipLikeOrEntitiesScan(state)) {
       if (!ent || ent.alive === false || ent.id === state.playerId) continue;
       if (ent.type !== 'ship' && ent.type !== 'drone') continue;
       if (ent.team === 0 || ent.team === 2) continue;

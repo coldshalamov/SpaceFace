@@ -1405,11 +1405,7 @@ export const world = {
       if (e.data) e.data.worldRecordId = captured.recordId;
     });
     // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
-    if (despawnIndexes) {
-      for (let i = despawnIndexes.length - 1; i >= 0; i--) {
-        this._destroyEntityAtIndex(despawnIndexes[i]);
-      }
-    }
+    this._destroyEntitiesAtIndices(despawnIndexes);
   },
 
   /**
@@ -1764,20 +1760,28 @@ export const world = {
     dropFarActorSector(this.state, sectorId);
     const state = this.state;
     const list = state.entityList;
+    // Collect first, remove in one batch: a residency drop can strip dozens of bodies and
+    // per-entity removal re-scans every index bucket per corpse. The destroy path applies
+    // highest-index-first, so swap-pop and entity:destroyed ordering are unchanged.
+    const indices = this._despawnScratch || (this._despawnScratch = []);
+    indices.length = 0;
     for (let i = list.length - 1; i >= 0; i--) {
       const e = list[i];
       if (!e) continue;
       if (this._isProtectedFromResidency(e)) continue;
       const home = e.homeSectorId || (e.data && e.data.homeSectorId);
       if (home !== sectorId) continue;
-      this._destroyEntityAtIndex(i);
+      indices.push(i);
     }
+    this._destroyEntitiesAtIndices(indices);
   },
 
   _despawnEntityIds(idSet, sectorId) {
     if (!idSet || idSet.size === 0) return;
     const state = this.state;
     const list = state.entityList;
+    const indices = this._despawnScratch || (this._despawnScratch = []);
+    indices.length = 0;
     for (let i = list.length - 1; i >= 0; i--) {
       const e = list[i];
       if (!e || !idSet.has(e.id)) continue;
@@ -1786,8 +1790,9 @@ export const world = {
         const home = e.homeSectorId || (e.data && e.data.homeSectorId);
         if (home && home !== sectorId) continue;
       }
-      this._destroyEntityAtIndex(i);
+      indices.push(i);
     }
+    this._destroyEntitiesAtIndices(indices);
   },
 
   _isProtectedFromResidency(e) {
@@ -1811,6 +1816,20 @@ export const world = {
     else e.alive = false;
   },
 
+  // Batch despawn: one index pass via the core multi-corpse helper; falls back to the
+  // per-entity walk when helpers are stubbed (minimal harnesses). Indices are normalized to
+  // highest-first — the reverse-walk order every caller used before.
+  _destroyEntitiesAtIndices(indices) {
+    if (!indices || indices.length === 0) return;
+    indices.sort((a, b) => b - a);
+    const removeAt = this.helpers && this.helpers.removeEntitiesAtIndices;
+    if (typeof removeAt === 'function') {
+      removeAt(indices, { immediate: true });
+      return;
+    }
+    for (let k = 0; k < indices.length; k++) this._destroyEntityAtIndex(indices[k]);
+  },
+
   /**
    * LEGACY global wipe — retained only for emergency tooling. Continuous residency and
    * enterSector MUST NOT call this (M2a: no global wipe on continuous or bounded jump).
@@ -1819,11 +1838,14 @@ export const world = {
   _despawnSectorEntities() {
     const state = this.state;
     const list = state.entityList;
+    const indices = this._despawnScratch || (this._despawnScratch = []);
+    indices.length = 0;
     for (let i = list.length - 1; i >= 0; i--) {
       const e = list[i];
       if (this._isProtectedFromResidency(e)) continue;
-      this._destroyEntityAtIndex(i);
+      indices.push(i);
     }
+    this._destroyEntitiesAtIndices(indices);
   },
 
   _stampHomeSector(ent, sectorId) {
@@ -3838,15 +3860,13 @@ export const world = {
         if (within(rec.pos, rec.data)) return true;
       }
     }
-    const idx = state.entityIndex || {};
-    const lists = [idx.asteroids, idx.mineables, state.entityList];
-    for (const list of lists) {
-      if (!Array.isArray(list)) continue;
-      for (let i = 0; i < list.length; i++) {
-        const entity = list[i];
-        if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
-        if (within(entity.pos, entity.data)) return true;
-      }
+    // Live asteroids only: the mineables bucket repeats wrecks and the fat list adds nothing
+    // the asteroids bucket does not already hold.
+    const list = indexedTypeScan(state, 'asteroids');
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
+      if (within(entity.pos, entity.data)) return true;
     }
     return false;
   },
@@ -3858,7 +3878,7 @@ export const world = {
     // A seam rock that survived sector demotion (mission-pinned, persistent) still owns its
     // slot — re-spawning it would duplicate the asteroidSlotId.
     const liveSlots = new Set();
-    for (const e of state.entityList || []) {
+    for (const e of indexedTypeScan(state, 'asteroids')) {
       if (e && e.alive !== false && e.data && e.data.fieldId === plan.fieldId
         && e.data.asteroidSlotId != null) liveSlots.add(e.data.asteroidSlotId);
     }
@@ -3953,17 +3973,11 @@ export const world = {
         if (rec.data && rec.data.fieldId === fieldId) live++;
       }
     }
-    const idx = state.entityIndex || {};
-    const lists = [idx.asteroids, idx.mineables, state.entityList];
-    const seen = new Set();
-    for (const list of lists) {
-      if (!Array.isArray(list)) continue;
-      for (let i = 0; i < list.length; i++) {
-        const e = list[i];
-        if (!e || e.alive === false || e.type !== 'asteroid' || seen.has(e)) continue;
-        seen.add(e);
-        if (e.data && e.data.fieldId === fieldId) live++;
-      }
+    const list = indexedTypeScan(state, 'asteroids');
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.alive === false || e.type !== 'asteroid') continue;
+      if (e.data && e.data.fieldId === fieldId) live++;
     }
     return live;
   },
@@ -4035,10 +4049,7 @@ export const world = {
 
   /** Unmined published rocks standing in the sector right now (the world's own inventory cap). */
   _resourceWorkPublishedCount(state, sectorId) {
-    const list = (state.entityIndex && state.entityIndex.asteroids)
-      || (state.entityIndex && state.entityIndex.mineables)
-      || state.entityList
-      || [];
+    const list = indexedTypeScan(state, 'asteroids');
     let count = 0;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
@@ -4077,7 +4088,7 @@ export const world = {
   /** True when a spawned disc at (x,z) would not intersect a live hull. Radius should be the
    * real collider radius — that is the circle physics resolves, not the visual reference. */
   _seamCandidateClearOfHulls(state, x, z, radius) {
-    const list = state.entityList || [];
+    const list = indexedShipLikeScan(state);
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || e.alive === false || (e.type !== 'ship' && e.type !== 'drone')) continue;

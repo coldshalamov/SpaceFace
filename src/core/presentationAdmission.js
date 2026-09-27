@@ -2,6 +2,8 @@
 // publish only this small state token when an exact authored identity is ready. In headless runs there
 // is no live render scene, so deterministic simulation remains independent of presentation admission.
 
+import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
+
 export const PRESENTATION_ADMISSION = Object.freeze({
   pending: 'pending',
   ready: 'ready',
@@ -74,11 +76,7 @@ export function resolvePresentationAdmissionOwner(entity, state) {
   if (!ownerWorldRecordId) return entity;
   const entities = state && state.entities;
   if (!entities || typeof entities.values !== 'function') return null;
-  for (const candidate of entities.values()) {
-    if (candidate && candidate.alive !== false && candidate.data
-      && candidate.data.worldRecordId === ownerWorldRecordId) return candidate;
-  }
-  return null;
+  return indexedWorldRecordEntity(state, ownerWorldRecordId);
 }
 
 /** Pure stable-world-identity lookup; browser callers fail closed, headless simulation does not. */
@@ -87,17 +85,14 @@ export function presentationOwnerAdmissionForWorldRecord(ownerWorldRecordId, sta
   if (!ownerWorldRecordId || !state.entities || typeof state.entities.values !== 'function') {
     return PRESENTATION_OWNER_ADMISSION.missing;
   }
-  for (const candidate of state.entities.values()) {
-    if (!candidate || candidate.alive === false || !candidate.data
-      || candidate.data.worldRecordId !== ownerWorldRecordId) continue;
-    const admission = candidate.presentationAdmission;
-    return admission === PRESENTATION_ADMISSION.ready
-      || admission === PRESENTATION_ADMISSION.unavailable
-      || admission === PRESENTATION_ADMISSION.pending
-      ? admission
-      : PRESENTATION_OWNER_ADMISSION.pending;
-  }
-  return PRESENTATION_OWNER_ADMISSION.missing;
+  const candidate = indexedWorldRecordEntity(state, ownerWorldRecordId);
+  if (!candidate) return PRESENTATION_OWNER_ADMISSION.missing;
+  const admission = candidate.presentationAdmission;
+  return admission === PRESENTATION_ADMISSION.ready
+    || admission === PRESENTATION_ADMISSION.unavailable
+    || admission === PRESENTATION_ADMISSION.pending
+    ? admission
+    : PRESENTATION_OWNER_ADMISSION.pending;
 }
 
 export function presentationOwnerIsAdmitted(admission) {

@@ -519,7 +519,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "009053f82c971e662da2b00367231b187766181cd7e927cbf18d093d4ef10186",
+  "contentHash": "a7f49ac16131e85938d8c1eff20a87f2ec580ed51bddd5b0e02d7f2c92683d48",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1392,7 +1392,7 @@
     },
     "sourceManifest": {
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -2144,7 +2144,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/leviathan_production_v1_lod2.glb"
   },
-  "runtimeHash": "1fe9308b07b5fd808afefbb69801b3ef48c260fa7a507acf52e8f53066aab387",
+  "runtimeHash": "b5efaff76c17dfdc01344479fc7205f801ce569443600b91186f13eeabed9767",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

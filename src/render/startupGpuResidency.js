@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import { postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
+import {
+  detachPackageTexture,
+  isPackageTextureDetached,
+} from './packageCpuDetach.js';
 
 const STARTUP_GEOMETRY_BATCH_DRAWABLES = 4;
 const STARTUP_GEOMETRY_BATCH_BYTES = 8 * 1024 * 1024;
@@ -53,6 +58,26 @@ const residencyBatchChains = new WeakMap();
 // Each batch self-contains capture/render/restore inside one synchronous turn,
 // so the two chains interleave safely at batch boundaries.
 const residencyUrgentBatchChains = new WeakMap();
+
+// Texture residency stamps, per renderer. renderer.initTexture() bottoms out in
+// setTexture2D/uploadTexture, which uploads only while texture.version moved — a repeat
+// call against an unchanged texture is a properties lookup plus a bind/unbind pair after
+// a full yield slot. Repeat residency passes (material variant rebuilds sharing decoded
+// packages, the pre-first-picture scene walk, live-sector pool seals) re-pay that for
+// every already-resident map, so a stamp recorded after a successful upload skips the
+// whole slice. texture.needsUpdate bumps texture.version, so any real re-upload request
+// invalidates the stamp; weak texture keys keep the stamp off userData (a texture.clone()
+// cannot inherit a stale stamp) and the renderer key keeps contexts honest.
+const textureUploadVersions = new WeakMap();
+
+function textureUploadVersionMap(renderer) {
+  let map = textureUploadVersions.get(renderer);
+  if (!map) {
+    map = new WeakMap();
+    textureUploadVersions.set(renderer, map);
+  }
+  return map;
+}
 
 function enqueueGeometryResidencyBatches(renderer, work, options = {}) {
   const chains = options.urgent === true ? residencyUrgentBatchChains : residencyBatchChains;
@@ -523,10 +548,33 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   for (const texture of Array.isArray(options.textures) ? options.textures : []) {
     if (texture && texture.isTexture === true && !textures.includes(texture)) textures.push(texture);
   }
+  // Context restore rebuilt every GL object, so stamps recorded against the dead context lie:
+  // that call site passes ignoreResidentStamps, and clearing the map makes the pass re-upload
+  // everything (matching the geometry spacefaceGpuResident handling) then stamp fresh.
+  if (options.ignoreResidentStamps === true) textureUploadVersions.delete(renderer);
+  const uploadVersions = textureUploadVersionMap(renderer);
   const uploads = [];
+  let residentTextures = 0;
   const count = textures.length;
   for (let index = 0; index < count; index++) {
     const texture = textures[index];
+    // Video/external textures bypass three's version gate inside the upload path
+    // (updateVideoTexture runs on every call; ExternalTexture refreshes __webglTexture),
+    // so they always have live work and never take the residency stamp path.
+    if (typeof texture.version === 'number'
+      && texture.isVideoTexture !== true
+      && texture.isExternalTexture !== true
+      && uploadVersions.get(texture) === texture.version) {
+      residentTextures += 1;
+      continue;
+    }
+    if (isPackageTextureDetached(texture)) {
+      // The CPU mirror was released after its proven upload. There is nothing to upload until a
+      // context-restore rehydrate refills it — uploading now would push empty mips over the live
+      // copy, so count it resident and skip.
+      residentTextures += 1;
+      continue;
+    }
     await yieldToMain();
     const started = now();
     let success = false;
@@ -538,7 +586,13 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       const name = texture.name || texture.source?.data?.name || 'unnamed';
       const width = Number(texture.image?.width) || Number(texture.source?.data?.width) || 0;
       const height = Number(texture.image?.height) || Number(texture.source?.data?.height) || 0;
-      if (success) uploads.push({ name, width, height, durationMs });
+      if (success) {
+        uploads.push({ name, width, height, durationMs });
+        uploadVersions.set(texture, texture.version);
+        // The GPU copy is proven: release the decoded CPU mirror (mipmaps/source.data) for
+        // marked render-package textures. Context restore rehydrates them on demand.
+        detachPackageTexture(texture);
+      }
       reportBlockingSlice(onBlockingSlice, {
         kind: 'gpuResidencyUpload',
         durationMs,
@@ -564,6 +618,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
     skipped: false,
     textures: textures.length,
     uploads,
+    residentTextures,
     geometryResidency,
   };
 }
@@ -575,7 +630,13 @@ export function yieldToBrowser() {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-/** Resume from a macrotask after rAF so GPU work cannot run inside the protected display callback. */
+/**
+ * Resume from a macrotask after rAF so GPU work cannot run inside the protected display
+ * callback. The resume must also land after that frame's present: a timer-priority task races
+ * the compositor beat, so the default dispatches at background priority like
+ * armCallbackAfterPresent — bounded, so a saturated main thread cannot starve the admission
+ * chain while it waits for an idle slot that never opens.
+ */
 export function yieldToNextPresent(options = {}) {
   return new Promise((resolve) => {
     const requestFrame = typeof options.requestFrame === 'function'
@@ -585,7 +646,7 @@ export function yieldToNextPresent(options = {}) {
         : null);
     const scheduleTask = typeof options.scheduleTask === 'function'
       ? options.scheduleTask
-      : (callback) => setTimeout(callback, 0);
+      : postTaskAtBackgroundPriorityBounded;
     if (requestFrame) {
       let fired = false;
       const fire = () => {

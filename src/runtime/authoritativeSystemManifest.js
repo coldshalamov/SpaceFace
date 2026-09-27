@@ -185,6 +185,11 @@ export const CALENDAR_CLOCK_PERIOD_TICKS = 30;
  * the ~46 calendar owners do not all land on the same step (measured 8.11 ms step max vs
  * 2.49 ms p50). Each system still runs once per 30-tick period; cohort assignment is the
  * system's index in CALENDAR_CLOCK_IDS % 3, stable across hosts and profiles.
+ *
+ * Within a cohort the load is further spread across the cohort's 10-tick window: each owner
+ * fires on `cohort*stride + subPhase`, where subPhase round-robins 1..stride-1 over the
+ * cohort's non-anchored members in list order. A ~15-owner cohort step lands as ~1–2 owners
+ * per tick instead of one spike.
  */
 export const CALENDAR_CLOCK_COHORTS = 3;
 export const CALENDAR_CLOCK_COHORT_STRIDE = CALENDAR_CLOCK_PERIOD_TICKS / CALENDAR_CLOCK_COHORTS;
@@ -208,6 +213,41 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   // Event-driven owners whose update() is an empty registry placeholder.
   'terrainAnchors', 'jettisonImpulse', 'masslineImpactDamage',
 ]);
+
+/**
+ * Owners whose firing tick is pinned by the sim-clock contract (the queue/cadence tests
+ * name them at exact tick%30 values). They keep their cohort's base tick; every other
+ * calendar owner takes a sub-phase inside the cohort window.
+ */
+export const CALENDAR_CLOCK_TICK_ANCHORS = new Set([
+  'barkDirector', 'missions', // cohort 0 — tick%30===0
+  'economy', 'regionalEcology', // cohort 1 — tick%30===10
+  'salvage', // cohort 2 — tick%30===20
+]);
+
+const CALENDAR_CLOCK_SUB_PHASE = new Map();
+{
+  const subRank = [0, 0, 0];
+  for (const id of CALENDAR_CLOCK_IDS) {
+    const cohort = calendarCohortIndex(id);
+    CALENDAR_CLOCK_SUB_PHASE.set(
+      id,
+      CALENDAR_CLOCK_TICK_ANCHORS.has(id)
+        ? 0
+        : 1 + (subRank[cohort]++ % (CALENDAR_CLOCK_COHORT_STRIDE - 1)),
+    );
+  }
+}
+
+/** Sub-phase inside the owner's 10-tick cohort window (0 = cohort base tick). */
+export function calendarCohortSubPhase(id) {
+  return CALENDAR_CLOCK_SUB_PHASE.get(id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id) || 0;
+}
+
+/** The tick%30 value this calendar owner fires on (production profile). */
+export function calendarCohortTickMod(id) {
+  return calendarCohortIndex(id) * CALENDAR_CLOCK_COHORT_STRIDE + calendarCohortSubPhase(id);
+}
 
 export const NEAR_CLOCK_IDS = Object.freeze([
   'flybyFocus', 'scanner', 'scanReveal', 'lawSecurity', 'pirateDisguise', 'pirateParley',

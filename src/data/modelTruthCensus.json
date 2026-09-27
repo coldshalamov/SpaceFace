@@ -3850,8 +3850,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.008013,
-          "lod2": 0.045652
+          "lod1": 0.007931,
+          "lod2": 0.046104
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -4408,7 +4408,7 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.052792,
+          "lod1": 0.052831,
           "lod2": 0.033493
         },
         "overTolerance": false,
@@ -5437,8 +5437,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.095699,
-          "lod2": 2.9147
+          "lod1": 0.095524,
+          "lod2": 2.91496
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -7537,8 +7537,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.008013,
-          "lod2": 0.045652
+          "lod1": 0.007931,
+          "lod2": 0.046104
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -8618,8 +8618,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.088863,
-          "lod2": 2.706507
+          "lod1": 0.088701,
+          "lod2": 2.706749
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -32955,8 +32955,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 1.003331,
-          "lod2": 1.003331
+          "lod1": 1.001516,
+          "lod2": 1.003239
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -33513,8 +33513,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.023,
-          "lod2": 0.487583
+          "lod1": 0.403715,
+          "lod2": 0.486613
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -34087,8 +34087,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.030509,
-          "lod2": 0.881552
+          "lod1": 0.030284,
+          "lod2": 0.883029
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -34611,8 +34611,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 1.146541,
-          "lod2": 2.234814
+          "lod1": 1.147138,
+          "lod2": 2.235628
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -35660,8 +35660,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.007122,
-          "lod2": 0.040579
+          "lod1": 0.007049,
+          "lod2": 0.040981
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -36218,8 +36218,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 1.854595,
-          "lod2": 1.853077
+          "lod1": 1.854766,
+          "lod2": 1.851993
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -37367,7 +37367,7 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.039594,
+          "lod1": 0.039624,
           "lod2": 0.018565
         },
         "overTolerance": false,
@@ -37909,8 +37909,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.059977,
-          "lod2": 0.102022
+          "lod1": 0.060079,
+          "lod2": 0.102095
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -38467,8 +38467,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.033155,
-          "lod2": 0.782769
+          "lod1": 0.032623,
+          "lod2": 0.782714
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -39575,8 +39575,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.03013,
-          "lod2": 0.392054
+          "lod1": 0.030115,
+          "lod2": 0.391552
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -40141,8 +40141,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.095699,
-          "lod2": 2.9147
+          "lod1": 0.095524,
+          "lod2": 2.91496
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -52161,8 +52161,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.020426,
-          "lod2": 0.13436
+          "lod1": 0.021136,
+          "lod2": 0.134656
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -54294,8 +54294,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.095699,
-          "lod2": 2.9147
+          "lod1": 0.095524,
+          "lod2": 2.91496
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -56684,8 +56684,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.891755,
-          "lod2": 1.738189
+          "lod1": 0.892219,
+          "lod2": 1.738823
         },
         "overTolerance": false,
         "toleranceWu": 4

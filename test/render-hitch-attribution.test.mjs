@@ -363,6 +363,103 @@ test('ensurePerfRuntime hitch coverage classifies each frame independently and r
   assert.equal(report.simStepHistogram[2], 0);
 });
 
+test('simAttribution names the per-frame max owner on unsampled ticks without the p95 sampler', () => {
+  const unsampledTicks = [];
+  for (let tick = 0; tick < SYSTEM_TIMING_SAMPLE_PERIOD_TICKS; tick += 1) {
+    if (!shouldSampleSystemTimingTick(tick)) unsampledTicks.push(tick);
+  }
+  assert.ok(unsampledTicks.length >= 2, 'prime-period sampler must skip at least two ticks');
+
+  const perf = ensurePerfRuntime({ entityList: [], settings: { video: {} } });
+  assert.equal(perf.simAttributionEnabled, false, 'sim attribution must stay opt-in');
+  perf.setHitchAttributionEnabled(true);
+  perf.setSimAttributionEnabled(true);
+  // systemTiming deliberately stays off: per-frame attribution must name the owner
+  // without arming the p95 ring sampler at all.
+  assert.equal(perf.systemTimingEnabled, false);
+
+  // A quiet frame on an unsampled tick still runs the instrumented step path.
+  perf.beginFrame(0.016);
+  assert.equal(perf.shouldMeasureSystemsThisStep(unsampledTicks[0]), true,
+    'armed attribution must instrument a tick the bounded sampler would skip');
+  perf.recordSystem('traffic', 1);
+  perf.recordSystem('combat', 2);
+  perf.recordStepTotal(4);
+  perf.recordPhase('simFrame', 6);
+  perf.beginFrame(0.016);
+
+  assert.deepEqual(perf.getReport().systems, {},
+    'attribution accumulates max+argmax only — no p95 ring writes without the sampler');
+
+  // Hitch frame on another unsampled tick: the frame's real max system names the owner.
+  perf.beginFrame(0.016);
+  assert.equal(perf.shouldMeasureSystemsThisStep(unsampledTicks[1]), true);
+  perf.recordSystem('traffic', 1);
+  perf.recordSystem('physics', 12.5);
+  perf.recordSystem('combat', 2);
+  perf.recordStepTotal(20);
+  perf.recordPhase('simFrame', 30);
+  perf.beginFrame(0.040);
+
+  const report = perf.getHitchHistogram();
+  assert.equal(report.counts.sim, 1);
+  assert.equal(report.bySimSystem.physics, 1);
+  assert.equal(report.simMeasuredFrames, 1);
+  assert.equal(report.simPartiallyMeasuredFrames, 0);
+  assert.equal(report.simUnmeasuredFrames, 0);
+  assert.equal(report.simStepHistogram[1], 1);
+  assert.equal(report.simOwnedSystemTotalMs, 15.5);
+  assert.equal(report.simOwnedPhaseMs, 30);
+
+  const verdict = perf.getHitchVerdicts().at(-1);
+  assert.equal(verdict.owner, 'sim');
+  assert.equal(verdict.simSystem, 'physics');
+});
+
+test('simAttribution is additive to the p95 sampler: only sampled ticks write rings', () => {
+  const sampledTicks = [];
+  const unsampledTicks = [];
+  for (let tick = 0; tick < SYSTEM_TIMING_SAMPLE_PERIOD_TICKS; tick += 1) {
+    if (shouldSampleSystemTimingTick(tick)) sampledTicks.push(tick);
+    else unsampledTicks.push(tick);
+  }
+
+  const perf = ensurePerfRuntime({ entityList: [], settings: { video: {} } });
+  perf.setHitchAttributionEnabled(true);
+  perf.setSystemTimingEnabled(true);
+  perf.setSimAttributionEnabled(true);
+
+  perf.beginFrame(0.016);
+  for (const tick of [sampledTicks[0], unsampledTicks[0], unsampledTicks[1]]) {
+    assert.equal(perf.shouldMeasureSystemsThisStep(tick), true);
+    perf.recordSystem('combat', tick === sampledTicks[0] ? 2 : 5);
+    perf.recordStepTotal(6);
+  }
+  perf.beginFrame(0.016);
+
+  assert.equal(perf.getReport().systems.combat.samples, 1,
+    'two attribution-only steps contributed max+argmax but must not write ring samples');
+});
+
+test('a frozen step that skipped its systems is not counted as measured', () => {
+  const perf = ensurePerfRuntime({ entityList: [], settings: { video: {} } });
+  perf.setHitchAttributionEnabled(true);
+  perf.setSimAttributionEnabled(true);
+
+  perf.beginFrame(0.016);
+  // The registry's frozen path calls recordStepTotal without instrumenting systems.
+  perf.recordStepTotal(2);
+  perf.recordPhase('simFrame', 30);
+  perf.beginFrame(0.040);
+
+  const report = perf.getHitchHistogram();
+  assert.equal(report.counts.sim, 1);
+  assert.equal(report.simStepHistogram[1], 1);
+  assert.equal(report.simMeasuredFrames, 0);
+  assert.equal(report.simUnmeasuredFrames, 1,
+    'a step that ran no systems cannot be claimed as measured');
+});
+
 test('a zero-step sim hitch is no-steps, not unmeasured', () => {
   const classified = classifyHitchFrame({
     frameMs: 40,

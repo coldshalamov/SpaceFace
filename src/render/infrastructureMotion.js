@@ -304,6 +304,9 @@ export function createInfrastructureMotionTracker() {
       } else if (typeof mesh.scale.setScalar === 'function') {
         mesh.scale.setScalar(rec.stationBaseX * scalePing);
       }
+      // Static-presentation station roots keep matrixAutoUpdate=false (PERF-59): the pulse is a
+      // transform write, so compose it here or the walk never sees it.
+      if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
       rec.stationScaleDirty = scalePing !== 1;
     }
   }

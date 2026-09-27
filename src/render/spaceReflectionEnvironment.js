@@ -10,6 +10,13 @@
 // 0.035-radian prefilter softens their edges without clipping the kernel or spamming the live route.
 export const SPACE_REFLECTION_PMREM_SIGMA_RADIANS = 0.035;
 
+// PQ-129.13: capture the card rig at cubeSize 512 so its CubeUV target height (4*cubeSize = 2048)
+// matches the 2k equirect sources (foundry HDRI, deep-sky plates) baked through the same renderer.
+// envMapCubeUVHeight is part of the program cache key, so a mismatched fallback env forces every
+// env-mapped material to relink a duplicate program when the env promotes; matching heights make
+// promotion a texture-only rebind.
+export const SPACE_REFLECTION_PMREM_CUBE_SIZE = 512;
+
 export function createSpaceReflectionEnvironment(THREE, options = {}) {
   if (!THREE) throw new TypeError('createSpaceReflectionEnvironment requires THREE');
 

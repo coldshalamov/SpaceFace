@@ -39,14 +39,19 @@ export function createMasslineCadenceReadout(parent) {
   const get = selector => root.querySelector(selector);
   const el={phase:get('.ml-cadence__phase'),status:get('.ml-cadence__status'),hint:get('.ml-cadence__hint'),
     bar:get('.ml-cadence__window'),speed:get('[data-ml="speed"]'),clearance:get('[data-ml="clearance"]'),length:get('[data-ml="length"]')};
-  const text=(node,value)=>{if(node.textContent!==value)node.textContent=value;};
+  // JS-side last-value caches: textContent/hidden/dataset/getAttribute are real DOM reads —
+  // keep them off the hot path like the rest of the HUD's write-on-change grammar.
+  const text=(node,value)=>{if(node._mlText!==value){node._mlText=value;node.textContent=value;}};
+  const prev={hide:null,open:null,field:null,degraded:null,barX:null,barW:null,barO:null};
+  const hideRoot=hide=>{if(prev.hide!==hide){prev.hide=hide;root.hidden=hide;}};
   let destroyed=false;
   return { element: root,
+    hide(){ hideRoot(true); },
     update(state) {
       if(destroyed)return;
       const tether=state?.player?.tether, solution=state?.massline2?.throw?.solution;
       const hide=!tether?.active;
-      if(root.hidden!==hide)root.hidden=hide;
+      hideRoot(hide);
       if(hide)return;
       const window=solution?.window,open=!!(solution?.valid&&solution.onSolution&&!solution.decisionStale&&!solution.degraded);
       const field=solution?.fieldAware===true;
@@ -65,14 +70,14 @@ export function createMasslineCadenceReadout(parent) {
       text(el.clearance,Number.isFinite(clearance)?`${clearance>=0?'+':''}${clearance.toFixed(1)}`:'—');
       text(el.length,Number.isFinite(tether.restLength)?tether.restLength.toFixed(0):'—');
       const openText=String(open),fieldText=String(field),degradedText=String(degraded);
-      if(root.dataset.open!==openText)root.dataset.open=openText;
-      if(root.dataset.field!==fieldText)root.dataset.field=fieldText;
-      if(root.dataset.degraded!==degradedText)root.dataset.degraded=degradedText;
+      if(prev.open!==openText){prev.open=openText;root.dataset.open=openText;}
+      if(prev.field!==fieldText){prev.field=fieldText;root.dataset.field=fieldText;}
+      if(prev.degraded!==degradedText){prev.degraded=degradedText;root.dataset.degraded=degradedText;}
       const start=entry==null?0:Math.min(1.5,entry), end=entry==null?0:Math.min(1.5,window.exitS??1.5);
       const barX=String(start/1.5*296),barW=String(Math.max(0,end-start)/1.5*296),barO=window?.exitS==null?'0.45':'1';
-      if(el.bar.getAttribute('x')!==barX)el.bar.setAttribute('x',barX);
-      if(el.bar.getAttribute('width')!==barW)el.bar.setAttribute('width',barW);
-      if(el.bar.getAttribute('opacity')!==barO)el.bar.setAttribute('opacity',barO);
+      if(prev.barX!==barX){prev.barX=barX;el.bar.setAttribute('x',barX);}
+      if(prev.barW!==barW){prev.barW=barW;el.bar.setAttribute('width',barW);}
+      if(prev.barO!==barO){prev.barO=barO;el.bar.setAttribute('opacity',barO);}
     },
     destroy(){destroyed=true;root.remove();},
   };
