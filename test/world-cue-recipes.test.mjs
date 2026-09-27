@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { WORLD_CUE_ACTION_RECIPE, resolveWorldCueReceipt } from '../src/render/vfx/worldCueRecipes.js';
+import { WORLD_CUE_ACTION_RECIPE, resolveWorldCueReceipt, isComposedTravelCue } from '../src/render/vfx/worldCueRecipes.js';
 import { PRESENTATION_RECIPES } from '../src/presentation/cueRecipes.js';
 import { ActionVfx } from '../src/render/actionVfx.js';
 import { createGameplayExplosion } from '../scripts/lib/vfxGameplayExplosion.mjs';
@@ -12,10 +12,10 @@ function fixture(){return {simTime:1,playerId:1,entities:new Map([
 ]),settings:{video:{}}};}
 function cue(id,extra={}){return {id,sourceId:1,targetId:2,position:{x:137,y:2,z:28},...extra};}
 
-test('whitelist fills fourteen unhandled physical cues using distinct existing matter families',()=>{
-  const entries=Object.entries(WORLD_CUE_ACTION_RECIPE.variants);assert.equal(entries.length,14);
+test('whitelist covers fourteen work cues and nine composed travel handoffs',()=>{
+  const entries=Object.entries(WORLD_CUE_ACTION_RECIPE.variants);assert.equal(entries.length,23);
   for(const [id,recipe] of entries){
-    assert.ok(PRESENTATION_RECIPES[id],id);assert.ok(PRESENTATION_RECIPES[id].lanes.vfx.startsWith('vfx.direct_'),id);
+    assert.ok(PRESENTATION_RECIPES[id],id);assert.ok(isComposedTravelCue(id)||PRESENTATION_RECIPES[id].lanes.vfx.startsWith('vfx.direct_'),id);
     assert.equal(resolveWorldCueReceipt(cue(id),fixture()).kind,id);
     assert.ok(recipe.life>0&&recipe.life<1.2);assert.equal(recipe.continuous,false);
   }
@@ -30,7 +30,7 @@ test('whitelist fills fourteen unhandled physical cues using distinct existing m
 test('already owned effects, bookkeeping and arbitrary cue kinds cannot enter the world consumer',()=>{
   for(const id of ['mining.seam.quality','mining.rich_core.completed','mining.fracture.released',
     'mining.yield.collected','mining.drill.aborted','mining.drill.retry',
-    'travel.cruise.engaged','combat.bounce','ui.open','constructor','__proto__'])
+    'travel.discovery.mapped','combat.bounce','ui.open','constructor','__proto__'])
     assert.equal(resolveWorldCueReceipt(cue(id),fixture()),null,id);
   assert.equal(resolveWorldCueReceipt({kind:'mining.drill.contact'},fixture()),null);
 });
@@ -108,5 +108,21 @@ test('same-tick pulse and return keep their separate variants on the automatic p
   assert.equal(owner.emit('presentation:cue',returned,state),false,'same semantic cue still coalesces');
   assert.equal(owner.emit('presentation:cue',cue('combat.bounce'),state),false);
   state.simTime=1.2;owner.update(state);assert.ok(owner.batch.count>0);
+  state.simTime=3;owner.update(state);assert.equal(owner.live,0);owner.dispose();
+});
+
+
+test('travel follows the named hull, never the destination sector or arbitrary cue position',()=>{
+  const state=fixture(),owner=new ActionVfx(new THREE.Scene());
+  for(const id of Object.keys(WORLD_CUE_ACTION_RECIPE.variants).filter(isComposedTravelCue)){
+    const p=cue(id,{targetId:'destination-sector',position:{x:999,z:999}});
+    const resolved=resolveWorldCueReceipt(p,state);
+    assert.equal(resolved.targetId,1);assert.deepEqual(resolved.pos,{x:80,y:0,z:-12});
+    assert.equal(owner.emit('presentation:cue',p,state),true);
+  }
+  state.simTime=1.3;owner.update(state);assert.ok(owner.batch.count>=36);
+  const first=owner.slots[0],oldX=first.x;state.entities.get(1).pos.x+=12;
+  state.simTime=1.4;owner.update(state);assert.equal(first.x,oldX+12);
+  assert.equal(resolveWorldCueReceipt(cue('travel.jump.failed',{sourceId:99}),state),null);
   state.simTime=3;owner.update(state);assert.equal(owner.live,0);owner.dispose();
 });

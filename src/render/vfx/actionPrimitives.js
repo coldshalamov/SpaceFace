@@ -214,6 +214,41 @@ export class ActionPrimitiveComposer {
     const family=s.recipe.primitive||actionPrimitiveForVerb(verb);
     const cutoff=s.recipe.continuous?clamp((progress-.50)*2.2)-.1:clamp((progress-.62)*2.9)-.1;
     const feed=clamp(age/(.10+s.seed*.07));
+    if(verb.startsWith('travel-')){
+      // A drive sequence composes loaded capture rails, expelled compression folds and
+      // transverse pressure. Every member clears the hull; no charge flash at its centre.
+      const failed=verb==='travel-fail',blocked=verb==='travel-block';
+      const release=verb==='travel-release',cooling=verb==='travel-cool';
+      for(let side=-1;side<=1;side+=2){
+        const flank=r*(1.08+.10*Math.sin(seed+side));
+        const x=s.x-Math.sin(a)*flank*side,z=s.z+Math.cos(a)*flank*side;
+        const delay=side<0?0:.07,local=smooth((age-delay)/.14);
+        const peel=reduced?0:smooth((progress-.48)/.45);
+        if(failed||blocked){
+          this._piece(4,x,z,a+(side<0?Math.PI:0),-.72,.55,w*.8,w*1.1,0,0,
+            r*(.35+(1-Math.exp(-Math.max(0,flowTime-delay)*4))*.9),seed+side,
+            alpha*local,1,cutoff+side*.08,blocked?1.5:1.1);
+          this._piece(1,x,z,a+side*1.35,0,r*1.35,w*.62,w*.74,w*side*.5,0,0,
+            seed+side*2.2,alpha*local*.78,feed,cutoff+side*.10,.82);
+        }else if(release){
+          this._piece(1,x,z,a+Math.PI,-r*.20,r*2.7,w*.95,w*.80,w*side*.68,
+            side*peel*w*.5,0,seed+side*2.1,alpha*local,feed,cutoff+side*.08,1.35);
+          this._piece(5,x,z,a,-r*.65,r*.95,w*.38,w*.52,side*w*.45,0,0,
+            seed+side,alpha*local*.60,feed,cutoff+.12,.9);
+        }else{
+          // Full-size seats energize in staggered patches. The later cross-flow only
+          // appears once both sides have loaded; cooling sheds light rather than shrinking.
+          this._piece(6,x,z,a,-r*.75,r*.82,w*.63,w*.56,side*w*.45,0,0,
+            seed+side,alpha*local,feed,cutoff+side*.07,cooling?.26:1.05);
+          const cross=smooth((age-.19-delay)/.18);
+          this._piece(5,x,z,a+side*.23,-r*.26,r*.93,w*.40,w*.44,side*w*.62,
+            side*w*.35,0,seed+side*2.7,alpha*cross*(cooling?.3:.88),feed,cutoff+.16,1.2);
+        }
+      }
+      if(release)this._matter(s,age,reduced,'cone',a+Math.PI,r*2.2,
+        s.x-Math.cos(a)*r,s.z-Math.sin(a)*r);
+      return;
+    }
     if(family==='compression'){
       const vent=verb==='vent',length=r*(vent?3.4:1.65),axis=a;
       // Two unequal exhaust channels, one delayed counterfold and a loaded throat.

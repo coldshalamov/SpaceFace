@@ -1,8 +1,20 @@
-// Only semantic world cues whose direct-VFX lane had no render consumer belong here.
-// Existing fracture/core/extraction, cargo collection, travel, combat and screen feedback retain
-// their owners. A drill tile coordinate is never a world-space contact.
+// Composed semantic world cues. Legacy travel sheets hand off to this owner.
+// A drill tile coordinate or destination sector id is never a world-space contact.
 const recipe=(verb,primitive,color,life)=>Object.freeze({verb,primitive,color,life,continuous:false});
+const travelVariants=Object.freeze({
+  'travel.cruise.charging':recipe('travel-charge','capture',0x84d8ec,.88),
+  'travel.cruise.engaged':recipe('travel-release','compression',0xa4ebff,.90),
+  'travel.cruise.cancelled':recipe('travel-cool','deposition',0x84a7bd,.68),
+  'travel.cruise.interrupted':recipe('travel-fail','pressure',0xf3a074,.92),
+  'travel.jump.aligning':recipe('travel-charge','capture',0x8ab4ff,1.1),
+  'travel.jump.commit_window':recipe('travel-lock','capture',0xc1e7ff,.66),
+  'travel.jump.committed':recipe('travel-release','compression',0x8bd8ff,1.05),
+  'travel.jump.failed':recipe('travel-fail','pressure',0xf2a276,.92),
+  'travel.interdiction.triggered':recipe('travel-block','pressure',0xeb9277,1.1),
+});
+export const isComposedTravelCue=id=>Object.hasOwn(travelVariants,id);
 const variants=Object.freeze({
+  ...travelVariants,
   'mining.survey.pulse':recipe('survey','pressure',0x78bdcc,1.05),
   'mining.survey.resolved':recipe('cool','deposition',0x96c2c6,.62),
   'mining.survey.classified':recipe('command','induction',0x94dcd1,.82),
@@ -43,6 +55,13 @@ export function resolveWorldCueReceipt(payload,state={}){
   const kind=payload?.id;
   if(!Object.hasOwn(variants,kind))return null;
   const sourceId=payload.sourceId??null,source=body(state,sourceId);
+  if(isComposedTravelCue(kind)){
+    // The normalized source names the actual travelling hull; targetId can be a sector.
+    if(!point(source?.pos)||source.alive===false)return null;
+    const angle=Number.isFinite(payload.payload?.heading)?payload.payload.heading:source.rot||0;
+    return {kind,targetId:sourceId,sourceId,pos:copy(source.pos),
+      direction:{x:Math.cos(angle),z:Math.sin(angle)},attachToTarget:true};
+  }
   const targetId=SOURCE_CUES.has(kind)?sourceId:payload.targetId??null;
   const target=body(state,targetId),liveTarget=target?.alive!==false&&point(target?.pos)?target:null;
   // Heat/capacity envelopes name the mined rock as context, so their normalized
