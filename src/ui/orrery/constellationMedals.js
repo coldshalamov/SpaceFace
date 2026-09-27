@@ -31,9 +31,19 @@ const f = (n) => Math.round(n * 100) / 100;
 export const MEDAL_ORBITS = Object.freeze(['career', 'massline', 'adventure', 'crucible']);
 /** The Hand points here (east, toward the reading beside the orrery). */
 const HAND_BEARING = 90;
-/** Each orbit's radius and medal size, as fractions of the outermost orbit. */
-const RING_R = [0.4, 0.6, 0.8, 1.0];
-const RING_S = [0.2, 0.225, 0.25, 0.27];
+/**
+ * Each orbit's medal, as a multiple of the orrery's unit; the gauge is GAUGE_K units in radius. Orbits are
+ * spaced by their medals: the next orbit out stands the two medals' half-widths plus GAP further, so a medal
+ * never touches one on the next orbit whatever their angles (their halos stand >= 12 px apart).
+ */
+const RING_S = [0.9, 0.95, 1.0, 1.06];
+const GAUGE_K = 1.12;
+const GAP = 14;
+/** Room past the outer medals for their names. */
+const LM = 22;
+/** Each orbit's rest, turned from the Hand's way by this share of the room it has (fixed: the rests never drift). */
+const STAGGER = [-0.5, 0, -0.45, 0.5];
+let cutSeq = 0;
 const wrap180 = (a) => { let x = a % 360; if (x > 180) x -= 360; if (x <= -180) x += 360; return x; };
 
 const CSS = `
@@ -51,13 +61,17 @@ const CSS = `
 .con-morr__medals, .con-morr__labels { position:absolute; inset:0; pointer-events:none; z-index:2; }
 .con-morr__labels { z-index:3; }
 /* the orbits: a track of light, a fine scale that turns with the orbit, the category engraved on it */
-.orr-svg .con-morr__track { fill:none; stroke:rgb(${BONE} / .3); stroke-width:1.6; }
-.orr-svg .con-morr__trackbloom { fill:none; stroke:rgb(${WARM}); stroke-width:8; opacity:.05; }
+.orr-svg .con-morr__track { fill:none; stroke:rgb(${BONE} / .58); stroke-width:1.6; }
+/* the orbit's body: a band of light the core rides on */
+.orr-svg .con-morr__trackbloom { fill:none; stroke:rgb(${BONE} / .31); stroke-width:7; }
 .orr-svg .con-morr__ticks { fill:none; stroke:rgb(${BONE} / .34); stroke-width:1.2; }
-.orr-svg .con-morr__ring.is-front .con-morr__track { stroke:rgb(${WARM} / .7); stroke-width:2.2; }
-.orr-svg .con-morr__ring.is-front .con-morr__trackbloom { opacity:.16; }
+.orr-svg .con-morr__ring.is-front .con-morr__track { stroke:rgb(${WARM} / .95); stroke-width:2.2; }
+.orr-svg .con-morr__ring.is-front .con-morr__trackbloom { stroke:rgb(${WARM} / .5); stroke-width:8; }
 .orr-svg .con-morr__ring.is-front .con-morr__ticks { stroke:rgb(${WARM} / .55); }
-.orr-svg .con-morr__ring.is-dim { opacity:.4; }
+.orr-svg .con-morr__ring.is-dim .con-morr__track { stroke:rgb(${BONE} / .42); }
+.orr-svg .con-morr__ring.is-dim .con-morr__ticks { stroke:rgb(${BONE} / .2); }
+.orr-svg .con-morr__ring.is-dim text.con-morr__ringname { fill:rgb(${BONE} / .62); }
+.orr-svg .con-morr__ring.is-dim text.con-morr__ringname tspan { fill:rgb(${BONE} / .72); }
 .orr-svg text.con-morr__ringname { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:var(--mo-rn, 10px); letter-spacing:.26em;
   text-transform:uppercase; fill:rgb(${BONE} / .72); }
 .orr-svg text.con-morr__ringname tspan { fill:rgb(${WARM}); letter-spacing:.1em; }
@@ -65,7 +79,7 @@ const CSS = `
 .orr-svg text.con-morr__ringname.is-on { opacity:1; transition:opacity .35s linear var(--mo-ld, 420ms); }
 .orr-svg .con-morr__ring.is-front text.con-morr__ringname { fill:rgb(${WARM}); }
 /* the hero gauge: the medals you hold */
-.orr-svg .con-morr__gtrack { fill:none; stroke:rgb(${BONE} / .16); stroke-width:6; }
+.orr-svg .con-morr__gtrack { fill:none; stroke:rgb(${BONE} / .31); stroke-width:6; }
 .orr-svg .con-morr__gfill { fill:none; stroke:rgb(${WARM}); stroke-width:6; stroke-linecap:butt; }
 .orr-svg .con-morr__gbloom { fill:none; stroke:rgb(${WARM}); stroke-width:16; opacity:.16; stroke-linecap:butt; }
 .orr-svg .con-morr__gtick { stroke:rgb(${BONE} / .3); stroke-width:1.6; }
@@ -113,7 +127,9 @@ const CSS = `
 .con-medal[data-state="locked"]:is(:hover, :focus-visible, [aria-current="true"]) .con-medal__glyph:has(.con-medal__emblem) { opacity:.75; }
 .con-medal__scramble { display:block; font-family:var(--dp-face-code, "Spline Sans Mono"), ui-monospace, monospace; font-size:calc(var(--ms, 90px) * .12); line-height:1.08; letter-spacing:.1em; color:rgb(${BONE} / .6); text-align:center; white-space:nowrap; }
 .con-medal__q { font-family:var(--dp-face-numeral, "Archivo"); font-weight:250; font-size:calc(var(--ms, 90px) * .3); line-height:1; }
-.orr-svg .con-medal__ghost { fill:none; stroke:rgb(${BONE} / .46); stroke-width:1.5; stroke-dasharray:1.4 3.2; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+.orr-svg .con-medal__ghost { fill:none; stroke:rgb(${BONE} / .8); stroke-width:1.6; stroke-dasharray:1.4 3.2; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+/* the ring every medal stands in: a band with body under its dotted light */
+.orr-svg .con-medal__ghostband { fill:none; stroke:rgb(${BONE} / .31); stroke-width:5; vector-effect:non-scaling-stroke; }
 .orr-svg .con-medal__arc { fill:none; stroke:rgb(${WARM}); stroke-width:4.5; stroke-linecap:butt; }
 .orr-svg .con-medal__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:13; opacity:.2; stroke-linecap:butt; }
 .orr-svg .con-medal__head { fill:rgb(255 252 245); }
@@ -122,8 +138,15 @@ const CSS = `
 .con-medal:focus-visible .con-medal__focus, html.sf-gamepad-focus .con-medal:focus .con-medal__focus { opacity:1; }
 .con-medal[data-state="earned"] .orr-svg .con-medal__ghost { stroke-dasharray:none; stroke:rgb(${WARM} / .5); }
 .con-medal[data-state="going"] .orr-svg .con-medal__ghost { stroke-dasharray:none; stroke:rgb(${BONE} / .24); }
-.con-medal.is-dim { opacity:.4; }
-.con-medal.is-dim:is(:hover, :focus-visible) { opacity:.85; }
+/* a medal off the front orbit is quieter, never gone: its face and its light step down, its ring stays */
+.con-medal.is-dim:not(:hover):not(:focus-visible) .con-medal__art { opacity:.1; }
+.con-medal.is-dim:not(:hover):not(:focus-visible)[data-state="going"] .con-medal__art { opacity:.26; }
+.con-medal.is-dim:not(:hover):not(:focus-visible)[data-state="earned"] .con-medal__art { opacity:.44; }
+.con-medal.is-dim:not(:hover):not(:focus-visible) .con-medal__glyph { opacity:.5 !important; }
+.con-medal.is-dim:not(:hover):not(:focus-visible) .orr-svg .con-medal__arc { opacity:.58; }
+.con-medal.is-dim:not(:hover):not(:focus-visible) .orr-svg .con-medal__bloom { opacity:.08; }
+.con-medal.is-dim:not(:hover):not(:focus-visible) .orr-svg :is(.con-medal__head, .con-medal__head-bloom) { opacity:.5; }
+.con-medal.is-dim:not(:hover):not(:focus-visible) .orr-svg .con-medal__ghost { stroke:rgb(${BONE} / .52); }
 /* a medal struck while the screen is open: it flares where it stands */
 .con-medal.is-struck .con-medal__art { animation:con-medal-strike 900ms cubic-bezier(.3, 1.4, .5, 1) both; }
 @keyframes con-medal-strike { 0% { transform:scale(.6); opacity:.2; } 40% { transform:scale(1.25); opacity:1; } 100% { transform:none; opacity:1; } }
@@ -131,8 +154,8 @@ const CSS = `
 .con-morr__label { position:absolute; display:flex; flex-direction:column; gap:3px; white-space:nowrap; opacity:0; transition:opacity .2s linear;
   text-shadow:0 0 2px rgb(4 6 9), 0 0 5px rgb(4 6 9), 0 0 10px rgb(4 6 9 / .9); }
 .con-morr__label.is-on { opacity:1; transition:opacity .35s linear var(--mo-ld, 420ms); }
-.con-morr__label.is-w, .con-morr__label.is-nw, .con-morr__label.is-sw { align-items:flex-end; text-align:right; }
-.con-morr__label.is-n, .con-morr__label.is-s { align-items:center; text-align:center; }
+.con-morr__label.is-w, .con-morr__label.is-nw, .con-morr__label.is-sw { align-items:flex-end; text-align:right; transform:translateX(-100%); }
+.con-morr__label.is-n, .con-morr__label.is-s { align-items:center; text-align:center; transform:translateX(-50%); }
 .con-morr__lname { display:block; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:var(--mo-lpx, 11.5px); line-height:1.25;
   letter-spacing:.12em; text-transform:uppercase; color:rgb(${BONE} / .86); }
 .con-morr__label[data-state="earned"] .con-morr__lname { color:rgb(${WARM}); }
@@ -140,7 +163,7 @@ const CSS = `
   letter-spacing:.1em; text-transform:uppercase; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
 .con-morr__label[data-state="going"] .con-morr__lsub { color:var(--dp-phos, #dfeeff); }
 /* arrival: the orbits draw, the medals rise along them */
-.con-morr.is-arriving .con-morr__track { stroke-dasharray:1 1; stroke-dashoffset:1; animation:con-morr-draw 700ms var(--dp-ease-out, ease-out) forwards; animation-delay:var(--mo-d, 0ms); }
+.con-morr.is-arriving :is(.con-morr__track, .con-morr__trackbloom) { stroke-dasharray:1 1; stroke-dashoffset:1; animation:con-morr-draw 700ms var(--dp-ease-out, ease-out) forwards; animation-delay:var(--mo-d, 0ms); }
 .con-morr.is-arriving .con-medal__face { opacity:0; animation:con-morr-in 420ms var(--dp-ease-out, ease-out) forwards; animation-delay:var(--mo-d, 0ms); }
 @keyframes con-morr-draw { to { stroke-dashoffset:0; } }
 @keyframes con-morr-in { from { opacity:0; transform:scale(.7); } to { opacity:1; transform:none; } }
@@ -202,7 +225,7 @@ export function medalDialSvg(k, { focusRing = true } = {}) {
       + (p < 1 ? `<circle class="con-medal__head-bloom" cx="${f(hx)}" cy="${f(hy)}" r="6"></circle><circle class="con-medal__head" cx="${f(hx)}" cy="${f(hy)}" r="3"></circle>` : '')
     : '';
   return `<svg class="orr-svg con-medal__dial" viewBox="-50 -50 100 100" aria-hidden="true" focusable="false">`
-    + `<circle class="con-medal__ghost" r="${r}"></circle>`
+    + `<circle class="con-medal__ghostband" r="${r}"></circle><circle class="con-medal__ghost" r="${r}"></circle>`
     + arc
     + (focusRing ? `<circle class="con-medal__focus" r="55"></circle>` : '')
     + `</svg>`;
@@ -274,13 +297,16 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
 
   let g2 = null;
   const textW = (text, px) => {
-    if (typeof measure === 'function') { const w = measure(text, px); if (Number.isFinite(w) && w > 0) return w; }
+    const t = String(text).toUpperCase();
+    if (typeof measure === 'function') { const w = measure(t, px); if (Number.isFinite(w) && w > 0) return w; }
     try {
       if (!g2) g2 = doc.createElement('canvas').getContext('2d');
       g2.font = `650 ${px}px Archivo, system-ui, sans-serif`;
-      return g2.measureText(String(text)).width * 1.08 + String(text).length * px * 0.12;
-    } catch (_) { return String(text).length * px * 0.78; }
+      return g2.measureText(t).width * 1.14 + t.length * px * 0.12;
+    } catch (_) { return t.length * px * 0.84; }
   };
+  let labelCuts = null;
+  let maskId = '';
 
   const rowOf = (id) => rows.find((r) => r.id === id) || null;
   const ringOf = (id) => rings.find((r) => r.ids.includes(id)) || null;
@@ -312,42 +338,27 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
     if (ring.ticksG) ring.ticksG.setAttribute('transform', `rotate(${f(ring.off)} ${f(geo.cx)} ${f(geo.cy)})`);
   }
 
-  /** Where every orbit should come to rest: the chosen medal under the Hand, the rest out of each other's way. */
+  /** An orbit's rest when it is not the chosen one: its medals either side of the Hand's way, a fixed turn off it. */
+  function homeOf(ring) {
+    const i = rings.indexOf(ring);
+    const step = 360 / ring.n;
+    const chan = ((ring.size / 2 + 12) / Math.max(1, ring.r)) * (180 / Math.PI);
+    const room = Math.max(0, step / 2 - chan);
+    return HAND_BEARING + step / 2 + (STAGGER[i] || 0) * room;
+  }
+
+  /**
+   * Where every orbit comes to rest: the chosen medal under the Hand, every other orbit at its own rest. The
+   * rests are fixed, so the orbits' angles to each other never depend on how the orrery got there.
+   */
   function targets() {
     const out = new Map();
-    const placed = [];
     const front = frontRing();
     const chosenRing = ringOf(chosen);
-    const ordered = [...rings].sort((a, b) => (a === chosenRing ? -1 : b === chosenRing ? 1 : a.r - b.r));
-    const armTo = chosenRing ? chosenRing.r : 0;
-    for (const ring of ordered) {
+    for (const ring of rings) {
       const step = 360 / ring.n;
-      const at = (off) => ring.ids.map((_, i) => off + step * i);
-      let best = null;
-      if (ring === chosenRing) {
-        const idx = ring.ids.indexOf(chosen);
-        const want = HAND_BEARING - step * idx;
-        best = ring.off + wrap180(want - ring.off);
-      } else {
-        const channel = ring.r < armTo ? ((ring.size / 2 + 12) / ring.r) * (180 / Math.PI) : 0;
-        let bestScore = -Infinity;
-        for (let phi = 0; phi < step; phi += 2) {
-          // the candidate nearest where the orbit stands now
-          const off = ring.off + (((phi - ring.off) % step) + step + step / 2) % step - step / 2;
-          let clear = 40;
-          let penalty = 0;
-          for (const deg of at(off)) {
-            const [x, y] = polar(0, 0, ring.r, deg);
-            for (const p of placed) clear = Math.min(clear, Math.hypot(x - p.x, y - p.y) - (ring.size + p.s) / 2 - 8);
-            if (channel && Math.abs(wrap180(deg - HAND_BEARING)) < channel) penalty += 200;
-            if (Math.abs(wrap180(deg - ring.nameAt)) < ring.nameSpan / 2 + 6) penalty += 30;
-          }
-          const score = clear - penalty - Math.abs(off - ring.off) * 0.02;
-          if (score > bestScore) { bestScore = score; best = off; }
-        }
-      }
-      out.set(ring.id, best);
-      for (const deg of at(best)) { const [x, y] = polar(0, 0, ring.r, deg); placed.push({ x, y, s: ring.size }); }
+      const want = ring === chosenRing ? HAND_BEARING - step * ring.ids.indexOf(chosen) : homeOf(ring);
+      out.set(ring.id, ring.off + wrap180(want - ring.off));
     }
     return { out, front };
   }
@@ -362,7 +373,7 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
       ring.ids.forEach((id, i) => posOf.set(id, polar(geo.cx, geo.cy, ring.r, target.get(ring.id) + step * i)));
     }
     const discs = [];
-    for (const ring of rings) for (const id of ring.ids) { const [x, y] = posOf.get(id); discs.push({ id, x, y, r: ring.size / 2 + 4 }); }
+    for (const ring of rings) for (const id of ring.ids) { const [x, y] = posOf.get(id); discs.push({ id, x, y, r: ring.size / 2 + 10 }); }
     discs.push({ id: '__gauge', x: geo.cx, y: geo.cy, r: geo.gaugeR + 14 });
     const [ax, ay] = polar(geo.cx, geo.cy, geo.gaugeR + 11, HAND_BEARING);
     const armLen = Math.max(0, reachTarget() - geo.gaugeR - 11);
@@ -380,7 +391,7 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
     const items = front.ids.filter((id) => id !== chosen).map((id) => {
       const el = labels.get(id);
       const [x, y] = posOf.get(id);
-      return { id, star: { x, y, ox: x - geo.cx, oy: y - geo.cy }, boxes: [{ w: el.__w, h: el.__h, nameH: el.__nh, lines: [] }], gap: front.size / 2 + 8, rank: 0, depth: 0 };
+      return { id, star: { x, y, ox: x - geo.cx, oy: y - geo.cy }, boxes: [{ w: el.__w, h: el.__h, nameH: el.__nh, lines: [] }], gap: front.size / 2 + 12, rank: 0, depth: 0 };
     });
     const points = [];
     for (const ring of rings) {
@@ -391,15 +402,22 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
       }
     }
     const solved = solveLabels(items, { discs, segs, rects: geo.avoid || [], points, bounds: { x: 4, y: 4, w: geo.W - 8, h: geo.H - 8 } });
+    if (labelCuts) labelCuts.textContent = '';
     for (const [id, sol] of Object.entries(solved)) {
       const el = labels.get(id);
       if (!el || !sol) continue;
-      el.className = `con-morr__label is-${sol.dir.k}`;
+      const k = sol.dir.k;
+      el.className = `con-morr__label is-${k}`;
       el.dataset.state = medalState(rowOf(id));
-      el.style.left = `${f(sol.rect.x)}px`;
+      // anchored on the side it stands: a W name by its right edge, an N or S name by its middle
+      const ax = /w/.test(k) ? sol.rect.x + sol.rect.w : (k === 'n' || k === 's') ? sol.rect.x + sol.rect.w / 2 : sol.rect.x;
+      el.style.left = `${f(ax)}px`;
       el.style.top = `${f(sol.rect.y)}px`;
       el.style.setProperty('--mo-ld', instant ? '0ms' : '460ms');
-      if (!sol.dropped) el.classList.add('is-on');
+      if (sol.dropped) continue;
+      el.classList.add('is-on');
+      // the orbits break 4 px round the name
+      if (labelCuts) labelCuts.appendChild(svg('rect', { x: f(sol.rect.x - 4), y: f(sol.rect.y - 4), width: f(sol.rect.w + 8), height: f(sol.rect.h + 8), rx: 3, fill: '#000' }));
     }
   }
 
@@ -508,45 +526,47 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
     }
     const orbits = orbitsOf(rows);
     const nR = Math.max(1, orbits.length);
-    const rr = orbits.map((_, i) => RING_R[Math.min(RING_R.length - 1, i + Math.max(0, RING_R.length - nR))] || 1);
-    const rs = orbits.map((_, i) => RING_S[Math.min(RING_S.length - 1, i + Math.max(0, RING_S.length - nR))] || 0.24);
-    const outerS = rs[rs.length - 1];
-    // the largest orrery that clears the edges (the outer medals and their names) and the title
-    const margin = (R) => R * outerS / 2 + 34;
+    const ks = orbits.map((_, i) => RING_S[Math.min(RING_S.length - 1, i + Math.max(0, RING_S.length - nR))] || 1);
+    const sumK = ks.reduce((a, b) => a + b, 0);
+    // the orrery reaches u * (GAUGE_K + sum k) + GAP * n from its centre, and its names want LM past that
+    const uFor = (limit) => (limit - LM - GAP * nR) / (GAUGE_K + sumK);
     const distTo = (x, y, r) => Math.hypot(Math.max(r.x - x, 0, x - (r.x + r.w)), Math.max(r.y - y, 0, y - (r.y + r.h)));
-    const fit = (x, y) => {
-      const lim = [y, H - y, x, W - x, ...avoidRects.map((r) => distTo(x, y, r))];
-      // R + margin(R) <= each limit, so R <= (limit - 34) / (1 + outerS / 2)
-      return Math.min(...lim.map((l) => (l - 34) / (1 + outerS / 2)));
-    };
+    const fit = (x, y) => Math.min(...[y, H - y, x, W - x, ...avoidRects.map((r) => distTo(x, y, r))].map(uFor));
     let cx = W / 2;
     let cy = H / 2;
-    let R = fit(cx, cy);
+    let u = fit(cx, cy);
     // the largest orrery, and of the largest the one nearest the middle of its column
     const off = (x, y) => Math.hypot(x - W / 2, y - H / 2);
-    for (let x = W * 0.3; x <= W * 0.7; x += 4) {
-      for (let y = H * 0.4; y <= H * 0.62; y += 4) {
-        const r = fit(x, y);
-        if (r > R + 1 || (Math.abs(r - R) <= 1 && off(x, y) < off(cx, cy))) { R = Math.max(R, r); cx = x; cy = y; }
+    for (let x = W * 0.2; x <= W * 0.8; x += 4) {
+      for (let y = H * 0.36; y <= H * 0.64; y += 4) {
+        const v = fit(x, y);
+        if (v > u + 0.25 || (Math.abs(v - u) <= 0.25 && off(x, y) < off(cx, cy))) { u = Math.max(u, v); cx = x; cy = y; }
       }
     }
-    R = Math.max(90, R);
-    geo = { W, H, cx, cy, R, gaugeR: rr[0] * R - rs[0] * R / 2 - 12, avoid: avoidRects };
+    u = Math.max(22, u);
+    const sizes = ks.map((k) => Math.round(k * u));
+    const gaugeR = GAUGE_K * u;
+    const radii = [];
+    sizes.forEach((d, i) => { radii.push(i === 0 ? gaugeR + GAP + d / 2 : radii[i - 1] + (sizes[i - 1] + d) / 2 + GAP); });
+    const R = radii[radii.length - 1];
+    geo = { W, H, cx, cy, R, gaugeR, avoid: avoidRects };
     host.classList.remove('is-off');
     host.style.setProperty('--mo-cx', `${f(cx)}px`);
     host.style.setProperty('--mo-cy', `${f(cy)}px`);
-    host.style.setProperty('--mo-pool', `${f((R + margin(R)) * 2 + 120)}px`);
-    host.style.setProperty('--mo-num', `${Math.round(Math.max(36, Math.min(112, geo.gaugeR * 0.92)))}px`);
-    host.style.setProperty('--mo-of', `${Math.max(10.5, Math.min(13, geo.gaugeR / 8)).toFixed(1)}px`);
-    host.style.setProperty('--mo-rn', `${Math.max(9.5, Math.min(12, R / 38)).toFixed(1)}px`);
-    const lpx = Math.max(11, Math.min(13.5, R / 32));
+    host.style.setProperty('--mo-pool', `${f((R + sizes[sizes.length - 1] / 2 + LM) * 2 + 120)}px`);
+    host.style.setProperty('--mo-num', `${Math.round(Math.max(36, Math.min(116, gaugeR * 1.1)))}px`);
+    host.style.setProperty('--mo-of', `${Math.max(10.5, Math.min(13, gaugeR / 7)).toFixed(1)}px`);
+    host.style.setProperty('--mo-rn', `${Math.max(9.5, Math.min(12, R / 34)).toFixed(1)}px`);
+    const lpx = Math.max(11, Math.min(13.5, R / 30));
     host.style.setProperty('--mo-lpx', `${lpx.toFixed(1)}px`);
     const prevOff = new Map(rings.map((r) => [r.id, r.off]));
     for (const r of rings) if (r.spring) r.spring.stop();
     rings = orbits.map((o, i) => ({
-      id: o.id, ids: o.ids, n: Math.max(1, o.ids.length), r: rr[i] * R, size: Math.round(rs[i] * R), off: prevOff.get(o.id) ?? (i * 17), spring: null,
+      id: o.id, ids: o.ids, n: Math.max(1, o.ids.length), r: radii[i], size: sizes[i], off: prevOff.has(o.id) ? prevOff.get(o.id) : null, spring: null,
     }));
-    build(lpx);
+    // an orbit seen for the first time starts at its rest
+    for (const ring of rings) if (ring.off == null) ring.off = homeOf(ring);
+        build(lpx);
     aim({ instant: true });
   }
 
@@ -555,6 +575,14 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
     if (layer) {
       layer.textContent = '';
       layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      maskId = `con-morr-cut-${++cutSeq}`;
+      const defs = svg('defs');
+      const mask = svg('mask', { id: maskId, maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: W, height: H });
+      mask.appendChild(svg('rect', { x: 0, y: 0, width: W, height: H, fill: '#fff' }));
+      labelCuts = svg('g');
+      mask.appendChild(labelCuts);
+      defs.appendChild(mask);
+      layer.appendChild(defs);
       // the hero gauge: the medals held, one tick per medal round it
       const total = rows.length || 1;
       const earned = rows.filter((r) => r.unlocked).length;
@@ -577,18 +605,20 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
       rings.forEach((ring, i) => {
         const g = svg('g', { class: 'con-morr__ring', 'data-ring': ring.id });
         g.style.setProperty('--mo-d', `${60 + i * 90}ms`);
-        g.append(
-          svg('circle', { cx: f(cx), cy: f(cy), r: f(ring.r), class: 'con-morr__trackbloom' }),
+        const body = svg('g', { mask: `url(#${maskId})` });
+        body.append(
+          svg('circle', { cx: f(cx), cy: f(cy), r: f(ring.r), class: 'con-morr__trackbloom', pathLength: 1 }),
           svg('circle', { cx: f(cx), cy: f(cy), r: f(ring.r), class: 'con-morr__track', pathLength: 1 }),
         );
         const ticksG = svg('g');
-        ticksG.appendChild(svg('path', { d: ticksD(cx, cy, ring.r + 4, 120, { len: 2.5, major: 10, majorLen: 6, inward: false }), class: 'con-morr__ticks' }));
-        g.appendChild(ticksG);
+        ticksG.appendChild(svg('path', { d: ticksD(cx, cy, ring.r + 5, 120, { len: 2.5, major: 10, majorLen: 6, inward: false }), class: 'con-morr__ticks' }));
+        body.appendChild(ticksG);
+        g.appendChild(body);
         ring.ticksG = ticksG;
         // the category engraved at the foot of its orbit, reading upright
         const word = String(typeof label === 'function' ? label(ring.id) : ring.id).toUpperCase();
         const held = ring.ids.filter((id) => (rowOf(id) || {}).unlocked).length;
-        const rn = Math.max(9.5, Math.min(12, R / 38));
+        const rn = Math.max(9.5, Math.min(12, R / 34));
         const textLen = (word.length + 6) * rn * 0.95;
         const r = ring.r - 9 - rn * 0.1;
         const spanDeg = (textLen / r) * (180 / Math.PI);
@@ -687,6 +717,11 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
         el.__nh = nh;
         el.dataset.state = state;
         labelLayer.appendChild(el);
+        try {
+          const bb = el.getBoundingClientRect();
+          if (bb.width > el.__w) el.__w = Math.ceil(bb.width) + 2;
+          if (bb.height > el.__h) el.__h = Math.ceil(bb.height);
+        } catch (_) { /* measured by estimate */ }
         labels.set(id, el);
       });
     });
