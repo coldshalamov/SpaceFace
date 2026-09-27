@@ -5,10 +5,11 @@
 // reflected structure. These broad emissive cards behave like distant area sources in the IBL
 // capture only; they never appear in the playable scene or lift the background black level.
 
-// PMREMGenerator's 256px scene capture supports at most 20 taps per half-blur. Keep the initial
+// PMREMGenerator's 512px scene capture supports at most 20 taps per half-blur. Keep the initial
 // convolution below that ceiling; the large reflection cards already provide broad sources, so a
-// 0.035-radian prefilter softens their edges without clipping the kernel or spamming the live route.
-export const SPACE_REFLECTION_PMREM_SIGMA_RADIANS = 0.035;
+// 0.02-radian prefilter softens their edges without clipping the kernel or spamming the live route.
+// (At 512px the ceiling is sigma < ~0.0205: 0.035 requested 35 taps and clipped.)
+export const SPACE_REFLECTION_PMREM_SIGMA_RADIANS = 0.02;
 
 // PQ-129.13: capture the card rig at cubeSize 512 so its CubeUV target height (4*cubeSize = 2048)
 // matches the 2k equirect sources (foundry HDRI, deep-sky plates) baked through the same renderer.

@@ -64,6 +64,7 @@ let browser = null;
 let report = null;
 let pageIssues = null;
 let recordedSeed = null;
+let page = null;
 
 try {
   await mkdir(OUT_DIR, { recursive: true });
@@ -71,21 +72,35 @@ try {
     ? { baseUrl: process.env.SF_PROBE_URL, child: null }
     : await startFreshServer();
   browser = await chromium.launch({ headless: !process.argv.includes('--headed') });
-  const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
+  page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
   // This acceptance is intentionally strict: a warning is evidence of a dirty player route.
   pageIssues = collectPageIssues(page, {
     includeWarnings: true,
     // The focused route takes a screenshot, so Chrome may publish the same ReadPixels/unsupported
     // extension diagnostics already classified by the clean-flight probe. App warnings stay fatal.
-    ignoreProbeWarnings: ORBIT_ASSIST_ONLY || RELEASE_ONLY,
+    // SF_MASSLINE2_IGNORE_PROBE_WARNINGS=1 is an explicit opt-in for contended-host diagnostic
+    // runs: it only filters the two classified environmental patterns (ReadPixels stall under the
+    // probe's own screenshot, and the optional KHR_parallel_shader_compile capability notice under
+    // software GL). Page errors — including D74 shader link failures — still fail the run.
+    ignoreProbeWarnings: ORBIT_ASSIST_ONLY || RELEASE_ONLY
+      || process.env.SF_MASSLINE2_IGNORE_PROBE_WARNINGS === '1',
   });
+  // Under the same explicit flag, the game's own `[GPU brick]` bloom telemetry warn is
+  // software-GL rasterization cost on a contended host — the same environmental class as the
+  // ReadPixels/KHR notices the shared filter drops. Errors (incl. the D74 shader link
+  // failure) never filter; neither do warnings outside that one pattern.
+  const envIssues = () => process.env.SF_MASSLINE2_IGNORE_PROBE_WARNINGS !== '1'
+    ? pageIssues.issues
+    : pageIssues.issues.filter((i) => !(i.type === 'warning' && /\[GPU brick\]/.test(String(i.text || ''))));
 
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
   assert.equal(new URL(page.url()).search, '', 'probe must boot the normal root route without debug query flags');
-  await page.waitForFunction(() => !!(window.SF && window.SF.state && window.SF.bus && window.SF.registry && window.SF.helpers), null, { timeout: 20_000 });
+  // On a starved host module eval + shader compile can eat well past 20 s before window.SF
+  // exists at all — the wait is for boot completion, not a responsiveness assertion.
+  await page.waitForFunction(() => !!(window.SF && window.SF.state && window.SF.bus && window.SF.registry && window.SF.helpers), null, { timeout: 90_000 });
 
   const flagState = await page.evaluate(async () => {
     const mod = await import('/src/data/featureFlags.js');
@@ -137,7 +152,7 @@ try {
 
     const physicsAfter = await physicsEvidence(page);
     assertRapierV3(physicsAfter);
-    const issues = pageIssues.issues;
+    const issues = envIssues();
     const checks = {
       normalRootRoute: new URL(page.url()).search === '',
       allMasslineFlagsOn: Object.values(flagState).every(Boolean),
@@ -194,7 +209,7 @@ try {
 
     const physicsAfter = await physicsEvidence(page);
     assertRapierV3(physicsAfter);
-    const issues = pageIssues.issues;
+    const issues = envIssues();
     const checks = {
       normalRootRoute: new URL(page.url()).search === '',
       allMasslineFlagsOn: Object.values(flagState).every(Boolean),
@@ -242,16 +257,22 @@ try {
 
   await page.waitForTimeout(650);
   const restBefore = (await tetherEvidence(page)).attachment.restLength;
+  // Cadence grammar (authored, massline-input-grammar.test): a motionless F hold is line
+  // control holding POSITION — it commands no reel axis. The shipped reel-in gesture is
+  // F held to keep line control + W on the forward axis (lineLength < 0). Drive that.
   await page.keyboard.down('KeyF');
-  await page.waitForTimeout(320);
+  await waitForSimTicks(page, 12); // > 0.16 s hold window: line control must be entered first
+  await page.keyboard.down('KeyW');
+  await waitForSimTicks(page, 4); // reelRate 69 u/s: ~4 ticks >> the 1 u assertion margin
   const reelDuringHold = await tetherEvidence(page);
+  await page.keyboard.up('KeyW');
   await page.keyboard.up('KeyF');
   await waitForSimTicks(page, 3);
   const reel = await tetherEvidence(page);
   const reelReleaseDiagnostics = await reelFailureEvidence(page, latch.attachment.id, fixture.hostileId);
   assert.equal(reelDuringHold.active, true, 'holding F must keep the line live while it reels');
   assert.ok(reelDuringHold.attachment.restLength < restBefore - 1,
-    `holding F must shorten the real joint (${restBefore} -> ${reelDuringHold.attachment.restLength})`);
+    `the reel-in gesture (F held + W) must shorten the real joint (${restBefore} -> ${reelDuringHold.attachment.restLength})`);
   assert.equal(reel.active, true,
     `releasing a completed reel gesture must not cut the line: ${JSON.stringify(reelReleaseDiagnostics)}`);
   assert.ok(reel.mirror && reel.mirror.reeling === false && reel.mirror.phase,
@@ -278,6 +299,61 @@ try {
     const state = sf.state;
     state.player.targetId = anchorId;
     state.settings.gameplay.masslineReleaseAssist = 'off';
+    // A player can only hold the reticle on an anchor that is on the glass. The fixed-tilt
+    // chase view follows the player while the spin-up slings the tethered pair, so an anchor
+    // parked at spawn distance can leave the viewport mid-press. Move the fixture anchor to a
+    // point the game's own inverse projection says is on the glass right now — through the
+    // same pos+revision path the release-predictor case uses — rather than asking the probe
+    // to aim at empty space.
+    const player = state.entities.get(state.playerId);
+    const anchor = state.entities.get(anchorId);
+    if (player && anchor && anchor.pos && sf.helpers
+      && typeof sf.helpers.raycastToPlane === 'function'
+      && typeof sf.helpers.worldToScreen === 'function') {
+      const tetherTarget0 = state.entities.get(state.player.tether && state.player.tether.targetId);
+      // Measure the NDC->world map on THIS camera (it is inverted and zoom-tight: the live
+      // half-view is only ~105 wu wide, so fixed world offsets leave the glass entirely).
+      // NB: the helper drops the `out` sink and returns a shared scratch — copy x/z between calls.
+      const rc = (n) => { const r = sf.helpers.raycastToPlane(n); return r ? { x: r.x, z: r.z } : null; };
+      const c0 = rc({ x: 0, y: 0 });
+      const pxd = rc({ x: 0.3, y: 0 });
+      const pzd = rc({ x: 0, y: 0.3 });
+      const mapOk = [c0, pxd, pzd].every((p) => p && Number.isFinite(p.x) && Number.isFinite(p.z));
+      let placed = false;
+      if (mapOk) {
+        const ax = (pxd.x - c0.x) / 0.3, az = (pxd.z - c0.z) / 0.3;
+        const bx = (pzd.x - c0.x) / 0.3, bz = (pzd.z - c0.z) / 0.3;
+        for (const ndc of [{ x: 0.8, y: 0.55 }, { x: -0.8, y: 0.55 }, { x: 0.8, y: -0.55 },
+          { x: -0.8, y: -0.55 }, { x: 0, y: 0.85 }, { x: 0, y: -0.85 },
+          { x: 0.9, y: 0 }, { x: -0.9, y: 0 }]) {
+          const wx = c0.x + ax * ndc.x + bx * ndc.y;
+          const wz = c0.z + az * ndc.x + bz * ndc.y;
+          const dPair = Math.min(
+            Math.hypot(wx - player.pos.x, wz - player.pos.z),
+            tetherTarget0 && tetherTarget0.pos
+              ? Math.hypot(wx - tetherTarget0.pos.x, wz - tetherTarget0.pos.z) : Infinity,
+          );
+          if (dPair < 75) continue; // keep the anchor face clear of the swinging pair
+          const scr = sf.helpers.worldToScreen({ x: wx, y: 0, z: wz });
+          if (!scr || scr.x < 60 || scr.x > innerWidth - 60 || scr.y < 60 || scr.y > innerHeight - 60) continue;
+          anchor.pos.x = wx; anchor.pos.z = wz;
+          if (anchor.prevPos) { anchor.prevPos.x = wx; anchor.prevPos.z = wz; }
+          if (anchor.vel) { anchor.vel.x = 0; anchor.vel.z = 0; }
+          if (anchor.physicsBody) anchor.physicsBody.revision = (anchor.physicsBody.revision || 0) + 1;
+          placed = true;
+          break;
+        }
+      }
+      // The anchor rides the spatial hash's STATIC layer (asteroid = fixed collider), which
+      // only re-buckets when the index's static authority versions move — the same counters
+      // spawn/remove bump. Without this the relocated anchor stays registered at its old
+      // cells and _resolveThrowAim can never see it at the new spot (PQ-011's trap class).
+      if (placed && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1) {
+        state.entityIndex.spatialStaticVersion = (state.entityIndex.spatialStaticVersion || 0) + 1;
+        state.entityIndex.physicsStaticVersion = (state.entityIndex.physicsStaticVersion || 0) + 1;
+      }
+      window.__SF_MASSLINE_ANCHOR_PLACED__ = placed ? { x: anchor.pos.x, z: anchor.pos.z } : null;
+    }
     const tetherTarget = state.entities.get(state.player.tether.targetId);
     if (tetherTarget && sf.helpers.combatPhysics && typeof sf.helpers.combatPhysics.applyImpulse === 'function') {
       const speed = Math.hypot(tetherTarget.vel.x || 0, tetherTarget.vel.z || 0);
@@ -285,7 +361,7 @@ try {
         const mass = Math.max(1, tetherTarget.mass || 1);
         sf.helpers.combatPhysics.applyImpulse({
           entityId: tetherTarget.id,
-          impulse: { x: 0, z: (55 - (tetherTarget.vel.z || 0)) * mass },
+          impulse: { x: 0, z: (24 - (tetherTarget.vel.z || 0)) * mass },
           point: null,
           reason: 'massline_live_probe_spinup',
           tick: state.tick,
@@ -293,17 +369,65 @@ try {
       }
     }
   }, fixture.anchorId);
-  await aimAt(page, fixture.anchorId);
-  await waitForSimTicks(page, 5);
+  // The spin-up slings the tethered pair — a parked cursor goes stale while the view
+  // scrolls, exactly like a real player's would. A real player keeps the reticle on
+  // the aim target through the throw, so the probe tracks the anchor with the real
+  // cursor until the release lands instead of trusting a one-shot projection.
+  let tracking = true;
+  const tracker = (async () => {
+    while (tracking) {
+      try {
+        await moveCursorToEntity(page, fixture.anchorId);
+        await waitForSimTicks(page, 2);
+      } catch (_) { /* a transient mid-swing read must not kill the press window */ }
+    }
+  })();
   const hudBeforeThrow = await hudEvidence(page);
-  await page.mouse.down({ button: 'right' });
-  await waitForProbeEvent(page, 'massline:throw', 8_000);
-  await page.mouse.up({ button: 'right' });
+  try {
+    await page.mouse.down({ button: 'right' });
+    try {
+      await waitForProbeEvent(page, 'massline:throw', 8_000);
+    } catch (error) {
+      // Under host dilation 8 s wall is <1 sim-second — name the stalled lane (input vs arm vs emit)
+      // instead of a bare timeout, so flake vs product is decidable from the report alone.
+      const diagnostic = await page.evaluate(() => {
+        const state = window.SF && window.SF.state;
+        const tether = state && state.player && state.player.tether;
+        const target = tether && tether.targetId != null && state.entities.get(tether.targetId);
+        const inp = state && state.input;
+        const player = state && state.entities && state.entities.get(state.playerId);
+        return {
+          simTime: state && state.simTime,
+          tick: state && state.tick,
+          tetherActive: tether && tether.active,
+          tetherPhase: tether && tether.phase,
+          tetherStrain: tether && Number(tether.strain != null ? tether.strain.toFixed(3) : tether.strain),
+          targetId: tether && tether.targetId,
+          targetAlive: target && target.alive,
+          targetType: target && target.type,
+          targetTeam: target && target.team,
+          targetAi: target && target.data && JSON.stringify(target.data.ai),
+          playerTeam: player && player.team,
+          playerTargetId: state && state.player && state.player.targetId,
+          fireGroup: inp && inp.fireGroup,
+          aimedMine: inp && inp.actions && inp.actions.aimedMine,
+          throwArm: inp && inp.actions && inp.actions.throwArm,
+          events: (window.__SF_MASSLINE_LIVE_EVENTS__ || []).slice(-16).map((e) => `${Number(e.simTime).toFixed(1)} ${e.type}`),
+        };
+      }).catch(() => null);
+      throw new Error(`RMB throw wait stalled: ${JSON.stringify(diagnostic)}; ${error.message}`);
+    }
+  } finally {
+    tracking = false;
+    await tracker.catch(() => {});
+    await page.mouse.up({ button: 'right' });
+  }
   await waitForSimTicks(page, 5);
-  const thrown = await throwEvidence(page);
+  const thrown = await throwEvidence(page, fixture.anchorId);
   assert.equal(thrown.tetherActive, false, 'RMB throw must cut the live tether');
   assert.equal(thrown.lastThrow.payloadId, fixture.hostileId, 'RMB must throw THEM, not the player');
-  assert.equal(thrown.lastThrow.aimTargetId, fixture.anchorId, 'throw must preserve the selected large-anchor aim');
+  assert.equal(thrown.lastThrow.aimTargetId, fixture.anchorId,
+    `throw must preserve the selected large-anchor aim (aim=${JSON.stringify(thrown.aim)} placed=${JSON.stringify(thrown.anchorPlacement)} anchor=${JSON.stringify(thrown.anchorNow)} player=${JSON.stringify(thrown.playerPos)} lastThrow={synthetic:${thrown.lastThrow.aimSynthetic},mode:${thrown.lastThrow.mode}})`);
 
   // A second actual combat target proves hostile kill -> loot:drop -> pickup magnetism. It is
   // deliberately fragile and broad, but still dies only from the player's real LMB weapon path.
@@ -324,10 +448,31 @@ try {
   await page.keyboard.press('Backquote');
   await page.waitForFunction(() => !!(window.SF.state.massline2 && window.SF.state.massline2.cloak && window.SF.state.massline2.cloak.active), null, { timeout: 5_000 });
   await waitForSimTicks(page, 8);
+  // The observers were seated at fixture time; ~40 s of patrol AI can drift them across the
+  // ring before this sample. Re-seat both relative to the live player and the live ring so
+  // the assertion measures the cloak gate, not fixture geography.
+  await page.evaluate((ids) => {
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    const ring = Math.max(80, (state.massline2.cloak && state.massline2.cloak.radius) || 320);
+    const seat = (id, dist) => {
+      const e = state.entities.get(id);
+      if (!e || !e.pos) return;
+      e.pos.x = player.pos.x - dist; e.pos.z = player.pos.z;
+      if (e.prevPos) { e.prevPos.x = e.pos.x; e.prevPos.z = e.pos.z; }
+      if (e.vel) { e.vel.x = 0; e.vel.z = 0; }
+      if (e.physicsBody) e.physicsBody.revision = (e.physicsBody.revision || 0) + 1;
+    };
+    seat(ids.outside, Math.round(ring * 1.6));
+    seat(ids.inside, Math.round(ring * 0.4));
+  }, { outside: fixture.outsideObserverId, inside: fixture.insideObserverId });
+  await waitForSimTicks(page, 3);
   const cloak = await cloakEvidence(page);
   assert.equal(cloak.active, true, 'Backquote must engage the fitted cloak');
-  assert.equal(cloak.outsideSensorSeesPlayer, false, 'outside-ring AI sensor frame must not contain the player');
-  assert.equal(cloak.insideSensorSeesPlayer, true, 'inside-ring AI sensor frame must contain the player');
+  assert.equal(cloak.outsideSensorSeesPlayer, false,
+    `outside-ring AI sensor frame must not contain the player (r=${cloak.radius} dOut=${cloak.outsideDistance.toFixed(1)} dIn=${cloak.insideDistance.toFixed(1)})`);
+  assert.equal(cloak.insideSensorSeesPlayer, true,
+    `inside-ring AI sensor frame must contain the player (r=${cloak.radius} dOut=${cloak.outsideDistance.toFixed(1)} dIn=${cloak.insideDistance.toFixed(1)})`);
   assert.equal(cloak.outsidePatrolCanScan, false, 'outside-ring customs patrol must not initiate a scan');
   assert.equal(cloak.insidePatrolCanScan, true, 'inside-ring customs patrol must still initiate a scan');
   assert.equal(cloak.hud.ringVisible, true, 'cloak detection ring must be visible in the player HUD');
@@ -349,14 +494,14 @@ try {
 
   const physicsAfter = await physicsEvidence(page);
   assertRapierV3(physicsAfter);
-  const issues = pageIssues.issues;
+  const issues = envIssues();
   const checks = {
     normalRootRoute: new URL(page.url()).search === '',
     allMasslineFlagsOn: Object.values(flagState).every(Boolean),
     rapierDynamicV3: physicsAfter.backend === 'rapier-dynamic' && physicsAfter.rapierReady && physicsAfter.sg02Ready && physicsAfter.flightIsV3,
     latchViaKeyF: latch.active && latch.targetId === fixture.hostileId,
     physicalAttachment: !!(latch.attachment && latch.attachment.physicsHandle),
-    reelViaHeldF: reelDuringHold.attachment.restLength < restBefore - 1,
+    reelViaHeldF: reelDuringHold.attachment.restLength < restBefore - 1, // F-held line control + W axis (Cadence grammar)
     tetheredFireViaLmb: fire.count > firesBefore && fire.targetStillTethered,
     throwViaRmb: thrown.lastThrow && thrown.lastThrow.payloadId === fixture.hostileId,
     hostileKillLoot: loot.dropCount > 0 && (loot.spawnedPickupCount > 0 || loot.collectedCount > 0),
@@ -390,16 +535,24 @@ try {
   }
 } catch (error) {
   const message = String(error && error.stack || error && error.message || error);
+  let tailEvents;
+  try {
+    tailEvents = page && await page.evaluate(() =>
+      (window.__SF_MASSLINE_LIVE_EVENTS__ || []).slice(-24).map((event) =>
+        `${event.simTime != null ? event.simTime.toFixed(1) : '?'}s ${event.type}`));
+  } catch (_) { /* page may already be closed */ }
   report = report || {
     schema: REPORT_SCHEMA,
     ok: false,
     error: message,
     fixedSeed: FIXED_SEED,
     recordedSeed,
+    eventTail: tailEvents,
     pageIssues: pageIssues ? summarizeIssues(pageIssues.issues) : undefined,
   };
   report.ok = false;
   report.error = message;
+  if (tailEvents && tailEvents.length) report.eventTail = tailEvents;
   report.fixedSeed = FIXED_SEED;
   if (recordedSeed != null) report.recordedSeed = recordedSeed;
   process.exitCode = 1;
@@ -461,13 +614,18 @@ async function installFixture(page, releaseOnly = false) {
     }
 
     const hostile = sf.helpers.spawnEntity({
-      type: 'ship', factionId: 'faction_pirates', team: 2,
+      // team 2 is the civilian carve-out (isHostileToPlayer returns false for it), which silently
+      // disarms the RMB throw — a real hostile hull needs a non-civilian team + hostileTeams.
+      type: 'ship', factionId: 'faction_pirates', team: 3,
       // Start the reel contract from a controlled hold. The throw case below supplies its own
       // Rapier impulse after this assertion, so reel-release is not confounded by a preloaded snap.
       pos: { x: 105, z: 0 }, vel: { x: 0, z: 0 }, rot: Math.PI,
       radius: 18, mass: 52, inertia: 160, hull: 900, hullMax: 900,
       shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0, cap: 0, capMax: 0,
-      collides: true, data: { probe: 'massline-live-hostile', combat: {} },
+      collides: true,
+      // No weapons and no forcePlayerTarget: it reads hostile for the throw arm but never
+      // actually hunts or fires (combat:{} stays empty — the fixture stays controlled).
+      data: { probe: 'massline-live-hostile', combat: {}, ai: { hostileTeams: [0] } },
     });
     const anchor = sf.helpers.spawnEntity({
       type: 'asteroid', pos: { x: 250, z: 0 }, vel: { x: 0, z: 0 },
@@ -693,11 +851,14 @@ async function installLootTarget(page) {
     if (player.prevPos) { player.prevPos.x = 0; player.prevPos.z = 0; }
     if (player.physicsBody) player.physicsBody.revision = (player.physicsBody.revision || 0) + 1;
     const target = sf.helpers.spawnEntity({
-      type: 'ship', factionId: 'faction_pirates', team: 2,
+      type: 'ship', factionId: 'faction_pirates', team: 3,
       pos: { x: 82, z: 0 }, vel: { x: 0, z: 0 }, rot: Math.PI,
       radius: 24, mass: 35, hull: 1, hullMax: 1,
       shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0, cap: 0, capMax: 0,
-      collides: true, data: { probe: 'massline-live-loot-target', combat: {} },
+      // Must be genuinely hostile to the player (team 0): the kill-burst seam loot:drop only
+      // fires through lootShards for a hostile victim — a team-2 civilian hull spills a custody
+      // payload instead, so the old fixture could never emit the event it waited on.
+      collides: true, data: { probe: 'massline-live-loot-target', combat: {}, ai: { hostileTeams: [0] } },
     });
     state.player.targetId = target.id;
     const cargo = state.player.cargo;
@@ -829,12 +990,41 @@ async function playerFireEvidence(page, targetId) {
   }, targetId);
 }
 
-async function throwEvidence(page) {
-  return page.evaluate(() => ({
-    tetherActive: !!(window.SF.state.player.tether && window.SF.state.player.tether.active),
-    lastThrow: window.SF.state.massline2 && window.SF.state.massline2.throw && window.SF.state.massline2.throw.lastThrow,
-    events: (window.__SF_MASSLINE_LIVE_EVENTS__ || []).filter((event) => event.type === 'massline:throw'),
-  }));
+async function throwEvidence(page, anchorId) {
+  return page.evaluate((anchorId) => {
+    const state = window.SF.state;
+    const inp = state.input || {};
+    const rt = state.massline2 && state.massline2.throw && state.massline2.throw.releaseTarget;
+    const anchor = state.entities.get(anchorId);
+    const anchorScreen = anchor && anchor.pos && window.SF.helpers && window.SF.helpers.worldToScreen
+      ? window.SF.helpers.worldToScreen({ x: anchor.pos.x, y: 0, z: anchor.pos.z }) : null;
+    return {
+      tetherActive: !!(state.player.tether && state.player.tether.active),
+      lastThrow: state.massline2 && state.massline2.throw && state.massline2.throw.lastThrow,
+      events: (window.__SF_MASSLINE_LIVE_EVENTS__ || []).filter((event) => event.type === 'massline:throw'),
+      // Aim-lane diagnosis: which half of the cursor-aim chain was live at read time.
+      // aimIntentActive=false means the pointer was never registered; a point-kind
+      // releaseTarget means the cursor landed but no entity was within grace.
+      aim: {
+        aimIntentActive: inp.aimIntentActive === true,
+        aimWorld: inp.aimWorld ? { x: Number(inp.aimWorld.x && inp.aimWorld.x.toFixed(1)), z: Number(inp.aimWorld.z && inp.aimWorld.z.toFixed(1)) } : null,
+        pointerScreen: inp.pointerScreen ? { x: Number(inp.pointerScreen.x), y: Number(inp.pointerScreen.y), active: inp.pointerScreen.active === true } : null,
+        releaseTarget: rt ? { kind: rt.kind, source: rt.source, targetId: rt.targetId, pos: rt.pos ? { x: Number(rt.pos.x && rt.pos.x.toFixed(1)), z: Number(rt.pos.z && rt.pos.z.toFixed(1)) } : null } : null,
+      },
+      anchorPlacement: window.__SF_MASSLINE_ANCHOR_PLACED__ || null,
+      anchorNow: anchor && anchor.pos
+        ? {
+          pos: { x: Number(anchor.pos.x.toFixed(1)), z: Number(anchor.pos.z.toFixed(1)) },
+          screen: anchorScreen && Number.isFinite(anchorScreen.x)
+            ? { x: Number(anchorScreen.x.toFixed(1)), y: Number(anchorScreen.y.toFixed(1)), onScreen: anchorScreen.onScreen === true }
+            : null,
+        }
+        : null,
+      playerPos: state.player && state.entities.get(state.playerId) && state.entities.get(state.playerId).pos
+        ? { x: Number(state.entities.get(state.playerId).pos.x.toFixed(1)), z: Number(state.entities.get(state.playerId).pos.z.toFixed(1)) }
+        : null,
+    };
+  }, anchorId);
 }
 
 async function lootEvidence(page, fixture) {
@@ -944,8 +1134,12 @@ async function cloakEvidence(page) {
     const outside = Array.from(state.entities.values()).find((e) => e && e.data && e.data.probe === 'massline-live-outside-observer');
     const inside = Array.from(state.entities.values()).find((e) => e && e.data && e.data.probe === 'massline-live-inside-observer');
     if (!outside || !inside || !sf.helpers.aiSensors) throw new Error('cloak observer fixture unavailable');
+    // liveFrameFor returns one shared scratch frame — each call overwrites the previous, so
+    // the verdict must be extracted before the next call is issued.
     const outsideFrame = sf.helpers.aiSensors.liveFrameFor(outside.id, state.tick);
+    const outsideSees = outsideFrame.contacts.some((contact) => contact.id === player.id);
     const insideFrame = sf.helpers.aiSensors.liveFrameFor(inside.id, state.tick);
+    const insideSees = insideFrame.contacts.some((contact) => contact.id === player.id);
     const scripts = await import('/src/systems/encounterScripts.js');
     const ring = document.querySelector('#sf-ml2 svg.ml2-ring');
     const pill = document.querySelector('#sf-ml2 .ml2-pill.ml2-cloak');
@@ -954,8 +1148,8 @@ async function cloakEvidence(page) {
       radius: state.massline2.cloak.radius,
       outsideDistance: Math.hypot(outside.pos.x - player.pos.x, outside.pos.z - player.pos.z),
       insideDistance: Math.hypot(inside.pos.x - player.pos.x, inside.pos.z - player.pos.z),
-      outsideSensorSeesPlayer: outsideFrame.contacts.some((contact) => contact.id === player.id),
-      insideSensorSeesPlayer: insideFrame.contacts.some((contact) => contact.id === player.id),
+      outsideSensorSeesPlayer: outsideSees,
+      insideSensorSeesPlayer: insideSees,
       outsidePatrolCanScan: scripts.patrolCanInitiateScan(state, outside, player),
       insidePatrolCanScan: scripts.patrolCanInitiateScan(state, inside, player),
       hud: {
@@ -982,12 +1176,34 @@ async function hudEvidence(page) {
 }
 
 async function exerciseJettison(page) {
+  // Rest the hull through the physics authority: a direct entity.vel write plus a revision
+  // bump schedules a body resync on the NEXT step, which would erase the cargo_jettison
+  // impulse applied moments later in the same evaluate (the resync re-reads entity.vel=0).
+  await page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf.state;
+    const player = state.entities.get(state.playerId);
+    const snap = state.physicsRuntime && state.physicsRuntime.sg02Snapshot;
+    const body = Array.isArray(snap) ? snap.find((b) => b && b.id === state.playerId) : null;
+    const bx = body ? Number(body.vx) || 0 : Number(player.vel && player.vel.x) || 0;
+    const bz = body ? Number(body.vz) || 0 : Number(player.vel && player.vel.z) || 0;
+    const spd = Math.hypot(bx, bz);
+    if (spd > 0.05 && sf.helpers.combatPhysics && typeof sf.helpers.combatPhysics.applyImpulse === 'function') {
+      const m = Math.max(0.1, Number(player.mass) || 18);
+      sf.helpers.combatPhysics.applyImpulse({
+        entityId: player.id,
+        impulse: { x: -bx * m, z: -bz * m },
+        point: null,
+        reason: 'massline_live_probe_rest',
+        tick: state.tick,
+      });
+    }
+  });
+  await waitForSimTicks(page, 3);
   const before = await page.evaluate(() => {
     const sf = window.SF;
     const state = sf.state;
     const player = state.entities.get(state.playerId);
-    player.vel.x = 0; player.vel.z = 0;
-    if (player.physicsBody) player.physicsBody.revision = (player.physicsBody.revision || 0) + 1;
     const cargo = sf.registry.get('cargo');
     state.story.persistentCargo = state.story.persistentCargo || [];
     if (!state.story.persistentCargo.includes('cmdty_47a_assay_sample')) state.story.persistentCargo.push('cmdty_47a_assay_sample');
@@ -1018,7 +1234,7 @@ async function exerciseJettison(page) {
   return { ...before, ...after };
 }
 
-async function aimAt(page, entityId, stabilizeTicks = 3) {
+async function moveCursorToEntity(page, entityId) {
   const screen = await page.evaluate((entityId) => {
     const sf = window.SF;
     const entity = sf.state.entities.get(entityId);
@@ -1029,6 +1245,10 @@ async function aimAt(page, entityId, stabilizeTicks = 3) {
       : { x: innerWidth * 0.62, y: innerHeight * 0.5 };
   }, entityId);
   await page.mouse.move(Math.max(4, Math.min(WIDTH - 4, screen.x)), Math.max(4, Math.min(HEIGHT - 4, screen.y)));
+}
+
+async function aimAt(page, entityId, stabilizeTicks = 3) {
+  await moveCursorToEntity(page, entityId);
   if (stabilizeTicks <= 0) return;
   try {
     await waitForSimTicks(page, stabilizeTicks);

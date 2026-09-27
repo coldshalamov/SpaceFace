@@ -4,6 +4,7 @@ import * as THREE from 'three';
 
 import {
   createSpaceReflectionEnvironment,
+  SPACE_REFLECTION_PMREM_CUBE_SIZE,
   SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
 } from '../src/render/spaceReflectionEnvironment.js';
 
@@ -28,7 +29,10 @@ test('PBR reflection rig preserves black space while providing distinct broad so
 });
 
 test('PBR reflection convolution stays inside the live PMREM sample ceiling', () => {
-  const cubeCapturePixels = 256 - 1;
+  // The ceiling is measured against the real capture size: PMREMGenerator's LOD0 half-blur spans
+  // cubeSize-1 pixels, and a cube-size bump (PQ-129.13: 256 -> 512) halves radiansPerPixel, so a
+  // sigma that fit the old capture can silently clip the kernel on the live one.
+  const cubeCapturePixels = SPACE_REFLECTION_PMREM_CUBE_SIZE - 1;
   const radiansPerPixel = Math.PI / (2 * cubeCapturePixels);
   const requestedSamples = 1 + Math.floor(3 * SPACE_REFLECTION_PMREM_SIGMA_RADIANS / radiansPerPixel);
 
