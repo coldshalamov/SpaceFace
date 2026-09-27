@@ -293,6 +293,9 @@ test('T03 §9: only the sanctioned consumers import this module', () => {
     // T04 (w2/t04-latch-eligibility): the tether latch is the first sanctioned runtime consumer
     // of the T03 axes — eligibility + ranking with readable denial reasons.
     'src/systems/tetherGameplay.js',
+    // B7 feel-bench scenario: a measurement instrument, not a wiring consumer — it imports only
+    // MASSIVE_ANCHOR_MIN_MASS to size the static anchor prop the ship swings around.
+    'scripts/lib/bench/scenarios/feel.rope_swing_release.mjs',
   ]);
   // src/combat/autoTargetMode.js was sanctioned for rung 08's pickMasslineAutoTarget(). That picker
   // wrote the GUN variable (state.player.targetId) from a LATCH decision, was never called from
