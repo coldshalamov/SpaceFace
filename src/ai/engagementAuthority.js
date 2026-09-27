@@ -59,6 +59,11 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   shield_breaker: new Set(['lance']),
   capital_broadside_tollman: new Set(['broadside_fire']),
   capital_broadside_ala: new Set(['broadside_fire']),
+  // The dart's hull IS the weapon — its blast is a physics fact (impulseCharges proximity/death
+  // fuse), not a fire intent. `commit` advertises fireWindow only so the shared pressure-break
+  // machine can interrupt it; this table deliberately names no fire phase so a kamikaze hull can
+  // never be authorized as an ordinary gunship.
+  detonator_run: new Set(),
 });
 const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
 // Ambient predation: unscripted team-1 pirates hunting manifested team-2 civilians. The director's

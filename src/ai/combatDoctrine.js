@@ -26,6 +26,7 @@ export const CombatDoctrineId = Object.freeze({
   PACK_PURSUIT: 'pack_pursuit',
   MINE_LAYER_WAKE: 'mine_layer_wake',
   SHIELD_BREAKER: 'shield_breaker',
+  DETONATOR_RUN: 'detonator_run',
 });
 
 export const DOCTRINE_TELEGRAPH_TICKS = 30;
@@ -98,6 +99,15 @@ const SHIELD_LANCE_TICKS = 36;
 const SHIELD_PEEL_TICKS = 36;
 const SHIELD_PEEL_MAX_TICKS = 150;
 const SHIELD_REFORM_TICKS = 30;
+// detonator_run: a kamikaze dart's whole fight is WHERE it dies. Close to fuse range, read a
+// telegraphed wind-up (the dart keeps closing while lit), then commit to one straight final
+// run. There is no fire window — the hull is the payload and impulseCharges owns the pop.
+const DETONATOR_FUSE_RANGE_WU = 240;
+const DETONATOR_FUSE_TICKS = DOCTRINE_TELEGRAPH_TICKS;
+const DETONATOR_COMMIT_MIN_TICKS = 20;
+const DETONATOR_COMMIT_MAX_TICKS = 150;
+const DETONATOR_BREAKAWAY_TICKS = 50;
+const DETONATOR_REFORM_TICKS = 50;
 // Identity doctrines own their engagement band: factionBehavior.preferredRange would otherwise
 // re-flatten every identity onto its faction's sampled range and re-collapse the vocabulary.
 // The boss choreographies are staged the same way — the act table owns the standoff.
@@ -105,6 +115,7 @@ const IDENTITY_OWNED_RANGE_DOCTRINES = new Set([
   CombatDoctrineId.SWARM_PACK,
   CombatDoctrineId.MINE_LAYER_WAKE,
   CombatDoctrineId.SHIELD_BREAKER,
+  CombatDoctrineId.DETONATOR_RUN,
   CombatDoctrineId.CAPITAL_BROADSIDE,
   CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN,
   CombatDoctrineId.CAPITAL_BROADSIDE_ALA,
@@ -257,6 +268,7 @@ export class CombatDoctrineRuntime {
               : doctrineId === CombatDoctrineId.SWARM_PACK ? 'extend'
                 : doctrineId === CombatDoctrineId.MINE_LAYER_WAKE ? 'disengage'
                   : doctrineId === CombatDoctrineId.SHIELD_BREAKER ? 'peel'
+                    : doctrineId === CombatDoctrineId.DETONATOR_RUN ? 'breakaway'
                     : doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
                       || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
                       || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA ? 'broadside_shift'
@@ -288,6 +300,8 @@ export class CombatDoctrineRuntime {
       updateMineLayer(record, tick, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.SHIELD_BREAKER) {
       updateShieldBreaker(record, tick, self, target, distance);
+    } else if (doctrineId === CombatDoctrineId.DETONATOR_RUN) {
+      updateDetonator(record, tick, self, target, distance);
     } else {
       updateRanged(record, tick, self, target, distance);
     }
@@ -417,6 +431,36 @@ function updateBrawler(record, tick, self, target, distance) {
     (distance >= 600 || age >= BRAWLER_BREAKAWAY_MAX_TICKS)) {
     beginReform(record, tick);
   } else if (record.phase === 'reform' && age >= BRAWLER_REFORM_TICKS) {
+    advanceCycle(record, tick, 'ingress');
+  }
+}
+
+/**
+ * Kamikaze run: ingress -> fuse_cue (telegraphed, still closing) -> commit (one straight final
+ * approach). The doctrine never advertises a weapon — `commit` sets fireWindow through enter()
+ * so a hurt dart can pressure-break like any other committed attacker, but allowedActionId
+ * stays null and engagementAuthority names no fire phase for this doctrine. The blast itself is
+ * a physics fact owned by impulseCharges (proximity fuse + death pop), not a fire intent.
+ * A missed run (overshot the target) egresses, reforms, and lights the fuse again — every pass
+ * re-announces itself, which is the readable part.
+ */
+function updateDetonator(record, tick, self, target, distance) {
+  const age = tick - record.phaseStartedTick;
+  if (record.phase === 'ingress' && distance <= DETONATOR_FUSE_RANGE_WU) {
+    enter(record, 'fuse_cue', tick, 'detonator_fuse');
+  } else if (record.phase === 'fuse_cue' && age >= DETONATOR_FUSE_TICKS) {
+    record.closestDistance = distance;
+    enter(record, 'commit', tick, null);
+  } else if (record.phase === 'commit') {
+    record.closestDistance = Math.min(record.closestDistance, distance);
+    const passed = runHasPassed(record, self, target, distance);
+    if ((age >= DETONATOR_COMMIT_MIN_TICKS && passed) || age >= DETONATOR_COMMIT_MAX_TICKS) {
+      beginEgress(record, 'breakaway', tick, self, target, 'detonator_missed');
+    }
+  } else if (record.phase === 'breakaway' && age >= DETONATOR_BREAKAWAY_TICKS
+    && (distance >= 420 || age >= DETONATOR_BREAKAWAY_TICKS * 3)) {
+    beginReform(record, tick);
+  } else if (record.phase === 'reform' && age >= DETONATOR_REFORM_TICKS) {
     advanceCycle(record, tick, 'ingress');
   }
 }
@@ -584,6 +628,7 @@ function egressPhaseFor(record) {
   if (doctrineId === CombatDoctrineId.SWARM_PACK) return 'extend';
   if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) return 'disengage';
   if (doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'peel';
+  if (doctrineId === CombatDoctrineId.DETONATOR_RUN) return 'breakaway';
   // The capital has no generic retreat machine: broadside_shift is its authored reposition beat
   // (timer exit back to broadside_charge), so a broken-off capital re-enters its cycle instead of
   // parking on a stale flightPoint in a phase updateCapitalBroadside never advances.
@@ -1012,6 +1057,33 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       preferredRange = 120;
     }
     if (phase === 'screen_hold' || phase === 'shield_dart') allowedActionId = 'action_burst';
+  } else if (doctrineId === CombatDoctrineId.DETONATOR_RUN) {
+    // The run is a body problem, not a gun problem: the nose stays on the target through the lit
+    // fuse and the committed phase just closes distance. allowedActionId never gets set —
+    // detonation is a physics fact owned by impulseCharges, not a fire intent.
+    formationLocked = phase === 'ingress' || phase === 'reform';
+    lateralSign = phase === 'ingress' || phase === 'reform' ? 0 : record.side;
+    faceTarget = phase === 'fuse_cue' || phase === 'commit';
+    if (phase === 'breakaway') {
+      maneuverKind = ManeuverKind.INTERCEPT;
+      maneuverTargetId = null;
+    } else if (phase === 'reform') {
+      // No squad slot to rejoin when the dispatch owns the target (survival cohorts, ambushes):
+      // reform is a re-commit on the named hull, same rule the interceptor learned.
+      if (assignedTargetBreak) {
+        maneuverKind = ManeuverKind.INTERCEPT;
+      } else {
+        maneuverKind = ManeuverKind.FORMATION;
+        maneuverTargetId = null;
+      }
+    } else {
+      maneuverKind = ManeuverKind.INTERCEPT;
+    }
+    preferredRange = phase === 'commit' ? 24
+      : phase === 'fuse_cue' ? 80
+        : phase === 'breakaway' ? 240
+          : phase === 'reform' ? 300
+            : 170;
   } else {
     maneuverKind = phase === 'retreat' ? ManeuverKind.RETREAT
       : (phase === 'outer_standoff' || phase === 'reset' ? ManeuverKind.ORBIT : ManeuverKind.HOLD);
@@ -1226,6 +1298,7 @@ function flightProfileFor(doctrineId, self) {
   if (doctrineId === CombatDoctrineId.PACK_PURSUIT) return 'pack_pursuit';
   if (doctrineId === CombatDoctrineId.SWARM_PACK || doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'flyby';
   if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) return 'ranged_standoff';
+  if (doctrineId === CombatDoctrineId.DETONATOR_RUN) return 'detonator_run';
   return 'ranged_standoff';
 }
 

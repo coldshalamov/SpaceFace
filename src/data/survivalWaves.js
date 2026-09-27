@@ -252,7 +252,7 @@ export const HEAVY_TERRAIN_MIN_MASS = 150;
  */
 export const SURVIVAL_QUESTION_PROPS = freezeDeep({
   1: { id: 'identical_mass', bodies: ['wasp_swarmer'], throwable: true },
-  2: { id: 'split_behind', bodies: ['wasp_swarmer', 'reaver_pirate'], pair: ['reaver_pirate', 'wasp_swarmer'] },
+  2: { id: 'split_behind', bodies: ['wasp_swarmer', 'reaver_pirate', 'detonator_dart'], pair: ['reaver_pirate', 'wasp_swarmer'] },
   3: { id: 'tether_pull', bodies: ['tether_control_raider'] },
   4: { id: 'three_gate_anvil', bodies: ['mine_layer_jackal', 'bruiser_brawler'], pair: ['mine_layer_jackal', 'bruiser_brawler'] },
   5: { id: 'ace_in_the_noise', bodies: ['wasp_swarmer', 'corsair_raider'], throwable: true },
@@ -872,10 +872,13 @@ function tenWaveBlock(arenaId, gateA, gateB) {
     // thing is that the fight now has a behind.
     waveRecipe({
       arenaId, wave: 2, shape: 'split_arrival',
-      objectiveKind: 'resolve_hostiles', threatBudget: 10,
+      objectiveKind: 'resolve_hostiles', threatBudget: 12,
       packages: [
         pkg(0, gateA, 'mass', 'wasp_swarmer', 5),
         pkg(75, gateB, 'pressure', 'reaver_pirate', 3),
+        // Two fuse-lit darts land in the rear push half a second behind the raiders — the wave's
+        // shove lesson now pays double: a dart shoved forward converts into the front pack.
+        pkg(105, gateB, 'pressure', 'detonator_dart', 2),
       ],
       arenaPhase: 'idle', blockingRoles: ['mass', 'pressure'], cleanupTicks: 180,
       xp: 64, credits: 16,

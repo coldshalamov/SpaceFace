@@ -51,6 +51,7 @@ export const LEFTOVER_TELEGRAPH_KINDS = Object.freeze([
   'weapon_charge',
   'attach_spool',
   'wake_mines',
+  'detonator_fuse',
 ]);
 
 export const TELEGRAPH_CUE_TICKS = 30;
@@ -81,6 +82,7 @@ export function leftoverTelegraphKind(payload) {
   }
   if (doctrineId === 'tether_control_raider' || doctrineId === 'field_anchor_controller') return 'attach_spool';
   if (doctrineId === 'ranged_disengager') return 'weapon_charge';
+  if (doctrineId === 'detonator_run') return 'detonator_fuse';
   return null;
 }
 

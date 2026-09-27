@@ -55,6 +55,36 @@ export const ENEMY_TYPES = [
     },
   },
   {
+    id: 'detonator_dart', name: 'Detonator Dart', shipId: 'ship_wasp',
+    silhouette: 'detonator_dart', factionId: 'faction_reach',
+    aiArchetype: 'kamikaze', levelRange: [2, 5],
+    combatDoctrineId: 'detonator_run',
+    // A warhead with an engine strapped to it: fastest hull on the roster, inside the throw
+    // class (mass <= 32), and deliberately killable in a couple of pulse hits — the fight is
+    // WHERE it dies, not whether. Difficulty lives in the blast, never in hit points.
+    hull: 34, armor: 4, armorFlat: 0, shield: 0, shieldRegen: 0, cap: 40, capRegen: 20,
+    combatSpeed: 150,
+    maxSpeed: 168, accel: 132, turnRate: 2.55, collisionRadius: 10, mass: 20,
+    weapons: [],
+    // ImpulseCharges owns this fuse: proximity pops it near any hostile hull and death pops it
+    // wherever it lands — tethering it into a wingman converts the whole package. The blast is
+    // indiscriminate, so the numbers are the lesson: be somewhere else, or put it somewhere else.
+    detonator: { blastRadius: 96, damage: 60, impulse: 520, triggerRange: 56 },
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 60, leashRadius: 2600 },
+    telegraph: {
+      bark: 'warn',
+      line: 'Fuse burning. That dart is a flying bomb — shove it, sling it, or put it down before it arrives.',
+      cue: 'detonator_fuse',
+    },
+    counterHint: 'low_mass_shove_tether_or_kill_at_range_blast_hits_everyone',
+    behavior: 'closes fast on one straight run, telegraphs a fuse, detonates on proximity or death',
+    bountyCr: 140, shipClass: 'drone',
+    loot: {
+      creditsRange: [15, 50],
+      drops: [{ id: 'cmdty_scrap_metal', chance: 0.4, qtyRange: [1, 2] }],
+    },
+  },
+  {
     id: 'bruiser_brawler', name: 'Bruiser Brawler', shipId: 'ship_bastion',
     silhouette: 'bruiser_armor', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [3, 7],
