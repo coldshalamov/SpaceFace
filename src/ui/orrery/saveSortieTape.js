@@ -20,6 +20,9 @@ const BONE = '236 230 216';
 const CSS = `
 .orr-tape { position:relative; display:block; outline:none; touch-action:none; user-select:none; cursor:ew-resize; }
 .orr-tape[aria-disabled="true"] { cursor:default; }
+.orr-tape__stops { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
+.orr-tape__stop { all:unset; position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px; pointer-events:auto; cursor:pointer; border-radius:50%; }
+.orr-tape__stop:focus-visible { outline:none; box-shadow:0 0 0 1.5px rgb(255 217 140 / .75); }
 .orr-tape__svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; display:block; }
 .orr-tape__legend { font-family:var(--dp-face-label, "Archivo"); font-size:calc(10.5px * var(--tape-k, 1)); font-weight:650; letter-spacing:.24em; fill:rgb(${BONE} / .72); }
 .orr-tape__legend--sub { font-size:calc(10px * var(--tape-k, 1)); letter-spacing:.2em; fill:rgb(${BONE} / .56); }
@@ -46,7 +49,7 @@ const CSS = `
 .orr-tape__hand-bloom { fill:none; stroke:rgb(242 185 80 / .26); stroke-width:10; stroke-linecap:round; }
 .orr-tape__hand-bead { fill:var(--dp-hand-hot, #ffd98c); }
 .orr-tape__hand-glow { fill:rgb(255 217 140 / .22); }
-.orr-tape:focus-visible .orr-tape__hand-glow, .orr-tape.is-scrubbing .orr-tape__hand-glow { fill:rgb(255 217 140 / .4); }
+.orr-tape:focus-within .orr-tape__hand-glow, .orr-tape.is-scrubbing .orr-tape__hand-glow { fill:rgb(255 217 140 / .4); }
 .orr-tape__read { position:absolute; top:0; left:0; transform:translateX(-50%); white-space:nowrap; pointer-events:none;
   display:flex; align-items:baseline; gap:12px; }
 .orr-tape__read-t { font-family:var(--dp-face-numeral, "Archivo"); font-weight:300; font-size:calc(22px * var(--tape-k, 1)); line-height:1; letter-spacing:-.01em; color:var(--dp-phos, rgb(223 238 255));
@@ -92,9 +95,13 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   injectOrrery(doc);
   injectStyle(doc);
   host.classList.add('orr-tape');
-  host.setAttribute('role', 'slider');
-  host.setAttribute('aria-label', 'Last sortie: drag back through it');
-  host.tabIndex = 0;
+  // the tape is a group of stops (the launch, each moment, the loss): a keyboard walks them with the
+  // arrows, a controller's d-pad with the shared spatial move, a pointer drags anywhere along it
+  host.setAttribute('role', 'group');
+  host.setAttribute('aria-label', 'Last sortie: step or drag back through it');
+  const stopsLayer = doc.createElement('div');
+  stopsLayer.className = 'orr-tape__stops';
+  let stopEls = [];
   const layer = svg('svg', { class: 'orr-svg orr-tape__svg', 'aria-hidden': 'true', focusable: 'false' });
   const staticG = svg('g');
   const playedG = svg('g');
@@ -110,7 +117,7 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   const readW = doc.createElement('span');
   readW.className = 'orr-tape__read-w';
   read.append(readW);
-  host.append(layer, read);
+  host.append(layer, read, stopsLayer);
 
   let model = { lengthS: null, events: [], killLabel: '' };
   let geo = null;
@@ -159,7 +166,8 @@ export function createSortieTape({ host, onScrub = null } = {}) {
         { textContent: 'NO FLIGHT RECORD FOR THIS SORTIE' }));
       read.hidden = true;
       host.setAttribute('aria-disabled', 'true');
-      host.setAttribute('aria-valuetext', 'No flight record');
+      stopsLayer.textContent = '';
+      stopEls = [];
       return;
     }
     host.removeAttribute('aria-disabled');
@@ -236,7 +244,29 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     handG.appendChild(svg('circle', { class: 'orr-tape__hand-glow', cx: 0, cy: bandTop + bandH / 2, r: 12 }));
     const cyb = bandTop + bandH / 2;
     handG.appendChild(svg('path', { class: 'orr-tape__hand-bead', d: `M 0 ${cyb - 7} L 7 ${cyb} L 0 ${cyb + 7} L -7 ${cyb} Z` }));
+    buildStops();
     place(false);
+  }
+
+  /** One button per stop, seated on the channel at its moment. */
+  function buildStops() {
+    stopsLayer.textContent = '';
+    stopEls = stops().map((t) => {
+      const b = doc.createElement('button');
+      b.type = 'button';
+      b.className = 'orr-tape__stop';
+      b.tabIndex = -1;
+      b.style.left = `${f(t >= model.lengthS - 0.5 ? geo.x1 - 22 * geo.k : x(t))}px`;
+      b.style.top = `${f(geo.mid)}px`;
+      const ev = model.events.find((e) => e.t === t);
+      const word = t >= model.lengthS - 0.5 ? (model.killLabel || 'the loss') : t === 0 ? 'launch' : ev ? ev.label : '';
+      b.setAttribute('aria-label', `${fmtSortieTime(t)}${word ? ', ' + word : ''}`);
+      b.__t = t;
+      b.addEventListener('focus', () => { if (Math.abs(cursor - t) > 0.01) set(t); });
+      b.addEventListener('click', () => { if (Math.abs(cursor - t) > 0.01) set(t); });
+      stopsLayer.appendChild(b);
+      return b;
+    });
   }
 
   /** The event the cursor sits on (within 1.2% of the tape), else null. */
@@ -274,10 +304,10 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     const half = rw / 2;
     const left = Math.max(geo.x0 + half, Math.min(geo.W - half, cx));
     read.style.left = `${f(left)}px`;
-    host.setAttribute('aria-valuemin', '0');
-    host.setAttribute('aria-valuemax', String(Math.round(model.lengthS)));
-    host.setAttribute('aria-valuenow', String(Math.round(cursor)));
-    host.setAttribute('aria-valuetext', `${fmtSortieTime(cursor)}${atEnd ? ', ' + (model.killLabel || 'the loss') : ev ? ', ' + ev.label : ''}`);
+    // roving: the stop at (or just behind) the Hand is the one Tab lands on
+    let current = stopEls[0] || null;
+    for (const b of stopEls) if (b.__t <= cursor + 0.5) current = b;
+    for (const b of stopEls) b.tabIndex = b === current ? 0 : -1;
     if (notify && typeof onScrub === 'function') onScrub(cursor, ev, atEnd);
   }
 
@@ -289,12 +319,6 @@ export function createSortieTape({ host, onScrub = null } = {}) {
 
   // stops: the launch, every event, the loss
   const stops = () => [0, ...model.events.map((e) => e.t), model.lengthS].sort((a, b) => a - b);
-  function step(dir) {
-    const list = stops();
-    const next = dir > 0 ? list.find((s) => s > cursor + 0.5) : [...list].reverse().find((s) => s < cursor - 0.5);
-    set(next == null ? (dir > 0 ? list[0] : model.lengthS) : next);
-  }
-
   let press = null;
   const hostX = (event) => event.clientX - host.getBoundingClientRect().left;
   const onDown = (event) => {
@@ -315,14 +339,17 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     host.classList.remove('is-scrubbing');
     try { host.releasePointerCapture(event.pointerId); } catch (_) { /* not captured */ }
   };
-  // a click with no pointer (Enter/Space on a focused tape, a controller's A) steps to the next moment
-  const onClick = (event) => { if (!empty() && event.detail === 0) step(1); };
+  // the arrows walk the stops (focus follows, so the Hand and the ring follow)
+  const onClick = () => {};
+  const focusStop = (i) => { const b = stopEls[Math.max(0, Math.min(stopEls.length - 1, i))]; if (b) b.focus(); };
   const onKey = (event) => {
     if (empty()) return;
-    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') { event.preventDefault(); step(1); }
-    else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') { event.preventDefault(); step(-1); }
-    else if (event.key === 'Home') { event.preventDefault(); set(0); }
-    else if (event.key === 'End') { event.preventDefault(); set(model.lengthS); }
+    const at = stopEls.indexOf(doc.activeElement);
+    if (at < 0) return;
+    if (event.key === 'ArrowRight') { event.preventDefault(); focusStop(at + 1); }
+    else if (event.key === 'ArrowLeft') { event.preventDefault(); focusStop(at - 1); }
+    else if (event.key === 'Home') { event.preventDefault(); focusStop(0); }
+    else if (event.key === 'End') { event.preventDefault(); focusStop(stopEls.length - 1); }
   };
   host.addEventListener('pointerdown', onDown);
   host.addEventListener('pointermove', onMove);
@@ -355,6 +382,7 @@ export function createSortieTape({ host, onScrub = null } = {}) {
       host.removeEventListener('keydown', onKey);
       layer.remove();
       read.remove();
+      stopsLayer.remove();
     },
   };
 }

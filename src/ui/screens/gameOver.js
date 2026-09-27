@@ -489,7 +489,9 @@ export const gameOverScreen = {
     for (const child of root.children) {
       if (!child || !child.style) continue;
       hidden.push(child);
-      child.style.visibility = 'hidden';
+      // opacity, not visibility: a hidden control cannot take focus, and a d-pad pressed during the
+      // slide moved nothing (the pad walk failed the screen); faded it stays reachable
+      child.style.opacity = '0';
     }
     this._slideHidden = hidden;
     this._slideTimer = setTimeout(() => this._endDeathSlide(), 400);
@@ -500,7 +502,7 @@ export const gameOverScreen = {
     if (root) root.classList.add('k-screen--cold');
     const hidden = this._slideHidden;
     if (hidden) {
-      for (const child of hidden) child.style.visibility = '';
+      for (const child of hidden) child.style.opacity = '';
       this._slideHidden = null;
     }
     this._slideTimer = null;

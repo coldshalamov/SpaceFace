@@ -327,8 +327,10 @@ ${GO} > .sf-go-recap.is-blank .sf-go-st--hub .sf-go-recap__k { position:absolute
 ${GO} > .sf-go-tape { grid-area:tape; position:relative; height:max(122px, calc(150px * var(--sv))); margin:0; padding:0; }
 ${GO} > .sf-go-tape::before { content:""; position:absolute; inset:-18px -40px -10px; z-index:-1; pointer-events:none;
   background:radial-gradient(60% 100% at 50% 50%, rgb(4 5 8 / .55), rgb(4 5 8 / .25) 70%, transparent); }
-${GO} > .sf-go-tape:focus-visible { outline:none; }
-${GO} > .sf-go-tape:focus-visible .orr-tape__band { fill:rgb(${BONE} / .16); }
+${GO} > .sf-go-tape:focus-within .orr-tape__base { stroke:rgb(${BONE} / .5); }
+/* a focused stop is a ring of the Hand's light round the bead, never a square focus box */
+${GO} > .sf-go-tape .orr-tape__stop:focus-visible { outline:none !important; border-radius:50% !important; box-shadow:0 0 0 1.5px rgb(255 217 140 / .7), 0 0 10px 1px rgb(255 217 140 / .25) !important; }
+${GO} > .sf-go-tape .orr-tape__stop { border-radius:50% !important; outline:none !important; }
 @media (max-width:1100px) {
   ${GO} { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"title" "stage" "foot" "recap" "tape" !important; grid-template-rows:auto auto auto auto auto !important; overflow:auto; }
   ${GO} > .sf-go-recap { justify-self:center; }
