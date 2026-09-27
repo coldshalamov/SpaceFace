@@ -490,3 +490,4 @@ per-lane entries above.
 |---|---|---|
 | prefetch | **KEPT** `9efca8bd8` — depth-2 lookahead + deadline flag on LOD demotion + **fixed wave-1 deadline splice predicate (was inverted — flagged entries never spliced)** | merged `10097c85c`; probe 371/237/0.705 inside historical noise band (74–452 across runs); splice fix proven by lane's gated-lane harness (A,B,C → A,C,B order) |
 | calendar | **KEPT** `05ede7d6` — intra-window sub-phase spread (~15-owner spike per cohort tick → 1–2 owners/tick); test-pinned anchors kept | merged `…`; **47a sim hash `f3583c50` bit-identical pre/post merge** (verified on-box) — output-equivalent; no remint needed |
+| entitylist | Pole B demotion REJECTED (verdict holds — optic cells must stay in collidable/radar/spatial indexes; demotion starves classifyWorld rediscovery) | **KEPT** residual `cdb0a0966` — batch corpse removal via order-preserving filter (400-corpse wipe 2.08→1.46 ms); 47a hash `f3583c50` identical on-box |
