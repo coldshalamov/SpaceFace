@@ -15,6 +15,7 @@ import {
 import * as THREE from 'three';
 import { sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
+import { sharedGlbPrepasser } from './glbPrepass.js';
 import {
   createPackageDetachManifest,
   dropPackageDetachManifest,
@@ -1010,7 +1011,28 @@ export function startMeshoptWorkerPool(MeshoptDecoder) {
 function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
   return async (url, metadata) => {
     if (typeof fetchImpl !== 'function') throw new Error('Render package loader requires fetch to load render.glb.');
-    const bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata);
+    let bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata);
+
+    // Structural pre-pass (glbPrepass.js): the verified GLB goes to a worker by transfer, which
+    // batch-decodes every meshopt bufferView and slices embedded image bytes, then transfers it all
+    // back in one reply — replacing ~200 per-bufferView worker round trips plus one main-thread
+    // memcpy per texture. The stock parse below then serves identical bytes from parser maps; when
+    // the worker declines or is unavailable, `buffer` is simply the GLB as fetched.
+    let buffer = bytes.buffer;
+    let predecodedBufferViews = null;
+    let preslicedSourceBytes = null;
+    if (bytes.byteOffset === 0 && bytes.byteLength === buffer.byteLength) {
+      const prepared = await sharedGlbPrepasser().prepass(buffer);
+      if (prepared === null) {
+        // The worker died holding the buffer; re-read (packages are content-hash immutable).
+        bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata);
+        buffer = bytes.buffer;
+      } else {
+        buffer = prepared.glb;
+        predecodedBufferViews = prepared.bufferViews;
+        preslicedSourceBytes = prepared.sourceBytes;
+      }
+    }
 
     defaultDecoderModules ||= Promise.all([
       import('three/addons/loaders/GLTFLoader.js'),
@@ -1019,8 +1041,15 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
     const [{ GLTFLoader }, { MeshoptDecoder }] = await defaultDecoderModules;
     startMeshoptWorkerPool(MeshoptDecoder);
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+    if ((predecodedBufferViews && predecodedBufferViews.size) || (preslicedSourceBytes && preslicedSourceBytes.size)) {
+      loader.register((parser) => {
+        parser.predecodedBufferViews = predecodedBufferViews;
+        parser.preslicedSourceBytes = preslicedSourceBytes;
+        return { name: 'SpaceFaceGlbPrepass' };
+      });
+    }
     if (typeof configureGltfLoader === 'function') await configureGltfLoader(loader, metadata);
-    return loader.parseAsync(bytes.buffer, resourceBaseUrl(url));
+    return loader.parseAsync(buffer, resourceBaseUrl(url));
   };
 }
 
