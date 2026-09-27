@@ -4892,6 +4892,12 @@ function authoredUpgradeConcurrencyLimit() {
   });
 }
 
+// Per-lane bound on speculative decode chains: the next few queued jobs of each lane warm the
+// same `url::slot` cache the admission call reads, so the serial slot stops paying fetch+decode
+// for a job whose turn already arrived. Kept small — each chain pins decoded assets in residency
+// until its job settles, and a cancelled job's warm-up is the waste the bound exists to cap.
+const AUTHORED_JOB_PREFETCH_DEPTH = 2;
+
 function primeNextAuthoredAssetPlan(state) {
   const liveState = authoredRuntimeState();
   if (!state || !liveState || liveState.mode !== 'flight') return;
@@ -4919,33 +4925,43 @@ function primeNextAuthoredAssetPlan(state) {
     });
     return;
   }
-  // Only prepare the job that is about to be admitted. The old loop started a preload Promise for
+  // Only prepare the jobs nearest the serial slot. The old loop started a preload Promise for
   // every queued ship, which effectively asked the serial decode lane to process the whole live
-  // galaxy while the player was already flying. One-job lookahead keeps the same authored asset and
-  // exact composition, but bounds decode/GPU residency demand to the next relevant boundary.
-  // The lookahead is not ship-only anymore: place/station/fx/payload jobs pay the same fetch+decode
-  // inside the serial slot when they arrive cold. Keep the bound at one chain per lane — the next
-  // ship and the next non-ship each warm, so a non-ship head cannot starve the ship behind it.
-  let shipLaneDone = false;
-  let otherLaneDone = false;
+  // galaxy while the player was already flying. Bounded lookahead keeps the same authored asset
+  // and exact composition, but caps speculative decode/GPU residency demand to the next few
+  // boundaries. The lookahead is not ship-only: place/station/fx/payload jobs pay the same
+  // fetch+decode inside the serial slot when they arrive cold. The bound is per lane —
+  // AUTHORED_JOB_PREFETCH_DEPTH ship jobs and non-ship jobs warm ahead of admission, so a
+  // non-ship head cannot starve the ships behind it. Every warmed chain joins the decode lane
+  // as an ambient entry, so a deadline splice (admitted job, urgent LOD demotion) still passes.
+  let shipLaneWarmed = 0;
+  let otherLaneWarmed = 0;
   for (const job of state.jobs) {
-    if (shipLaneDone && otherLaneDone) break;
+    if (shipLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH
+        && otherLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH) break;
     if (!jobStillNeeded(state, job)) {
       const index = state.jobs.indexOf(job);
       if (index >= 0) state.jobs.splice(index, 1);
       cancelQueuedJob(state, job);
       continue;
     }
-    if (job.prefetchPromise || !job.entity || !job.renderer) continue;
+    if (!job.entity || !job.renderer) continue;
     const isShip = job.entity.type === 'ship';
-    if (isShip ? shipLaneDone : otherLaneDone) continue;
+    if (isShip ? shipLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH
+        : otherLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH) continue;
+    if (job.prefetchPromise) {
+      // Warming from an earlier prime still occupies a lane slot — the bound is over the next N
+      // warm plans per lane, not the count this one call begins.
+      if (isShip) shipLaneWarmed += 1; else otherLaneWarmed += 1;
+      continue;
+    }
     const prefetch = startAuthoredJobAssetPrefetch(job);
     if (!prefetch) continue;
     job.prefetchPromise = prefetch;
     job.prefetchPromise.catch((error) => {
       job.prefetchError = error && error.message ? error.message : String(error);
     });
-    if (isShip) shipLaneDone = true; else otherLaneDone = true;
+    if (isShip) shipLaneWarmed += 1; else otherLaneWarmed += 1;
   }
 }
 
@@ -6111,6 +6127,9 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
           // residency owner the package is only cache/bootstrap-owned and a sweep can evict it
           // between load and createInstance ("must be retained before creating an instance").
           residencyOwner: boundary,
+          // A demotion is presentation-path work on a live boundary: splice its plan decode ahead
+          // of queued ambient prefetch/runway entries so deep lookahead cannot delay the swap.
+          admissionDeadline: true,
         });
         const publicationWait = waitForOpeningGraphPublicationRelease();
         if (publicationWait) await publicationWait;
@@ -6477,7 +6496,7 @@ function admitEntityPlan(renderer, options, library, plan) {
     // task and earlier deadline entries keep their order.
     if (entry.deadline) {
       let index = lane.queued.length;
-      while (index > 0 && lane.queued[index - 1].deadline) index--;
+      while (index > 0 && !lane.queued[index - 1].deadline) index--;
       lane.queued.splice(index, 0, entry);
     } else {
       lane.queued.push(entry);
