@@ -13,6 +13,7 @@ import {
   getAssetResidency,
 } from './assetResidency.js';
 import * as THREE from 'three';
+import { sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
 
 const ABSOLUTE_URL_RE = /^[a-z][a-z\d+.-]*:/i;
@@ -957,6 +958,27 @@ export function startMeshoptWorkerPool(MeshoptDecoder) {
     // The KTX2 transcoder already owns a 4-worker pool; keep this lane capped so decode bursts
     // cannot evict the present thread's neighbours on small hosts.
     MeshoptDecoder.useWorkers(Math.max(1, Math.min(4, cores - 1)));
+    // The per-decoder cap alone still lets a meshopt burst plus a KTX2 burst oversubscribe
+    // cores; route worker decodes through the shared cross-decoder budget (FIFO, so the
+    // decoder's own least-pending dispatch order is unchanged). decodeGltfBufferAsync is the
+    // pool's only intake — the sync decoders and the no-worker fallback stay main-thread.
+    const decodeGltfBufferAsync = MeshoptDecoder.decodeGltfBufferAsync;
+    if (typeof decodeGltfBufferAsync === 'function' && decodeGltfBufferAsync.spacefaceDecodeBudgetGated !== true) {
+      const gated = function gatedMeshoptDecodeGltfBufferAsync(count, size, source, mode, filter) {
+        return sharedDecodeTaskBudget().acquire().then((release) => {
+          let result;
+          try {
+            result = decodeGltfBufferAsync.call(this, count, size, source, mode, filter);
+          } catch (error) {
+            release();
+            throw error;
+          }
+          return Promise.resolve(result).finally(release);
+        });
+      };
+      gated.spacefaceDecodeBudgetGated = true;
+      MeshoptDecoder.decodeGltfBufferAsync = gated;
+    }
     meshoptWorkerPoolStarted = true;
   } catch (error) {
     console.warn('[renderPackageLoader] meshopt worker decode unavailable; decoding on the present thread', error);
