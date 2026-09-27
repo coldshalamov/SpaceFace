@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import {
+  detachPackageTexture,
+  isPackageTextureDetached,
+} from './packageCpuDetach.js';
 
 const STARTUP_GEOMETRY_BATCH_DRAWABLES = 4;
 const STARTUP_GEOMETRY_BATCH_BYTES = 8 * 1024 * 1024;
@@ -563,6 +567,13 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       residentTextures += 1;
       continue;
     }
+    if (isPackageTextureDetached(texture)) {
+      // The CPU mirror was released after its proven upload. There is nothing to upload until a
+      // context-restore rehydrate refills it — uploading now would push empty mips over the live
+      // copy, so count it resident and skip.
+      residentTextures += 1;
+      continue;
+    }
     await yieldToMain();
     const started = now();
     let success = false;
@@ -577,6 +588,9 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       if (success) {
         uploads.push({ name, width, height, durationMs });
         uploadVersions.set(texture, texture.version);
+        // The GPU copy is proven: release the decoded CPU mirror (mipmaps/source.data) for
+        // marked render-package textures. Context restore rehydrates them on demand.
+        detachPackageTexture(texture);
       }
       reportBlockingSlice(onBlockingSlice, {
         kind: 'gpuResidencyUpload',

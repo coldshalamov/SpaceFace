@@ -15,6 +15,11 @@ import {
 import * as THREE from 'three';
 import { sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
+import {
+  createPackageDetachManifest,
+  dropPackageDetachManifest,
+  packageDetachDiagnostics,
+} from './packageCpuDetach.js';
 
 const ABSOLUTE_URL_RE = /^[a-z][a-z\d+.-]*:/i;
 const SHA256_RE = /^[a-f0-9]{64}$/;
@@ -210,6 +215,7 @@ export function createRenderPackageLoader(options = {}) {
               entry.evicted = true;
               loaded.markEvicted();
               if (cache.get(contentHash) === entry) cache.delete(contentHash);
+              dropPackageDetachManifest(contentHash);
             },
           });
         } catch (error) {
@@ -221,6 +227,18 @@ export function createRenderPackageLoader(options = {}) {
         entry.request = null;
         if (!retained) {
           throw new Error(`Render package ${metadata.assetId} load was released before decode completed.`);
+        }
+        // Mark the package's textures for post-upload CPU-payload detach. The manifest pairs each
+        // texture with its ordinal in the deterministic resource walk so a context restore can
+        // re-decode the immutable render.glb and refill the same texture objects. Detach is
+        // opportunistic: a manifest failure must not fail an otherwise-good package load.
+        try {
+          entry.detachManifest = createPackageDetachManifest(loaded, {
+            redecode: () => decodeGlb(renderUrl, metadata),
+            collectResources: collectImmutableResources,
+          });
+        } catch (error) {
+          if (typeof console !== 'undefined') console.warn('[renderPackageLoader] cpu detach manifest failed', error);
         }
         return loaded;
       });
@@ -291,7 +309,10 @@ export function createRenderPackageLoader(options = {}) {
   function dispose(reason = 'render-package-loader-disposed') {
     if (disposed) return false;
     disposed = true;
-    for (const entry of cache.values()) releasePackageOwner(entry, reason);
+    for (const entry of cache.values()) {
+      releasePackageOwner(entry, reason);
+      dropPackageDetachManifest(entry.metadata.contentHash);
+    }
     return true;
   }
 
@@ -301,6 +322,7 @@ export function createRenderPackageLoader(options = {}) {
       disposed,
       cacheEntries: cache.size,
       residency: residency.canonicalDiagnostics(),
+      cpuDetach: packageDetachDiagnostics(),
     });
   }
 
@@ -1006,7 +1028,7 @@ function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
-function collectImmutableResources(root, stats = null) {
+export function collectImmutableResources(root, stats = null) {
   const resources = new Set();
   root.traverse((object) => {
     if (stats) stats.nodes++;
