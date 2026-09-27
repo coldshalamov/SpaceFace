@@ -17,6 +17,7 @@ import {
 } from './sectorVisualTransition.js';
 import {
   createSpaceReflectionEnvironment,
+  SPACE_REFLECTION_PMREM_CUBE_SIZE,
   SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
 } from './spaceReflectionEnvironment.js';
 import {
@@ -12613,6 +12614,7 @@ export const render = {
         reflectionEnv = createSpaceReflectionEnvironment(THREE);
         envTarget = pmrem.fromScene(
           reflectionEnv.scene, SPACE_REFLECTION_PMREM_SIGMA_RADIANS, 0.1, 1000,
+          { size: SPACE_REFLECTION_PMREM_CUBE_SIZE },
         );
       }
       this._envMapSource = iblSource;
