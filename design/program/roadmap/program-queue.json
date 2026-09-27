@@ -13625,7 +13625,7 @@
       "priority": 313,
       "title": "Promote the Massline express-liner source, candidate, release, and manifest records",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-049.01"
       ],
@@ -13648,9 +13648,12 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-049.02-REPORT.md"
+        "design/program/roadmap/receipts/PQ-049.02-REPORT.md",
+        "design/program/roadmap/receipts/PQ-049.02-RECEIPT.md"
       ],
-      "brief": "Run the current sanctioned family source-to-candidate-to-release transaction for `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1` / `wholeship_massline_express_liner_v1`, with exact hashes, provenance, transforms, sockets/collision, and source/release manifest records. Do not hand-edit generated metadata, alter the accepted Lark, or wire the new asset yet."
+      "brief": "DONE 2026-09-27 (accepted by devin-pq049-accept). The sanctioned family source-to-candidate-to-release transaction for `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1` / `wholeship_massline_express_liner_v1` landed with exact hashes, provenance, transforms, 15 sockets/collision, and source/release manifest records — verified hash-exact against on-disk GLBs at acceptance; the Lark untouched; wiring was .04's scope.",
+      "integratedCommit": "f9bbf5404, 4f9f96b2d, 0c333a47f",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-049.02-RECEIPT.md"
     },
     {
       "id": "PQ-049.03",
@@ -13690,7 +13693,7 @@
       "priority": 315,
       "title": "Map only existing express traffic to the Massline express-liner",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-049.03"
       ],
@@ -13710,9 +13713,12 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-049.04-REPORT.md"
+        "design/program/roadmap/receipts/PQ-049.04-REPORT.md",
+        "design/program/roadmap/receipts/PQ-049.04-RECEIPT.md"
       ],
-      "brief": "After current writers release `partsLibrary.js`, add only the `express` entries to its traffic-role whole-ship file and asset-ID maps, then prove an existing passenger-only express record resolves the new release body. Do not touch `ship_mule`, traffic, itinerary, passenger custody, cargo/economy, or any other role mapping."
+      "brief": "DONE 2026-09-27 (accepted by devin-pq049-accept). Only the `express` entries landed in `partsLibrary.js` (`massline_express_liner_v1.glb` / `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1` + LOD family); `ship_mule` sim def, traffic, itinerary, passenger custody, economy, and all other role maps untouched. Proven on the live route: real express entity 328 'CINDER-RUN' resolves the Massline release body through the production seam and admits authored.",
+      "integratedCommit": "0b6f16515",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-049.04-RECEIPT.md"
     },
     {
       "id": "PQ-049.05",
@@ -13720,7 +13726,7 @@
       "priority": 316,
       "title": "Accept the Massline express-liner on its natural route",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-049.04"
       ],
@@ -13742,8 +13748,13 @@
         "node --test test/pq048-passenger-liner-service.test.mjs test/massline-express-liner-runtime.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Capture the natural Browser and Electron express spawn, label, route, dock/service context, passenger itinerary with no invented freight manifest, boost, tether latch/reel/release, and save/Continue itinerary. Compare dense-pocket and tether-close performance at equal quality, then obtain independent exact-hash G7 and whole-asset G1/G2/G4 decisions. This is acceptance support; missing evidence leaves the parent unproven."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-049-05-massline-express-liner-REPORT.md",
+        "design/program/roadmap/receipts/PQ-049.05-RECEIPT.md"
+      ],
+      "brief": "DONE 2026-09-27 (accepted by devin-pq049-accept). The natural express spawn ('CINDER-RUN', express_hitch_route Customs→Beltout, Express Hitch Line, hitchable, v3_boost transit, no invented freight manifest) presented authored from the Massline release GLB on the live route in Browser and inside the real Electron shell; save/Continue keeps the named express (check:traffic 9/9). Residual for the parent packet: literal latch/reel to the moving liner (blocked by the D76 landed tether regression — check:massline2:live red at clean HEAD, recorded not gamed), equal-quality dense-pocket vs tether-close perf, and independent G7/G1/G2/G4 sign-offs.",
+      "integratedCommit": "f9bbf5404, 4f9f96b2d, 0b6f16515, 7a3f6af04",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-049.05-RECEIPT.md"
     },
     {
       "id": "PQ-050.01",
