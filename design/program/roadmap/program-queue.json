@@ -1457,7 +1457,7 @@
       "id": "PQ-026",
       "priority": 26,
       "title": "Mass-coupling tactics: inertial shunt, gravity mark, momentum sink",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "PROPOSED-T22"
       ],
@@ -1490,7 +1490,7 @@
       "id": "PQ-027",
       "priority": 27,
       "title": "Environment as weapon: machinery and timed hazards that participate",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "PROPOSED-W21"
       ],
@@ -1526,7 +1526,7 @@
       "id": "PQ-028",
       "priority": 28,
       "title": "Manufactured travel and physics infrastructure you can ride",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "A15",
         "W17"
@@ -1565,7 +1565,7 @@
       "id": "PQ-029",
       "priority": 29,
       "title": "Practical Massline heads as toys: tractor, elastic whip, frame coupler",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "T11",
         "T12",
@@ -1601,7 +1601,7 @@
       "id": "PQ-030",
       "priority": 30,
       "title": "Advanced Massline combat heads: monofilament sweep, transverse snare",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "T08",
         "T09"
@@ -1639,7 +1639,7 @@
       "id": "PQ-031",
       "priority": 31,
       "title": "Twin Bridle: the bolas and tether-two",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "PROPOSED-T23"
       ],
@@ -1675,7 +1675,7 @@
       "id": "PQ-032",
       "priority": 32,
       "title": "Campaign spine: one linear story that builds to an ending you earned with the toys",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "W12",
         "W13",
@@ -1721,7 +1721,7 @@
       "id": "PQ-033",
       "priority": 33,
       "title": "Final platform, save, performance, accessibility, legal and store closeout",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "R11",
         "R12",
@@ -2344,7 +2344,7 @@
       "id": "PQ-049",
       "priority": 49,
       "title": "Massline express-liner — distinct civic pressure-drum identity",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "GFX-MASSLINE-EXPRESS-LINER"
       ],
@@ -2448,7 +2448,7 @@
       "id": "PQ-130",
       "priority": 52,
       "title": "Asteroid Works playfield: see the board, drive one cell",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "ASTEROID-WORKS-PLAYFIELD"
       ],
@@ -2487,7 +2487,7 @@
       "id": "PQ-131",
       "priority": 53,
       "title": "Asteroid Works art: authored assets to the ship bar",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "ASTEROID-WORKS-ART"
       ],
@@ -2603,7 +2603,7 @@
       "id": "PQ-134",
       "priority": 56,
       "title": "Arcade structural VFX pool wired into the causal presentation grammar",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "ARCADE-STRUCTURAL-VFX"
       ],
@@ -2657,7 +2657,7 @@
       "id": "PQ-136",
       "priority": 58,
       "title": "Field the authored assets we already own",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "FIELD-AUTHORED-ASSETS"
       ],
@@ -2677,7 +2677,7 @@
       "id": "PQ-137",
       "priority": 59,
       "title": "The guts: the physics feel contract",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "FEEL-CONTRACT-GUTS"
       ],
@@ -2699,7 +2699,7 @@
       "id": "PQ-138",
       "priority": 60,
       "title": "The world reacts: make existing systems collide",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "WORLD-REACTS"
       ],
@@ -2721,7 +2721,7 @@
       "id": "PQ-139",
       "priority": 61,
       "title": "Impacts answer: weight you can hear and feel",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "IMPACTS-ANSWER"
       ],
@@ -2743,7 +2743,7 @@
       "id": "PQ-140",
       "priority": 62,
       "title": "The roster is a set of physical problems",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "ROSTER-PHYSICAL"
       ],
@@ -2767,7 +2767,7 @@
       "id": "PQ-141",
       "priority": 63,
       "title": "The 60-second proof (program acceptance gate)",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "SIXTY-SECOND-PROOF"
       ],
@@ -2793,7 +2793,7 @@
       "id": "PQ-142",
       "priority": 64,
       "title": "Progression means what can I do now, and the ship becomes mine",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "PROGRESSION-VERBS"
       ],
@@ -2817,7 +2817,7 @@
       "id": "PQ-143",
       "priority": 65,
       "title": "Places with a way of life, and ordinary life between incidents",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "PLACES-ORDINARY-LIFE"
       ],
@@ -2841,7 +2841,7 @@
       "id": "PQ-144",
       "priority": 66,
       "title": "Density layers and the performance guard for the toys program",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "DENSITY-PERF-GUARD"
       ],
@@ -2863,7 +2863,7 @@
       "id": "PQ-145",
       "priority": 67,
       "title": "Industry becomes authorship",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "INDUSTRY-AUTHORSHIP"
       ],
@@ -2888,7 +2888,7 @@
       "id": "PQ-146",
       "priority": 68,
       "title": "Stunt grammar and the trick economy",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "STUNT-GRAMMAR"
       ],
@@ -2912,7 +2912,7 @@
       "id": "PQ-147",
       "priority": 69,
       "title": "The field toy chest and the Power Bar filled",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "FIELD-TOY-CHEST"
       ],
@@ -2937,7 +2937,7 @@
       "id": "PQ-148",
       "priority": 70,
       "title": "Cargo is physics: pods with mass, volatility and a story",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "CARGO-IS-PHYSICS"
       ],
@@ -2962,7 +2962,7 @@
       "id": "PQ-149",
       "priority": 71,
       "title": "The storyteller: a session-rhythm director over the directors that exist",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "STORYTELLER-DIRECTOR"
       ],
@@ -2986,7 +2986,7 @@
       "id": "PQ-150",
       "priority": 72,
       "title": "People who remember: aces, rivals, the mechanic, the radio",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "PEOPLE-WHO-REMEMBER"
       ],
@@ -3011,7 +3011,7 @@
       "id": "PQ-151",
       "priority": 73,
       "title": "Crime is a game: the WANTED loop with a physical escape at every tier",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "WANTED-LOOP"
       ],
@@ -3036,7 +3036,7 @@
       "id": "PQ-152",
       "priority": 74,
       "title": "Set pieces built from verbs: ten missions whose headline is physical",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "SET-PIECE-VERBS"
       ],
@@ -3061,7 +3061,7 @@
       "id": "PQ-153",
       "priority": 75,
       "title": "Six sectors with a way of life: Helios Prime, Ceres Belt, Tethys Junction, Vesta Forge, Pallas Drift, Sker Haven",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "SIX-SECTORS"
       ],
@@ -3086,7 +3086,7 @@
       "id": "PQ-154",
       "priority": 76,
       "title": "Wrecks as terrain and the death economy",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "WRECKS-AS-TERRAIN"
       ],
@@ -3110,7 +3110,7 @@
       "id": "PQ-155",
       "priority": 77,
       "title": "Money means toys: the economy tuned as a verb curve",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "ECONOMY-VERB-CURVE"
       ],
@@ -3135,7 +3135,7 @@
       "id": "PQ-156",
       "priority": 78,
       "title": "Three starters, three verbs, and a save-file identity",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "THREE-STARTERS"
       ],
@@ -3160,7 +3160,7 @@
       "id": "PQ-158",
       "priority": 79,
       "title": "Audio direction: the game that sounds heavy",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "AUDIO-DIRECTION"
       ],
@@ -3185,7 +3185,7 @@
       "id": "PQ-159",
       "priority": 80,
       "title": "Camera as art direction, and a photo mode",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "CAMERA-ART-DIRECTION"
       ],
@@ -3210,7 +3210,7 @@
       "id": "PQ-160",
       "priority": 81,
       "title": "Replay, clips and sharing",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "REPLAY-CLIPS"
       ],
@@ -3260,7 +3260,7 @@
       "id": "PQ-163",
       "priority": 83,
       "title": "The first ten minutes: the power fantasy, honest",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "FIRST-TEN-MINUTES"
       ],
@@ -3284,7 +3284,7 @@
       "id": "PQ-164",
       "priority": 84,
       "title": "Input truth: controller, Deck, trackpad, haptics",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "INPUT-TRUTH"
       ],
@@ -3308,7 +3308,7 @@
       "id": "PQ-165",
       "priority": 85,
       "title": "Accessibility and options depth",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "ACCESSIBILITY-OPTIONS"
       ],
@@ -3332,7 +3332,7 @@
       "id": "PQ-166",
       "priority": 86,
       "title": "Localization at launch: five languages and the growth test",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "LOCALIZATION-LAUNCH"
       ],
@@ -3378,7 +3378,7 @@
       "id": "PQ-169",
       "priority": 88,
       "title": "Crucible as the replay surface: daily seed, ghosts, mutators, cosmetics home",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "CRUCIBLE-REPLAY-SURFACE"
       ],
@@ -3403,7 +3403,7 @@
       "id": "PQ-170",
       "priority": 89,
       "title": "Endgame pulls: territory, mega-heists, capital bosses, legendary lines, station growth",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "ENDGAME-PULLS"
       ],
@@ -3427,7 +3427,7 @@
       "id": "PQ-171",
       "priority": 90,
       "title": "Content grammar and the anti-repetition budget",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "CONTENT-GRAMMAR"
       ],
@@ -3451,7 +3451,7 @@
       "id": "PQ-172",
       "priority": 91,
       "title": "Mods and data-driven content",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "MODS-DATA-DRIVEN"
       ],
@@ -3528,7 +3528,7 @@
       "id": "PQ-173",
       "priority": 94,
       "title": "The fun-loop instrument: bench, measure, critic, report, translator",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "FUN-LOOP-INSTRUMENT"
       ],
@@ -3550,7 +3550,7 @@
       "id": "PQ-174",
       "priority": 95,
       "title": "Swarm mode fun contract: the Crucible plays optimally",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "SWARM-FUN-CONTRACT"
       ],
@@ -3575,7 +3575,7 @@
       "id": "PQ-175",
       "priority": 96,
       "title": "Swarm mode content at craft: waves, arenas, drafts and mutators that create decisions",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "SWARM-CONTENT-CRAFT"
       ],
@@ -3599,7 +3599,7 @@
       "id": "PQ-176",
       "priority": 97,
       "title": "Customization with consequences: a fit you can feel and predict",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "CUSTOMIZATION-CONSEQUENCES"
       ],
@@ -3624,7 +3624,7 @@
       "id": "PQ-177",
       "priority": 98,
       "title": "An economy you can read and play: ticker, charts, forecasts, contracts that twist, a black market",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "ECONOMY-READ-PLAY"
       ],
@@ -3649,7 +3649,7 @@
       "id": "PQ-178",
       "priority": 99,
       "title": "The story pipeline: one linear spine, produced by agents at 47-A craft",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "STORY-PIPELINE"
       ],
@@ -3823,7 +3823,7 @@
       "id": "PQ-186",
       "priority": 106,
       "title": "The regression fortress: every bar, every ruling and every refusal becomes a check",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "REGRESSION-FORTRESS"
       ],
@@ -3892,7 +3892,7 @@
       "id": "PQ-189",
       "priority": 109,
       "title": "Correct the compass: one control contract, no stale orders, honest acceptance",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "CORRECT-THE-COMPASS"
       ],
@@ -3914,7 +3914,7 @@
       "id": "PQ-190",
       "priority": 110,
       "title": "The style slice: stylized industrial energy, approved at the shipping camera",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "STYLE-SLICE"
       ],
@@ -3982,7 +3982,7 @@
       "id": "PQ-193",
       "priority": 113,
       "title": "The 3D picture never looks broken",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "GFX-3D-PICTURE-NEVER-BROKEN"
       ],
@@ -4043,7 +4043,7 @@
       "id": "PQ-195",
       "priority": 115,
       "title": "The Third Shift: a recovery you can see, sell out, and lose",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "BREAKAWAY-THIRD-SHIFT"
       ],
@@ -4067,7 +4067,7 @@
       "id": "PQ-204",
       "priority": 1001,
       "title": "Deterministic smoothness algorithms",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "PERF-ADVANCED-SMOOTHNESS"
       ],
@@ -4095,7 +4095,7 @@
       "id": "PQ-205",
       "priority": 1002,
       "title": "Ordnance bombs refinement follow-on",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "ORDNANCE-BOMBS-REFINEMENT"
       ],
@@ -4122,7 +4122,7 @@
       "id": "PQ-206",
       "priority": 1003,
       "title": "Combat variety residuals",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "COMBAT-VARIETY-RESIDUALS"
       ],
@@ -4146,7 +4146,7 @@
       "id": "PQ-207",
       "priority": 1004,
       "title": "People-who-remember residuals",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "PEOPLE-WHO-REMEMBER-RESIDUALS"
       ],
@@ -4172,7 +4172,7 @@
       "id": "PQ-208",
       "priority": 1005,
       "title": "Build-identity drift guard and unwired verb keys",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "BUILD-IDENTITY-DRIFT-GUARD"
       ],
@@ -4198,7 +4198,7 @@
       "id": "PQ-209",
       "priority": 1006,
       "title": "Actual-game defects from the program compass",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "ACTUAL-GAME-DEFECTS"
       ],
