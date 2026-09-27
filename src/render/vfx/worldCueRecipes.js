@@ -65,10 +65,13 @@ export function resolveWorldCueReceipt(payload,state={}){
   if(!Object.hasOwn(variants,kind))return null;
   const sourceId=payload.sourceId??null,source=body(state,sourceId);
   if(isComposedTravelCue(kind)){
-    // The normalized source names the actual travelling hull; targetId can be a sector.
-    if(!point(source?.pos)||source.alive===false)return null;
-    const angle=Number.isFinite(payload.payload?.heading)?payload.payload.heading:source.rot||0;
-    return {kind,targetId:sourceId,sourceId,pos:copy(source.pos),
+    // Travel names the hull as source, except interdiction: that envelope names
+    // the sector as source and the intercepted hull as receiver.
+    const hullId=kind==='travel.interdiction.triggered'?payload.targetId:sourceId;
+    const hull=body(state,hullId);
+    if(!point(hull?.pos)||hull.alive===false)return null;
+    const angle=Number.isFinite(payload.payload?.heading)?payload.payload.heading:hull.rot||0;
+    return {kind,targetId:hullId,sourceId:hullId,pos:copy(hull.pos),
       direction:{x:Math.cos(angle),z:Math.sin(angle)},attachToTarget:true};
   }
   const targetId=SOURCE_CUES.has(kind)?sourceId:payload.targetId??null;

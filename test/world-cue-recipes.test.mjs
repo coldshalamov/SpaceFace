@@ -114,7 +114,8 @@ test('same-tick pulse and return keep their separate variants on the automatic p
 test('travel follows the named hull, never the destination sector or arbitrary cue position',()=>{
   const state=fixture(),owner=new ActionVfx(new THREE.Scene());
   for(const id of Object.keys(WORLD_CUE_ACTION_RECIPE.variants).filter(isComposedTravelCue)){
-    const p=cue(id,{targetId:'destination-sector',position:{x:999,z:999}});
+    const p=cue(id,{...(id==='travel.interdiction.triggered'?{sourceId:'contested-sector',targetId:1}:
+      {targetId:'destination-sector'}),position:{x:999,z:999}});
     const resolved=resolveWorldCueReceipt(p,state);
     assert.equal(resolved.targetId,1);assert.deepEqual(resolved.pos,{x:80,y:0,z:-12});
     assert.equal(owner.emit('presentation:cue',p,state),true);
