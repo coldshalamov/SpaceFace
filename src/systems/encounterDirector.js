@@ -124,6 +124,7 @@ const MAX_MAJOR_PER_DAY = 1;
 const MAX_MINOR_PER_DAY = 2;
 const MAX_AMBIENT_PER_DAY = 3;
 const RARE_GATE = 0.75;            // 'rare' shapes need an extra seeded roll to clear this
+const SHAPE_UNSEEN_WEIGHT = 6;     // E6: shapes not yet scheduled this hour bucket draw 6x
 const DAY_SECONDS = 600;           // core time contract (10 sim-min day)
 
 // ── pacing law (spec2/04 + brief; these numbers ARE the design) ──────────────────────────────────
@@ -2786,9 +2787,14 @@ export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = n
   const day = dayIndex | 0;
   const bucketStart = Math.max(0, Math.floor(day / SHAPE_BUCKET_DAYS) * SHAPE_BUCKET_DAYS);
   const shapeCounts = new Map();
+  // E6 variety floor: shapes already scheduled inside this hour bucket lose the unseen draw
+  // bonus, so the remaining eligible shapes rotate through the window — the same shape cannot
+  // be the only offer when more eligible shapes exist. A Map, not a Set: the guarantee splice
+  // path below can drop a placed item, and only a count can un-mark it.
+  const seenShapes = new Map();
   let items = out;
   for (let prior = bucketStart; prior <= day; prior++) {
-    items = planEncountersDay(seed, sectorId, prior, zones, ecologyState, encounterCatalog, shapeCounts);
+    items = planEncountersDay(seed, sectorId, prior, zones, ecologyState, encounterCatalog, shapeCounts, seenShapes);
   }
   return items;
 }
@@ -2797,9 +2803,10 @@ const SHAPE_BUCKET_DAYS = ENCOUNTER_SHAPE_HOUR_SECONDS / ENCOUNTER_REPETITION_DA
 
 // Exported for the check harness: the seeded migration matrix proves the module-split migration
 // stayed lossless, so it must plan each sector-day at its F2-era scheduling semantics — no
-// cross-day shape-budget carryover (SHAPE_BUCKET_DAYS / ENCOUNTER_SHAPE_BUDGET_PER_HOUR landed in
-// b6ed59676, post-migration). Passing shapeCounts = null gives exactly that per-day planner.
-export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState = null, encounterCatalog = ENCOUNTERS, shapeCounts = null) {
+// cross-day shape-budget or variety carryover (SHAPE_BUCKET_DAYS / ENCOUNTER_SHAPE_BUDGET_PER_HOUR
+// landed in b6ed59676, the E6 unseen-shape bias after that). Passing shapeCounts = null and
+// seenShapes = null gives exactly that per-day planner.
+export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState = null, encounterCatalog = ENCOUNTERS, shapeCounts = null, seenShapes = null) {
   const out = [];
 
   if (!Array.isArray(zones) || !zones.length) return out;
@@ -2860,6 +2867,10 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
       const weightOf = (candidate) => (
         (ecologyState ? regionalEncounterWeight(ecologyState, sectorId, candidate) : (candidate.weight || 1))
         * earlyFactor(candidate)
+        // E6 variety floor: a shape not yet scheduled this bucket draws at SHAPE_UNSEEN_WEIGHT
+        // — a soft bias toward rotation so a thin sector's other combat shapes are offered
+        // inside the hour window instead of the same draw repeating for three hours.
+        * (seenShapes && !(seenShapes.get(candidate.id) > 0) ? SHAPE_UNSEEN_WEIGHT : 1)
       );
       // A grammar key at its sim-hour budget is skipped and the draw retried, so the next
       // eligible candidate in the same weighted order takes the slot. Re-draws re-roll the zone
@@ -2884,6 +2895,7 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
       }
       if (!item) continue;
       if (placedKey) shapeCounts.set(placedKey, (shapeCounts.get(placedKey) || 0) + 1);
+      if (seenShapes) seenShapes.set(chosen.id, (seenShapes.get(chosen.id) || 0) + 1);
       item.regionalWeight = ecologyState ? regionalEncounterWeight(ecologyState, sectorId, chosen) : (chosen.weight || 1);
       item.delay = delayLo + rng() * delaySpan;
       out.push(item);
@@ -2955,6 +2967,9 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
               shapeCounts.set(dropKey, Math.max(0, (shapeCounts.get(dropKey) || 0) - 1));
             }
           }
+          if (seenShapes) {
+            seenShapes.set(out[i].shapeId, Math.max(0, (seenShapes.get(out[i].shapeId) || 0) - 1));
+          }
           out.splice(i, 1);
           break;
         }
@@ -2965,6 +2980,7 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
       const guaranteedKey = encounterGrammarKey(enc, item.zoneType);
       shapeCounts.set(guaranteedKey, (shapeCounts.get(guaranteedKey) || 0) + 1);
     }
+    if (seenShapes) seenShapes.set(enc.id, (seenShapes.get(enc.id) || 0) + 1);
   }
 
   // Nominal spacing: keep planned onsets ≥45 s apart (the runtime gate enforces the real law).
