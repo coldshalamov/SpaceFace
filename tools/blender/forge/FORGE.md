@@ -59,19 +59,31 @@ absolute metres.
 | `Ship(id, colors)` | the container; `colors` maps finishes to hex (`paint`, `paint2`, `stripe`, `hazard` …) |
 | `loft(s, name, sections, material, bands, belly, back_material, front_material, count, mirror)` | hull body: superellipse sections along X (`x, w, ht, hb, zc, n, y`) |
 | `plate(s, name, outline, z0, thickness, material, chamfer, chamfer_bottom, side_material, top_material, mirror)` | plan-view slab: wings, armour, pylons, fins (outline CCW from above, port side) |
-| `band(s, part, point, normal, width, finish, facing, inset, depth, mirror)` | livery band / stripe / raised or recessed strip cut into a part |
+| `plate_v(s, name, outline, offset, thickness, plane='xz'|'yz', material, chamfer, mirror)` | vertical slab: (x,z) outline extruded along +Y, or (y,z) along +X — fins, bulkheads, armour faces |
+| `band(s, part, point, normal, width, finish, facing, inset, depth, mirror, region)` | livery band / stripe cut into a part; `region=((axis, lo, hi), …)` confines the cut to a zone; `mirror=True` is safe on keel-straddling parts (no doubled cut) |
 | `panel(s, part, (x, y), (sx, sy), finish, inset, depth, mirror)` | rectangular raised/recessed plate cut into a part's top |
-| `box`, `cylinder`, `nozzle`, `canopy` | primitives; `nozzle` has a dark throat and an emissive core |
+| `box`, `cylinder`, `nozzle`, `canopy` | primitives; `nozzle` has a dark throat and an emissive core; `cylinder(cap_material, cap_back_material)` lights a front cap while the back stays matte |
+| `truss(s, name, p0, p1, w, bays, material, chord, web)` | square-section lattice beam, one mesh: four chords + per-bay zig-zag diagonals (masts, gate bridges, arms) |
+| `ladder(s, name, p0, p1, w, rungs, material)` | two rails + rungs between two points, one mesh |
+| `beams(s, name, [(p0, p1), …], w, material)` | many square struts in ONE mesh — one draw |
+| `boxes(s, name, [(center, size[, rot_z]), …], material)` | many boxes in ONE mesh — window rows, crate yards, rim lights |
+| `annulus(s, name, center, r_in, r_out, z0, thickness, material, side_material)` | flat ring deck — ring roads, pad aprons, hub decks |
+| `sphere(s, name, center, r, material, segments)` | near-sphere dome/tank via the hull loft |
+| `rock(s, name, center, radius, seed, quarry_plane)` | deterministic faceted boulder (same seed, same rock); optional flat quarried cut; default `stone` finish |
 | `vent`, `rcs`, `antenna`, `windows`, `sensor_dome`, `container`, `fins`, `light` | designed greebles |
 | `ring`, `dish`, `work_lamp`, `beacon`, `sweep` | torus flanges/rims, concave antenna dish with feed, camera-facing floodlight, lit beacon dome, beam swept along a path |
+| `work_lamp(..., lens, halo=True)` | lit front lens only (matte back cap); `halo` adds a lit ring on the lens rim so the lamp reads from overhead |
 | `box(..., rot=(rx, ry, rz), mirror_flip=True)` | tilted box; mirrored copy mirrors the rotation |
+| `uv_scale=k` on `loft`, `plate`, `plate_v`, `box`, `cylinder`, `ring`, `sweep`, `beams`, `boxes`, `truss`, `ladder`, `annulus`, `sphere`, `rock` | per-part UV density: k multiplies the world-locked 4 m tile — use <1 on station-size panels |
 | `s.hook_part('HOOK_SECONDARY_X', obj, ...)` | keeps damage parts (shed-first secondary, sensor, armour) as their own meshes |
 | `s.detail = 1` / `2` | parts added while set are dropped at LOD2 / LOD1+ |
 | `s.hook('HOOK_DRIVE_CORE', pos)`, `s.socket(name, pos)` | override default drive / socket positions |
 
 Finishes (`FINISHES` in forge.py): `paint`, `paint2`, `stripe`, `gunmetal`, `dark`, `bare`, `ceramic`,
-`hazard`, `glass`, `glow_drive`, `glow_cyan`, `glow_red`, `glow_green`, `glow_warm`, `glow_amber`.
-Roughness/metalness are calibrated per finish; ships choose colours, not material physics.
+`hazard`, `glass`, `stone`, `glow_drive`, `glow_cyan`, `glow_red`, `glow_green`, `glow_warm`,
+`glow_amber`. Roughness/metalness are calibrated per finish; ships choose colours, not material
+physics. `stone` is a plain untiled rock surface (role `geology`), for `rock()` and natural
+surfaces — no machinery panel tile.
 
 `ship.finish()` bevels every hard edge (3 segments, harden normals), applies weighted normals,
 triangulates n-gons, and projects world-locked UVs. Every part is treated identically.
@@ -82,6 +94,7 @@ triangulates n-gons, and projects world-locked UVs. Every part is treated identi
 blender -b --python tools/blender/forge/ships/<ship>.py              # preview export
 node scripts/fleet-look.mjs --file=assets/ships/forge/preview/<file>.glb --views=inspect,close,top
 #   open .devshots/fleet-look/<name>_<view>.png — the live material path, Helios lights, shipping post
+#   for stations/places add `place` to --views: whole-bounding-sphere framing at the 60° chase tilt
 node tools/blender/forge/publish.mjs <ship>                           # live: manifest, release, package, census
 node scripts/flight-look.mjs --ship=ship_<id>                         # the real game, New Game flight
 ```

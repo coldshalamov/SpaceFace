@@ -105,7 +105,15 @@ import {
   pirateDoctrineForEntity,
   reachCultureDoctrineById,
 } from '../data/pirateDoctrines.js';
-import { isHostileForAI } from '../ai/engagementAuthority.js';
+import { isHostileForAI, isAmbientRaidId } from '../ai/engagementAuthority.js';
+import {
+  ambientPickupCollected,
+  ambientRaiderDestroyed,
+  clearAmbientPredationBinding,
+  releaseBoundRaiderForRetaliation,
+  updateAmbientPredation,
+} from '../ai/ambientPredation.js';
+import { spawnJettisonedCargoPod } from './lootShards.js';
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
@@ -263,7 +271,10 @@ export const encounterDirector = {
       this.bus.on('entity:destroyed', (p) => this._onEntityGone(p));
       this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
       this.bus.on('combat:subsystemDisabled', (p) => this._routeToScript('convoy', 'subsystemDisabled', p));
-      this.bus.on('pickup:collected', (p) => this._routeToScript('convoy', 'pickupCollected', p));
+      this.bus.on('pickup:collected', (p) => {
+        this._routeToScript('convoy', 'pickupCollected', p);
+        ambientPickupCollected(this.state, p);
+      });
       this.bus.on('freight:recovery', (p) => this._routeToScript('convoy', 'freightRecovered', p));
       this.bus.on('freight:recoveryAbandoned', (p) => this._routeToScript('convoy', 'freightRecoveryAbandoned', p));
       this.bus.on('encounter:namedCaptainBound', (p) => this._onExternalNamedBound(p));
@@ -327,7 +338,58 @@ export const encounterDirector = {
     this._tickStaleEncounters(dir, state, now);
     this._tickHarassMercy(dir, state, now);
     this._tickHostilePursuitResolution(dir, state, now);
+    this._tickAmbientPredation(state);
     this._springCeresActivityAmbushOnPrey();
+  },
+
+  /**
+   * Ambient manifest predation — unscripted pirates hunting manifested civilian haulers in
+   * low-security, lane-adjacent space. Binding/clearing math lives in src/ai/ambientPredation.js;
+   * this seam only supplies the event surface and the physical cargo-pod spawn helper.
+   */
+  _ambientPredationCtx() {
+    return {
+      emit: (name, payload) => this.emit(name, payload),
+      docked: isDocked(this.state),
+      spawnCargoPod: (s, spec) => spawnJettisonedCargoPod(s, spec, this.helpers),
+      removeEntity: (id, opts) => (
+        this.helpers && typeof this.helpers.removeEntity === 'function'
+          ? this.helpers.removeEntity(id, opts)
+          : false
+      ),
+    };
+  },
+
+  _tickAmbientPredation(state) {
+    // Restore ordering is not guaranteed — never evaluate or sweep mid-rebuild.
+    if (this._saveRestoring) return;
+    try {
+      updateAmbientPredation(state, this._ambientPredationCtx());
+    } catch (err) {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[encounterDirector] ambient predation tick failed', err);
+      }
+    }
+  },
+
+  /**
+   * Player intervention: a bound predation raider the player just damaged leaves its objective
+   * and becomes an ordinary self-defense attacker. Without this release the bounded predation
+   * branch swallowed the retaliation flags and the raider could never defend itself.
+   */
+  _releasePredationRaiderForRetaliation(targetId) {
+    const entities = this.state && this.state.entities;
+    const entity = targetId != null && entities && typeof entities.get === 'function'
+      ? entities.get(targetId) : null;
+    if (!entity || entity.alive === false) return false;
+    try {
+      return releaseBoundRaiderForRetaliation(this.state, entity, this._ambientPredationCtx());
+    } catch (err) {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[encounterDirector] predation retaliation release failed', err);
+      }
+      return false;
+    }
   },
 
   /** A combat encounter the player has neither damaged nor been damaged by for STALE_ENCOUNTER_S
@@ -1770,6 +1832,10 @@ export const encounterDirector = {
     const dir = ensureDirectorState(this.state);
     // Entity ids recycle through freeIds — a stale pursuit row would leak onto the next hull.
     if (dir.pursuitWatch) delete dir.pursuitWatch[id];
+    // A removed ambient raider drops its secured loot as ordinary residue and frees the hauler.
+    ambientRaiderDestroyed(this.state,
+      this.state.entities && this.state.entities.get ? this.state.entities.get(id) : null,
+      this._ambientPredationCtx());
     if (dir.patrolIntervened) delete dir.patrolIntervened[id];
     if (dir.playerDealtDamageAt) delete dir.playerDealtDamageAt[id];
     for (const squadId of Object.keys(dir.active)) {
@@ -1810,6 +1876,9 @@ export const encounterDirector = {
     // Killed hulls may linger as wreck entities — drop pursuit bookkeeping at death, not at
     // removal, so a recycled id never inherits a resolved row.
     if (dir.pursuitWatch) delete dir.pursuitWatch[p.id];
+    ambientRaiderDestroyed(this.state,
+      this.state.entities && this.state.entities.get ? this.state.entities.get(p.id) : null,
+      this._ambientPredationCtx());
     if (dir.patrolIntervened) delete dir.patrolIntervened[p.id];
     if (dir.playerDealtDamageAt) delete dir.playerDealtDamageAt[p.id];
     const byPlayer = p.killerId != null && p.killerId === this.state.playerId;
@@ -1864,6 +1933,9 @@ export const encounterDirector = {
       const playerDealtDamageAt = dir.playerDealtDamageAt || (dir.playerDealtDamageAt = {});
       if (p.targetId != null) playerDealtDamageAt[p.targetId] = now;
       dir.lastPlayerDealtDamageAt = now;
+      // Player fire on a bound raider is intervention, not noise: release it to self-defense
+      // BEFORE any other bookkeeping so the retaliation fields exist when scripts/authority read.
+      this._releasePredationRaiderForRetaliation(p.targetId);
       for (const lid of Object.keys(dir.live)) {
         const live = dir.live[lid];
         if (p.targetId != null && live.ids.includes(p.targetId)) {
@@ -3714,6 +3786,9 @@ function freshState() {
     patrolIntervened: {},
     playerDealtDamageAt: {},
     proxStarve: {},
+    // Ambient predation evaluator bookkeeping — transient only (never saved): a load rebuilds the
+    // cadence clock and the raid sequence naturally while entity stamps reconcile fail-closed.
+    ambientPredation: { nextEvalAt: -Infinity, seq: 0 },
     _accum: 0,
   };
 }
@@ -3765,6 +3840,11 @@ function clearAllPredationBindings(state, reason = 'lifecycle_boundary') {
 function clearPredationBindingOnEntity(state, entity, encounterId, reason) {
   const data = entity && entity.data;
   if (!data || data.predationEncounterId !== encounterId) return false;
+  // Ambient raid ids keep the same entity-level stamps but follow the ambient clear path:
+  // persistent world actors restore their pre-raid doctrine instead of retiring.
+  if (isAmbientRaidId(encounterId)) {
+    return clearAmbientPredationBinding(state, entity, encounterId, reason);
+  }
   const persistedCarrier = persistedFreightCarrierBinding(entity);
   const ai = data.ai;
   if (data.predationRole === 'raider' && ai) {
@@ -3855,6 +3935,11 @@ function ensureDirectorState(state) {
   if (!Number.isFinite(d.lastAmbientAt)) d.lastAmbientAt = -1e9;
   if (!Number.isFinite(d.lastMajorAt)) d.lastMajorAt = -1e9;
   if (!Number.isFinite(d.lastEndAt)) d.lastEndAt = -1e9;
+  if (!d.ambientPredation || typeof d.ambientPredation !== 'object' || Array.isArray(d.ambientPredation)) {
+    d.ambientPredation = { nextEvalAt: -Infinity, seq: 0 };
+  }
+  if (!Number.isFinite(d.ambientPredation.nextEvalAt)) d.ambientPredation.nextEvalAt = -Infinity;
+  if (!Number.isInteger(d.ambientPredation.seq)) d.ambientPredation.seq = 0;
   if (!Number.isFinite(d._accum)) d._accum = 0;
   if (d.sessionRhythm != null && (typeof d.sessionRhythm !== 'object' || Array.isArray(d.sessionRhythm)
     || !SESSION_RHYTHM_PHASES.includes(d.sessionRhythm.phase))) {

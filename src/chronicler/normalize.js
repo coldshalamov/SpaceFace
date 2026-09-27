@@ -158,9 +158,14 @@ export function normalizeFact(event, p, state) {
       break;
     }
     case 'aceMemory:transition':
-    case 'aceMemory:returnSpawned': {
+    case 'aceMemory:returnSpawned':
+    case 'aceMemory:pilotPromoted': {
       const aceId = id(p.aceId);
-      const transition = event === 'aceMemory:returnSpawned' ? 'returned' : p.transition;
+      // Promotion is the moment the world learns a fleeing pirate's name — recorded as the
+      // first-contact beat of that pilot's ledger arc (encountered → fled → returned).
+      const transition = event === 'aceMemory:returnSpawned' ? 'returned'
+        : event === 'aceMemory:pilotPromoted' ? 'encountered'
+        : p.transition;
       if (!aceId || !ACE_TRANSITIONS.has(transition)) return null;
       f.stage = 'ace';
       f.actor = identity(state, state.playerId);
@@ -231,6 +236,80 @@ export function normalizeFact(event, p, state) {
       f.actor = identity(state, p.actorId ?? state.playerId);
       f.details = { missionId: id(p.missionId), kind: text(p.consequenceKind, 'aftermath', 64) };
       f.dedupe = `remedy:${JSON.stringify([key, f.details.missionId])}`;
+      break;
+    }
+    case 'freight:cargoSpilled': {
+      // Emitted by traffic panic-jettison AND encounter freight-custody spills; the payload
+      // union is carrier/manifest identity + cause + quantity. A spill with no anchor at all
+      // is noise, not a fact.
+      const carrier = p.carrierId ?? p.ownerId;
+      const anchor = id(p.manifestId) || id(p.custodyId) || id(carrier);
+      if (anchor === null) return { invalid: true };
+      f.stage = 'spill';
+      f.actor = identity(state, p.attackerId ?? p.raiderId, null, false, 'an unseen attacker');
+      f.subject = identity(state, carrier, p.ownerName, false, 'a hauler');
+      if (id(p.encounterId)) f.group = `encounter:${id(p.encounterId)}`;
+      else if (id(p.manifestId)) f.group = `manifest:${id(p.manifestId)}`;
+      f.details = {
+        cause: text(p.cause, 'jettison', 64),
+        manifestId: id(p.manifestId) || id(p.custodyId),
+        commodityId: id(p.commodityId),
+        qty: Math.max(0, finite(p.qty)),
+        podCount: Math.max(0, finite(p.podCount, Array.isArray(p.podIds) ? p.podIds.length : 0)),
+        encounterId: id(p.encounterId),
+      };
+      f.dedupe = `spill:${JSON.stringify([anchor, f.details.cause, tick])}`;
+      break;
+    }
+    case 'encounter:ambientPredationTelegraph': {
+      if (id(p.raidId) === null) return { invalid: true };
+      f.stage = 'predation';
+      f.actor = identity(state, p.raiderId, null, false, 'a raider');
+      f.subject = identity(state, p.targetId, null, false, 'a hauler');
+      // The raidId is the encounterId the AI activity and any later kill carry, so the
+      // telegraph lands in the same story as the violence it announced.
+      f.group = `encounter:${id(p.raidId)}`;
+      f.details = { encounterId: id(p.raidId), manifestId: id(p.manifestId),
+        telegraphS: Math.max(0, finite(p.telegraphS)) };
+      f.dedupe = `predation:${id(p.raidId)}`;
+      break;
+    }
+    case 'formation:discovered': {
+      if (id(p.formationId) === null) return { invalid: true };
+      const fid = id(p.formationId);
+      f.stage = 'survey';
+      f.actor = identity(state, p.actorId ?? state.playerId, null, true);
+      f.subject = { id: fid, key: `formation:${fid}`, player: false,
+        name: text(p.designation || p.formationId, 'an asteroid formation') };
+      f.details = { formationId: fid,
+        kind: text(p.archetypeName || p.archetype, 'formation', 64),
+        count: Math.max(0, finite(p.count)) };
+      f.dedupe = `survey:${fid}`;
+      break;
+    }
+    case 'gate:verdict': {
+      if (id(p.gateKey) === null || id(p.type) === null) return { invalid: true };
+      f.stage = 'gate';
+      f.actor = { id: null, key: null, player: false, name: 'Gate Control' };
+      f.subject = identity(state, state.playerId, null, true);
+      f.group = `gate:${id(p.gateKey)}`;
+      f.details = { kind: text(p.type, 'verdict', 64), gateTo: id(p.gateTo),
+        tollAmount: Math.max(0, finite(p.tollAmount)), wingShips: Math.max(0, finite(p.wingShips)),
+        wanted: p.wanted === true };
+      f.dedupe = `gate:${JSON.stringify([id(p.gateKey), tick])}`;
+      break;
+    }
+    case 'claim:freightDelivered': {
+      if (id(p.bodyId) === null) return { invalid: true };
+      const bid = id(p.bodyId);
+      f.stage = 'delivery';
+      f.actor = { id: null, key: null, player: false, name: 'a depot hauler' };
+      f.subject = { id: bid, key: `claim:${bid}`, player: false,
+        name: text(p.bodyId, 'a claim body') };
+      f.group = `claim:${bid}`;
+      f.details = { qty: Math.max(0, finite(p.quantity)), inbound: p.inbound === true,
+        kind: text(p.inbound ? 'inbound resupply' : 'outbound haul', 'delivery', 64) };
+      f.dedupe = `delivery:${JSON.stringify([bid, p.inbound === true, tick])}`;
       break;
     }
     default: return null;

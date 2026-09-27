@@ -208,36 +208,36 @@ export function nodeWhy(node) {
   }
   if (kind === 'spillover') {
     const reason = repReasonLabel(node.reason);
+    const who = shortFactionName(asString(node.factionId));
     const src = shortFactionName(asString(node.srcFaction));
-    return `ally/rival spillover${reason ? ` (${reason})` : ''} — ${src}`;
+    return `${who} sided with ${src}${reason ? ` over a ${reason}` : ''}`;
   }
   if (kind === 'consequence') return asString(node.text) || outcomeWord(node.outcome) || '';
   return '';
 }
 
-/** The traced chain's head of record — kit sentences, every state-derived fragment encoded for innerHTML. */
+/** The traced chain's reading, in the player's words — every state-derived fragment encoded for innerHTML. */
 export function footprintReadoutHtml(chain, node, state) {
   if (!chain) {
     return `
-      <p class="k-sentence k-sentence--emph">Trace a chain</p>
-      <p class="k-sentence">Pick a chain from the list, then a node on the board, to light its path.</p>`;
+      <p class="k-sentence">Nothing on the record to trace yet.</p>`;
   }
-  const why = nodeWhy(node);
-  const faction = findChainStandingFaction(chain) || asString(node && node.factionId);
-  const rootKind = escapeHtml(sentenceCase(asString(chain.rootKind) || 'chain'));
-  const outcome = escapeHtml(outcomeWord(chain.outcome) || 'witnessed');
-  const reason = escapeHtml(why || (node ? 'No additional receipt text for this node.' : 'Pick a node on the board to read its receipt.'));
-  const openState = escapeHtml(chainOpenReason(chain, state));
   const sectorId = asString(chain.sectorId);
   const sector = sectorId
     ? entitySpanHtml('sector:' + sectorId, escapeHtml(entityLabel('sector:' + sectorId) || sectorId))
-    : 'unfiled';
-  const factionLine = faction
-    ? `Faction focus ${entitySpanHtml('faction:' + faction, escapeHtml(shortFactionName(faction)))}.`
-    : 'Faction focus unresolved.';
-  return `
-      <p class="k-sentence k-sentence--emph">${rootKind} · ${outcome}</p>
-      <p class="k-sentence">${reason} Open state ${openState}. ${factionLine} Sector ${sector}.</p>`;
+    : 'an unfiled sector';
+  const faction = chainHoldingFaction(chain, state) || findChainStandingFaction(chain) || asString(node && node.factionId);
+  const who = faction ? entitySpanHtml('faction:' + faction, escapeHtml(shortFactionName(faction))) : 'The law';
+  const reason = chainOpenReason(chain, state);
+  let sentence;
+  if (chain.open !== true) sentence = `Settled in ${sector}; nothing holds it open.`;
+  else if (reason === 'unpaid bounty') sentence = `The bounty on your hull keeps it open, in ${sector}.`;
+  else if (reason === 'amends outstanding') sentence = `${who} wants amends before it lets this go, in ${sector}.`;
+  else sentence = `${who} hunts you on sight in ${sector}.`;
+  const receipt = node ? escapeHtml(sentenceCase(nodeWhy(node) || nodeLine(node))) : '';
+  return `${receipt ? `
+      <p class="k-sentence k-sentence--emph">${receipt}</p>` : ''}
+      <p class="k-sentence">${sentence}</p>`;
 }
 
 function collectChainColumns(chain) {
@@ -321,13 +321,63 @@ function chainWord(chain) {
   return `${sentenceCase(asString(chain.rootKind) || 'chain')} · ${outcomeWord(chain.outcome) || 'witnessed'}`;
 }
 
-/** The hang row's sub: the latest stamp on the chain. */
-function chainStampText(chain) {
+/** How long ago a receipt was written, in sim time ("just now", "12 min ago", "2 h ago"); '' when unknown. */
+function agoText(state, t) {
+  const now = Number(state && state.simTime);
+  const at = Number(t);
+  if (!Number.isFinite(now) || !Number.isFinite(at) || now < at) return '';
+  const s = now - at;
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  return `${Math.round(s / 3600)} h ago`;
+}
+
+/** A receipt as the beam reads it: who and why, the delta said separately at the line's end. */
+function nodeLine(node) {
+  const kind = asString(node && node.k);
+  if (kind === 'standing') {
+    const label = repReasonLabel(node.reason);
+    return [shortFactionName(node.factionId), label].filter(Boolean).join(' · ') || shortFactionName(node.factionId);
+  }
+  if (kind === 'spillover') return `${shortFactionName(node.factionId)} sided with ${shortFactionName(node.srcFaction)}`;
+  return sentenceCase(nodeWord(node));
+}
+
+/** The short word for what a chain was: its act's outcome, else its incident's cause. */
+const ACT_SHORT = Object.freeze({
+  destroyed: 'kill', disengaged: 'clash', surrendered_secured: 'custody', surrendered_escaped: 'escape',
+  surrendered_lost: 'lost', recovered: 'rescue', abandoned: 'abandoned', repelled: 'defence', raided: 'raid',
+});
+function chainShortWord(chain) {
+  const act = findChainAct(chain);
+  const outcome = act && asString(act.outcome);
+  if (outcome && ACT_SHORT[outcome]) return ACT_SHORT[outcome];
   const nodes = Array.isArray(chain && chain.nodes) ? chain.nodes : [];
-  let latest = null;
-  for (const node of nodes) if (node && (!latest || nodeStamp(node) > nodeStamp(latest))) latest = node;
-  const t = latest ? asNumber(latest.t, 0) : asNumber(chain && chain.t, 0);
-  return `${cycleText(t)} · tick ${chainStamp(chain)}`;
+  const incident = nodes.find((node) => node && node.k === 'incident');
+  const cause = (incident && asString(incident.cause)) || '';
+  if (/contraband/.test(cause)) return 'contraband';
+  if (/theft/.test(cause)) return 'theft';
+  if (/piracy/.test(cause)) return 'piracy';
+  if (/attack|assault/.test(cause)) return 'attack';
+  return outcomeWord(chain && chain.outcome) || 'record';
+}
+
+/** The power whose aggro holds a chain open (the ledger's own rule), if one does. */
+function chainHoldingFaction(chain, state) {
+  for (const id of chainFactionIds(chain)) {
+    const row = state && state.factions && state.factions[id];
+    if (row && row.aggro) return id;
+  }
+  return null;
+}
+
+/** Why a chain is still open, in the player's words. */
+function openWords(chain, state) {
+  const reason = chainOpenReason(chain, state);
+  if (reason === 'settled') return 'settled';
+  if (reason === 'unpaid bounty') return 'held by the bounty';
+  if (reason === 'amends outstanding') return 'amends asked';
+  return 'hunted';
 }
 
 /** The power a chain is about: its act's (or first receipt's) faction. */
@@ -384,7 +434,7 @@ export function footprintSources(state, chains) {
     const carriers = all.filter((chain) => chain && chain.bountyPending === true);
     const receipts = carriers.reduce((sum, chain) => sum + (Array.isArray(chain.nodes) ? chain.nodes.length : 0), 0);
     list.push({
-      id: 'bounty', kind: 'bounty', open: true, label: 'Bounty',
+      id: 'bounty', kind: 'bounty', open: true, label: 'Bounty', labels: ['Bounty on your hull', 'Bounty'],
       name: `${creditsText(bounty)} bounty`, weight: Math.max(2, receipts),
       chainId: carriers.length ? asString(carriers[0].id) : null,
       token: BOUNTY_SEAL,
@@ -397,9 +447,11 @@ export function footprintSources(state, chains) {
     const isOpen = chain.open === true;
     const receipts = Array.isArray(chain.nodes) ? chain.nodes.length : 0;
     const factionId = chainFactionId(chain);
+    const power = factionId ? shortFactionName(factionId) : sentenceCase(asString(chain.rootKind) || 'chain');
     list.push({
       id: asString(chain.id), kind: 'chain', open: isOpen,
-      label: factionId ? shortFactionName(factionId) : sentenceCase(asString(chain.rootKind) || 'chain'),
+      label: `${power} · ${chainShortWord(chain)}`,
+      labels: [`${power} · ${chainShortWord(chain)}`, power],
       name: sentenceCase(chainWord(chain)),
       weight: isOpen ? Math.max(2, receipts) : 1,
       chainId: asString(chain.id),
@@ -409,41 +461,15 @@ export function footprintSources(state, chains) {
   return list;
 }
 
-/** A hairline row that is read, not picked (`.k-row--static`). `name`/`sub` may be a Node so a
- *  noun inside them can carry an entity link instead of being flattened to text. */
-function staticRow(name, sub, num) {
-  const row = el('li', 'k-row k-row--static');
-  const body = el('div');
-  const nameEl = el('span', 'k-row__name');
-  if (name && typeof name !== 'string') nameEl.append(name); else nameEl.textContent = String(name || '');
-  body.append(nameEl);
-  if (sub) {
-    const subEl = el('div', 'k-row__sub');
-    if (typeof sub !== 'string') subEl.append(sub); else subEl.textContent = sub;
-    body.append(subEl);
-  }
-  row.append(body, el('span', 'k-row__num', num || ''));
-  return row;
-}
-
 /** A span stamped as an entity door; unknown refs stay plain text (resolver discipline). */
 function entityNode(text, ref) {
   const node = el('span', '', text);
   return ref ? decorateEntityNode(node, ref) : node;
 }
 
-/** A caps heading and its static rows, appended to the record. */
-function appendRecordSection(host, caption, entries) {
-  host.append(el('div', 'k-caps', caption));
-  const list = el('ul', 'k-rows');
-  list.setAttribute('aria-label', caption);
-  for (const [name, sub, num] of entries) list.append(staticRow(name, sub, num));
-  host.append(list);
-}
-
 /** The heat as the header and the hub's words say it. */
 function heatWords(reading) {
-  if (!reading || reading.level <= 0) return { clears: 'no search on you', short: 'no search on you' };
+  if (!reading || reading.level <= 0) return { clears: 'no search on you', short: '' };
   if (reading.held === 'impound') return { clears: 'held at the pound', short: 'held · impounded' };
   if (reading.held === 'docked') return { clears: 'held while docked', short: 'held · docked' };
   if (reading.held === 'inside') return { clears: 'held inside the search zone', short: 'held · inside the zone' };
@@ -598,7 +624,10 @@ export const footprintScreen = {
   /** Resolves once the arrival choreography has come to rest (the bench shoots the screen at rest). */
   settled() {
     const still = typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('sf-reduce-motion');
-    return new Promise((resolve) => setTimeout(() => { this._drawEdges(); resolve(); }, still ? 0 : 1200));
+    const images = this._root ? [...this._root.querySelectorAll('img')] : [];
+    const decoded = Promise.all(images.map((img) => (typeof img.decode === 'function' ? img.decode().catch(() => {}) : null)));
+    const rest = new Promise((resolve) => setTimeout(resolve, still ? 0 : 1200));
+    return Promise.all([decoded, rest]).then(() => { this._drawEdges(); });
   },
 
   onHide() {
@@ -732,7 +761,7 @@ export const footprintScreen = {
     this._titleLine.textContent = heatLevel > 0
       ? `${bounty > 0 ? `${creditsText(bounty)} bounty · ` : ''}heat T${heatLevel} · ${said.clears} · ${chainWords}`
       : `${bounty > 0 ? `${creditsText(bounty)} bounty` : 'No bounty'} · ${said.clears} · ${chainWords}`;
-    this._heatN.textContent = heatLevel > 0 ? `T${heatLevel} · ${String(reading.tierLabel || '').split('/')[0]}` : 'T0 · clean';
+    this._heatN.textContent = heatLevel > 0 ? `T${heatLevel} · ${String(reading.tierLabel || '').split('/')[0]}` : 'T0 · no search';
     this._heatW.textContent = said.short;
     this._paintHeat(reading, state, chains, recordWord);
   },
@@ -916,8 +945,10 @@ export const footprintScreen = {
     if (source) this._traceSource(source.id);
   },
 
-  /** Only the traced chain is on the stage: its receipts down one spine, the four stages in order. */
+  /** Only the traced chain is on the stage: its receipts down one spine, the four stages in order, each
+   *  receipt carrying its own stamp and delta (the chain's record, folded into the beam). */
   _renderBoard() {
+    const state = this._ctx && this._ctx.state;
     const chain = this._selectedChain();
     const chains = chain ? [chain] : [];
     this._renderedChains = chains;
@@ -946,12 +977,22 @@ export const footprintScreen = {
         cell.setAttribute('data-name', COLUMN_NAMES[col]);
         if (items.length === 0) {
           cell.setAttribute('data-empty', '1');
-          cell.append(el('span', 'fp-col-empty k-t-fine k-38', col === 1 ? INCIDENT_EMPTY_LABEL : CONSEQUENCE_EMPTY_LABEL));
+          const row = el('div', 'fp-row fp-row--empty');
+          row.append(el('span', 'fp-col-empty', col === 1 ? INCIDENT_EMPTY_LABEL : CONSEQUENCE_EMPTY_LABEL));
+          const meta = el('div', 'fp-node__meta');
+          meta.append(el('span', 'fp-node__stage', COLUMN_NAMES[col]));
+          row.append(meta);
+          cell.append(row);
         } else {
           for (let order = 0; order < items.length; order += 1) {
             const item = items[order];
             const key = `${chainId}:${item.nodeIndex}`;
-            const button = el('button', `k-word k-word--body fp-node fp-node--${asString(item.node.k) || 'entry'}`, nodeWord(item.node));
+            const line = nodeLine(item.node);
+            const delta = deltaText(item.node.delta);
+            const row = el('div', `fp-row fp-row--${asString(item.node.k) || 'entry'}`);
+            const button = el('button', `k-word k-word--body fp-node fp-node--${asString(item.node.k) || 'entry'}`);
+            button.append(el('span', 'fp-node__w', line));
+            if (delta) button.append(el('span', `fp-node__d${Number(item.node.delta) < 0 ? ' is-loss' : ''}`, delta.replace('-', '\u2212')));
             button.type = 'button';
             button.setAttribute('data-node-key', key);
             button.setAttribute('data-chain-id', chainId);
@@ -961,8 +1002,9 @@ export const footprintScreen = {
             button.setAttribute('tabindex', '-1');
             const why = nodeWhy(item.node);
             if (why) button.setAttribute('data-why', why);
-            button.setAttribute('aria-label', `${COLUMN_NAMES[col]} · ${button.textContent}`);
-            cell.append(button);
+            button.setAttribute('aria-label', `${COLUMN_NAMES[col]} · ${line}${delta ? ` · ${delta}` : ''}`);
+            row.append(button, this._nodeMetaLine(state, item.node, col));
+            cell.append(row);
             this._nodeButtons.set(key, button);
             this._nodeMeta.set(key, {
               chainId,
@@ -987,6 +1029,30 @@ export const footprintScreen = {
     this._applyTraceClasses();
   },
 
+  /** A receipt's stamp under its line: its stage, when, and the names it carries (entity doors). */
+  _nodeMetaLine(state, node, col) {
+    const meta = el('div', 'fp-node__meta');
+    meta.append(el('span', 'fp-node__stage', COLUMN_NAMES[col]));
+    const bits = [cycleText(node.t), agoText(state, node.t)].filter(Boolean);
+    if (bits.length) meta.append(` · ${bits.join(' · ')}`);
+    const stationId = asString(node.stationId);
+    if (node.k === 'incident' && stationId) {
+      meta.append(' · at ');
+      meta.append(entityNode(entityLabel('station:' + stationId) || stationId, 'station:' + stationId));
+    }
+    if ((node.k === 'standing') && asString(node.newTier)) meta.append(` · now ${asString(node.newTier)}`);
+    const aceId = asString(node.aceId);
+    const aceRecord = aceId && state && state.aceMemory ? state.aceMemory[aceId] : null;
+    if (aceId && aceRecord) {
+      const aceData = aceById(aceId);
+      meta.append(' · ');
+      meta.append(entityNode(aceRecord.name || (aceData && aceData.name) || aceId, 'captain:' + aceId));
+      const fled = aceRecord.fleeCount | 0;
+      meta.append(` remembers you${fled ? ` · fled ${fled === 1 ? 'once' : `${fled} times`}` : ''}${aceRecord.returnsBigger ? ' · returns bigger' : ''}`);
+    }
+    return meta;
+  },
+
   _queueEdgeDraw() {
     if (this._raf) cancelAnimationFrame(this._raf);
     this._raf = requestAnimationFrame(() => {
@@ -1003,9 +1069,10 @@ export const footprintScreen = {
     const w = Math.round(Math.min(rect.height, rect.width * 0.56));
     const was = this._stage.style.getPropertyValue('--fp-dial-w');
     if (was !== `${w}px`) this._stage.style.setProperty('--fp-dial-w', `${w}px`);
+    // the column's fold, only over a real overflow (a few pixels of padding are not a column to scroll)
     if (this._read) {
-      const over = this._read.scrollHeight > this._read.clientHeight + 2
-        && this._read.scrollTop + this._read.clientHeight < this._read.scrollHeight - 2;
+      const over = this._read.scrollHeight - this._read.clientHeight > 6
+        && this._read.scrollTop + this._read.clientHeight < this._read.scrollHeight - 6;
       this._read.dataset.overflow = over ? '1' : '0';
     }
   },
@@ -1048,7 +1115,7 @@ export const footprintScreen = {
         if (!from || !to) continue;
         // Neighbours on the spine are joined by the spine itself; a loop marks a receipt that skips a
         // stage or spills over to another power.
-        if (edgeKind === 'caused' && Math.abs(asNumber(from.beam, 0) - asNumber(to.beam, 0)) <= 1) continue;
+        if (Math.abs(asNumber(from.beam, 0) - asNumber(to.beam, 0)) <= 1) continue;
         const dy = Math.abs(to.y - from.y);
         const k = Math.min(SPINE_X - 6, 10 + dy * 0.22);
         const d = `M ${from.x} ${from.y.toFixed(1)} C ${(from.x - k).toFixed(1)} ${from.y.toFixed(1)} ${(to.x - k).toFixed(1)} ${to.y.toFixed(1)} ${to.x} ${to.y.toFixed(1)}`;
@@ -1171,8 +1238,8 @@ export const footprintScreen = {
     const amends = {
       enabled: false,
       reason: factionId
-        ? `No amends contract on offer — dock with ${shortFactionName(factionId)} to ask.`
-        : 'No amends contract on offer — dock with the affected faction to ask.',
+        ? `None on offer: dock with ${shortFactionName(factionId)} to ask.`
+        : 'None on offer: dock with the offended power to ask.',
     };
 
     // One "Show on chart" word: framed on the traced chain when it is tied to a place, unframed when
@@ -1281,8 +1348,21 @@ export const footprintScreen = {
     items.sort((a, b) => (b.primary ? 1 : 0) - (a.primary ? 1 : 0));
     this._foot.textContent = '';
     const source = this._tracedSource();
+    // No source and nothing to answer (a data state, an empty record): the column says it once, above.
+    if (!source && !items.some((item) => !item.disabled && item.action !== 'show-chart') && !items.some((item) => item.action === 'show-chart')) return;
     this._foot.append(el('p', 'fp-answer__k', source ? `Answer ${source.kind === 'bounty' ? 'the bounty' : 'this source'}` : 'Answer the record'));
-    const list = words(items, {
+    // Nothing open to you: the dead verbs fold into one line; only the chart stays a word.
+    const live = items.filter((item) => !item.disabled && item.action !== 'show-chart');
+    let shown = items;
+    if (!live.length) {
+      const why = !source ? 'Nothing on the record to answer.'
+        : source.open ? 'Nothing here answers it yet: dock with the power to ask for amends.'
+          : 'Nothing here to answer: this chain is settled.';
+      this._foot.append(el('p', 'fp-answer__none', why));
+      shown = items.filter((item) => item.action === 'show-chart');
+      if (!shown.length) return;
+    }
+    const list = words(shown, {
       row: false,
       size: 'emph',
       ariaLabel: 'Footprint actions',
@@ -1300,7 +1380,7 @@ export const footprintScreen = {
     this._foot.append(list);
   },
 
-  /** The reading: the traced source's head of record, then the record below the verbs. */
+  /** The reading: the traced source's head of record; under the verbs, the long record (what outlives a chain). */
   _renderRecord() {
     const record = this._record;
     if (!record) return;
@@ -1309,127 +1389,52 @@ export const footprintScreen = {
     const chain = this._selectedChain();
     const node = this._selectedNode();
     this._renderTraceHead(state, chain, node);
-    record.append(el('div', 'k-caps', 'Chain record'));
-    if (!chain || !state) {
-      const head = el('div');
-      head.innerHTML = footprintReadoutHtml(chain, node, state);
-      record.append(head);
-      return;
-    }
+    if (!state) return;
+    record.append(el('p', 'fp-dossier__k', 'The long record'));
+    const grid = el('div', 'fp-dossier');
 
-    const lossLine = latestLossLine(state, asString(chain.sectorId));
-    if (lossLine) record.append(el('p', 'k-sentence', lossLine));
-
-    const sort = RECORD_SORTS.includes(this._recordSort) ? this._recordSort : 'time';
-    const sortWords = words([
-      { action: 'time', label: 'By time' },
-      { action: 'delta', label: 'By delta' },
-    ], {
-      row: true,
-      size: 'body',
-      ariaLabel: 'Sort the record',
-      onPick: (action) => {
-        this._recordSort = RECORD_SORTS.includes(action) ? action : 'time';
-        this._renderRecord();
-        this._rememberMemory();
-      },
-    });
-    for (const button of sortWords.querySelectorAll('.k-word')) {
-      button.setAttribute('aria-pressed', String(button.dataset.action === sort));
+    // PQ-146 §6.2: the three open Line Contracts — physical puzzles derived from causal receipts. Each is a
+    // word with its bead (lit when proved); its goal, or the route that proved it, reveals on hover or focus.
+    const contracts = contractLedgerRows(state);
+    const proved = contracts.filter((row) => row.completion).length;
+    const lc = el('div', 'fp-dossier__cell');
+    lc.append(el('p', 'fp-dossier__cap', 'Line contracts'), el('p', 'fp-dossier__v', `${proved} of ${contracts.length} proved`));
+    const names = el('p', 'fp-dossier__names');
+    for (const row of contracts) {
+      const word = el('span', `fp-dossier__name${row.completion ? ' is-proved' : ''}`, row.name);
+      word.setAttribute('data-why', row.completion ? `Proved by ${row.completion.trickName}` : String(row.brief || ''));
+      word.setAttribute('tabindex', '0');
+      names.append(word);
     }
-    record.append(sortWords);
+    lc.append(names);
+    grid.append(lc);
 
-    const nodeRows = (Array.isArray(chain.nodes) ? chain.nodes.slice() : [])
-      .map((entry, index) => ({ node: entry, index }))
-      .filter(({ node: entry }) => entry && typeof entry === 'object');
-    nodeRows.sort((left, right) => {
-      if (sort === 'delta') {
-        const a = Math.abs(asNumber(left.node.delta, 0));
-        const b = Math.abs(asNumber(right.node.delta, 0));
-        if (b !== a) return b - a;
-      }
-      return nodeStamp(right.node) - nodeStamp(left.node);
-    });
-    const list = el('ul', 'k-rows');
-    list.setAttribute('aria-label', 'Chain record');
-    if (!nodeRows.length) list.append(staticRow('No nodes on this chain.', '', ''));
-    for (const { node: entry } of nodeRows) {
-      const factionId = asString(entry.factionId) || asString(entry.srcFaction);
-      const faction = shortFactionName(factionId);
-      const tier = asString(entry.newTier);
-      const reason = repReasonLabel(entry.reason);
-      const note = nodeWhy(entry) || asString(entry.text) || '';
-      const name = el('span');
-      name.append(`${sentenceCase(asString(entry.k) || 'entry')} · `);
-      name.append(entityNode(faction, factionId ? 'faction:' + factionId : null));
-      // The receipt's why already names its reason and tier when it has one; say each once.
-      const sub = [`${cycleText(entry.t)} · tick ${asInteger(entry.tick, 0)}`, ...(note ? [note] : [reason, tier])].filter(Boolean).join(' · ');
-      list.append(staticRow(name, sub, deltaText(entry.delta)));
+    const titleRows = Array.isArray(state.titles && state.titles.history) ? state.titles.history.slice(-4).reverse() : [];
+    const tt = el('div', 'fp-dossier__cell');
+    tt.append(el('p', 'fp-dossier__cap', 'Titles'));
+    if (titleRows.length) {
+      const top = titleRows[0];
+      const meta = TITLE_BY_ID.get(top.titleId);
+      tt.append(el('p', 'fp-dossier__v', meta ? meta.title : top.titleId));
+      tt.append(el('p', 'fp-dossier__sub', top.holderKey === 'you' ? 'held by you' : `held by ${top.holderKey || 'no one'}`
+        + (titleRows.length > 1 ? ` · ${titleRows.length - 1} more` : '')));
+    } else {
+      tt.append(el('p', 'fp-dossier__v', 'None yet'), el('p', 'fp-dossier__sub', 'No title terminal linked'));
     }
-    record.append(list);
+    grid.append(tt);
 
     const ledger = buildShipLedger(state, { page: 0, pageSize: SHIP_LEDGER_PAGE_SIZE });
     const ledgerRows = (ledger.entries || []).slice(0, SHIP_LEDGER_PAGE_SIZE);
-    appendRecordSection(record, 'Ship ledger', ledgerRows.length
-      ? ledgerRows.map((entry) => [entry.text || '', sentenceCase(String(entry.cycleLabel || '').toLowerCase()), ''])
-      : [['No ship-ledger prose on this run.', '', '']]);
-
-    const incident = findChainIncident(chain);
-    const incidentStationId = incident && asString(incident.stationId);
-    const incidentSub = el('span');
-    if (incidentStationId) {
-      incidentSub.append('station ');
-      incidentSub.append(entityNode(
-        entityLabel('station:' + incidentStationId) || incidentStationId,
-        'station:' + incidentStationId,
-      ));
+    const sl = el('div', 'fp-dossier__cell fp-dossier__cell--wide');
+    sl.append(el('p', 'fp-dossier__cap', 'Ship ledger'));
+    if (ledgerRows.length) {
+      sl.append(el('p', 'fp-dossier__v', ledgerRows[0].text || ''));
+      sl.append(el('p', 'fp-dossier__sub', sentenceCase(String(ledgerRows[0].cycleLabel || '').toLowerCase())));
+    } else {
+      sl.append(el('p', 'fp-dossier__v', 'Nothing written yet'), el('p', 'fp-dossier__sub', 'The ledger writes as the hull lives'));
     }
-    appendRecordSection(record, 'Incident', [[
-      incident ? (asString(incident.text) || asString(incident.cause) || 'Recorded') : 'No incident node on this chain.',
-      incidentStationId ? incidentSub : '',
-      '',
-    ]]);
-
-    const aceNode = (chain.nodes || []).find((entry) => entry && asString(entry.aceId));
-    const aceRecord = aceNode && state.aceMemory && state.aceMemory[aceNode.aceId]
-      ? state.aceMemory[aceNode.aceId]
-      : null;
-    const aceData = aceNode ? aceById(aceNode.aceId) : null;
-    const aceName = el('span');
-    if (aceRecord) {
-      aceName.append(entityNode(
-        aceRecord.name || (aceData && aceData.name) || aceNode.aceId,
-        'captain:' + aceNode.aceId,
-      ));
-      aceName.append(` · ${aceRecord.crew || (aceData && aceData.crew) || 'Unknown crew'} · ${aceRecord.gimmickTag || (aceData && aceData.gimmickTag) || 'ace'}`);
-    }
-    appendRecordSection(record, 'Ace record', aceRecord
-      ? [[
-        aceName,
-        `encountered ${aceRecord.encounterCount | 0} · fled ${aceRecord.fleeCount | 0} · flung ${aceRecord.flungCount | 0} · return tier ${aceRecord.returnTier | 0}${aceRecord.returnsBigger ? ' · returns bigger' : ''}`,
-        '',
-      ]]
-      : [['No named ace memory linked to this chain.', '', '']]);
-
-    const titleRows = Array.isArray(state.titles && state.titles.history)
-      ? state.titles.history.slice(-4).reverse()
-      : [];
-    appendRecordSection(record, 'Titles', titleRows.length
-      ? titleRows.map((row) => {
-        const meta = TITLE_BY_ID.get(row.titleId);
-        return [meta ? meta.title : row.titleId, row.holderKey || 'vacant', ''];
-      })
-      : [['No title terminals linked on this run.', '', '']]);
-
-    // PQ-146 §6.2: the three open Line Contracts — physical puzzles derived from causal receipts.
-    // A completed card names the route that proved it; an open one shows the physical goal.
-    appendRecordSection(record, 'Line contracts', contractLedgerRows(state).map((row) => [
-      `${row.name} · ${row.status}`,
-      row.completion
-        ? `Proved by ${row.completion.trickName} · tick ${row.completion.tick}`
-        : row.brief,
-      '',
-    ]));
+    grid.append(sl);
+    record.append(grid);
   },
 
   /** The traced source, named: where it sits on the ring, whether it holds the record open, its receipt. */
@@ -1446,12 +1451,11 @@ export const footprintScreen = {
     }
     const index = sources.indexOf(source);
     const bounty = Math.max(0, asNumber(state && state.player && state.player.bounty, 0));
-    const status = source.kind === 'bounty' ? 'open · unpaid' : (source.open ? `open · ${chainOpenReason(chain, state)}` : 'settled');
+    const status = source.kind === 'bounty' ? 'open · unpaid' : (source.open ? `open · ${openWords(chain, state)}` : 'settled');
     const top = el('div', 'fp-trace__top');
     if (source.token) {
       const crest = el('img', 'fp-trace__crest');
       crest.alt = '';
-      crest.decoding = 'async';
       crest.src = source.token;
       crest.addEventListener('error', () => { crest.hidden = true; });
       top.append(crest);
@@ -1473,12 +1477,14 @@ export const footprintScreen = {
         if (receipt) read.append(receipt);
       } else {
         read.append(el('p', 'k-sentence', chain
-          ? 'The chain it stands on unfolds below. Paying settles the bounty and every chain it alone holds open; heat still clears by distance.'
-          : 'No chain on the record carries it. Paying settles it; heat still clears by distance.'));
+          ? 'Paying settles it, and every chain it alone holds open.'
+          : 'No chain on the record carries it; paying settles it.'));
       }
     } else {
       read.innerHTML = footprintReadoutHtml(chain, node, state);
     }
+    const lossLine = chain && state ? latestLossLine(state, asString(chain.sectorId)) : null;
+    if (lossLine) read.append(el('p', 'k-sentence', lossLine));
     host.append(read);
   },
 

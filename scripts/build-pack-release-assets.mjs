@@ -41,9 +41,9 @@ const KIT_REPORT = 'assets/incubator/everyday_space_kit/evidence/build-report.js
 const KIT_SOURCE = 'assets/incubator/everyday_space_kit/source';
 
 const EXPECTED_WRECK_SOURCE_COUNT = 37;
-const EXPECTED_WRECK_AUTHORED_DOWN_COUNT = 7;
+const EXPECTED_WRECK_AUTHORED_DOWN_COUNT = 8;
 const EXPECTED_KIT_SOURCE_ONLY_COUNT = 30;
-const EXPECTED_RELEASE_COUNT = 74;
+const EXPECTED_RELEASE_COUNT = 75;
 
 const KIT_SOURCE_ONLY_STEMS = Object.freeze([
   'cargo_pod_hazmat',
@@ -85,6 +85,7 @@ const WRECK_AUTHORED_DOWN_STEMS = Object.freeze([
   'frag_grating_sheet',
   'wreck_liner_boatbay',
   'wreck_liner_bow',
+  'wreck_mining_barge',
   'wreck_ore_freighter_hopper',
 ]);
 
@@ -517,7 +518,7 @@ function buildReleaseCatalog() {
     .sort();
   if (JSON.stringify(authoredDownOnDisk) !== JSON.stringify([...WRECK_AUTHORED_DOWN_STEMS].sort())
       || authoredDownOnDisk.length !== EXPECTED_WRECK_AUTHORED_DOWN_COUNT) {
-    throw new Error('wreck authored_down inventory differs from the exact seven-file contract');
+    throw new Error('wreck authored_down inventory differs from the exact eight-file contract');
   }
   const authoredDown = authoredDownOnDisk.map((donorId) => makeCatalogEntry({
     id: `place_aftermath_${donorId}_authored_down`,
@@ -572,9 +573,9 @@ function validateCatalog(catalog) {
     }
   }
   const familyCounts = countBy(catalog, (entry) => entry.family);
-  if (familyCounts.get('wreck_aftermath_pack') !== 44
+  if (familyCounts.get('wreck_aftermath_pack') !== 45
       || familyCounts.get('everyday_space_kit') !== 30) {
-    throw new Error('pack release catalog family membership must be wreck=44 and kit=30');
+    throw new Error('pack release catalog family membership must be wreck=45 and kit=30');
   }
   for (const entry of catalog) {
     if (!/^place_[a-z0-9_]+$/.test(entry.id)) {

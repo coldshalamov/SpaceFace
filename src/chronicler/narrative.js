@@ -157,6 +157,21 @@ export function buildStoryView(story) {
     } else if (['recovered', 'sold', 'law'].includes(f.stage)) {
       kind = 'unlinked_provenance'; score = 12; title = 'A receipt awaiting its source';
       summary = `A ${f.stage} receipt was recorded. Its upstream chain is not complete.`;
+    } else if (f.stage === 'spill') {
+      kind = 'cargo_spill'; score = 24; title = 'Cargo spilled under fire';
+      summary = `${f.subject ? f.subject.name : 'A hauler'} spilled ${quantity(f.details.qty)} units of ${label(f.details.commodityId, 'cargo')} in ${sectorName(f)}.`;
+    } else if (f.stage === 'predation') {
+      kind = 'predation_telegraph'; score = 26; title = 'A predator marked a hauler';
+      summary = `${pilotName(f)} telegraphed a raid on ${f.subject ? f.subject.name : 'a hauler'} in ${sectorName(f)}.`;
+    } else if (f.stage === 'survey') {
+      kind = 'formation_survey'; score = 18; title = 'A formation surveyed';
+      summary = `Surveyed ${f.subject ? f.subject.name : 'an asteroid formation'} in ${sectorName(f)}.`;
+    } else if (f.stage === 'gate') {
+      kind = 'gate_verdict'; score = 14; title = 'A gate verdict';
+      summary = `Gate control returned ${f.details.wanted ? 'a wanted-flag ' : ''}${label(f.details.kind, 'a verdict')} for a jump toward ${label(f.details.gateTo, 'another sector')}.`;
+    } else if (f.stage === 'delivery') {
+      kind = 'depot_delivery'; score = 12; title = 'Depot freight moved';
+      summary = `${quantity(f.details.qty)} units of depot freight ${f.details.inbound ? 'arrived at' : 'departed for'} ${f.subject ? f.subject.name : 'a claim body'}.`;
     } else { score = 4; summary = 'A simulation fact was retained for possible later connection.'; }
     radio = summary;
   }

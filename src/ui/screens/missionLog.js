@@ -182,9 +182,18 @@ function clockScaleHtml(m, simTime) {
 /** The bend that carries a traced route off the start of the chosen one, onto the lane below it. */
 const GHOST_ELBOW = '<svg class="ml-ghost__elbow" viewBox="0 0 72 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M 36 72 L 36 86 L 50 100 L 72 100"/></svg>';
 
-/** The slot under the lane at rest: where a traced contract will draw, and how to trace one. */
+/** Once a pilot has traced the beam, the slot under the lane stops teaching it (kept per browser). */
+const TRACED_KEY = 'spaceface.missionLog.traced';
+function tracedBefore() {
+  try { return !!globalThis.localStorage && globalThis.localStorage.getItem(TRACED_KEY) === '1'; } catch (_) { return false; }
+}
+function rememberTraced() {
+  try { if (globalThis.localStorage) globalThis.localStorage.setItem(TRACED_KEY, '1'); } catch (_) { /* private mode */ }
+}
+
+/** The slot under the lane at rest: where a traced contract will draw, and (until the first trace) how. */
 function ghostRestHtml() {
-  return GHOST_ELBOW + '<p class="ml-ghost__hint">Trace the beam to weigh another contract</p>';
+  return tracedBefore() ? '' : GHOST_ELBOW + '<p class="ml-ghost__hint">Trace the beam to weigh another contract</p>';
 }
 
 /** A traced contract as a ghost lane under the chosen one: its own end, its jumps, its progress. */
@@ -194,8 +203,8 @@ function ghostLaneHtml(state, m) {
   const sec = f.destSector ? SECTOR_BY_ID.get(f.destSector) : null;
   const to = stn ? stn.name : sec ? sec.name + ' sector' : ((m && m.destStationName) || '');
   return GHOST_ELBOW + laneHtml(f, { ghost: true }) + faceHtml(destArtUrl(m), 'ml-route__face--ghost')
-    + '<p class="ml-ghost__cap"><span class="ml-ghost__name"><b>Tracing</b> · ' + escapeHtml(missionTitle(m)) + '</span>'
-    + '<span class="ml-ghost__to">' + escapeHtml(jumpWordFor(f.jumps) + (to ? ' · ' + to : '')) + '</span></p>';
+    + '<span class="ml-ghost__end">' + escapeHtml((to ? to + ' · ' : '') + jumpWordFor(f.jumps)) + '</span>'
+    + '<p class="ml-ghost__cap"><span class="ml-ghost__name"><b>Tracing</b> · ' + escapeHtml(missionTitle(m)) + '</span></p>';
 }
 
 /**
@@ -2318,6 +2327,13 @@ export const missionLogScreen = {
       settle(this._stageEl, { from: 'right', delay: 80, state: 'missionLog:open' });
     } catch (_) { /* fake DOM */ }
     this._focusPrimaryControl();
+    if (this._floorEl) this._floorEl.classList.add('is-settling');
+    if (this._floorTimer) clearTimeout(this._floorTimer);
+    this._floorTimer = setTimeout(() => {
+      this._floorTimer = 0;
+      this._placeFloor();
+      if (this._floorEl) this._floorEl.classList.remove('is-settling');
+    }, 520);
   },
 
   onHide() {
@@ -2325,6 +2341,8 @@ export const missionLogScreen = {
     // park the measuring frame and let the trace rest on the chosen node
     if (this._hangFrame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._hangFrame);
     this._hangFrame = 0;
+    if (this._floorTimer) clearTimeout(this._floorTimer);
+    this._floorTimer = 0;
     this._tracePointer = null;
   },
 
@@ -2528,7 +2546,76 @@ export const missionLogScreen = {
     this._hand.moveTo(row, { instant });
     try { syncScrollExtent(this._hangEl); } catch (_) { /* layout-free host */ }
     this._fadeOnRow();
+    this._placeFloor();
     this._traceTo(this._tracePointer == null ? null : this._tracePointer, { instant });
+  },
+
+  /**
+   * The stage's floor: the destination's establishing art (the place the TO disc looks onto) stands
+   * faded under the lane wherever the stage leaves its floor empty, and runs under the beam too when
+   * the beam's last line ends above it. It folds away when the lane already reaches the foot.
+   */
+  _placeFloor() {
+    const root = this._rootEl;
+    const stage = this._stageEl;
+    if (!root || !stage || !richDom() || typeof root.getBoundingClientRect !== 'function' || typeof stage.querySelectorAll !== 'function') return;
+    let floor = this._floorEl;
+    if (!floor || floor.parentNode !== root) {
+      floor = el('div', 'ml-floor is-collapsed');
+      floor.setAttribute('aria-hidden', 'true');
+      for (const cls of ['ml-floor__art', 'ml-floor__ghost']) {
+        const img = el('img', cls);
+        img.alt = '';
+        img.decoding = 'async';
+        floor.appendChild(img);
+      }
+      root.insertBefore(floor, root.firstChild);
+      this._floorEl = floor;
+    }
+    const art = this._floorArt;
+    const rr = root.getBoundingClientRect();
+    const z = archiveZoom(root, rr);
+    const sr = stage.getBoundingClientRect();
+    let foot = null;
+    for (const node of stage.querySelectorAll('.sf-mlog-card > *')) {
+      const r = node.getBoundingClientRect();
+      if (r.height > 0) foot = foot == null ? r.bottom : Math.max(foot, r.bottom);
+    }
+    if (!art || foot == null || !(sr.height > 0)) { floor.classList.add('is-collapsed'); return; }
+    const top = (foot - rr.top) / z + 24;
+    const bottom = (sr.bottom - rr.top) / z - 44;
+    let left = (sr.left - rr.left) / z;
+    const right = (sr.right - rr.left) / z;
+    const hang = this._hangEl;
+    if (hang && typeof hang.getBoundingClientRect === 'function') {
+      let last = null;
+      for (const node of hang.querySelectorAll('.k-row')) {
+        if (node.hidden || node.offsetParent === null) continue;
+        const r = node.getBoundingClientRect();
+        if (r.height > 0) last = last == null ? r.bottom : Math.max(last, r.bottom);
+      }
+      if (last != null && (last - rr.top) / z + 96 < top) left = (hang.getBoundingClientRect().left - rr.left) / z;
+    }
+    const height = bottom - top;
+    if (height < 150) { floor.classList.add('is-collapsed'); return; }
+    if (floor.style) {
+      floor.style.left = left.toFixed(0) + 'px';
+      floor.style.top = top.toFixed(0) + 'px';
+      floor.style.width = Math.max(0, right - left).toFixed(0) + 'px';
+      floor.style.height = height.toFixed(0) + 'px';
+    }
+    const base = floor.querySelector('.ml-floor__art');
+    if (base && base.getAttribute('src') !== art) base.setAttribute('src', art);
+    floor.classList.remove('is-collapsed');
+  },
+
+  /** While the beam is traced, the floor cross-fades to the traced contract's destination. */
+  _floorTrace(url) {
+    const floor = this._floorEl;
+    if (!floor) return;
+    const ghost = floor.querySelector('.ml-floor__ghost');
+    if (url && ghost && ghost.getAttribute('src') !== url) ghost.setAttribute('src', url);
+    floor.classList.toggle('is-tracing', !!url);
   },
 
   /**
@@ -2719,6 +2806,8 @@ export const missionLogScreen = {
     this._dialEl = null;
     this._routeEl = null;
     this._previewId = null;
+    this._floorArt = m ? destArtUrl(m) : (sectorArtUrl(state && state.world && state.world.currentSectorId) || RELAY_STILL);
+    if (this._floorEl) this._floorEl.classList.remove('is-tracing');
     if (!m) {
       // No contract on the beam: the dial stands bare beside the one sentence that says how to get one.
       const empty = el('article', 'sf-mlog-card is-empty');
@@ -2838,6 +2927,8 @@ export const missionLogScreen = {
     const active = (state.missions && state.missions.active) || [];
     const m = want ? active.find((x) => x && x.id === want && x.status === 'active') || null : null;
     this._previewId = m ? want : null;
+    if (m) rememberTraced();
+    this._floorTrace(m ? destArtUrl(m) : null);
     const ghost = this._routeEl.querySelector('.ml-route__ghost');
     if (ghost) {
       ghost.innerHTML = m ? ghostLaneHtml(state, m) : ghostRestHtml();

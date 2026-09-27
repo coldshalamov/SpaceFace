@@ -547,7 +547,11 @@ const REGION_ORCUS = freezeRegion({
       { type: 'nebula', center: { x: -500, z: 800 }, radius: 1100, intensity: 0.55 },
     ],
     pois: [
-      { id: 'poi_orcus_anomaly', type: 'anomaly', name: 'Orcus Signal' },
+      { id: 'poi_orcus_anomaly', type: 'anomaly', name: 'Orcus Signal',
+        discoveryPlate: {
+          title: 'The Orcus Signal',
+          body: 'The signal has no source, only a behavior: it answers every scan with the same scan, one pulse late. The Shadow Plinth was raised facing it, and the Vael guards do not hail — they measure.',
+        } },
       { id: 'poi_orcus_vault', type: 'cache', name: 'Shadow Vault', hidden: true },
       { id: 'poi_orcus_plinth', type: 'beacon', name: 'Shadow Plinth', factionId: 'faction_vael' },
     ],

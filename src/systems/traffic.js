@@ -701,6 +701,35 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
     ]),
   }),
   Object.freeze({
+    // The tutelary beat the cycle earns after a real casualty: with the hauler recovered once,
+    // the cathedral patrol stops trusting the hauler's luck and falls in on its delivery leg —
+    // not a scan (the audit link above already owns that read), a visible cover run the player
+    // can watch, join, or spoil. Opens only on the recovery's success seed. The branch is
+    // divergent by the chain's own law: a completed run plants yard_cover (the receipt that the
+    // yard covered this leg); an interrupted run is a casualty like any other and opens the
+    // aftermath branch for the salvor. A recovery that never succeeded plants aftermath_open
+    // first, so the skip logic supersedes this link before it starts either way.
+    id: 'ev_patrol_escorts_hauler',
+    actorSlots: Object.freeze([CERES_CATHEDRAL_PATROL_SLOT_ID, CERES_REFINERY_HAULER_SLOT_ID]),
+    requires: Object.freeze(['hauler_recovered']),
+    seedAtPhase: 'eye',
+    seeds: Object.freeze(['yard_cover']),
+    interruptSeeds: Object.freeze(['aftermath_open']),
+    jobHints: Object.freeze([
+      Object.freeze({
+        actorSlotId: CERES_CATHEDRAL_PATROL_SLOT_ID,
+        subjectSlotId: CERES_REFINERY_HAULER_SLOT_ID,
+        phases: Object.freeze(['fall_in', 'shadow', 'eye', 'handoff']),
+      }),
+    ]),
+    phases: Object.freeze([
+      Object.freeze({ name: 'fall_in', durationS: 12, cue: 'clean_burn' }),
+      Object.freeze({ name: 'shadow', durationS: 25, cue: 'on_the_pin' }),
+      Object.freeze({ name: 'eye', durationS: 20, cue: 'on_the_pin' }),
+      Object.freeze({ name: 'handoff', durationS: 10, cue: 'heavy_burn' }),
+    ]),
+  }),
+  Object.freeze({
     id: 'ev_cutter_strips_wreck',
     actorSlots: Object.freeze([CERES_CATHEDRAL_SALVOR_SLOT_ID]),
     // Opens only when the service actually fails; a completed repair never manufactures a wreck.
@@ -1078,6 +1107,26 @@ function exactCeresRouteTargetRefMode(route, canonicalRoute, legacyTargetRefs = 
   return 'invalid';
 }
 
+/**
+ * Latest retained sectorSim embodiment recipe payload for `kind` in `sectorId`, or null.
+ * The cache is world-owned (`state.world.embodiment`); this is a read-only consumer. The
+ * traffic_density recipe carries the live field's densityMultiplier/roleMixBias — authored as
+ * the M2-C3 "scalar → recipe" contract that previously nobody read.
+ */
+function embodimentDensityPayload(state, sectorId) {
+  const bySector = state && state.world && state.world.embodiment
+    && state.world.embodiment.bySector;
+  const rec = bySector && sectorId ? bySector[sectorId] : null;
+  const intents = rec && Array.isArray(rec.intents) ? rec.intents : null;
+  if (!intents) return null;
+  for (const it of intents) {
+    if (it && it.kind === 'traffic_density' && it.payload && typeof it.payload === 'object') {
+      return it.payload;
+    }
+  }
+  return null;
+}
+
 // Causal role mix for a sector (spec §12.2). Hostile/pirate sectors tilt toward raiders; industrial
 // sectors toward miners/haulers; secure faction sectors toward patrols/escorts.
 export function trafficRoleMixForSector(sector, state = null) {
@@ -1146,7 +1195,21 @@ export function trafficRoleMixForSector(sector, state = null) {
   out.tanker = 0;
   out.customs = 0;
   out.tourist = (sec.scenic || sec.tourism) ? 4 : 0;
-  return state ? regionalTrafficRoleWeights(state, sec.id, out) : out;
+  let weights = state ? regionalTrafficRoleWeights(state, sec.id, out) : out;
+  // Live field read: the retained traffic_density recipe's roleMixBias tilts the mix toward what
+  // the sector's danger/scarcity/influence actually projects (more miners under mining industry,
+  // more raiders under Reach pressure). Deterministic per epoch; absent cache → authored mix.
+  const bias = state && sec && sec.id ? embodimentDensityPayload(state, sec.id) : null;
+  const mix = bias && bias.roleMixBias;
+  if (mix && typeof mix === 'object') {
+    const adjusted = { ...weights };
+    for (const role of Object.keys(adjusted)) {
+      const factor = Number(mix[role]);
+      if (Number.isFinite(factor)) adjusted[role] = Math.max(0, adjusted[role] * factor);
+    }
+    weights = adjusted;
+  }
+  return weights;
 }
 function pickRole(roleWeights, rng) {
   let total = 0; for (const w of Object.values(roleWeights)) total += Math.max(0, w);
@@ -1156,8 +1219,8 @@ function pickRole(roleWeights, rng) {
   return 'hauler';
 }
 
-/** Ambient count from trafficPerMin — core pockets floor at CORE_MIN_TRAFFIC. */
-function ambientCountForSector(sector, state = null) {
+/** Ambient count from trafficPerMin — core pockets floor at CORE_MIN_TRAFFIC. Exported for tests. */
+export function ambientCountForSector(sector, state = null) {
   // NO AMBIENT FREIGHT IN A CRUCIBLE RUN (PQ-135). Helios carries eighteen haulers a minute, and a
   // live arena walk had nineteen of them on the board: they filled the contact list with things the
   // player must not shoot, held spawn slots the wave needed, and turned a match into rush hour.
@@ -1181,6 +1244,15 @@ function ambientCountForSector(sector, state = null) {
     count = Math.min(MAX_PER_SECTOR, Math.max(1, Math.round(
       count * regionalTrafficDensityMultiplier(state, sector && sector.id),
     )));
+    // Live field read: the retained sectorSim traffic_density recipe scales the pocket with the
+    // field's projected density (danger surges thin the lanes; scarcity draws hulls). Same cap
+    // and floor as the ecology multiplier; absent cache → authored density unchanged.
+    const density = embodimentDensityPayload(state, sector && sector.id);
+    if (density && Number.isFinite(density.densityMultiplier)) {
+      count = Math.min(MAX_PER_SECTOR, Math.max(1, Math.round(
+        count * Math.max(0.35, Math.min(2.75, density.densityMultiplier)),
+      )));
+    }
   }
   return count;
 }
@@ -4678,6 +4750,14 @@ export const traffic = {
     const clear = Math.max(0, Number(hauler.radius) || 0) + HAULER_SPILL_POD_RADIUS;
     const vx = Number.isFinite(hauler.vel && hauler.vel.x) ? hauler.vel.x : 0;
     const vz = Number.isFinite(hauler.vel && hauler.vel.z) ? hauler.vel.z : 0;
+    // Ownership truth: the pod names who lost it — owner hull identity, operating faction, and
+    // the route the hauler was flying — so scooping the pod and hailing the carrier tell the
+    // same story. Manifests carry no route fields; the itinerary/target id stand in.
+    const itinerary = data.itinerary || (rec && rec.itinerary) || {};
+    const originStationId = itinerary.originStationId || null;
+    const destinationStationId = itinerary.destinationStationId
+      || stationIdentity(rec && rec.targetId ? this.state.entities.get(rec.targetId) : null)
+      || null;
     const pod = spawnJettisonedCargoPod(this.state, {
       pos: { x: pos.x - Math.cos(rot) * clear, z: pos.z - Math.sin(rot) * clear },
       vel: { x: vx * HAULER_SPILL_VEL_FRACTION, z: vz * HAULER_SPILL_VEL_FRACTION },
@@ -4687,8 +4767,18 @@ export const traffic = {
       unitMass: 0.8,
       factionId: hauler.factionId || data.factionId || 'faction_free',
       ownerId: hauler.id,
+      ownerName: data.name || hauler.name || hauler.id,
+      originId: originStationId,
+      destinationId: destinationStationId,
     }, this.helpers);
     if (!pod) return null;
+    if (pod.data) {
+      pod.data.manifestId = current.manifestId || null;
+      pod.data.ownerRecordId = (rec && rec.worldRecordId) || null;
+      pod.data.carrierRole = (rec && rec.role) || hauler.role || 'hauler';
+      pod.data.spillCause = 'combat_fire';
+      pod.data.attackerId = (attacker && attacker.id) || null;
+    }
     data.violenceCargoSpilled = true;
     data.cargoDumped = true;
     data.carrying = false;
@@ -4713,6 +4803,9 @@ export const traffic = {
       this.bus.emit('freight:cargoSpilled', {
         carrierId: hauler.id,
         ownerId: hauler.id,
+        ownerName: data.name || hauler.name || hauler.id,
+        factionId: hauler.factionId || data.factionId || 'faction_free',
+        attackerId: (attacker && attacker.id) || null,
         entityId: hauler.id,
         manifestId: current.manifestId || null,
         cause: 'combat_fire',

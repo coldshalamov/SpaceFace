@@ -94,6 +94,8 @@ const PICKUP_TTL = 90;          // s before an uncollected pickup despawns
 // chip records its grant reason plus its body id for receipts that carry no reason.
 const SETTLED_CHIP_KEY_CAP = 4096;
 const SALVAGE_TIME_DEFAULT = 6; // s to fully drain a wreck if combat didn't set one
+// Claim-jump prosecution: re-protest cadence while the beam stays on a staked wreck.
+const CLAIM_JUMP_PROTEST_COOLDOWN_S = 12;
 const MINEABLE_QUERY_RADIUS_PAD = 64;
 const SEAM_HIT_RADIUS = 14;
 // SEAM_YIELD_OFF is a YIELD fraction, as its name has always claimed. Off-seam beam time delivers
@@ -759,6 +761,7 @@ export const mining = {
       oreType: this._dominantOre(def),
       seamHit: seam.onSeam,
       yieldMult: seam.yieldMult,
+      sourceEntityId: minerId,
     });
 
     // Continuous ore delivery (Mining 2.0 feel fix — see design/WORLD_OVERHAUL_2_1.md §Mining).
@@ -1387,6 +1390,10 @@ export const mining = {
       this.bus.emit('mining:yield', { commodityId: id, qty: got[id], pos: { x: wreck.pos.x, z: wreck.pos.z }, minerId: player ? player.id : null });
       this._spawnPickup(wreck, id, got[id]);
     }
+    // The beam bypasses the salvage claim protocol (player drains via drainSource or the
+    // direct pool, never _claimSource), so a staked wreck defends itself here: the flag
+    // is the claim, and stripping another crew's stake is theft, prosecuted or not.
+    this._protestClaimJump(player, wreck, got);
 
     if (d.salvageTimeLeft <= 0 || remaining <= 0) {
       this.bus.emit('salvage:completed', {
@@ -1405,6 +1412,79 @@ export const mining = {
       wreck.alive = false;
       this._stopBeam();
     }
+  },
+
+  // Another crew's stake, stripped by the player's beam: the crew protests, the theft
+  // is reported through the real law owner entry (law alone decides jurisdiction and
+  // witnesses; heat alone consumes an accepted receipt), and a jumped-claim receipt
+  // goes out for ledger/memory readers. One protest per cooldown window per wreck.
+  _protestClaimJump(player, wreck, got) {
+    const state = this.state;
+    const d = (wreck && wreck.data) || {};
+    const claimantId = typeof d.salvorClaimedBy === 'string' && d.salvorClaimedBy ? d.salvorClaimedBy : null;
+    if (!claimantId || claimantId === 'player' || claimantId.startsWith('player:')) return null;
+    const total = Object.values(got || {}).reduce((sum, qty) => sum + (Number(qty) || 0), 0);
+    if (!(total > 0)) return null;
+    const now = Number(state.simTime) || 0;
+    const last = Number(d.claimJumpProtestAt);
+    if (Number.isFinite(last) && now - last < CLAIM_JUMP_PROTEST_COOLDOWN_S) return null;
+    d.claimJumpProtestAt = now;
+    const visits = (d.claimJumpVisits | 0) + 1;
+    d.claimJumpVisits = visits;
+    // The wronged crew: their hull is the witness when it is still on site.
+    let victimEntityId = null;
+    let crewName = 'Salvor crew';
+    const list = state.entityList;
+    if (Array.isArray(list)) {
+      for (const e of list) {
+        if (e && e.alive !== false && e.data && e.data.worldRecordId === claimantId) {
+          victimEntityId = e.id;
+          crewName = e.data.callsign || e.data.shipName || e.data.name || crewName;
+          break;
+        }
+      }
+    }
+    const reportId = `claimjump:${wreck.id}:${claimantId}`;
+    let receipt = null;
+    const law = this.registry && this.registry.get && this.registry.get('lawSecurity');
+    if (law && typeof law.reportIncident === 'function') {
+      try {
+        receipt = law.reportIncident({
+          reportId,
+          kind: 'payload_theft',
+          offenderStableId: 'player',
+          offenderEntityId: player ? player.id : null,
+          payloadStableId: `salvage-claim:${wreck.id}`,
+          pos: { x: wreck.pos.x, z: wreck.pos.z },
+          causalTick: state.tick | 0,
+          victim: { kind: 'entity', id: victimEntityId != null ? victimEntityId : claimantId, label: crewName },
+          victimEntityId,
+        });
+      } catch {
+        receipt = null;
+      }
+    }
+    const accepted = !!(receipt && receipt.accepted === true);
+    const opener = visits > 1 ? 'You again?! ' : '';
+    const text = accepted
+      ? `${crewName}: ${opener}That's our wreck, hauler — law's been called.`
+      : `${crewName}: ${opener}That's our wreck, hauler — back off the claim.`;
+    this.bus.emit('toast', { text, kind: 'salvageClaim', ttl: 4 });
+    const jumped = {
+      wreckId: wreck.id,
+      claimantId,
+      victimEntityId,
+      crewName,
+      offenderId: player ? player.id : null,
+      took: { ...got },
+      reportId,
+      accepted,
+      sectorId: state.world && state.world.currentSectorId ? state.world.currentSectorId : null,
+      visits,
+      t: now,
+    };
+    this.bus.emit('salvage:claimJumped', jumped);
+    return jumped;
   },
 
   _onLootDrop(p) {

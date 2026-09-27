@@ -5,8 +5,12 @@
 import {
   BOUNTY_HUNTER_NEUTRAL_CONTEXT,
   BOUNTY_HUNTER_PLAYER_CONTEXT,
+  QUARRY_TUNING as QT,
   makeBountyHunterSpec,
   makeBountyQuarrySpec,
+  quarryHash01,
+  quarryManifestForContract,
+  quarryNameForContract,
 } from '../data/bountyHunters.js';
 import {
   hunterTrickById,
@@ -65,6 +69,7 @@ export const bountyHunt = {
     ensureState(this.state);
     this._listen('entity:killed', (p) => this._onEntityKilled(p));
     this._listen('entity:spawned', (p) => this._onEntitySpawned(p));
+    this._listen('combat:damage', (p) => this._onDamage(p));
   },
 
   /** External wake when a hunter role is stamped without a fresh spawn index bump. */
@@ -79,6 +84,24 @@ export const bountyHunt = {
     this.noteHunterWake();
   },
 
+  // Shooting the victim voids their gratitude. The save still records, but the
+  // quarry limps clear without paying the hand that also shot them.
+  _onDamage(payload) {
+    const state = this.state;
+    if (!payload || !state || payload.attackerId !== state.playerId) return;
+    const targetId = payload.targetId ?? payload.id ?? payload.victimId;
+    if (targetId == null) return;
+    const target = state.entities && state.entities.get ? state.entities.get(targetId) : null;
+    if (!target || target.alive === false || !isBountyQuarry(target)) return;
+    const hunt = target.data.bountyHunt || (target.data.bountyHunt = { role: 'quarry' });
+    if (hunt.done || hunt.gratitudeVoid === true) return;
+    hunt.gratitudeVoid = true;
+    emit(this.bus, 'toast', {
+      text: `${hunt.name || 'The quarry'} saw that — friendly fire voids any gratitude.`,
+      kind: 'warn', ttl: 4,
+    });
+  },
+
   newGame() {
     if (this.state) this.state.bountyHunt = freshState();
     this._huntersQuiet = null;
@@ -90,6 +113,9 @@ export const bountyHunt = {
     if (!state || (state.mode && state.mode !== 'flight')) return;
     this.state = state;
     ensureState(state);
+    // Staged chases run BEFORE the quiet latch: an empty sky is exactly when a
+    // chase may stage, and the spawn bumps membership so the latch re-arms after.
+    this._stageChase(state);
     // Quiet open flight: no live bounty hunters still paid a full shipLike
     // census (isBountyHunter / normalize / trick) every tick. Latch when the
     // census stays empty; wake on membership, hunter spawn/tag, or 0.5 s rescan.
@@ -113,15 +139,25 @@ export const bountyHunt = {
     }
 
     let anyHunter = false;
+    const hunterByTarget = new Map();
+    const quarries = [];
     for (const entity of indexedShipLikeScan(state)) {
       if (isBountyHunter(entity)) {
         anyHunter = true;
         normalizeHunter(entity, state);
         tickHunterTrick(entity, state, this);
+        const targetId = entity.data && entity.data.contractTargetId;
+        if (targetId != null && !hunterByTarget.has(targetId)) hunterByTarget.set(targetId, entity);
+      } else if (isBountyQuarry(entity)) {
+        quarries.push(entity);
       }
     }
+    let anyQuarryActive = false;
+    for (const quarry of quarries) {
+      if (this._tickQuarry(state, quarry, hunterByTarget)) anyQuarryActive = true;
+    }
     if (BOUNTY_HUNT_EMPTY_QUIET_LATCH !== false) {
-      if (!anyHunter) {
+      if (!anyHunter && !anyQuarryActive) {
         const membership = entityIndexVersion(state);
         if (membership != null) {
           this._huntersQuiet = {
@@ -136,6 +172,123 @@ export const bountyHunt = {
         publishBountyHuntQuiet(state, false);
       }
     }
+  },
+
+  // Stage one hunter-vs-quarry chase crossing the player's view. Free flight only:
+  // curated scenarios (47a goldens, authored scenes) never stage — the salvor gate.
+  // One staged pair at a time, seeded geometry, no shared-rng draws.
+  _stageChase(state) {
+    const own = ensureState(state);
+    const now = finite(state && state.simTime, 0);
+    if (own.nextStageAt == null) own.nextStageAt = now + QT.firstStageDelayS;
+    if (now < own.nextStageAt) return;
+    if (own.activeStaged && now - own.activeStaged.stagedAt < QT.contractTimeoutS) {
+      own.nextStageAt = now + QT.contractTimeoutS;
+      return;
+    }
+    own.activeStaged = null;
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function') {
+      own.nextStageAt = now + QT.stageCooldownMinS;
+      return;
+    }
+    if (isScenarioGated(state)) {
+      own.nextStageAt = now + QT.stageCooldownMinS;
+      return;
+    }
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) {
+      own.nextStageAt = now + QT.stageCooldownMinS;
+      return;
+    }
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList || [];
+    if (ships.length >= QT.stageShipCap) {
+      own.nextStageAt = now + QT.stageCooldownMinS;
+      return;
+    }
+    const seed = (state.meta && state.meta.seed) || 1;
+    const serial = (own.stageSerial | 0) + 1;
+    own.stageSerial = serial;
+    const contractId = `bounty:staged:${serial}`;
+    const ang = quarryHash01(seed, contractId, 'stage-angle') * Math.PI * 2;
+    const qx = player.pos.x + Math.cos(ang) * QT.stageRange;
+    const qz = player.pos.z + Math.sin(ang) * QT.stageRange;
+    // The pair crosses the view: the quarry runs on the tangent, the hunter trails it.
+    const fx = -Math.sin(ang), fz = Math.cos(ang);
+    const quarrySpec = makeBountyQuarrySpec({ contractId, pos: { x: qx, z: qz } });
+    const hunterSpec = makeBountyHunterSpec({
+      contractId,
+      pos: { x: qx - fx * QT.stageTrailGap, z: qz - fz * QT.stageTrailGap },
+    });
+    const quarry = spawnEntity({
+      ...quarrySpec,
+      vel: { x: fx * 60, z: fz * 60 },
+      data: { ...quarrySpec.data, name: quarryNameForContract(contractId, seed) },
+    });
+    const hunter = spawnEntity({
+      ...hunterSpec,
+      vel: { x: fx * 70, z: fz * 70 },
+      data: {
+        ...hunterSpec.data,
+        contractTargetId: quarry && quarry.id != null ? quarry.id : null,
+      },
+    });
+    if (!quarry || !hunter || quarry.id == null || hunter.id == null) {
+      own.nextStageAt = now + QT.stageCooldownMinS;
+      return;
+    }
+    hunter.data.contractTargetId = quarry.id;
+    hunter.data.bountyHunt.targetId = quarry.id;
+    own.activeStaged = { contractId, stagedAt: now };
+    own.nextStageAt = now + QT.stageCooldownMinS
+      + quarryHash01(seed, contractId, 'stage-gap') * QT.stageCooldownSpanS;
+    this.noteHunterWake();
+    emit(this.bus, 'bountyHunt:staged', {
+      contractId, quarryId: quarry.id, hunterId: hunter.id,
+      name: quarry.data && quarry.data.name, at: now,
+    });
+  },
+
+  // One quarry tick. Returns true while the chase is still live (latch input).
+  _tickQuarry(state, quarry, hunterByTarget) {
+    const data = quarry.data || (quarry.data = {});
+    const hunt = data.bountyHunt || (data.bountyHunt = { role: 'quarry' });
+    if (hunt.done) return false;
+    const contractId = hunt.contractId || data.contractId || `bounty:${quarry.id}`;
+    hunt.contractId = contractId;
+    const seed = (state.meta && state.meta.seed) || 1;
+    if (!hunt.name) hunt.name = data.name || quarryNameForContract(contractId, seed);
+    const hunter = liveHunterFor(state, hunterByTarget.get(quarry.id));
+    if (!hunter) {
+      standDownQuarry(quarry);
+      return false;
+    }
+    const now = finite(state && state.simTime, 0);
+    const refuge = nearestRefugeStation(state, quarry.pos, QT.refugeScan);
+    if (refuge && refuge.pos && distance2(quarry.pos, refuge.pos) < QT.refugeRange * QT.refugeRange) {
+      escapeQuarryToRefuge(state, this.bus, quarry, hunter, refuge, contractId, now);
+      return false;
+    }
+    if (!hunt.surrendered && Number.isFinite(quarry.hull) && quarry.hullMax > 0
+      && (quarry.hull / quarry.hullMax) < QT.surrenderHullFrac) {
+      surrenderQuarry(state, this.helpers, this.bus, quarry, hunter, contractId, now);
+    }
+    if (!hunt.surrendered) steerQuarryFromHunter(quarry, hunter, refuge);
+    const hunterDist = Math.hypot(hunter.pos.x - quarry.pos.x, hunter.pos.z - quarry.pos.z);
+    if (!hunt.squawked && hunterDist < QT.distressRange) {
+      hunt.squawked = true;
+      const text = `${hunt.name} squawks distress — a contract hunter is running them down!`;
+      sayQuarry(this.helpers, quarry, text, 'bounty_quarry_distress');
+      emit(this.bus, 'toast', { text: 'DISTRESS: ' + text, kind: 'warn', ttl: 5 });
+      emit(this.bus, 'bountyHunt:quarryDistress', {
+        contractId, quarryId: quarry.id, hunterId: hunter.id, at: now,
+      });
+    }
+    if (!hunt.dumped && hunterDist < QT.dumpRange) {
+      hunt.dumped = true;
+      dumpQuarryManifest(state, this.helpers, this.bus, quarry, contractId, seed, now);
+    }
+    return true;
   },
 
   destroy() {
@@ -160,12 +313,13 @@ export const bountyHunt = {
 
     if (killedRole === 'hunter') {
       recordOutcome(state, this.bus, killed.data.bountyHunt.contractId, byPlayer ? 'player_defended_quarry' : 'hunter_killed', payload);
+      settleHunterDown(state, this.bus, killed, byPlayer);
       return;
     }
 
     const contractId = contractIdForQuarryKill(state, payload.id);
     if (contractId) {
-      recordOutcome(state, this.bus, contractId, byPlayer ? 'player_helped_hunter' : 'quarry_killed', payload);
+      settleQuarryDown(state, this.bus, killed, contractId, payload.id, byPlayer);
     }
   },
 };
@@ -407,6 +561,296 @@ function isBountyHunter(entity) {
   return !!(data && data.bountyHunt && data.bountyHunt.role === 'hunter');
 }
 
+function isBountyQuarry(entity) {
+  const data = entity && entity.data;
+  return !!(data && data.bountyHunt && data.bountyHunt.role === 'quarry');
+}
+
+// Curated-scenario gate (salvor pattern): scenario contracts never get staged chases,
+// so goldens and authored scenes read zero bounty staging.
+function isScenarioGated(state) {
+  const scenario = state && state.scenario;
+  return !!((scenario && scenario.active)
+    || (scenario && typeof scenario.scenarioId === 'string' && scenario.scenarioId));
+}
+
+function liveHunterFor(state, hunter) {
+  if (!hunter || hunter.alive === false) return null;
+  const fresh = state.entities && state.entities.get ? state.entities.get(hunter.id) : hunter;
+  if (!fresh || fresh.alive === false || !isBountyHunter(fresh)) return null;
+  return fresh;
+}
+
+// The chase is over for this hull: stop our steering and hand the ship back to its AI.
+function standDownQuarry(quarry) {
+  const data = quarry.data || (quarry.data = {});
+  const hunt = data.bountyHunt || (data.bountyHunt = { role: 'quarry' });
+  hunt.done = true;
+  const ai = data.ai || (data.ai = {});
+  ai.passive = true;
+  const intent = data.intent;
+  if (intent && typeof intent.mode === 'string' && intent.mode.indexOf('bounty_quarry') === 0) {
+    intent.mode = 'resume';
+    intent.moveX = 0;
+    intent.moveZ = 0;
+  }
+}
+
+// Flee toward refuge when one exists, else directly away from the hunter. Panic-weaves
+// inside jink range so the run reads as evasion rather than a straight-line tow.
+function steerQuarryFromHunter(quarry, hunter, refuge) {
+  const data = quarry.data || (quarry.data = {});
+  const ai = data.ai || (data.ai = {});
+  ai.passive = false;
+  let dx, dz;
+  if (refuge && refuge.pos) {
+    dx = refuge.pos.x - quarry.pos.x;
+    dz = refuge.pos.z - quarry.pos.z;
+  } else {
+    dx = quarry.pos.x - hunter.pos.x;
+    dz = quarry.pos.z - hunter.pos.z;
+  }
+  const hunterDist = Math.hypot(hunter.pos.x - quarry.pos.x, hunter.pos.z - quarry.pos.z);
+  if (hunterDist < QT.jinkRange && hunterDist > 1) {
+    // Blend in a perpendicular jink, handedness fixed per contract so it never shivers.
+    const hunt = data.bountyHunt || {};
+    const side = hunt.jinkSide === -1 ? -1 : 1;
+    if (hunt.jinkSide == null) hunt.jinkSide = side;
+    const len = Math.hypot(dx, dz) || 1;
+    const px = -dz / len * side, pz = dx / len * side;
+    dx = dx + px * len * 0.9;
+    dz = dz + pz * len * 0.9;
+  }
+  const intent = data.intent || (data.intent = {});
+  const len = Math.hypot(dx, dz) || 1;
+  intent.moveZ = 1;
+  intent.moveX = 0;
+  intent.aimAngle = Math.atan2(dz / len, dx / len);
+  intent.mode = 'bounty_quarry_flee';
+  intent.boost = hunterDist < QT.dumpRange;
+}
+
+function nearestRefugeStation(state, pos, range) {
+  if (!pos) return null;
+  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
+  let best = null;
+  let bestD2 = range * range;
+  for (const e of list) {
+    if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+    const d2 = distance2(pos, e.pos);
+    if (d2 < bestD2) { bestD2 = d2; best = e; }
+  }
+  return best;
+}
+
+function distance2(a, b) {
+  const dx = (a && a.x || 0) - (b && b.x || 0);
+  const dz = (a && a.z || 0) - (b && b.z || 0);
+  return dx * dx + dz * dz;
+}
+
+// The quarry made it under the station's guns: the contract goes cold and the
+// hunter breaks off rather than starting a war with the dock authority.
+function escapeQuarryToRefuge(state, bus, quarry, hunter, refuge, contractId, now) {
+  const data = quarry.data || (quarry.data = {});
+  const hunt = data.bountyHunt || (data.bountyHunt = { role: 'quarry' });
+  hunt.done = true;
+  hunt.escaped = true;
+  standDownQuarry(quarry);
+  const hdata = hunter.data || (hunter.data = {});
+  hdata.contractTargetId = null;
+  const hh = hdata.bountyHunt || (hdata.bountyHunt = { role: 'hunter' });
+  hh.pursuing = false;
+  const stationName = (refuge.data && (refuge.data.stationName || refuge.data.stationId)) || 'the station';
+  recordOutcome(state, bus, contractId, 'quarry_escaped', { id: quarry.id, killerId: null });
+  emit(bus, 'toast', {
+    text: `${hunt.name || 'The quarry'} reached ${stationName} — the contract went cold.`,
+    kind: 'info', ttl: 4,
+  });
+  emit(bus, 'bountyHunt:quarryEscaped', {
+    contractId, quarryId: quarry.id, hunterId: hunter.id,
+    stationId: (refuge.data && refuge.data.stationId) || null, at: now,
+  });
+}
+
+// Out of hull, out of options: the quarry cuts engines and posts its own bounty on
+// the hunter. The hunter's AI does not take surrenders — the PLAYER is the out.
+function surrenderQuarry(state, helpers, bus, quarry, hunter, contractId, now) {
+  const data = quarry.data || (quarry.data = {});
+  const hunt = data.bountyHunt || (data.bountyHunt = { role: 'quarry' });
+  hunt.surrendered = true;
+  const intent = data.intent || (data.intent = {});
+  intent.moveX = 0;
+  intent.moveZ = 0;
+  intent.boost = false;
+  intent.mode = 'bounty_quarry_surrendered';
+  sayQuarry(helpers, quarry,
+    `${hunt.name || 'Quarry'} cuts engines — "${QT.surrenderBountyCr} credits to whoever kills this hunter!"`,
+    'bounty_quarry_surrender');
+  emit(bus, 'toast', {
+    text: `SURRENDER: ${hunt.name || 'The quarry'} posts ${QT.surrenderBountyCr} cr for the hunter's head.`,
+    kind: 'warn', ttl: 6,
+  });
+  emit(bus, 'bountyHunt:quarrySurrendered', {
+    contractId, quarryId: quarry.id, hunterId: hunter.id,
+    payoff: QT.surrenderBountyCr, at: now,
+  });
+}
+
+function sayQuarry(helpers, quarry, text, kind) {
+  const voice = helpers && helpers.voice;
+  if (voice && typeof voice.say === 'function') {
+    voice.say({
+      channel: 'bark',
+      kind,
+      factionId: (quarry && quarry.factionId) || null,
+      text,
+    });
+  }
+}
+
+// The manifest becomes physical pods with outward velocity — scoopable by whoever
+// gets there first. Greed versus mercy is the player's second approach.
+function dumpQuarryManifest(state, helpers, bus, quarry, contractId, seed, now) {
+  const spawnEntity = helpers && helpers.spawnEntity;
+  const manifest = quarryManifestForContract(contractId, seed);
+  const base = quarryHash01(seed, contractId, 'dump-angle') * Math.PI * 2;
+  let dropped = 0;
+  manifest.forEach((lot, i) => {
+    if (!lot || !lot.commodityId || !(lot.amount > 0)) return;
+    const ang = base + (i / Math.max(1, manifest.length)) * Math.PI * 2;
+    const speed = 26 + i * 6;
+    const pod = typeof spawnEntity === 'function' ? spawnEntity({
+      type: 'pickup',
+      pos: { x: quarry.pos.x + Math.cos(ang) * 14, z: quarry.pos.z + Math.sin(ang) * 14 },
+      vel: {
+        x: (quarry.vel && quarry.vel.x || 0) * 0.4 + Math.cos(ang) * speed,
+        z: (quarry.vel && quarry.vel.z || 0) * 0.4 + Math.sin(ang) * speed,
+      },
+      radius: 3, mass: 0.1, collides: true,
+      data: {
+        kind: 'cargo', commodityId: lot.commodityId, amount: lot.amount,
+        despawnAt: now + QT.dumpPodTtlS,
+        quarryDump: contractId,
+      },
+    }) : null;
+    if (pod) dropped += 1;
+  });
+  const data = quarry.data || (quarry.data = {});
+  const hunt = data.bountyHunt || (data.bountyHunt = { role: 'quarry' });
+  sayQuarry(helpers, quarry, `${hunt.name || 'Quarry'} is dumping cargo — lightening the hull!`, 'bounty_quarry_dump');
+  emit(bus, 'toast', { text: 'Cargo in the water — the quarry is dumping its hold!', kind: 'warn', ttl: 4 });
+  emit(bus, 'bountyHunt:quarryDump', { contractId, quarryId: quarry.id, lots: dropped, at: now });
+}
+
+// A dead hunter frees its quarry. Killed by the player, the quarry pays gratitude
+// (the surrendered payoff when one was posted) through the canonical writers.
+function settleHunterDown(state, bus, hunter, byPlayer) {
+  clearStagedFlag(state, hunter && hunter.data && (hunter.data.bountyHunt.contractId || hunter.data.contractId));
+  const targetId = hunter && hunter.data && hunter.data.contractTargetId;
+  const quarry = targetId != null && state.entities && state.entities.get
+    ? state.entities.get(targetId) : null;
+  if (!quarry || quarry.alive === false || !isBountyQuarry(quarry)) return;
+  const qhunt = quarry.data.bountyHunt || {};
+  const contractId = qhunt.contractId || hunter.data.bountyHunt.contractId;
+  standDownQuarry(quarry);
+  if (!byPlayer) return;
+  if (qhunt.gratitudeVoid === true) {
+    emit(bus, 'toast', {
+      text: `${qhunt.name || 'The quarry'} limps clear — no thanks for the one who shot them too.`,
+      kind: 'info', ttl: 4,
+    });
+    emit(bus, 'bountyHunt:quarrySaved', {
+      contractId, quarryId: quarry.id, hunterId: hunter.id, paid: 0, at: finite(state.simTime, 0),
+    });
+    return;
+  }
+  const payoff = qhunt.surrendered ? QT.surrenderBountyCr : QT.gratitudeCr;
+  emit(bus, 'economy:grantCredits', { amount: payoff, reason: 'bounty_quarry_gratitude', contractId });
+  if (quarry.factionId) {
+    emit(bus, 'faction:repDelta', {
+      factionId: quarry.factionId, delta: QT.gratitudeRep,
+      reason: 'bounty_quarry_saved', contractId,
+    });
+  }
+  emit(bus, 'toast', {
+    text: `${qhunt.name || 'The quarry'} transfers ${payoff} cr — gratitude for the save.`,
+    kind: 'good', ttl: 5,
+  });
+  emit(bus, 'bountyHunt:quarrySaved', {
+    contractId, quarryId: quarry.id, hunterId: hunter.id, paid: payoff, at: finite(state.simTime, 0),
+  });
+}
+
+// A dead quarry pays the hunter's cut when the player helped — and records an
+// execution when the hunter killed a surrendered mark.
+function settleQuarryDown(state, bus, killed, contractId, quarryId, byPlayer) {
+  clearStagedFlag(state, contractId);
+  const qhunt = (killed && killed.data && killed.data.bountyHunt) || {};
+  if (byPlayer) {
+    recordOutcome(state, bus, contractId, 'player_helped_hunter', { id: quarryId, killerId: state.playerId });
+    releaseHunterFor(state, quarryId);
+    const hunterFaction = hunterFactionForQuarry(state, quarryId);
+    emit(bus, 'economy:grantCredits', { amount: QT.hunterCutCr, reason: 'bounty_collectors_cut', contractId });
+    if (hunterFaction) {
+      emit(bus, 'faction:repDelta', {
+        factionId: hunterFaction, delta: QT.cutRep, reason: 'bounty_helped_hunter', contractId,
+      });
+    }
+    emit(bus, 'toast', {
+      text: `The guild pays a ${QT.hunterCutCr} cr collector's cut for the assist.`,
+      kind: 'good', ttl: 4,
+    });
+    emit(bus, 'bountyHunt:cutPaid', { contractId, quarryId, paid: QT.hunterCutCr, at: finite(state.simTime, 0) });
+    return;
+  }
+  if (qhunt.surrendered === true) {
+    recordOutcome(state, bus, contractId, 'quarry_executed_surrendered', { id: quarryId, killerId: null });
+    const hunterFaction = hunterFactionForQuarry(state, quarryId);
+    if (hunterFaction) {
+      emit(bus, 'faction:repDelta', {
+        factionId: hunterFaction, delta: QT.executionRep,
+        reason: 'bounty_executed_surrendered', contractId,
+      });
+    }
+    emit(bus, 'toast', {
+      text: 'The hunter executed a surrendered mark. The guild will hear of it.',
+      kind: 'warn', ttl: 5,
+    });
+    releaseHunterFor(state, quarryId);
+    return;
+  }
+  recordOutcome(state, bus, contractId, 'quarry_killed', { id: quarryId, killerId: null });
+  releaseHunterFor(state, quarryId);
+}
+
+function releaseHunterFor(state, quarryId) {
+  for (const entity of indexedShipLikeScan(state)) {
+    const data = entity && entity.data;
+    if (!data || !data.bountyHunt || data.bountyHunt.role !== 'hunter') continue;
+    if (data.contractTargetId !== quarryId) continue;
+    data.contractTargetId = null;
+    data.bountyHunt.pursuing = false;
+  }
+}
+
+function hunterFactionForQuarry(state, quarryId) {
+  for (const entity of indexedShipLikeScan(state)) {
+    const data = entity && entity.data;
+    if (!data || !data.bountyHunt || data.bountyHunt.role !== 'hunter') continue;
+    if (data.contractTargetId !== quarryId) continue;
+    return entity.factionId || null;
+  }
+  return null;
+}
+
+function clearStagedFlag(state, contractId) {
+  const own = state && state.bountyHunt;
+  if (own && own.activeStaged && (!contractId || own.activeStaged.contractId === contractId)) {
+    own.activeStaged = null;
+  }
+}
+
 function contractIdForQuarryKill(state, quarryId) {
   for (const entity of indexedShipLikeScan(state)) {
     const data = entity && entity.data;
@@ -443,12 +887,22 @@ function recordOutcome(state, bus, contractId, outcome, payload) {
 }
 
 function freshState() {
-  return { schemaVersion: STATE_VERSION, outcomes: {} };
+  return {
+    schemaVersion: STATE_VERSION,
+    outcomes: {},
+    stageSerial: 0,
+    nextStageAt: null,
+    activeStaged: null,
+  };
 }
 
 function ensureState(state) {
   if (!state.bountyHunt || typeof state.bountyHunt !== 'object') state.bountyHunt = freshState();
   if (!state.bountyHunt.outcomes || typeof state.bountyHunt.outcomes !== 'object') state.bountyHunt.outcomes = {};
+  if (!Number.isInteger(state.bountyHunt.stageSerial)) state.bountyHunt.stageSerial = 0;
+  if (state.bountyHunt.nextStageAt != null && !Number.isFinite(state.bountyHunt.nextStageAt)) {
+    state.bountyHunt.nextStageAt = null;
+  }
   state.bountyHunt.schemaVersion = STATE_VERSION;
   return state.bountyHunt;
 }

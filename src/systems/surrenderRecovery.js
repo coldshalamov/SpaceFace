@@ -10,6 +10,8 @@ import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { forEachLivingWorldActor, indexedTypeScan } from '../world/livingWorldViews.js';
 import { isHostileToPlayer } from './scanner.js';
+import { ensureMoralMemory, pendingMoralDebt, rememberMoralDebt, settleMoralDebt } from './moralMemory.js';
+import { promotedPilotIdentity, promotedPilotIdFor } from '../data/pilotCallsigns.js';
 
 export const SURRENDER_SECURE_REEL_WU = 60;
 export const SURRENDER_ESCAPE_S = 45;
@@ -126,6 +128,8 @@ export const surrenderRecovery = {
             killerId: record.pendingKillerId == null ? null : record.pendingKillerId,
           });
         } else {
+          // Executed under an open record: the debt survives them; their crew answers it.
+          darkenSlainDebt(state, record, entity, now);
           record.resolved = true;
           record.phase = 'lost';
         }
@@ -374,6 +378,10 @@ export const surrenderRecovery = {
     const data = entity.data || (entity.data = {});
     data.despawnAt = now + CUSTODY_DESPAWN_S;
     annotate(entity, record, 'Custody transferred.');
+    // A pilot in chains has no comeback: the spared debt closes here, or the h7
+    // moral-return encounter would resurrect a prisoner as a free vengeful raider.
+    const settledDebt = settleSparedDebt(this.state, entity, 'custody');
+    if (settledDebt) record.settledDebtId = settledDebt.id;
     const receipt = {
       id: `surrender-custody:${entity.id}`,
       shape: 'surrender_custody',
@@ -385,9 +393,11 @@ export const surrenderRecovery = {
       credits: record.rewardCr,
       t: now,
       recoveryKind: record.recoveryKind,
-      text: record.recoveryKind === RECOVERY_DRIVE_DISABLED
+      settledDebtId: (settledDebt && settledDebt.id) || null,
+      text: (record.recoveryKind === RECOVERY_DRIVE_DISABLED
         ? 'CUSTODY TRANSFERRED - disabled hull secured without a kill.'
-        : 'CUSTODY TRANSFERRED - surrendered hull secured without a kill.',
+        : 'CUSTODY TRANSFERRED - surrendered hull secured without a kill.')
+        + (settledDebt ? ` ${settledDebt.name} is in chains; the ledger closes.` : ''),
     };
     const own = ensureState(this.state);
     own.receipts.push(receipt);
@@ -521,7 +531,29 @@ export const surrenderRecovery = {
     intent.boost = true;
     data.despawnAt = now + ESCAPE_DESPAWN_S;
     annotate(entity, record, 'Surrender window expired; contact escaped.');
-    this._emit('surrender:escaped', publicRecord(record, entity));
+    const debt = ensureEscapeDebt(this.state, entity, now);
+    if (debt) {
+      record.escapeeDebtId = debt.id;
+      this._threatenEscapee(record, entity, debt);
+    }
+    this._emit('surrender:escaped', { ...publicRecord(record, entity), escapeeDebtId: (debt && debt.id) || null });
+    return true;
+  },
+
+  _threatenEscapee(record, entity, debt) {
+    const text = `${debt.name}: You should have held the rope. I'll be seeing you.`;
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      return voice.say({
+        channel: 'bark',
+        kind: 'surrenderEscape',
+        id: `surrenderRecovery:${record.entityId}:escape-threat`,
+        text,
+        ttl: 3,
+        factionId: entity.factionId || record.factionId || null,
+      });
+    }
+    this._emit('toast', { text, kind: 'surrenderEscape', ttl: 3 });
     return true;
   },
 
@@ -745,6 +777,109 @@ function legacyCivilianRecoveryId(receipt) {
   if (splitAt <= 0) return null;
   const recoveryId = receipt.id.slice(0, splitAt);
   return recoveryId.startsWith('civilian-recovery:') ? recoveryId : null;
+}
+
+const SPARED_DEBT_CAUSES = new Set(['spared', 'spared_escape', 'escaped_custody', 'executed_prisoner']);
+
+// The spared-debt bridge. aceMemory mints the deterministic pilot name at surrender time and
+// stamps it on the hull (data.sparedPilot); the debt id is pilot_<entityId>. Prefer the stamp
+// (it was minted for THIS hull instance); otherwise recompute — and always name-match, because
+// numeric entity ids recycle and a fresh hull must never settle a stranger's debt.
+function sparedDebtFor(state, entity) {
+  if (!entity) return null;
+  const data = entity.data || {};
+  const stamped = data.sparedPilot || data.promotedPilot || null;
+  const id = stamped && stamped.id ? String(stamped.id) : promotedPilotIdFor(entity.id);
+  const debt = pendingMoralDebt(state, id);
+  if (!debt || !SPARED_DEBT_CAUSES.has(debt.cause)) return null;
+  const seed = Number(state.meta && state.meta.seed);
+  const minted = promotedPilotIdentity(Number.isFinite(seed) ? seed : 0, entity.id);
+  if (debt.name !== minted.name && (!stamped || debt.name !== stamped.name)) return null;
+  return debt;
+}
+
+function settleSparedDebt(state, entity, how) {
+  const debt = sparedDebtFor(state, entity);
+  if (!debt) return null;
+  return settleMoralDebt(state, debt.id, how);
+}
+
+function seedOf(state) {
+  const seed = Number(state.meta && state.meta.seed);
+  return Number.isFinite(seed) ? seed : 0;
+}
+
+function stampSparedIdentity(entity, id, name, now) {
+  const data = entity.data || (entity.data = {});
+  const ai = data.ai || (data.ai = {});
+  if (!ai.name) ai.name = name;
+  if (!data.callsign) data.callsign = name;
+  if (!data.name) data.name = name;
+  if (!data.sparedPilot) data.sparedPilot = { id, name, sparedAt: now };
+}
+
+// Escape keeps the debt and makes it angrier: the rope slipped once, the crew comes back heavier.
+// Surrenders that never passed through the disengage trigger (direct fsm adoption, saved
+// annotations) mint here, through the same deterministic namer, so every escapee has a face.
+function ensureEscapeDebt(state, entity, now) {
+  const existing = sparedDebtFor(state, entity);
+  if (existing) {
+    existing.escalationTier = Math.min(3, Math.max(1, existing.escalationTier | 0) + 1);
+    existing.escapes = (existing.escapes | 0) + 1;
+    return existing;
+  }
+  const id = promotedPilotIdFor(entity.id);
+  const prior = ensureMoralMemory(state).debts[id];
+  if (prior) return null; // id squatted (closed ledger or stranger occupant) — escape stays anonymous
+  const identity = promotedPilotIdentity(seedOf(state), entity.id);
+  stampSparedIdentity(entity, id, identity.name, now);
+  const ai = entity.data && entity.data.ai || {};
+  const debt = rememberMoralDebt(state, {
+    id,
+    name: identity.name,
+    cause: 'escaped_custody',
+    factionId: entity.factionId || 'faction_reach',
+    archetype: ai.archetype || 'corsair_raider',
+    escalationTier: 1,
+    t: now,
+    source: 'surrenderRecovery:escaped',
+  });
+  if (debt) debt.escapes = 1;
+  return debt;
+}
+
+// A prisoner executed under an open record: the debt survives them, and their crew answers it.
+function darkenSlainDebt(state, record, entity, now) {
+  let debt = entity ? sparedDebtFor(state, entity) : null;
+  if (!debt) {
+    // Hull already swept: strict mint-match on the durable id before touching anything.
+    const candidate = pendingMoralDebt(state, promotedPilotIdFor(record.entityId));
+    const minted = promotedPilotIdentity(seedOf(state), record.entityId);
+    if (candidate && SPARED_DEBT_CAUSES.has(candidate.cause) && candidate.name === minted.name) debt = candidate;
+  }
+  if (debt) {
+    debt.disposition = 'vengeful';
+    debt.escalationTier = Math.min(3, Math.max(1, debt.escalationTier | 0) + 1);
+    debt.cause = 'executed_prisoner';
+    return debt;
+  }
+  if (pendingMoralDebt(state, promotedPilotIdFor(record.entityId))) return null;
+  const id = promotedPilotIdFor(record.entityId);
+  const prior = ensureMoralMemory(state).debts[id];
+  if (prior) return null; // closed ledger stays closed — never resurrect it for a recycled id
+  const identity = promotedPilotIdentity(seedOf(state), record.entityId);
+  if (entity) stampSparedIdentity(entity, id, identity.name, now);
+  return rememberMoralDebt(state, {
+    id,
+    name: identity.name,
+    cause: 'executed_prisoner',
+    factionId: (entity && entity.factionId) || record.factionId || 'faction_reach',
+    archetype: (entity && entity.data && entity.data.ai && entity.data.ai.archetype) || 'corsair_raider',
+    disposition: 'vengeful',
+    escalationTier: 2,
+    t: now,
+    source: 'surrenderRecovery:executed',
+  });
 }
 
 function entityFor(state, id) {

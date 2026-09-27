@@ -61,6 +61,17 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   capital_broadside_ala: new Set(['broadside_fire']),
 });
 const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
+// Ambient predation: unscripted team-1 pirates hunting manifested team-2 civilians. The director's
+// cadenced evaluator (src/ai/ambientPredation.js) stamps these exact values; the relation below
+// revalidates every one of them so the exception can never widen. Raid ids carry the `ambient:raid:`
+// prefix so they can never collide with (or impersonate) a live scripted encounter id.
+export const AMBIENT_RAID_ID_PREFIX = 'ambient:raid:';
+export const AMBIENT_OBJECTIVE_KIND = 'ambient_manifest_raid';
+export const AMBIENT_PREDATION_MOTIVE = 'ambient_cargo_raid';
+export const AMBIENT_PREDATION_TRIGGER = 'ambient_manifest_predation';
+export function isAmbientRaidId(value) {
+  return typeof value === 'string' && value.startsWith(AMBIENT_RAID_ID_PREFIX);
+}
 const CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID = 'ceres:activity:throughline-ambush';
 const CERES_ACTIVITY_AMBUSH_ZONE_ID = 'zone_ceres_ambush';
 const CERES_ACTIVITY_AMBUSH_HAULER_SLOT = 'ceres_ambush_loaded_hauler';
@@ -102,7 +113,8 @@ export function authorizeAIEngagement({
   const ai = self.data && self.data.ai;
   if (!ai || ai.passive) return denied('passive');
   if ((ai.predationTargetId != null || ai.predationStatus === 'active')
-    && !isAuthorizedPredationRelation(state, self, target)) {
+    && !isAuthorizedPredationRelation(state, self, target)
+    && !isAuthorizedAmbientPredationRelation(state, self, target)) {
     return denied('predation_relation_stale');
   }
   if (normalizeRoe(ai.roe) === RulesOfEngagement.HOLD_FIRE) return denied('hold_fire');
@@ -309,6 +321,64 @@ export function isAuthorizedPredationRelation(state, self, target) {
   return Number.isFinite(dx) && Number.isFinite(dz) && dx * dx + dz * dz <= leash * leash;
 }
 
+/**
+ * Ambient counterpart to isAuthorizedPredationRelation: a director-assigned pirate stalking or
+ * raiding a manifested civilian hauler. The raider's complete hostility set is the bound victim
+ * while `telegraph`/`active` — it cannot peel onto the player or other neutrals. Runtime identity,
+ * manifest custody, deadline, sector, and leash are all re-read here so a stale frame or recycled
+ * id fails closed.
+ */
+export function isAuthorizedAmbientPredationRelation(state, self, target) {
+  if (!state || !self || !target || self === target || self.type !== 'ship' || target.type !== 'ship') return false;
+  if (self.alive === false || target.alive === false || self.id == null || target.id == null) return false;
+  if (target.id === state.playerId || target.team !== 2) return false;
+  if (entityById(state, self.id) !== self || entityById(state, target.id) !== target) return false;
+
+  const selfData = self.data;
+  const targetData = target.data;
+  const ai = selfData && selfData.ai;
+  const targetAi = targetData && targetData.ai;
+  if (!ai || ai.passive === true || ai.lawful === true) return false;
+  if (ai.predationStatus !== 'telegraph' && ai.predationStatus !== 'active') return false;
+  if (selfData.predationRole !== 'raider' || !targetData || targetData.predationRole !== 'manifest_carrier') return false;
+  if (ai.motive !== AMBIENT_PREDATION_MOTIVE || ai.engagementTrigger !== AMBIENT_PREDATION_TRIGGER) return false;
+  if (ai.motiveSatisfied === true || ai.pirateDisengaged === true) return false;
+  if (targetAi && targetAi.lawful === true) return false;
+
+  const raidId = selfData.predationEncounterId;
+  const identityKey = targetData.predationIdentityKey;
+  if (!isAmbientRaidId(raidId) || !nonEmpty(identityKey)) return false;
+  if (targetData.predationEncounterId !== raidId) return false;
+  if (ai.predationTargetId !== target.id || ai.predationTargetIdentityKey !== identityKey) return false;
+
+  const objective = ai.predationObjective;
+  const nowTick = Number.isInteger(state.tick) ? state.tick : 0;
+  if (!objective || objective.kind !== AMBIENT_OBJECTIVE_KIND
+    || objective.raidId !== raidId
+    || objective.targetId !== target.id
+    || objective.targetIdentityKey !== identityKey
+    || !nonEmpty(objective.manifestId)
+    || !Number.isInteger(objective.deadlineTick)
+    || nowTick > objective.deadlineTick) return false;
+
+  const manifest = targetData.cargoManifest;
+  if (!manifest || manifest.manifestId !== objective.manifestId
+    || !Array.isArray(manifest.lines)
+    || !manifest.lines.some((line) => line && nonEmpty(line.commodityId) && Number(line.qty) > 0)) {
+    return false;
+  }
+  if (targetIsDisabled(state, target)) return false;
+
+  const sectorId = state.world && state.world.currentSectorId;
+  if (!nonEmpty(sectorId) || sectorId === 'sector_ceres_belt' || ai.sectorId !== sectorId) return false;
+
+  const leash = Number(ai.predationLeashRadius);
+  if (!Number.isFinite(leash) || leash <= 0 || !self.pos || !target.pos) return false;
+  const dx = self.pos.x - target.pos.x;
+  const dz = self.pos.z - target.pos.z;
+  return Number.isFinite(dx) && Number.isFinite(dz) && dx * dx + dz * dz <= leash * leash;
+}
+
 /** Fresh hostility oracle for tactical perception and final execution authority. */
 export function isHostileForAI(state, self, other) {
   if (!self || !other || self.team == null || other.team == null) return false;
@@ -323,11 +393,19 @@ export function isHostileForAI(state, self, other) {
   // An authored predation role owns this actor's complete automatic hostility set while it is
   // standing by, telegraphing, or active. Existing retaliation/security flags must not let the
   // same raider peel off onto the player or another neutral before the bounded objective clears.
+  // Ambient raids dispatch on their `ambient:raid:` id / objective kind into their own relation —
+  // scripted raiders (encounter-owned) keep the authored relation untouched. A raider the player
+  // has actually damaged no longer sits in this branch: encounterDirector strips the binding and
+  // stamps ordinary self-defense retaliation when the hit lands.
   if (selfData && selfData.predationRole === 'raider') {
     const predationStatus = selfAi && selfAi.predationStatus;
     if (predationStatus === 'standby'
       || predationStatus === 'telegraph'
       || predationStatus === 'active') {
+      if (isAmbientRaidId(selfData.predationEncounterId)
+        || (selfAi && selfAi.predationObjective && selfAi.predationObjective.kind === AMBIENT_OBJECTIVE_KIND)) {
+        return isAuthorizedAmbientPredationRelation(state, self, other);
+      }
       return isAuthorizedPredationRelation(state, self, other);
     }
   }

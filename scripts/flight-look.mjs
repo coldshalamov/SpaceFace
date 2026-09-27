@@ -22,7 +22,7 @@ await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const { chromium } = await loadPlaywright();
 const browser = await chromium.launch({
   headless: true,
-  executablePath: existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined,
+  executablePath: process.env.SF_CHROMIUM || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined),
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
     '--disable-background-timer-throttling'],
 });
@@ -69,6 +69,26 @@ try {
     }, String(args.ship));
     console.log('ship swap', swapped);
   }
+  if (args.aim) {
+    // The chase camera follows player position only — park the player `aimDist` WU +Z of the
+    // named station so the place sits on screen.
+    const report = await page.evaluate(({ token, dist }) => {
+      const s = window.SF.state;
+      let target = null;
+      for (const e of s.entities.values()) {
+        const d = e.data || {};
+        if (d.stationId === token || d.archetypeGlb === token || e.id === token) { target = e; break; }
+      }
+      if (!target) return 'no station match';
+      const p = s.entities.get(s.playerId);
+      p.pos.x = target.pos.x;
+      p.pos.z = target.pos.z + dist;
+      if (p.vel) { p.vel.x = 0; p.vel.z = 0; }
+      if (p.prevPos) { p.prevPos.x = p.pos.x; p.prevPos.z = p.pos.z; }
+      return `${target.id} at (${target.pos.x.toFixed(0)},${target.pos.z.toFixed(0)})`;
+    }, { token: String(args.aim), dist: Number(args.aimDist || 260) });
+    console.log('aim', report);
+  }
   await page.waitForTimeout(Number(args.wait || 20) * 1000);
   // SwiftShader trips the software-renderer emergency profile (third-resolution, bloom off). A
   // look capture wants the hardware picture: full resolution and the shipping bloom/ink post.
@@ -86,7 +106,7 @@ try {
   for (const zoom of zooms) {
     await page.evaluate((z) => { const c = window.SF.state.camera; c.zoom = z; c.targetZoom = z; c.zoomTarget = z; }, zoom);
     await page.waitForTimeout(Number(args.settle || 6) * 1000);
-    await page.screenshot({ path: `${OUT}flight_z${zoom}.png` });
+    await page.screenshot({ path: `${OUT}flight_z${zoom}.png`, timeout: 180000 });
     console.log('shot zoom', zoom);
   }
   const info = await page.evaluate(async () => {

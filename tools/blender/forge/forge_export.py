@@ -30,11 +30,11 @@ MATERIAL_NAMES = {
     'ceramic': 'Material_Ceramic', 'hazard': 'Material_Warning', 'glass': 'Material_Canopy',
     'glow_drive': 'Material_Thruster', 'glow_cyan': 'Material_Emissive_Cyan', 'glow_red': 'Material_Emissive_NavRed',
     'glow_green': 'Material_Emissive_NavGreen', 'glow_warm': 'Material_Emissive_Warm',
-    'glow_amber': 'Material_Emissive_Amber',
+    'glow_amber': 'Material_Emissive_Amber', 'stone': 'Material_Stone',
 }
 MESH_NAMES = {
     'paint': 'Hull', 'paint2': 'Armor', 'stripe': 'Livery', 'gunmetal': 'Mechanical', 'dark': 'MechanicalDark',
-    'bare': 'BrushedMetal', 'ceramic': 'Ceramic', 'hazard': 'Warning', 'glass': 'CANOPY',
+    'bare': 'BrushedMetal', 'ceramic': 'Ceramic', 'hazard': 'Warning', 'glass': 'CANOPY', 'stone': 'Stone',
     'glow_drive': 'HOOK_DRIVE_CORE', 'glow_cyan': 'Lights_Cyan', 'glow_red': 'HOOK_NAV_PORT',
     'glow_green': 'HOOK_NAV_STARBOARD', 'glow_warm': 'Lights_Warm', 'glow_amber': 'Beacon_Amber',
 }
@@ -258,7 +258,7 @@ def patch_glb_json(path, mutate):
 def _stamp(path, identity, lod_label):
     def mutate(doc):
         factor_only = sorted(m['name'] for m in doc.get('materials', [])
-                             if (m.get('extras') or {}).get('forgeFinish', '').startswith(('glass', 'glow')))
+                             if (m.get('extras') or {}).get('forgeFinish', '').startswith(('glass', 'glow', 'stone')))
         # opaque paint is single-sided; the forge builds closed volumes
         for m in doc.get('materials', []):
             if not (m.get('extras') or {}).get('forgeFinish', '').startswith('glass'):

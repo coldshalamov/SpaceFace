@@ -35,6 +35,19 @@ const WRECK_RADIUS = 9;
 // sector — `world.currentSectorId` is null there, which is why they used to leave nothing.
 const ARENA_SECTOR_PREFIX = 'arena:';
 const ARENA_WRECK_CAP = 8;
+// §25 Phase 3 "the hit you can see" (ZERO_TO_HERO 2026-09-23 §3): within 250 ms an ordinary
+// arena kill must leave at least TWO moving, lit wreck bodies at ≥ the victim's own size. The
+// marker still owns exactly one durable whole-body hulk (the victim's dead ship, ember-lit,
+// grabbable); this unbound companion shard lands beside it on the same kill tick so the kill
+// reads as bodies, not one silhouette. Pure hash-driven — never state.rng — so the sim stays
+// deterministic (FEEL_CONTRACT §D.11).
+const ARENA_SHARD_RADIUS_FLOOR = 6;
+const ARENA_SHARD_MIN_SEPARATION_SPEED = 40;
+const ARENA_SHARD_MAX_SEPARATION_SPEED = 110;
+// The shard is grabbable on the same beam path as any wreck; a small pool keeps it worth a stop
+// without competing with the marker's own residue. A fresh copy is handed out per shard because
+// _drainWreck mutates the live pool object.
+const ARENA_SHARD_SALVAGE_POOL = Object.freeze({ cmdty_scrap_metal: 1 });
 // At-kill momentum keeps the dead hull's real motion; these ceilings only reject physics spikes.
 // The tighter drift/tumble clamps stay for the re-entry spawn path, where they always lived.
 const MAX_WRECK_KILL_SPEED = 600;
@@ -854,6 +867,10 @@ export const aftermathWrecks = {
     this.helpers = ctx && ctx.helpers || {};
     this.registry = ctx && ctx.registry || null;
     this._spawned = new Map();
+    // Companion debris bodies, keyed by the marker whose kill threw them. Unbound (no
+    // markerId/provenance on the entity) so no durable marker owns them — the map is their
+    // only handle, and retiring a marker retires its shard with it (cap, eviction, completion).
+    this._shards = new Map();
     this._ecologySpawned = new Map();
     this._pendingOffers = new Map();
     this._saveRestoring = false;
@@ -880,6 +897,7 @@ export const aftermathWrecks = {
     this._onSaveLoaded = () => {
       this._saveRestoring = false;
       this._spawned.clear();
+      if (this._shards) this._shards.clear();
       this._spawnForSector(this.state && this.state.world && this.state.world.currentSectorId);
     };
     this._onSaveError = () => { this._saveRestoring = false; };
@@ -915,6 +933,7 @@ export const aftermathWrecks = {
       };
     }
     if (this._spawned) this._spawned.clear();
+    if (this._shards) this._shards.clear();
     if (this._ecologySpawned) this._ecologySpawned.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
   },
@@ -1153,7 +1172,10 @@ export const aftermathWrecks = {
     const remembered = rememberMarker(this.state, this.bus, marker, (evicted) => {
       if (!this._spawned) return;
       for (const item of evicted) {
-        if (item && item.markerId) this._spawned.delete(item.markerId);
+        if (item && item.markerId) {
+          this._spawned.delete(item.markerId);
+          this._retireMarkerShard(item.markerId);
+        }
       }
     });
     if (remembered) {
@@ -1203,7 +1225,10 @@ export const aftermathWrecks = {
     const remembered = rememberMarker(this.state, this.bus, marker, (evicted) => {
       if (!this._spawned) return;
       for (const item of evicted) {
-        if (item && item.markerId) this._spawned.delete(item.markerId);
+        if (item && item.markerId) {
+          this._spawned.delete(item.markerId);
+          this._retireMarkerShard(item.markerId);
+        }
       }
     });
     if (remembered) {
@@ -1255,6 +1280,7 @@ export const aftermathWrecks = {
       const { marker, entity } = bound.splice(pick, 1)[0];
       entity.alive = false;
       this._spawned.delete(marker.markerId);
+      this._retireMarkerShard(marker.markerId);
       const idx = list.indexOf(marker);
       if (idx >= 0) list.splice(idx, 1);
       retired++;
@@ -1270,10 +1296,12 @@ export const aftermathWrecks = {
     return retired;
   },
 
-  // One live body per kill, at the victim's pose, carrying the momentum it died with. A slam
-  // kill's body is hullFracture's two seam pieces — mining spawns them from the same
-  // entity:killed event and binds the remainder to this marker, so a whole wreck here would
-  // draw two bodies for one death.
+  // The marker's whole body, at the victim's pose, carrying the momentum it died with. Since
+  // §25 Phase 3 a non-player arena kill also throws one unbound companion shard
+  // (_spawnArenaKillShard) so the death reads as bodies, not one silhouette. A slam kill's body
+  // is hullFracture's two seam pieces — mining spawns them from the same entity:killed event and
+  // binds the remainder to this marker, so a whole wreck here would draw two bodies for one
+  // death; skipIfFracture suppresses the shard too.
   _spawnArenaKillWreck(marker, payload, { skipIfFracture = true } = {}) {
     if (!marker || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
     // A duplicate kill receipt must not mint a second body on the same marker.
@@ -1289,7 +1317,112 @@ export const aftermathWrecks = {
       entity.data.runCohort = SURVIVAL_COHORT_TAG;
       if (Number.isInteger(run.wave)) entity.data.runWave = run.wave;
     }
-    return this._bindLiveMarker(marker, entity) ? entity : null;
+    if (!this._bindLiveMarker(marker, entity)) return null;
+    // Same kill tick, companion body. skipIfFracture already returned above, so a slam's seam
+    // pieces stay the whole story; the player's own memorial hull is exempt in the shard call.
+    this._spawnArenaKillShard(marker);
+    return entity;
+  },
+
+  // §25 Phase 3 "the hit you can see": the unbound second body. Not a second whole ship — it
+  // carries no hulkVisual/hulkOfDefId, so the render pass falls to a generic authored
+  // place_aftermath_* fragment, and no marker provenance, so it is ordinary grabbable debris.
+  // It keeps the victim's momentum plus a push that never opposes it, and its own small salvage
+  // pool so the beam path finds it like any wreck. Pure hash-derived placement and spin: never
+  // state.rng (FEEL_CONTRACT §D.11). The marker owns its lifetime (_retireMarkerShard).
+  _spawnArenaKillShard(marker) {
+    if (!marker || !marker.markerId) return null;
+    if (isPlayerWreckMarker(marker)) return null;
+    if (!isArenaWreckSectorId(marker.sectorId)) return null;
+    if (!this._shards || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    const existing = this._resolveMarkerShard(marker.markerId);
+    if (existing) return existing;
+    const entity = this.helpers.spawnEntity(this._shardSpecForMarker(marker));
+    if (!entity) return null;
+    const run = liveSurvivalRunFor(this.state);
+    if (run && entity.data) {
+      entity.data.runCohort = SURVIVAL_COHORT_TAG;
+      if (Number.isInteger(run.wave)) entity.data.runWave = run.wave;
+    }
+    this._shards.set(marker.markerId, entity.id);
+    return entity;
+  },
+
+  _shardSpecForMarker(marker) {
+    const seed = seedOf(this.state);
+    const victimVel = boundedKillVel(marker.victimVel);
+    const speed = Math.hypot(victimVel.x, victimVel.z);
+    // Scatter direction: within ±80° of the way the hull was moving, so the push can never
+    // oppose the inherited momentum (the body keeps the death's direction); a dead-stop kill
+    // with no velocity left takes a free angle. Position offset is drawn independently.
+    const offsetAngle = (hash32(seed, marker.markerId, 'shardOffsetAngle') % 360) * (Math.PI / 180);
+    const offsetR = 6 + (hash32(seed, marker.markerId, 'shardOffsetR') % 14);
+    const spreadAngle = speed > 1e-6
+      ? Math.atan2(victimVel.z, victimVel.x)
+        + ((hash32(seed, marker.markerId, 'shardSpreadAngle') % 161) - 80) * (Math.PI / 180)
+      : offsetAngle;
+    const spread = ARENA_SHARD_MIN_SEPARATION_SPEED
+      + (hash32(seed, marker.markerId, 'shardSpread') % (ARENA_SHARD_MAX_SEPARATION_SPEED - ARENA_SHARD_MIN_SEPARATION_SPEED + 1));
+    const victimRadius = boundedVictimRadius(marker.victimRadius) || WRECK_RADIUS;
+    const victimMass = boundedVictimMass(marker.victimMass);
+    return {
+      type: 'wreck',
+      pos: {
+        x: marker.pos.x + Math.cos(offsetAngle) * offsetR,
+        z: marker.pos.z + Math.sin(offsetAngle) * offsetR,
+      },
+      vel: boundedKillVel({
+        x: victimVel.x + Math.cos(spreadAngle) * spread,
+        z: victimVel.z + Math.sin(spreadAngle) * spread,
+      }),
+      angVel: boundedKillTumble(((hash32(seed, marker.markerId, 'shardSpin') % 200) - 100) / 100),
+      // At ≥ the victim's own on-screen size (the §25 Phase 3 bar), never below the floor.
+      radius: Math.max(ARENA_SHARD_RADIUS_FLOOR, victimRadius),
+      mass: victimMass != null ? victimMass * 0.35 : 1e6,
+      hull: 1,
+      hullMax: 1,
+      physicsBody: { shape: 'capsule' },
+      data: {
+        parentType: 'ship',
+        proportions: WRECK_COLLIDER_PROPORTIONS,
+        wreckClass: 'battlefield',
+        wreckClassLabel: 'Hull Debris',
+        loot: [],
+        // Fresh copy: _drainWreck mutates the live pool object, so the frozen constant must
+        // never be handed out directly.
+        salvagePool: { ...ARENA_SHARD_SALVAGE_POOL },
+        salvageTimeLeft: WRECK_SALVAGE_TIME,
+        scanLabel: 'Hull Debris',
+        // The map's own back-reference for validation/retirement. Not a marker id: the shard is
+        // deliberately unbound, so no durable marker or scanner row treats it as a named wreck.
+        arenaShardOf: marker.markerId,
+        arenaShardSectorId: marker.sectorId,
+        killedAt: Number.isFinite(marker.t) ? marker.t : 0,
+      },
+    };
+  },
+
+  _resolveMarkerShard(markerId) {
+    if (!markerId || !this._shards) return null;
+    const entityId = this._shards.get(markerId);
+    if (entityId == null) return null;
+    const entity = entityFor(this.state, entityId);
+    if (!entity || entity.alive === false || entity.type !== 'wreck'
+      || !entity.data || entity.data.arenaShardOf !== markerId) {
+      this._shards.delete(markerId);
+      return null;
+    }
+    return entity;
+  },
+
+  _retireMarkerShard(markerId) {
+    if (!markerId || !this._shards) return false;
+    const entityId = this._shards.get(markerId);
+    if (entityId == null) return false;
+    this._shards.delete(markerId);
+    const entity = entityFor(this.state, entityId);
+    if (entity && entity.data && entity.data.arenaShardOf === markerId) entity.alive = false;
+    return true;
   },
 
   /**
@@ -1365,7 +1498,10 @@ export const aftermathWrecks = {
     const remembered = rememberMarker(state, this.bus, marker, (evicted) => {
       if (!this._spawned) return;
       for (const item of evicted) {
-        if (item && item.markerId) this._spawned.delete(item.markerId);
+        if (item && item.markerId) {
+          this._spawned.delete(item.markerId);
+          this._retireMarkerShard(item.markerId);
+        }
       }
     });
     if (remembered) {
@@ -1711,6 +1847,7 @@ export const aftermathWrecks = {
         this._writeBackAllBound();
         this._spawned.clear();
       }
+      if (this._shards) this._shards.clear();
       if (this._ecologySpawned) this._ecologySpawned.clear();
       return;
     }
@@ -1720,6 +1857,9 @@ export const aftermathWrecks = {
       // teleport back to its kill point on sector re-entry / Continue.
       if (marker && this._spawned.has(marker.markerId)) this._writeBackBoundWreck(marker);
       this._spawned.delete(marker.markerId);
+      // The companion shard is unbound and non-durable: dropping the handle is the whole
+      // unbind (arena teardown kills entities anyway; adventure kills leave none).
+      if (this._shards) this._shards.delete(marker.markerId);
     }
     this._clearEcologyLiveRefs(sectorId);
   },
@@ -1782,6 +1922,7 @@ export const aftermathWrecks = {
       if (after.length !== before.length) {
         own.bySector[sectorId] = after;
         this._spawned.delete(markerId);
+        this._retireMarkerShard(markerId);
         if (this.bus && typeof this.bus.emit === 'function') {
           this.bus.emit('aftermathWreck:completed', { markerId, wreckId, sectorId });
         }
@@ -1829,6 +1970,7 @@ export const aftermathWrecks = {
       if (markers.length) own.bySector[sectorId] = markers;
     }
     if (this._spawned) this._spawned.clear();
+    if (this._shards) this._shards.clear();
     if (this._ecologySpawned) this._ecologySpawned.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
   },
@@ -2260,6 +2402,7 @@ export const aftermathWrecks = {
     this._onNewGame = this._onSaveRestoring = this._onSaveLoaded = this._onSaveError = null;
     this._saveRestoring = false;
     if (this._spawned) this._spawned.clear();
+    if (this._shards) this._shards.clear();
     if (this._ecologySpawned) this._ecologySpawned.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
   },

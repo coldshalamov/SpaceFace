@@ -11,7 +11,6 @@ import { PhasedExplosionLifecycle, explosionScheduleFor } from '../src/render/co
 import { vfx } from '../src/render/vfx.js';
 import { buildKillPresentationReceipt, combat } from '../src/systems/combat.js';
 import { collisionConsequences } from '../src/systems/collisionConsequences.js';
-import { masslineThrow } from '../src/systems/masslineThrow.js';
 
 function ship(id, team, options = {}) {
   return {
@@ -300,48 +299,64 @@ test('real lethal terrain and Ram-Plate contacts survive synchronous damage rout
   }
 });
 
-test('a massline tangent-meeting kill publishes the real collision cause, not generic', () => {
-  // PIC-08: the thrown hull's meeting packet must carry collisionPresentation so the kill
-  // receipt — and therefore the phased-explosion schedule — follows the surface it hit.
-  const target = ship(9, 1, { hull: 1, vx: 120, vz: 0 });
-  const state = killState(target);
-  const asteroid = {
+test('a thrown hull\'s kill publishes the real collision cause, not generic', () => {
+  // PIC-08: the thrown hull's lethal contact carries collisionPresentation through the real
+  // physics:impact path so the kill receipt — and therefore the phased-explosion schedule —
+  // follows the surface it hit. Massline provenance marks the hull player-thrown; the contact
+  // itself is authored by the physics step, not by a synthesized meeting packet.
+  const previous = COMBAT_FLAGS.weaponImpulseConsequences;
+  COMBAT_FLAGS.weaponImpulseConsequences = true;
+  const killPresentation = (body) => {
+    const target = ship(9, 1, { hull: 1, vx: 120, vz: 0 });
+    const state = killState(target);
+    state.entities.set(body.id, body);
+    state.entityList.push(body);
+    const bus = createBus();
+    const kills = [];
+    bus.on('entity:killed', (payload) => kills.push(payload));
+    const harnessCombat = Object.create(combat);
+    harnessCombat.init({ state, bus, helpers: {}, registry: { get() { return null; } } });
+    const system = Object.create(collisionConsequences);
+    system.init({ state, bus, registry: { get(name) { return name === 'combat' ? harnessCombat : null; } } });
+    recordImpulseProvenance(target, {
+      actorId: state.playerId,
+      weaponId: 'massline',
+      tag: 'massline',
+      appliedTick: state.tick,
+      magnitude: 5000,
+    });
+    bus.emit('physics:impact', {
+      consequenceKernelVersion: 1,
+      tick: state.tick,
+      aId: target.id,
+      bId: body.id,
+      impulse: 5000,
+      pos: { x: 45, z: 6 },
+      normal: { x: -1, z: 0 },
+      causalActorId: state.playerId,
+    });
+    system.destroy();
+    bus.clear();
+    // Both bodies may die in a real exchange — a 5000-impulse contact on a light counterpart is
+    // lethal going both ways. The contract is the thrown hull's own receipt.
+    const kill = kills.find((payload) => payload.id === target.id);
+    assert.ok(kill, `a thrown hull vs ${body.type} must kill the thrown hull`);
+    return kill.presentation;
+  };
+
+  try {
+  const terrainReceipt = killPresentation({
     id: 77, type: 'asteroid', alive: true,
     pos: { x: 40, z: 6 }, vel: { x: 0, z: 0 }, radius: 30, mass: 1e6, data: {},
-  };
-  state.entities.set(asteroid.id, asteroid);
-  state.entityList.push(asteroid);
-  const bystander = ship(78, 2, { hull: 200, vx: 0, vz: 0 });
-  state.entities.set(bystander.id, bystander);
-  state.entityList.push(bystander);
-
-  const routed = [];
-  const thrower = Object.create(masslineThrow);
-  thrower.registry = {
-    get: () => ({ kernel: { routeDamage: (args) => { routed.push(args); return { ok: true }; } } }),
-  };
-  thrower.bus = createBus();
-  const meeting = { closingSpeed: 120, vx: 0, vz: 0 };
-
-  thrower._commitTangentMeeting(state, meeting, target, asteroid, 1, 0, 40);
-  assert.equal(routed.length, 1);
-  const terrainReceipt = buildKillPresentationReceipt(state, target, state.playerId, {
-    origin: routed[0].origin,
-    packet: routed[0].packet,
   });
   assert.equal(terrainReceipt.cause, 'terrain_collision',
-    'a hull shoved into terrain must read as a terrain kill, not the generic schedule');
+    'a hull thrown into terrain must read as a terrain kill, not the generic schedule');
   assert.equal(terrainReceipt.surface, 'terrain');
   assert.equal(terrainReceipt.playerCaused, true);
 
-  thrower._commitTangentMeeting(state, { ...meeting }, target, bystander, 0, 1, 40);
-  assert.equal(routed.length, 2);
-  const craftReceipt = buildKillPresentationReceipt(state, target, state.playerId, {
-    origin: routed[1].origin,
-    packet: routed[1].packet,
-  });
+  const craftReceipt = killPresentation(ship(78, 2, { hull: 200, vx: 0, vz: 0 }));
   assert.equal(craftReceipt.cause, 'ship_collision',
-    'a hull shoved into another craft must read as a ship collision, not the generic schedule');
+    'a hull thrown into another craft must read as a ship collision, not the generic schedule');
   assert.equal(craftReceipt.surface, 'craft');
 
   const generic = explosionScheduleFor('ordinary', 'generic');
@@ -350,6 +365,9 @@ test('a massline tangent-meeting kill publishes the real collision cause, not ge
     const scheduleDef = explosionScheduleFor('ordinary', cause);
     assert.notEqual(scheduleDef, generic, `${cause} must not reuse the generic schedule`);
     assert.notEqual(scheduleDef, gunKill, `${cause} must not read as a gun-kill schedule`);
+  }
+  } finally {
+    COMBAT_FLAGS.weaponImpulseConsequences = previous;
   }
 });
 

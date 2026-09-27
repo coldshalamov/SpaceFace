@@ -14,7 +14,7 @@ import {
   RENDER_PACKAGE_SOURCE_SCHEMA,
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
-import { compileRenderPackage } from './lib/renderPackageCompiler.mjs';
+import { compileRenderPackage, writeFileWithRetry } from './lib/renderPackageCompiler.mjs';
 import { buildRuntimeTableForRenderGlb } from './lib/renderPackageRuntimeTable.mjs';
 
 const REPO_ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
@@ -588,7 +588,7 @@ async function attachRuntimeTable(outputDir, pilot, compiledPackage) {
   });
   metadata.runtime = table;
   metadata.runtimeHash = await computeRenderPackageRuntimeHash(metadata, { digest: sha256 });
-  await writeFile(metadataPath, `${stableJsonStringify(metadata, 2)}\n`);
+  await writeFileWithRetry(metadataPath, `${stableJsonStringify(metadata, 2)}\n`);
 }
 
 function unionGeometryBounds(geometry) {

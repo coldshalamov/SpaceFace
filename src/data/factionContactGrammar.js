@@ -226,6 +226,49 @@ export const FACTION_CONTACT_GRAMMAR = Object.freeze({
     }),
     sampleLine: 'The prism observes. Transit logged in the standing ledger.',
   }),
+  // Io Reach / Veil independents: the frontier_mutual_cover doctrine speaks — neighbors with
+  // open hands, hungry lanes, and no flag worth dying for. Their demand is a lean share, not
+  // an extortion ring's tithe.
+  faction_free: Object.freeze({
+    id: 'faction_free',
+    callsign: 'Free Frontier',
+    contactWord: 'MUTUAL',
+    firstFire: false,
+    lawfulRoe: 'defensive_only',
+    demandType: 'lean_share',
+    scanPolicy: 'beacon_read_no_hassle',
+    lootLegality: 'necessity_salvage',
+    barkSituations: Object.freeze(['scan', 'warn', 'demand-cargo', 'attack', 'flee', 'patrol-greeting']),
+    primaryBark: 'patrol-greeting',
+    aftermath: Object.freeze({
+      repChannel: 'faction:repDelta',
+      heatChannel: null,
+      paperwork: false,
+      graffitiTone: 'shared_plate',
+    }),
+    sampleLine: 'Reach Station lane hail: the dock changes hands by the week; the lane stays open. Fly polite and nobody counts your plates.',
+  }),
+  // Ashfall Vael: the vael_clause_lattice doctrine speaks — first fire under the accord, a
+  // ranged disengage that treats retreat as a lapsed term, and claims spoken as clauses.
+  faction_vael: Object.freeze({
+    id: 'faction_vael',
+    callsign: 'Vael Consensus',
+    contactWord: 'CLAUSE',
+    firstFire: true,
+    lawfulRoe: 'weapons_free',
+    demandType: 'accord_claim',
+    scanPolicy: 'standing_appraisal',
+    lootLegality: 'forfeit_by_accord',
+    barkSituations: Object.freeze(['scan', 'warn', 'demand-cargo', 'attack', 'flee', 'patrol-greeting']),
+    primaryBark: 'scan',
+    aftermath: Object.freeze({
+      repChannel: 'faction:repDelta',
+      heatChannel: null,
+      paperwork: false,
+      graffitiTone: 'clause_entry',
+    }),
+    sampleLine: 'Ashfall accord: your presence is registered under prior claim. Await disposition.',
+  }),
 });
 
 export const PRESSURE_FACTION_IDS = Object.freeze([

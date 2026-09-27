@@ -15,6 +15,11 @@
 //   summary   one line of what the player is asked to do
 //   reward_cr baseline payout hint (the missions layer may re-scale; this is a floor)
 //   choice    optional moral-choice descriptor { prompt, options:[{ id, label, blurb }] }
+//   params    optional authored mission params (cmdtyId/qty for haul types, targetStrength for
+//             hunt types, scanTargets for recon). When set, the contract commodity is also what
+//             the wreck's salvage pool physically carries, so "salvage it then deliver it" works
+//             with no invented cargo. Absent → the offer builder falls back to a minimal
+//             per-type params table (see systems/salvage.js _wreckOfferParams).
 //   tag       'wreck_salvage' marker so consumers can route these distinctly
 
 export const WRECK_MISSIONS = [
@@ -23,6 +28,7 @@ export const WRECK_MISSIONS = [
     title: 'Recover the Black Box',
     type: 'salvage_retrieval',
     giver: 'Derelict flight recorder',
+    params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
     log: '…they came out of the belt shadow with no transponder. Reach colors. If anyone finds this — the box knows who fired first.',
     summary: 'Pull the flight recorder from the wreck and carry it to a station; its log names the attackers.',
     reward_cr: 900,
@@ -33,6 +39,7 @@ export const WRECK_MISSIONS = [
     title: 'The Survivor Pod',
     type: 'passenger_transport',
     giver: 'Cryo-pod distress ping',
+    // No haul params: the pod is the physical passenger — survivorPod owns its cargo presence.
     log: 'Life-support at 6 percent. One occupant. Pod is squawking a Concord crew tag — but the manifest was scrubbed. Someone did not want them found.',
     summary: 'A single survivor drifts in a failing pod. Haul them to safety — or leave the pod for the scrap.',
     reward_cr: 750,
@@ -50,6 +57,7 @@ export const WRECK_MISSIONS = [
     title: 'Loose Silt Canisters',
     type: 'salvage_retrieval',
     giver: 'Hauler cargo beacon',
+    params: { cmdtyId: 'cmdty_volatiles', qty: 4 },
     log: 'Cargo seals blew when the drive went. Canisters are venting Silt into the field. Recover them before the pressure drops — this air is worth more than the hull.',
     summary: 'Tether the drifting Silt canisters out of the wreck field and sell the pressurized air.',
     reward_cr: 640,
@@ -60,6 +68,7 @@ export const WRECK_MISSIONS = [
     title: 'The Missing Manifest',
     type: 'cargo_delivery',
     giver: 'Freighter data core',
+    params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
     log: 'The manifest was never logged at dock. Whoever hauls it in gets paid — and whoever reads it learns what this ship was really carrying.',
     summary: 'Recover the freighter data core and deliver it to a station buyer who has been asking questions.',
     reward_cr: 820,
@@ -70,6 +79,7 @@ export const WRECK_MISSIONS = [
     title: 'They Left a Marker',
     type: 'bounty_hunt',
     giver: 'Scarred hull transponder',
+    params: { targetStrength: 2 },
     log: 'The raiders tagged this kill like a trophy — same signature we have seen on three haulers. The box has their flight vector. Go end it.',
     summary: 'The wreck log fingers a specific raider. Track the marked hostile and put them down.',
     reward_cr: 1100,
@@ -80,6 +90,7 @@ export const WRECK_MISSIONS = [
     title: 'An Off-Book Favor',
     type: 'salvage_retrieval',
     giver: 'Encrypted courier chip',
+    params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
     log: 'If you are reading this you already know too much. The Quiet pay well for a quiet hand. Bring the chip — do not open it — and forget you saw the wreck.',
     summary: 'Recover an encrypted courier chip for The Quiet. Ask no questions, get paid.',
     reward_cr: 980,
@@ -90,6 +101,7 @@ export const WRECK_MISSIONS = [
     title: 'Map of the Salted Wake',
     type: 'recon_scan',
     giver: 'Hauler nav core',
+    params: { scanTargets: 3 },
     log: 'They seeded the exit vector. Every buoy we trusted was a mine. The map still has the drop points if you can stand to look.',
     summary: 'Recover the nav core and scan the marked mine drop bearings before another convoy dies in the wake.',
     reward_cr: 860,
@@ -100,6 +112,7 @@ export const WRECK_MISSIONS = [
     title: 'Curtain Black Box',
     type: 'salvage_retrieval',
     giver: 'Escort flight recorder',
+    params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
     log: 'Point-defense held for nine minutes. Missiles died. The freighter did not. Bring the box — insurers want the curtain timing.',
     summary: 'Pull the escort black box so insurers can price PD screens against raider missile racks.',
     reward_cr: 920,
@@ -110,6 +123,7 @@ export const WRECK_MISSIONS = [
     title: 'Unfinished Offering',
     type: 'cargo_delivery',
     giver: 'Choir cargo beacon',
+    params: { cmdtyId: 'cmdty_food', qty: 2 },
     log: 'Tithe incomplete. Pattern incomplete. Whoever finishes the delivery is counted. Whoever opens the hold is corrected.',
     summary: 'A sealed Choir offering drifts free of a wreck. Deliver it unopened — or open it and live with the Pattern.',
     reward_cr: 1040,
@@ -127,6 +141,7 @@ export const WRECK_MISSIONS = [
     title: 'Contract Without a Name',
     type: 'bounty_hunt',
     giver: 'Blank Quiet chip',
+    params: { targetStrength: 3 },
     log: 'Target: redacted. Bearing: last known. Payment: already half-loaded. Do not ask who wrote the other half.',
     summary: 'A Quiet bounty chip names a bearing, not a face. Hunt the ghost before the contract expires.',
     reward_cr: 1250,
@@ -139,6 +154,7 @@ export const WRECK_MISSIONS = [
     title: 'The Shaft Seven Box',
     type: 'salvage_retrieval',
     giver: 'Drift hauler flight recorder',
+    params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
     log: 'Cargo reweighed on accept: 11.2t. Cargo on departure: 9.4t. Two crew aboard. The 1.8t is logged moisture loss. The two are filed as 0.7t of it. Somebody wrote the other 1.1t into a column that does not have our names.',
     summary: 'Recover the hauler black box whose mass log is the cover for two missing Drift miners. Deliver it — to the buyer who pays, or the one who counts.',
     reward_cr: 1180,
@@ -158,6 +174,7 @@ export const WRECK_MISSIONS = [
     title: 'The Recalled Air',
     type: 'cargo_delivery',
     giver: 'Sealed atmo canister beacon',
+    params: { cmdtyId: 'cmdty_volatiles', qty: 3 },
     log: 'Batch R3-CARRIER. Withdrawn from Sector 0 three cycles ago under recall. Never destroyed. Seals re-stamped. Resold under a new lot number. The Pit is still waiting on the replacement that this is.',
     summary: 'A float of rebreathed air drifts off a wreck — relief stock resold to the station it was taken from. Haul it to a buyer, or back to the people who breathed it first.',
     reward_cr: 940,

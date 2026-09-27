@@ -915,9 +915,20 @@ export const scanner = {
         data.pingedUntil = now + profile.pingPersistS;
         // Scan-resolve the derelict: the strip's "??? UNSCANNED" ghost fills in with a manifest +
         // a weak-point callout (GDD 2.0 §7.4 "scanning resolves the outline into a manifest").
+        const firstResolve = data.scanned !== true;
         data.scanned = true;
         data.manifest = buildWreckManifest(entity);
         if (!data.weakPoint) data.weakPoint = weakPointFor(entity);
+        if (firstResolve) {
+          // A targeted per-hull resolution — the law's wreck-provenance loop keys on markerId,
+          // so a generic sector pulse can never mass-report every wreck it merely pinged.
+          this.bus.emit('scan:wreckResolved', {
+            wreckId: entity.id,
+            markerId: data.markerId || (data.provenance && data.provenance.markerId) || null,
+            sectorId,
+            pos: { x: entity.pos.x, z: entity.pos.z },
+          });
+        }
         found.wrecks++;
       } else if (isCargoLike(entity)) {
         data.pingedUntil = now + profile.pingPersistS;
@@ -1520,6 +1531,40 @@ export function contactThreatTier(e, hostile) {
   return tier;
 }
 
+// Traffic roles that never join a faction grudge no matter how hated the flag is — an aggro
+// faction's haulers still haul. Combat roles (patrol/escort/pirate/raider/guard) are not listed:
+// they qualify, subject to the armed check.
+const NONCOMBAT_TRAFFIC_ROLES = new Set([
+  'hauler', 'courier', 'miner', 'mining_barge', 'surveyor', 'salvor', 'tender', 'ore_carrier',
+  'express', 'liner', 'rescue', 'tourist', 'tanker', 'arclight', 'civilian', 'trader',
+  'fleeing_trader', 'smuggler', 'barge',
+]);
+
+/** True when the entity's faction record is flagged aggro (rep <= the sole-writer threshold). */
+function factionAggroOnPlayer(e, state) {
+  const factions = state && state.factions;
+  if (!factions || e.factionId == null) return false;
+  const rec = factions[e.factionId];
+  return !!(rec && rec.aggro === true);
+}
+
+/** Combat-capable proof for attack-on-sight: ship/drone, non-civilian role, and actually armed —
+ *  either a weapons fit on the hull data or the combat runtime's ranged capability. Fails closed:
+ *  a hull that cannot fight is not turned hostile just because its faction hates you. */
+function aggroCombatCapable(e, ai, data, state) {
+  if (!e || (e.type !== 'ship' && e.type !== 'drone')) return false;
+  if (ai && ai.passive) return false;
+  const trafficRole = String(data.trafficRole || data.role || data.presentationRole || '').toLowerCase();
+  if (NONCOMBAT_TRAFFIC_ROLES.has(trafficRole)) return false;
+  if (Array.isArray(data.weapons) && data.weapons.length > 0) return true;
+  const runtime = state && state.combat && state.combat.entities
+    ? state.combat.entities[String(e.id)]
+    : null;
+  const caps = runtime && runtime.capabilities;
+  if (Array.isArray(caps)) return caps.includes('ranged');
+  return !!(caps && caps.ranged === true);
+}
+
 export function isHostileToPlayer(e, playerTeam, state) {
   if (!e || e.team === playerTeam || e.team === 0) return false;
   const playerId = state && state.playerId;
@@ -1530,10 +1575,14 @@ export function isHostileToPlayer(e, playerTeam, state) {
   const targetsPlayer = !!(combat && playerId != null && (combat.targetId === playerId || combat.lockTarget === playerId));
   if (ai && ai.passive) return false;
   if (e.team === 2) return false;
+  // Declared faction hostility (rep <= aggro threshold): the sole-writer ledger flag is the
+  // oracle — a faction that hates you fields armed hulls that open fire without a warrant.
+  const factionAggro = factionAggroOnPlayer(e, state);
   // A live incident response is narrower than global WANTED heat: a patrol may identify the
   // specific ship that just attacked inside its jurisdiction, including before one hit crosses
-  // the WANTED threshold. No securityTargetId means the canonical heat gate remains authoritative.
-  if (ai && ai.lawful) return ai.securityTargetId === playerId || isPlayerWanted(state);
+  // the WANTED threshold. No securityTargetId means the canonical heat gate remains authoritative;
+  // a lawful hull whose own faction is aggro on the player fires on sight like any other.
+  if (ai && ai.lawful) return ai.securityTargetId === playerId || isPlayerWanted(state) || factionAggro;
   if (ai && ai.retaliationTargetId === playerId) return true;
   if (ai && Array.isArray(ai.hostileTeams) && ai.hostileTeams.includes(playerTeam)) return true;
   if (targetsPlayer) return true;
@@ -1554,6 +1603,10 @@ export function isHostileToPlayer(e, playerTeam, state) {
   const archetype = String((ai && (ai.archetype || ai.doctrine || ai.role)) || data.role || data.scenarioRole || '').toLowerCase();
   if (archetype.includes('trad') || archetype.includes('miner') || archetype.includes('civilian')) return false;
   if (context !== 'ambient' && archetype.includes('pirate')) return true;
+  // AGGRO faction combat hulls attack on sight. This is deliberately NOT a blanket faction rule:
+  // passive hulls and team-2 civilians returned above, noncombat traffic roles and unarmed hulls
+  // are filtered inside the check, and lawful hulls already answered through their own gate.
+  if (factionAggro && aggroCombatCapable(e, ai, data, state)) return true;
   const security = finiteNumber(ai && ai.sectorSecurity, currentSectorSecurity(state));
   const tier = finiteNumber(ai && ai.sectorTier, currentSectorTier(state));
   if ((security <= UNSAFE_PLAYER_SECURITY || tier >= 2) && playerIsInLaneDanger(state)) return true;

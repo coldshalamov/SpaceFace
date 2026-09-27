@@ -1,8 +1,8 @@
 {
   "counts": {
     "green": 6,
-    "red": 185,
-    "rows": 191
+    "red": 186,
+    "rows": 192
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -54087,70 +54087,70 @@
     {
       "bounds": {
         "center": [
-          2.999672,
-          13.429103,
-          0
+          -1.300669,
+          21.4975,
+          -0.000812
         ],
         "max": [
-          63.422249,
-          28.675183,
-          43.625518
+          61.100002,
+          48.876706,
+          55.651761
         ],
         "min": [
-          -57.422905,
-          -1.816977,
-          -43.625518
+          -63.70134,
+          -5.881706,
+          -55.653384
         ],
         "size": [
-          120.845154,
-          30.49216,
-          87.251037
+          124.801342,
+          54.758411,
+          111.305145
         ]
       },
-      "bytes": 82073720,
+      "bytes": 3054836,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_station_trade_hub",
         "kind": "proxy",
         "outline": [
-          90.436744,
-          69.31859,
-          68.785436,
-          68.016952,
-          66.910028,
-          65.945885,
-          64.804869,
-          63.614505,
-          62.661102,
-          61.689475,
-          86.924415,
-          92.125052,
-          92.125052,
-          86.924415,
-          61.689475,
-          62.661102,
-          63.614505,
-          64.804869,
-          65.857932,
-          66.910028,
-          68.016952,
-          68.785436,
-          69.31859,
-          90.380657
+          11.392543,
+          11.713916,
+          12.165437,
+          13.46952,
+          14.66044,
+          15.98818,
+          17.751724,
+          19.779874,
+          21.15512,
+          22.588835,
+          23.403418,
+          23.758069,
+          23.696076,
+          23.323309,
+          22.590939,
+          20.884045,
+          19.414455,
+          17.750536,
+          16.120218,
+          14.273948,
+          13.259075,
+          12.278364,
+          11.579016,
+          11.201838
         ],
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 11.055006,
+        "toleranceWu": 2.850968,
         "worstSize": "L"
       },
       "drawOffset": [
-        -4.46804,
+        1.875944,
         0,
-        0
+        0.00117
       ],
-      "drawScale": 1.489509,
+      "drawScale": 1.442292,
       "family": "station",
       "forwardAxis": "+X",
       "frozenMesh": false,
@@ -54186,7 +54186,7 @@
         "lod2": true,
         "outlineDeltaWu": {},
         "overTolerance": false,
-        "toleranceWu": 7.370004
+        "toleranceWu": 4
       },
       "materials": [
         {
@@ -54194,111 +54194,55 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Glass_RecessedSignal",
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "Material_Canopy",
           "role": "glass"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "Material_Hull_VitreousCeramic",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "Material_Mechanical_BrushedNickel",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "SF_AmberEmission",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "SF_Armor_K0PBR",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "SF_CyanEmission",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "SF_DockingContact_PBR",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "SF_HullDark_K0PBR",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "SF_HullMid_K0PBR",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "SF_IndustrialMarking_PBR",
-          "role": "decal"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "SF_Machinery_K0PBR",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "SF_Radiator_PBR",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "SF_ServiceAccess_PBR",
-          "role": "opaqueHull"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
-          "name": "SF_StructuralLight_PBR",
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
           "role": "emissive"
         },
         {
@@ -54306,236 +54250,300 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "SF_Window_PBR",
-          "role": "glass"
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_apron",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_graphite",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_hall",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_primer",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
         }
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 38,
-      "nodes": 44,
+      "meshes": 45,
+      "nodes": 49,
       "note": null,
       "opening": "dock-mouth",
       "pivot": [
-        2.999672,
-        13.429103,
-        0
+        -1.300669,
+        21.4975,
+        -0.000812
       ],
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 11.055006,
+        "cellWu": 2.850968,
         "gapWu": 0,
-        "mouthBearingDeg": 322.5,
+        "mouthBearingDeg": 172.5,
         "primitiveCount": 22,
         "primitives": [
           {
             "id": "core",
             "kind": "circle",
-            "r": 0.308447,
+            "r": 0.05857,
             "x": 0,
             "z": 0
           },
           {
-            "ax": -0.305809,
-            "az": -0.04026,
-            "bx": -0.994053,
-            "bz": -0.13087,
-            "id": "arm-0",
-            "kind": "capsule",
-            "r": 0.005
-          },
-          {
-            "ax": -0.284968,
-            "az": -0.118038,
-            "bx": -0.709525,
-            "bz": -0.293895,
+            "ax": -0.054111,
+            "az": -0.022414,
+            "bx": -0.118194,
+            "bz": -0.048958,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.244708,
-            "az": -0.187771,
-            "bx": -0.604583,
-            "bz": -0.463913,
+            "ax": -0.046466,
+            "az": -0.035655,
+            "bx": -0.105476,
+            "bz": -0.080934,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.187771,
-            "az": -0.244708,
-            "bx": -0.458715,
-            "bz": -0.597809,
+            "ax": -0.035655,
+            "az": -0.046466,
+            "bx": -0.089755,
+            "bz": -0.116971,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.118038,
-            "az": -0.284968,
-            "bx": -0.283654,
-            "bz": -0.6848,
+            "ax": -0.022414,
+            "az": -0.054111,
+            "bx": -0.061486,
+            "bz": -0.148441,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.04026,
-            "az": -0.305809,
-            "bx": -0.095351,
-            "bz": -0.72426,
+            "ax": -0.007645,
+            "az": -0.058069,
+            "bx": -0.022897,
+            "bz": -0.173923,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.04026,
-            "az": -0.305809,
-            "bx": 0.093696,
-            "bz": -0.711691,
+            "ax": 0.007645,
+            "az": -0.058069,
+            "bx": 0.025455,
+            "bz": -0.193351,
             "id": "arm-6",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.118038,
-            "az": -0.284968,
-            "bx": 0.269641,
-            "bz": -0.650971,
+            "ax": 0.022414,
+            "az": -0.054111,
+            "bx": 0.083254,
+            "bz": -0.200994,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.305809,
-            "az": -0.04026,
-            "bx": 1.012651,
-            "bz": -0.133318,
+            "ax": 0.035655,
+            "az": -0.046466,
+            "bx": 0.141741,
+            "bz": -0.18472,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.005
+          },
+          {
+            "ax": 0.046466,
+            "az": -0.035655,
+            "bx": 0.197358,
+            "bz": -0.151438,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.005
+          },
+          {
+            "ax": 0.054111,
+            "az": -0.022414,
+            "bx": 0.238191,
+            "bz": -0.098662,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.005
+          },
+          {
+            "ax": 0.058069,
+            "az": -0.007645,
+            "bx": 0.259517,
+            "bz": -0.034166,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.305809,
-            "az": 0.04026,
-            "bx": 1.012651,
-            "bz": 0.133318,
+            "ax": 0.058069,
+            "az": 0.007645,
+            "bx": 0.258834,
+            "bz": 0.034076,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.284968,
-            "az": 0.118038,
-            "bx": 0.890255,
-            "bz": 0.368756,
+            "ax": 0.054111,
+            "az": 0.022414,
+            "bx": 0.237368,
+            "bz": 0.098321,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.244708,
-            "az": 0.187771,
-            "bx": 0.542032,
-            "bz": 0.415916,
+            "ax": 0.046466,
+            "az": 0.035655,
+            "bx": 0.197377,
+            "bz": 0.151453,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.187771,
-            "az": 0.244708,
-            "bx": 0.422488,
-            "bz": 0.550597,
+            "ax": 0.035655,
+            "az": 0.046466,
+            "bx": 0.139907,
+            "bz": 0.182331,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.118038,
-            "az": 0.284968,
-            "bx": 0.269641,
-            "bz": 0.650971,
+            "ax": 0.022414,
+            "az": 0.054111,
+            "bx": 0.081701,
+            "bz": 0.197243,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.04026,
-            "az": 0.305809,
-            "bx": 0.093696,
-            "bz": 0.711691,
+            "ax": 0.007645,
+            "az": 0.058069,
+            "bx": 0.025453,
+            "bz": 0.193338,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.04026,
-            "az": 0.305809,
-            "bx": -0.095223,
-            "bz": 0.723291,
+            "ax": -0.007645,
+            "az": 0.058069,
+            "bx": -0.023089,
+            "bz": 0.175378,
             "id": "arm-18",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.118038,
-            "az": 0.284968,
-            "bx": -0.283654,
-            "bz": 0.6848,
+            "ax": -0.022414,
+            "az": 0.054111,
+            "bx": -0.059843,
+            "bz": 0.144474,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.187771,
-            "az": 0.244708,
-            "bx": -0.458715,
-            "bz": 0.597809,
+            "ax": -0.035655,
+            "az": 0.046466,
+            "bx": -0.088332,
+            "bz": 0.115116,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.244708,
-            "az": 0.187771,
-            "bx": -0.604583,
-            "bz": 0.463913,
+            "ax": -0.046466,
+            "az": 0.035655,
+            "bx": -0.106471,
+            "bz": 0.081698,
             "id": "arm-21",
-            "kind": "capsule",
-            "r": 0.005
-          },
-          {
-            "ax": -0.284968,
-            "az": 0.118038,
-            "bx": -0.709525,
-            "bz": 0.293895,
-            "id": "arm-22",
-            "kind": "capsule",
-            "r": 0.005
-          },
-          {
-            "ax": -0.305809,
-            "az": 0.04026,
-            "bx": -0.993435,
-            "bz": 0.130788,
-            "id": "arm-23",
             "kind": "capsule",
             "r": 0.005
           }
         ],
-        "silhouetteRadius": 92.125052,
-        "toleranceWu": 11.055006
+        "silhouetteRadius": 23.758069,
+        "toleranceWu": 2.850968
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 8975,
-        "inwardFaceFraction": 0.52425,
-        "silhouetteRadius": 92.125052,
+        "boundaryEdges": 10116,
+        "inwardFaceFraction": 0.39675,
+        "silhouetteRadius": 23.758069,
         "sliceY": 0
       },
       "sockets": [
@@ -54568,13 +54576,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 1676606,
+      "triangles": 133207,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_station_trade_hub.glb",
       "worldSize": [
         180,
-        45.41836,
-        129.961245
+        78.977628,
+        160.534541
       ]
     },
     {
@@ -64924,7 +64932,7 @@
           7.762034
         ]
       },
-      "bytes": 1095476,
+      "bytes": 1095472,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -64994,7 +65002,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Armor",
           "role": "opaqueHull"
         },
@@ -65002,7 +65010,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Heat",
           "role": "opaqueHull"
         },
@@ -65010,7 +65018,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Insulation",
           "role": "opaqueHull"
         },
@@ -65018,7 +65026,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Structural",
           "role": "opaqueHull"
         }
@@ -65254,7 +65262,7 @@
           10.669659
         ]
       },
-      "bytes": 89028,
+      "bytes": 89020,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -65324,7 +65332,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull_DeepSeaEnamel",
           "role": "opaqueHull"
         },
@@ -65332,7 +65340,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull_ServiceOchre",
           "role": "opaqueHull"
         },
@@ -65340,7 +65348,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Mechanical_BrushedNickel",
           "role": "opaqueHull"
         },
@@ -65348,7 +65356,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Mechanical_ShadowEnamel",
           "role": "opaqueHull"
         },
@@ -65356,7 +65364,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "wrk_paint_freight_ochre",
           "role": "opaqueHull"
         },
@@ -65364,7 +65372,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "wrk_scorch_edge",
           "role": "opaqueHull"
         }
@@ -65636,7 +65644,7 @@
           5.761344
         ]
       },
-      "bytes": 95768,
+      "bytes": 95760,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -65706,7 +65714,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Glass_RecessedSignal",
           "role": "glass"
         },
@@ -65714,7 +65722,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull_DeepSeaEnamel",
           "role": "opaqueHull"
         },
@@ -65722,7 +65730,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull_ServiceOchre",
           "role": "opaqueHull"
         },
@@ -65730,7 +65738,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull_VitreousCeramic",
           "role": "opaqueHull"
         },
@@ -65738,7 +65746,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Mechanical_BrushedNickel",
           "role": "opaqueHull"
         },
@@ -65746,7 +65754,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "wrk_cable",
           "role": "opaqueHull"
         },
@@ -65754,7 +65762,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "wrk_emerg_red",
           "role": "opaqueHull"
         }
@@ -66326,7 +66334,7 @@
           9.740975
         ]
       },
-      "bytes": 192800,
+      "bytes": 192792,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -66396,7 +66404,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull_DeepSeaEnamel",
           "role": "opaqueHull"
         },
@@ -66404,7 +66412,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull_ServiceOchre",
           "role": "opaqueHull"
         },
@@ -66412,7 +66420,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Mechanical_BrushedNickel",
           "role": "opaqueHull"
         },
@@ -66420,7 +66428,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Mechanical_ShadowEnamel",
           "role": "opaqueHull"
         },
@@ -66428,7 +66436,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Rubber_HeatScale",
           "role": "opaqueHull"
         },
@@ -66436,7 +66444,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "wrk_cable",
           "role": "opaqueHull"
         },
@@ -66444,7 +66452,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "wrk_hot_orange",
           "role": "opaqueHull"
         },
@@ -66452,7 +66460,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "wrk_pipe",
           "role": "opaqueHull"
         },
@@ -66460,7 +66468,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "wrk_torn_edge",
           "role": "opaqueHull"
         }
@@ -66767,7 +66775,7 @@
           7.800385
         ]
       },
-      "bytes": 98308,
+      "bytes": 98304,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -66837,7 +66845,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull_DeepSeaEnamel",
           "role": "opaqueHull"
         },
@@ -66845,7 +66853,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull_ServiceOchre",
           "role": "opaqueHull"
         },
@@ -66853,7 +66861,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Mechanical_BrushedNickel",
           "role": "opaqueHull"
         },
@@ -66861,7 +66869,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Mechanical_ShadowEnamel",
           "role": "opaqueHull"
         }
@@ -67309,7 +67317,7 @@
           3
         ]
       },
-      "bytes": 46956,
+      "bytes": 46952,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -67379,7 +67387,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull_DeepSeaEnamel",
           "role": "opaqueHull"
         },
@@ -67387,7 +67395,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Mechanical_BrushedNickel",
           "role": "opaqueHull"
         },
@@ -67395,7 +67403,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Mechanical_ShadowEnamel",
           "role": "opaqueHull"
         },
@@ -67403,7 +67411,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "wrk_frame_steel",
           "role": "opaqueHull"
         },
@@ -67411,7 +67419,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "wrk_hull_bare",
           "role": "opaqueHull"
         }
@@ -68321,7 +68329,7 @@
           9.399514
         ]
       },
-      "bytes": 1068812,
+      "bytes": 1068808,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -68391,7 +68399,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Glass",
           "role": "glass"
         },
@@ -68399,7 +68407,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull",
           "role": "opaqueHull"
         },
@@ -68407,7 +68415,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Insulation",
           "role": "opaqueHull"
         },
@@ -68415,7 +68423,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Structural",
           "role": "opaqueHull"
         }
@@ -68882,7 +68890,7 @@
           16.374475
         ]
       },
-      "bytes": 1101680,
+      "bytes": 1101676,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -68952,7 +68960,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Heat",
           "role": "opaqueHull"
         },
@@ -68960,7 +68968,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull",
           "role": "opaqueHull"
         },
@@ -68968,7 +68976,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Insulation",
           "role": "opaqueHull"
         },
@@ -68976,7 +68984,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Structural",
           "role": "opaqueHull"
         }
@@ -69595,7 +69603,7 @@
           4.171031
         ]
       },
-      "bytes": 555076,
+      "bytes": 555072,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -69665,7 +69673,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Insulation",
           "role": "opaqueHull"
         },
@@ -69673,7 +69681,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Structural",
           "role": "opaqueHull"
         }
@@ -72409,7 +72417,7 @@
           8.586991
         ]
       },
-      "bytes": 84464,
+      "bytes": 84460,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -72479,7 +72487,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull_DeepSeaEnamel",
           "role": "opaqueHull"
         },
@@ -72487,7 +72495,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull_ServiceOchre",
           "role": "opaqueHull"
         },
@@ -72495,7 +72503,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Mechanical_BrushedNickel",
           "role": "opaqueHull"
         },
@@ -72503,7 +72511,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Mechanical_ShadowEnamel",
           "role": "opaqueHull"
         },
@@ -72511,7 +72519,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "wrk_scorch_edge",
           "role": "opaqueHull"
         }
@@ -72756,7 +72764,7 @@
           22.984549
         ]
       },
-      "bytes": 881836,
+      "bytes": 881832,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -72826,7 +72834,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Glass",
           "role": "glass"
         },
@@ -72834,7 +72842,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Heat",
           "role": "opaqueHull"
         },
@@ -72842,7 +72850,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Insulation",
           "role": "opaqueHull"
         },
@@ -72850,7 +72858,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Service",
           "role": "opaqueHull"
         },
@@ -72858,7 +72866,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Structural",
           "role": "opaqueHull"
         }
@@ -73084,7 +73092,7 @@
           25.990443
         ]
       },
-      "bytes": 787744,
+      "bytes": 787740,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -73154,7 +73162,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Glass",
           "role": "glass"
         },
@@ -73162,7 +73170,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Heat",
           "role": "opaqueHull"
         },
@@ -73170,7 +73178,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull",
           "role": "opaqueHull"
         },
@@ -73178,7 +73186,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Insulation",
           "role": "opaqueHull"
         }
@@ -74471,6 +74479,300 @@
     {
       "bounds": {
         "center": [
+          0.000349,
+          -0.363279,
+          0
+        ],
+        "max": [
+          73.383593,
+          15.041619,
+          31.500321
+        ],
+        "min": [
+          -73.382894,
+          -15.768176,
+          -31.500321
+        ],
+        "size": [
+          146.766487,
+          30.809795,
+          63.000641
+        ]
+      },
+      "bytes": 104832,
+      "collider": {
+        "coverageWu": 74.253208,
+        "gapWu": 74.253208,
+        "id": null,
+        "kind": "none",
+        "outline": [
+          61.098228,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          74.253208,
+          74.238117,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          31.961866,
+          54.809259,
+          60.893778
+        ],
+        "overTolerance": true,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 8.910385,
+        "worstSize": null
+      },
+      "drawOffset": [
+        -0.000349,
+        0,
+        0
+      ],
+      "drawScale": 1,
+      "family": "wreck",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": null,
+        "colliderKind": "none",
+        "dockRadius": null,
+        "entityRadius": 74,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "place_aftermath_wreck_mining_barge_authored_down",
+      "lod": {
+        "lod0": true,
+        "lod1": false,
+        "lod2": false,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 5.940257
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_cable",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_deck_grate",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_emerg_amber",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_frame_steel",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_glass_shattered",
+          "role": "glass"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_hot_deep_red",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_hull_bare",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_insulation",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_ore_raw",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_paint_barge_rust",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_scorch",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_tank_shell",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_torn_edge",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "wrk_vent_coolant",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 93,
+      "nodes": 101,
+      "note": "Heavy wreck mesh is routed but not spawned as a solid.",
+      "opening": null,
+      "pivot": [
+        0.000349,
+        -0.363279,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "shell": {
+        "boundaryEdges": 0,
+        "inwardFaceFraction": 0.481944,
+        "silhouetteRadius": 74.253208,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_BlackBox",
+          "position": [
+            -46.883171,
+            0.431488,
+            8
+          ]
+        },
+        {
+          "name": "SOCKET_Hazard_Break",
+          "position": [
+            53.116829,
+            -4.568512,
+            -10
+          ]
+        },
+        {
+          "name": "SOCKET_Hazard_Core",
+          "position": [
+            -50.883171,
+            -3.568512,
+            -2
+          ]
+        },
+        {
+          "name": "SOCKET_Salvage_Cutter",
+          "position": [
+            65.116829,
+            4.431488,
+            -13
+          ]
+        },
+        {
+          "name": "SOCKET_Salvage_Drive",
+          "position": [
+            -68.883171,
+            -9.568512,
+            -2
+          ]
+        },
+        {
+          "name": "SOCKET_Salvage_Ore",
+          "position": [
+            -30.883171,
+            -3.568512,
+            10
+          ]
+        }
+      ],
+      "solid": false,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "no-embedded-png",
+      "triangles": 2160,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_aftermath_wreck_mining_barge_authored_down.glb",
+      "worldSize": [
+        146.766487,
+        30.809795,
+        63.000641
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
           0.104936,
           -0.000002,
           -0.000003
@@ -75539,7 +75841,7 @@
           36.146078
         ]
       },
-      "bytes": 1242420,
+      "bytes": 1242412,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -75609,7 +75911,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Heat",
           "role": "opaqueHull"
         },
@@ -75617,7 +75919,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Hull",
           "role": "opaqueHull"
         },
@@ -75625,7 +75927,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Insulation",
           "role": "opaqueHull"
         },
@@ -75633,7 +75935,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Service",
           "role": "opaqueHull"
         },
@@ -75641,7 +75943,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": false,
+          "doubleSided": true,
           "name": "Material_Structural",
           "role": "opaqueHull"
         }

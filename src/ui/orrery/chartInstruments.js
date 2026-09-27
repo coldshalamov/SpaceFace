@@ -556,7 +556,7 @@ export function drawSectorToken(g, sectorId, x, y, size, {
     g.fillStyle = well || 'rgba(5,7,10,0.9)';
     g.beginPath(); g.arc(x, y, r * 1.02, 0, Math.PI * 2); g.fill();
     g.restore();
-    drawBandRing(g, x, y, r, { band: 6, bandA: (stale ? 0.12 : 0.2) * a, edge: 1.5, edgeA: (stale ? 0.3 : 0.5) * a });
+    drawBandRing(g, x, y, r, { band: 6, bandA: (stale ? 0.2 : 0.36) * a, edge: 1.6, edgeA: (stale ? 0.36 : 0.62) * a });
     g.save();
     g.globalAlpha = (stale ? 0.6 : 1) * a;
     g.drawImage(art, x - artSize / 2, y - artSize / 2, artSize, artSize);
@@ -579,6 +579,38 @@ export function drawSectorToken(g, sectorId, x, y, size, {
  * then its figures as large thin numerals each with a small unit (`numerals`: [{ value, unit }]),
  * then a quiet line of secondary figures and a note. Hangs off a 45-degree leader from the mark.
  */
+/**
+ * A pool of shade with feathered edges (a solid core, then a smooth fall to nothing over
+ * `feather` px on every side, rounded at the corners): glass under a reading, never a box.
+ */
+export function drawFeatherPool(g, x, y, w, h, { a = 0.5, feather = 24, rgb = '5,7,10' } = {}) {
+  if (!(w > 0) || !(h > 0) || !(a > 0)) return;
+  const F = Math.max(1, feather);
+  const stops = (grad) => {
+    grad.addColorStop(0, rgbaOf(rgb, a));
+    grad.addColorStop(0.35, rgbaOf(rgb, a * 0.72));
+    grad.addColorStop(0.7, rgbaOf(rgb, a * 0.26));
+    grad.addColorStop(1, rgbaOf(rgb, 0));
+    return grad;
+  };
+  g.save();
+  g.fillStyle = rgbaOf(rgb, a);
+  g.fillRect(x, y, w, h);
+  if (typeof g.createLinearGradient === 'function' && typeof g.createRadialGradient === 'function') {
+    // edges
+    g.fillStyle = stops(g.createLinearGradient(0, y, 0, y - F)); g.fillRect(x, y - F, w, F);
+    g.fillStyle = stops(g.createLinearGradient(0, y + h, 0, y + h + F)); g.fillRect(x, y + h, w, F);
+    g.fillStyle = stops(g.createLinearGradient(x, 0, x - F, 0)); g.fillRect(x - F, y, F, h);
+    g.fillStyle = stops(g.createLinearGradient(x + w, 0, x + w + F, 0)); g.fillRect(x + w, y, F, h);
+    // corners
+    for (const [cx, cy, qx, qy] of [[x, y, x - F, y - F], [x + w, y, x + w, y - F], [x, y + h, x - F, y + h], [x + w, y + h, x + w, y + h]]) {
+      g.fillStyle = stops(g.createRadialGradient(cx, cy, 0, cx, cy, F));
+      g.fillRect(qx, qy, F, F);
+    }
+  }
+  g.restore();
+}
+
 export function drawLineReadingLarge(g, x, y, { title = '', numerals = [], figures = '', note = '', bounds = null, clear = 12, avoid = [], seat = null, measureOnly = false } = {}) {
   if (!title && !numerals.length) return null;
   const NUM_PX = 44;
@@ -642,18 +674,9 @@ export function drawLineReadingLarge(g, x, y, { title = '', numerals = [], figur
     }
     if (cost < best - 0.01) { best = cost; at = c; }
   }
-  // a pool of shade under the reading so it reads over lanes and tokens (no plate, no edge)
-  const pad = 18;
-  const shade = g.createRadialGradient
-    ? g.createRadialGradient(at.left + width / 2, at.top + height / 2, 0, at.left + width / 2, at.top + height / 2, Math.max(width, height) * 0.75 + pad)
-    : null;
-  if (shade) {
-    shade.addColorStop(0, 'rgba(5,7,10,0.82)');
-    shade.addColorStop(0.7, 'rgba(5,7,10,0.62)');
-    shade.addColorStop(1, 'rgba(5,7,10,0)');
-    g.fillStyle = shade;
-    g.fillRect(at.left - pad * 2, at.top - pad * 2, width + pad * 4, height + pad * 4);
-  }
+  // a feathered pool of shade under the reading so it reads over lanes and tokens: no plate and no
+  // edge, and never dark enough to knock out a ring it lies across (at most 52% dim)
+  drawFeatherPool(g, at.left - 10, at.top - 6, width + 20, height + 12, { a: 0.52, feather: 26 });
   // the leader: out of the mark at 45 degrees, then flat into the reading
   const s0 = at.start || { x: x + at.sxn * d, y: y + at.syn * d };
   const lx = Number.isFinite(at.lx) ? at.lx : at.ex + at.sxn * 8;

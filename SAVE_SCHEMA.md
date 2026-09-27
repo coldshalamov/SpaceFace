@@ -10,6 +10,7 @@ Current save version: `14`
 - `player`
 - `cargo`
 - `salvage`
+- `survivorPod`
 - `economy`
 - `economyContracts`
 - `factions`
@@ -42,6 +43,7 @@ Current save version: `14`
 - `bandRadio`
 - `v2Flavor`
 - `aftermathWrecks`
+- `lawSecurity`
 - `fieldDepletion`
 - `livingPoiBehaviors`
 - `signalInvestigation`
@@ -202,6 +204,7 @@ Current save version: `14`
 | `$.flight.modeReason` | string | save |
 | `$.flight.previousMode` | string | manual |
 | `$.formations` | object | {} |
+| `$.lawSecurity` | object | {} |
 | `$.livingPoiBehaviors` | object | {} |
 | `$.lossLedger` | object | {} |
 | `$.meta` | object | {} |
@@ -389,6 +392,7 @@ Current save version: `14`
 | `$.sites` | object | {} |
 | `$.stationServices` | object | {} |
 | `$.stunts` | null | null |
+| `$.survivorPod` | object | {} |
 | `$.tensionDirector` | null | null |
 | `$.traffic` | object | {} |
 | `$.uiScreenMemory` | object | {} |

@@ -482,6 +482,7 @@ export const BARKS = {
       'All clear out here. Wave if you need anything.',
       'Just neighbors keeping an eye out. Safe travels.',
       'Wave back, friend. Few do. Makes the night shorter.',
+      'Reach Station lane hail: the dock changes hands by the week; the lane stays open. Fly polite and nobody counts your plates.',
     ],
     distress: [
       'We’re coming apart out here — anybody copy?',
@@ -498,6 +499,7 @@ export const BARKS = {
       'This-vessel initiates assessment. Your form is being appraised against terms.',
       'Contact acknowledged under provisional terms. State your standing.',
       'Clause 1.4: your species’ entry is noted. The prior entry under this standing is older than your record.',
+      'Ashfall relay clause: the Deep-Mother’s arena is registered ground. Scan before you grieve.',
     ],
     warn: [
       'Clause 3: you occupy Vael-held space without instrument of passage. Void your position.',

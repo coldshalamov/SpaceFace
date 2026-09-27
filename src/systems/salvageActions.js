@@ -9,6 +9,15 @@ import { salvagePoolForWreck } from '../data/salvageLegality.js';
 import { entityIndexVersion, indexedTypeScan } from '../world/livingWorldViews.js';
 
 const TETHER_AWAY_DISTANCE = 260;
+// INF-U7: the unstable reactor is ordnance, not a cutscene. Damage cooks the fuse
+// (seconds per applied point), a cracked containment pops at once, and the burst is
+// radial with linear falloff — pirates parked next to it burn with you. Attribution
+// follows the last damager so the law reads a deliberate cook-off honestly.
+const REACTOR_BURST_RADIUS = 150;
+const REACTOR_COOK_S_PER_DMG = 0.15;
+const REACTOR_CRACK_DMG = 40;
+const REACTOR_CHAIN_DELAY_S = 0.5;
+const REACTOR_COOK_TOAST_COOLDOWN_S = 10;
 
 /** Bench A/B: production default ON. Quiet latch skips salvage unstable-reactor
  * entities.values() census when no live unstable reactors remain. Soft-GPU fps not
@@ -88,11 +97,13 @@ export const salvageActions = {
     this._onEntitySpawned = (p) => this._annotate(p && p.entity);
     this._onScan = (p) => this._onScanCompleted(p);
     this._onVent = (p) => this._vent(p && (p.wreckId != null ? p.wreckId : p.targetId));
+    this._onDamage = (p) => this._onReactorDamaged(p || {});
     this._onBoundaryWake = () => this.noteUnstableWake();
     if (this._bus && this._bus.on) {
       this._bus.on('entity:spawned', this._onEntitySpawned);
       this._bus.on('scan:completed', this._onScan);
       this._bus.on('salvage:ventReactor', this._onVent);
+      this._bus.on('combat:damage', this._onDamage);
       // Boundary wakes: this system is not in FRESH_RUN_SYSTEMS — save/run/sector
       // transitions reach it only through the bus.
       this._bus.on('save:loaded', this._onBoundaryWake);
@@ -155,6 +166,7 @@ export const salvageActions = {
       vented: !!existing.vented,
       burst: !!existing.burst,
       towedClear: !!existing.towedClear,
+      triggeredBy: existing.triggeredBy != null ? existing.triggeredBy : null,
     };
     // Live unstable reactor: wake quiet latch so the dueAt / tow census resumes.
     this.noteUnstableWake();
@@ -259,23 +271,92 @@ export const salvageActions = {
     return distance(player && player.pos, entity.pos) >= TETHER_AWAY_DISTANCE;
   },
 
+  // INF-U7 v1: gunfire cooks the fuse. Applied damage shortens dueAt; a single
+  // containment-cracking hit pops the reactor at once. Vented reactors are inert
+  // (the vent meant something); a towed-clear hull still cooks — tow it into the
+  // pirate camp and light it. Attribution follows the shooter.
+  _onReactorDamaged(p) {
+    const state = this._state;
+    if (!state || p.targetId == null || !state.entities || !state.entities.get) return;
+    const entity = state.entities.get(p.targetId);
+    if (!isWreck(entity) || entity.alive === false) return;
+    const unstable = entity.data && entity.data.unstableReactor;
+    if (!unstable || unstable.vented || unstable.burst) return;
+    const applied = Number(p.applied);
+    const amount = Number(p.amount);
+    const dmg = (Number.isFinite(applied) && applied > 0 ? applied : 0)
+      || (Number.isFinite(amount) && amount > 0 ? amount : 0);
+    if (!(dmg > 0)) return;
+    if (p.attackerId != null) unstable.triggeredBy = p.attackerId;
+    const now = state.simTime || 0;
+    unstable.dueAt = (Number.isFinite(unstable.dueAt) ? unstable.dueAt : now + 8)
+      - dmg * REACTOR_COOK_S_PER_DMG;
+    if (dmg >= REACTOR_CRACK_DMG || now >= unstable.dueAt) {
+      this._burst(entity, unstable, state);
+      return;
+    }
+    if (!Number.isFinite(unstable.lastCookToastT)
+      || now - unstable.lastCookToastT >= REACTOR_COOK_TOAST_COOLDOWN_S) {
+      unstable.lastCookToastT = now;
+      if (this._bus && this._bus.emit) {
+        this._bus.emit('toast', { text: "The reactor's cooking off — clear it or use it.", kind: 'warn', ttl: 4 });
+      }
+    }
+  },
+
   _burst(entity, unstable, state) {
     unstable.burst = true;
     const damage = Math.max(1, Math.min(unstable.damage || 18, 24));
-    const payload = {
-      targetId: state.playerId,
-      ownerId: entity.id,
-      damage,
-      damageType: 'thermal',
-      pos: entity.pos ? { x: entity.pos.x, z: entity.pos.z } : null,
-      origin: { kind: 'salvage_reactor', id: entity.id },
-    };
+    const ownerId = unstable.triggeredBy != null ? unstable.triggeredBy : entity.id;
+    const pos = entity.pos ? { x: entity.pos.x, z: entity.pos.z } : { x: 0, z: 0 };
+    // Radial with linear falloff: everything flammable in the fireball burns, not
+    // just the player. Same combat.onHit path as before, per victim.
     const combat = this._registry && this._registry.get && this._registry.get('combat');
-    if (combat && typeof combat.onHit === 'function') combat.onHit(payload);
-    else if (this._bus && this._bus.emit) this._bus.emit('combat:hit', payload);
+    const hits = [];
+    const list = state.entityList || [];
+    for (const victim of list) {
+      if (!victim || victim.alive === false || victim.id === entity.id) continue;
+      if (victim.type !== 'ship' && victim.type !== 'drone') continue;
+      if (!victim.pos) continue;
+      const dist = Math.hypot(victim.pos.x - pos.x, victim.pos.z - pos.z)
+        - (victim.radius || 0);
+      const falloff = 1 - dist / REACTOR_BURST_RADIUS;
+      if (!(falloff > 0)) continue;
+      const payload = {
+        targetId: victim.id,
+        ownerId,
+        damage: Math.max(1, damage * falloff),
+        damageType: 'thermal',
+        pos: { x: pos.x, z: pos.z },
+        origin: { kind: 'salvage_reactor', id: entity.id },
+      };
+      if (combat && typeof combat.onHit === 'function') combat.onHit(payload);
+      else if (this._bus && this._bus.emit) this._bus.emit('combat:hit', payload);
+      hits.push(victim.id);
+    }
+    // INF-U7 v2: the fireball lights sibling reactors. Chain with a short delay so
+    // the room pops in sequence, not one frame — each still bursts radially.
+    const now = state.simTime || 0;
+    let chained = 0;
+    for (const other of list) {
+      if (!isWreck(other) || other.alive === false || other.id === entity.id) continue;
+      const sib = other.data && other.data.unstableReactor;
+      if (!sib || sib.vented || sib.burst || !other.pos) continue;
+      const dist = Math.hypot(other.pos.x - pos.x, other.pos.z - pos.z);
+      if (dist > REACTOR_BURST_RADIUS + (other.radius || 0)) continue;
+      sib.dueAt = Math.min(Number.isFinite(sib.dueAt) ? sib.dueAt : Infinity, now + REACTOR_CHAIN_DELAY_S);
+      sib.triggeredBy = ownerId;
+      chained++;
+    }
     entity.alive = false;
     if (this._bus && this._bus.emit) {
-      this._bus.emit('salvage:reactorBurst', { wreckId: entity.id, targetId: entity.id, damage, t: state.simTime || 0 });
+      this._bus.emit('salvage:reactorBurst', {
+        wreckId: entity.id, targetId: entity.id, damage, hits, chained,
+        triggeredBy: ownerId, t: now,
+      });
+      if (chained > 0) {
+        this._bus.emit('toast', { text: 'Chain reaction — the whole row is going up.', kind: 'warn', ttl: 4 });
+      }
     }
   },
 
@@ -284,6 +365,7 @@ export const salvageActions = {
       if (this._onEntitySpawned) this._bus.off('entity:spawned', this._onEntitySpawned);
       if (this._onScan) this._bus.off('scan:completed', this._onScan);
       if (this._onVent) this._bus.off('salvage:ventReactor', this._onVent);
+      if (this._onDamage) this._bus.off('combat:damage', this._onDamage);
       if (this._onBoundaryWake) {
         this._bus.off('save:loaded', this._onBoundaryWake);
         this._bus.off('game:new', this._onBoundaryWake);
@@ -294,6 +376,7 @@ export const salvageActions = {
     this._onEntitySpawned = null;
     this._onScan = null;
     this._onVent = null;
+    this._onDamage = null;
     this._onBoundaryWake = null;
   },
 };

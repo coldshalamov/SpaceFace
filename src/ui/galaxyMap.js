@@ -1051,6 +1051,19 @@ function humanizeId(id) {
   return words.join(' ') || String(id);
 }
 
+/**
+ * The SYSTEM dial's radial scale, in the sector-local frame: inside the gate ring a point at r
+ * stands at R·√(r/R) (angles hold; the ring and everything past it stay linear). The draw applies
+ * the same map in screen space; this is what a camera must aim at to centre a mark as drawn.
+ */
+export function warpSectorLocal(p, ringWU) {
+  if (!p || !(ringWU > 0)) return p;
+  const d = Math.hypot(p.x, p.z);
+  if (!(d > 1e-6) || d >= ringWU) return { x: p.x, z: p.z };
+  const k = Math.sqrt(ringWU / d);
+  return { x: p.x * k, z: p.z * k };
+}
+
 function sectorNameOf(state, sectorId) {
   if (!sectorId) return '';
   const live = state && state.world && state.world.sectors && state.world.sectors[sectorId];
@@ -6098,9 +6111,12 @@ _stepAnimation(now) {
     let rows = (nav && Array.isArray(nav.rows)) ? nav.rows : [];
     // While a laid line locks in, DESTINATION already names the course being set.
     if (this._lock && this._lock.dest) {
+      const tracked = NAV_ROW_TONE && NAV_ROW_TONE.TRACKED ? NAV_ROW_TONE.TRACKED : 'tracked';
       rows = rows.map((row) => (row.key === 'destination'
-        ? { ...row, value: this._lock.dest, detail: 'Course set', tone: NAV_ROW_TONE && NAV_ROW_TONE.TRACKED ? NAV_ROW_TONE.TRACKED : 'tracked' }
-        : row));
+        ? { ...row, value: this._lock.dest, detail: 'Course set', tone: tracked }
+        : (row.key === 'leg' && this._lock.next
+          ? { ...row, value: this._lock.next, detail: this._lock.nextDetail || '', tone: tracked }
+          : row)));
     }
     const key = rows.map((row) => `${row.key}|${row.value}|${row.detail || ''}|${row.tone || ''}`).join('#');
     if (this._lastNavFootKey === key) return;
@@ -6815,7 +6831,10 @@ _stepAnimation(now) {
       const focus = target.drawPos
         || globalToSectorLocalForSector(target, target.sectorId || currentSectorId(state));
       const sid = target.sectorId || currentSectorId(state);
-      const globalFocus = sectorLocalToGlobalForSector({ x: focus.x, z: focus.z }, sid);
+      // the dial draws the mark on its square-root scale: aim the camera where it is drawn
+      const shown = this._systemWarp && this._systemWarp.sectorId === sid
+        ? warpSectorLocal(focus, this._systemWarp.ringWU) : focus;
+      const globalFocus = sectorLocalToGlobalForSector({ x: shown.x, z: shown.z }, sid);
       this._camera = setSpan(
         setFocus(this._cameraOrInit(), globalFocus),
         spanForZoom(LEVEL_SYSTEM_AT + 0.5), // system scale
@@ -7181,6 +7200,15 @@ _onCanvasDblClick(ev) {
       // The Lamp Key lights and the foot's DESTINATION rolls to the course being locked in.
       if (this._engageButton && this._engageButton.classList) this._engageButton.classList.add('is-locking');
       this._lock.dest = payload.label || 'Course';
+      if (payload.type === 'sector' && payload.sectorId) {
+        const plan = this._previewPathTo(payload.sectorId);
+        const ids = plan && Array.isArray(plan.ids) ? plan.ids : null;
+        if (ids && ids.length > 1) {
+          const st = this._ctx && this._ctx.state;
+          this._lock.next = `${sectorNameOf(st, ids[0])} → ${sectorNameOf(st, ids[1])}`;
+          this._lock.nextDetail = `leg 1/${ids.length - 1}`;
+        }
+      }
       this._lastNavFootKey = null;
       if (this._navFootEl && this._navFootEl.classList) {
         this._navFootEl.classList.remove('is-locking');
@@ -7303,7 +7331,25 @@ _draw() {
       let run = Math.min(1, t / 0.8) * total;
       for (let i = 0; i < segs.length; i += 1) {
         if (run <= lens[i] || i === segs.length - 1) {
-          drawPathPulse(g, segs[i], lens[i] > 0 ? Math.min(1, run / lens[i]) : 1, { a: 1 - Math.max(0, t - 0.8) / 0.2 });
+          const u = lens[i] > 0 ? Math.min(1, run / lens[i]) : 1;
+          const fade = 1 - Math.max(0, t - 0.8) / 0.2;
+          drawPathPulse(g, segs[i], u, { a: fade });
+          // the ship rides the line it has just been given, thrown along the course to its end
+          const [a0, b0] = segs[i];
+          const hx = a0.x + (b0.x - a0.x) * u;
+          const hy = a0.y + (b0.y - a0.y) * u;
+          g.save();
+          g.globalAlpha = Math.max(0, fade);
+          g.translate(hx, hy);
+          g.fillStyle = 'rgba(5, 7, 10, 0.72)';
+          g.beginPath(); g.arc(0, 0, 9, 0, Math.PI * 2); g.fill();
+          g.rotate(Math.atan2(b0.y - a0.y, b0.x - a0.x));
+          g.fillStyle = CHART_INK.lit(1);
+          g.beginPath();
+          g.moveTo(7, 0); g.lineTo(-5, -4.4); g.lineTo(-2.6, 0); g.lineTo(-5, 4.4);
+          g.closePath();
+          g.fill();
+          g.restore();
           break;
         }
         run -= lens[i];
@@ -7317,6 +7363,7 @@ _draw() {
     }
 
     // The reading that rides a laid line, over everything.
+    if (!this._lineReading || !this._lineReading.numerals) { this._lastReadingRect = null; this._lastReadingSeat = null; }
     if (this._lineReading) {
       const field = this._clearField(w, h);
       // The reading keeps off the marks and their names (the drawn label blocks).
@@ -7337,13 +7384,22 @@ _draw() {
         const beam = [];
         const pp = Array.isArray(this._previewPts) ? this._previewPts : [];
         for (let i = 1; i < pp.length; i += 1) beam.push({ x1: pp[i - 1].x, y1: pp[i - 1].y, x2: pp[i].x, y2: pp[i].y });
+        const key = `${Math.round(r.x)},${Math.round(r.y)}`;
+        const prev = this._lastReadingSeat && this._lastReadingSeat.key === key ? this._lastReadingSeat : null;
         const seat = size ? placeChartCallout({ x: r.x, y: r.y, r: Math.max(10, (r.clear || 12) - 4) }, size.width, size.height, {
           bounds: { x: field.x + 6, y: field.y + 6, width: field.width - 12, height: field.height - 12 },
           reserved: this._reservedLabelRects(w, h, obs.reserved),
+          // the names may give way to the reading (they keep 24 px off it from the next frame on)
+          soft: obs.labels || [],
           discs: obs.discs,
+          // the reading never lies across the sector's gate ring (its leader may cross it)
+          rings: (obs.rings || []).map((ring) => ({ ...ring, clear: ring.hard ? 14 : ring.clear })),
           segments: (obs.segments || []).concat(beam, beam, beam),
+          prefer: prev,
         }) : null;
-        drawLineReadingLarge(g, r.x, r.y, { ...r, bounds: field, avoid, seat });
+        const drawn = drawLineReadingLarge(g, r.x, r.y, { ...r, bounds: field, avoid, seat });
+        this._lastReadingRect = drawn;
+        this._lastReadingSeat = drawn ? { key, x: drawn.x, y: drawn.y } : null;
       }
       else drawLineReading(g, this._lineReading.x, this._lineReading.y, { ...this._lineReading, bounds: field, avoid });
     }
@@ -7515,6 +7571,11 @@ _draw() {
    * obstacles; `extra` adds rings, discs, lanes and rects a level knows about.
    */
   _placeLabels(candidates, w, h, { reserved = [], rings = [], discs = [], segments = [] } = {}) {
+    // A laid line's reading hangs over the chart: names keep 24 px clear of where it stands.
+    const readingRect = this._line && this._lastReadingRect ? this._lastReadingRect : null;
+    const keepOff = readingRect
+      ? [{ x: readingRect.x - 24, y: readingRect.y - 24, width: readingRect.width + 48, height: readingRect.height + 48 }]
+      : [];
     const field = this._clearField(w, h);
     const marks = [];
     for (const t of this._clickTargets) {
@@ -7530,7 +7591,7 @@ _draw() {
     }
     const placed = placeChartLabels(candidates, {
       bounds: field,
-      reserved: this._reservedLabelRects(w, h, reserved),
+      reserved: this._reservedLabelRects(w, h, reserved.concat(keepOff)),
       discs: marks.concat(discs),
       rings,
       segments,
@@ -7541,8 +7602,10 @@ _draw() {
     // what the drag reading must keep off: the marks, the names and the level's own rects
     this._readingObstacles = {
       segments,
+      rings,
       discs: marks.concat(discs),
-      reserved: reserved.concat(placed.filter((pl) => pl.visible).map((pl) => ({ x: pl.x, y: pl.y, width: pl.width, height: pl.height }))),
+      reserved,
+      labels: placed.filter((pl) => pl.visible).map((pl) => ({ x: pl.x, y: pl.y, width: pl.width, height: pl.height })),
     };
     return placed;
   },
@@ -7843,7 +7906,9 @@ _drawGalaxy(g, state, w, h) {
       // Uncharted frontier: a faint star glint, never a question mark. A read bearing on it shows
       // as a count beside the glint.
       if (!n.charted) {
-        if (this._layers.discovery) {
+        // a glint stands inside the clear field, never on the chrome's margins
+        const inside = x >= field.x + 12 && x <= field.x + field.width - 12 && y >= field.y + 12 && y <= field.y + field.height - 12;
+        if (this._layers.discovery && inside) {
           drawGlint(g, x, y, { size: n.bearingCount > 0 ? 8 : 6, a: n.bearingCount > 0 ? 0.62 : 0.4 });
           if (n.bearingCount > 0) {
             drawBandRing(g, x, y, 13, { band: 5, bandA: 0.14, edge: 1.4, edgeA: 0.55 });
@@ -8298,10 +8363,14 @@ _drawSystem(g, state, w, h) {
     // ring's radius read on its crown. The doors sit on the ring; the furniture lives inside it.
     let dial = null;
     this._dialScreen = null;
+    this._systemWarp = null;
+    let ringWU = 0;
+    const dialWords = [];
+    let quarterFigure = null;
     {
       const gateR = [];
       for (const pnt of model.points) if (pnt.kind === 'gate' && pnt.drawPos) gateR.push(Math.hypot(pnt.drawPos.x, pnt.drawPos.z));
-      const ringWU = gateR.length ? gateR.reduce((a, b) => a + b, 0) / gateR.length : 0;
+      ringWU = gateR.length ? gateR.reduce((a, b) => a + b, 0) / gateR.length : 0;
       if (ringWU > 0) {
         const ox = sx(0), oy = sz(0), R = ringWU * pxPerWU;
         dial = { x: ox, y: oy, r: R };
@@ -8335,19 +8404,65 @@ _drawSystem(g, state, w, h) {
         g.textAlign = 'left'; g.textBaseline = 'middle';
         g.lineJoin = 'round';
         const lx = ox + R * 0.707 + 10, ly = oy - R * 0.707 - 8;
+        const ringText = `GATE RING ${formatDistanceWU(ringWU)}`;
         g.strokeStyle = 'rgba(5, 7, 10, 0.86)'; g.lineWidth = 4;
-        g.strokeText(`GATE RING ${formatDistanceWU(ringWU)}`, lx, ly);
+        g.strokeText(ringText, lx, ly);
         g.fillStyle = CHART_INK.phos(0.92);
-        g.fillText(`GATE RING ${formatDistanceWU(ringWU)}`, lx, ly);
+        g.fillText(ringText, lx, ly);
+        // The radius inside the ring is not linear, and the dial says so beside its own figure.
+        const scaleText = 'RADIAL SCALE \u221A  \u00B7  NOT LINEAR';
+        g.font = chartFont(600, 12, { stretch: 'normal' });
+        g.strokeText(scaleText, lx, ly + 16);
+        g.fillStyle = CHART_INK.bone(0.72);
+        g.fillText(scaleText, lx, ly + 16);
+        const tw = (t, px) => (typeof g.measureText === 'function' ? (g.measureText(t).width || t.length * px * 0.6) : t.length * px * 0.6);
+        dialWords.push({ x: lx - 2, y: ly - 9, width: Math.max(tw(ringText, 12), tw(scaleText, 12)) + 4, height: 34 });
+        g.restore();
+        // The half ring stands at a true quarter of the gate ring's reach; its figure is seated on
+        // the ring once the marks are down (where it is clearest of them).
+        g.save();
+        g.font = chartFont(640, 12, { stretch: 'normal' });
+        quarterFigure = { text: formatDistanceWU(ringWU / 4), width: tw(formatDistanceWU(ringWU / 4), 12) };
         g.restore();
       }
     }
+
+    // SQUARE-ROOT RADIAL SCALE (the dial's own law): inside the gate ring a mark stands at
+    // R·√(r/R) from the centre, so the furniture packed near the sector's heart opens to fill the dial
+    // while the gates stay on their ring. A presentation map over the linear projection: bearings
+    // hold, a pan slides it rigidly and a zoom scales it whole (the map is scale-free).
+    const warp = (X, Y) => {
+      if (!dial) return { x: X, y: Y };
+      const dx = X - dial.x;
+      const dy = Y - dial.y;
+      const d = Math.hypot(dx, dy);
+      if (!(d > 1e-6) || d >= dial.r) return { x: X, y: Y };
+      const k = Math.sqrt(dial.r / d);
+      return { x: dial.x + dx * k, y: dial.y + dy * k };
+    };
+    // A disc under the map: the circle through its warped rim (centre = the rim's centroid).
+    const warpDisc = (X, Y, r) => {
+      if (!dial || !(r > 0)) { const c = warp(X, Y); return { x: c.x, y: c.y, r: Math.max(0, r || 0) }; }
+      const rim = [];
+      let mx = 0;
+      let my = 0;
+      for (let i = 0; i < 16; i += 1) {
+        const a = (i / 16) * Math.PI * 2;
+        const q = warp(X + Math.cos(a) * r, Y + Math.sin(a) * r);
+        rim.push(q); mx += q.x; my += q.y;
+      }
+      mx /= 16; my /= 16;
+      let rr = 0;
+      for (const q of rim) rr += Math.hypot(q.x - mx, q.y - my);
+      return { x: mx, y: my, r: rr / 16 };
+    };
+    if (dial) this._systemWarp = { ringWU, sectorId: model.sectorId };
 
     // Zones: regions of the sector as pools of light. Overlapping zones MERGE: each pool's light is laid
     // with 'lighten' (the brighter light wins, no darker Venn lens), and each rim is a band of light
     // clipped out of every other pool, so a cluster of zones wears one lit outline.
     const pools = model.zones.filter((z) => !(z.hazard && this._layers.hazard))
-      .map((z) => ({ z, x: sx(z.x), y: sz(z.z), r: z.radius * pxPerWU }));
+      .map((z) => ({ z, ...warpDisc(sx(z.x), sz(z.z), z.radius * pxPerWU) }));
     // The pools live inside the sector: clipped to the gate ring's inner edge.
     g.save();
     if (dial) { g.beginPath(); g.arc(dial.x, dial.y, Math.max(8, dial.r - 6), 0, Math.PI * 2); g.clip(); }
@@ -8378,7 +8493,8 @@ _drawSystem(g, state, w, h) {
     }
     g.restore();
     for (const z of model.zones) {
-      const x = sx(z.x), y = sz(z.z), rr = z.radius * pxPerWU;
+      const zd = warpDisc(sx(z.x), sz(z.z), z.radius * pxPerWU);
+      const x = zd.x, y = zd.y, rr = zd.r;
 
       // Zone centres are authored sector-local, but the click target arms an autopilot fix, which
       // world.js stores global.
@@ -8409,9 +8525,9 @@ _drawSystem(g, state, w, h) {
         }));
       } else {
         // (the pool and its rim were laid above, merged with its neighbours)
-        // A region's name reads inside its own pool, clear of the rim; a pool too small for its name
-        // hangs it on a leader from the crown.
-        labelCandidates.push(makeMapLabelCandidate(g, {
+        // A region's name reads inside its own pool, clear of the rim, next after the stations; a pool
+        // too small for its name hangs it on a leader off its rim once the marks have their seats.
+        const zoneLabel = makeMapLabelCandidate(g, {
           id: `zone:${z.id}`,
           kind: 'zone',
           text: z.name + (z.threat ? ` · THREAT ${z.threat}` : ''),
@@ -8420,8 +8536,19 @@ _drawSystem(g, state, w, h) {
           y,
           anchorRadius: 3,
           inside: { x, y, r: rr },
+          priority: 700,
           color: CHART_INK.bone(0.8),
-        }));
+        });
+        labelCandidates.push(zoneLabel);
+        // A pool that meets the gate ring may hang its name outside it, as the gates do; any other
+        // region's name stays inside the sector's ring.
+        const meetsRing = !!dial && Math.hypot(x - dial.x, y - dial.y) + rr >= dial.r - 30;
+        labelCandidates.push({
+          ...zoneLabel, id: `zone:${z.id}:rim`, rimLeader: true, rimOnly: true, unlessPlaced: zoneLabel.id, priority: 380,
+          within: meetsRing ? null : dial,
+          rimHidden: pools.filter((o) => o.z !== z).map((o) => ({ x: o.x, y: o.y, r: o.r })),
+          rimClip: dial ? { x: dial.x, y: dial.y, r: dial.r - 8 } : null,
+        });
       }
     }
 
@@ -8433,7 +8560,8 @@ _drawSystem(g, state, w, h) {
         const cx = Number(f.center && f.center.x) || 0;
         const cz = Number(f.center && f.center.z) || 0;
         const radius = Number(f.clusterRadius) || Number(f.radius) || 300;
-        const fx = sx(cx), fy = sz(cz), fr = radius * pxPerWU;
+        const fd = warpDisc(sx(cx), sz(cz), radius * pxPerWU);
+        const fx = fd.x, fy = fd.y, fr = fd.r;
         const glyph = asteroidScanGlyph(f.type);
         const fieldName = `${FIELD_NAME_BY_TYPE[f.type] || 'Ore'} field`;
         g.save();
@@ -8458,6 +8586,8 @@ _drawSystem(g, state, w, h) {
           x: fx,
           y: fy,
           anchorRadius: fr + 2,
+          area: true,
+          priority: 710,
           color: CHART_INK.lit(0.9),
         }));
       }
@@ -8468,7 +8598,7 @@ _drawSystem(g, state, w, h) {
     // Claim freight and manufactured corridors share the existing Route layer beneath their marks.
     if (this._layers.route) {
       for (const marker of model.ownership) {
-        if (marker.travelRoute) drawManufacturedTravelRoute(g, marker.travelRoute, sx, sz, true);
+        if (marker.travelRoute) drawManufacturedTravelRoute(g, marker.travelRoute, sx, sz, true, warp);
       }
     }
 
@@ -8479,8 +8609,9 @@ _drawSystem(g, state, w, h) {
         const fixed = !!bearing.drawFixedPos;
         const point = bearing.drawFixedPos || bearing.drawCenter;
         if (!point) continue;
-        const x = sx(point.x), y = sz(point.z);
-        const radiusPx = fixed ? 0 : bearing.radius * pxPerWU;
+        const bd = warpDisc(sx(point.x), sz(point.z), fixed ? 0 : bearing.radius * pxPerWU);
+        const x = bd.x, y = bd.y;
+        const radiusPx = fixed ? 0 : bd.r;
         const selected = !!(this._selectedTarget && this._selectedTarget.id === bearing.wreckId);
         drawUniqueWreckBearingMarker(g, x, y, radiusPx, { fixed, selected, phase: bearing.phase });
 
@@ -8531,8 +8662,8 @@ _drawSystem(g, state, w, h) {
     if (wpDraw && this._layers.route && model.player) {
       const progress = reduced ? 1 : Math.min(1, Math.max(0, (this._nowMs() - (this._routeDrawStart == null ? -1e9 : this._routeDrawStart)) / 520));
       drawHandBeam(g, [
-        { x: sx(model.player.drawPos.x), y: sz(model.player.drawPos.z) },
-        { x: sx(wpDraw.x), y: sz(wpDraw.z) },
+        warp(sx(model.player.drawPos.x), sz(model.player.drawPos.z)),
+        warp(sx(wpDraw.x), sz(wpDraw.z)),
       ], { progress: 1 - Math.pow(1 - progress, 3), pulseT: reduced || this._line ? null : animT, head: false, alpha: this._line ? 0.4 : 1, tone: this._line ? 'bone' : 'hand' });
     }
 
@@ -8550,7 +8681,8 @@ _drawSystem(g, state, w, h) {
     const snapId = this._line && this._line.snap ? this._line.snap.id : null;
     for (const p of model.points) {
       if (!p.drawPos) continue;
-      const x = sx(p.drawPos.x), y = sz(p.drawPos.z);
+      const pw = warp(sx(p.drawPos.x), sz(p.drawPos.z));
+      const x = pw.x, y = pw.y;
       const isGate = p.kind === 'gate';
       const isStation = p.kind === 'station';
       const displayName = isGate
@@ -8606,19 +8738,38 @@ _drawSystem(g, state, w, h) {
       // Lane furniture and minor points name themselves when reached for (hover, selection, a laid
       // line); stations, gates and anything with a status line always do.
       const reached = p.id === hoverId || p.id === snapId || !!(this._selectedTarget && this._selectedTarget.id === p.id);
-      if (isStation || isGate || p.statusLine || reached) labelCandidates.push(makeMapLabelCandidate(g, {
-        id: `point:${p.id}`,
-        kind: p.kind,
-        outsideOf: isGate ? this._dialScreen : null,
-        text: displayName,
-        lines: pointLines,
-        x,
-        y,
-        anchorRadius: Math.max(pointMark.nameplatePx, isStation || isGate ? 16 : 9),
-        color: isStation || isGate ? CHART_INK.lit(0.97) : CHART_INK.bone(0.84),
-        secondaryColor: marketTint,
-        selected: !!(this._selectedTarget && this._selectedTarget.id === p.id),
-      }));
+      if (isStation || isGate || p.statusLine || reached) {
+        const pointLabel = makeMapLabelCandidate(g, {
+          id: `point:${p.id}`,
+          kind: p.kind,
+          outsideOf: isGate ? this._dialScreen : null,
+          text: displayName,
+          lines: pointLines,
+          x,
+          y,
+          anchorRadius: Math.max(pointMark.nameplatePx, isStation || isGate ? 16 : 9),
+          color: isStation || isGate ? CHART_INK.lit(0.97) : CHART_INK.bone(0.84),
+          secondaryColor: marketTint,
+          selected: !!(this._selectedTarget && this._selectedTarget.id === p.id),
+        });
+        // Where the chart is tight a name may take a shorter shape: a gate by its arrow alone, a
+        // two-word name set on two lines.
+        const alts = [];
+        const name = String(displayName || '');
+        const arrow = name.indexOf(' → ');
+        if (isGate && arrow > 0) {
+          const short = makeMapLabelCandidate(g, { ...pointLabel, lines: [name.slice(arrow + 1), ...pointLines.slice(1)] });
+          alts.push({ lines: short.lines, width: short.width, height: short.height });
+        }
+        const words = name.split(/\s+/).filter(Boolean);
+        if (!isGate && words.length >= 2) {
+          const cut = Math.ceil(words.length / 2);
+          const two = makeMapLabelCandidate(g, { ...pointLabel, lines: [words.slice(0, cut).join(' '), words.slice(cut).join(' '), ...pointLines.slice(1)] });
+          alts.push({ lines: two.lines, width: two.width, height: two.height, nameLines: 2 });
+        }
+        if (alts.length) pointLabel.alts = alts;
+        labelCandidates.push(pointLabel);
+      }
 
       if (isStation && services.length > 0) {
         drawServicePictograms(g, x, y + 22, services);
@@ -8637,7 +8788,8 @@ _drawSystem(g, state, w, h) {
       for (const marker of model.ownership) {
         const draw = marker.drawPos;
         if (!draw || !Number.isFinite(draw.x) || !Number.isFinite(draw.z)) continue;
-        const x = sx(draw.x), y = sz(draw.z);
+        const cw = warp(sx(draw.x), sz(draw.z));
+        const x = cw.x, y = cw.y;
         const selected = !!(this._selectedTarget && this._selectedTarget.id === marker.id);
         const target = {
           ...marker,
@@ -8679,7 +8831,8 @@ _drawSystem(g, state, w, h) {
     // "You are here" — only for the sector you stand in (the model can survey a remote one).
     this._youScreen = null;
     if (model.player && model.player.inSector) {
-      const px = sx(model.player.drawPos.x), py = sz(model.player.drawPos.z);
+      const yw = warp(sx(model.player.drawPos.x), sz(model.player.drawPos.z));
+      const px = yw.x, py = yw.y;
       this._youScreen = { x: px, y: py };
       drawPlayerFixMark(g, px, py, model.player.rot, {
         scale: 1,
@@ -8690,8 +8843,7 @@ _drawSystem(g, state, w, h) {
     let objectivePlacement = null;
     let wpScreen = null;
     if (wpDraw && (this._layers.route || this._layers.mission)) {
-      let wx = sx(wpDraw.x);
-      let wy = sz(wpDraw.z);
+      let { x: wx, y: wy } = warp(sx(wpDraw.x), sz(wpDraw.z));
       const target = waypointClickTarget(wp, wpPos, wx, wy);
       if (!inField(wx, wy, 6)) {
         // The goal off the clear field: its tick on the field's border, pointing the way, and its
@@ -8719,12 +8871,41 @@ _drawSystem(g, state, w, h) {
     const systemReserved = [];
     if (wpScreen && this._layers.route && model.player && model.player.drawPos) {
       // Reserve a stub of the course just off the pin so the goal's words cannot settle on the beam.
-      const stub = waypointTetherReserveRect(
-        sx(model.player.drawPos.x), sz(model.player.drawPos.z), wpScreen.x, wpScreen.y);
+      const from = warp(sx(model.player.drawPos.x), sz(model.player.drawPos.z));
+      const stub = waypointTetherReserveRect(from.x, from.y, wpScreen.x, wpScreen.y);
       if (stub) systemReserved.push(stub);
       systemReserved.push({ x: wpScreen.x - 16, y: wpScreen.y - 16, width: 32, height: 32 });
     }
     if (this._youScreen) systemReserved.push({ x: this._youScreen.x - 16, y: this._youScreen.y - 16, width: 32, height: 32 });
+    if (dial && quarterFigure) {
+      // The quarter-reach figure sits on the half ring where no mark stands near it (its flanks first;
+      // the crown is where a region likes to set its name).
+      const marksNow = this._clickTargets.filter((t) => t && t.kind !== 'zone' && Number.isFinite(t.sx))
+        .map((t) => ({ x: t.sx, y: t.sy }));
+      if (this._youScreen) marksNow.push(this._youScreen);
+      if (wpScreen) marksNow.push(wpScreen);
+      let seat = null;
+      [180, 0, -90, 90, -135, -45, 135, 45].forEach((deg, i) => {
+        const a = (deg * Math.PI) / 180;
+        const qx = dial.x + Math.cos(a) * dial.r * 0.5;
+        const qy = dial.y + Math.sin(a) * dial.r * 0.5;
+        let clear = Infinity;
+        for (const mk of marksNow) clear = Math.min(clear, Math.hypot(mk.x - qx, mk.y - qy));
+        const score = Math.min(clear, 90) - i * 2;
+        if (!seat || score > seat.score) seat = { qx, qy, score };
+      });
+      g.save();
+      g.font = chartFont(640, 12, { stretch: 'normal' });
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineJoin = 'round';
+      g.strokeStyle = 'rgba(5, 7, 10, 0.9)'; g.lineWidth = 5;
+      g.strokeText(quarterFigure.text, seat.qx, seat.qy);
+      g.fillStyle = CHART_INK.bone(0.74);
+      g.fillText(quarterFigure.text, seat.qx, seat.qy);
+      g.restore();
+      dialWords.push({ x: seat.qx - quarterFigure.width / 2 - 3, y: seat.qy - 6, width: quarterFigure.width + 6, height: 12 });
+    }
+    for (const r of dialWords) systemReserved.push(r);
     const poolRings = pools.map((pool) => ({
       x: pool.x, y: pool.y, r: pool.r, clear: 5,
       except: pools.filter((o) => o !== pool).map((o) => ({ x: o.x, y: o.y, r: o.r })),
@@ -8744,7 +8925,7 @@ _drawSystem(g, state, w, h) {
     if (this._layers.mission) {
       for (const point of missionMapGeometry(state, trackedMissionOf(state))) {
         const local = globalToSectorLocalForSector(point, model.sectorId);
-        const mx = sx(local.x), my = sz(local.z);
+        const { x: mx, y: my } = warp(sx(local.x), sz(local.z));
         if (!inField(mx, my, 6)) continue;
         drawMissionPoint(g, mx, my, point.kind, point.done);
       }
@@ -9435,17 +9616,22 @@ function drawPoiMark(g, x, y) {
   g.restore();
 }
 
-function drawManufacturedTravelRoute(g, route, sx, sz, useDrawFrame) {
+function drawManufacturedTravelRoute(g, route, sx, sz, useDrawFrame, warp = null) {
   if (!route || typeof sx !== 'function' || typeof sz !== 'function') return;
   const from = useDrawFrame ? route.drawFrom : route.from;
   // Freight has two endpoints; only a manufactured corridor has an intermediate relay.
   const support = (useDrawFrame ? route.drawSupport : route.support) || from;
   const to = useDrawFrame ? route.drawTo : route.to;
   if (!from || !support || !to) return;
-  const ax = sx(from.x), ay = sz(from.z);
-  const mx = sx(support.x), my = sz(support.z);
-  const bx = sx(to.x), by = sz(to.z);
+  let ax = sx(from.x), ay = sz(from.z);
+  let mx = sx(support.x), my = sz(support.z);
+  let bx = sx(to.x), by = sz(to.z);
   if (![ax, ay, mx, my, bx, by].every(Number.isFinite)) return;
+  if (typeof warp === 'function') {
+    ({ x: ax, y: ay } = warp(ax, ay));
+    ({ x: mx, y: my } = warp(mx, my));
+    ({ x: bx, y: by } = warp(bx, by));
+  }
 
   const dx = bx - ax;
   const dy = by - ay;

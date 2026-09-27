@@ -23,6 +23,7 @@ import {
   signedHitSide,
 } from '../combat/impulseKernel.js';
 import { isHostileToPlayer } from './scanner.js';
+import { cloakHidesEntityFrom } from './cloak.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import {
   aimTrueProjectileVelocity, solveTetherLeadSolution, solutionToleranceRad, orbitalConstraintState,
@@ -93,6 +94,16 @@ const MISSILE_FUEL_S = 6.0;              // motor burn window
 const MISSILE_SEEKER_CONE = 100 * RAD;   // seeker half-cone off the missile's heading
 const MISSILE_SEEKER_RANGE = 2000;       // wu — beyond this the seeker can't hold the solution
 const MISSILE_COAST_DRAG = 16;           // wu/s^2 gentle speed bleed after burnout
+
+// Cloak interplay (flag massline2.cloak — "cloak is a verb"): a target that goes dark cannot hold
+// what it had. A held/held-building lock bleeds out over CLOAK_LOCK_DROP_S — a short hold that
+// reads like the seeker head losing the emitter, not a snap — and an in-flight homing round loses
+// turn authority over CLOAK_SEEKER_DROP_S before adopting the chaff vocabulary (diverted + a stale
+// divertPos fix) for the rest of its run. Both share cloak.js's single perception gate, so the
+// rules are identical for a cloaked player and a cloaked NPC.
+const CLOAK_LOCK_DROP_S = 0.9;           // held lock on a dark target bleeds out over this window
+const CLOAK_SEEKER_DROP_S = 1.1;         // homing turn authority bleeds over this window
+const CLOAK_SEEKER_RESIDUAL = 0.25;      // fraction of authored turnRate left on the stale fix
 
 // Forced heat vent (Micro-Loops — "a red-bar gauge that forces a 2-second vent when it pegs").
 // When the player's guns peg heatMax they lock out for WEAPON_VENT_S seconds while heat is dumped,
@@ -787,12 +798,18 @@ export const weapons = {
     if (!Number.isFinite(lockTimeS)) lockTimeS = 1.2;
     if (!needsLock) { combat.lockProgress = 0; combat.lockTarget = null; return; }
     const tgt = this._resolveTarget(e);
-    if (tgt && this._inLockCone(e, tgt)) {
+    // Cloak interplay (flag massline2.cloak): a target dark to THIS shooter cannot grow a lock and
+    // bleeds a held one over CLOAK_LOCK_DROP_S — a bounded hold, not a snap. Inside the ring (or
+    // under a scanner burn) the lock behaves exactly as before. One gate, player and NPC alike.
+    const darkened = !!tgt && cloakHidesEntityFrom(state, e, tgt);
+    if (tgt && !darkened && this._inLockCone(e, tgt)) {
       combat.lockTarget = tgt.id;
       combat.lockProgress = Math.min(1, (combat.lockProgress || 0) + dt / Math.max(0.05, lockTimeS));
     } else {
-      // lock decays when target leaves the cone / is gone
-      combat.lockProgress = Math.max(0, (combat.lockProgress || 0) - dt / Math.max(0.05, lockTimeS));
+      // lock decays when target leaves the cone / is gone / went dark — a darkened target bleeds
+      // on the cloak window so a completed lock holds for a beat and then drops.
+      const decayS = darkened ? CLOAK_LOCK_DROP_S : Math.max(0.05, lockTimeS);
+      combat.lockProgress = Math.max(0, (combat.lockProgress || 0) - dt / decayS);
       if (combat.lockProgress <= 0) combat.lockTarget = null;
     }
   },
@@ -847,6 +864,28 @@ export const weapons = {
       if (!d.armed) { d.armed = true; }
       const decoy = missileDecoyAim(d);
       const tgt = decoy ? null : (d.targetId != null ? this.helpers.getEntity(d.targetId) : null);
+      // Cloak interplay (flag massline2.cloak): a target dark to THIS seeker bleeds its tracking
+      // quality — turn authority scales down over CLOAK_SEEKER_DROP_S (ECM-style bleed on
+      // data.turnRate), then the round adopts the chaff vocabulary: diverted onto a divertPos
+      // snapshot of the last fix, residual turn authority only. No snap-off, no instant re-lock —
+      // coming back into the emitter's ring restores the authored turnRate mid-bleed. A missile
+      // that already ate a decoy keeps flying that decoy line.
+      if (!decoy && tgt && cloakHidesEntityFrom(state, p, tgt)) {
+        if (d._cloakTurnRate == null) d._cloakTurnRate = d.turnRate || 0;
+        d._cloakSeekerLoss = (d._cloakSeekerLoss || 0) + dt;
+        const fade = Math.min(1, d._cloakSeekerLoss / CLOAK_SEEKER_DROP_S);
+        d.turnRate = Math.max(0, (d._cloakTurnRate || 0) * (1 - fade));
+        if (fade >= 1) {
+          d.diverted = true;
+          d.divertPos = { x: tgt.pos.x, z: tgt.pos.z };
+          d.turnRate = (d._cloakTurnRate || 0) * CLOAK_SEEKER_RESIDUAL;
+        }
+      } else if (!decoy && d._cloakSeekerLoss > 0) {
+        // The emitter came back (entered the ring, cloak dropped, or a scan burn opened it).
+        if (d._cloakTurnRate != null) d.turnRate = d._cloakTurnRate;
+        d._cloakSeekerLoss = 0;
+        d._cloakTurnRate = null;
+      }
       const aim = decoy || (tgt && tgt.pos);
       const turnRate = d.turnRate || 0;
       const speedMax = d.projSpeed || Math.hypot(p.vel.x, p.vel.z) || 1;
@@ -1930,6 +1969,11 @@ function npcWeaponsNeedTick(e, state) {
   const plant = data && data.momentumSinkPlant;
   if (plant && plant.active) return true;
   if (data && data.weaponVentUntil && (state && state.simTime || 0) < data.weaponVentUntil) return true;
+  // A live missile lock is mid-bleed business: a darkened target's lock decays on the cloak
+  // window inside _tickLock, so the ship cannot sleep through it — and _publishIncomingLock
+  // must see the drop or the player's MISSILE LOCK warning stays lit for good.
+  const combat = data && data.combat;
+  if (combat && combat.lockTarget != null && (combat.lockProgress || 0) > 0) return true;
   const ws = data && data.weapons;
   if (!ws) return false;
   for (const w of ws) {

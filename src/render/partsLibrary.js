@@ -57,6 +57,7 @@ import {
 import {
   authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency,
   combatantAdmissionPriority,
+  openingFrameAdmissionPriority,
   planarRangeWU,
   sectorArrivalPriorityHint,
   survivalDefersArenaDressingJob,
@@ -4306,7 +4307,6 @@ export function authoredUpgradePriority(job) {
 
 function backgroundUpgradePriority(job) {
   const liveState = authoredRuntimeState();
-  if (!liveState || liveState.mode !== 'flight') return 10;
   const entity = job && job.entity;
   if (!entity) return 10;
   // The activity runtime's R0_GLASS tier is the strict "the player is already
@@ -4315,8 +4315,19 @@ function backgroundUpgradePriority(job) {
   // merely enqueued first. Only the player, live fight-fit combatants and the
   // critical-hub gate (checked above, in authoredUpgradePriority) stay ahead.
   // Re-graded on every pick, so a body that crosses the glass while queued
-  // promotes itself instead of waiting out the background backlog.
+  // promotes itself instead of waiting out the background backlog. Checked
+  // before the mode gate: the load window has no flight rungs, and a glass body
+  // the opening frame shows is exactly the set the belt tail left compiling
+  // behind staged furniture.
   if (entityIsOnReadableGlass(entity)) return 1.5;
+  // The law of the glass as an admission rung (ZERO_TO_HERO 5.12): a body the
+  // composed frame shows outranks every body it does not — load window included,
+  // where the arrival distance grade used to be the only ordering left and near
+  // station furniture buried the visible set. Fails closed with no composed
+  // camera, so the distance grades survive untouched until the frame exists.
+  const shown = openingFrameAdmissionPriority(entity, liveState);
+  if (shown !== null) return shown;
+  if (!liveState || liveState.mode !== 'flight') return 10;
   if (liveState.player && liveState.player.targetId === entity.id) return 2;
   if (entity.team === 1) return 3;
   if (entityIsOnscreen(entity, liveState)) return 4;
@@ -4818,7 +4829,13 @@ function admitNextUpgradeJob(state) {
     return null;
   }
   if (state.loadingHullsOnly === true) {
-    const hullIndex = state.jobs.findIndex(isLoadingHullUpgradeJob);
+    // The hulls-only hold defers leftover fx compiles, never a body the opening
+    // frame shows: a shown owner is a hole in the picture, so it counts with the
+    // hull cohort instead of being buried behind it (ZERO_TO_HERO 5.12).
+    const live = authoredRuntimeState();
+    const hullIndex = state.jobs.findIndex((job) => isLoadingHullUpgradeJob(job)
+      || entityIsOnReadableGlass(job && job.entity)
+      || openingFrameAdmissionPriority(job && job.entity, live) !== null);
     if (hullIndex < 0) {
       state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
       publishUpgradeDiagnostics(state);
@@ -6565,6 +6582,17 @@ async function ensureEntityLibrary(renderer, entity, options = {}) {
   );
   for (let attempt = 0; attempt < 4; attempt++) {
     if (ownerInactive() && !libraryHasPreloadPlan(library, plan)) {
+      // A departure while the demand still waits in the admission lane - owner already gone before
+      // this demand's own retain/admit began (attempt 0) - is a quiet cancellation, not an
+      // incomplete asset failure: the queued job is discarded as cancelled-before-load before any
+      // compose (jobStillNeeded/cancelQueuedJob) and prefetch callers only warm the decode cache,
+      // so the untouched library Map resolves as the ordinary cancelled demand those callers
+      // already expect. A required-whole-ship demand has no such gate - the LOD demotion composes
+      // straight against the resolved Map, and resolveRequiredWholeShipRecord would throw
+      // "release mode requires . it did not pass the live authored-asset loader." on any Map
+      // missing the record (the PQ-033.02 hole the abort below closes) with no cancelled Map
+      // shape its compose reads as nothing - so that shape keeps the abort even at entry.
+      if (attempt === 0 && options.requiredWholeShip !== true) return library;
       throw new Error('Authored visual preparation owner became inactive during entity preload');
     }
     retainLibraryPlan(renderer, library, plan, options);

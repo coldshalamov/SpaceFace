@@ -141,7 +141,7 @@ export async function compileRenderPackage(options = {}) {
 // retry keeps package writes deterministic; non-transient codes still throw immediately.
 const RETRYABLE_WRITE_CODES = new Set(['UNKNOWN', 'EPERM', 'EBUSY']);
 
-async function writeFileWithRetry(path, bytes, attempts = 6) {
+export async function writeFileWithRetry(path, bytes, attempts = 15) {
   for (let i = 0; ; i++) {
     try {
       return await writeFile(path, bytes);

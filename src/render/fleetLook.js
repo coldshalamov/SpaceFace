@@ -6,7 +6,8 @@
 //   file   release wholeship path, e.g. 'wholeships/hornet_production_v1.glb' (blueprint path)
 //   defId  ship def id, e.g. 'ship_kestrel' (full visual-factory + authored-boundary path, which
 //          includes every runtime attachment the player sees)
-//   view   'chase' (D=144), 'close' (D=58), 'inspect' (3/4 at radius*2.6), 'side', 'top'
+//   view   'chase' (D=144), 'close' (D=58), 'inspect' (3/4 at radius*2.6), 'side', 'top',
+//          'place' (whole bounding sphere at the in-game 60° chase tilt — for stations/places)
 // Driver: scripts/fleet-look.mjs. Verification harness, not a shipped feature.
 import * as THREE from 'three';
 import { SHIPS } from '../data/ships.js';
@@ -55,13 +56,27 @@ function blueprintToGroup(blueprint) {
   return group;
 }
 
-function poseCamera(cam, view, radius, heading) {
+const ORIGIN = new THREE.Vector3();
+
+function poseCamera(cam, view, radius, heading, center) {
   const h = (heading || 0) * Math.PI / 180;
   const orbit = (dist, elev, az) => cam.position.set(
     dist * Math.cos(elev) * Math.sin(az), dist * Math.sin(elev), -dist * Math.cos(elev) * Math.cos(az));
   if (view === 'chase' || view === 'close') {
     const D = view === 'chase' ? 144 : 58;
     cam.position.set(0, D * Math.sin(TILT), -D * Math.cos(TILT));
+  } else if (view === 'place') {
+    // Whole-place framing: the in-game 60° chase tilt, distance fitted to the bounding sphere so
+    // the entire station/place is in frame — the picture a player approaching it actually sees.
+    const c = center || ORIGIN;
+    const D = radius * 2.7;
+    cam.position.set(c.x, c.y + D * Math.sin(TILT), c.z - D * Math.cos(TILT));
+    cam.far = Math.max(cam.far, radius * 20);
+    cam.fov = 50;
+    cam.near = 0.1;
+    cam.lookAt(c.x, c.y, c.z);
+    cam.updateProjectionMatrix();
+    return;
   } else if (view === 'side') orbit(radius * 3.2, 0.12, Math.PI / 2 + h);
   else if (view === 'top') cam.position.set(0, radius * 3.4, -0.001);
   else if (view === 'front') orbit(radius * 2.8, 0.35, Math.PI + 0.55 + h);
@@ -164,7 +179,10 @@ export function installFleetLook(SF) {
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const radius = opts.radius || sphere.radius || built.radius || 6;
     built.root.position.sub(new THREE.Vector3(sphere.center.x, 0, sphere.center.z));
-    poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0);
+    // After the XZ recentre the bounding-sphere centre sits at (0, sphereY, 0) — the `place`
+    // view frames and aims at that, so a tall station's mid-volume is what fills the picture.
+    const placeCenter = new THREE.Vector3(0, sphere.center.y, 0);
+    poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
     built.root.traverse((c) => {
       const m = c.material;
       if (!m) return;
@@ -177,7 +195,7 @@ export function installFleetLook(SF) {
     try { renderer.compile(holder, cam, scene); } catch (_) {}
     // The live game loop keeps re-posing the shared camera between our awaits, so pose it again
     // right before every draw, and keep drawing until the programs have linked.
-    const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0);
+    const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
     for (let i = 0; i < 10; i++) { pose(); renderOnce(renderer, scene, cam); await wait(i < 4 ? 50 : 250); }
     // Same task as the draw: without preserveDrawingBuffer the canvas clears after compositing.
     pose();

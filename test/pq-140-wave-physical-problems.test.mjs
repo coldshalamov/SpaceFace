@@ -253,8 +253,8 @@ test('PQ-140: wave 10 — the thrown escort dies on the fortress hull; the fortr
 test('PQ-140: wave 5 — the corsair is ammunition-class, and a committed rope throw hurts it honestly', () => {
   // INF-026 re-massed the corsair to 32 on exactly this argument; the wave's named answer is a throw.
   assert.ok(MASS_OF('corsair_raider') <= 32, 'corsair must stay throwable');
-  // 150 wu/s is inside the tether throw's authored meeting envelope (masslineThrow.js
-  // TANGENT_MEETING_MAX_SPEED = 180) — a rope-flung wasp, not a concussion shove.
+  // 150 wu/s is the kind of closing speed a wound-up Massline swing actually releases —
+  // a rope-flung wasp, not a concussion shove.
   const closingSpeed = 150;
   const mu = reducedMass('wasp_swarmer', 'corsair_raider');
   const j = mu * closingSpeed;

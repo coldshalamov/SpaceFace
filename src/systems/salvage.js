@@ -19,6 +19,7 @@
 
 import { zonesForSector, VESTA_DERELICT_SALVAGE_SOURCE } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { SECTORS } from '../data/sectors.js';
 import { pickWreckMission, wreckMissionById } from '../data/wreckMissions.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { WRECK_ECOLOGY_DAY_S, isPlayerWreckMarker, playerWreckMarker } from './aftermathWrecks.js';
@@ -43,6 +44,11 @@ const DEBRIS_POOLS = [
   { cmdty_salvage_electronics: 2 },
   { cmdty_scrap_metal: 4 },
 ];
+
+// A communicator's contract names real cargo: whatever the offer asks the player to haul must be
+// physically in the wreck for the job to close, so haul-type templates fold their authored
+// commodity into the wreck's salvage pool at spawn (no invented cargo — recovery, not delivery).
+const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 
 export const salvage = {
   name: 'salvage',
@@ -78,6 +84,19 @@ export const salvage = {
     this.bus.on('save:restoring', () => {
       state.salvage.points = [];
       state.salvage.plannedSectorId = null;
+    });
+    // BP-01.1 receipt: an NPC vulture crew claims the field (e1EncounterRuntime H6 settle) —
+    // a fixed acknowledgment on the existing toast/comms seams so the claim is legible to the
+    // player instead of a silent event. Pure receipt; no gameplay outcome is applied here.
+    this.bus.on('salvage:fieldVulture', (p) => {
+      const text = p && p.text ? String(p.text)
+        : 'Vulture crew on the field — a salvage claim is already being stripped.';
+      this.bus.emit('toast', { text, kind: 'info', ttl: 4 });
+      this.bus.emit('comms:log', {
+        from: 'WRECK FIELD',
+        text: p && p.detail ? String(p.detail) : 'A scavenger outfit filed the salvage claim first. What is left still drifts.',
+        kind: 'salvage',
+      });
     });
   },
 
@@ -425,6 +444,12 @@ export const salvage = {
     let mission = null;
     if (isCommunicator) mission = pickWreckMission(rng);
     const pool = isCommunicator ? { cmdty_scrap_metal: 1 } : pickPool(rng);
+    // Communicator missions with authored haul params put their contract cargo in the wreck pool:
+    // "recover the box / canisters / offering" is a pull job, not a fetch-quest.
+    if (isCommunicator && mission && mission.params && mission.params.cmdtyId) {
+      const qty = Math.max(1, Math.floor(Number(mission.params.qty) || 1));
+      pool[mission.params.cmdtyId] = (Math.floor(Number(pool[mission.params.cmdtyId]) || 0)) + qty;
+    }
 
     let entityId = null;
     if (typeof spawnEntity === 'function') {
@@ -578,26 +603,84 @@ export const salvage = {
     return wreckMissionByIdSafe(id);
   },
 
+  // Deterministic origin/destination station for the wreck contract: the sector's own
+  // mission-capable dock (a communicator offer is a local recovery job, not a courier leg).
+  // hash32(point.id) picks the slot so re-entering the sector re-issues the same board row.
+  _wreckStation(point) {
+    const sec = SECTOR_BY_ID.get(point && point.sectorId);
+    const stations = (sec && sec.stations) || [];
+    const capable = stations.filter((s) => s && s.services && s.services.includes('missions') && !s.repGated);
+    const pool = capable.length ? capable : stations.filter((s) => s && !s.repGated);
+    const list = pool.length ? pool : stations;
+    if (!list.length) return null;
+    const idx = fallbackHash32(point.id, 'salvage-station') % list.length;
+    return list[idx] || list[0] || null;
+  },
+
   _buildOffer(mission, point) {
+    // Board-schema offer (missions._onExternalBoardOffer): id/type/stationId/params are required.
+    // The board is the sector's mission dock; the job itself is fieldwork at the wreck.
+    const station = this._wreckStation(point);
+    const params = { ...(wreckOfferParams(mission)) };
+    if (mission.params && typeof mission.params === 'object') Object.assign(params, mission.params);
+    params.salvagePointId = point.id;
+    params.wreckMissionId = mission.id;
+    params.wreckPos = { x: point.pos.x, z: point.pos.z };
+    params.wreckSectorId = point.sectorId;
     return {
+      id: `salvage_${point.id}`,
+      offerId: `salvage_${point.id}`,   // legacy field kept for any consumer keyed on it
       source: 'salvage',
-      offerId: `salvage_${point.id}`,
       salvagePointId: point.id,
       sectorId: point.sectorId,
       zoneId: point.zoneId,
       type: mission.type,
+      stationId: station ? station.id : null,
+      factionId: null,                  // circumstance contract — no standing gate on a wreck find
+      destStationId: station ? station.id : null,
+      destSectorId: point.sectorId,
+      distance: 600,
+      riskTier: 1,
+      collateral_cr: 0,
+      duration_s: 2400,                 // a drifting wreck is a same-trip job, not an open contract
+      time_limit_s: 2400,
       title: mission.title,
       summary: mission.summary,
+      brief: mission.log ? `"${truncate(mission.log, 140)}"` : (mission.summary || null),
       giver: mission.giver,
       log: mission.log,
       reward_cr: mission.reward_cr || 0,
       choice: mission.choice || null,
       tag: mission.tag || 'wreck_salvage',
       wreckMissionId: mission.id,
+      params,
       pos: { x: point.pos.x, z: point.pos.z },
     };
   },
 };
+
+// Per-type floor for communicator templates that carry no authored params (the pod is the
+// physical passenger; other types always author their cargo). Kept minimal — templates own
+// the numbers; this only guarantees a valid board shape for a degraded table row.
+function wreckOfferParams(mission) {
+  switch (mission && mission.type) {
+    case 'cargo_delivery':
+    case 'smuggling_run':
+      return { cmdtyId: 'cmdty_classified_salvage', qty: 1, cargoValue: 140, fValue: 1, taskTime: 30 };
+    case 'salvage_retrieval':
+      return { cmdtyId: 'cmdty_salvage_electronics', qty: 2, cargoValue: 70, fValue: 1, taskTime: 30 };
+    case 'bounty_hunt':
+      return { targetStrength: 2, fValue: 1.2, taskTime: 90 };
+    case 'patrol_clear':
+      return { clearCount: 2, killCount: 0, targetStrength: 1.4, fValue: 1.4, taskTime: 90 };
+    case 'recon_scan':
+      return { scanTargets: 1, progress: 0, fValue: 1, taskTime: 25 };
+    case 'passenger_transport':
+      return { passengers: 1, fValue: 1, taskTime: 20 };
+    default:
+      return { fValue: 1, taskTime: 30 };
+  }
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────────────────────
 function wreckMissionByIdSafe(id) { try { return wreckMissionById(id); } catch (_) { return null; } }

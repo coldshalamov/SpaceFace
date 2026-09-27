@@ -1944,15 +1944,12 @@ here and there in the fixing commit.
 | **GFX-1** | Forge trade hub published; the three faction overlays verified sitting on it. |
 | **GFX-3** | Remaining pre-Forge places rebuilt, in order: opening route → claim outposts / conveyor / industry props → law & travel → the rest. |
 | **GFX-4** | Quiessence dark freighters as a Forge family (replaces the dead-hulk stand-ins). |
-| **GFX-5** | Posters for all 14 player hulls enabled in `src/ui/hullPosters.js` (assets rendered; **ORRERY lane owns `src/ui`**). |
-| **GFX-6** | Kit upgrades the agents asked for. Builders: truss, multi-box/beam, annulus, sphere, ladder. Plates and bands: vertical plate, region band. Also a rock primitive + stone finish, a front-lens work lamp, and a place look view. |
 | **GFX-7** | Wrecks derived from the Forge ships replace the pre-Forge aftermath pack. |
 | **GFX-8** | Rocks: procedural geology + authored rock places reviewed and rebuilt to the Forge material language. |
 | **GFX-9** | Bolt-on parts audit: no pre-Forge weapon, pod or engine draws on the default route. |
 | **GFX-10** | Forge performance pass. Dedupe the shared tile textures in the loader, instance repeated hulls, and record frame p50/p95 and texture MB in §21.4. |
 | **GFX-11** | Runtime attachments on Forge hulls: retro shells on the nozzles, damage hooks shedding, player paint on all 14 hulls. |
 | **GFX-12** | Wave F F3: the pending-body stand-in is the hull's own Forge LOD2. |
-| **GFX-13** | Finish master's C8 wreck import (pack builder rejects the eighth file; receipts red). |
 | **GFX-14** | Shipworks dock interiors rebuilt in Forge, keeping the composition check at 0 hits. |
 
 ### Wave D — shelf that beats live
@@ -4640,9 +4637,11 @@ sent it. Afterward it looks complicated. In the moment it was a few honest rules
 does not secretly fly the cool move. A light hull is something you can turn into a projectile.
 A heavy hull is something you swing around. Missing is allowed, and missing is readable.
 
-**What is lying.** A taut throw can already kill, and the solver will still steer the victim
-onto a meeting. That is why it can feel like luck or a cutscene. The signature mechanic is
-doing the player's authorship for them.
+**What is lying.** Fixed: the solver no longer steers the victim — the release is ballistic,
+the prediction only predicts, and a miss lands as a miss. What remains is learnability: the
+release read names the swing (`tether:releaseRated`) and the preview arc draws the solver's
+predicted ray, but nothing yet teaches a new hand *why* one cut was a razor and the next a
+tow.
 
 **You invent.** How a player learns the cut — by eye, by ear, by the body — without a homing
 aid and without a tutorial modal. Prediction is welcome if it never becomes steering.

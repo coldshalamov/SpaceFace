@@ -1,9 +1,17 @@
-// BP-02.1/C3 Scan-Reveals-Loadout.
+// BP-02.1/C3 Scan-Reveals-Loadout, extended to wreck investigation.
 //
-// Additive listener over scanner's scan:pulse seam. Writes only entity.data.scanRevealed so UI can
-// resolve ship contacts without scanner/HUD special cases.
-import { buildShipScanReveal, sameScanReveal } from '../data/scanReveal.js';
-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+// Additive listener over scanner's scan:pulse seam. Ships resolve loadouts (untouched
+// behavior); wrecks now resolve in three tiers — a far pulse sees a silhouette, a near
+// pulse names the ledger loss behind it, a close pulse reads the manifest. Stories only
+// ever attach when the wreck's provenance lossId matches a real lossLedger entry;
+// generic debris reads class-only at every tier and never borrows a story.
+//
+// Writes only entity.data.scanRevealed plus a small durable investigated-loss memory
+// (state.scanReveal) so a surveyed field stays surveyed. UI reads; AI/combat never do.
+import { buildShipScanReveal, buildWreckScanReveal, sameScanReveal } from '../data/scanReveal.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+
+const INVESTIGATED_CAP = 64;
 
 export const scanReveal = {
   name: 'scanReveal',
@@ -37,6 +45,71 @@ export const scanReveal = {
       data.scanRevealed = reveal;
       if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('scan:shipRevealed', reveal);
     }
+    this._scanWrecks(state, origin);
+  },
+
+  _scanWrecks(state, origin) {
+    const now = state.simTime || 0;
+    const lossCache = new Map();
+    for (const entity of indexedTypeScan(state, 'wrecks')) {
+      if (!entity || entity.type !== 'wreck') continue;
+      const data = entity.data || (entity.data = {});
+      const lossId = data.provenance && data.provenance.lossId;
+      const loss = lossId ? findLossById(state, lossId, lossCache) : null;
+      const known = lossId ? isInvestigated(state, lossId) : false;
+      const reveal = buildWreckScanReveal(entity, state, {
+        origin,
+        now,
+        previous: data.scanRevealed || null,
+        loss,
+        known,
+      });
+      if (!reveal) continue;
+      if (sameScanReveal(data.scanRevealed, reveal)) {
+        data.scanRevealed = { ...reveal, revealedAt: data.scanRevealed.revealedAt };
+        continue;
+      }
+      data.scanRevealed = reveal;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('scan:wreckRevealed', reveal);
+        if (reveal.quality === 'deep' && reveal.lossId && !known) {
+          recordInvestigated(state, reveal, loss, now);
+          this.bus.emit('scan:wreckInvestigated', {
+            entityId: entity.id,
+            lossId: reveal.lossId,
+            story: reveal.story,
+            salvageHint: reveal.salvageHint,
+            cold: reveal.cold,
+            at: now,
+          });
+          this._surveyMilestone(state, loss, now);
+        }
+      }
+    }
+  },
+
+  // A surveyed field stays surveyed: toast the count when a sector's investigated
+  // losses cross 3 / 6 / 10. Milestones persist in the same memory, one toast each.
+  _surveyMilestone(state, loss, now) {
+    const memory = ensureMemory(state);
+    const sectorId = (loss && loss.sectorId) || 'unknown';
+    let count = 0;
+    for (const id of Object.keys(memory.investigated || {})) {
+      if (memory.investigated[id] && memory.investigated[id].sectorId === sectorId) count += 1;
+    }
+    const tier = count >= 10 ? 10 : count >= 6 ? 6 : count >= 3 ? 3 : 0;
+    if (!tier) return;
+    const key = `${sectorId}:${tier}`;
+    if (memory.milestones[key]) return;
+    memory.milestones[key] = { at: now, count };
+    const sec = state.world && state.world.sectors && state.world.sectors[sectorId];
+    const name = (sec && sec.name) || 'this debris field';
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('toast', {
+        text: `Debris field surveyed: ${count} wrecks identified in ${name}.`,
+        kind: 'good', ttl: 4,
+      });
+    }
   },
 
   destroy() {
@@ -46,5 +119,56 @@ export const scanReveal = {
     this._onScanPulse = null;
   },
 };
+
+// Ledger lookup by lossId: current sector first, then every recorded sector. The wreck
+// doesn't carry its sector, so the sweep is the honest match; insertion order is stable.
+function findLossById(state, lossId, cache) {
+  if (cache.has(lossId)) return cache.get(lossId);
+  const ledger = state && state.lossLedger;
+  const bySector = (ledger && ledger.bySector) || {};
+  const current = state && state.world && state.world.currentSectorId;
+  const ordered = current && bySector[current] ? [current] : [];
+  for (const sectorId of Object.keys(bySector)) {
+    if (sectorId !== current) ordered.push(sectorId);
+  }
+  let found = null;
+  for (const sectorId of ordered) {
+    const arr = bySector[sectorId];
+    if (!Array.isArray(arr)) continue;
+    found = arr.find((entry) => entry && entry.lossId === lossId) || null;
+    if (found) break;
+  }
+  cache.set(lossId, found);
+  return found;
+}
+
+function ensureMemory(state) {
+  if (!state.scanReveal || typeof state.scanReveal !== 'object') {
+    state.scanReveal = { investigated: {}, milestones: {} };
+  }
+  const memory = state.scanReveal;
+  if (!memory.investigated || typeof memory.investigated !== 'object') memory.investigated = {};
+  if (!memory.milestones || typeof memory.milestones !== 'object') memory.milestones = {};
+  return memory;
+}
+
+function isInvestigated(state, lossId) {
+  const memory = state && state.scanReveal;
+  return !!(memory && memory.investigated && memory.investigated[lossId]);
+}
+
+function recordInvestigated(state, reveal, loss, now) {
+  const memory = ensureMemory(state);
+  memory.investigated[reveal.lossId] = {
+    at: now,
+    sectorId: (loss && loss.sectorId) || (state.world && state.world.currentSectorId) || null,
+    entityId: reveal.entityId,
+  };
+  const ids = Object.keys(memory.investigated);
+  if (ids.length > INVESTIGATED_CAP) {
+    ids.sort((a, b) => (memory.investigated[a].at || 0) - (memory.investigated[b].at || 0));
+    for (let i = 0; i < ids.length - INVESTIGATED_CAP; i++) delete memory.investigated[ids[i]];
+  }
+}
 
 export default scanReveal;

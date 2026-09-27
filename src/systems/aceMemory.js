@@ -5,8 +5,10 @@
 // owns first-contact entities or changes hostility.
 import {
   ACE_STYLE_ESCALATE_AT,
+  ACE_GRUDGE_HUNT_AT,
   ACE_GRUDGE_MAX,
   ACE_LOYALTY_MAX,
+  ACE_LOYALTY_WORK_AT,
   PIRATE_PROMOTION_MAX_TIER,
   REACH_CULTURE_ACES,
   aceById,
@@ -25,8 +27,18 @@ import {
   styleEscalationBark,
   styleLoadoutForAce,
 } from '../data/namedAces.js';
+import {
+  PILOT_GRUDGES,
+  PROMOTED_PILOT_EXPIRY_S,
+  PROMOTED_PILOT_MAX,
+  grudgeKeyForReason,
+  promotedPilotIdFor,
+  promotedPilotIdentity,
+  promotedReturnLine,
+} from '../data/pilotCallsigns.js';
+import { rememberMoralDebt, revealMoralDebt } from './moralMemory.js';
 import { barkFor } from '../data/barks.js';
-import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
+import { pirateDoctrineForEntity, reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { planetStatesForSector } from '../data/planetStates.js';
 import { activeFrontForFaction } from '../data/conflictZones.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -104,6 +116,11 @@ export const aceMemory = {
     this._listen('entity:destroyed', (p) => this._entityDestroyed(p));
     this._listen('entity:killed', (p) => this._playerKill(p));
     this._listen('combat:kill', (p) => this._playerKill(p));
+    // Generic-pilot persistence: an anonymous hostile that breaks off gets a name, a
+    // grudge, and a scheduled return through the same promoted-return machinery.
+    this._listen('entity:killed', (p) => this._promotedKilled(p));
+    this._listen('combat:kill', (p) => this._promotedKilled(p));
+    this._listen('pirateDisengage:triggered', (p) => this._pirateDisengageTriggered(p));
     this._listen('massline:tumbled', (p) => this._flung(p));
     this._recentFlung = new Map();
   },
@@ -146,7 +163,7 @@ export const aceMemory = {
   },
 
   deserialize(data) {
-    if (this.state) this.state.aceMemory = normalizeMemory(data);
+    if (this.state) this.state.aceMemory = normalizeMemory(data, this.state.entities);
   },
 
   update(dt, state) {
@@ -594,15 +611,252 @@ export const aceMemory = {
     forgetRecentFlung(this._recentFlung, victimId);
   },
 
+  // ── The Pirate Who Got Away ─────────────────────────────────────────────────────────
+  // pirateDisengage emits one trigger per breaking squad. Fled members are anonymous
+  // hostile hulls; the first eligible one is minted into a durable named pilot whose
+  // return rides the existing promoted-crew machinery. Surrendered members only take a
+  // name and a moral debt — the authored spared-return encounter owns their comeback.
+
+  _pirateDisengageTriggered(payload) {
+    if (!payload || !Array.isArray(payload.memberIds) || !payload.memberIds.length) return;
+    if (payload.outcome === 'fled') this._promoteFleeingPilot(payload);
+    else if (payload.outcome === 'surrendered') this._noteSparedPilot(payload);
+  },
+
+  _firstEligibleMember(payload) {
+    const state = this.state;
+    if (!state || !state.entities || typeof state.entities.get !== 'function') return null;
+    for (const memberId of payload.memberIds) {
+      const entity = memberId != null ? state.entities.get(memberId) : null;
+      if (!entity) continue;
+      // A hull already wearing a minted name is eligible for the repeat-escape ledger
+      // update — promotablePilot only gates the FIRST minting of an anonymous hostile.
+      if (entity.data && entity.data.promotedPilot) return entity;
+      if (promotablePilot(entity, state)) return entity;
+    }
+    return null;
+  },
+
+  _promoteFleeingPilot(payload) {
+    const state = this.state;
+    if (!state) return;
+    const entity = this._firstEligibleMember(payload);
+    if (!entity) return;
+    const memory = ensureMemory(state);
+    const stamped = entity.data && entity.data.promotedPilot;
+    const pilotId = stamped && stamped.id || promotedPilotIdFor(entity.id);
+    const now = nowOf(state, payload);
+    const seed = seedOf(state);
+    const existing = memory[pilotId];
+    if (existing && existing.promoted === true) {
+      // The same identity escaped again (entity ids recycle): the ledger counts the repeat
+      // escape, the return climbs a tier and re-arms. The defeated stay dead.
+      if (existing.defeated === true) return;
+      existing.fled = true;
+      existing.fledAt = now;
+      existing.expired = false;
+      existing.expiredAt = null;
+      // The previous return's execution fields are spent: a re-armed record is a live
+      // window again — it can spawn anew AND lapse again. A stale `returned` left set
+      // would make the expiry write-off unreachable for a pilot who came back then ran.
+      existing.returned = false;
+      existing.returnedAt = null;
+      existing.resolvedVia = null;
+      existing.returnRequestId = null;
+      existing.activeReturnIds = null;
+      existing.spawnedCount = 0;
+      existing.nextReturnAttemptAt = null;
+      existing.fleeCount = (existing.fleeCount | 0) + 1;
+      existing.encounterCount = (existing.encounterCount | 0) + 1;
+      existing.returnTier = Math.min(
+        PIRATE_PROMOTION_MAX_TIER,
+        Math.max(1, (existing.returnTier | 0) + 1),
+      );
+      existing.returnsBigger = true;
+      existing.returnScheduled = true;
+      existing.lastSeenAt = now;
+      existing.lastSectorId = sectorOf(state, payload);
+      Object.assign(existing, returnPlanForAce(promotedAceForRecord(existing), seed, now));
+      if (stanceForRecord(existing).stance === 'hunts') {
+        existing.returnAt = now + huntsReturnDelayS(existing.returnAfterS, existing.grudge | 0);
+      }
+      this._completeTransition('fled', promotedAceForRecord(existing), existing);
+      return;
+    }
+    evictOldestPromoted(memory, now);
+    const identity = promotedPilotIdentity(seed, entity.id);
+    const grudgeKey = grudgeKeyForReason(payload.reason);
+    const grudge = PILOT_GRUDGES[grudgeKey] || PILOT_GRUDGES.escaped;
+    const factionId = entity.factionId
+      || (entity.data && entity.data.factionId)
+      || 'faction_reach';
+    const archetype = promotedArchetypeFor(entity);
+    const pseudoAce = promotedAceShape(pilotId, identity, {
+      factionId,
+      returnArchetype: archetype,
+      escortArchetype: 'wasp_swarmer',
+      baseReturnLevel: promotedBaseLevelFor(entity),
+    });
+    const rec = recordFor(memory, pseudoAce);
+    rec.promoted = true;
+    rec.sourceEntityId = entity.id;
+    rec.promotedAt = now;
+    rec.factionId = factionId;
+    rec.returnArchetype = archetype;
+    rec.escortArchetype = pseudoAce.escortArchetype;
+    rec.baseReturnLevel = pseudoAce.baseReturnLevel;
+    rec.signatureBark = identity.signatureBark;
+    rec.epithet = identity.epithet;
+    rec.grudgeKey = grudgeKey;
+    rec.grudgeLabel = grudge.label;
+    rec.encountered = true;
+    rec.encounterCount = (rec.encounterCount | 0) + 1;
+    rec.fled = true;
+    rec.fledAt = now;
+    rec.fleeCount = (rec.fleeCount | 0) + 1;
+    rec.returnsBigger = true;
+    rec.returnScheduled = true;
+    rec.returnTier = Math.min(PIRATE_PROMOTION_MAX_TIER, Math.max(1, (rec.returnTier | 0) + 1));
+    rec.lastSeenAt = now;
+    rec.lastSectorId = sectorOf(state, payload);
+    // Grudge shaping: the moral-debt ledger rolls the ally/vengeful disposition, but the
+    // player's guns at the flee always override a friendly roll — a pilot who watched the
+    // wing die does not come back offering work.
+    const debt = rememberMoralDebt(state, {
+      id: pilotId,
+      name: identity.name,
+      cause: 'spared_escape',
+      factionId,
+      archetype,
+      escalationTier: rec.returnTier,
+      t: now,
+      source: 'pirateDisengage:promoted',
+    });
+    const vengeful = grudge.violent === true || (debt && debt.disposition === 'vengeful');
+    if (vengeful) rec.grudge = Math.max(rec.grudge | 0, ACE_GRUDGE_HUNT_AT);
+    else rec.loyalty = Math.max(rec.loyalty | 0, ACE_LOYALTY_WORK_AT);
+    Object.assign(rec, returnPlanForAce(pseudoAce, seed, now));
+    if (stanceForRecord(rec).stance === 'hunts') {
+      rec.returnAt = now + huntsReturnDelayS(rec.returnAfterS, rec.grudge | 0);
+    }
+    // The fleeing hull wears the minted name immediately — target panel, hail and the
+    // durable kill ledger all read a named contact, not an anonymous raider.
+    const data = entity.data || (entity.data = {});
+    const ai = data.ai || (data.ai = {});
+    ai.name = identity.name;
+    data.callsign = identity.name;
+    data.name = identity.name;
+    data.promotedPilot = { id: pilotId, name: identity.name, grudgeKey, promotedAt: now };
+    emit(this.bus, 'aceMemory:pilotPromoted', {
+      aceId: pilotId,
+      aceName: identity.name,
+      crew: identity.crew,
+      factionId,
+      entityId: entity.id,
+      squadId: payload.squadId || null,
+      reason: payload.reason || null,
+      grudgeKey,
+      grudgeLabel: grudge.label,
+      disposition: vengeful ? 'vengeful' : 'ally',
+      returnAt: rec.returnAt,
+      returnTier: rec.returnTier,
+      sectorId: rec.lastSectorId || null,
+      t: now,
+    });
+    this._completeTransition('fled', pseudoAce, rec);
+    emit(this.bus, 'toast', {
+      text: `${identity.name} got away — that transponder will come back around.`,
+      kind: 'info',
+      ttl: 4,
+    });
+  },
+
+  _noteSparedPilot(payload) {
+    const state = this.state;
+    if (!state) return;
+    const entity = this._firstEligibleMember(payload);
+    if (!entity) return;
+    const now = nowOf(state, payload);
+    const identity = promotedPilotIdentity(seedOf(state), entity.id);
+    const pilotId = promotedPilotIdFor(entity.id);
+    const data = entity.data || (entity.data = {});
+    const ai = data.ai || (data.ai = {});
+    if (!ai.name) ai.name = identity.name;
+    if (!data.callsign) data.callsign = identity.name;
+    if (!data.name) data.name = identity.name;
+    // A surrendered hull's return is owned by the spared-debt ledger (the moral-return
+    // encounter), not by the promoted-return queue — the minted name gives the debt a face.
+    if (!data.sparedPilot) {
+      data.sparedPilot = { id: pilotId, name: identity.name, sparedAt: now };
+    }
+    rememberMoralDebt(state, {
+      id: pilotId,
+      name: identity.name,
+      cause: 'spared',
+      factionId: entity.factionId || (data.factionId) || 'faction_reach',
+      archetype: promotedArchetypeFor(entity),
+      t: now,
+      source: 'pirateDisengage:spared',
+    });
+  },
+
+  /** Any kill of a promoted hull — player or world — settles the record. Despawn/sector
+   *  removal deliberately does NOT reach this: the pilot who got away is not dead. */
+  _promotedKilled(payload) {
+    if (!payload || !this.state) return;
+    const victimId = payload.id != null ? payload.id
+      : (payload.victimId != null ? payload.victimId : payload.targetId);
+    if (victimId == null) return;
+    const entities = this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities
+      : null;
+    let entity = entities ? entities.get(victimId) : null;
+    if (entity == null && entities) {
+      const numeric = Number(victimId);
+      if (Number.isFinite(numeric)) entity = entities.get(numeric) || null;
+    }
+    let pilotId = promotedPilotRefOf(entity);
+    if (!pilotId && entity == null) {
+      // Lookup race only: the hull is already gone from the entity map, so settle through
+      // the live-return binding — and only a binding that names the pilot hull itself while
+      // the record still owns it. A live entity whose data carries no pilot identity (a
+      // return escort, a recycled id's new occupant) fails closed here instead of settling.
+      const memory = ensureMemory(this.state);
+      const active = memory.activeReturns && memory.activeReturns[String(victimId)];
+      const rec = active && memory[active.aceId];
+      if (active && active.role === 'boss' && rec && rec.promoted === true
+          && rec.returnRequestId === active.requestId
+          && Array.isArray(rec.activeReturnIds)
+          && rec.activeReturnIds.some((id) => String(id) === String(victimId))) {
+        pilotId = rec.id;
+      }
+    }
+    if (pilotId) this._promotedDefeated(pilotId);
+  },
+
+  _promotedDefeated(pilotId) {
+    const state = this.state;
+    const memory = state && ensureMemory(state);
+    const rec = memory && memory[pilotId];
+    if (!rec || rec.promoted !== true || rec.defeated === true) return;
+    rec.defeated = true;
+    rec.defeatedAt = nowOf(state);
+    rec.returnScheduled = false;
+    rec.returnAt = null;
+    revealMoralDebt(state, pilotId);
+    this._completeTransition('defeated', promotedAceForRecord(rec), rec);
+  },
+
   _processReturns(state) {
     const memory = ensureMemory(state);
     const now = state.simTime || 0;
     for (const [id, rec] of Object.entries(memory)) {
       if (META_KEYS.has(id) || !rec || typeof rec !== 'object') continue;
+      if (rec.promoted === true && expirePromotedRecord(rec, now)) continue;
       if (rec.defeated === true || rec.returnScheduled !== true) continue;
       if (Number.isFinite(rec.nextReturnAttemptAt) && rec.nextReturnAttemptAt > now) continue;
       if (!Number.isFinite(rec.returnAt) || rec.returnAt > now) continue;
-      const ace = aceById(id);
+      const ace = aceById(id) || promotedAceForRecord(rec);
       if (!ace || ace.lifecycleOwner === 'nemesis') continue;
       this._spawnReturn(ace, rec, now);
     }
@@ -614,6 +868,23 @@ export const aceMemory = {
     const budget = this.helpers && this.helpers.spawnBudget;
     const stance = stanceForRecord(rec);
     rec.stance = stance.stance;
+    // A promoted pilot whose spared-debt already answered through the authored moral-return
+    // encounter does not spawn a second return — the ledger counts the debt as settled.
+    if (rec.promoted === true && moralDebtRevealed(this.state, rec.id)) {
+      rec.returnScheduled = false;
+      rec.returned = true;
+      rec.returnedAt = now;
+      rec.resolvedVia = 'moralReturn';
+      return;
+    }
+    // The spared-return encounter (h7) spawns this pilot's crew the moment it opens, while
+    // the moral debt is still pending — a promoted return firing inside that choice window
+    // would field two crews for one pilot. Defer the spawn until the window resolves: a
+    // reveal then settles this record via moralReturn; an abort lets the return fire.
+    if (rec.promoted === true && moralDebtEncounterLive(this.state, rec.id)) {
+      rec.nextReturnAttemptAt = now + 10;
+      return;
+    }
     if (stance.stance === 'offers_work') {
       this._spawnWorkOffer(ace, rec, stance, now);
       return;
@@ -656,7 +927,7 @@ export const aceMemory = {
       const entity = spawnEntity(spec);
       if (entity && entity.id != null) {
         spawnedIds.push(entity.id);
-        rememberActiveReturn(this.state, entity.id, ace.id, requestId);
+        rememberActiveReturn(this.state, entity.id, ace.id, requestId, ship.role);
       }
     }
     if (budget && typeof budget.releaseSome === 'function' && spawnedIds.length < grant) {
@@ -676,6 +947,7 @@ export const aceMemory = {
     rec.levelBand = bands.current.slice();
     rec.previousLevelBand = bands.previous.slice();
     rec.spawnedCount = spawnedIds.length;
+    if (rec.promoted === true) revealMoralDebt(this.state, rec.id);
     this._speakReturnTaunt(ace, rec, requestId, stance);
     emit(this.bus, 'aceMemory:returnSpawned', {
       aceId: ace.id,
@@ -697,12 +969,17 @@ export const aceMemory = {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     const budget = this.helpers && this.helpers.spawnBudget;
     const requestId = `aceWorkOffer:${ace.id}:${rec.returnSeed || 0}`;
+    if (typeof spawnEntity !== 'function') {
+      // Same contract as the hostile path: no spawn helper means the return is still owed —
+      // stay scheduled and retry instead of resolving the record with no crew on the field.
+      rec.nextReturnAttemptAt = now + 10;
+      return;
+    }
     rec.returnScheduled = false;
     rec.returned = true;
     rec.returnedAt = now;
     rec.returnRequestId = requestId;
     rec.stance = 'offers_work';
-    if (typeof spawnEntity !== 'function') return;
     const crew = returnCrewForAce(ace, Math.max(1, rec.returnTier || 1), null);
     const front = activeFrontForFaction(this.state && this.state.conflicts, ace.factionId);
     let grant = crew.length;
@@ -711,6 +988,8 @@ export const aceMemory = {
       if (grant <= 0) {
         rec.returnScheduled = true;
         rec.returned = false;
+        rec.returnedAt = null;
+        rec.returnRequestId = null;
         rec.stance = null;
         rec.nextReturnAttemptAt = now + 10;
         return;
@@ -752,10 +1031,16 @@ export const aceMemory = {
         workOffer: true,
         frontSectorId: front ? front.sectorId : null,
       };
+      if (rec.promoted === true) {
+        spec.data.aceMemory.promoted = true;
+        spec.data.aceMemory.grudgeKey = rec.grudgeKey || null;
+        spec.data.callsign = ace.name;
+        if (ship.role === 'boss') spec.data.name = ace.name;
+      }
       const entity = spawnEntity(spec);
       if (entity && entity.id != null) {
         spawnedIds.push(entity.id);
-        rememberActiveReturn(this.state, entity.id, ace.id, requestId);
+        rememberActiveReturn(this.state, entity.id, ace.id, requestId, ship.role);
       }
     }
     if (budget && typeof budget.releaseSome === 'function' && spawnedIds.length < grant) {
@@ -765,12 +1050,18 @@ export const aceMemory = {
       if (budget && typeof budget.release === 'function') budget.release(requestId);
       rec.returnScheduled = true;
       rec.returned = false;
+      rec.returnedAt = null;
+      rec.returnRequestId = null;
       rec.stance = null;
       rec.nextReturnAttemptAt = now + 10;
       return;
     }
     rec.activeReturnIds = spawnedIds.slice();
-    const text = rememberedBarkFor(ace, rec, stance, hash32(seedOf(this.state), ace.id, requestId));
+    if (rec.promoted === true) revealMoralDebt(this.state, rec.id);
+    const text = rec.promoted === true
+      ? promotedReturnLine(ace, rec, hash32(seedOf(this.state), ace.id, requestId))
+        || rememberedBarkFor(ace, rec, stance, hash32(seedOf(this.state), ace.id, requestId))
+      : rememberedBarkFor(ace, rec, stance, hash32(seedOf(this.state), ace.id, requestId));
     if (text) this._speakAceLine(ace, text, 'work-offer', `aceMemory:${ace.id}:work-offer`);
     emit(this.bus, 'aceMemory:workOffered', {
       aceId: ace.id,
@@ -842,6 +1133,15 @@ export const aceMemory = {
       style: loadout.style || null,
     };
     if (culture) returnTag.cultureId = culture.id;
+    if (rec.promoted === true) {
+      returnTag.grudgeKey = rec.grudgeKey || null;
+      returnTag.grudgeLabel = rec.grudgeLabel || null;
+      returnTag.sourceEntityId = rec.sourceEntityId != null ? rec.sourceEntityId : null;
+      // Scanner, hail and target-panel surfaces read data.callsign/data.name before ai.name;
+      // the promoted pilot's minted identity should be visible on every one of them.
+      spec.data.callsign = ace.name;
+      if (ship.role === 'boss') spec.data.name = ace.name;
+    }
     spec.data.aceMemory = returnTag;
     return spec;
   },
@@ -856,6 +1156,15 @@ export const aceMemory = {
       rec.styleTauntSpoken = true;
       this._speakStyleTaunt(ace, style, requestId);
       return;
+    }
+    // The promoted "you again" beat: the returning pilot names the debt it actually carries
+    // (fled your fire, watched you kill the wing, lost the cargo), not a generic taunt.
+    if (rec.promoted === true) {
+      const line = promotedReturnLine(ace, rec, hash32(seedOf(this.state), ace.id, requestId));
+      if (line) {
+        this._speakAceLine(ace, line, 'return-promoted', `aceMemory:${ace.id}:return-taunt`);
+        return;
+      }
     }
     const remembered = rememberedBarkFor(ace, rec, stance || stanceForRecord(rec), hash32(seedOf(this.state), ace.id, requestId));
     if (remembered) {
@@ -1150,6 +1459,162 @@ function resolveAceFromEntity(entity) {
     || aceFromText(data.callsign || data.name || ai.name || '');
 }
 
+// ── Promoted-pilot helpers ────────────────────────────────────────────────────────────
+// A promoted record stores every ace-shaped field it needs (name, crew, faction, return
+// hulls, level band) so the synthesized ace below survives normalizeMemory and save/load
+// unchanged — the pseudo-ace is rebuilt from the record, never from entity state.
+
+function promotedAceShape(id, identity, opts = {}) {
+  return {
+    id,
+    name: identity.name,
+    crew: identity.crew || 'Free Company',
+    factionId: opts.factionId || 'faction_reach',
+    gimmickTag: opts.gimmickTag || 'grudge-pilot',
+    returnArchetype: opts.returnArchetype || 'corsair_raider',
+    escortArchetype: opts.escortArchetype || 'wasp_swarmer',
+    baseReturnLevel: opts.baseReturnLevel || 3,
+    signatureBark: identity.signatureBark || `${identity.name}: you should have finished me.`,
+    promoted: true,
+  };
+}
+
+/** Rebuild the ace-shaped driver for a stored promoted record (returns null for aces). */
+function promotedAceForRecord(rec) {
+  if (!rec || rec.promoted !== true) return null;
+  return promotedAceShape(rec.id, {
+    name: rec.name,
+    crew: rec.crew,
+    signatureBark: rec.signatureBark,
+  }, {
+    factionId: rec.factionId,
+    gimmickTag: rec.gimmickTag,
+    returnArchetype: rec.returnArchetype,
+    escortArchetype: rec.escortArchetype,
+    baseReturnLevel: rec.baseReturnLevel,
+  });
+}
+
+/** Eligibility for promotion: a live anonymous team-1 hostile pirate-style ship — never
+ *  the player side, never a civilian hull, never anything scripted, named, or authored.
+ *  Mirrors pirateDisengage's own combatant predicates so the two layers agree on what a
+ *  generic fleeing pirate is. */
+function promotablePilot(entity, state) {
+  if (!entity || entity.alive === false || entity.type !== 'ship') return false;
+  // Strictly team 1: the player's own hull, escorts (team 0) and civilian/traffic hulls
+  // (team 2) are never promoted, whatever else their data says.
+  if (entity.id === state.playerId || entity.team !== 1) return false;
+  const data = entity.data || {};
+  const ai = data.ai || {};
+  if (data.isBoss === true || data.encounterBoss === true || data.missionBoss === true
+    || data.aceMemory || data.promotedPilot || data.storyTargetId
+    || data.missionTag || data.missionId || data.trafficRole
+    || ai.isBoss === true || ai.fanatic === true || ai.ace === true
+    || ai.moraleImmune === true || ai.surrenderImmune === true || ai.lawful === true) {
+    return false;
+  }
+  // Already carries an identity of any kind — not anonymous.
+  if (data.name || data.callsign || data.aceId || ai.name || ai.aceId) return false;
+  if (resolveAceFromEntity(entity)) return false;
+  const authored = [
+    ai.archetype, ai.aiArchetype, ai.role, ai.preferredRole, ai.encounterRole,
+    ai.spawnContext, ai.encounterKind, ai.engagementTrigger,
+    data.aiArchetype, data.role, data.storyTargetRole, data.encounterKind,
+  ].filter(Boolean).join(' ').toLowerCase();
+  if (/(^|[\s_-])(boss|miniboss|fanatic)([\s_-]|$)/.test(authored)
+    || authored.includes('named_hunter') || authored.includes('ace_return')
+    || authored.includes('named_ace') || authored.includes('mission')) return false;
+  // Pirate-style hulls only: a doctrine-fitted pirate, or a hostile whose archetype reads
+  // pirate/raider/scavenger — the same predicate pirateDisengage uses to count a squad as
+  // combatants. Vael wardens and other non-pirate hostiles stay unpromoted.
+  if (pirateDoctrineForEntity(entity)) return true;
+  const words = `${ai.doctrine || ''} ${ai.archetype || ''} ${ai.role || ''} ${data.role || ''} ${data.encounterKind || ''}`
+    .toLowerCase();
+  return words.includes('pirate') || words.includes('raider') || words.includes('scavenger');
+}
+
+/** The promoted pilot returns flying the hull class it fled in — same archetype, new tier. */
+function promotedArchetypeFor(entity) {
+  const data = entity && entity.data || {};
+  return String(data.enemyTypeId || data.lootTableId || 'corsair_raider');
+}
+
+function promotedBaseLevelFor(entity) {
+  const level = entity && entity.data && Number.isFinite(entity.data.level)
+    ? entity.data.level | 0
+    : 0;
+  return Math.max(1, Math.min(6, level || 3));
+}
+
+/** The pilot's id a kill receipt resolves to — the fled hull's stamp or the return's own
+ *  pilot hull. Every return-crew ship wears the same aceMemory tag for identification, so
+ *  only the boss role counts: killing an escort must not settle the captain's record. */
+function promotedPilotRefOf(entity) {
+  const data = entity && entity.data;
+  if (!data) return null;
+  if (data.promotedPilot && data.promotedPilot.id) return data.promotedPilot.id;
+  const tag = data.aceMemory;
+  if (tag && tag.promoted === true && tag.role === 'boss' && tag.aceId) return tag.aceId;
+  return null;
+}
+
+/** True when the spared-debt ledger already settled this pilot's return elsewhere. */
+function moralDebtRevealed(state, pilotId) {
+  const memory = state && state.story && state.story.moralMemory;
+  const debt = memory && memory.debts && memory.debts[pilotId];
+  return !!(debt && debt.status === 'revealed');
+}
+
+/** True while a live encounter is presenting this pilot's moral debt — the h7 spared-return
+ *  binds the debt into its live vars at fire time (e1EncounterRuntime), ahead of the choice
+ *  that reveals it, so the pending window is visible here before the ledger flips. */
+function moralDebtEncounterLive(state, pilotId) {
+  const live = state && state.encounterDirector && state.encounterDirector.live;
+  if (!live || typeof live !== 'object') return false;
+  for (const enc of Object.values(live)) {
+    const debt = enc && enc.vars && enc.vars.debt;
+    if (debt && debt.id === pilotId) return true;
+  }
+  return false;
+}
+
+/** A promoted record whose return window never fired within the expiry window is written
+ *  off — stale records cannot accumulate forever on a long save. Returns true when the
+ *  record was expired this pass (and so must not spawn). */
+function expirePromotedRecord(rec, now) {
+  if (rec.expired === true || rec.defeated === true) return rec.expired === true;
+  // A settled return is done with the clock. A re-armed one is a live window that can
+  // lapse again — returnScheduled distinguishes it, which also covers old saves where a
+  // re-fled pilot still carries the stale `returned` flag.
+  if (rec.returned === true && rec.returnScheduled !== true) return false;
+  if (!Number.isFinite(rec.fledAt) || !Number.isFinite(now)) return false;
+  if (now - rec.fledAt <= PROMOTED_PILOT_EXPIRY_S) return false;
+  rec.expired = true;
+  rec.expiredAt = now;
+  rec.returnScheduled = false;
+  rec.returnAt = null;
+  return true;
+}
+
+/** Bound live promoted records per save: at the cap, the oldest live record is written
+ *  off (deterministically — earliest flee, id order on ties) before the new one lands. */
+function evictOldestPromoted(memory, now) {
+  const live = [];
+  for (const [id, rec] of Object.entries(memory)) {
+    if (META_KEYS.has(id) || !rec || rec.promoted !== true) continue;
+    if (rec.defeated === true || rec.expired === true) continue;
+    live.push(rec);
+  }
+  while (live.length >= PROMOTED_PILOT_MAX) {
+    live.sort((a, b) => (a.fledAt || 0) - (b.fledAt || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    const evicted = live.shift();
+    evicted.expired = true;
+    evicted.expiredAt = now;
+    evicted.returnScheduled = false;
+    evicted.returnAt = null;
+  }
+}
+
 // Memory snapshots already healed by normalizeMemory, keyed by identity. normalizeMemory clones
 // every record, which detaches any record reference a caller is still holding (a spawn mid-flight
 // writing returnScheduled=false to a dead clone re-armed the return forever) — so the snapshot is
@@ -1174,16 +1639,15 @@ function ensureMemory(state) {
   if (existing && normalizedMemories.has(existing) && existing.schemaVersion === ACE_MEMORY_VERSION) {
     return existing;
   }
-  state.aceMemory = normalizeMemory(existing);
+  state.aceMemory = normalizeMemory(existing, state.entities);
   normalizedMemories.add(state.aceMemory);
   return state.aceMemory;
 }
 
-function normalizeMemory(input) {
+function normalizeMemory(input, entities = null) {
   const out = freshMemory();
   if (!input || typeof input !== 'object') return out;
   out.news = clonePlain(input.news || {});
-  out.activeReturns = clonePlain(input.activeReturns || {});
   out.cultureIntros = clonePlain(input.cultureIntros || {});
   out.planetChallenges = clonePlain(input.planetChallenges || {});
   out.playerStyle = normalizePlayerStyle(input.playerStyle);
@@ -1194,6 +1658,40 @@ function normalizeMemory(input) {
     if (META_KEYS.has(id) || id === 'aces') continue;
     if (!rec || typeof rec !== 'object') continue;
     out[id] = normalizeRecord(id, rec);
+  }
+  out.activeReturns = normalizeActiveReturns(input.activeReturns, out, entities);
+  return out;
+}
+
+/** Entity-id → pilot bindings describe live hulls only. Across a save/load the allocator
+ *  recycles ids (cleared entities reissue from 1), so a binding survives normalize only while
+ *  the record still owns that hull AND the live entity map confirms it still carries the
+ *  pilot's tag — a stale row must never rebind an unrelated ship to a pilot's death. */
+function normalizeActiveReturns(input, memory, entities) {
+  const out = {};
+  if (!input || typeof input !== 'object' || !entities || typeof entities.get !== 'function') {
+    return out;
+  }
+  for (const [key, active] of Object.entries(input)) {
+    if (!active || typeof active !== 'object' || !active.aceId) continue;
+    const rec = memory[active.aceId];
+    if (!rec || rec.returnRequestId !== active.requestId) continue;
+    if (!Array.isArray(rec.activeReturnIds)
+        || !rec.activeReturnIds.some((id) => String(id) === key)) continue;
+    const entityId = Number(key);
+    if (!Number.isFinite(entityId)) continue;
+    const tag = entities.get(entityId)
+      && entities.get(entityId).data
+      && entities.get(entityId).data.aceMemory;
+    if (!tag || tag.aceId !== active.aceId || tag.requestId !== active.requestId) continue;
+    out[key] = { aceId: active.aceId, requestId: active.requestId, role: active.role || null };
+  }
+  // Records trim to hulls that are still bound — a restored record must not claim crew ids
+  // whose bindings the load already invalidated.
+  for (const [id, rec] of Object.entries(memory)) {
+    if (META_KEYS.has(id) || !rec || typeof rec !== 'object') continue;
+    if (!Array.isArray(rec.activeReturnIds)) continue;
+    rec.activeReturnIds = rec.activeReturnIds.filter((entityId) => out[String(entityId)] != null);
   }
   return out;
 }
@@ -1294,12 +1792,12 @@ function returnPosition(state, ace, rec, index) {
   };
 }
 
-function rememberActiveReturn(state, entityId, aceId, requestId) {
+function rememberActiveReturn(state, entityId, aceId, requestId, role = null) {
   const memory = state && state.aceMemory && typeof state.aceMemory === 'object'
     ? state.aceMemory
     : ensureMemory(state);
   if (!memory.activeReturns || typeof memory.activeReturns !== 'object') memory.activeReturns = {};
-  memory.activeReturns[String(entityId)] = { aceId, requestId };
+  memory.activeReturns[String(entityId)] = { aceId, requestId, role };
 }
 
 function emit(bus, evt, payload) {

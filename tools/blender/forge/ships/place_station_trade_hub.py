@@ -272,40 +272,40 @@ def cradle(s, n, length, belly):
 
 def build_drum(s):
     # keel below the apron, the concourse drum, the upper hub and the harbour-master's crown
-    F.cylinder(s, 'Keel', (CX, 0, -4.2), (CX, 0, APRON_Z0), 10.5, 13.5, material='paint.graphite', segments=48,
+    F.cylinder(s, 'Keel', (CX, 0, -4.2), (CX, 0, APRON_Z0), 10.5, 13.5, material='paint.graphite', segments=44,
                bevel=0.0)
     F.band(s, 'Keel', (CX, 0, 1.2), (0, 0, 1), 1.0, 'paint2', inset=0.06, depth=0.18)
-    F.cylinder(s, 'KeelFoot', (CX, 0, -4.2), (CX, 0, -5.4), 7.5, 5.8, material='gunmetal', segments=32,
+    F.cylinder(s, 'KeelFoot', (CX, 0, -4.2), (CX, 0, -5.4), 7.5, 5.8, material='gunmetal', segments=28,
                cap_material='dark', bevel=0.0)
-    F.cylinder(s, 'Concourse', (CX, 0, APRON_Z0), (CX, 0, 20.0), 17.0, material='paint', segments=64, bevel=0.0)
+    F.cylinder(s, 'Concourse', (CX, 0, APRON_Z0), (CX, 0, 20.0), 17.0, material='paint', segments=52, bevel=0.0)
     F.band(s, 'Concourse', (CX, 0, 13.6), (0, 0, 1), 3.6, 'paint.graphite', inset=0.08, depth=-0.2)
     F.band(s, 'Concourse', (CX, 0, 17.9), (0, 0, 1), 0.9, 'paint2', inset=0.06, depth=0.18)
     F.band(s, 'Concourse', (CX, 0, 10.4), (0, 0, 1), 0.6, 'paint2', inset=0.05, depth=0.12)
     # shoulder deck round the upper hub (the visible collar in plan)
-    F.cylinder(s, 'Shoulder', (CX, 0, 20.0), (CX, 0, 20.7), 17.6, 17.2, material='paint.graphite', segments=64,
+    F.cylinder(s, 'Shoulder', (CX, 0, 20.0), (CX, 0, 20.7), 17.6, 17.2, material='paint.graphite', segments=52,
                bevel=0.0)
-    F.cylinder(s, 'Upper', (CX, 0, 20.7), (CX, 0, 27.4), 13.2, 12.4, material='paint', segments=64, bevel=0.0)
+    F.cylinder(s, 'Upper', (CX, 0, 20.7), (CX, 0, 27.4), 13.2, 12.4, material='paint', segments=52, bevel=0.0)
     F.band(s, 'Upper', (CX, 0, 24.6), (0, 0, 1), 1.0, 'paint2', inset=0.05, depth=0.14)
-    F.cylinder(s, 'Crown', (CX, 0, 27.4), (CX, 0, ROOF_Z1), 13.6, 13.0, material='paint.graphite', segments=64,
+    F.cylinder(s, 'Crown', (CX, 0, 27.4), (CX, 0, ROOF_Z1), 13.6, 13.0, material='paint.graphite', segments=52,
                bevel=0.0)
-    F.ring(s, 'CrownInlay', (CX, 0, ROOF_Z1), 10.4, 0.35, axis=(0, 0, 1), material='paint2', segments=64, sides=6)
+    F.ring(s, 'CrownInlay', (CX, 0, ROOF_Z1), 10.4, 0.35, axis=(0, 0, 1), material='paint2', segments=52, sides=6)
     # harbour-master's dome: a glazed control drum under an ivory cap, mast and dish
-    F.cylinder(s, 'Tower', (CX, 0, ROOF_Z1), (CX, 0, 31.2), 6.2, 5.8, material='paint', segments=40, bevel=0.0)
+    F.cylinder(s, 'Tower', (CX, 0, ROOF_Z1), (CX, 0, 31.2), 6.2, 5.8, material='paint', segments=36, bevel=0.0)
     F.band(s, 'Tower', (CX, 0, 30.0), (0, 0, 1), 1.3, 'glass', inset=0.04, depth=-0.08)
-    F.cylinder(s, 'TowerRoof', (CX, 0, 31.2), (CX, 0, 31.8), 6.6, 6.2, material='paint.graphite', segments=40,
+    F.cylinder(s, 'TowerRoof', (CX, 0, 31.2), (CX, 0, 31.8), 6.6, 6.2, material='paint.graphite', segments=36,
                bevel=0.0)
     # the lighthouse: the harbour's landmark, a tapered ivory spire with a lit lantern
-    F.cylinder(s, 'Spire', (CX, 0, 31.8), (CX, 0, 40.2), 3.3, 2.5, material='paint', segments=28, bevel=0.0)
+    F.cylinder(s, 'Spire', (CX, 0, 31.8), (CX, 0, 40.2), 3.3, 2.5, material='paint', segments=24, bevel=0.0)
     for zb in (34.0, 37.4):
         F.band(s, 'Spire', (CX, 0, zb), (0, 0, 1), 0.8, 'paint2', inset=0.04, depth=0.12)
-    F.cylinder(s, 'Gallery', (CX, 0, 40.2), (CX, 0, 40.8), 3.9, 3.9, material='paint.graphite', segments=28,
+    F.cylinder(s, 'Gallery', (CX, 0, 40.2), (CX, 0, 40.8), 3.9, 3.9, material='paint.graphite', segments=24,
                bevel=0.0)
-    F.ring(s, 'GalleryRail', (CX, 0, 41.5), 3.7, 0.08, axis=(0, 0, 1), material='gunmetal', segments=28, sides=4)
+    F.ring(s, 'GalleryRail', (CX, 0, 41.5), 3.7, 0.08, axis=(0, 0, 1), material='gunmetal', segments=24, sides=4)
     F.cylinder(s, 'Lantern', (CX, 0, 40.8), (CX, 0, 43.0), 2.3, material='glow_warm', segments=16, bevel=0.0)
     lmull = [((CX + 2.35 * math.cos(math.radians(45 * k)), 2.35 * math.sin(math.radians(45 * k)), 41.9),
               (0.28, 0.28, 2.2), 0.0) for k in range(8)]
     cluster(s, 'LanternMullion', lmull, 'paint.graphite')
-    F.cylinder(s, 'LanternCap', (CX, 0, 43.0), (CX, 0, 44.6), 2.9, 0.5, material='paint', segments=24, bevel=0.0)
+    F.cylinder(s, 'LanternCap', (CX, 0, 43.0), (CX, 0, 44.6), 2.9, 0.5, material='paint', segments=20, bevel=0.0)
     F.cylinder(s, 'Mast', (CX, 0, 44.6), (CX, 0, 48.6), 0.3, 0.16, material='gunmetal', segments=8, bevel=0.0)
     F.ring(s, 'MastRing', (CX, 0, 46.4), 0.8, 0.1, axis=(0, 0, 1), material='gunmetal', segments=12, sides=4)
     F.cylinder(s, 'DishMast', (CX - 8.5, 5.5, ROOF_Z1), (CX - 8.5, 5.5, 31.0), 0.4, material='gunmetal', segments=10,
@@ -339,7 +339,7 @@ def build_drum_details(s):
     tower = radial_windows(6.1, 29.0, 24, (0.8, 0.5))
     cluster(s, 'TowerWin', tower, 'glow_warm')
     # a cyan market halo round the crown and cyan tech on the tower
-    F.ring(s, 'Halo', (CX, 0, ROOF_Z1 + 0.1), 12.9, 0.16, axis=(0, 0, 1), material='glow_cyan', segments=64, sides=6)
+    F.ring(s, 'Halo', (CX, 0, ROOF_Z1 + 0.1), 12.9, 0.16, axis=(0, 0, 1), material='glow_cyan', segments=52, sides=6)
     F.light(s, 'MastTip', (CX, 0, 48.7), 'glow_red', size=0.5)
     F.beacon(s, 'TowerBeacon', (CX + 4.6, 2.4, 31.8), 'glow_amber', size=0.7)
     for k in range(4):
@@ -368,16 +368,16 @@ def build_drum_details(s):
 
 def build_apron(s):
     # the harbour floor: a charcoal apron annulus with an underframe
-    ring_body(s, 'Apron', APRON_R0, APRON_R1, APRON_Z0, APRON_Z1, 0, 360, 96, top='paint.apron',
+    ring_body(s, 'Apron', APRON_R0, APRON_R1, APRON_Z0, APRON_Z1, 0, 360, 80, top='paint.apron',
               outer='paint.graphite', inner='paint.graphite', bottom='gunmetal', bevel=0.0)
-    F.ring(s, 'ApronEdge', (CX, 0, APRON_Z1), APRON_R1 - 0.2, 0.22, axis=(0, 0, 1), material='hazard', segments=96,
+    F.ring(s, 'ApronEdge', (CX, 0, APRON_Z1), APRON_R1 - 0.2, 0.22, axis=(0, 0, 1), material='hazard', segments=80,
            sides=6)
     ribs = []
     for k in range(16):
         a = 11.25 + 22.5 * k
         ribs.append((polar(APRON_R0 - 1.0, a, APRON_Z0 - 0.5), polar(APRON_R1 - 0.6, a, APRON_Z0 - 0.5)))
     beams(s, 'ApronRibs', ribs, 0.9, 'gunmetal')
-    F.ring(s, 'ApronHoop', (CX, 0, APRON_Z0 - 0.6), 30.0, 0.45, axis=(0, 0, 1), material='gunmetal', segments=64,
+    F.ring(s, 'ApronHoop', (CX, 0, APRON_Z0 - 0.6), 30.0, 0.45, axis=(0, 0, 1), material='gunmetal', segments=56,
            sides=6)
 
 
@@ -521,7 +521,7 @@ def build_yards(s):
 
 def build_ring(s):
     a0, a1 = MOUTH, 360.0 - MOUTH
-    ring_body(s, 'Ring', RING_R0, RING_R1, RING_Z0, RING_Z1, a0, a1, 96, top='paint.graphite', outer='paint',
+    ring_body(s, 'Ring', RING_R0, RING_R1, RING_Z0, RING_Z1, a0, a1, 88, top='paint.graphite', outer='paint',
               inner='paint', bottom='paint.graphite', cap='paint.graphite', bevel=0.0)
     F.band(s, 'Ring', (CX, 0, 21.3), (0, 0, 1), 1.1, 'paint2', inset=0.06, depth=0.18)
     # market hall roofs: ivory sectors with charcoal gaps between them (the ring's rhythm in plan)
@@ -541,7 +541,7 @@ def build_ring(s):
         F.band(s, f'Hall{k}', polar(45.0, (b0 + b1) / 2, 0), (-math.sin(am), math.cos(am), 0), 1.1, 'glass',
                facing=(0, 0, 1), min_facing=0.6)
     # teal inlay walk round the outer edge, amber-edged
-    ring_body(s, 'TealWalk', RING_R1 - 3.0, RING_R1 - 1.2, RING_Z1, RING_Z1 + 0.2, a0 + 0.6, a1 - 0.6, 96,
+    ring_body(s, 'TealWalk', RING_R1 - 3.0, RING_R1 - 1.2, RING_Z1, RING_Z1 + 0.2, a0 + 0.6, a1 - 0.6, 80,
               top='paint2', outer='paint2', inner='paint2', bottom='paint2', cap='paint2', bevel=0.0)
     # fender ribs on the outer wall (the SCN cladding band closes on them)
     fend = []
@@ -578,6 +578,8 @@ def build_ring(s):
                    material='gunmetal', segments=10, bevel=0.0)
         F.light(s, f'HeadLamp{side:+d}', (tip[0], tip[1], ROOF_Z1 + 1.4), lamp, size=1.1)
         F.light(s, f'HeadLampLow{side:+d}', polar(RING_R1 + 1.0, a, 12.0), lamp, size=0.9)
+        # no tall gate pylons: the MTS crown5 sits over the mouth (x 51.4+, z 26.7+) and
+        # free pod03 grazes the rim at ~24 deg — keep the mouth rim clear for overlays
     # the gate bridge: an open lattice span across the mouth at the deck plane
     for dz, rr in ((0.0, RING_R0 + 3.0), (0.0, RING_R1 - 3.0)):
         pts = [polar(rr, -(MOUTH + 1.5) + 2 * (MOUTH + 1.5) * i / 6, 25.8) for i in range(7)]
@@ -590,6 +592,11 @@ def build_ring(s):
     beams(s, 'GateTies', gate_ties, 0.6, 'gunmetal')
     sector_plate(s, 'GateWalk', RING_R0 + 7.0, RING_R0 + 10.0, -(MOUTH + 1.5), MOUTH + 1.5, 27.0, 0.4,
                  material='paint2', steps=8, chamfer=0.08, bevel=0.0)
+    # hazard threshold strips on the harbour floor along both mouth edges (the doorway line)
+    for side in (1, -1):
+        a = side * (MOUTH + 0.2)
+        sector_plate(s, f'MouthEdge{side:+d}', APRON_R1 + 0.4, RING_R1 + 0.4, a - 0.45, a + 0.45,
+                     APRON_Z1 + 0.02, 0.16, material='hazard', steps=1, chamfer=0.0, bevel=0.0)
 
 
 def build_ring_details(s):
@@ -597,12 +604,12 @@ def build_ring_details(s):
     skip_heads = lambda a: in_mouth(a) or abs(((a + 180) % 360) - 180) < MOUTH + 7.5  # noqa: E731
     out = []
     for z in (19.9, 23.2, 25.3):
-        out += radial_windows(RING_R1, z, 140, (1.4, 0.5), skip=skip_heads)
+        out += radial_windows(RING_R1, z, 132, (1.4, 0.5), skip=skip_heads)
     # the teal band row stays dark on z 21.3, the 22.7 row is a thin strip
     cluster(s, 'RingWinOut', out, 'glow_warm')
     inn = []
     for z in (21.2, 24.6):
-        inn += radial_windows(RING_R0, z, 110, (1.3, 0.55), skip=lambda a: in_mouth(a) or near_spoke(a, 5.0),
+        inn += radial_windows(RING_R0, z, 104, (1.3, 0.55), skip=lambda a: in_mouth(a) or near_spoke(a, 5.0),
                               depth=0.16)
     for i, it in enumerate(inn):
         c, sz, rz = it
@@ -727,11 +734,11 @@ def build_pier(s):
         beam(s, f'PierHanger{x:.0f}', (x, 0, DOCK_Z - 2.6), (x, 0, DOCK_Z - 3.8), 0.7, material='gunmetal')
     F.box(s, 'PierRoot', (CX + 17.2, 0, DOCK_Z), (2.6, 7.0, 6.0), material='paint.graphite', bevel=0.2)
     # docking collar and port at the end (faces +X)
-    F.cylinder(s, 'Collar', (x1, 0, DOCK_Z), (x1 + 3.0, 0, DOCK_Z), 3.6, 3.3, material='paint2', segments=40, bevel=0.12)
-    F.band(s, 'Collar', (x1 + 1.3, 0, 0), (1, 0, 0), 0.6, 'hazard')
-    F.cylinder(s, 'Port', (x1 + 2.9, 0, DOCK_Z), (x1 + 3.5, 0, DOCK_Z), 2.5, material='gunmetal', segments=32,
+    F.cylinder(s, 'Collar', (x1, 0, DOCK_Z), (x1 + 3.0, 0, DOCK_Z), 4.4, 3.9, material='paint2', segments=36, bevel=0.12)
+    F.band(s, 'Collar', (x1 + 1.3, 0, 0), (1, 0, 0), 0.8, 'hazard')
+    F.cylinder(s, 'Port', (x1 + 2.9, 0, DOCK_Z), (x1 + 3.5, 0, DOCK_Z), 3.0, material='gunmetal', segments=28,
                cap_material='dark', bevel=0.04)
-    F.ring(s, 'PortRing', (x1 + 3.2, 0, DOCK_Z), 2.8, 0.25, axis=(1, 0, 0), material='hazard', segments=32, sides=6)
+    F.ring(s, 'PortRing', (x1 + 3.2, 0, DOCK_Z), 3.4, 0.3, axis=(1, 0, 0), material='hazard', segments=28, sides=6)
     # lead-in outriggers: cross arms either side of the pier carrying the approach lights
     arms = []
     for x in (44.0, 48.5, 53.0, 57.5):
@@ -783,8 +790,15 @@ def build_terminal(s):
     F.panel(s, 'Terminal', (x0 + 5.0, 0.0), (6.0, 2 * hy - 6.0), 'paint.graphite', inset=0.08, depth=0.12)
     F.box(s, 'TerminalKeel', ((x0 + x1) / 2 + 1.0, 0, z0 - 1.0), (x1 - x0 - 4.0, 2 * hy - 8.0, 2.0),
           material='paint.graphite', bevel=0.1)
-    F.box(s, 'TerminalFoot', (CX - APRON_R1 - 0.5, 0, (APRON_Z0 + z0) / 2 + 0.2), (7.0, 16.0, z0 - APRON_Z0 + 0.8),
+    F.box(s, 'TerminalFoot', (CX - APRON_R1 - 0.5, 0, (APRON_Z0 + z0) / 2 + 0.2), (7.0, 22.0, z0 - APRON_Z0 + 0.8),
           material='paint.graphite', bevel=0.1)
+    # the stern sits past the apron rim: two splayed struts tie its inner-bottom corners back to
+    # the ring columns so it reads anchored, not floating off the quay edge
+    for e in (-1, 1):
+        beam(s, f'TermStrut{e:+d}', (x1 + 0.5, e * 20.0, z0 + 0.4), (-35.0, e * 10.5, APRON_Z1 + 0.4),
+             1.6, material='gunmetal')
+        beam(s, f'TermStrutB{e:+d}', (x1 + 0.5, e * 20.0, z0 + 0.4), (-40.0, e * 12.0, RING_Z0 - 0.5),
+             1.2, material='paint.graphite')
     # three lit freight bays on the outer face with hazard jambs
     for k, y in enumerate((-19.0, 0.0, 19.0)):
         F.box(s, f'Bay{k}', (x0 - 0.05, y, 17.6), (0.5, 12.0, 7.0), material='dark', bevel=0.0)

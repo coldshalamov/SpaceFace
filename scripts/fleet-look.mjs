@@ -87,7 +87,8 @@ const server = await startServer();
 const browser = await chromium.launch({
   headless: true,
   executablePath: process.env.SF_CHROMIUM || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined),
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
+    '--disable-background-timer-throttling'],
 });
 const report = [];
 try {
@@ -97,7 +98,9 @@ try {
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') logs.push(m.text().slice(0, 300)); });
   page.on('pageerror', (e) => logs.push('PAGEERROR ' + String(e).slice(0, 300)));
   if (args.illustrated === '0') await page.addInitScript(() => { globalThis.__SF_FORGE_ILLUSTRATED__ = false; });
-  await page.goto(server.url + '?dev=fleetlook', { waitUntil: 'load', timeout: Number(args.timeout || 600) * 1000 });
+  // 'commit' not 'load': the game's asset preload can hold the load event for minutes under
+  // SwiftShader; scripts run fine once navigation commits (same workaround as flight-look).
+  await page.goto(server.url + '?dev=fleetlook', { waitUntil: 'commit', timeout: 180000 });
   await page.waitForFunction(() => window.SF_fleetLookReady === true, null, { timeout: Number(args.timeout || 600) * 1000 });
   // let env map bake
   await page.waitForTimeout(3000);

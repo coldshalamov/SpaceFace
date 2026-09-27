@@ -225,7 +225,7 @@ test('PQ-154 terrain seed 15430: a wreck is latchable and pays the thrown-meetin
       'the Massline must be able to latch the wreck (wreck becomes ammunition)',
     );
 
-    // The same law-level read the throw release makes (masslineThrow.impactAtSpeed): the latched
+    // The same law-level read a thrown hull's contact takes: the latched
     // wreck meets a hostile hull at speed and the meeting is rated through the consequence kernel.
     const target = ctx.sim.spawn(shipSpec({
       team: 1,

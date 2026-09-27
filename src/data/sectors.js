@@ -447,6 +447,10 @@ const CORE_SECTORS = [
         triangulation: { requiredPings: 3, minBaselineWu: 350, minBearingDeltaDeg: 8 },
         flavorTargetRef: 'landmark_c2_resonance_obelisk',
         resonanceScanResponse: true,
+        discoveryPlate: {
+          title: 'The Resonance Obelisk',
+          body: 'Material analysis returns nothing recognized as matter, and the pulse interval is shorter than every prior scan record. Vael patrol logs tighten after each pulse — the dark companion is a door that forgot its other side.',
+        },
       },
       { id: 'poi_wormhole', type: 'wormhole', name: 'Wormhole', gatedBy: 'tech:tech_long_range_survey' },
     ],

@@ -107,7 +107,10 @@ export const SIXTY_SECOND_BEATS = Object.freeze([
     id: 'collateral',
     label: 'collateral',
     owner: 'PQ-137.09 / PQ-140',
-    receipts: Object.freeze(['combat:collisionConsequence']),
+    // tether:whipImpact is the shipping receipt for the player's tethered/released mass
+    // striking a body — the exact physical fact this beat names. masslineImpacts only tracks
+    // the player's own line, so the mass is causal by construction.
+    receipts: Object.freeze(['combat:collisionConsequence', 'tether:whipImpact']),
     vision: 'It tears through another ship.',
   }),
   Object.freeze({
@@ -299,7 +302,8 @@ export function buildProofInputTape() {
   const press = (tick, code, pressed) => {
     events.push({ tick: tick | 0, device: 'keyboard', code, pressed: !!pressed });
   };
-  // inputTape.js: KeyJ is fire. KeyF / Space is the Massline. Do not invert them.
+  // inputTape.js: Mouse0 is fire (the real LMB path — _m0 through syncTapeKeysToInput).
+  // KeyF / Space is the Massline. Do not invert them.
 
   // Sit through the spill. Reverse, then latch the spilled pod (grab_pod). KeyF-down
   // while unattached does not cut on release — tap again with no line intent to free
@@ -307,38 +311,61 @@ export function buildProofInputTape() {
   press(160, 'KeyS', true);
   press(230, 'KeyS', false);
   press(240, 'KeyF', true);
-  press(480, 'KeyF', false);
+  press(340, 'KeyF', false);
 
-  // Clean cut tap (attached, > MASSLINE_HOLD_S, no boost/strafe/reel).
-  press(500, 'KeyF', true);
-  press(512, 'KeyF', false);
+  // Clean cut tap (attached, < MASSLINE_HOLD_S, no boost/strafe/reel): the grammar cuts on
+  // release only when the press lasted under 0.16 s — a 12-tick hold enters line control instead.
+  press(360, 'KeyF', true);
+  press(366, 'KeyF', false);
 
-  // Shove the incoming pirate. Do not cruise away — the old KeyW/Shift here left the pocket.
-  press(480, 'KeyJ', true);
-  press(900, 'KeyJ', false);
+  // The released pod drifts within a few WU of the nose and wins proximity acquisition over
+  // the incoming pirate, so burn briefly to clear its cone, then brake back down — a player
+  // still doing 200+ WU/s drags the latched hull through the debris field and kills the
+  // payload before any release window opens.
+  press(380, 'KeyW', true);
+  press(430, 'KeyW', false);
 
-  // Relatch the pirate on the nose, pay out, then fly a left circle so the hull is a real
-  // swing (KeyA without KeyW just spins the parked Hornet). Arm the throw once that orbit
-  // is live. Headless RMB: input.js maps _m2 + a latched ship to throwArm.
-  press(530, 'KeyF', true);
-  press(540, 'KeyE', true);
-  press(680, 'KeyE', false);
-  // Short spin-up in the melee — a long boost walks 131 into rocks before the aim ship.
-  press(680, 'KeyW', true);
-  press(680, 'KeyA', true);
-  press(680, 'ShiftLeft', true);
-  press(780, 'Mouse2', true);
-  press(800, 'KeyA', false);
-  press(800, 'KeyD', true);
-  press(1100, 'KeyD', false);
-  press(1100, 'KeyA', true);
+  // Shove the incoming pirate BEFORE the latch — once it is on the line a held trigger fires
+  // point-blank into our own payload.
+  press(430, 'Mouse0', true);
+  press(470, 'Mouse0', false);
+
+  press(450, 'KeyS', true);
+  press(505, 'KeyS', false);
+
+  // The latch only attempts on a KeyF press EDGE, so the tape keeps pressing while the
+  // pirate closes — each hold lasts >0.16 s, a release after MASSLINE_HOLD_S never cuts, and a
+  // press that lands while already attached is ignored. The later edges catch a pirate that
+  // reaches the pocket late on other seeds.
+  press(505, 'KeyF', true);
+  press(518, 'KeyF', false);
+  press(525, 'KeyF', true);
+  press(540, 'KeyF', false);
+  press(548, 'KeyF', true);
+  // RMB can go down ahead of the latch: throwArm's pressed edge fires the moment the payload
+  // turns throwable, and 'arm' assist then cuts on the first real solution window.
+  press(512, 'Mouse2', true);
+  // Reel-in (KeyW under line control) + orbit + pump together wind the hull up — the orbit
+  // draw needs the reel axis held or the payload just dangles off the line. But a fully
+  // collapsed orbit sweeps the player's own hull circle every revolution — the reel stops
+  // once the hull is wound, keeping the swing wide enough to clear the ship.
+  press(548, 'KeyW', true);
+  press(550, 'KeyA', true);
+  press(550, 'ShiftLeft', true);
+  // massline2.fireControl is live: while the pirate is on the line the guns re-solve onto OUR OWN
+  // payload, so Mouse0 is off until the throw releases — the hauler hit must come off the rope.
+  press(640, 'KeyW', false);
+  press(900, 'KeyA', false);
+  press(900, 'KeyD', true);
+  press(1200, 'KeyD', false);
+  press(1200, 'KeyA', true);
   press(1560, 'ShiftLeft', false);
   press(1680, 'KeyA', false);
   press(1680, 'Mouse2', false);
   press(1680, 'KeyF', false);
 
-  press(1680, 'KeyJ', true);
-  press(2400, 'KeyJ', false);
+  press(1680, 'Mouse0', true);
+  press(2400, 'Mouse0', false);
 
   press(2400, 'KeyF', true);
   press(3000, 'KeyF', false);
@@ -346,8 +373,8 @@ export function buildProofInputTape() {
   press(3000, 'ShiftLeft', true);
   press(3600, 'ShiftLeft', false);
 
-  press(3720, 'KeyJ', true);
-  press(4200, 'KeyJ', false);
+  press(3720, 'Mouse0', true);
+  press(4200, 'Mouse0', false);
   press(4320, 'KeyF', true);
   press(4800, 'KeyF', false);
   press(5400, 'KeyW', false);
@@ -369,22 +396,74 @@ function nearest(state, player, predicate) {
   return best;
 }
 
+function nearestToPoint(state, origin, predicate, excludeIds) {
+  let best = null;
+  let bestD = Infinity;
+  for (const entity of live(state)) {
+    if (!entity || entity.id === state.playerId) continue;
+    if (excludeIds && excludeIds.has(entity.id)) continue;
+    if (!predicate(entity)) continue;
+    const d = dist(origin, entity.pos);
+    if (d < bestD) {
+      best = entity;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+// The throw solver tracks a ~6 s moving-disk intercept: beyond this the aim is wishing, not
+// reading. A fleeing hull already at 150+ WU/s outruns the sling outright; a hauler still on
+// its lane is the victim the rope can actually reach.
+const THROW_AIM_REACH_WU = 700;
+
 export function aimTargetForTick(state, player, tick) {
-  if ((tick >= 90 && tick < 480) || (tick >= 2400 && tick < 3000)) {
+  if ((tick >= 90 && tick < 340) || (tick >= 2400 && tick < 3000)) {
     return nearest(state, player, (e) => isGrabCargoTarget(e))
       || nearest(state, player, (e) => e.type === 'pickup' || e.type === 'payload');
   }
+  const tether = state.player && state.player.tether;
+  const payloadId = tether && tether.active ? tether.targetId : null;
+  const convoy = () => {
+    // The armed swing keeps the read on the convoy — the authored collateral victim is the
+    // lawful hauler whose damage opens the spill/incident/heat chain. Never aim the payload
+    // itself: a self-paint sits inside the swept disk every tick and fires the arm at a
+    // meaningless "solution". While a hull is on the line, pick the hauler the sling can
+    // actually reach: the SLOWEST one inside the solver's horizon (a hull fleeing at 150+
+    // outruns the rope; a hauler still on its lane holds a straight course the intercept
+    // solver can meet). No hauler in reach → the collateral read is the closest ship to the
+    // swinging mass.
+    const excluded = new Set([state.playerId]);
+    if (payloadId != null) excluded.add(payloadId);
+    if (payloadId != null) {
+      const payload = state.entities && state.entities.get ? state.entities.get(payloadId) : null;
+      const origin = (payload && payload.pos) || player.pos;
+      let slowest = null;
+      let slowestV = Infinity;
+      for (const e of live(state)) {
+        if (!isHaulerEntity(e) || excluded.has(e.id)) continue;
+        if (dist(origin, e.pos) > THROW_AIM_REACH_WU) continue;
+        const v = speedOf(e);
+        if (v < slowestV) { slowest = e; slowestV = v; }
+      }
+      return slowest
+        || nearestToPoint(state, origin, (e) => e.type === 'ship', excluded);
+    }
+    return nearest(state, player, (e) => isHaulerEntity(e) && !excluded.has(e.id))
+      || nearest(state, player, (e) => isPatrolEntity(e) && !excluded.has(e.id))
+      || nearest(state, player, (e) => e.type === 'ship' && !excluded.has(e.id));
+  };
+  // Once a hull is on the line inside the armed window the cursor stays on the convoy, no
+  // matter what the surrounding schedule window would otherwise pick.
+  if (payloadId != null && tick >= 340 && tick < 1680) return convoy();
+  if ((tick >= 560 && tick < 900) || (tick >= 1020 && tick < 1680)) return convoy();
   if (tick >= 900 && tick < 1020) {
-    return nearest(state, player, isPirateEntity)
+    return nearest(state, player, (e) => isPirateEntity(e) && e.id !== payloadId)
+      || nearest(state, player, isPirateEntity)
       || nearest(state, player, (e) => e.type === 'asteroid')
       || nearest(state, player, (e) => e.type === 'ship' && e.id !== state.playerId);
   }
-  if ((tick >= 780 && tick < 900) || (tick >= 1020 && tick < 1680)) {
-    const pirate = nearest(state, player, isPirateEntity);
-    return nearest(state, player, (e) => e !== pirate && e.type === 'ship' && e.id !== state.playerId)
-      || nearest(state, player, (e) => e !== pirate && (isHaulerEntity(e) || isPatrolEntity(e)));
-  }
-  if ((tick >= 480 && tick < 900) || (tick >= 1680 && tick < 2400) || (tick >= 3720 && tick < 4200)) {
+  if ((tick >= 340 && tick < 560) || (tick >= 1680 && tick < 2400) || (tick >= 3720 && tick < 4200)) {
     return nearest(state, player, isPirateEntity)
       || nearest(state, player, (e) => e.type === 'ship' && e.team === 1)
       || nearest(state, player, (e) => e.type === 'ship' && e.id !== state.playerId);
@@ -416,7 +495,8 @@ export function markProofPointerActive(inputSys) {
 
 // Node input.js owns this._keys and rebuilds tetherFire from them. The tape driver keeps a
 // private keybag; without this copy, KeyF never becomes the Massline and grab/WANTED stay dark.
-// Mouse2 must also become _m2 — headless input never sees RMB, so throwArm stays dark otherwise.
+// Mouse buttons ride the same private state: headless input never sees LMB/RMB, so without
+// _m0/_m2 the tape's fire and throwArm flags are rebuilt as false on every input tick.
 export function syncTapeKeysToInput(inputSys, tapeKeys) {
   if (!inputSys || !inputSys._keys) return false;
   const live = inputSys._keys;
@@ -427,6 +507,7 @@ export function syncTapeKeysToInput(inputSys, tapeKeys) {
   for (const code of Object.keys(next)) {
     live[code] = !!next[code];
   }
+  inputSys._m0 = !!next.Mouse0;
   inputSys._m2 = !!next.Mouse2;
   return true;
 }
@@ -537,6 +618,12 @@ export function classifyReceipt(name, payload, ctx) {
 
   if (name === 'npcjobs:depart' || name === 'npcjobs:transit' || name === 'npcjobs:load') {
     const kind = jobKindOf(payload);
+    // A work-role hull moving its route is the operation working — the seam barge's
+    // extraction lands whenever its leg finishes, so the transit/depart receipts are the
+    // on-screen evidence that the yard crew is live.
+    if (WORK_ROLES.has(kind)) {
+      return { beat: 'op_working', detail: `${name}:${kind}` };
+    }
     if (kind === 'hauler' || HAULER_ROLES.has(kind)) {
       return { beat: 'hauler_leaves', detail: `${name}:${kind}` };
     }
@@ -625,6 +712,21 @@ export function classifyReceipt(name, payload, ctx) {
     if (shipShip && !playerInPair && deltaV >= COLLATERAL_DELTA_V
       && (causal(aId) || causal(bId))) {
       return { beat: 'collateral', detail: `ship#${aId}×ship#${bId} ΔV=${deltaV.toFixed(1)}` };
+    }
+  }
+
+  if (name === 'tether:whipImpact') {
+    // The dedicated receipt for "the player's whipped mass strikes a body." `slung` means the
+    // mass was released off the line inside the sling window — i.e. the rope_projectile hull —
+    // so the causality test is the receipt itself, not a guessed pair. The victim must still be
+    // a real ship (asteroids/stations are scenery, not collateral) and the hit energetic.
+    const mass = entity(payload && payload.targetId);
+    const victim = entity(payload && payload.victimId);
+    const relSpeed = finite(payload && payload.relSpeed);
+    if (payload && payload.slung === true && mass && victim
+      && victim.type === 'ship' && victim.id !== playerId
+      && relSpeed >= COLLATERAL_DELTA_V) {
+      return { beat: 'collateral', detail: `whip #${mass.id}→ship#${victim.id} relV=${relSpeed.toFixed(1)}` };
     }
   }
 
@@ -843,6 +945,9 @@ async function bootCeresPocket(seed, options = {}) {
   state.settings.gameplay.physicsBackend = 'rapier-dynamic';
   state.settings.gameplay.flightBackend = 'v3';
   state.settings.gameplay.aiBackend = 'sg06-tactical';
+  // The tape holds RMB through the swing; 'arm' is the shipped assist that cuts on the predicted
+  // solution frame. A fixed tape cannot hit 'snap''s 90 ms window on five different seeds.
+  state.settings.gameplay.masslineReleaseAssist = 'arm';
   if (!state.input.actions) state.input.actions = { brake: false, autopursuit: false };
   installProofAimPassthrough(runtime.getSystem('input'), state);
 
@@ -900,8 +1005,28 @@ function applyProofTapeTick(state, player, driver, inputSys, tick) {
   const tether = !!(state.player && state.player.tether && state.player.tether.active);
   driver.apply(state, tick, SIM_DT, { playerEntity: player, tetherAttached: tether });
   syncTapeKeysToInput(inputSys, driver.snapshotKeys());
+  featherSwingPump(state, driver, inputSys, tick);
   pointAt(state, player, aimTargetForTick(state, player, tick));
   markProofPointerActive(inputSys);
+}
+
+// A pilot pumping a swing watches the strain gauge the HUD already shows (tether.phase) and
+// eases off the pump when the line screams — the controller cuts after ~0.2–0.7 s of sustained
+// overload, and holding full draw through a melee hands the line to the break policy before a
+// solution ever opens. During the swing window this drops pump (Shift) and the draw axis (W is
+// reel-in under line control) while the phase reads overload, then resumes the gesture once the
+// line settles — the same modulation a hand on the keys performs.
+export function featherSwingPump(state, driver, inputSys, tick) {
+  if (!inputSys || !inputSys._keys || tick < 470 || tick >= 1680) return;
+  const tether = state.player && state.player.tether;
+  if (!tether || !tether.active) return;
+  const feather = driver._swingFeather || (driver._swingFeather = { easeTicks: 0 });
+  if (tether.phase === 'overload') feather.easeTicks = 12;
+  else if (feather.easeTicks > 0) feather.easeTicks -= 1;
+  if (feather.easeTicks > 0) {
+    inputSys._keys.ShiftLeft = false;
+    inputSys._keys.KeyW = false;
+  }
 }
 
 /**

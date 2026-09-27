@@ -133,6 +133,7 @@ import {
 } from '../missions/heistMissionRuntime.js';
 import { priceProceduralOffer, offerMixForTier, economicRiskTier, standingWorkTier } from '../economy/economyMissionTerms.js';
 import { actionById as salvageActionById } from '../data/salvageActions.js';
+import { playerWreckMarker } from './aftermathWrecks.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
@@ -389,9 +390,10 @@ const MISSION_PORT_SAFE_RADIUS_WU = 1200;
 // ── PQ-138.04 failure mutation ("failure should usually mutate the situation") ───────────────
 // A broken contract must not dead-end in a red toast: the situation the player is standing in
 // becomes the next objective. ONE descriptor per failure reason, keyed by prefix so a full reason
-// like `clause_broken:cargo_intact` resolves. Reasons with NO row (abandoned, busted, expiry,
-// condition breaches, story-asset losses) stay plain failures — "usually" is this table. Every
-// `type` reuses an existing MISSION_TYPES entry; nothing here authors a new mission type.
+// like `clause_broken:cargo_intact` resolves. Reasons with NO row (abandoned, condition breaches
+// without a twist descriptor, story-asset losses, escort_abandoned) stay plain failures —
+// "usually" is this table. Every `type` reuses an existing MISSION_TYPES entry; nothing here
+// authors a new mission type.
 //
 // DROPPED from the sketched table, deliberately:
 //   clause_broken:no_kills / clause_broken:no_scan — pure fine-print violations with no physical
@@ -399,7 +401,14 @@ const MISSION_PORT_SAFE_RADIUS_WU = 1200;
 //     (test/depth-program-sp1-clauses.test.mjs) pins those breaches to settle-and-remove.
 //   heist_failed — the heist already owns an authored failure→follow-up seam
 //     (_boardHeistRecovery + the recovery comms cue); a second generic successor would double-post
-//     on the same settlement.
+//     on the same settlement. Authored set-piece missions carry their own recovery offers, so
+//     _mutateInsteadOfFail refuses them for the same reason.
+//   abandoned / escort_abandoned / seed_asset_lost — quitting on purpose and story-asset losses
+//     are a settled ending, not a scene to salvage.
+//
+// CHAIN BOUND: a successor minted by a mutation carries mutationDepth; a mission at the cap
+// fails plainly so failure→residue→failure cannot chain indefinitely.
+const MUTATION_MAX_DEPTH = 1;
 const MUTATION_SALVAGE_CMDTYS = Object.freeze(['cmdty_scrap_metal', 'cmdty_salvage_electronics']);
 const MISSION_MUTATIONS = Object.freeze({
   // The convoy died → the wreck it left is salvage to bring home.
@@ -408,6 +417,23 @@ const MISSION_MUTATIONS = Object.freeze({
   'clause_broken:cargo_intact': Object.freeze({ type: 'cargo_delivery', tag: 'restitution' }),
   // The rescue came second → recover what the wreck left.
   'clause_broken:rescue_priority': Object.freeze({ type: 'salvage_retrieval', tag: 'recovery' }),
+  // A patrol scan caught the sealed lot → customs took it; the client still wants it replaced.
+  busted: Object.freeze({ type: 'cargo_delivery', tag: 'restitution' }),
+  // The clock ran out → the client refiles the leg as a debt rather than a corpse.
+  deadline: Object.freeze({ type: 'cargo_delivery', tag: 'restitution' }),
+  // The pods went down with the run → recover what the wreck left.
+  pods_lost: Object.freeze({ type: 'salvage_retrieval', tag: 'recovery' }),
+  // The towed slag core broke up → the scatter still pays at the yard.
+  core_lost: Object.freeze({ type: 'salvage_retrieval', tag: 'recovery' }),
+  // BP-01.1: the ship went down WITH the contract manifest → the player's own wreck still holds
+  // the lost units. keepManifest keeps the failed contract's commodity on the successor; the
+  // ship_lost handler stamps the durable wreck site and the lost quantity before settling.
+  ship_lost: Object.freeze({
+    type: 'salvage_retrieval',
+    tag: 'recovery',
+    keepManifest: true,
+    toast: (title) => `Ship lost — your wreck still holds the manifest. Recovery contract live: ${title}.`,
+  }),
   // PQ-152.03 — mid-run twist clauses. Same successor seam; both reason prefixes so a tick
   // term and an event term cannot drift apart.
   ...Object.fromEntries(Object.entries(TWIST_MUTATIONS).flatMap(([id, descriptor]) => ([
@@ -1201,6 +1227,16 @@ export const missions = {
     }
     // smuggling bust: a patrol scan caught contraband.
     bus.on('player:scannedByPatrol', (p) => this._onScannedByPatrol(p));
+    // Wreck-communicator authored choices (the wreckChoicePrompt deck adapter): missions owns the
+    // boarded offer, so a pick stamps wreckChoiceId onto it and runs the canonical accept seam.
+    bus.on('wreckMission:choose', (p) => this._onWreckMissionChoice(p));
+    // Pod rescue is a commitment: a latched tow means the passenger contract leaves the board.
+    bus.on('survivorPod:rescueSelected', (p) => this._onSurvivorRescueSelected(p));
+    // A stripped pod is terminal — withdraw its boarded offer, and fail a live rescue into residue.
+    bus.on('survivorPod:stripped', (p) => this._onSurvivorPodStripped(p));
+    // BP-01.1: dying while carrying contract cargo fails the leg at the player's own wreck — the
+    // durable marker aftermathWrecks already minted is the recovery site (not a rumored position).
+    bus.on('player:death', (p) => this._onPlayerDeathMissions(p || {}));
     // Contract clauses are observers only. Their single breach intent returns here so the canonical
     // mission failure path owns collateral, reputation, cleanup, receipts, and SP1 recovery offers.
     bus.on('contract:clauseBroken', (p) => this._onContractClauseBroken(p));
@@ -2125,6 +2161,10 @@ export const missions = {
       || rawOffer.source === 'cargoKillChain'
       || rawOffer.source === SET_PIECE_MISSION_SOURCE
       || rawOffer.source === SET_PIECE_FOLLOW_ON_SOURCE
+      // BP-01.1: a wreck communicator's contract is a full board offer (salvage._buildOffer
+      // supplies id/type/stationId/params) — the wreck's signal becomes a real board row, so
+      // "failure creates content" also means discovery creates playable work.
+      || rawOffer.source === 'salvage'
     );
     if (!allowedSource) return false;
     if (rawOffer.source === 'poiBehavior' && !validatePoiCausalOffer(rawOffer).ok) return false;
@@ -2150,7 +2190,9 @@ export const missions = {
     const board = this.ensureBoard(rawOffer.stationId);
     if (!board || !Array.isArray(board.slots)) return false;
     if (board.slots.some((offer) => offer && offer.id === rawOffer.id)) return false;
-    if (!isFingerprintBoardSource(rawOffer.source)
+    // One row per source for ambient sources; salvage offers are already deduped by their stable
+    // point-derived id (salvage_<pointId>), so a second communicator in one sector still boards.
+    if (!isFingerprintBoardSource(rawOffer.source) && rawOffer.source !== 'salvage'
       && board.slots.some((offer) => offer && offer.source === rawOffer.source)) return false;
     if (isFingerprintBoardSource(rawOffer.source) && board.slots.some((offer) => (
       offer && offer.source === rawOffer.source && offer.cause && rawOffer.cause
@@ -4612,6 +4654,139 @@ export const missions = {
     }
   },
 
+  /** Boarded salvage/communicator offer for one salvage point (stable point id rides the params). */
+  _salvageOfferByPoint(salvagePointId) {
+    if (!salvagePointId) return null;
+    const boards = (this.state.missions && this.state.missions.boards) || {};
+    for (const board of Object.values(boards)) {
+      const offer = (board && board.slots || []).find((o) => o && o.source === 'salvage' && (
+        o.salvagePointId === salvagePointId
+        || (o.params && (o.params.salvagePointId === salvagePointId || o.params.survivorPodId === salvagePointId))
+      ));
+      if (offer) return offer;
+    }
+    return null;
+  },
+
+  /**
+   * BP-01.1: an authored wreck choice arrived from the deck adapter. Missions owns the offer, so
+   * the pick stamps wreckChoiceId on the boarded offer's params and runs the canonical accept —
+   * the option label/blurb ride `wreckMission:choiceApplied` so downstream systems (and tests)
+   * can settle differently on the committed disposition without re-reading the deck.
+   */
+  _onWreckMissionChoice(payload) {
+    if (!payload) return false;
+    const offerId = payload.offerId || payload.missionId;
+    const choiceId = payload.choiceId || payload.optionId || null;
+    if (!offerId) return false;
+    const { offer } = this._findOffer(offerId);
+    if (!offer || offer.source !== 'salvage') return false;
+    // A survivor pod's rescue/strip is survivorPod's own physical choice — not a contract option.
+    if (offer.params && offer.params.survivorPodId) return false;
+    const options = offer.choice && Array.isArray(offer.choice.options) ? offer.choice.options : [];
+    const option = choiceId ? options.find((o) => o && o.id === choiceId) : null;
+    if (options.length && (!option || !choiceId)) return false;
+    if (option) {
+      offer.params = offer.params || {};
+      offer.params.wreckChoiceId = option.id;
+    }
+    const accepted = this.acceptMission(offer.id);
+    if (accepted) {
+      this.bus.emit('wreckMission:choiceApplied', {
+        offerId: offer.id,
+        wreckMissionId: offer.wreckMissionId || (offer.params && offer.params.wreckMissionId) || null,
+        choiceId: option ? option.id : null,
+        salvagePointId: offer.salvagePointId || (offer.params && offer.params.salvagePointId) || null,
+        source: payload.source || 'prompt',
+      });
+      this.bus.emit('comms:log', {
+        from: offer.giver || 'Derelict',
+        text: option && option.blurb
+          ? `Choice logged — ${option.label}. ${option.blurb}`
+          : `Claim filed: ${offer.title}.`,
+        kind: 'salvage',
+      });
+    }
+    return accepted;
+  },
+
+  /** Rescue committed (pod already on the line): the boarded passenger contract goes live. */
+  _onSurvivorRescueSelected(payload) {
+    const pointId = payload && payload.salvagePointId;
+    if (!pointId) return false;
+    const offer = this._salvageOfferByPoint(pointId);
+    if (!offer || offer.type !== 'passenger_transport') return false;
+    return this.acceptMission(offer.id);
+  },
+
+  /**
+   * A stripped pod is terminal: remove any boarded offer for it, and a live rescue contract
+   * fails into residue (pods_lost → recovery salvage) instead of dangling.
+   */
+  _onSurvivorPodStripped(payload) {
+    const pointId = payload && payload.salvagePointId;
+    if (!pointId) return;
+    const boards = (this.state.missions && this.state.missions.boards) || {};
+    let withdrew = false;
+    for (const [stationId, board] of Object.entries(boards)) {
+      if (!board || !Array.isArray(board.slots)) continue;
+      const kept = board.slots.filter((o) => !(o && o.source === 'salvage' && (
+        o.salvagePointId === pointId
+        || (o.params && (o.params.salvagePointId === pointId || o.params.survivorPodId === pointId))
+      )));
+      if (kept.length !== board.slots.length) { board.slots = kept; withdrew = true; }
+    }
+    if (withdrew) this.bus.emit('mission:updated', { missionId: null });
+    const active = this.state.missions.active;
+    for (let i = active.length - 1; i >= 0; i--) {
+      const m = active[i];
+      if (!m || m.status !== 'active' || !m.params || m.params.survivorPodId !== pointId) continue;
+      this._failMission(m, i, 'pods_lost');
+    }
+  },
+
+  /**
+   * BP-01.1 + INF-066: a player death while contract cargo is aboard fails the affected legs
+   * (the manifest went down with the ship) and the mutation seam posts a recovery successor at
+   * the durable player-wreck marker — the hull the pilot actually left behind, never a rumored
+   * position. Recovery-only deaths (ironman, already-empty holds) stay silent.
+   */
+  _onPlayerDeathMissions(p) {
+    if (!p || p.recoverable === false) return;
+    const cargo = this.state.player && this.state.player.cargo;
+    const items = cargo && cargo.items;
+    if (!items) return;
+    const losses = p.recovery && Array.isArray(p.recovery.cargoLosses) ? p.recovery.cargoLosses : null;
+    const persistent = this.state.story && Array.isArray(this.state.story.persistentCargo)
+      ? this.state.story.persistentCargo : [];
+    const marker = playerWreckMarker(this.state);
+    const site = escortLossSite(
+      (marker && marker.pos) || p.pos,
+      (marker && marker.sectorId) || (this.state.world && this.state.world.currentSectorId),
+    );
+    const active = this.state.missions.active;
+    for (let i = active.length - 1; i >= 0; i--) {
+      const m = active[i];
+      if (!m || m.status !== 'active' || !ONE_LOAD_CARGO_TYPES.has(m.type)) continue;
+      const cmdtyId = m.params && m.params.cmdtyId;
+      if (!cmdtyId || persistent.includes(cmdtyId)) continue;
+      const need = Math.max(1, Math.floor(Number(m.params.qty) || 1));
+      const have = Math.max(0, Math.floor(Number(items[cmdtyId]) || 0));
+      // Recovery halves a non-persistent hold (playerDefeat.buildRecoveryPlan); when the receipt
+      // is not present in this payload the same floor-half rule applies for the contract check.
+      const lost = losses
+        ? Math.max(0, Math.floor(Number((losses.find((l) => l && l.commodityId === cmdtyId) || {}).qty) || 0))
+        : Math.floor(have * 0.5);
+      if (lost <= 0 || have - lost >= need) continue;
+      if (site) {
+        m._escorteeSectorId = site.sectorId;
+        m._escorteeWreckPos = site.wreckPos;
+      }
+      m._shipLostQty = lost;
+      this._failMission(m, i, 'ship_lost');
+    }
+  },
+
   _onConditionSatisfied(payload) {
     const missionId = payload && payload.missionId;
     if (!missionId || payload.blocking !== true) return false;
@@ -6208,6 +6383,15 @@ export const missions = {
   _mutateInsteadOfFail(m, reason) {
     const descriptor = missionMutationFor(reason);
     if (!descriptor) return null;
+    // Authored failure seams own their own recovery: set-piece chains board a retry offer through
+    // _compileSetPieceTransition and the heist owns its recovery lane — a generic successor on top
+    // would double-post on the same settlement.
+    if (m.heist || m.type === AUTHORED_SET_PIECE_TYPE || setPieceCauseOf(m)) return null;
+    // Chain bound: a successor (mutationDepth 1) fails plainly — failure→residue→failure cannot
+    // chain. And one failure mints one successor; a second call for the same mission id reuses
+    // nothing silently (postAndAcceptAuthoredOffer's storyTag dedupe would report `reused`).
+    if ((m.mutationDepth || 0) >= MUTATION_MAX_DEPTH) return null;
+    if ((this.state.missions.active || []).some((a) => a && a.mutatedFromMissionId === m.id)) return null;
     // The successor's dock reads off the failing contract's own stations — never a fresh pick.
     const originResolves = !!(m.stationId && STATION_INFO.get(m.stationId));
     const destResolves = !!(m.destStationId && STATION_INFO.get(m.destStationId));
@@ -6232,6 +6416,7 @@ export const missions = {
     // --reload-at golden (same precedent as `clauses`/`heist` in _instanceFromOffer).
     successor.mutatedFromMissionId = m.id;
     successor.mutationTag = descriptor.tag;
+    successor.mutationDepth = (m.mutationDepth || 0) + 1;
     // INF-068: a salvage successor materializes its convoy-wreck pocket through the ordinary
     // sector-enter spawn flow — the wreck is a real body to work, not a rumor.
     if (isMutationRecovery(successor)) successor.needsTargets = true;
@@ -6242,7 +6427,9 @@ export const missions = {
       if (m._escorteeId != null) successor._escorteeId = m._escorteeId;
       m.targetEntityIds = [];
     }
-    const toastFor = MUTATION_TOAST[descriptor.tag];
+    const toastFor = typeof descriptor.toast === 'function'
+      ? descriptor.toast
+      : MUTATION_TOAST[descriptor.tag];
     const toastText = toastFor
       ? toastFor(successor.title)
       : `Contract broken — a follow-up is live: ${successor.title}.`;
@@ -6285,10 +6472,18 @@ export const missions = {
       // pointer to the lost hull and its sector read straight off the mission — nothing invented.
       // INF-066: the loss-site stamp (escort failure) feeds the shared routing helper, so the
       // successor's recovery leg starts where the hull actually died, not at the old destination.
-      const cmdtyId = MUTATION_SALVAGE_CMDTYS[
-        (hash32(String(m.id), reasonText, 'mutation-salvage-cmdty') >>> 0) % MUTATION_SALVAGE_CMDTYS.length
-      ];
-      const qty = 2 + ((hash32(String(m.id), reasonText, 'mutation-salvage-qty') >>> 0) % 3);
+      // ship_lost (keepManifest): the successor recovers the SAME commodity the failed contract
+      // was carrying — the units are physically in the player's wreck pool. Quantity is what the
+      // hold actually lost (the handler stamps _shipLostQty), not a fresh roll.
+      const keepManifest = descriptor.keepManifest === true && m.params && m.params.cmdtyId;
+      const cmdtyId = keepManifest
+        ? m.params.cmdtyId
+        : MUTATION_SALVAGE_CMDTYS[
+          (hash32(String(m.id), reasonText, 'mutation-salvage-cmdty') >>> 0) % MUTATION_SALVAGE_CMDTYS.length
+        ];
+      const qty = keepManifest
+        ? Math.max(1, Math.floor(Number(m._shipLostQty) || Number(m.params.qty) || 1))
+        : 2 + ((hash32(String(m.id), reasonText, 'mutation-salvage-qty') >>> 0) % 3);
       const routing = mutationWreckRouting(m, state.world && state.world.currentSectorId);
       return {
         ...base,
@@ -6298,12 +6493,16 @@ export const missions = {
           ? `Salvage the convoy wreck — bring it home to ${homeName}`
           : descriptor.tag === 'cooked'
             ? `The cargo cooked — recover what remains for ${homeName}`
-            : `Recover what the wreck left — ${homeName}`,
+            : keepManifest
+              ? `Your wreck holds the manifest — recover it for ${homeName}`
+              : `Recover what the wreck left — ${homeName}`,
         brief: descriptor.tag === 'salvage'
           ? `The convoy is gone. Its wreck is still on the drift with an unstable core; tow it clear, vent it, or strip it before it bursts — ${homeName} pays for what comes back.`
           : descriptor.tag === 'cooked'
             ? `The lot vented. What is left still pays at ${homeName}.`
-            : `The rescue came second. What is left of the hull still answers questions at ${homeName}.`,
+            : keepManifest
+              ? `Your hull is still on the drift with the contracted units in its hold. ${homeName} pays for what comes back.`
+              : `The rescue came second. What is left of the hull still answers questions at ${homeName}.`,
         params: {
           cmdtyId,
           qty,
@@ -6469,6 +6668,11 @@ export const missions = {
   _expireMission(m, index) {
     if (m.status !== 'active') return;
     const setPieceTransition = this._compileSetPieceTransition(m, 'expired', 'deadline');
+    // PQ-138.04: an expired contract leaves residue — the client refiles the leg as a debt.
+    // Set-piece/heist/story contracts keep their authored seams (the mutation seam refuses them
+    // internally), and mission:expired keeps its exact legacy payload shape; the mutation pointer
+    // lives on the receipt and the toast, not the event.
+    const mutation = this._mutateInsteadOfFail(m, 'deadline');
     m.status = 'expired';
     this._clearMissionNav(m.id);
     const penalty = missionRepDeltaFor(m, 'expired');
@@ -6483,6 +6687,7 @@ export const missions = {
       repDelta: penalty,
       contractCargoRemoved,
       setPieceReceipt: setPieceTransition && setPieceTransition.receipt || null,
+      ...(mutation ? { mutatedToMissionId: mutation.missionId, mutationTag: mutation.tag } : {}),
     });
     this._emitMissionDebrief(m, 'expired', 'deadline');
     this._boardSetPieceTransition(m, setPieceTransition);
@@ -6493,7 +6698,11 @@ export const missions = {
       causeFingerprint: m.cause && m.cause.fingerprint || undefined,
       ...setPieceEventFields(m, setPieceTransition),
     });
-    this.bus.emit('toast', { text: `Mission expired: ${m.title}`, kind: 'warn', ttl: 4 });
+    this.bus.emit('toast', {
+      text: mutation ? mutation.toastText : `Mission expired: ${m.title}`,
+      kind: 'warn',
+      ttl: mutation ? 5 : 4,
+    });
     this._cleanupTargets(m);
     this._removeActive(m.id, index);
     this.bus.emit('mission:updated', { missionId: m.id });

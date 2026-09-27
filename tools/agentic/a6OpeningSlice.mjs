@@ -27,9 +27,7 @@ import { SHIPS } from '../../src/data/ships.js';
 import { NEW_GAME } from '../../src/data/newGameDefaults.js';
 import { sweptDiskContact } from '../../src/combat/masslineReleaseGeometry.js';
 import { isMasslineLatchedPickup } from '../../src/systems/mining.js';
-import { assessTangentRelease } from '../../src/systems/tetherGameplay.js';
 import { readCadencePair } from '../../src/systems/masslineControlLaw.js';
-import { planTangentReleaseMeeting } from '../../src/systems/masslineThrow.js';
 
 const DT = 1 / 60;
 const ASPECT = 16 / 9, FOV = 50, TILT = 60;
@@ -59,8 +57,8 @@ const WATCHED_EVENTS = [
   'dock:docked', 'dock:undocked', 'module:purchased', 'module:equipped', 'economy:chargeCredits',
   'economy:saleExecuted', 'law:incidentOpened', 'law:dispatchStarted', 'law:incidentResolved',
   'law:responseDeferred', 'law:distressRaised', 'heat:changed',
-  'massline:releaseCommitted', 'massline:releaseCancelled', 'tether:latchDenied',
-  'massline:tangentMeeting', 'massline:throw', 'economy:grantCredits', 'combat:fire',
+  'massline:releaseCancelled', 'tether:latchDenied',
+  'massline:throw', 'economy:grantCredits', 'combat:fire',
   'economy:cargoSold', 'mission:failed', 'encounter:resolved', 'salvage:completed',
   'pickup:collected', 'world:playerRelocated',
 ];
@@ -625,18 +623,19 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       // could slam a field rock before the meeting geometry developed.
       masslineCmd({ lineControl: true, lineLength: -1, orbitDirection: orbitSign, pump: true });
       if (swingStart == null) swingStart = t;
-      // the designed throw: a taut tangential release whips the lighter hull into the
-      // player's ship with player attribution (masslineThrow._commitTangentMeeting).
-      const taut = assessTangentRelease(state, payloadId);
+      // the designed throw: a taut tangential release sends the hull where the swing actually
+      // sent it. firstHitScan names what the release ray meets; nothing steers it there.
       const pair = readCadencePair(player, payload, tether.restLength || 0);
+      const taut = !!(pair && pair.valid
+        && (tether.phase === 'capture' || tether.phase === 'loaded' || tether.phase === 'overload')
+        && pair.tangency >= 0.85 && Math.abs(pair.tangentialSpeed) >= 25);
       const scan = firstHitScan(payload);
       if (phase === 'swing' && (taut || t - swingStart > 12)) { phase = 'release'; phaseStart = t; }
       if (phase === 'release') {
         if (taut && armPressedAt == null) {
-          const plan = planTangentReleaseMeeting(state, taut);
-          log(`  TAUT THROW t=${t.toFixed(1)} phase=${String(tether.phase)} plan=${JSON.stringify(plan)}`);
+          log(`  TAUT THROW t=${t.toFixed(1)} phase=${String(tether.phase)} scan=${scan ? `${scan.e.id}:${scan.e.type}@${scan.c.impactTime.toFixed(2)}s` : 'none'}`);
           input.actions.throwArm = true; armPressedAt = t;
-          expectedVictimId = playerId; // the meeting slams the payload into our hull
+          expectedVictimId = scan ? scan.e.id : null; // ballistics decide; the scan only names it
         } else if (!taut && t - phaseStart > 25 && scan && armPressedAt == null) {
           // fallback: the ballistic cut — the released payload keeps its velocity and
           // dies on whatever the ray crosses. Still a real throw-kill, un-attributed.

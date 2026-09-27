@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Selection sigil lab</title>
+<style>html,body{margin:0;background:#05070a;color:#8fa;font:12px monospace}canvas{display:block}</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "/vendor/three.module.js",
+    "three/addons/": "/vendor/addons/"
+  }
+}
+</script>
+</head>
+<body>
+<script type="module">
+// Look at the ORRERY selection sigil on its own, at the camera the game actually uses.
+// Query params drive what is on screen so a capture run can sweep classes and phases.
+//   ?klass=hostile|friendly|cargo  ?t=<seconds>  ?tilt=<deg>  ?reduced=1  ?flash=1  ?noHull=1
+//   ?mask=<bitmask>  renders one layer group only (1 bed, 2 emblem, 4 cage, 8 vernier, 16 rail, 32 brackets)
+import * as THREE from 'three';
+import { SelectionSigil, SIGIL_CLASS, sigilRadius } from '/src/render/selectionSigil.js';
+
+const q = new URLSearchParams(location.search);
+const num = (k, d) => (q.has(k) ? Number(q.get(k)) : d);
+
+const W = 1280, H = 800;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(W, H);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070a);
+
+// The flight camera: a chase view looking down the plane at a shallow angle. Judging the mark
+// from straight overhead is how a flat instrument gets designed wrong.
+const tilt = THREE.MathUtils.degToRad(num('tilt', 52));
+const dist = 150;
+const camera = new THREE.PerspectiveCamera(46, W / H, 0.5, 2000);
+camera.position.set(0, Math.cos(tilt) * dist, Math.sin(tilt) * dist);
+camera.lookAt(0, 0, 0);
+
+// A stand-in hull so the mark is judged against something, not against a void.
+if (!q.has('noHull')) {
+  const hull = new THREE.Mesh(
+    new THREE.CylinderGeometry(9, 11, 5, 12),
+    new THREE.MeshStandardMaterial({ color: 0x7d8794, roughness: 0.55, metalness: 0.65 }),
+  );
+  hull.position.y = 0.5;
+  scene.add(hull);
+  scene.add(new THREE.AmbientLight(0x8fa8c4, 0.9));
+  scene.add(new THREE.HemisphereLight(0x4a6a8c, 0x0a0d10, 1.3));
+  const key = new THREE.DirectionalLight(0xd8e6f5, 2.2);
+  key.position.set(-60, 90, 40);
+  scene.add(key);
+  // A ground plane, so the mark can be judged against a lit surface as well as against space.
+  const deck = new THREE.Mesh(
+    new THREE.CircleGeometry(150, 48),
+    new THREE.MeshStandardMaterial({ color: 0x2b323c, roughness: 0.95, metalness: 0.1 }),
+  );
+  deck.rotation.x = -Math.PI / 2;
+  deck.position.y = -0.55;
+  scene.add(deck);
+}
+
+const sigil = new SelectionSigil(scene);
+const klass = (q.get('klass') || 'hostile').toLowerCase();
+const klassCode = { hostile: SIGIL_CLASS.HOSTILE, friendly: SIGIL_CLASS.FRIENDLY, cargo: SIGIL_CLASS.CARGO }[klass] || SIGIL_CLASS.HOSTILE;
+const bodyRadius = num('hull', 11);
+const settings = {
+  video: { motionReduce: q.has('reduced') ? true : false, flashReduce: q.has('flash') ? true : false },
+  accessibility: {},
+};
+
+// Warm the program so the captured frame is the steady state, then park the clock.
+sigil.setSubject({ id: 7, radius: bodyRadius, klass: klassCode }, 0, 0, 1 / 60, settings);
+const t = num('t', 0);
+const STEP = 1 / 60;
+for (let i = 0; i < Math.round(t / STEP); i++) {
+  sigil.setSubject({ id: 7, radius: bodyRadius, klass: klassCode }, 0, 0, STEP, settings);
+}
+
+window.__sigil = { sigil, renderer, scene, camera, sigilRadius, klass };
+if (q.has('mask')) sigil.mesh.material.uniforms.uMask.value = num('mask', 0);
+window.__ready = true;
+renderer.render(scene, camera);
+</script>
+</body>
+</html>

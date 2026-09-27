@@ -26,15 +26,21 @@ export const FACT_EVENTS = Object.freeze([
   'aftermath:causeRecorded', 'aftermath:remedied',
   'loot:manifestPayload', 'salvage:completed',
   'salvage:reactorVented', 'salvage:reactorTowedClear', 'salvage:reactorBurst',
-  'aceMemory:transition', 'aceMemory:returnSpawned',
+  'aceMemory:transition', 'aceMemory:returnSpawned', 'aceMemory:pilotPromoted',
   'distress:rescued', 'heat:changed', 'contraband:scanned',
   'economy:tradeCompleted',
+  // World-visibility batch: all five are live emitters in the current tree — traffic/encounter
+  // freight spills, ambient predation telegraphs, survey-driven formation discovery, gate-control
+  // verdicts, and claim-depot freight deliveries.
+  'freight:cargoSpilled', 'encounter:ambientPredationTelegraph',
+  'formation:discovered', 'gate:verdict', 'claim:freightDelivered',
   // An opt-in producer contract, NOT an assertion that stock cargo/economy already emit it.
   'chronicler:provenance',
 ]);
 export const STAGES = Object.freeze([
   'kill', 'aftermath', 'binding', 'salvage', 'recovered', 'sold', 'law',
   'ace', 'rescue', 'wanted', 'scan', 'reactor', 'trade', 'cause', 'remedy',
+  'spill', 'predation', 'survey', 'gate', 'delivery',
 ]);
 export const REF_KINDS = Object.freeze(['death', 'marker', 'wreck', 'receipt', 'cause']);
 export const COUNTERS = Object.freeze([
