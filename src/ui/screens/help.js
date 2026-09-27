@@ -643,7 +643,8 @@ export const helpScreen = {
         row.dataset.row = key;
         row.appendChild(el('span', 'orr-hreg__name', label));
         const bind = keyLabel(state, action, def);
-        row.appendChild(keyGlyph(bind, { small: true }));
+        // both shift keys boost: the ladder draws them as the one key they are
+        row.appendChild(keyGlyph(bind === 'L-Shift / R-Shift' ? 'Shift' : bind, { small: true }));
         list.appendChild(row);
         rowEls.set(key, row);
       });

@@ -102,6 +102,8 @@ html.sf-reduce-motion .orr-hi-svg .orr-hi__pulse, html.sf-reduce-motion .orr-hi-
 .orr-hloop__orbit-pulse-bloom { fill:none; stroke:rgb(${ICE} / .42); stroke-width:12px; stroke-linecap:round; stroke-dasharray:.07 .93; animation:orr-hloop-orbit 7s linear infinite; }
 @keyframes orr-hloop-orbit { from { stroke-dashoffset:1; } to { stroke-dashoffset:0; } }
 html.sf-reduce-motion .orr-hloop__orbit-pulse, html.sf-reduce-motion .orr-hloop__orbit-pulse-bloom { display:none; }
+.orr-hloop.is-small .orr-hloop__name { white-space:normal; width:max-content; max-width:132px; }
+.orr-hloop.is-small .orr-hloop__of { display:none; }
 .orr-hloop.is-off > * { display:none; }
 
 /* ---------------------------------------------------------------- HULL DIAL */
@@ -179,6 +181,8 @@ html.sf-reduce-motion .orr-hmix__rockart { animation:none; }
 .orr-hmix__lbl:is(:hover, :focus-visible) .orr-hmix__lbl-name { color:rgb(255 255 255); text-decoration:underline 2px rgb(255 255 255 / .6); text-underline-offset:4px; outline:none; }
 .orr-hmix__lbl.is-chosen .orr-hmix__lbl-name { color:rgb(255 255 255); font-weight:600; }
 .orr-hmix__lbl.is-chosen .orr-hmix__lbl-pc { color:rgb(${HOT}); }
+.orr-hmix.is-small .orr-hmix__centre > b { font-size:14px; white-space:nowrap; }
+.orr-hmix.is-small .orr-hmix__centre > span:last-child { display:none; }
 .orr-hmix.is-off > * { display:none; }
 
 `;
@@ -447,6 +451,7 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
     if (W < 360 || H < 260) { host.classList.add('is-off'); geo = null; return; }
     host.classList.remove('is-off');
     const small = W < 900 || H < 480;
+    host.classList.toggle('is-small', small);
     const bandW = small ? 12 : 14;
     const chip = small ? 38 : 46;
     // the widest name on the ring decides how much room the ring leaves for its words
@@ -500,9 +505,12 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
     beamG = svg('g', {});
     over.appendChild(beamG);
     // the hub holds the chosen loop's pictogram
-    const gs = Math.round(hubR * 1.18);
+    const gs = Math.round(hubR * (small ? 1.12 : 1.18));
+    // a small hub holds the pictogram alone
+    of.style.display = hubR < 120 ? 'none' : '';
+    hub.style.top = `${f(cy + (hubR < 120 ? 0 : 10))}px`;
     hub.style.left = `${f(cx)}px`;
-    hub.style.top = `${f(cy + 10)}px`;
+    hub.style.top = `${f(cy + (small ? 0 : 10))}px`;
     hubGlyph.style.width = `${gs}px`;
     hubGlyph.style.height = `${gs}px`;
     // the reading stands right of the gate and right of the names on the ring's east side
@@ -1068,6 +1076,7 @@ export function createOreMix(host, { asteroids = [], ores = [], onPickRock = () 
     if (W < 320 || H < 300) { box.classList.add('is-off'); geo = null; return; }
     box.classList.remove('is-off');
     const small = W < 620 || H < 470;
+    box.classList.toggle('is-small', small);
     // the scale of rock types across the top
     const sy = small ? 40 : 52;
     const sx0 = Math.max(46, W * 0.09);
@@ -1113,10 +1122,10 @@ export function createOreMix(host, { asteroids = [], ores = [], onPickRock = () 
       rise(b, 120 + i * 50, arriveNow);
     });
     // the open type's rock fills the hub; its words stand under it, inside the ring
-    const rs = R * 1.72;
-    Object.assign(rockImg.style, { left: `${f(cx - rs / 2)}px`, top: `${f(cy - rs / 2 - R * 0.1)}px`, width: `${f(rs)}px`, height: `${f(rs)}px` });
+    const rs = R * (small ? 1.5 : 1.72);
+    Object.assign(rockImg.style, { left: `${f(cx - rs / 2)}px`, top: `${f(cy - rs / 2 - R * (small ? 0.16 : 0.1))}px`, width: `${f(rs)}px`, height: `${f(rs)}px` });
     centre.style.left = `${f(cx)}px`;
-    centre.style.top = `${f(cy + R * 0.58)}px`;
+    centre.style.top = `${f(cy + R * (small ? 0.5 : 0.58))}px`;
     centre.style.maxWidth = `${f(R * 1.3)}px`;
     arrived = true;
     paintMix(false);
