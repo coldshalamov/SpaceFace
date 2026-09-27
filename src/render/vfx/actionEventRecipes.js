@@ -1,6 +1,8 @@
+import { WORLD_CUE_ACTION_RECIPE, resolveWorldCueReceipt } from './worldCueRecipes.js';
 // Extra responses consume confirmed simulation receipts. Resolving a receipt here is
 // cosmetic only: never discover collisions, change a body, or fabricate a successful action.
 export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
+  'presentation:cue': WORLD_CUE_ACTION_RECIPE,
   'countermeasure:deployed': { verb:'fling', primitive:'pressure', color:0xdde7bb, life:1.15,
     variants:{
       chaff:{verb:'fling',primitive:'pressure',color:0xdde7bb,life:1.15},
@@ -27,6 +29,7 @@ const body = (state,id) => state.entities?.get?.(id);
 const copyPoint = p => ({x:p.x,z:p.z});
 
 export function resolveAdditionalActionVfxReceipt(name,p,state) {
+  if(name==='presentation:cue')return resolveWorldCueReceipt(p,state);
   if (name === 'countermeasure:deployed') {
     const ship=body(state,p.shipId), effect=ship?.data?.cm?.effect;
     if (!ship || !effect || !Number.isFinite(effect.originX) || !Number.isFinite(effect.originZ)) return null;

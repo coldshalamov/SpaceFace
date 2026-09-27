@@ -64,7 +64,7 @@ export class ActionVfx {
     this.composer=new ActionPrimitiveComposer(this.batch,this.particles,toLocal);
     this.anchor={x:0,z:0};this.origin={x:0,z:0};this.socketWorld=new THREE.Vector3();
     this.time=0;this.serial=0;this.live=0;this.disposed=false;
-    this.slots=Array.from({length:32},()=>({alive:false,event:null,id:null,sourceId:null,attached:false,born:0,last:0,
+    this.slots=Array.from({length:32},()=>({alive:false,event:null,kind:null,id:null,sourceId:null,attached:false,born:0,last:0,
       x:0,y:0,z:0,sx:0,sz:0,radius:1,angle:0,angleOffset:0,seed:0,recipe:null,particlePulse:-1,
       tx:0,tz:0,ox:0,oz:0,target:null,source:null,socket:null,sourceSocket:null,hasSource:false,
       provenance:'none',sourceProvenance:'none'}));
@@ -84,16 +84,16 @@ export class ActionVfx {
     if(!valid(pos))return false;
     const now=finite(state.simTime);
     let slot=null;
-    for(const s of this.slots)if(s.event===name&&s.id===id&&s.alive){slot=s;break;}
+    for(const s of this.slots)if(s.event===name&&s.kind===(p.kind??null)&&s.id===id&&s.alive){slot=s;break;}
     if(slot&&now-slot.last<.14)return false;
     if(!slot)for(const s of this.slots)if(!s.alive){slot=s;break;}
     if(!slot)return false;
     const sustained=slot.alive&&recipe.continuous;
     if(!slot.alive)this.live++;
-    slot.alive=true;slot.event=name;slot.id=id;slot.sourceId=sourceId;slot.recipe=recipe;
+    slot.alive=true;slot.event=name;slot.kind=p.kind??null;slot.id=id;slot.sourceId=sourceId;slot.recipe=recipe;
     slot.target=target;slot.source=source;slot.socket=slot.sourceSocket=null;
     slot.attached=!!target&&(!contact||p.attachToTarget===true)&&recipe.verb!=='grind';
-    if(!sustained){slot.born=now;slot.particlePulse=-1;slot.seed=salt(String(id)+':'+name+':'+(++this.serial)+':'+Math.round(now*1000));}
+    if(!sustained){slot.born=now;slot.particlePulse=-1;slot.seed=salt(String(id)+':'+name+':'+(p.kind??'')+':'+(++this.serial)+':'+Math.round(now*1000));}
     slot.last=now;slot.radius=Math.max(2.5,Math.min(24,finite(target?.radius,5)));
     if(recipe.verb==='arm')slot.radius=Math.max(6,slot.radius*1.5);
     if(recipe.verb==='shove')slot.radius=Math.max(8,Math.min(24,finite(p.blastRadius,100)*.14));
@@ -192,7 +192,7 @@ export class ActionVfx {
   }
   inspect(){return {schema:'spaceface.action-primitives.v1',time:this.time,active:this.live,
     surfaces:this.batch.count,particles:this.particles.live,capacity:this.slots.length,
-    instances:this.slots.filter(s=>s.alive).map(s=>({event:s.event,id:s.id,sourceId:s.sourceId,
+    instances:this.slots.filter(s=>s.alive).map(s=>({event:s.event,kind:s.kind,id:s.id,sourceId:s.sourceId,
       primitive:s.recipe.primitive,provenance:s.provenance,sourceProvenance:s.sourceProvenance,
       born:s.born,last:s.last,x:s.x,y:s.y,z:s.z,sx:s.sx,sz:s.sz,angle:s.angle}))};}
   reproject(dx,dz){this.batch.reproject(dx,dz);this.particles.reproject(dx,dz);}
