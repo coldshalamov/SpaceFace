@@ -97,10 +97,18 @@ export const WANTED_TIER_INFO = Object.freeze({
 // and a piracy kill (0.28: someone died). Openly taking lawful cargo in front of witnesses is the
 // more brazen act of the two lesser ones, but nobody was hurt.
 const THEFT_INCIDENT = 0.22;
+// A witnessed/detected collision kill is reckless endangerment, not murder: real heat, but below
+// the WANTED threshold on its own — the law treats a slammed hull differently from a shot one.
+const RECKLESS_KILL = 0.12;
 // A validated incident of a kind this table does not price still raises SOMETHING. Silence would
 // make every future crime type free until someone remembered to add a row here.
 const INCIDENT_HEAT_DEFAULT = 0.12;
-const INCIDENT_HEAT_BY_KIND = Object.freeze({ payload_theft: THEFT_INCIDENT });
+const INCIDENT_HEAT_BY_KIND = Object.freeze({ payload_theft: THEFT_INCIDENT, reckless_kill: RECKLESS_KILL });
+
+// Paying a posted bounty visibly cools the ledger: every credit of settled bounty quiets the
+// hunt a little, capped so a fat payoff never launders a massacre in one receipt.
+const BOUNTY_PAID_COOL_PER_CR = 0.0004;
+const BOUNTY_PAID_COOL_MAX = 0.5;
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
@@ -265,6 +273,10 @@ export const heat = {
     // PQ-151.03 — recovering the hull at the pound is the only way out of impound.
     // Law names the physical fact; this listener is the only path that writes player.heat.
     bus.on('law:impoundRecovered', (p) => this._onImpoundRecovered(p));
+
+    // Settling the posted bounty is the honest door out of the hunt: economy owns the ledger
+    // and emits bounty:cleared; the heat owner translates the payment into visible cooling.
+    bus.on('bounty:cleared', (p) => this._onBountyPaid(p));
 
     // PQ-019B: validated law incidents. Heat listens; it is never told what to write. A mission that
     // wants a thief to become WANTED reports the crime to lawSecurity, lawSecurity validates
@@ -488,6 +500,18 @@ export const heat = {
     if (!player || wantedTierFor(player.heat) !== WANTED_TIER.IMPOUND) return;
     if (method === 'steal') this._dropOneLevel('stole ship back');
     else this._setHeat(0, 'impound bill settled');
+  },
+
+  // Paying the bounty cools the hunt proportionally — enough to see the WANTED band drop (and
+  // release a posted warrant through the heat:changed edge), never a free wipe of the record.
+  _onBountyPaid(payload) {
+    const amount = Math.max(0, Math.round(Number(payload && payload.amount) || 0));
+    if (amount <= 0) return;
+    const player = this.state && this.state.player;
+    const before = player && Number(player.heat) || 0;
+    if (before <= 0) return;
+    const credit = Math.min(BOUNTY_PAID_COOL_MAX, amount * BOUNTY_PAID_COOL_PER_CR);
+    this._setHeat(Math.max(0, before - credit), 'bounty paid');
   },
 
   _dropOneLevel(reason = 'escaped heat radius') {

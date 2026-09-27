@@ -442,7 +442,7 @@ test('production-order clean authored trader kill becomes WANTED and earns no ho
   run.sim.dispose();
 }));
 
-test('player-initiated craft contact routes through combat into clean-civilian WANTED', (t) => withLootShardsEnabled(() => {
+test('player-initiated craft contact routes through combat into a clean-civilian reckless_kill conviction', (t) => withLootShardsEnabled(() => {
   const previous = COMBAT_FLAGS.weaponImpulseConsequences;
   COMBAT_FLAGS.weaponImpulseConsequences = true;
   t.after(() => { COMBAT_FLAGS.weaponImpulseConsequences = previous; });
@@ -468,8 +468,15 @@ test('player-initiated craft contact routes through combat into clean-civilian W
     'clean truth is sampled before synchronous retaliation');
   assert.equal(run.killedEvents.length, 1);
   assert.equal(run.killedEvents[0].killerId, run.player.id);
-  assert.ok(run.state.player.heat >= WANTED_THRESHOLD,
-    `clean civilian ram heat ${run.state.player.heat} must cross WANTED ${WANTED_THRESHOLD}`);
+  // Deliberate contract change (causal-truth law): a witnessed ram is still a convicted crime
+  // with the player as cause — but the law reads a collision as reckless endangerment, priced
+  // below WANTED, never as ordinary murder. The witnessed shot in the earlier tests crosses.
+  assert.equal(run.state.player.heatLastIncident && run.state.player.heatLastIncident.kind,
+    'reckless_kill', 'the law charges the ram as reckless endangerment, not murder');
+  assert.ok(run.state.player.heat > 0,
+    'a witnessed civilian ram still convicts through the law-signed receipt');
+  assert.ok(run.state.player.heat < WANTED_THRESHOLD,
+    `clean civilian ram heat ${run.state.player.heat} stays below WANTED ${WANTED_THRESHOLD} on a single ram`);
   assert.equal(shardDropsOf(run).length, 0, 'civilian contact death cannot mint hostile rewards');
   assert.equal(run.player.hull, 200, 'player collision hull immunity remains intact');
   run.sim.dispose();

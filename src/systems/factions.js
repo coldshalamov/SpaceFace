@@ -34,6 +34,13 @@ const SPILL_CAP = 8;          // per-event spillover magnitude clamp (spec)
 const KILL_BASE = -25;        // base rep for killing a faction ship (spec REP_ACTIONS)
 const KILL_CLASS_MULT = { scout: 0.6, fighter: 1.0, gunship: 1.5, frigate: 2.0, capital: 2.5 };
 const ENEMY_KILL_BONUS = 6;   // killing a faction's rival nudges that rival's enemies up (spec)
+// Collision kills are reckless endangerment in the law's ledger, and the faction reads them the
+// same way: a slammed hull costs standing, but materially less than a deliberate gunshot murder.
+const COLLISION_REP_MULT = 0.4;
+const COLLISION_KILL_CAUSES = new Set([KillCause.TERRAIN_COLLISION, KillCause.SHIP_COLLISION]);
+function isCollisionKillCause(cause) { return COLLISION_KILL_CAUSES.has(cause); }
+const LAW_TRUTH_CAP = 32;          // bounded per-tick adjudication receipts (victimId -> truth)
+const DISCOVERY_REP_LEDGER_CAP = 64; // reportIds already answered with a rep hit
 
 // Conflict / war tuning (spec Formulas) — kept simple but present.
 const WAR_THRESHOLD = 75;     // tension >= this → 'war'
@@ -194,6 +201,11 @@ export const factions = {
     _state = ctx.state;
     this._lastDecayDay = 0;
     this._warAccumDays = 0; // sim-days accumulated toward the next WAR_TICK
+    // One-witness-truth cache: lawSecurity (init order: before factions) publishes
+    // `law:killedAdjudicated` inside the SAME synchronous entity:killed dispatch, so by the time
+    // the rep listener below runs, the law's verdict for that victim is already here.
+    this._lawKillTruth = new Map();
+    this._appliedDiscoveryReports = new Set();
 
     const state = this.state, bus = this.bus;
 
@@ -210,17 +222,38 @@ export const factions = {
       payload.result = this.bribeStanding(payload);
     });
 
-    // Killing a ship: lower rep with the victim's faction (if witnessed), raise rep a little with
-    // that faction's enemies. Only the player's own kills move the player's standing.
+    // THE LAW'S WITNESS TRUTH — one verdict, two consumers. lawSecurity adjudicates every
+    // player-caused kill and publishes `law:killedAdjudicated` (witnessed + canonical cause)
+    // inside the same dispatch; this listener stores it so the rep handler below reads the law's
+    // answer instead of running a second, divergent witness query.
+    bus.on('law:killedAdjudicated', (p) => {
+      if (!p || p.victimEntityId == null) return;
+      const map = this._lawKillTruth;
+      map.set(p.victimEntityId, p);
+      while (map.size > LAW_TRUTH_CAP) map.delete(map.keys().next().value);
+    });
+
+    // Killing a ship: lower rep with the victim's faction (if the law's witness truth says the
+    // act was seen — or the victim's own lawful network always records its dead), raise rep a
+    // little with that faction's enemies. Only the player's own kills move the player's standing.
     bus.on('entity:killed', (p) => {
       if (!p || p.type !== 'ship' || !p.factionId) return;
       if (p.killerId !== state.playerId) return; // NPC-on-NPC kills don't touch player rep
       const victim = p.factionId;
       const cls = p.victimClass || 'fighter';
-      const witnessed = (p.witnessed != null) ? p.witnessed : this._witnessed(p.pos, victim);
+      const causality = compactKillCausality(p, state.playerId);
+      const collision = isCollisionKillCause(causality.cause);
+      const truth = this._takeLawKillTruth(p.id);
+      // With law present, its adjudicated verdict is the only witness truth. Without it (focused
+      // sims, compatibility payloads) a publisher's explicit flag still counts; a missing flag and
+      // no spatial query fail CLOSED — unseen blood does not move standing.
+      const witnessed = truth ? truth.witnessed === true
+        : (p.witnessed != null ? p.witnessed === true : this._witnessed(p.pos, victim));
       if (witnessed) {
         const mult = KILL_CLASS_MULT[cls] != null ? KILL_CLASS_MULT[cls] : 1.0;
-        this.applyRep(victim, KILL_BASE * mult, 'kill_faction_ship');
+        const causeMult = collision ? COLLISION_REP_MULT : 1;
+        this.applyRep(victim, KILL_BASE * mult * causeMult,
+          collision ? 'kill_faction_ship_collision' : 'kill_faction_ship');
       }
       // Rivals of the victim approve regardless of witness (word travels among enemies).
       for (const other of FACTION_IDS) {
@@ -247,6 +280,29 @@ export const factions = {
       if (!causality.playerCaused) return;
       this._feedTensionForKill(p.factionId, p.pos);
       this._feedFrontForKill(p.factionId, p, causality);
+    });
+
+    // Discovered crime → delayed standing answer. When an unwitnessed kill comes back through
+    // wreck provenance, the law's discovery receipt carries the same cause-scaled rep price it
+    // would have charged at the scene. `reportId` dedupe makes scan+salvage of the same hulk
+    // (or a replayed receipt) cost standing exactly once.
+    bus.on('law:reportIncidentReceipt', (p) => {
+      if (!p || p.accepted !== true || p.discovery !== true) return;
+      if (p.kind !== 'unlawful_kill' && p.kind !== 'reckless_kill') return;
+      const factionId = p.factionId;
+      if (!factionId || !META_BY_ID[factionId]) return;
+      const reportId = typeof p.reportId === 'string' ? p.reportId : null;
+      if (!reportId || this._appliedDiscoveryReports.has(reportId)) return;
+      const ledger = this._appliedDiscoveryReports;
+      ledger.add(reportId);
+      while (ledger.size > DISCOVERY_REP_LEDGER_CAP) {
+        ledger.delete(ledger.values().next().value);
+      }
+      const cls = p.victimClass || 'fighter';
+      const mult = KILL_CLASS_MULT[cls] != null ? KILL_CLASS_MULT[cls] : 1.0;
+      const causeMult = isCollisionKillCause(p.killCause) ? COLLISION_REP_MULT : 1;
+      this.applyRep(factionId, KILL_BASE * mult * causeMult,
+        isCollisionKillCause(p.killCause) ? 'kill_discovered_collision' : 'kill_discovered');
     });
 
     // Trade at a faction station: small standing gain scaled by net trade value, capped per docking.
@@ -413,10 +469,28 @@ export const factions = {
     }
   },
 
-  /** True if any ship/station of `faction` is within WITNESS_RANGE of `pos` (spec witnessed()). */
+  /**
+   * Consume the law's adjudication truth for a victim entity id. The receipt is only valid for
+   * the kill event of its own tick — entity ids recycle, and a stale verdict must never bless a
+   * stranger's corpse.
+   */
+  _takeLawKillTruth(victimEntityId) {
+    const map = this._lawKillTruth;
+    if (!map || victimEntityId == null) return null;
+    const truth = map.get(victimEntityId) || null;
+    map.delete(victimEntityId);
+    if (!truth) return null;
+    const nowTick = this.state && Number.isInteger(this.state.tick) ? this.state.tick : null;
+    if (nowTick != null && Number.isInteger(truth.tick) && truth.tick !== nowTick) return null;
+    return truth;
+  },
+
+  /** True if any ship/station of `faction` is within WITNESS_RANGE of `pos` (spec witnessed()).
+   *  FAILS CLOSED: when there is no spatial query to answer with, the honest verdict is "nobody
+   *  provably saw it" — a fabricated witness would dock standing for a kill nobody observed. */
   _witnessed(pos, faction) {
     const state = this.state || _state;
-    if (!pos || !state || !this.helpers || !this.helpers.queryRadius) return true; // fail-open if no spatial query
+    if (!pos || !state || !this.helpers || !this.helpers.queryRadius) return false;
     const near = this.helpers.queryRadius(pos, WITNESS_RANGE);
     for (const e of near) {
       if (!e.alive) continue;

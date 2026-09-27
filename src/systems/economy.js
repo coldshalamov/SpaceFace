@@ -106,6 +106,8 @@ const BASE_SCAN = 0.25;            // p_scan = clamp(BASE_SCAN*(1+security) - cl
 const SCAN_LO = 0.02, SCAN_HI = 0.95;
 const FINE_MULT = { legal: 0, restricted: 0.8, illegal: 1.2, contraband: 1.5 };
 const BRIBE_FRAC = 0.30;
+const DEBT_STALE_DAYS = 2;          // unpaid debt older than this starts converting to bounty
+const DEBT_TO_BOUNTY_DAILY_FRAC = 0.25; // posted bounty grows by this fraction of debt per stale day
 export const TRADE_LEDGER_MAX = 10;
 const SALVAGE_INTAKE_RECEIPT_CAP = 256;
 const NPC_SALVAGE_INTAKE_COMMODITY_ID = 'cmdty_scrap_metal';
@@ -853,6 +855,11 @@ export const economy = {
       const payload = (p && typeof p === 'object') ? p : {};
       payload.result = this.payBounty(payload);
     });
+
+    // Stale debt ages into a posted bounty (the debt/bounty ledger connection). core emits
+    // { days:absoluteDay, elapsed }; unpaid debt sitting past the grace window adds a deterministic
+    // daily levy to player.bounty until settled — the ledger the law hunts on grows, visibly.
+    bus.on('day:tick', (p) => this._onDebtStaleDay(p));
 
     // ---- trade intents from UI ------------------------------------------------------------
     bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty, { expectedTotal: p.expectedTotal }); });
@@ -2188,6 +2195,46 @@ export const economy = {
     return { ok: true, reason: 'paid', amount: bounty, shortfall: 0 };
   },
 
+  /**
+   * Stale-debt → bounty escalation (the debt side of the heat/bounty/debt triangle). Unpaid debt
+   * gets a short grace window; once it is stale, each day:tick adds a deterministic levy to the
+   * posted bounty until the debt is settled. One levy per absolute day (`debtStaleDay` latch) —
+   * duplicate day events and save/reload replays cannot double-charge the same day.
+   */
+  _onDebtStaleDay(p) {
+    const state = this.state;
+    const player = state && state.player;
+    if (!player) return;
+    const day = Number.isInteger(p && p.days) ? p.days : null;
+    const debt = Math.max(0, Math.round(Number(player.debt) || 0));
+    if (debt <= 0 || day == null) {
+      // A clean ledger carries no stale clock.
+      if (debt <= 0) {
+        player.debtSinceDay = null;
+        delete player.debtStaleDay;
+      }
+      return;
+    }
+    if (!Number.isInteger(player.debtSinceDay)) {
+      // Legacy saves/foreign accrual paths never stamped a start day: begin the grace window now
+      // rather than instantly escalating debt the player was never warned about.
+      player.debtSinceDay = day;
+      return;
+    }
+    if (day - player.debtSinceDay < DEBT_STALE_DAYS) return;
+    if (player.debtStaleDay === day) return;
+    player.debtStaleDay = day;
+    const levy = Math.max(1, Math.round(debt * DEBT_TO_BOUNTY_DAILY_FRAC));
+    player.bounty = Math.max(0, Math.round((Number(player.bounty) || 0) + levy));
+    this.bus.emit('economy:debtEscalated', {
+      debtCr: debt,
+      levyCr: levy,
+      bountyCr: player.bounty,
+      daysOverdue: day - player.debtSinceDay,
+      source: 'economy',
+    });
+  },
+
   // -------------------------------------------------------------------------------------------
   // SERVICES — refuel / repair / ammo / hull wash (ui:service {type, amount}).
   // -------------------------------------------------------------------------------------------
@@ -2556,6 +2603,10 @@ export const economy = {
       if (credits > 0) this.chargeCredits(credits, 'fine:contraband');
       state.player.debt = (state.player.debt || 0) + unpaid;
       state.player.bounty = (state.player.bounty || 0) + round(unpaid * 0.5);
+      // Fresh debt restarts the stale clock: the new balance ages through the same grace window
+      // before day:tick escalation adds more bounty on top.
+      state.player.debtSinceDay = Number.isInteger(state.days) ? state.days : 0;
+      delete state.player.debtStaleDay;
     }
     // Spec caught_contraband is -40 × (1 + 0.5 × prior strikes). Emit that once through
     // faction:repDelta; factions owns applyRep and increments the strike counter from the
