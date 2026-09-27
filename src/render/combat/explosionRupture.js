@@ -78,7 +78,20 @@ function createRuptureGeometry() {
   return geometry;
 }
 
+// Geometry, density and heat share the same transported coordinates. A drifting
+// sheet with unrelated scrolling color looked like paper even with a porous alpha.
+const REACTOR_TRANSPORT = /* glsl */`
+  vec3 reactorTransport(vec2 uv, float clock, float seed) {
+    float carry=uv.x-clock*(0.88+0.21*sin(seed));
+    float shear=uv.y+0.25*sin(carry*9.3+seed)
+      +0.11*sin(carry*19.7-uv.y*4.2+seed*1.7);
+    float curl=sin(carry*16.1+shear*6.3-seed);
+    return vec3(carry+0.075*sin(shear*9.1+clock*3.7),shear,curl);
+  }
+`;
+
 const VERTEX = /* glsl */`
+  ${REACTOR_TRANSPORT}
   attribute vec3 aOrigin;
   attribute vec4 aShape; // family, length, width, height
   attribute vec4 aPhase; // age, lifetime, seed, motion scale
@@ -122,14 +135,14 @@ const VERTEX = /* glsl */`
     } else if(aShape.x < 2.5) {
       // Each pressure exit carries a SHORT, deep parcel, not a partial ring or a long
       // flame outline. Unequal folds overtake one another across its broad cross-section.
-      float carry = u-advection*(0.55+0.16*sin(seed));
-      float fold = sin(carry*8.0+v*2.7+seed);
-      float buckle = sin(carry*15.0-v*4.0-seed);
-      float arch = cos(v*1.75+0.30*fold);
-      p.x = u*aShape.y + (v*v*0.16+fold*0.075)*aShape.y;
-      p.z = (v*(0.76+0.16*fold)+buckle*0.11)*aShape.z;
+      vec3 flow=reactorTransport(vec2(u,v),advection,seed);
+      float fold=flow.z;
+      float buckle=sin(flow.x*31.7-flow.y*9.3+seed*0.7);
+      float arch=cos(v*1.75+0.38*fold);
+      p.x=u*aShape.y+(v*v*0.08+fold*0.12+buckle*0.045)*aShape.y;
+      p.z=(v*(0.67+0.22*fold)+buckle*0.21)*aShape.z;
       p.z += (u-0.35)*aShape.z*sin(seed)*advection*0.65;
-      p.y = (0.34+0.46*arch+0.19*fold+0.10*buckle)*aShape.w;
+      p.y=(0.25+0.34*arch+0.28*fold+0.16*buckle)*aShape.w;
       p.y += advection*aShape.w*(0.25+u*0.30);
     } else {
       // Flame is a rolling scroll: the hot edge curls OVER the dark folded body while
@@ -157,6 +170,7 @@ const VERTEX = /* glsl */`
 `;
 
 const FRAGMENT = /* glsl */`
+  ${REACTOR_TRANSPORT}
   varying vec2 vUv;
   varying vec3 vWorld;
   varying vec4 vPhase;
@@ -186,12 +200,13 @@ const FRAGMENT = /* glsl */`
       *(0.45+0.42*sin(q*23.0-0.6-seed));
     float density=max(mainCell,max(sideA,sideB));
     if(vKind>1.5 && vKind<2.5) {
-      // Broad transported masses have bright INTERIORS and irregular voids between them.
-      // A central slit plus rim light made the previous reactor a pair of hollow paisleys.
-      float transported=u-motionTime*(0.55+0.16*sin(seed));
-      density=0.40+0.25*sin(transported*9.0+v*3.7+seed)
-        +0.18*sin(transported*18.0-v*6.2-seed*1.3)
-        +0.10*sin(transported*31.0+v*11.0+seed*0.7);
+      // Sheared thermal channels pinch apart while passing through the carrier.
+      // The domain also displaces the vertices: hot lobes move and fold rather
+      // than leaving a fixed leaf with a moving texture across its face.
+      vec3 flow=reactorTransport(vec2(u,v),motionTime,seed);
+      density=0.28+0.28*sin(flow.x*17.4+flow.y*5.1+seed)
+        +0.16*sin(flow.x*31.7-flow.y*9.3+seed*0.7)
+        +0.09*sin(flow.x*43.1+flow.y*14.2-seed);
     } else if(vKind>2.5) {
       // Fuel keeps its longer rolling folds, with connected combustible body between the
       // channels. Uneven depletion opens gaps; a permanent centre cut is not combustion.
@@ -263,11 +278,15 @@ const FRAGMENT = /* glsl */`
     } else if(vKind<2.5) {
       cold=vec3(0.028,0.050,0.068)*light;
       hot=mix(vec3(1.05,2.7,4.1),vec3(4.7,1.9,0.35),smoothstep(0.62,0.83,vPhase.z));
-      float opticalBody=1.0-exp(-max(0.0,density-dissolution)*4.4);
-      float interior=opticalBody*(0.55+0.45*carriedHeat)*(1.0-u*0.30);
-      // A broad HDR fill clipped the curved parcel into flat blue/cream paper. Shape is
-      // carried by its lit, translucent body; only moving crests and exits reach HDR.
-      surfaceHeat=heat*(interior*(0.16+0.32*light)+cellRim*carriedHeat*0.15+front*0.11);
+      vec3 flow=reactorTransport(vec2(u,v),motionTime,seed);
+      float thermalWave=0.25+0.75*pow(max(0.0,sin(flow.x*13.7-flow.y*4.8+seed)),2.0);
+      float opticalBody=1.0-exp(-max(0.0,density-dissolution)*3.2);
+      float shoulder=exp(-pow((density-dissolution-0.18)/max(0.14,densityAA),2.0));
+      // Thermal emission follows moving shoulders inside the material. Normal-lit
+      // gold faces made the whole parcel a solid folded leaf; colder gaps and depth
+      // now separate successive hot reaches without reducing this to rim-only wire.
+      surfaceHeat=heat*(opticalBody*(0.05+thermalWave*0.22)
+        +shoulder*thermalWave*0.52+front*0.045);
     } else {
       cold=vec3(0.065,0.018,0.009)*light;
       hot=vec3(4.1,1.5,0.20);
