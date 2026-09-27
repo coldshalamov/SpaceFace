@@ -330,6 +330,12 @@ export function ensurePerfRuntime(state) {
   let renderWorkEnabled = false;
   // Opt-in hitch owner ring. Default off so ordinary frames pay no classifier work.
   let hitchAttributionEnabled = false;
+  // PERF-89: opt-in per-frame sim owner attribution. Armed alongside hitchAttributionEnabled,
+  // every sim step runs the instrumented path — two clocks per system — but accumulates only
+  // the frame's max+argmax+total for the verdict. The stratified p95 rings keep their 8-of-31
+  // basis (they still only take sampled ticks), so simAttribution cannot contaminate them.
+  // Default off: ordinary play never pays the per-system clock calls.
+  let simAttributionEnabled = false;
   // Bounded ring of recent classifier verdicts keyed by the rAF timestamp that closed
   // the interval (callbackTimestampMs). rAF timestamps are identical across every
   // callback in a frame batch, so a probe can bind a verdict to its own measured
@@ -350,7 +356,15 @@ export function ensurePerfRuntime(state) {
   const frameSimStepMs = new Float64Array(FRAME_SIM_STEP_RING_N);
   const frameSimStepMeasured = new Uint8Array(FRAME_SIM_STEP_RING_N);
   let frameSimStepListLen = 0;
+  // `currentStepMeasured` = this step may write p95 rings (sampled/full-coverage/follow-up);
+  // `currentStepInstrumented` = this step wraps its systems in clocks at all (the superset:
+  // measured steps, plus every step while simAttribution is armed). The registry calls
+  // shouldMeasureSystemsThisStep once per step, so outside a step both flags go stale —
+  // frameStepSystemsRecorded below counts systems that actually reported and is the honest
+  // basis for "was this step measured" (a frozen step that skipped its systems is not).
   let currentStepMeasured = false;
+  let currentStepInstrumented = false;
+  let frameStepSystemsRecorded = 0;
   // A hitch owned by sim with unmeasured steps names no system. Hitch streaks cluster, so
   // arm one frame of full system measurement after such a verdict — the echo step then
   // reports its real owner instead of '(none)'. Self-limiting: disarms the first clean frame.
@@ -517,8 +531,9 @@ export function ensurePerfRuntime(state) {
         && (systemTimingFullCoverage === true || simFollowupMeasureThisFrame
           || shouldSampleSystemTimingTick(simTick));
       currentStepMeasured = measured;
-      if (hitchAttributionEnabled && measured) frameMeasuredStepCount += 1;
-      return measured;
+      currentStepInstrumented = measured
+        || (hitchAttributionEnabled === true && simAttributionEnabled === true);
+      return currentStepInstrumented;
     },
     get systemTimingSampling() {
       return systemTimingSamplingSnapshot();
@@ -543,6 +558,12 @@ export function ensurePerfRuntime(state) {
     setHitchAttributionEnabled(on) {
       hitchAttributionEnabled = !!on;
       return hitchAttributionEnabled;
+    },
+    get simAttributionEnabled() { return simAttributionEnabled; },
+    isSimAttributionEnabled() { return simAttributionEnabled === true; },
+    setSimAttributionEnabled(on) {
+      simAttributionEnabled = !!on;
+      return simAttributionEnabled;
     },
     getHitchHistogram() {
       return hitchHistogramReport(hitchHistogram);
@@ -743,6 +764,7 @@ export function ensurePerfRuntime(state) {
           hitchVerdicts.push({
             atMs: Number.isFinite(callbackTimestampMs) ? callbackTimestampMs : null,
             owner: classification && classification.owner ? classification.owner : 'unknown',
+            simSystem: classification ? classification.simSystem : null,
             frameMs: ms,
           });
           if (hitchVerdicts.length > 16) hitchVerdicts.shift();
@@ -757,6 +779,7 @@ export function ensurePerfRuntime(state) {
         frameSimStepCount = 0;
         frameMeasuredStepCount = 0;
         frameSimStepListLen = 0;
+        frameStepSystemsRecorded = 0;
         if (simFollowupMeasureThisFrame && hitchHistogram) {
           hitchHistogram.simFollowupMeasuredFrames
             = (hitchHistogram.simFollowupMeasuredFrames || 0) + 1;
@@ -846,12 +869,14 @@ export function ensurePerfRuntime(state) {
     recordStepTotal(ms) {
       if (hitchAttributionEnabled) {
         frameSimStepCount += 1;
+        if (frameStepSystemsRecorded > 0) frameMeasuredStepCount += 1;
         if (frameSimStepListLen < FRAME_SIM_STEP_RING_N) {
           frameSimStepMs[frameSimStepListLen] = Number.isFinite(ms) && ms >= 0 ? ms : -1;
-          frameSimStepMeasured[frameSimStepListLen] = currentStepMeasured ? 1 : 0;
+          frameSimStepMeasured[frameSimStepListLen] = frameStepSystemsRecorded > 0 ? 1 : 0;
           frameSimStepListLen += 1;
         }
       }
+      frameStepSystemsRecorded = 0;
       if (Number.isFinite(ms) && ms >= 0) framePhaseMs.sim = ms;
       sample(phaseStats.sim, ms);
     },
@@ -887,7 +912,8 @@ export function ensurePerfRuntime(state) {
     recordSystem(name, ms) {
       // Defense-in-depth: registry avoids the clocks too, while direct callers cannot accidentally
       // refill detailed rings after a diagnostic window has closed.
-      if (!systemTimingEnabled) return;
+      if (!currentStepInstrumented) return;
+      frameStepSystemsRecorded += 1;
       if (hitchAttributionEnabled) {
         frameSystemTotalMs += ms;
         if (ms > frameSystemMaxMs) {
@@ -895,7 +921,9 @@ export function ensurePerfRuntime(state) {
           frameSystemMaxName = name;
         }
       }
-      sample(statForSystem(name), ms);
+      // The p95 rings keep their stratified basis: attribution-only steps contribute the
+      // frame's max+argmax above but never a ring sample.
+      if (currentStepMeasured) sample(statForSystem(name), ms);
     },
     recordRenderWork(name, ms) {
       // Defense-in-depth: no ring write when measurement is disabled.
@@ -1092,6 +1120,8 @@ export function ensurePerfRuntime(state) {
       frameMeasuredStepCount = 0;
       frameSimStepListLen = 0;
       currentStepMeasured = false;
+      currentStepInstrumented = false;
+      frameStepSystemsRecorded = 0;
       resetBackgroundJobRecords();
       resetStat(frameStats);
       resetStat(frameCallbackStats);
@@ -1200,6 +1230,7 @@ export function ensurePerfRuntime(state) {
       return {
         hitchAttribution: hitchHistogramReport(hitchHistogram),
         systemTimingEnabled,
+        simAttributionEnabled,
         systemTimingSampling: systemTimingSamplingSnapshot(),
         frame: reportStat(frameStats),
         frameCallback: reportStat(frameCallbackStats),
