@@ -1462,9 +1462,17 @@ export const footprintScreen = {
     const read = el('div', 'fp-trace__read');
     if (source.kind === 'bounty') {
       read.append(el('p', 'k-sentence k-sentence--emph', 'Posted against your hull'));
-      read.append(el('p', 'k-sentence', chain
-        ? 'The chain it stands on unfolds below. Paying settles the bounty and every chain it alone holds open; heat still clears by distance.'
-        : 'No chain on the record carries it. Paying settles it; heat still clears by distance.'));
+      if (chain && node) {
+        // a receipt latched on the chain below: read it here, as a chain's head would
+        const tmp = el('div');
+        tmp.innerHTML = footprintReadoutHtml(chain, node, state);
+        const receipt = tmp.querySelector('.k-sentence:not(.k-sentence--emph)');
+        if (receipt) read.append(receipt);
+      } else {
+        read.append(el('p', 'k-sentence', chain
+          ? 'The chain it stands on unfolds below. Paying settles the bounty and every chain it alone holds open; heat still clears by distance.'
+          : 'No chain on the record carries it. Paying settles it; heat still clears by distance.'));
+      }
     } else {
       read.innerHTML = footprintReadoutHtml(chain, node, state);
     }
