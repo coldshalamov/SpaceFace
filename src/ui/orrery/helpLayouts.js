@@ -219,6 +219,10 @@ ${H} .sf-entity-link { text-decoration:none !important; box-shadow:none !importa
 ${H} .orr-help-factions { position:relative; display:grid; grid-template-columns:minmax(0, 1.25fr) minmax(300px, .75fr); column-gap:clamp(20px, 3vw, 64px); align-items:center; height:100%; min-height:0; }
 ${H} .orr-help-factions__orbit { position:relative; height:100%; min-height:0; --orr-band-a:.3; --orr-w-band:11px; --orr-edge-a:.6; }
 
+/* KEYBOARD FOCUS: the kit's bone focus box (.k-screen :focus-visible) would draw a rectangle round a rung,
+   a station or a crest. Every control on Help marks focus in its own light (a light segment on its tick,
+   its glyph's bar, its ring), so the box is dropped here. */
+${H} :focus-visible { outline:none !important; }
 /* PAD FOCUS: the pad moves focus programmatically, so the accessibility sheet draws a lamp-coloured
    ring box round whatever holds it. On Help that would be a box and a second amber; each control shows
    pad focus in its own light instead (the same marks as keyboard focus). */
