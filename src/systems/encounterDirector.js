@@ -47,7 +47,7 @@ import {
   readTensionPolicy, tensionAccrualScale, tensionCandidateRank, tensionPacingBlockReason,
 } from '../ai/tensionPolicy.js';
 import { hash32, mulberry32 } from '../core/rng.js';
-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { ZONE_CERES_THROUGHLINE } from '../data/authoredPlaces.js';
 import {
@@ -185,6 +185,19 @@ const HARASS_MIN_WINDOW_DMG = 40;     // less than this in the window reads as "
 const HARASS_STALL_TOL = 0.02;        // pool within 2% of window-start counts as not losing ground
 const HARASS_TTK_S = 420;             // implied seconds-to-kill above this = unresolvable
 const HARASS_COOLDOWN_S = 600;        // a mercied harasser holds off the player this long
+
+// ── terrain lee (WF-02: a fight that uses the geometry) ──────────────────────────────────────────
+// Encounters whose squad declares `terrain: 'lee'` spawn behind a rock, not in open space. The
+// search runs at spawn time over live asteroid entities — the same monoliths terrainAnchors
+// furnishes on the telegraph event (26–40 wu) plus any big field rocks. Numbers: a 14 wu floor
+// keeps ordinary gravel out; the 36 wu standoff plus the batch's own spread keeps hulls clear of
+// the face; 420 wu keeps the squad inside its zone's honesty slack (PROX_SLACK is 600).
+const LEE_ROCK_MIN_RADIUS = 14;     // readable cover, not gravel (field rocks run 6–14)
+const LEE_SEARCH_RADIUS = 900;      // squad → rock scan: terrainAnchors bubble 600 + jitter 260
+const LEE_MIN_BEARING_WU = 260;     // player this close: the fight is joined, hiding is moot
+const LEE_STANDOFF_WU = 36;         // hull clearance behind the rock's face
+const LEE_MAX_SHIFT_WU = 420;       // formation-preserving shift cap (stays near the authored zone)
+const LEE_LATERAL_PENALTY = 0.25;   // prefer rocks near the player→squad line over sideways ones
 
 const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
 const CERES_ACTIVITY_AMBUSH_ZONE_ID = 'zone_ceres_ambush';
@@ -992,6 +1005,7 @@ export const encounterDirector = {
         sectorId: live.sectorId, zoneId: live.zoneId, count: live.ids.length,
         fingerprint: live.causality.fingerprint,
         motiveId: live.causality.motiveId,
+        terrainLee: live.data.terrainLee || null,
       });
     }
   },
@@ -1126,6 +1140,24 @@ export const encounterDirector = {
   spawnShips(live, ships) {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function' || !ships || !ships.length) return [];
+    // Terrain lee (WF-02): a squad whose plan declares `terrain: 'lee'` takes its stand behind the
+    // best rock near its anchor instead of floating in open space. The batch the script actually
+    // spawns is shifted rigidly (formation preserved), once per encounter — later batches (claim
+    // victims) already anchor on the shifted lead ship.terrainAnchors furnishes big rocks on the
+    // telegraph event, which fires before script.fire, so the furnished monoliths are visible here.
+    if (live && live.plan && live.plan.terrain === 'lee'
+      && !(live.data && live.data.terrainLee)) {
+      const p = this.player();
+      if (p && p.pos) {
+        const placement = computeLeePlacement(ships, p.pos, indexedTypeScan(this.state, 'asteroids'));
+        if (placement) {
+          for (const sh of ships) {
+            if (sh && sh.pos && Number.isFinite(sh.pos.x)) { sh.pos.x += placement.dx; sh.pos.z += placement.dz; }
+          }
+          live.data.terrainLee = placement;
+        }
+      }
+    }
     const budget = this.helpers && this.helpers.spawnBudget;
     let grant = ships.length;
     if (budget && typeof budget.request === 'function') {
@@ -3047,6 +3079,9 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
     levelBand,
     delay: 0,
     ships,
+    // WF-02 terrain lee: authored squads may declare `terrain: 'lee'` to spawn behind the best
+    // rock near their anchor (applied at spawnShips time, once per encounter).
+    terrain: enc.squad && enc.squad.terrain === 'lee' ? 'lee' : null,
     predation: enc.predation && enc.predation.enabled === true
       ? { ...enc.predation }
       : null,
@@ -3132,6 +3167,79 @@ function jitter(zone, rng, clusterR) {
   const ang = rng() * Math.PI * 2;
   const r = Math.sqrt(rng()) * clusterR;
   return { x: c.x + Math.cos(ang) * r, z: c.z + Math.sin(ang) * r };
+}
+
+/** Terrain-lee spawn placement (WF-02). Pure and rng-free: the same batch, player pose and rock
+ * field always resolve the same shift, so encounters stay deterministic. Returns the rigid offset
+ * that parks the batch behind the best cover rock relative to the player's bearing — or null when
+ * no qualifying rock exists (the encounter then spawns exactly as authored; fail-open).
+ *
+ * Choice of rock: alive asteroids of readable size within LEE_SEARCH_RADIUS of the batch centroid
+ * score `radius*2 − lateral*0.25`, preferring big cover that sits near the player→squad line. The
+ * lee point is the far side of that rock along the player→rock bearing, pushed out by the rock's
+ * radius, the hull standoff and the batch's own spread, and the whole shift is clamped to
+ * LEE_MAX_SHIFT_WU so the squad never wanders out of its zone's honesty slack. */
+export function computeLeePlacement(ships, playerPos, asteroids) {
+  if (!Array.isArray(ships) || !ships.length || !playerPos || !asteroids) return null;
+  let cx = 0, cz = 0, count = 0;
+  for (const sh of ships) {
+    if (!sh || !sh.pos || !Number.isFinite(sh.pos.x) || !Number.isFinite(sh.pos.z)) continue;
+    cx += sh.pos.x; cz += sh.pos.z; count++;
+  }
+  if (!count) return null;
+  cx /= count; cz /= count;
+  let spread = 0;
+  for (const sh of ships) {
+    if (!sh || !sh.pos || !Number.isFinite(sh.pos.x) || !Number.isFinite(sh.pos.z)) continue;
+    spread = Math.max(spread, Math.hypot(sh.pos.x - cx, sh.pos.z - cz));
+  }
+  const tox = cx - playerPos.x, toz = cz - playerPos.z;
+  const toLen = Math.hypot(tox, toz);
+  // No approach bearing to hide from — or the player is already inside the wing: a lee matters
+  // for the approach, not for a fight that has already been joined (fail-open).
+  if (!(toLen > LEE_MIN_BEARING_WU)) return null;
+  const ux = tox / toLen, uz = toz / toLen;            // player → squad bearing
+  const searchR2 = LEE_SEARCH_RADIUS * LEE_SEARCH_RADIUS;
+  let best = null;
+  let bestScore = -Infinity;
+  for (const rock of asteroids) {
+    if (!rock || rock.alive === false || !rock.pos) continue;
+    // Production scans arrive as the pre-filtered `asteroids` index bucket; the fat entityList
+    // fallback (minimal states) needs the type check here so stations/wrecks never act as cover.
+    if (rock.type !== 'asteroid') continue;
+    const radius = Number.isFinite(rock.radius) ? rock.radius : 0;
+    if (radius < LEE_ROCK_MIN_RADIUS) continue;
+    const rx = rock.pos.x - cx, rz = rock.pos.z - cz;
+    if (rx * rx + rz * rz > searchR2) continue;
+    // Cover only counts when it stands on the player's side of the squad (forward hemisphere).
+    const along = (rock.pos.x - playerPos.x) * ux + (rock.pos.z - playerPos.z) * uz;
+    if (along <= radius) continue;
+    const lateral = Math.abs((rock.pos.x - playerPos.x) * uz - (rock.pos.z - playerPos.z) * ux);
+    const score = radius * 2 - lateral * LEE_LATERAL_PENALTY;
+    if (score > bestScore || (score === bestScore && best && rock.id != null && best.rockId != null
+      && rock.id < best.rockId)) {
+      bestScore = score;
+      best = { rockX: rock.pos.x, rockZ: rock.pos.z, rockRadius: radius, rockId: rock.id != null ? rock.id : null };
+    }
+  }
+  if (!best) return null;
+  // Lee point: the rock's far side along the player→rock bearing (≈ the player→squad bearing,
+  // re-derived from the rock for honesty when the cover sits off-axis).
+  let lx = best.rockX - playerPos.x, lz = best.rockZ - playerPos.z;
+  const ll = Math.hypot(lx, lz) || 1;
+  lx /= ll; lz /= ll;
+  const stand = best.rockRadius + LEE_STANDOFF_WU + spread;
+  const tx = best.rockX + lx * stand - cx;
+  const tz = best.rockZ + lz * stand - cz;
+  const tl = Math.hypot(tx, tz);
+  if (!(tl > 0.5)) return null;                        // already lee'd; nothing to do
+  const k = tl > LEE_MAX_SHIFT_WU ? LEE_MAX_SHIFT_WU / tl : 1;
+  return {
+    dx: tx * k, dz: tz * k,
+    rockRadius: best.rockRadius,
+    rockId: best.rockId,
+    shiftWU: Math.round(tl * k),
+  };
 }
 
 // Choose a zone matching the encounter's zoneTypes (seeded among matches).
