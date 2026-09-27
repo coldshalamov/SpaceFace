@@ -472,6 +472,10 @@ export const ENEMY_TYPES = [
     directionalArmor: { frontArcDeg: 180, frontMult: 0.2, rearArcDeg: 180, rearMult: 1.7 },
     prowSurface: { arcDeg: 180, material: 'plate' },
     surfaceMaterial: 'plate',
+    // Presentation-only dressing for the render lane (src/render/forgeRegentCrown.js): the wider
+    // crown the systems side authors as 180° directional armor reads in the room as a collar of
+    // mirror plates rotating around the bow. Combat numbers stay untouched by this field.
+    bossDressing: { kind: 'forge_crown' },
     telegraph: {
       bark: 'warn', cue: 'engine_flare',
       line: 'Forge Regent takes the furnace. Mirror crown wider than the Foreman — cross the pass and work the stern.',

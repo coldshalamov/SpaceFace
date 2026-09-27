@@ -235,6 +235,10 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
     };
   }
   if (def.fieldAnchor) spec.data.fieldAnchor = { ...def.fieldAnchor };
+  // Presentation-only boss dressing (Forge Regent crown). Render-owned; no combat fields.
+  if (def.bossDressing && typeof def.bossDressing === 'object') {
+    spec.data.bossDressing = { ...def.bossDressing };
+  }
   if (def.telegraph && def.telegraph.cue && !opts.approachTelegraph) {
     // Prefer role cue when doctrine telegraph is generic.
     spec.data.ai.approachTelegraph = def.telegraph.cue;

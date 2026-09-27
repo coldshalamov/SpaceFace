@@ -192,6 +192,7 @@ import {
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { globalShipMicroMotion } from './shipMicroMotion.js';
+import { globalForgeCrown } from './forgeRegentCrown.js';
 import { createFlightOverheadPresentation } from './flightOverheadPresentation.js';
 import { writeSlipstreamState } from '../presentation/flightOverheadMath.js';
 import { globalAsteroidMotion } from './asteroidMotionPresentation.js';
@@ -12332,6 +12333,7 @@ export const render = {
       globalShipMicroMotion.releaseEntityMesh(entityId);
       globalAsteroidMotion.releaseEntityMesh(entityId);
       globalInfrastructureMotion.releaseEntityMesh(entityId);
+      globalForgeCrown.releaseEntityMesh(entityId);
     }
     // A save restore reissues ids, so the record pinning this exact mesh can live under a
     // recycled key the entity-id release above cannot reach — release by identity too.
@@ -12339,6 +12341,7 @@ export const render = {
       globalShipMicroMotion.releaseMesh(mesh);
       globalAsteroidMotion.releaseMesh(mesh);
       globalInfrastructureMotion.releaseMesh(mesh);
+      globalForgeCrown.releaseMesh(mesh);
     }
     // The submit-lane reservation is keyed by entity id, not by the world handle: it must
     // release even when the handle (or the world) is already gone, or the slot strands.
@@ -12377,6 +12380,7 @@ export const render = {
     globalPickupMotion.prune(active);
     globalOrdnanceMotion.prune(active);
     globalInfrastructureMotion.prune(active);
+    globalForgeCrown.prune(active);
     this._releaseDetachedBoundaryOwners();
   },
 
@@ -13584,6 +13588,7 @@ export const render = {
           _craftMicroMotionOptions.tetherPhase = tetherView && tetherView.phase ? tetherView.phase : '';
           _craftMicroMotionOptions.flashReduce = _worldSiteA11y.reducedFlash;
           globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+          globalForgeCrown.updateForgeCrown(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
           if (isPlayer && this.scene) {
             slipstreamSeen = true;
             if (!this._overheadCues) this._overheadCues = createFlightOverheadPresentation(this.scene);
