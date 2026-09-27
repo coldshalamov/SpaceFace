@@ -315,6 +315,7 @@ export const fields = {
     this.registry = ctx.registry || null;
     this._kernel = createFieldKernel();
     this._orbitWorld = attachOrbitWorld(this._kernel);
+    this._orbitScanned = false;
     this._combatKernel = getCombatKernel(ctx);
     // Reused scratch — zero per-tick allocation in the force loop.
     this._queryOut = [];
@@ -391,7 +392,9 @@ export const fields = {
 
   serialize() {
     const rt=ensureRuntime(this.state);
-    return {revision:1,fields:this._kernel.list().filter(f=>f.tag!=='external').slice(0,32).map(f=>({...f,
+    // orbit_node fields are pure functions of (host, simTime, index) — they respawn on the
+    // first orbit rescan; persisting them would restore orphaned frozen repulsors.
+    return {revision:1,fields:this._kernel.list().filter(f=>f.tag!=='external'&&f.tag!==ORBIT_NODE_TYPE).slice(0,32).map(f=>({...f,
       durationS:Number.isFinite(f.durationS)?f.durationS:null,expireAt:Number.isFinite(f.expireAt)?f.expireAt:null})),
       deployed:rt.deployed,anchored:rt.anchored,npcFields:rt.npcFields,hitches:rt.hitches,cooldowns:rt.cooldowns};
   },
@@ -400,8 +403,18 @@ export const fields = {
     if(raw?.revision!==1||!Array.isArray(raw.fields))return;
     const mapped=id=>id==null?id:remap.get(String(id))??id,rt=defaultRuntime();
     this._kernel.clear();
+    // Kernel fields are rebuilt from the save; the orbit world must not keep stale
+    // node ids (they'd block respawn via hostHasNodes) — and _orbitScanned resets so
+    // the first post-load idle tick rescans immediately rather than waiting a cadence.
+    if (this._orbitWorld) resetOrbitWorld(this._orbitWorld);
+    this._orbitScanned = false;
+    this._seedLockFieldId = null;
     for(const saved of raw.fields.slice(0,32)) {
-      const f=structuredClone(saved),sourceId=mapped(f.sourceId),ownerId=mapped(f.ownerId);
+      const f=structuredClone(saved);
+      // Legacy saves may carry orbit_node entries — poses are recomputed from the
+      // live host on the next rescan; restoring them would freeze orphan repulsors.
+      if(f.tag===ORBIT_NODE_TYPE)continue;
+      const sourceId=mapped(f.sourceId),ownerId=mapped(f.ownerId);
       if(sourceId!=null&&!this.state.entities.get(sourceId))continue;
       if(f.expireAt!=null&&f.expireAt<=nowOf(this.state))continue;
       const record=this._kernel.register({...f,sourceId,ownerId,durationS:f.durationS??Infinity});
@@ -411,6 +424,9 @@ export const fields = {
       const a=raw.anchored?.[f.id];if(a)rt.anchored[f.id]={...a,sourceId:mapped(a.sourceId)};
     }
     for(const [id,h] of Object.entries(raw.hitches??{})){const eid=mapped(id);const ent=this.state.entities.get(eid)||this.state.entities.get(Number(eid));if(ent&&this._kernel.has(h.fieldId))rt.hitches[eid]={...h,sourceId:mapped(h.sourceId)};}
+    // NPC cone recs are id-keyed mirror state for kernel fields already restored
+    // above — without them the field lives on as an orphan nobody retires.
+    for(const [sid,rec] of Object.entries(raw.npcFields??{})){if(rec&&this._kernel.has(rec.fieldId))rt.npcFields[mapped(sid)]={...rec,sourceId:mapped(rec.sourceId??sid)};}
     rt.cooldowns=raw.cooldowns??rt.cooldowns;
     this.state.fields=rt;this._restoredOnLoad=true;
   },
@@ -728,6 +744,9 @@ export const fields = {
       this._syncEmitters(state, rt, /*applyForces*/ false, dt);
       this._syncSeedLockField(state, rt);
       this._syncHitches(state, rt);
+      // Deferred well-contact records must drain while docked too — otherwise a body
+      // touched just before docking holds stale bookkeeping until the next flight.
+      this._flushEndedWells(state);
       this._publish(state, rt, 0, 0, 0);
       return;
     }
@@ -749,7 +768,20 @@ export const fields = {
       && !hasOwnEnumKey(rt.npcFields)
       && !hasOwnEnumKey(rt.hitches);
     if (idle) {
+      // Producers must stay live while quiet: a mass-seed ring or a newly
+      // orbit-capable host has to bootstrap out of an empty kernel, the cadenced
+      // NPC discover lets a scavenger spin up, and deferred well bookkeeping
+      // still needs its flush so external unregisters retire cleanly.
+      this._syncSeedLockField(state, rt);
       this._syncNpcFields(state, rt);
+      // First-ever scan fires immediately so a fitted host doesn't wait out the
+      // cadence; later rescans ride the NPC plan period.
+      if (this._orbitScanned !== true || ((state.tick | 0) % NPC_FIELD_PLAN_PERIOD_TICKS) === 0) this._syncOrbit(state);
+      // Hitch bookkeeping must still run: its prev/inside swap is what ages out
+      // ring-membership memory, and a same-tick latch on a just-registered seed
+      // ring matches the non-idle order.
+      this._syncHitches(state, rt);
+      this._flushEndedWells(state);
       this._publish(state, rt, 0, 0, 0);
       return;
     }
@@ -1227,6 +1259,7 @@ export const fields = {
 
   _syncOrbit(state) {
     if (!this._orbitWorld) this._orbitWorld = attachOrbitWorld(this._kernel);
+    this._orbitScanned = true;
     syncOrbitRuntime(this, state);
   },
 
@@ -1302,6 +1335,7 @@ export const fields = {
       if (entity && entity.alive !== false) entity.alive = false;
     }
     if (this._orbitWorld) resetOrbitWorld(this._orbitWorld);
+    this._orbitScanned = false;
     if (this._kernel) this._kernel.clear();
     this._seedLockFieldId = null;
     if (this._insideRing) this._insideRing.clear();

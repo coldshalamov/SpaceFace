@@ -191,3 +191,75 @@ test('a scavenger in ordinary traffic deploys a cone, not a sphere', () => {
     assert.ok(t.state.fields.npcFields[scav.id], 'runtime tracks the NPC cone');
   });
 });
+
+// ── quiet-flight producer pins (the idle early-out must still bootstrap) ──────────────────────
+
+test('a mass seed going active in otherwise quiet space still registers its lock ring', () => {
+  withFlag(true, () => {
+    const t = boot(14721);
+    const seedEnt = t.sim.spawn({
+      type: 'anchor', team: 0, pos: { x: 300, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
+      angVel: 0, radius: 6, collides: false,
+    });
+    t.state.massSeed = { phase: 'active', seedId: seedEnt.id, ownerId: t.player.id };
+    t.sim.step();
+    const ring = t.fieldsSys._kernel.get(`field_seed_lock_${seedEnt.id}`);
+    assert.ok(ring, 'the idle path must still run the seed-lock producer');
+    assert.equal(ring.sourceId, seedEnt.id);
+    assert.ok(t.events.some((e) => e.name === 'fields:deployed' && e.p.kind === 'seed'),
+      'the lock-ring publish fires even while the kernel was empty');
+  });
+});
+
+test('a cryo-gyros host gains orbit nodes while the rest of the field layer is quiet', () => {
+  withFlag(true, () => {
+    const t = boot(14722);
+    const host = t.sim.spawn({
+      type: 'ship', team: 1, pos: { x: 0, z: 0 }, vel: { x: 30, z: 0 }, rot: 0,
+      angVel: 0, radius: 10, collides: true, hull: 100, hullMax: 100,
+      flightModel: { inertia: 40 },
+      physicsBody: { schemaVersion: 1, radius: 10, mass: 20, inertiaY: 50, dynamic: true, ccd: true, material: 'ship', revision: 0 },
+      data: {
+        combatProfileId: 'combat_profile_standard_ship',
+        fittings: ['mod_cryo_gyros'],
+        weapons: [{ defId: 'wpn_pulse_laser_s' }],
+      },
+    });
+    for (let i = 0; i < 8 && !t.fieldsSys._orbitWorld.nodes.length; i++) t.sim.step();
+    const nodes = t.fieldsSys._kernel.list().filter((f) => f.tag === 'orbit_node' && f.sourceId === host.id);
+    assert.ok(nodes.length > 0, 'first orbit bootstrap must not starve behind the idle gate');
+  });
+});
+
+test('a deferred well-contact record still flushes while the kernel is idle', () => {
+  withFlag(true, () => {
+    const t = boot(14723);
+    const body = debris(t.sim, 500, 0);
+    t.sim.step(); // idle baseline — nothing registered
+    t.fieldsSys._wellBodies.add(body);
+    t.fieldsSys._wellAccum.set(body, { dx: 3, dz: 0, attackerId: t.player.id, attackerMass: 20, touched: false });
+    t.sim.step(); // quiet tick must still run the flush
+    assert.equal(t.fieldsSys._wellBodies.size, 0, 'stale well bodies are drained even with no active fields');
+    assert.equal(t.fieldsSys._wellAccum.get(body), undefined);
+  });
+});
+
+test('npcFields recs survive serialize/deserialize so restored NPC cones stay managed', () => {
+  withFlag(true, () => {
+    const t = boot(14724);
+    const scav = scavenger(t.sim, 80, 0);
+    debris(t.sim, 140, 0);
+    cargoPod(t.sim, 160, 8);
+    for (let i = 0; i < 8; i++) t.sim.step();
+    const recBefore = t.state.fields.npcFields[scav.id];
+    assert.ok(recBefore && recBefore.fieldId, 'fixture: scavenger cone deployed');
+    const saved = t.fieldsSys.serialize();
+    t.fieldsSys.deserialize(saved);
+    const rec = t.state.fields.npcFields[scav.id] || t.state.fields.npcFields[String(scav.id)];
+    assert.ok(rec, 'the npcFields rec is restored alongside its kernel field');
+    assert.equal(rec.fieldId, recBefore.fieldId);
+    assert.equal(rec.kind, 'cone');
+    assert.ok(t.fieldsSys._kernel.has(rec.fieldId), 'the cone field itself survived the round trip');
+    assert.equal(rec.sourceId, scav.id);
+  });
+});
