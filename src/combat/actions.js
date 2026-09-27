@@ -44,6 +44,8 @@ export function createActionService(context, attachments, routeDamage) {
     return false;
   }
 
+  // advance() is non-re-entrant by contract: nothing reachable from combat:action*
+  // listeners may call it again (these scratches are shared between calls).
   const dueScratch = [];
   const futureScratch = [];
 
