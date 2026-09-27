@@ -120,6 +120,31 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     ship: 'ship_pelican',
     sectorIds: Object.freeze(['sector_charon_expanse']),
   }),
+  Object.freeze({
+    // West-march faces (frontier first hop from Ceres): Hyperion Cut is the Collective's
+    // west-cut ore intake — its claim crews cut the seam and someone has to run the cuts
+    // down-lane to the refinery. Her hauler runs the ordinary ore manifest the refinery
+    // already buys; the lane just knows her hull by name now.
+    id: 'lane_ossa_cutrun',
+    name: 'Ossa of the Cut Run',
+    callsign: 'CUT-RUN',
+    role: 'hauler',
+    gimmick: 'cut-run',
+    ship: 'ship_mule',
+    sectorIds: Object.freeze(['sector_hyperion_cut']),
+  }),
+  Object.freeze({
+    // Nyx March is the Quiet's fence line: freight moves without papers, and the one
+    // identity the march always shows is the runner who carries what nobody logs past
+    // the Nyx Fence dock. Sealed courier, no manifest, no memory.
+    id: 'lane_nineola_hush',
+    name: 'Nineola Hush',
+    callsign: 'HUSH-CARGO',
+    role: 'courier',
+    gimmick: 'quiet-run',
+    ship: 'ship_kestrel',
+    sectorIds: Object.freeze(['sector_nyx_march']),
+  }),
 ]);
 
 /** PQ-143.02: the one-off courier's contact id, exported for traffic.js's dedicated fixture slot. */
@@ -260,4 +285,9 @@ export const LANE_GIMMICK_LABELS = Object.freeze({
   // WORLD-12 Charon Expanse miner.
   'expanse-claim': 'CLAIM TALLY',
   expanse_claim: 'CLAIM TALLY',
+  // West-march faces: Hyperion Cut claim hauler, Nyx March Quiet runner.
+  'cut-run': 'CUT RUN',
+  cut_run: 'CUT RUN',
+  'quiet-run': 'QUIET RUN',
+  quiet_run: 'QUIET RUN',
 });
