@@ -65,15 +65,15 @@ ${CX} > .k-title > .cx-index { grid-column:2; grid-row:1 / span 2; justify-self:
 ${CX} .cx-index { display:grid !important; grid-template-columns:auto; justify-items:end; row-gap:8px; margin:0 !important; }
 ${CX} .cx-index[hidden] { display:none !important; }
 ${CX} .cx-index__cap { ${LABEL} margin:0 !important; font-size: 12px !important; letter-spacing:.24em !important; color:rgb(${BONE} / .62) !important; }
-${CX} .cx-index__list { display:flex !important; flex-wrap:nowrap; gap:0 clamp(8px, 1.1vw, 22px); margin:0 !important; }
-${CX} .cx-index__item { position:relative; display:grid !important; grid-template-rows:58px auto; justify-items:center; width:clamp(66px, 5.2vw, 84px); margin:0 !important; }
+${CX} .cx-index__list { display:flex !important; flex-wrap:nowrap; gap:0 clamp(2px, .8vw, 16px); margin:0 !important; }
+${CX} .cx-index__item { position:relative; display:grid !important; grid-template-rows:58px auto; justify-items:center; width:clamp(80px, 6vw, 96px); margin:0 !important; }
 ${CX} .cx-index__dial { grid-row:1; grid-column:1; width:58px; height:58px; display:block; }
 ${CX} .cx-index__dial > svg { width:100%; height:100%; }
 ${CX} .cx-index__n { grid-row:1; grid-column:1; align-self:center; justify-self:center; margin:0 !important; padding-top:2px; order:0 !important;
   font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 420 !important; font-weight:420 !important;
   font-size:16px !important; line-height:1 !important; letter-spacing:-.01em; font-variant-numeric:tabular-nums lining-nums; color:rgb(223 238 255) !important; text-shadow:none !important; white-space:nowrap; }
 ${CX} .cx-index__of { font-size: 12px; font-variation-settings:"wdth" 100, "wght" 500; color:rgb(${BONE} / .66); margin-left:1px; }
-${CX} .cx-index__w { grid-row:2; grid-column:1; margin:4px 0 0 !important; ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; line-height:1.25 !important;
+${CX} .cx-index__w { grid-row:2; grid-column:1; margin:4px 0 0 !important; ${LABEL} font-size: 12px !important; letter-spacing:.07em !important; line-height:1.25 !important;
   color:rgb(${BONE} / .66) !important; text-align:center; text-wrap:balance; }
 /* the dials fill once on arrival (reduced motion: they rest filled) */
 ${CX} .orr-arc-gauge__track { fill:none; stroke:rgb(${BONE} / .3); stroke-width:5; }
@@ -300,7 +300,7 @@ ${CX} .cx-reader__turn-at { order:-1; font-family:var(--dp-face-numeral, "Archiv
 /* a conditional return to the chart: a verb, not a second amber */
 ${CX} .sf-codex-entry > [data-action="tethys-return"] { margin-top:22px !important; justify-self:start; }
 /* the Signal Archive: four stills with their corners marked in light, no frames */
-${CX} .sf-codex-entry > ul.fh-cluster { align-items:start !important; display:grid !important; grid-template-columns:repeat(auto-fill, minmax(clamp(170px, 14vw, 250px), 1fr)); gap:26px 28px; width:100%; margin:22px 0 0 !important; padding:0 !important; list-style:none; grid-column:1 / -1; }
+${CX} .sf-codex-entry > ul.fh-cluster { align-items:start !important; display:grid !important; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:26px 22px; width:100%; margin:22px 0 0 !important; padding:0 !important; list-style:none; grid-column:1 / -1; }
 ${CX} .sf-codex-entry > ul.fh-cluster > li { display:flex !important; flex-direction:column; gap:8px; min-width:0; }
 ${CX} .sf-codex-entry > ul.fh-cluster .cx-still { ${PLAIN} position:relative; display:block !important; width:100% !important; min-width:0 !important; min-height:0 !important; padding:0 !important; cursor:pointer; aspect-ratio:16 / 9; overflow:visible; }
 ${CX} .sf-codex-entry > ul.fh-cluster .cx-still img { display:block; width:100% !important; height:100% !important; object-fit:cover; }

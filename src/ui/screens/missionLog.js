@@ -161,7 +161,7 @@ function missionDialInnerHtml(state, m) {
     + '<div class="orr-mdial__read"><span class="orr-mdial__pct">' + Math.round(frac * 100) + '<small>%</small></span>'
     + '<span class="orr-mdial__w">Complete</span></div>'
     + (clock != null
-      ? '<div class="orr-mdial__clock-read' + (urgent ? ' is-threat' : '') + '"><b>' + escapeHtml(fmtTime(remaining)) + '</b>left on the clock</div>'
+      ? '<div class="orr-mdial__clock-read' + (urgent ? ' is-threat' : '') + '"><b>' + escapeHtml(fmtTime(remaining)) + '</b>left</div>'
       : '<div class="orr-mdial__clock-read">No clock</div>');
 }
 
