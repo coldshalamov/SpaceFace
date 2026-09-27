@@ -701,6 +701,35 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
     ]),
   }),
   Object.freeze({
+    // The tutelary beat the cycle earns after a real casualty: with the hauler recovered once,
+    // the cathedral patrol stops trusting the hauler's luck and falls in on its delivery leg —
+    // not a scan (the audit link above already owns that read), a visible cover run the player
+    // can watch, join, or spoil. Opens only on the recovery's success seed. The branch is
+    // divergent by the chain's own law: a completed run plants yard_cover (the receipt that the
+    // yard covered this leg); an interrupted run is a casualty like any other and opens the
+    // aftermath branch for the salvor. A recovery that never succeeded plants aftermath_open
+    // first, so the skip logic supersedes this link before it starts either way.
+    id: 'ev_patrol_escorts_hauler',
+    actorSlots: Object.freeze([CERES_CATHEDRAL_PATROL_SLOT_ID, CERES_REFINERY_HAULER_SLOT_ID]),
+    requires: Object.freeze(['hauler_recovered']),
+    seedAtPhase: 'eye',
+    seeds: Object.freeze(['yard_cover']),
+    interruptSeeds: Object.freeze(['aftermath_open']),
+    jobHints: Object.freeze([
+      Object.freeze({
+        actorSlotId: CERES_CATHEDRAL_PATROL_SLOT_ID,
+        subjectSlotId: CERES_REFINERY_HAULER_SLOT_ID,
+        phases: Object.freeze(['fall_in', 'shadow', 'eye', 'handoff']),
+      }),
+    ]),
+    phases: Object.freeze([
+      Object.freeze({ name: 'fall_in', durationS: 12, cue: 'clean_burn' }),
+      Object.freeze({ name: 'shadow', durationS: 25, cue: 'on_the_pin' }),
+      Object.freeze({ name: 'eye', durationS: 20, cue: 'on_the_pin' }),
+      Object.freeze({ name: 'handoff', durationS: 10, cue: 'heavy_burn' }),
+    ]),
+  }),
+  Object.freeze({
     id: 'ev_cutter_strips_wreck',
     actorSlots: Object.freeze([CERES_CATHEDRAL_SALVOR_SLOT_ID]),
     // Opens only when the service actually fails; a completed repair never manufactures a wreck.

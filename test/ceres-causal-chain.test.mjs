@@ -47,6 +47,7 @@ const EXPECTED_CHAIN = Object.freeze([
   'ev_cargo_capsule_launch',
   'ev_disabled_hauler_recovery',
   'ev_tender_services_miner',
+  'ev_patrol_escorts_hauler',
   'ev_cutter_strips_wreck',
   'ev_rock_calving',
 ]);
@@ -380,7 +381,7 @@ function runUntil(traffic, state, predicate, { start = state.simTime, maxS = 900
   return null;
 }
 
-test('catalog order is the nine admitted microevents', () => {
+test('catalog order is the ten admitted microevents', () => {
   assert.deepEqual(CHAIN_EVENT_IDS, [...EXPECTED_CHAIN]);
   assert.equal(CERES_CAUSAL_CHAIN_MAX_CONCURRENT, 2);
   assert.equal(CERES_CAUSAL_CHAIN_SCHEMA, 'spaceface.ceresCausalChain.v1');
@@ -1636,4 +1637,61 @@ test('the surveyor probe line drops three real probes at its drop phases, once e
   traffic._applyCeresCausalPhaseEffects(probeDef, liveLate, 'drop_1');
   assert.equal(probes().length, 3, 'no probe without the surveyor on the lattice');
   state.entities.set(surveyorRec.id, realEntity);
+});
+
+test('the escort link covers the recovered hauler once and plants yard_cover, not aftermath', () => {
+  const {
+    traffic,
+    state,
+    receipts,
+    asteroid,
+    tender,
+    combatKernel,
+    bus,
+  } = bootCausalHarness({ simTime: 0, withTenderCombat: true });
+  const newsLines = [];
+  bus.on('news:publish', (p) => newsLines.push(p));
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true,
+    'the authored miner work materializes the load the chain hands down the lane');
+
+  // Drive the physical recovery the honest way, exactly like the full-chain cycle above: keep
+  // the pair together, hold the tender at its standoff, and let the combat kernel commit the
+  // subsystem transitions — no seed the world did not earn.
+  let sawEscortLive = null;
+  for (let t = Math.max(60, state.simTime); t <= 924; t += 3) {
+    const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+    const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+    hauler.pos = { ...miner.pos };
+    const disabledIncident = state.traffic.ceresDisabledHaulerIncident;
+    if (disabledIncident && !['repaired', 'recovered', 'stolen', 'abandoned', 'destroyed', 'failed'].includes(disabledIncident.state)) {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, hauler);
+      tender.pos = { x: hauler.pos.x + standoff, z: hauler.pos.z };
+    }
+    const incident = state.traffic.ceresTenderServiceIncident;
+    if (incident && incident.state !== 'succeeded' && incident.state !== 'failed') {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, miner);
+      tender.pos = { x: miner.pos.x + standoff, z: miner.pos.z };
+    }
+    stepTo(traffic, state, t);
+    state.tick += 1;
+    combatKernel.prePhysics(1 / 60);
+    if (!sawEscortLive) {
+      const snap = traffic.getCeresCausalChainSnapshot();
+      const live = snap.active.find((l) => l.eventId === 'ev_patrol_escorts_hauler');
+      if (live) sawEscortLive = { at: t, phase: live.phase };
+    }
+    if ((traffic.getCeresCausalChainSnapshot().cycle | 0) >= 1) break;
+  }
+  assert.ok(sawEscortLive, 'the escort opens in the physically-driven cycle');
+  assert.ok(['fall_in', 'shadow', 'eye', 'handoff'].includes(sawEscortLive.phase),
+    'the escort was seen in an authored phase');
+
+  const snap = traffic.getCeresCausalChainSnapshot();
+  assert.ok(receipts.some((r) => r.kind === 'event_start' && r.eventId === 'ev_patrol_escorts_hauler'));
+  assert.notEqual(snap.seeds.aftermath_open, true, 'a clean cycle never opens the loss branch');
+  const stories = newsLines.filter((p) => p.kind === 'ceres_seam_story');
+  assert.ok(stories.length >= 1);
+  assert.match(stories[stories.length - 1].text, /clean seam shift/);
 });
