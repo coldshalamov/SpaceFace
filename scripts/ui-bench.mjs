@@ -13,7 +13,7 @@
 // writes another PNG only when the picture changed. Open those PNGs. The procedure is
 // docs/UI_VISUAL_ITERATION.md.
 
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -68,7 +68,7 @@ if (!args.shots.length) {
     process.exit(1);
   }
   const { chromium } = await loadPlaywright();
-  const browser = await chromium.launch({ headless: !args.headed });
+  const browser = await chromium.launch({ headless: !args.headed, executablePath: process.env.SF_CHROMIUM || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined) });
   const outDir = path.resolve(ROOT, args.out || '.devshots/ui-bench');
   mkdirSync(outDir, { recursive: true });
   const page = await browser.newPage({ viewport: args.viewport });
