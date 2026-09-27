@@ -93,7 +93,7 @@ void main(){
     float span=iShape.y*taper;
     float lateral=0.0,vertical=0.0;
     if(family<1.5){
-      // Seed: four closed, bevel-like clamp members. They stroke, never circulate.
+      // Seed: bevelled open load paths. Their sections flex, never rigidly orbit.
       lateral=sign(cos(section))*pow(abs(cos(section)),0.55)*span;
       vertical=sign(sin(section))*pow(abs(sin(section)),0.55)*span*0.62;
       sectionDx=-sin(section);sectionDy=cos(section)*0.62;
@@ -171,7 +171,8 @@ void main(){
         // Opposed parts engage in sequence. The mature lock alternates ratchet
         // strokes; on release each jaw shears sideways and lifts, never recedes
         // by replaying its initial slide in reverse.
-        float stroke=max(0.0,sin(motionTime*3.7+localPhase));
+        float speed=2.1+fract(iBehavior.z*3.71)*2.9;
+        float stroke=pow(max(0.0,sin(motionTime*speed+localPhase)),2.0);
         // Only an already seated pair can carry a bridge. Its opposing travelling
         // deflection is independent of the forks' take-up; no CPU buffer animation.
         if(role>1.5&&role<2.5){
@@ -180,7 +181,7 @@ void main(){
           height+=uMotion*iShape.y*mature*sin(t*PI)*cos(motionTime*1.7+t*5.0+localPhase);
         }
         relative+=outward*uMotion*iShape.y*((1.0-activation)*2.6+stroke*flex*1.8);
-        relative+=tangent*uMotion*iShape.y*mature*sin(t*PI)*sin(motionTime*1.3+localPhase)*.65;
+        relative+=tangent*uMotion*iShape.y*mature*sin(t*PI)*sin(motionTime*(.9+fract(iBehavior.z)*1.2)+localPhase)*1.15;
         relative+=tangent*uMotion*iShape.y*detach*(1.8+fract(iBehavior.z)*2.2);
         height+=uMotion*iShape.y*(mature*.38*sin(motionTime*2.2+localPhase)+detach*(.8+t));
       }else if(kind<2.5){

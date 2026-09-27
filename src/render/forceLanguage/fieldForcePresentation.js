@@ -337,30 +337,35 @@ export class FieldForcePresentation {
     const warning=phase==='warning';
     const remaining=warning?clamp01((finite(seed?.expireAt,now)-now)/Math.max(.001,finite(seed?.expireAt,now)-finite(seed?.warnAt,now))):1;
     if(warning)this.tint=this.seedTint.copy(COLORS.get(0x54e5ed)).lerp(COLORS.get(0xffc36c),1-remaining);
-    // A lock is a strained construction, not four solid blocks or an orbiting ring.
-    // Opposed forks take up load at different rates. Bridging charge only exists
-    // once the forks have seated; released members shear apart in the shared shader.
-    for(let i=0;i<4;i++){
-      const takeup=(s.character-.5)*.09;
-      this.phaseOffset=i*.237;this.role=FIELD_ROLE.JAW;
-      const a=i*Math.PI/2,ca=Math.cos(a),sa=Math.sin(a);
-      const rr=r*(1+open*.42+takeup),w=r*(.31+(i%2)*.035);
-      // Long curved jaws expose a bevel and an empty dark channel between them.
+    // Three unequal open load paths seat around the anchor. Avoid mirrored closed
+    // flowers: each root has a different reach, rake and phase, with a missing side
+    // through which the environment remains visible. Late cross-load bridges are
+    // consequences of seating, not a permanently luminous central ring.
+    for(let i=0;i<3;i++){
+      const variation=Math.sin(s.character*17.3+i*2.17);
+      const takeup=variation*.09;
+      this.phaseOffset=i*.281+variation*.041;this.role=FIELD_ROLE.JAW;
+      const a=i*TAU/3+(i===1?.28:i===2?-.17:0)+s.character*.45;
+      const ca=Math.cos(a),sa=Math.sin(a);
+      const rr=r*(1.04-i*.12+open*(.31+i*.07)+takeup),w=r*(.20+i*.025);
       this._member('spar');
-      for(let edge=-1;edge<=1;edge+=2){
-        this._line(ca*rr*.31-sa*w*.58*edge,sa*rr*.31+ca*w*.58*edge,
-          ca*rr-sa*w*edge,sa*rr+ca*w*edge,r*.135,r*.18,1,
-          edge*r*(.15+takeup),.72);
-      }
+      this._line(ca*rr*.12-sa*w*.34,sa*rr*.12+ca*w*.34,
+        ca*rr-sa*w,sa*rr+ca*w,r*.18,r*.22,1,r*(.19+takeup),.72);
       this._member('plate');
-      this._line(ca*rr+sa*w,sa*rr-ca*w,ca*rr-sa*w,sa*rr+ca*w,
-        r*.16,r*.24,.82,-r*.16,.78);
-      // A bowed working bridge takes the strain across each fork. Its travelling
-      // edge cools in place as warning drains the load; the span never retracts.
+      this.phaseOffset+=.139;
+      this._line(ca*rr*.38+sa*w*.75,sa*rr*.38-ca*w*.75,
+        ca*rr*.83+sa*w*.40,sa*rr*.83-ca*w*.40,
+        r*.125,r*.27,.84,-r*.21,.82);
       this._member('edge');this.phaseOffset+=.117;this.role=FIELD_ROLE.CREST;
-      const tooth=rr*.57,span=w*.77;
-      this._line(ca*tooth+sa*span,sa*tooth-ca*span,ca*tooth-sa*span,sa*tooth+ca*span,
-        r*.105,r*.31,(.22+.78*remaining),r*(.16+takeup),.70);
+      this._line(ca*rr*.34+sa*w*.65,sa*rr*.34-ca*w*.65,
+        ca*rr*.58-sa*w*.76,sa*rr*.58+ca*w*.76,
+        r*.09,r*.29,(.22+.78*remaining),r*(.17+takeup),.78);
+      // Short cross-load reaches towards the next seated root, with unequal
+      // angles and lengths; it does not complete a closed geometric emblem.
+      const next=a+1.25+i*.19;
+      this.phaseOffset+=.183;this._member('membrane');
+      this._line(ca*r*.19,sa*r*.19,Math.cos(next)*r*(.30+i*.07),Math.sin(next)*r*(.30+i*.07),
+        r*.11,r*.25,.58*remaining,-r*.12,.80);
     }
   }
   _line(x0,z0,x1,z1,width,lift=0,alpha=1,bow=0,taper=0){
