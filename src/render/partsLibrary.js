@@ -1855,6 +1855,10 @@ export function liveSolidGlbCatalog() {
       proportionsKey: ship.id,
       solid: true,
       frozenMesh: ship.id === 'ship_kestrel',
+      // The forge rebuild ships a re-measured hull under the frozen K0 gameplay anchors:
+      // pin the anchor fit scale so sockets/hit volumes land at their pre-forge world
+      // positions (the 47a golden pins them bit-exact).
+      anchorFitScale: ship.id === 'ship_kestrel' ? 0.853237 : null,
       packagedLive: !!(selection && selection.file),
     });
   }
