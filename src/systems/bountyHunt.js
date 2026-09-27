@@ -290,6 +290,13 @@ export const bountyHunt = {
       && (quarry.hull / quarry.hullMax) < QT.surrenderHullFrac) {
       surrenderQuarry(state, this.helpers, this.bus, quarry, hunter, contractId, now);
     }
+    // INF-U17: a surrendered mark with the player parked over it gets a held
+    // guard — the non-lethal out between shooting the hunter and watching an
+    // execution.
+    if (hunt.surrendered && !hunt.warnResolved && !hunt.done) {
+      this._tickGuard(state, quarry, hunter, contractId, now);
+      if (hunt.done) return false;
+    }
     if (!hunt.surrendered) steerQuarryFromHunter(quarry, hunter, refuge);
     const hunterDist = Math.hypot(hunter.pos.x - quarry.pos.x, hunter.pos.z - quarry.pos.z);
     if (!hunt.squawked && hunterDist < QT.distressRange) {
@@ -306,6 +313,43 @@ export const bountyHunt = {
       dumpQuarryManifest(state, this.helpers, this.bus, quarry, contractId, seed, now);
     }
     return true;
+  },
+
+  // INF-U17 v1: the guard hold. Close AND slow relative to the mark — a parked
+  // shield, not a flyby. Leaving the pocket or outrunning the drift resets it.
+  _tickGuard(state, quarry, hunter, contractId, now) {
+    const data = quarry.data || (quarry.data = {});
+    const hunt = data.bountyHunt || (data.bountyHunt = { role: 'quarry' });
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos || !quarry.pos) {
+      hunt.guardSince = null;
+      return;
+    }
+    const dist = Math.hypot(player.pos.x - quarry.pos.x, player.pos.z - quarry.pos.z);
+    const rel = relSpeedOf(player.vel, quarry.vel);
+    if (dist > QT.guardRadius || rel > QT.guardMaxRelSpeed) {
+      hunt.guardSince = null;
+      return;
+    }
+    if (hunt.guardSince == null) {
+      hunt.guardSince = now;
+      if (!Number.isFinite(hunt.lastGuardToastT) || now - hunt.lastGuardToastT > 5) {
+        hunt.lastGuardToastT = now;
+        emit(this.bus, 'toast', {
+          text: `Standing guard over ${hunt.name || 'the quarry'} — hold position.`,
+          kind: 'info', ttl: 3,
+        });
+      }
+    }
+    if (now - hunt.guardSince < QT.guardHoldS) return;
+    hunt.guardSince = null;
+    // INF-U17 v2: the hunter calls a bluff it can see. Holding guard in a
+    // limping hull doesn't warn anyone off — the contract changes targets.
+    if (playerHullFrac(player) < QT.weakHullFrac) {
+      turnHunterOnPlayer(state, this.bus, this.helpers, quarry, hunter, contractId, now);
+      return;
+    }
+    warnOffHunter(state, this.bus, this.helpers, quarry, hunter, contractId, now);
   },
 
   destroy() {
@@ -759,6 +803,99 @@ function surrenderQuarry(state, helpers, bus, quarry, hunter, contractId, now) {
     contractId, quarryId: quarry.id, hunterId: hunter.id,
     payoff: QT.surrenderBountyCr, at: now,
   });
+}
+
+// INF-U17 v1: the hold completed — the hunter breaks off rather than firing
+// through a witness, and clears the area instead of milling on the mark.
+function warnOffHunter(state, bus, helpers, quarry, hunter, contractId, now) {
+  const data = quarry.data || (quarry.data = {});
+  const hunt = data.bountyHunt || (data.bountyHunt = { role: 'quarry' });
+  hunt.warnResolved = true;
+  hunt.done = true;
+  standDownQuarry(quarry);
+  const hdata = hunter.data || (hunter.data = {});
+  hdata.contractTargetId = null;
+  const hh = hdata.bountyHunt || (hdata.bountyHunt = { role: 'hunter' });
+  hh.pursuing = false;
+  const intent = hdata.intent || (hdata.intent = {});
+  const dx = (hunter.pos.x || 0) - (quarry.pos.x || 0);
+  const dz = (hunter.pos.z || 0) - (quarry.pos.z || 0);
+  intent.mode = 'bounty_warned_off';
+  intent.aimAngle = Math.atan2(dz, dx);
+  intent.moveZ = 1;
+  intent.moveX = 0;
+  intent.boost = false;
+  intent.fire = false;
+  recordOutcome(state, bus, contractId, 'hunter_warned_off', { id: quarry.id, killerId: null });
+  emit(bus, 'toast', {
+    text: `The hunter breaks off — ${hunt.name || 'the quarry'} limps clear under your guns.`,
+    kind: 'good', ttl: 5,
+  });
+  sayQuarry(helpers, quarry, "You didn't have to do that. I won't forget it.", 'bounty_quarry_thanks');
+  const voice = helpers && helpers.voice;
+  if (voice && typeof voice.say === 'function') {
+    voice.say({
+      channel: 'bark',
+      kind: 'bounty_hunter_warned',
+      factionId: hunter.factionId || null,
+      text: 'Not worth a war. The contract stays open — but not today.',
+    });
+  }
+  // INF-U17 v3: mercy pays in relationship, never in cash — and never when the
+  // player also shot the mark.
+  if (hunt.gratitudeVoid !== true && quarry.factionId) {
+    emit(bus, 'faction:repDelta', {
+      factionId: quarry.factionId, delta: QT.guardGratitudeRep,
+      reason: 'bounty_guard_mercy', contractId,
+    });
+  } else if (hunt.gratitudeVoid === true) {
+    emit(bus, 'toast', {
+      text: `${hunt.name || 'The quarry'} limps clear — no thanks for the one who shot them too.`,
+      kind: 'info', ttl: 4,
+    });
+  }
+  emit(bus, 'bountyHunt:hunterWarnedOff', {
+    contractId, quarryId: quarry.id, hunterId: hunter.id, at: now,
+  });
+}
+
+// INF-U17 v2: the called bluff. A guard held in a limping hull flips the
+// contract onto the player through the live targets-player branch.
+function turnHunterOnPlayer(state, bus, helpers, quarry, hunter, contractId, now) {
+  const data = quarry.data || (quarry.data = {});
+  const hunt = data.bountyHunt || (data.bountyHunt = { role: 'quarry' });
+  hunt.warnResolved = true;
+  standDownQuarry(quarry);
+  const hdata = hunter.data || (hunter.data = {});
+  hdata.contractTargetId = state.playerId;
+  recordOutcome(state, bus, contractId, 'hunter_turned', { id: quarry.id, killerId: null });
+  emit(bus, 'toast', {
+    text: 'The hunter laughs off your guard — the contract just changed targets.',
+    kind: 'warn', ttl: 5,
+  });
+  const voice = helpers && helpers.voice;
+  if (voice && typeof voice.say === 'function') {
+    voice.say({
+      channel: 'bark',
+      kind: 'bounty_hunter_turned',
+      factionId: hunter.factionId || null,
+      text: 'You look half-dead already. Come and take the contract off me.',
+    });
+  }
+  emit(bus, 'bountyHunt:hunterTurned', {
+    contractId, quarryId: quarry.id, hunterId: hunter.id, at: now,
+  });
+}
+
+function relSpeedOf(a, b) {
+  return Math.hypot(((a && a.x) || 0) - ((b && b.x) || 0), ((a && a.z) || 0) - ((b && b.z) || 0));
+}
+
+function playerHullFrac(player) {
+  const max = Number(player && player.hullMax);
+  const hull = Number(player && player.hull);
+  if (!Number.isFinite(max) || max <= 0 || !Number.isFinite(hull)) return 1;
+  return Math.max(0, hull / max);
 }
 
 function sayQuarry(helpers, quarry, text, kind) {

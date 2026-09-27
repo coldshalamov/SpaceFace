@@ -38,6 +38,11 @@ export const QUARRY_TUNING = Object.freeze({
   stageShipCap: 80,          // never stage into a busier sky than this
   dumpPodTtlS: 90,           // dumped pods persist this long for the scoop-or-leave choice
   contractTimeoutS: 300,     // staged flag clears after this even if the pair wanders off
+  guardRadius: 260,          // player inside this of a surrendered mark can stand guard
+  guardHoldS: 3,             // continuous held position that warns the hunter off
+  guardMaxRelSpeed: 60,      // guard needs a matched hover, not a flyby
+  guardGratitudeRep: 4,      // quarry-faction rep for the non-lethal save (mercy pays in kind)
+  weakHullFrac: 0.4,         // player hull below this gets the contract turned on them instead
 });
 
 /** Road-names for staged quarries — the distress call needs a person, not a contract id. */
