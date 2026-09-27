@@ -177,6 +177,13 @@ import {
 } from '../world/dressingTable.js';
 import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
 import {
+  materializeAlienEcology,
+  tickAlienEcology,
+  handleAlienEcologyEvent,
+  serializeAlienEcologyState,
+  deserializeAlienEcologyState,
+} from './alienEcology.js'; // Alien Ecology program (doc 08): world-owned library, not a registered system
+import {
   dropFarActorSector,
   farActorHoldsWorldRecord,
   resetFarActors,
@@ -534,8 +541,20 @@ export const world = {
     bus.on('entity:killed', (p) => {
       this._onBossKilled(p || {});
       this._onDurableEntityKilled(p || {});
+      handleAlienEcologyEvent(this, 'entity:killed', p || {});
     });
     bus.on('sectorsim:embodiment', (p) => this._onSectorEmbodiment(p || {}));
+    // Alien Ecology program (doc 09): world-site consequence intents land here; pickup
+    // collection is what turns a released flight recorder into the recovered objective.
+    bus.on('alienEcology:nurseryPowered', (p) => handleAlienEcologyEvent(this, 'alienEcology:nurseryPowered', p));
+    bus.on('alienEcology:relaySevered', (p) => handleAlienEcologyEvent(this, 'alienEcology:relaySevered', p));
+    bus.on('alienEcology:nurseryBloom', (p) => handleAlienEcologyEvent(this, 'alienEcology:nurseryBloom', p));
+    bus.on('alienEcology:blackBoxRecovered', (p) => handleAlienEcologyEvent(this, 'alienEcology:blackBoxRecovered', p));
+    bus.on('pickup:collected', (p) => {
+      if (p && p.commodityId === 'cmdty_dmc_black_box' && p.collectorId === this.state.playerId) {
+        handleAlienEcologyEvent(this, 'alienEcology:blackBoxRecovered', { siteId: 'cinder_nursery' });
+      }
+    });
   },
 
   /** Cache sectorSim recipes only. Live entities remain forbidden on this event boundary. */
@@ -2505,6 +2524,10 @@ export const world = {
     this._spawnEverydaySpaceKitDressing(sector, active, paletteClass);
     this._spawnWreckAftermathDressing(sector, active, paletteClass);
     this._spawnWorldOneOffs(sector, active);
+    // Alien Ecology program (doc 08/09): growth dressing + fauna cast for ALIEN_SITES in this
+    // sector. Deterministic off its own rng stream — runs last so the world rng order is
+    // untouched by ecology content.
+    materializeAlienEcology(this, sector, active);
   },
 
   // PQ-143.02 "six texture one-offs": memorable, non-systemic set pieces from
@@ -3567,6 +3590,7 @@ export const world = {
     if ((state.tick | 0) % WORLD_RECORD_GC_TICKS === 0) {
       gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
     }
+    tickAlienEcology(this, dt);
     tickFarActors(state, this.helpers, this.bus);
     // Lane C: ask Lane A helpers to rematerialize anything already inside the authored
     // decode disc (TABLE_AUTHORED_DECODE_SECONDS × top speed). tickFarActors covers the
@@ -5826,6 +5850,8 @@ export const world = {
       // state lives as { structureId: { cell: spentAtT } } against absolute sim time. A cell
       // whose quiet stretch elapsed while the game was closed simply loads live.
       opticSpent: cloneSaveTree(state.world.opticSpent || {}),
+      // Alien Ecology: revelation tier, site aftermath, taxonomy unlocks (doc 08 §persist).
+      alienEcology: serializeAlienEcologyState(state),
       sectorOwners: this._ownerOverlay(),
       jump: savedJump,
       fuel: { current: savedFuelCurrent, max: state.fuel.max },
@@ -5876,6 +5902,7 @@ export const world = {
     // absent (older saves) normalizes to an empty ledger.
     state.world.opticSpent = normalizeOpticSpendLedger(data.opticSpent);
     state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
+    deserializeAlienEcologyState(state, data.alienEcology);
     if (data.currentSectorId) state.world.currentSectorId = data.currentSectorId;
     // Coordinate schema is global_v1 for v9+. Always reset the runtime frame on load rather
     // than trusting a stale rendering frame that may have been smuggled into a payload.

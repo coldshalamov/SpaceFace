@@ -225,6 +225,11 @@ const CORE_SECTOR_ZONES = {
     { id: 'zone_charon_colony', name: 'Colony Barge', type: 'colony', factionId: 'faction_free',
       reason: 'A struggling colony trades air and salvage for anything it can get.',
       center: { x: -620, z: 1420 }, radius: 420 },
+    // Alien Ecology program (AE-040): the Cinder Nursery — an unregistered DMC service barge
+    // hull colonized by Understory growth. No patrol presence: the site IS the occupancy.
+    { id: 'zone_charon_cinder_nursery', name: 'Cinder Nursery', type: 'derelict_field', factionId: 'faction_understory',
+      reason: 'Uncharted wreck cluster. Salvage markers disagree with each other — nothing here stays still.',
+      center: { x: 1700, z: -1400 }, radius: 620, threat: 1 },
   ],
 
   // ── S6–S7 Sker Haven — open pirate haven, gate-camped ──

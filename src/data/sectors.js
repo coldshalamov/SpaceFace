@@ -362,6 +362,14 @@ const CORE_SECTORS = [
         scannerSignalKind: 'distress', survivorPod: true, recoveryEncounter: true,
         flavorTargetRef: 'landmark_c7_lung_of_charon',
       },
+      {
+        // Alien Ecology program (AE-040): discovery/map identity for the Cinder Nursery; the
+        // world-site manifest owns the visible body, so this row mints no marker prop.
+        id: 'world_site_charon_cinder_nursery', type: 'wreck', name: 'Cinder Nursery',
+        anchor: { x: 1700, z: -1400 },
+        runtimeOwner: 'asteroidSites',
+        scannerSignalKind: 'anomaly',
+      },
     ],
   },
   {

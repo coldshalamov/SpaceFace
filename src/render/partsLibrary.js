@@ -16,6 +16,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { EVERYDAY_SPACE_KIT_MODEL_BY_ID, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
 import { WRECK_AFTERMATH_MODEL_BY_ID, WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '../data/wreckAftermathDressing.js';
+import { buildAlienGrowthProp } from './faunaVisuals.js'; // Alien Ecology — procedural infestation kit
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
@@ -3982,6 +3983,11 @@ export function buildFallbackPlaceProp(entity, placeFile = '') {
     assetBoundary: 'GLTFKit v1 — authored world-place prop fallback',
     gracefulFallback: true,
   };
+  // Alien Ecology program (doc 03): the infestation kit is procedural-only for the slice —
+  // `alien_growth_<module>` placeIds resolve to organic geometry instead of an empty group.
+  if (placeId.startsWith('alien_growth_')) {
+    group.add(buildAlienGrowthProp(placeId, data.scale ? data.scale * 10 : entity && entity.radius));
+  }
   return group;
 }
 
