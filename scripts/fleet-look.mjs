@@ -129,6 +129,7 @@ try {
 
   let targets;
   if (args.fleet) targets = LIVE_FLEET.filter(([n]) => !args.only || String(args.only).split(',').includes(n));
+  else if (args.files) targets = String(args.files).split(',').map((f) => [f.split('/').pop().replace('.glb', ''), { file: f }]);
   else if (args.file) targets = [[args.name || String(args.file).split('/').pop().replace('.glb', ''), { file: args.file }]];
   else if (args.def) targets = [[args.name || String(args.def).replace('ship_', ''), { defId: args.def }]];
   else throw new Error('pass --file, --def or --fleet');
