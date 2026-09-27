@@ -523,6 +523,9 @@ export const world = {
     bus.on('save:restoring', () => {
       this._vestaDecisionSignature = null;
       this._pallasDecisionSignature = null;
+      // The loaded save carries its own simTime; stamps taken against the pre-load clock are
+      // stale — a leftover entry could suppress a fresh wire report for up to the full cooldown.
+      if (this._wireReportAt) this._wireReportAt.clear();
     });
     bus.on('save:loaded', () => {
       if (this._vestaDecisionNeedsRebind) this._vestaDecisionSignature = null;
@@ -6045,6 +6048,9 @@ export const world = {
     resetFarActors(state);
     state.world.currentSectorId = null;
     this._nextCriticalSpawnTick = 0;
+    // simTime restarts at 0 on a new run — drop the wire-report cooldown map with it, or every
+    // stamped sector suppresses its first report for up to WIRE_REPORT_COOLDOWN_S.
+    this._wireReportAt = new Map();
     this._vestaDecisionSignature = null;
     this._vestaDecisionNeedsRebind = false;
     this._pallasDecisionSignature = null;

@@ -357,6 +357,9 @@ test('hard sector enter may emit reconcile but still idempotent embodiment', () 
   sectorSim._onSectorEnter({ sectorId: 'sector_tethys_junction', continuous: false });
   const recon = ctx.emitLog.filter((e) => e.event === 'sectorsim:reconcile');
   assert.ok(recon.length >= 1);
+  // The reconcile must carry the display name like sectorsim:intel does — the "while away"
+  // toast reads `p.sectorName || sectorId`, so omitting it printed a raw sector id.
+  assert.equal(recon[0].payload.sectorName, 'Tethys Junction');
   // embodiment already applied for epoch → no re-emit
   const emb = ctx.emitLog.filter((e) => e.event === 'sectorsim:embodiment');
   assert.equal(emb.length, 0);

@@ -17,16 +17,19 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
+import { catalogQuestionIssues } from '../data/survivalWaves.js';
 import {
   SWARM_BOSS_ENEMY_ID,
   SWARM_WAVE_DURATION_TICKS,
   pickSwarmArchetype,
+  swarmCatalogIssues,
   swarmGateFor,
   swarmLevel,
   swarmPressureAt,
   swarmPressureIsHolding,
   swarmReinforceCount,
 } from '../data/swarmMode.js';
+import { validateCombatChoreography } from '../presentation/combatChoreography.js';
 import { WAVE_CLEARED_SEAM } from './survivalRun.js';
 import {
   SURVIVAL_SPAWN_DISTANCE,
@@ -68,6 +71,36 @@ export function waveOwnerId(wave) {
   return `${SURVIVAL_WAVE_OWNER_PREFIX}${Number.isInteger(wave) ? wave : 0}`;
 }
 
+/**
+ * One startup audit over every content catalog this system's pipeline consumes — arc wave
+ * recipes plus the catalog-level ids they lean on (question props, role problems, endless
+ * overlays — catalogQuestionIssues already runs catalogEnemyIdIssues internally), the swarm
+ * roster + boss rotation, and the combat choreography grammars.
+ *
+ * These validators used to be test-only, so a typo'd enemyId survived until spawn time and
+ * surfaced only as a silent wasp fallback from makeEnemySpawnSpec. init() runs this once on
+ * the default route's system init and reports every issue. `opts.recipes` exists so the
+ * focused test can drive the same collector over a deliberately broken recipe list.
+ */
+export function collectContentCatalogIssues(opts = {}) {
+  const issues = [];
+  const pushAll = (source, list) => {
+    for (const item of list || []) {
+      if (!item) continue;
+      issues.push(typeof item === 'string'
+        ? { source, path: '', message: item }
+        : { source, path: item.path || '', message: item.message || String(item) });
+    }
+  };
+  pushAll('survivalWaves', catalogQuestionIssues(opts.recipes));
+  pushAll('swarmMode', swarmCatalogIssues());
+  const choreography = validateCombatChoreography();
+  if (choreography && choreography.ok === false) {
+    pushAll('combatChoreography', choreography.issues);
+  }
+  return issues;
+}
+
 function playerIsAlive(state) {
   if (!state || state.playerId == null || !state.entities || typeof state.entities.get !== 'function') {
     return false;
@@ -90,6 +123,7 @@ export const survivalWave = {
     this._unsubs = [];
     this._resetWave();
     this._owners = [];
+    this._reportContentIssues();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
@@ -579,6 +613,39 @@ export const survivalWave = {
       for (const ownerId of this._owners || []) budget.release(ownerId);
     }
     this._owners = [];
+  },
+
+  /**
+   * Startup content audit — runs once per system init (the default route's boot). Reports are
+   * loud but NEVER thrown: a typo'd catalog row must light up the log, not kill the route.
+   * Channels: one console.error summary, one console.warn per issue (systems-style warn), and
+   * a `survival:contentIssues` bus event for observers/diagnostics.
+   */
+  _reportContentIssues() {
+    let issues = null;
+    try {
+      issues = collectContentCatalogIssues();
+    } catch (err) {
+      try {
+        if (typeof console !== 'undefined' && console.error) {
+          console.error('[survivalWave] content catalog audit failed to run', err);
+        }
+      } catch { /* reporting must never throw */ }
+      return;
+    }
+    if (!issues || issues.length === 0) return;
+    try {
+      if (typeof console !== 'undefined' && console.error) {
+        console.error(`[survivalWave] content catalog audit: ${issues.length} issue(s)`);
+      }
+      if (typeof console !== 'undefined' && console.warn) {
+        for (const item of issues) {
+          const where = item.path ? `${item.source}.${item.path}` : item.source;
+          console.warn(`[survivalWave] content issue ${where}: ${item.message}`);
+        }
+      }
+      this._emit('survival:contentIssues', { issues });
+    } catch { /* reporting must never throw */ }
   },
 
   _emit(event, payload) {

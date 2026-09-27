@@ -18,6 +18,7 @@ import { COMBAT_LAB_ARENAS } from '../data/combatLabSetups.js';
 import {
   SURVIVAL_BOSS_CIRCUIT,
   SURVIVAL_GATE_GROUPS,
+  SURVIVAL_WAVE_SCHEMA_VERSION,
   SURVIVAL_WAVES,
   peakConcurrentDemand,
   validateWaveRecipe,
@@ -522,6 +523,35 @@ export function applyOpeningLesson(plan) {
   return plan;
 }
 
+/**
+ * A swarm wave has no authored recipe, so the `validateWaveRecipe(recipe)` gate below used to be
+ * skipped for it entirely — the branch returned early with nothing checking the generated
+ * `packages`. Those packages ARE recipe-schema content: run the same validator over a
+ * recipe-shaped view so a generated batch cannot field a bad enemyId / gateGroup / count that an
+ * authored recipe is barred from. Fails closed (an invalid plan), exactly like the recipe path;
+ * an already-invalid plan passes through untouched.
+ */
+function validateSwarmPlanPackages(plan, arenaId) {
+  if (!plan || plan.ok === false || plan.error) return plan;
+  const checked = validateWaveRecipe({
+    id: plan.id,
+    schemaVersion: SURVIVAL_WAVE_SCHEMA_VERSION,
+    arenaId,
+    wave: plan.swarm && Number.isInteger(plan.swarm.wave) ? plan.swarm.wave : 1,
+    objective: plan.objective,
+    threatBudget: 0,
+    arenaPhase: plan.arenaPhase,
+    packages: plan.packages,
+    completion: {
+      requiredPackagesMaterialized: true,
+      blockingRolesResolved: uniqueRoles(plan.packages),
+      cleanupTicks: SWARM_CLEANUP_TICKS,
+    },
+    rewards: plan.rewards,
+  });
+  return checked.ok ? plan : invalid(checked.issues);
+}
+
 export function planWave(input) {
   try {
     return planWaveInner(input);
@@ -564,10 +594,10 @@ function planWaveInner(input) {
       mutators,
       rng: mulberry32(wavePlanStreamSeed(seed, arenaId, wave, 0)),
     });
-    if (input.teachOpening === true && wave === 1 && planned && planned.ok !== false && !planned.error) {
-      return applyOpeningLesson(planned);
-    }
-    return planned;
+    const finished = input.teachOpening === true && wave === 1 && planned && planned.ok !== false && !planned.error
+      ? applyOpeningLesson(planned)
+      : planned;
+    return validateSwarmPlanPackages(finished, arenaId);
   }
 
   const act = Number.isInteger(input.act)

@@ -212,7 +212,12 @@ export const asteroidFormations = {
       asteroids.push(e);
     }
     const model = buildAsteroidFormations(asteroids, { seed, keyOf: formationBodyKey });
-    this._rt = { model, sectorId, epoch, seed, surveyed: rt.surveyed || new Set() };
+    // The surveyed set is epoch-scoped ("a re-rolled field is genuinely new knowledge to earn",
+    // init). Carrying it across an epoch boundary let a stale quantized body key count toward a
+    // NEW formation, so the first scan of a re-rolled field could auto-complete it. Sector
+    // changes already drop the whole record via _invalidate on sector:enter.
+    const sameField = rt.sectorId === sectorId && rt.epoch === epoch;
+    this._rt = { model, sectorId, epoch, seed, surveyed: sameField ? rt.surveyed : new Set() };
     return model;
   },
 

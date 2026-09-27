@@ -119,6 +119,38 @@ test('sectorsim:intel emits a lane brief on entry and a throttled wire report of
   assert.equal(voice.filter((v) => v.kind === 'wire_report').length, 2, 'cooldown expiry re-arms');
 });
 
+test('wire-report cooldown does not carry across newGame or a restore', () => {
+  const { state, bus, world } = bootWorld();
+  state.world.currentSectorId = HELIOS;
+  const voice = [];
+  bus.on('voice:say', (p) => voice.push(p));
+  const report = () => bus.emit('sectorsim:intel', {
+    reason: 'threshold_crossing', sectorId: TETHYS, sectorName: 'Tethys Junction',
+    signal: signal(TETHYS, { danger: 0.85, contestMargin: 0.05 }),
+  });
+  const wireCount = () => voice.filter((v) => v.kind === 'wire_report').length;
+
+  // Burn the per-sector stamp late in a run, then restart: simTime returns to 0, so a stale
+  // stamp would suppress the fresh report for the whole 300s cooldown.
+  state.simTime = 9000;
+  report();
+  assert.equal(wireCount(), 1);
+  state.simTime = 0;
+  world.newGame();
+  state.world.currentSectorId = HELIOS;
+  report();
+  assert.equal(wireCount(), 2, 'newGame drops the old simTime stamp — early reports fire again');
+
+  // A restore onto an older clock is the same hazard: burn late, then "load" earlier simTime.
+  state.simTime = 4200;
+  report();
+  assert.equal(wireCount(), 3);
+  state.simTime = 60;
+  bus.emit('save:restoring', {});
+  report();
+  assert.equal(wireCount(), 4, 'save:restoring clears stamps so a loaded clock re-arms reports');
+});
+
 test('sectorsim:reconcile surfaces a while-away toast for the entered sector only', () => {
   const { state, bus } = bootWorld();
   state.world.currentSectorId = HELIOS;
@@ -395,6 +427,43 @@ test('scan:completed discovers a formation only once every member body is survey
   bus.emit('scan:completed', { sectorId: 'sector_test_alpha', found: { asteroids: clusterRocks.length } });
   assert.equal(state.formations.order.length, 1);
   assert.equal(bus.emitted.filter((e) => e.name === 'formation:discovered').length, 1);
+});
+
+test('surveyed body keys do not carry across an epoch boundary', () => {
+  const { sys, state, bus } = bootFormations();
+  const model = sys.currentModel();
+  const cluster = model.formations.find((f) => f.count >= 3)
+    || model.formations.reduce((a, b) => (b.count > (a ? a.count : 0) ? b : a), null);
+  assert.ok(cluster, 'the fixture cluster derives a formation');
+  const memberKeys = new Set(cluster.memberIds);
+  const clusterRocks = state.entityList.filter((r) => memberKeys.has(formationBodyKey(r)));
+  assert.ok(clusterRocks.length >= 3);
+
+  // Survey every member in epoch 0 — that earns the epoch-0 formation, honestly.
+  for (const r of clusterRocks) r.data.scanHighlightUntil = state.simTime + 30;
+  bus.emit('scan:completed', { sectorId: 'sector_test_alpha', found: { asteroids: clusterRocks.length } });
+  assert.equal(state.formations.order.length, 1);
+  const epochZeroId = state.formations.order[0];
+  assert.ok(sys._rt.surveyed.size >= clusterRocks.length, 'survey set is primed');
+
+  // The field re-rolls in place: same physical rocks, new epoch. The epoch-scoped survey set
+  // must reset with it — otherwise the stale quantized keys would auto-complete the new
+  // formation on the first scan.
+  state.world.residentSectors.sector_test_alpha.epoch = 9;
+  sys.currentModel();
+  assert.equal(sys._rt.surveyed.size, 0, 'surveyed set resets on the epoch boundary');
+  assert.equal(state.formations.order.length, 1, 'no discovery rides on the stale survey set');
+
+  // Earning it again still works: a fresh pulse over the same rocks discovers the new epoch's
+  // formation under its own id (structure is body-derived; ids are seed-derived).
+  state.simTime += 60;
+  for (const r of clusterRocks) r.data.scanHighlightUntil = state.simTime + 30;
+  bus.emit('scan:completed', { sectorId: 'sector_test_alpha', found: { asteroids: clusterRocks.length } });
+  const epochNine = sys.currentModel().formations.find((f) => f.count === cluster.count)
+    || sys.currentModel().formations[0];
+  assert.ok(state.formations.order.length >= 2, 're-surveying discovers the new-epoch formation');
+  assert.ok(state.formations.order.includes(epochNine.id), 'the epoch-9 id is what gets recorded');
+  assert.notEqual(epochNine.id, epochZeroId);
 });
 
 // ── Chronicler registrations ───────────────────────────────────────────────────────────────────

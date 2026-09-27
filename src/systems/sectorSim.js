@@ -594,7 +594,11 @@ export const sectorSim = {
     if (!continuous) {
       if (elapsed > DAY_SECONDS) {
         this.bus.emit('sectorsim:reconcile', {
-          sectorId: id, elapsedSimT: elapsed, signal: this.signal(id), continuous: false,
+          sectorId: id,
+          // Same contract as sectorsim:intel (_emitIntel): carry the display name so the
+          // "while away" line never prints a raw sector id.
+          sectorName: (SECTOR_BY_ID.get(id) || {}).name || id,
+          elapsedSimT: elapsed, signal: this.signal(id), continuous: false,
         });
       }
       this._emitIntel(id, 'sector_entry', elapsed / DAY_SECONDS);
