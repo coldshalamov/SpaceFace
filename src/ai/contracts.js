@@ -306,6 +306,7 @@ function normalizeContact(value) {
     pos: freezeVec(value.pos),
     vel: freezeVec(value.vel),
     radius: Math.max(0, finite(value.radius, 0)),
+    planarRadius: Math.max(0, finite(value.planarRadius, 0)),
     alive: value.alive !== false,
     valid: value.valid !== false,
     visible: value.visible !== false,
