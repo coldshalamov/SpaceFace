@@ -94,6 +94,7 @@ export function createCombatKernel(ctx, options = {}) {
       return statusesRaw.advance(targetEntity, runtime, routeDamageArg);
     },
     clear(targetEntity, runtime, statusId) {
+      noteCombatPrePhysicsWake();
       return statusesRaw.clear(targetEntity, runtime, statusId);
     },
   };

@@ -111,6 +111,26 @@ test('routeDamage wakes quiet latch', () => {
   assert.equal(state.combatRuntime.quietLatched, false);
 });
 
+test('rescan catch-all wakes on an un-woken mutation', () => {
+  setCombatPrePhysicsQuietLatchForBench(true);
+  const { state, act, ships } = boot();
+  step(act, state);
+  assert.equal(state.combatRuntime.quietLatched, true);
+  // Direct heat write — bypasses every wake wrapper (routeDamage/statuses).
+  const rt = state.combat.entities[ships[1].id];
+  assert.ok(rt, 'combatant runtime exists after first walk');
+  rt.heat = 9;
+  step(act, state);
+  // Still inside the 0.5 s window: latch holds, heat untouched.
+  assert.equal(state.combatRuntime.quietLatched, true);
+  assert.equal(rt.heat, 9);
+  // Past rescanAt the catch-all census runs the full walk → busy → wake + cool.
+  state.simTime += 0.6;
+  step(act, state);
+  assert.equal(state.combatRuntime.quietLatched, false);
+  assert.ok(rt.heat < 9, `rescan walk cooled heat, got ${rt.heat}`);
+});
+
 test('bench toggle disables latch', () => {
   setCombatPrePhysicsQuietLatchForBench(false);
   const { state, act } = boot(8);
