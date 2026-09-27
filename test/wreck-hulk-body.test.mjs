@@ -167,6 +167,21 @@ test('a fresh kill glows ember and cools to dead over six seconds of sim time', 
   assert.equal(mat.emissiveIntensity, 0);
 });
 
+test('fresh wreck heat follows authored hardware while hull panels retain their dark material', () => {
+  const group = new THREE.Group();
+  for (const name of ['Material_Hull', 'Material_Emissive_DriveCore', 'Material_Glass_Canopy']) {
+    group.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ name })));
+  }
+  const mats = deadenPackagedHulk(group);
+  updateHulkEmber({ mats, killedAt: 0 }, 0);
+  assert.ok(mats[0].emissiveIntensity < mats[1].emissiveIntensity * 0.05,
+    'the hull stays visibly charred beside the hot drive');
+  assert.equal(mats[1].emissiveIntensity, HULK_EMBER_PEAK);
+  assert.equal(mats[2].emissiveIntensity, 0, 'dead glass does not become an orange light panel');
+  updateHulkEmber({ mats, killedAt: 0 }, HULK_EMBER_SECONDS);
+  assert.ok(mats.every(mat => mat.emissiveIntensity === 0));
+});
+
 test('hulk clone materials are ordinary materials — the root teardown disposes them', () => {
   // renderer.disposeObject traverses the released root and disposes every material that is
   // not flagged spacefaceSharedAsset. The clones carry no shared flag, so release disposes
