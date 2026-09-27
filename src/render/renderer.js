@@ -4476,7 +4476,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'startupGpuResidency', 'rockSurfaceLibraryReady', 'authoredPartLibraryReady',
   'dynamicBufferRanges', 'presentationWorld', 'presentationPublisher', 'presentationQueries',
   'presentationFrame', 'snapshotFence', 'activityFrame', 'entityFrame', 'hlod', 'entityViewSync',
-  'asteroidInstancePool', 'renderGraph', 'contextRecovery', 'sectorBoundaryPrewarm',
+  'asteroidInstancePool', 'renderGraph', 'bloom', 'contextRecovery', 'sectorBoundaryPrewarm',
   'perfEntityIsolation', 'perfMaterialIsolation', 'debug', 'openingSubmissionPlan',
   'openingSubmissionReceipt', 'openingAdmissionCohort', 'openingAuthoredBoundaryCohort',
   'openingFirstVisibleGpuCounts', 'openingSubmissionFirstDrawSubmittedAt',
@@ -5695,6 +5695,7 @@ export const render = {
       this.bloom = null;
       this._postNativeFallbackReason = 'post-processor-unavailable';
     }
+    state.render.bloom = this.bloom;
     this._firstPresentGpuReady = false;
     this._firstPresentGpuAdmission = (async () => {
       try {

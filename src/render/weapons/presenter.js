@@ -181,11 +181,12 @@ export class WeaponVfxPresenter {
   }
 
   attachGraph(graph) {
+    if (this._graph === (graph || null)) return;
     if (this._graph && this._graph !== graph) this._detachGraph(this._graph);
     this._graph = graph || null;
     if (!graph) return;
-    // Well refraction and weapon haze share one SpaceRenderGraph distortion pass. That pass is
-    // only sampled when the live route attaches this graph (settings.video.renderGraph === true).
+    // Well refraction and weapon haze share the active compositor's one distortion target.
+    // Both the default bloom wrapper and optional render graph expose this producer contract.
     if (typeof graph.attachDistortionProducers === 'function') {
       graph.attachDistortionProducers(this.distortionProducers);
     } else if (typeof graph.attachDistortionField === 'function') {

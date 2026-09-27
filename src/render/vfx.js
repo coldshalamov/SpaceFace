@@ -322,7 +322,7 @@ export function visiblePointLightBudget(_video) {
 
 export function activeWeaponRenderGraph(state) {
   const graph = state && state.render && state.render.renderGraph;
-  return graph && state?.settings?.video?.renderGraph === true ? graph : null;
+  return graph && state?.settings?.video?.renderGraph === true ? graph : state?.render?.bloom || null;
 }
 
 export function weaponPresenterDepthTexture(_activeGraph) {
