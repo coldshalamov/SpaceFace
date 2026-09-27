@@ -46,6 +46,8 @@ Large and continuous effects keep their dedicated owners:
 | `vfx/bombDetonationVfx.js` | Eight payload-specific releases, real hit contacts, collapse and interruption |
 | `combat/explosionRupture.js`, `combat/phasedExplosions.js` | Material-specific rock, armor, fuel, reactor, and capital rupture |
 | `weapons/presenter.js`, `forceLanguage/weaponDischargePool.js` | Muzzle, projectile body/wake, and weapon-specific impact |
+| `weapons/heavyImpactVfx.js` | Siege boring, rail gouges, molten thermal seats, EMP forks, concussion, and explosive contacts |
+| `vfx/combatContactVfx.js` | Collision compression/slip, signed ricochet legs, component failure and restoration |
 | `combat/persistentBeams.js`, `toolConduit.js` | Sustained coherent beams and working conduits |
 | `thruster/systems/plasmaStream.js`, flight history owners | Actual nozzle flow and recorded path history |
 | `forceLanguage/emergentPrimitivePools.js` | Current, pressure, deposited gel, optical matter |
@@ -76,10 +78,18 @@ For a short receipted response, add a plain recipe to
 }
 ```
 
-The additional native events cover countermeasures, charge attachment/arming, snare/reel/catch,
-inertial shunts, volatile cargo contacts, cloak transitions, optical contacts, and beacon deployment.
-The `worldCueRecipes.js` whitelist also consumes 14 formerly empty normalized survey, drill,
-capacity, seam, and heat cues. Unknown semantic cues remain with their existing owners.
+The 22 additional native event types cover countermeasures, charge attachment/arming,
+snare/reel/catch, inertial shunts, volatile cargo contacts, cloak transitions, optical contacts,
+beacon deployment, salvage, successful pickup, NPC intent and flight, formation disruption,
+patrol scans, and crossing the wanted threshold. This extends the original 19 action routes;
+countermeasure and NPC intent variants have different recipes within their event type.
+The `worldCueRecipes.js` whitelist composes 29 normalized travel, survey, drill, capacity,
+seam, yield, and heat cues. Unknown semantic cues remain with their existing owners.
+
+Travel charging loads unequal rails outside the actual hull; commitment sheds aft pressure
+and transported charge; interruption vents sideways. Mining work and charge are seated on
+the receiving surface. NPC tells use the named NPC and the receipted duration. Heat ticks
+do not produce repeated wanted flashes, and a failed pickup does not show successful transfer.
 
 Use `variants` keyed by the receipt's `kind` when construction actually differs, as chaff,
 ECM, and decoy do. Use `resolveAdditionalActionVfxReceipt(name, receipt, state)` only to map
@@ -105,6 +115,10 @@ in decorative reach. Keep a separate inspectable gameplay range.
    that in diagnostics. It is not a mesh-triangle contact. A shunt receipt has no manifold point.
    Cargo net catches measure the drawn pod bounds once, retain the source-facing contact in
    body-local coordinates, and keep their hooks and release folds outside that opaque face.
+   Use `surfaceWork: true` for body-attached work and `surfaceCapture: true` for capture members.
+   `bodySurface: true` explicitly identifies a body-center fallback; it allows the resolver to
+   find an exposed face without replacing a genuine receipted contact. Resolve model bounds
+   once when receiving the event, not by traversing the scene every frame.
 4. Use the true source field, owner, or emitter; never borrow the player for an NPC effect.
    Player-only publishers are explicitly resolved by event type. Chaff/decoy use `cm.effect`
    diversion coordinates, because the receipt's x/z identifies the hull centre.
@@ -129,6 +143,36 @@ silhouette must work without bloom. Filter unresolved detail with screen derivat
 full-bright blocks, periodic visible noise cells, default radial spokes, and camera-facing
 puffs as the shape of an object. At flight distance, a strong local contour matters more than
 hundreds of tiny particles.
+
+Sustained tools use three rounded transported channels, source collars, and six curved work
+surfaces. Cutting, extraction, repair, and transfer differ in flow and receiver choreography.
+The mining owner follows its real socket and interpolated receiver; after supply stops, a
+cutoff travels the connection before the work surface cools. Retargeting active work must not
+restart the material clock. The combat beam similarly retains moving internal folds, a
+separate contact work face, and a drain that travels toward the receiver.
+
+## A practical recipe brief
+
+Before adding a recipe, answer these six questions in its code comment or change description:
+
+1. **Receipt:** What native event proves this happened, and which entity owns it?
+2. **Construction:** Which two or three primitives convey this particular force or material?
+3. **Causality:** What travels from the source, what triggers the receiver, and what remains?
+4. **Choreography:** Which members arrive late, move at different speeds, break, or cool?
+5. **Context:** Which real socket, surface, velocity, nearby body, or material changes the result?
+6. **Budget:** How many slots, surfaces, contacts, and parcels can coexist, and when do they sleep?
+
+For example, a new powered tether can load two connection shoulders from its measured socket,
+trigger offset capture hooks only at its confirmed receiver, then deposit local work when a
+successful transfer arrives. A sever receipt cuts off supply, leaves existing parcels travelling,
+and unloads the hooks tangentially. These are overlapping consequences, not three synchronized
+scale phases. Its cosmetic seed changes phase offsets and branch spacing, while the actual
+endpoints and success state stay authoritative.
+
+When choosing additional world events, prioritize useful information: interrupted work,
+capacity refusal, surface changes, equipment strain, traffic departures, recovery, and completion.
+Do not blanket every idle entity with decoration. Quiet intervals give a meaningful event
+contrast, and a warning must remain visibly different from a success.
 
 ## Runtime contract and practical acceptance
 
