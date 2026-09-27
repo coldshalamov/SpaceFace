@@ -25,7 +25,7 @@ SHIP_ID = 'place_landmark_resonant_cathedral'
 MAG = 'glow_cyan.magenta'
 COLORS = {
     'paint': '#6f695e',            # ash-grey concrete / pipe metal (the light value)
-    'paint2': '#361a0e',           # foundry rust, authored dark (the key light lifts it)
+    'paint2': '#2c150b',           # foundry rust, authored dark (the key light lifts it)
     'stripe': '#4a1240',           # Choir magenta paint (banners, bands), authored dark
     'hazard': '#9a7418',           # old foundry notice yellow
     'paint.graphite': '#222428',   # charcoal
@@ -241,6 +241,9 @@ def build_hall(s):
         yg = HY0 + bay * (k + 1) + 0.12
         mull.append(((0, yg, HZ1 + 3.05), (HX1 - HX0 - 2.0, 0.2, 0.3), 0.0))
     cluster(s, 'GlazingTransoms', mull, 'paint.graphite')
+    # charcoal ridge caps: the sawtooth reads as dark lines across the hall from above
+    caps = [((0, HY0 + bay * (k + 1) - 0.35, HZ1 + 6.15), (HX1 - HX0 - 1.2, 1.1, 0.5), 0.0) for k in range(12)]
+    cluster(s, 'RidgeCaps', caps, 'paint.graphite')
     # buttresses along both long walls
     for side in (1, -1):
         items = []
@@ -363,6 +366,41 @@ def build_yard(s):
         for j in range(4):
             ingots.append(((27.0 + i * 3.2, 34.0 + j * 2.2, -5.2), (2.6, 1.6, 1.4), 0.0))
     cluster(s, 'Ingots', ingots, 'paint')
+
+
+def build_pier(s):
+    """A pilgrim pier off the casting annex (+X) with a Choir barge moored along it."""
+    c, w = truss_segs((37.5, -26.0, -3.0), (70.0, -26.0, -3.0), 3.2, 2.6, 10)
+    beams(s, 'PierChords', c, 0.5, material='paint.graphite')
+    beams(s, 'PierWebs', w, 0.28, material='paint2')
+    beams(s, 'PierDeck', [((37.5, -26.0, -1.4), (70.0, -26.0, -1.4))], 2.6, material='paint', h=0.3)
+    F.cylinder(s, 'PierHead', (70.0, -26.0, -6.0), (70.0, -26.0, 0.6), 3.0, material='paint.graphite', segments=16,
+               bevel=0.05)
+    F.beacon(s, 'PierBeacon', (70.0, -26.0, 0.6), MAG, size=1.0)
+    lamps = [((40.0 + i * 3.6, -26.0 + sg * 1.4, -1.0), (0.4, 0.4, 0.4), 0.0) for i in range(9) for sg in (1, -1)]
+    cluster(s, 'PierLamps', lamps, 'glow_warm')
+    # the barge: a long dark hull with a magenta keel band and a lit pilgrim deck
+    by, bz = -35.0, -2.0
+    F.loft(s, 'Barge', [
+        dict(x=40.0, w=2.6, ht=2.2, hb=2.0, zc=bz, n=2.6, y=by),
+        dict(x=41.5, w=3.6, ht=3.0, hb=2.6, zc=bz, n=2.8, y=by),
+        dict(x=62.0, w=3.6, ht=3.0, hb=2.6, zc=bz, n=2.8, y=by),
+        dict(x=67.0, w=2.4, ht=2.3, hb=2.0, zc=bz - 0.2, n=2.4, y=by),
+        dict(x=69.5, w=0.8, ht=0.9, hb=0.8, zc=bz - 0.3, n=2.0, y=by),
+    ], material='paint.spire', belly='paint.graphite', back_material='dark', count=28, bevel=0.04)
+    for x in (47.0, 55.0):
+        F.band(s, 'Barge', (x, by, 0), (1, 0, 0), 0.7, MAG)
+    F.band(s, 'Barge', (66.5, by, bz), (1, 0, 0), 1.4, 'glass', facing=(0.6, 0, 0.8), min_facing=0.35)
+    F.box(s, 'BargeDeck', (51.0, by, bz + 3.4), (14.0, 5.0, 1.4), material='paint', bevel=0.1)
+    wins = [((45.0 + i * 1.4, by + sg * 3.62, bz + 0.6), (0.7, 0.12, 0.5), 0.0) for i in range(14) for sg in (1, -1)]
+    wins += [((44.5 + i * 1.6, by + sg * 2.52, bz + 3.5), (0.9, 0.12, 0.6), 0.0) for i in range(9) for sg in (1, -1)]
+    cluster(s, 'BargeWin', wins, 'glow_warm')
+    for dy in (-1.4, 1.4):
+        F.nozzle(s, f'BargeDrive{dy:+.0f}', (39.4, by + dy, bz), 1.0, 1.1, material='gunmetal', glow=MAG)
+    F.box(s, 'BargeGangway', (54.0, (by + 3.6 - 26.0 - 1.3) / 2, -1.6), (2.0, abs(-26.0 - 1.3 - by - 3.6) + 0.6, 1.2),
+          material='paint.graphite', bevel=0.05)
+    F.light(s, 'BargeNavP', (63.0, by + 3.7, bz), 'glow_red', size=0.5)
+    F.light(s, 'BargeNavS', (63.0, by - 3.7, bz), 'glow_green', size=0.5)
 
 
 def build_spire(s, side):
@@ -505,6 +543,7 @@ def build():
     build_hall(s)
     build_stacks(s)
     build_yard(s)
+    build_pier(s)
     build_spire(s, 1)
     build_spire(s, -1)
     build_arch(s)

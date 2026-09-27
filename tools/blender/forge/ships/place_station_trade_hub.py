@@ -632,7 +632,7 @@ def build_ring_details(s):
                 x, y, _ = polar(r, aa)
                 sky.append(((x, y, ROOF_Z1 + 0.02), (2.2, 1.4, 0.12), math.radians(aa)))
     cluster(s, 'Skylights', sky, 'glow_warm')
-    cluster(s, 'Kiosks', kiosks, 'paint', bevel=0.05)
+    cluster(s, 'Kiosks', kiosks, 'paint')
     cluster(s, 'KioskLights', klights, 'glow_warm')
     rim = []
     for k in range(90):

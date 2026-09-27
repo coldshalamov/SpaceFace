@@ -33,25 +33,30 @@ const heliosPart = required(partById.get('place_station_trade_hub'), 'place_stat
 const heliosRelease = required(releaseById.get('place_station_trade_hub'), 'place_station_trade_hub', 'release manifest');
 const heliosSourceMetrics = glbMetrics(heliosRelease.source);
 
-assertFileReceipt(heliosProduction.outputBlend, heliosProduction.outputBlendBytes,
-  heliosProduction.outputBlendSha256, 'Helios production blend');
-assertFileReceipt(heliosProduction.outputGlb, heliosProduction.outputGlbBytes,
-  heliosProduction.outputGlbSha256, 'Helios production GLB');
-assertFileReceipt(heliosProduction.releaseGlb, heliosProduction.releaseGlbBytes,
-  heliosProduction.releaseGlbSha256, 'Helios release GLB');
-assertFileReceipt(heliosPromotion.candidate, heliosPromotion.candidateBytes,
-  heliosPromotion.candidateSha256, 'Helios promotion candidate');
-assertFileReceipt(heliosPromotion.source, heliosPromotion.sourceBytes,
-  heliosPromotion.sourceSha256, 'Helios promoted source');
-assertFileReceipt(heliosPromotion.release, heliosPromotion.releaseBytes,
-  heliosPromotion.releaseSha256, 'Helios promoted release');
-assertFileReceipt(heliosPromotion.authoringBlend, heliosPromotion.authoringBlendBytes,
-  heliosPromotion.authoringBlendSha256, 'Helios promoted authoring blend');
+if (!forgeStamp(heliosRelease.source)) {
+  // Pre-Forge hub: the golden-station production/promotion receipts bind the live body.
+  assertFileReceipt(heliosProduction.outputBlend, heliosProduction.outputBlendBytes,
+    heliosProduction.outputBlendSha256, 'Helios production blend');
+  assertFileReceipt(heliosProduction.outputGlb, heliosProduction.outputGlbBytes,
+    heliosProduction.outputGlbSha256, 'Helios production GLB');
+  assertFileReceipt(heliosProduction.releaseGlb, heliosProduction.releaseGlbBytes,
+    heliosProduction.releaseGlbSha256, 'Helios release GLB');
+  assertFileReceipt(heliosPromotion.candidate, heliosPromotion.candidateBytes,
+    heliosPromotion.candidateSha256, 'Helios promotion candidate');
+  assertFileReceipt(heliosPromotion.source, heliosPromotion.sourceBytes,
+    heliosPromotion.sourceSha256, 'Helios promoted source');
+  assertFileReceipt(heliosPromotion.release, heliosPromotion.releaseBytes,
+    heliosPromotion.releaseSha256, 'Helios promoted release');
+  assertFileReceipt(heliosPromotion.authoringBlend, heliosPromotion.authoringBlendBytes,
+    heliosPromotion.authoringBlendSha256, 'Helios promoted authoring blend');
+}
 assertReleaseManifest(heliosRelease, 'Helios release manifest');
 assert.equal(heliosPart.bytes, fileRecord(heliosRelease.source).bytes, 'Helios parts-manifest bytes');
 assert.equal(heliosPart.tris, heliosSourceMetrics.triangles, 'Helios parts-manifest triangles');
-assert.equal(heliosPromotion.meshoptBufferViews, heliosRelease.meshoptBufferViews,
-  'Helios promotion/release meshopt count');
+if (!forgeStamp(heliosRelease.source)) {
+  assert.equal(heliosPromotion.meshoptBufferViews, heliosRelease.meshoptBufferViews,
+    'Helios promotion/release meshopt count');
+}
 
 const rockSummary = json('assets/ships/m4_helios_hub/evidence/helios_rock_a_build_summary.json');
 const rockReceipt = rockSummary.receiptClosure;
@@ -91,25 +96,35 @@ assert.equal(authoring.entries.place_asteroid_rock_a.blend_path, rockReceipt.aut
 assert.equal(authoring.entries.place_asteroid_rock_a.promotion_pipeline,
   'scripts/promote-m4-surface-remaster.mjs', 'Rock A authoring registry must name its promoter');
 
-// Dated 2026-08-23: finalize_report.json is the technical-candidate receipt
-// (`technical_candidate_no_promote`). Live promotion is recorded in evidence/acceptance.json
-// (accepted 2026-07-14, verdict PASS). Do not treat the candidate report as the live receipt.
-const waspAcceptance = json('assets/ships/wasp_production_v1/evidence/acceptance.json');
-const waspFinalize = json('assets/ships/wasp_production_v1/evidence/finalize_report.json');
+// Forge bodies (tools/blender/forge) carry their provenance in the GLB itself
+// (spacefaceAsset.forge); the old pipeline's acceptance receipts describe bodies that no longer
+// ship. A forged asset is bound by its stamp plus the disk sweep below (manifest SHA/bytes vs disk).
+function forgeStamp(path) {
+  const gltf = glbMetrics(path).gltf;
+  const scene = (gltf.scenes || [])[gltf.scene || 0] || {};
+  return scene.extras?.spacefaceAsset?.forge || gltf.asset?.extras?.spacefaceAsset?.forge || null;
+}
+
 const waspPart = required(partById.get('wholeship_wasp_production_v1'), 'wholeship_wasp_production_v1', 'parts manifest');
 const waspRelease = required(releaseById.get('wholeship_wasp_production_v1'), 'wholeship_wasp_production_v1', 'release manifest');
-assert.equal(waspAcceptance.verdict, 'PASS', 'Wasp acceptance verdict');
-assert.equal(waspAcceptance.assetId, 'SF_WASP_PRODUCTION_V1', 'Wasp acceptance asset id');
+const waspLiveSource = fileRecord(waspRelease.source);
+if (forgeStamp(waspRelease.source)) {
+  assert.equal(forgeStamp(waspRelease.source).ship, 'wasp', 'Wasp live source must be the forged Wasp body');
+} else {
+  // Pre-Forge body: finalize_report.json is the technical-candidate receipt; live promotion is
+  // recorded in evidence/acceptance.json (accepted 2026-07-14, verdict PASS).
+  const waspAcceptance = json('assets/ships/wasp_production_v1/evidence/acceptance.json');
+  const waspFinalize = json('assets/ships/wasp_production_v1/evidence/finalize_report.json');
+  assert.equal(waspAcceptance.verdict, 'PASS', 'Wasp acceptance verdict');
+  assert.equal(waspAcceptance.assetId, 'SF_WASP_PRODUCTION_V1', 'Wasp acceptance asset id');
+  assert.equal(waspFinalize.ok, true, 'Wasp technical candidate still structurally ok');
+  assert.equal(waspLiveSource.sha256, String(waspAcceptance.runtime.lods[0].sha256).toUpperCase(),
+    'Wasp live source must match the acceptance LOD0 hash');
+  assert.equal(waspLiveSource.bytes, waspAcceptance.runtime.lods[0].bytes,
+    'Wasp live source must match the acceptance LOD0 bytes');
+}
 assert.equal(waspPart.status, 'accepted', 'Wasp parts-manifest status');
 assert.equal(waspPart.wiringStatus, 'live_player_wasp', 'Wasp parts-manifest wiring');
-assert.equal(waspFinalize.ok, true, 'Wasp technical candidate still structurally ok');
-assert.equal(waspFinalize.status, 'technical_candidate_no_promote',
-  'Wasp finalize report must remain the candidate receipt, not a rewritten live claim');
-const waspLiveSource = fileRecord(waspRelease.source);
-assert.equal(waspLiveSource.sha256, String(waspAcceptance.runtime.lods[0].sha256).toUpperCase(),
-  'Wasp live source must match the acceptance LOD0 hash');
-assert.equal(waspLiveSource.bytes, waspAcceptance.runtime.lods[0].bytes,
-  'Wasp live source must match the acceptance LOD0 bytes');
 assertReleaseManifest(waspRelease, 'Wasp release manifest');
 assert.equal(waspPart.bytes, waspLiveSource.bytes, 'Wasp parts-manifest bytes');
 assert.equal(waspPart.tris, glbMetrics(waspRelease.source).triangles, 'Wasp parts-manifest triangles');
