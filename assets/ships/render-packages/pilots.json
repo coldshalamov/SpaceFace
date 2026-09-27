@@ -113,8 +113,8 @@
       "slot": "place",
       "releaseAssetId": "place_station_blackmarket",
       "sourceUrl": "assets/ships/release/parts/places/place_station_blackmarket.glb",
-      "releaseSha256": "6ee5d7c6f04f5a07c4b9f69aa045f42ae372ce4b1f785919cd344863143f05d3",
-      "releaseBytes": 2086312,
+      "releaseSha256": "58a8bb67d87d28bfcde24c1ee1bb4a74dcabc081984534209538cfd859132c55",
+      "releaseBytes": 2086316,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",

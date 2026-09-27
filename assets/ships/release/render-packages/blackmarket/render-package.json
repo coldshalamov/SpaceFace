@@ -197,7 +197,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "907f1823d45c0e6ffedc1ada34c0d991cd14f064fab0822be41460d769000aa3",
+  "contentHash": "d9983daf7aa7416a38c583445982e12f08b0b8b52fe1398716263371ebe461ef",
   "dynamicGroups": [
     {
       "id": "sf.render.blackmarket.node.lod0-hook-nav-port.dynamic",
@@ -620,7 +620,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "58de61801eed9863a882b29660777c96e0e882a0ee35f4661ea0b4d4d2fc3091",
+      "geometryHash": "563360dfcf820a3d135b7d7caec53143107e1a3afd526d408c8cdcbb28e48617",
       "id": "sf.render.blackmarket.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 8760,
       "indexed": true,
@@ -1020,7 +1020,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25d115f7035b627ada7ab14a302c88b516071cd98a913af4603f590f52d32ad4",
+      "geometryHash": "41d985cba849fa40910939194e27e8c5b49a0bdfb7a07050ae8f0ddee21ba90d",
       "id": "sf.render.blackmarket.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 3819,
       "indexed": true,
@@ -4501,19 +4501,19 @@
       "sha256": "1c4ab1d67109fe0512e3fc1cb5fd16dfe315fb169543565b9073a458eef678f2"
     },
     "sourceGlb": {
-      "bytes": 2086312,
-      "sha256": "6ee5d7c6f04f5a07c4b9f69aa045f42ae372ce4b1f785919cd344863143f05d3",
+      "bytes": 2086316,
+      "sha256": "58a8bb67d87d28bfcde24c1ee1bb4a74dcabc081984534209538cfd859132c55",
       "uri": "place_station_blackmarket.glb"
     },
     "sourceManifest": {
       "bytes": 197520,
-      "sha256": "41174f74f609e8b752137f78648dbd038755e37857acdf0bd8850caae0f5b820",
+      "sha256": "1e2d5a5ed3e8b430a626bc3a8a3d823002a4f8db8cffd907c8cafd720b483321",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3989864,
-    "sha256": "673e9195471cab7073af6f7e3c5c53fcb35b9d1d0341fc6005e462100e71133c",
+    "bytes": 3989916,
+    "sha256": "dc3edde9e2a12869fa0ace57221a7f6078310c40dfacaa24a930e970038f7383",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6260,7 +6260,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_blackmarket.glb"
   },
-  "runtimeHash": "3aa26d19f18f2263f725277d8b740e752ae93b3c0c5f08090ed6438969a7b60d",
+  "runtimeHash": "04f281433413079408116485df32ee6c14f2bbb81e9e5bcbe2eaad8333ef075d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

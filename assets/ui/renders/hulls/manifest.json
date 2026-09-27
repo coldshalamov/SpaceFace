@@ -3105,6 +3105,247 @@
      ]
     }
    }
+  },
+  "ship_leviathan": {
+   "sourceGlb": "assets/ships/parts/wholeships/leviathan_production_v1.glb",
+   "sourceGlbSha256": "7D40E440BEC1EF6EF48F822B3ED984843A498D1FC5C812CEF9F6F7B28696426A",
+   "hero": {
+    "file": "ship_leviathan.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 125562,
+    "hullSize": [
+     61.1,
+     33.12,
+     17.406
+    ],
+    "longAxis": 0,
+    "marks": {
+     "LEVIATHAN_LOD0_ROOT": [
+      0.4976,
+      0.6164,
+      160.959
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      155.203
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6683,
+      162.38
+     ],
+     "SOCKET_Engine_Main": [
+      0.6847,
+      0.4029,
+      183.865
+     ],
+     "SOCKET_Mining_Front": [
+      0.2544,
+      0.7571,
+      136.434
+     ],
+     "SOCKET_RCS_Port": [
+      0.603,
+      0.5521,
+      153.654
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4035,
+      0.4512,
+      164.067
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5891,
+      0.3808,
+      168.33
+     ],
+     "SOCKET_Trail_Main": [
+      0.6858,
+      0.4017,
+      184.015
+     ],
+     "SOCKET_Trail_Port": [
+      0.7242,
+      0.4189,
+      181.846
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6482,
+      0.385,
+      186.184
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3241,
+      155.341
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2533,
+      0.7548,
+      136.298
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_leviathan.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 64484,
+    "hullSize": [
+     61.1,
+     33.12,
+     17.406
+    ],
+    "longAxis": 0,
+    "marks": {
+     "LEVIATHAN_LOD0_ROOT": [
+      0.5049,
+      0.6756,
+      183.301
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      183.301
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.7619,
+      183.301
+     ],
+     "SOCKET_Engine_Main": [
+      0.0777,
+      0.665,
+      183.301
+     ],
+     "SOCKET_Mining_Front": [
+      0.9168,
+      0.5045,
+      183.301
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      193.237
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      173.365
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4561,
+      183.301
+     ],
+     "SOCKET_Trail_Main": [
+      0.0749,
+      0.665,
+      183.301
+     ],
+     "SOCKET_Trail_Port": [
+      0.0749,
+      0.665,
+      187.441
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0749,
+      0.665,
+      179.161
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.2381,
+      183.301
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9182,
+      0.5,
+      183.301
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_leviathan.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 56062,
+    "hullSize": [
+     61.1,
+     33.12,
+     17.406
+    ],
+    "longAxis": 0,
+    "marks": {
+     "LEVIATHAN_LOD0_ROOT": [
+      0.5,
+      0.4951,
+      189.104
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      183.301
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      191.954
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9223,
+      188.754
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0832,
+      183.451
+     ],
+     "SOCKET_RCS_Port": [
+      0.3622,
+      0.5,
+      183.301
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.6378,
+      0.5,
+      183.301
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      181.851
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9251,
+      188.754
+     ],
+     "SOCKET_Trail_Port": [
+      0.4426,
+      0.9251,
+      188.754
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5574,
+      0.9251,
+      188.754
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      174.648
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0818,
+      183.301
+     ]
+    }
+   }
   }
  }
 }

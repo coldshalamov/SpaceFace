@@ -78,7 +78,8 @@ for (const key of pilotKeys) {
 }
 writeFileSync(pilotsPath, `${JSON.stringify(pilots, null, 2)}\n`);
 run('node', ['scripts/refresh-render-package-pilots.mjs', `--only=${pilotKeys.join(',')}`], { quiet: true });
-run('node', ['scripts/build-render-package-pilots.mjs', `--only=${pilotKeys.join(',')}`], { quiet: true });
+// Every package embeds the pilots.json hash, so all packages are rebuilt after a pilot edit.
+run('node', ['scripts/build-render-package-pilots.mjs'], { quiet: true });
 
 // 5. census
 run('node', ['scripts/model-truth-census.mjs'], { quiet: true });

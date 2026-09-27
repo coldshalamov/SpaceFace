@@ -4302,20 +4302,6 @@
       "contractNodeCount": 41
     },
     {
-      "id": "place_station_blackmarket",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_station_blackmarket.glb",
-      "release": "assets/ships/release/parts/places/place_station_blackmarket.glb",
-      "sourceSha256": "501c1f5d32b61ee1bcd07aa094b150052e334322ddf5f429bc9afb5abe1cab50",
-      "releaseSha256": "6ee5d7c6f04f5a07c4b9f69aa045f42ae372ce4b1f785919cd344863143f05d3",
-      "sourceBytes": 6760192,
-      "releaseBytes": 2086312,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 184,
-      "contractNodeCount": 52
-    },
-    {
       "id": "wholeship_massline_express_liner_v1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/massline_express_liner_v1.glb",
@@ -4412,6 +4398,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 151,
       "contractNodeCount": 41
+    },
+    {
+      "id": "place_station_blackmarket",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_station_blackmarket.glb",
+      "release": "assets/ships/release/parts/places/place_station_blackmarket.glb",
+      "sourceSha256": "8b926ceb1cb60fd24412056a77d1a05c851d309e42a25e389e7b12f8203f9a0e",
+      "releaseSha256": "58a8bb67d87d28bfcde24c1ee1bb4a74dcabc081984534209538cfd859132c55",
+      "sourceBytes": 6760184,
+      "releaseBytes": 2086316,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 184,
+      "contractNodeCount": 52
     }
   ]
 }

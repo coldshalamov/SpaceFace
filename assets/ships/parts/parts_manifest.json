@@ -3808,7 +3808,7 @@
       "priority": "P0",
       "file": "places/place_station_blackmarket.glb",
       "tris": 55980,
-      "bytes": 6760192,
+      "bytes": 6760184,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
