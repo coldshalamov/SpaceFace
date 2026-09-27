@@ -138,6 +138,21 @@ function tracePartial(g, pts, measure, upto) {
  * hot core, a bead at its head; `progress` draws it in (0..1); `pulseT` (seconds) runs a bright
  * packet along it — omitted under reduced motion. `alpha` < 1 is the preview (laid, not committed).
  */
+/** A polyline cut back from every vertex by `trim` px (so a beam stops at each disc's rim). */
+export function trimPolylineSegments(pts, trim) {
+  const segs = [];
+  for (let i = 1; i < pts.length; i += 1) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    const L = Math.hypot(b.x - a.x, b.y - a.y);
+    if (!(L > trim * 2 + 2)) continue;
+    const ux = (b.x - a.x) / L;
+    const uy = (b.y - a.y) / L;
+    segs.push([{ x: a.x + ux * trim, y: a.y + uy * trim }, { x: b.x - ux * trim, y: b.y - uy * trim }]);
+  }
+  return segs;
+}
+
 export function drawHandBeam(g, pts, {
   progress = 1, pulseT = null, alpha = 1, head = true, headR = 4.2, width = 1, tone = 'hand', lock = 0,
 } = {}) {
@@ -256,8 +271,17 @@ export function drawLaneComet(g, ax, ay, bx, by, u, { len = 46, a = 0.9, trim = 
   g.restore();
 }
 
+/** A label's leader: out of the mark on its diagonal, an elbow, then flat into the words. */
+export function drawLabelLeader(g, leader, { a = 1 } = {}) {
+  if (!leader) return;
+  drawBand(g, (c) => { c.moveTo(leader.sx, leader.sy); c.lineTo(leader.ex, leader.ey); c.lineTo(leader.lx, leader.ly); },
+    { band: 5, bandA: 0.2 * a, edge: 1.5, edgeA: 0.72 * a });
+  drawBead(g, leader.sx, leader.sy, 1.8, { a, bloom: 2, bloomA: 0.24 * a });
+}
+
 /** An unknown sector: a faint star glint, never a question mark. */
 export function drawGlint(g, x, y, { size = 6, a = 0.42, rgb = BONE } = {}) {
+  drawBandRing(g, x, y, size + 4, { band: 4, bandA: 0.1 * a / 0.42, edge: 1, edgeA: 0.3 * a / 0.42 });
   g.save();
   g.strokeStyle = rgbaOf(rgb, a * 0.7);
   g.lineWidth = 1;
@@ -555,7 +579,7 @@ export function drawSectorToken(g, sectorId, x, y, size, {
  * then its figures as large thin numerals each with a small unit (`numerals`: [{ value, unit }]),
  * then a quiet line of secondary figures and a note. Hangs off a 45-degree leader from the mark.
  */
-export function drawLineReadingLarge(g, x, y, { title = '', numerals = [], figures = '', note = '', bounds = null, clear = 12, avoid = [] } = {}) {
+export function drawLineReadingLarge(g, x, y, { title = '', numerals = [], figures = '', note = '', bounds = null, clear = 12, avoid = [], seat = null, measureOnly = false } = {}) {
   if (!title && !numerals.length) return null;
   const NUM_PX = 44;
   g.save();
@@ -584,6 +608,7 @@ export function drawLineReadingLarge(g, x, y, { title = '', numerals = [], figur
   const ow = note ? g.measureText(note).width : 0;
   const width = Math.max(tw, nw, fw, ow);
   const height = (title ? 20 : 0) + (parts.length ? NUM_PX + 2 : 0) + (figures ? 20 : 0) + (note ? 18 : 0);
+  if (measureOnly) { g.restore(); return { width, height }; }
   const d = Math.max(8, clear) * 0.7071;
   const elbow = 26;
   const place = (sxn, syn) => {
@@ -595,7 +620,13 @@ export function drawLineReadingLarge(g, x, y, { title = '', numerals = [], figur
   };
   let at = null;
   let best = Infinity;
-  for (const [cx, cy] of [[1, -1], [1, 1], [-1, -1], [-1, 1]]) {
+  // A seat chosen by the chart's anchored placer (chartLabels.js) wins over the local search.
+  if (seat && seat.leader) {
+    const L = seat.leader;
+    at = { ex: L.ex, ey: L.ey, left: seat.x, top: seat.y, sxn: L.ex >= x ? 1 : -1, syn: L.ey >= y ? 1 : -1, start: { x: L.sx, y: L.sy }, lx: L.lx };
+    best = -1;
+  }
+  if (!at) for (const [cx, cy] of [[1, -1], [1, 1], [-1, -1], [-1, 1]]) {
     const c = place(cx, cy);
     let cost = 0;
     if (bounds) {
@@ -624,9 +655,11 @@ export function drawLineReadingLarge(g, x, y, { title = '', numerals = [], figur
     g.fillRect(at.left - pad * 2, at.top - pad * 2, width + pad * 4, height + pad * 4);
   }
   // the leader: out of the mark at 45 degrees, then flat into the reading
-  drawBand(g, (c) => { c.moveTo(x + at.sxn * d, y + at.syn * d); c.lineTo(at.ex, at.ey); c.lineTo(at.ex + at.sxn * 8, at.ey); },
+  const s0 = at.start || { x: x + at.sxn * d, y: y + at.syn * d };
+  const lx = Number.isFinite(at.lx) ? at.lx : at.ex + at.sxn * 8;
+  drawBand(g, (c) => { c.moveTo(s0.x, s0.y); c.lineTo(at.ex, at.ey); c.lineTo(lx, at.ey); },
     { band: 4, bandA: 0.24, edge: 1.5, edgeA: 0.8 });
-  drawBead(g, x + at.sxn * d, y + at.syn * d, 2.2, { bloom: 2.2 });
+  drawBead(g, s0.x, s0.y, 2.2, { bloom: 2.2 });
   let row = at.top;
   const ink = (text, font, fill, em, px, xx, yy) => {
     g.font = font;

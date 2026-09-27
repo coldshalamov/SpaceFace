@@ -133,6 +133,8 @@ ${C} .gm-rail-item { position:relative; padding-left:34px !important; }
 /* a tag on a rail row (the plotted alternative, the tracked mission) is lit bone: the Hand is the beam */
 ${C} :is(.gm-rail-item-tag, .gm-rail-track-g) { color:rgb(248 244 234) !important; }
 ${C} :is(.gm-rail-item-t, .gm-rail-item-s) { white-space:normal !important; overflow-wrap:anywhere; }
+${C} .gm-rail-item-t { font-size:13px !important; line-height:1.3 !important; }
+${C} .gm-rail-item-s { font-size:12px !important; line-height:1.3 !important; color:rgb(${BONE} / .7) !important; }
 ${C} .gm-rail-item::before { ${TICK(10, 0.34, 1.5)} }
 ${C} :is(.gm-rail-item.is-tracked, .gm-rail-item.is-current) { background:none !important; }
 ${C} .gm-rail-item:is(:hover, :focus-visible) { outline:none !important; ${SEG(1, '24px')} }
@@ -159,7 +161,7 @@ ${C} .orr-chart-tabscale { position:absolute; left:0; top:0; width:100%; height:
 ${C} .gm-frame-group { gap:2px 18px !important; }
 ${C} .gm-frame-group .gm-frame-btn { ${PLAIN} ${LABEL} width:auto !important; min-height:30px !important; padding:4px 0 4px 10px !important; justify-content:flex-start !important;
   font-size:12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; white-space:nowrap !important; }
-${C} .gm-frame-group .gm-frame-btn::before { all:unset !important; content:"›" !important; margin-right:8px !important; color:rgb(${BONE} / .6) !important; font-size:15px !important; letter-spacing:0 !important; }
+${C} .gm-frame-group .gm-frame-btn::before { ${RESET_PSEUDO} }
 ${C} .gm-frame-group .gm-frame-btn::after { ${RESET_PSEUDO} }
 ${C} .gm-frame-group .gm-frame-btn:not(:disabled):is(:hover, :focus-visible) { outline:none !important; ${SEG()} }
 ${C} .gm-frame-group .gm-frame-btn:disabled { color:rgb(${BONE} / .58) !important; }
@@ -174,6 +176,9 @@ ${C} :is(#gm-set-course-btn, .gm-plot-btn):not(:disabled):is(:hover, :focus-visi
 ${C} .gm-inspector-actions:has(#gm-set-course-btn:not([hidden])) .gm-place-btn[data-place-action="plot"] { display:none !important; }
 ${C} :is(#gm-set-course-btn, .gm-plot-btn):disabled { color:rgb(${BONE} / .58) !important; }
 ${C} #gm-engage-route-btn.orr-lampkey:disabled { color:rgb(${BONE} / .66) !important; }
+${C} #gm-engage-route-btn.orr-lampkey.is-locking { color:#1c1406 !important; }
+${C} #gm-engage-route-btn.orr-lampkey.is-locking::before { background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 22px 2px rgb(242 185 80 / .45) !important; }
+${C} #gm-engage-route-btn.orr-lampkey.is-locking .orr-lampkey__rim { display:none !important; }
 /* ENGAGE ROUTE: the one Lamp Key — its natural width, not a bar */
 ${C} #gm-engage-route-btn.orr-lampkey { width:auto !important; align-self:flex-start !important; margin-top:6px !important; }
 ${C} #gm-engage-route-btn.orr-lampkey[data-engage-state="nav:abortRoute"]:not(:disabled)::before { background:var(--dp-danger, #ff5038) !important; }
@@ -181,7 +186,7 @@ html:not(.sf-reduce-motion) ${C} #gm-engage-route-btn.orr-lampkey:not(:disabled)
 ${C} :is(.gm-frame-reason, .gm-plot-reason, .gm-engage-reason, .gm-ribbon-reason) { color:rgb(${BONE} / .72) !important; }
 ${C} .gm-place-actions { gap:0 22px !important; }
 ${C} .gm-place-btn { ${PLAIN} ${LABEL} min-height:24px !important; padding:2px 0 2px 10px !important; font-size:12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
-${C} .gm-place-btn::before { all:unset !important; content:"›" !important; margin-right:8px !important; color:rgb(${BONE} / .6) !important; font-size:15px !important; letter-spacing:0 !important; }
+${C} .gm-place-btn::before { ${RESET_PSEUDO} }
 ${C} .gm-place-btn::after { ${RESET_PSEUDO} }
 ${C} .gm-place-btn:not(:disabled):is(:hover, :focus-visible) { outline:none !important; ${SEG()} }
 ${C} .gm-place-btn:is(:disabled, [aria-disabled="true"]) { color:rgb(${BONE} / .58) !important; }
@@ -189,7 +194,7 @@ ${C} .gm-ins-section { background-image:linear-gradient(90deg, rgb(${BONE} / .34
 ${C} .gm-ins-section:first-child { background-image:none !important; }
 ${C} .gm-ins-row-val { color:var(--dp-phos, #dfeeff) !important; }
 /* the chosen sector's own render heads its record, slowly turning toward the pointer (a tilt plate) */
-${C} .gm-ins-plate { position:relative; display:grid; grid-template-columns:auto minmax(0, 1fr); align-items:center; gap:14px; margin:0 0 6px; }
+${C} .gm-ins-plate { position:relative; display:grid; grid-template-columns:auto minmax(0, 1fr); align-items:center; gap:14px; margin:0 0 6px; padding:8px 0 12px 8px; overflow:visible; }
 ${C} .gm-ins-plate__art { position:relative; width:var(--gm-plate, 128px); height:var(--gm-plate, 128px); border-radius:50%;
   background:radial-gradient(closest-side, rgb(5 7 10 / .95), rgb(5 7 10 / .9) 82%, rgb(5 7 10 / 0));
   box-shadow:0 0 0 1.5px rgb(${BONE} / .52), 0 0 0 6px rgb(${BONE} / .12); transform:perspective(600px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); transition:transform .3s var(--dp-ease-out); }
@@ -220,19 +225,24 @@ ${C} .gm-navfoot .gm-nav-row[data-tone="muted"] .gm-nav-row-v { color:rgb(${BONE
 ${C} .gm-navfoot .gm-nav-row-d { color:rgb(${BONE} / .66) !important; white-space:normal !important; overflow:visible !important; text-overflow:clip !important; line-height:1.3 !important; }
 /* the route's own controls are words */
 ${C} .gm-ribbon-btn { ${PLAIN} ${LABEL} min-height:26px !important; padding:2px 0 2px 10px !important; font-size:12px !important; letter-spacing:.18em !important; color:rgb(248 244 234) !important; }
-${C} .gm-ribbon-btn::before { all:unset !important; content:"›" !important; margin-right:8px !important; color:rgb(${BONE} / .6) !important; font-size:15px !important; letter-spacing:0 !important; }
+${C} .gm-ribbon-btn::before { ${RESET_PSEUDO} }
 ${C} .gm-ribbon-btn::after { ${RESET_PSEUDO} }
 ${C} .gm-ribbon-btn:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) { outline:none !important; ${SEG()} }
 /* the course in the inspector: its state in one line, its verbs as words; the itinerary rides the beam
    (leg callouts on the chart) and the Travel tab; the reasons stay for the reader, off the glass */
 ${C} .gm-right-inspector .gm-ribbon { margin:6px 0 0 !important; padding:0 !important; gap:4px !important; }
 ${C} .gm-right-inspector .gm-ribbon-main { display:block !important; }
-${C} .gm-right-inspector .gm-ribbon-head { font-size:13px !important; line-height:1.35 !important; color:rgb(${BONE} / .86) !important; margin:0 !important; }
+${C} .gm-right-inspector .gm-ribbon-head { display:flex !important; flex-wrap:wrap; gap:0 !important; font-size:13px !important; line-height:1.35 !important; color:rgb(${BONE} / .86) !important; margin:0 !important; }
+${C} .gm-right-inspector .gm-ribbon-arrival { order:-1; color:rgb(248 244 234) !important; }
+${C} .gm-right-inspector .gm-ribbon-arrival:not(:empty)::before { content:none !important; }
+${C} .gm-right-inspector .gm-ribbon-head:has(.gm-ribbon-arrival:not(:empty)) .gm-ribbon-status::before { content:" · "; }
+${C} .gm-right-inspector .gm-ribbon-status { order:0; }
+${C} .gm-inspector-actions:has(#gm-route-ribbon:not([hidden])) #gm-engage-reason { ${SR} }
 ${C} .gm-right-inspector :is(.gm-ribbon-legs, .gm-ribbon-meta, .gm-ribbon-reason) { ${SR} }
 ${C} .gm-right-inspector .gm-ribbon-btn[data-ribbon-action="engage"] { display:none !important; }
 ${C} .gm-right-inspector .gm-ribbon-actions.k-words { gap:0 20px !important; }
 ${C} .gm-ribbon-btn:is(:disabled, [aria-disabled="true"]) { color:rgb(${BONE} / .58) !important; }
-${C} .gm-ribbon-btn:is(:disabled, [aria-disabled="true"])::before { color:rgb(${BONE} / .3) !important; }
+
 ${C} .gm-ribbon-actions.k-words { background:none !important; gap:4px 26px !important; }
 ${C} .gm-ribbon-status[data-ribbon-state="live"] { color:var(--dp-phos, #dfeeff) !important; }
 ${C} .gm-ribbon-leg[data-leg-state="active"] .gm-ribbon-leg-g { color:rgb(248 244 234) !important; }
@@ -268,9 +278,10 @@ html.sf-reduce-motion ${C} .gm-navfoot.is-locking::after { animation:none; displ
   ${C} .gm-navfoot :is(.gm-nav-row-k, .gm-nav-row-v) { flex:none; }
   ${C} .gm-navfoot .gm-nav-row-v { font-size:14px !important; }
   ${C} .gm-navfoot .gm-nav-row-d { ${SR} }
+  ${C} .gm-navfoot .gm-nav-from { ${SR} }
   ${C} .gm-navfoot .gm-nav-row-v { white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; flex:0 1 auto !important; min-width:0 !important; }
   ${C} .gm-tab.k-word { padding:2px 0 10px !important; }
-  ${C} .gm-ins-plate { --gm-plate:88px; }
+  ${C} .gm-ins-plate { --gm-plate:72px; padding:4px 0 8px 6px; }
 }
 
 @media (forced-colors:active) {
