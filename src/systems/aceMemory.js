@@ -163,7 +163,7 @@ export const aceMemory = {
   },
 
   deserialize(data) {
-    if (this.state) this.state.aceMemory = normalizeMemory(data);
+    if (this.state) this.state.aceMemory = normalizeMemory(data, this.state.entities);
   },
 
   update(dt, state) {
@@ -655,6 +655,17 @@ export const aceMemory = {
       existing.fled = true;
       existing.fledAt = now;
       existing.expired = false;
+      existing.expiredAt = null;
+      // The previous return's execution fields are spent: a re-armed record is a live
+      // window again — it can spawn anew AND lapse again. A stale `returned` left set
+      // would make the expiry write-off unreachable for a pilot who came back then ran.
+      existing.returned = false;
+      existing.returnedAt = null;
+      existing.resolvedVia = null;
+      existing.returnRequestId = null;
+      existing.activeReturnIds = null;
+      existing.spawnedCount = 0;
+      existing.nextReturnAttemptAt = null;
       existing.fleeCount = (existing.fleeCount | 0) + 1;
       existing.encounterCount = (existing.encounterCount | 0) + 1;
       existing.returnTier = Math.min(
@@ -796,16 +807,28 @@ export const aceMemory = {
     const victimId = payload.id != null ? payload.id
       : (payload.victimId != null ? payload.victimId : payload.targetId);
     if (victimId == null) return;
-    const entity = this.state.entities && typeof this.state.entities.get === 'function'
-      ? this.state.entities.get(victimId)
+    const entities = this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities
       : null;
+    let entity = entities ? entities.get(victimId) : null;
+    if (entity == null && entities) {
+      const numeric = Number(victimId);
+      if (Number.isFinite(numeric)) entity = entities.get(numeric) || null;
+    }
     let pilotId = promotedPilotRefOf(entity);
-    if (!pilotId) {
-      // A returned hull also binds its entity id in activeReturns — survives lookup races.
+    if (!pilotId && entity == null) {
+      // Lookup race only: the hull is already gone from the entity map, so settle through
+      // the live-return binding — and only a binding that names the pilot hull itself while
+      // the record still owns it. A live entity whose data carries no pilot identity (a
+      // return escort, a recycled id's new occupant) fails closed here instead of settling.
       const memory = ensureMemory(this.state);
       const active = memory.activeReturns && memory.activeReturns[String(victimId)];
-      if (active && memory[active.aceId] && memory[active.aceId].promoted === true) {
-        pilotId = active.aceId;
+      const rec = active && memory[active.aceId];
+      if (active && active.role === 'boss' && rec && rec.promoted === true
+          && rec.returnRequestId === active.requestId
+          && Array.isArray(rec.activeReturnIds)
+          && rec.activeReturnIds.some((id) => String(id) === String(victimId))) {
+        pilotId = rec.id;
       }
     }
     if (pilotId) this._promotedDefeated(pilotId);
@@ -854,6 +877,14 @@ export const aceMemory = {
       rec.resolvedVia = 'moralReturn';
       return;
     }
+    // The spared-return encounter (h7) spawns this pilot's crew the moment it opens, while
+    // the moral debt is still pending — a promoted return firing inside that choice window
+    // would field two crews for one pilot. Defer the spawn until the window resolves: a
+    // reveal then settles this record via moralReturn; an abort lets the return fire.
+    if (rec.promoted === true && moralDebtEncounterLive(this.state, rec.id)) {
+      rec.nextReturnAttemptAt = now + 10;
+      return;
+    }
     if (stance.stance === 'offers_work') {
       this._spawnWorkOffer(ace, rec, stance, now);
       return;
@@ -896,7 +927,7 @@ export const aceMemory = {
       const entity = spawnEntity(spec);
       if (entity && entity.id != null) {
         spawnedIds.push(entity.id);
-        rememberActiveReturn(this.state, entity.id, ace.id, requestId);
+        rememberActiveReturn(this.state, entity.id, ace.id, requestId, ship.role);
       }
     }
     if (budget && typeof budget.releaseSome === 'function' && spawnedIds.length < grant) {
@@ -938,12 +969,17 @@ export const aceMemory = {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     const budget = this.helpers && this.helpers.spawnBudget;
     const requestId = `aceWorkOffer:${ace.id}:${rec.returnSeed || 0}`;
+    if (typeof spawnEntity !== 'function') {
+      // Same contract as the hostile path: no spawn helper means the return is still owed —
+      // stay scheduled and retry instead of resolving the record with no crew on the field.
+      rec.nextReturnAttemptAt = now + 10;
+      return;
+    }
     rec.returnScheduled = false;
     rec.returned = true;
     rec.returnedAt = now;
     rec.returnRequestId = requestId;
     rec.stance = 'offers_work';
-    if (typeof spawnEntity !== 'function') return;
     const crew = returnCrewForAce(ace, Math.max(1, rec.returnTier || 1), null);
     const front = activeFrontForFaction(this.state && this.state.conflicts, ace.factionId);
     let grant = crew.length;
@@ -952,6 +988,8 @@ export const aceMemory = {
       if (grant <= 0) {
         rec.returnScheduled = true;
         rec.returned = false;
+        rec.returnedAt = null;
+        rec.returnRequestId = null;
         rec.stance = null;
         rec.nextReturnAttemptAt = now + 10;
         return;
@@ -1002,7 +1040,7 @@ export const aceMemory = {
       const entity = spawnEntity(spec);
       if (entity && entity.id != null) {
         spawnedIds.push(entity.id);
-        rememberActiveReturn(this.state, entity.id, ace.id, requestId);
+        rememberActiveReturn(this.state, entity.id, ace.id, requestId, ship.role);
       }
     }
     if (budget && typeof budget.releaseSome === 'function' && spawnedIds.length < grant) {
@@ -1012,6 +1050,8 @@ export const aceMemory = {
       if (budget && typeof budget.release === 'function') budget.release(requestId);
       rec.returnScheduled = true;
       rec.returned = false;
+      rec.returnedAt = null;
+      rec.returnRequestId = null;
       rec.stance = null;
       rec.nextReturnAttemptAt = now + 10;
       return;
@@ -1506,13 +1546,15 @@ function promotedBaseLevelFor(entity) {
   return Math.max(1, Math.min(6, level || 3));
 }
 
-/** The pilot's id a kill receipt resolves to — the fled hull's stamp or a return boss tag. */
+/** The pilot's id a kill receipt resolves to — the fled hull's stamp or the return's own
+ *  pilot hull. Every return-crew ship wears the same aceMemory tag for identification, so
+ *  only the boss role counts: killing an escort must not settle the captain's record. */
 function promotedPilotRefOf(entity) {
   const data = entity && entity.data;
   if (!data) return null;
   if (data.promotedPilot && data.promotedPilot.id) return data.promotedPilot.id;
   const tag = data.aceMemory;
-  if (tag && tag.promoted === true && tag.aceId) return tag.aceId;
+  if (tag && tag.promoted === true && tag.role === 'boss' && tag.aceId) return tag.aceId;
   return null;
 }
 
@@ -1523,11 +1565,28 @@ function moralDebtRevealed(state, pilotId) {
   return !!(debt && debt.status === 'revealed');
 }
 
+/** True while a live encounter is presenting this pilot's moral debt — the h7 spared-return
+ *  binds the debt into its live vars at fire time (e1EncounterRuntime), ahead of the choice
+ *  that reveals it, so the pending window is visible here before the ledger flips. */
+function moralDebtEncounterLive(state, pilotId) {
+  const live = state && state.encounterDirector && state.encounterDirector.live;
+  if (!live || typeof live !== 'object') return false;
+  for (const enc of Object.values(live)) {
+    const debt = enc && enc.vars && enc.vars.debt;
+    if (debt && debt.id === pilotId) return true;
+  }
+  return false;
+}
+
 /** A promoted record whose return window never fired within the expiry window is written
  *  off — stale records cannot accumulate forever on a long save. Returns true when the
  *  record was expired this pass (and so must not spawn). */
 function expirePromotedRecord(rec, now) {
-  if (rec.expired === true || rec.defeated === true || rec.returned === true) return rec.expired === true;
+  if (rec.expired === true || rec.defeated === true) return rec.expired === true;
+  // A settled return is done with the clock. A re-armed one is a live window that can
+  // lapse again — returnScheduled distinguishes it, which also covers old saves where a
+  // re-fled pilot still carries the stale `returned` flag.
+  if (rec.returned === true && rec.returnScheduled !== true) return false;
   if (!Number.isFinite(rec.fledAt) || !Number.isFinite(now)) return false;
   if (now - rec.fledAt <= PROMOTED_PILOT_EXPIRY_S) return false;
   rec.expired = true;
@@ -1580,16 +1639,15 @@ function ensureMemory(state) {
   if (existing && normalizedMemories.has(existing) && existing.schemaVersion === ACE_MEMORY_VERSION) {
     return existing;
   }
-  state.aceMemory = normalizeMemory(existing);
+  state.aceMemory = normalizeMemory(existing, state.entities);
   normalizedMemories.add(state.aceMemory);
   return state.aceMemory;
 }
 
-function normalizeMemory(input) {
+function normalizeMemory(input, entities = null) {
   const out = freshMemory();
   if (!input || typeof input !== 'object') return out;
   out.news = clonePlain(input.news || {});
-  out.activeReturns = clonePlain(input.activeReturns || {});
   out.cultureIntros = clonePlain(input.cultureIntros || {});
   out.planetChallenges = clonePlain(input.planetChallenges || {});
   out.playerStyle = normalizePlayerStyle(input.playerStyle);
@@ -1600,6 +1658,40 @@ function normalizeMemory(input) {
     if (META_KEYS.has(id) || id === 'aces') continue;
     if (!rec || typeof rec !== 'object') continue;
     out[id] = normalizeRecord(id, rec);
+  }
+  out.activeReturns = normalizeActiveReturns(input.activeReturns, out, entities);
+  return out;
+}
+
+/** Entity-id → pilot bindings describe live hulls only. Across a save/load the allocator
+ *  recycles ids (cleared entities reissue from 1), so a binding survives normalize only while
+ *  the record still owns that hull AND the live entity map confirms it still carries the
+ *  pilot's tag — a stale row must never rebind an unrelated ship to a pilot's death. */
+function normalizeActiveReturns(input, memory, entities) {
+  const out = {};
+  if (!input || typeof input !== 'object' || !entities || typeof entities.get !== 'function') {
+    return out;
+  }
+  for (const [key, active] of Object.entries(input)) {
+    if (!active || typeof active !== 'object' || !active.aceId) continue;
+    const rec = memory[active.aceId];
+    if (!rec || rec.returnRequestId !== active.requestId) continue;
+    if (!Array.isArray(rec.activeReturnIds)
+        || !rec.activeReturnIds.some((id) => String(id) === key)) continue;
+    const entityId = Number(key);
+    if (!Number.isFinite(entityId)) continue;
+    const tag = entities.get(entityId)
+      && entities.get(entityId).data
+      && entities.get(entityId).data.aceMemory;
+    if (!tag || tag.aceId !== active.aceId || tag.requestId !== active.requestId) continue;
+    out[key] = { aceId: active.aceId, requestId: active.requestId, role: active.role || null };
+  }
+  // Records trim to hulls that are still bound — a restored record must not claim crew ids
+  // whose bindings the load already invalidated.
+  for (const [id, rec] of Object.entries(memory)) {
+    if (META_KEYS.has(id) || !rec || typeof rec !== 'object') continue;
+    if (!Array.isArray(rec.activeReturnIds)) continue;
+    rec.activeReturnIds = rec.activeReturnIds.filter((entityId) => out[String(entityId)] != null);
   }
   return out;
 }
@@ -1700,12 +1792,12 @@ function returnPosition(state, ace, rec, index) {
   };
 }
 
-function rememberActiveReturn(state, entityId, aceId, requestId) {
+function rememberActiveReturn(state, entityId, aceId, requestId, role = null) {
   const memory = state && state.aceMemory && typeof state.aceMemory === 'object'
     ? state.aceMemory
     : ensureMemory(state);
   if (!memory.activeReturns || typeof memory.activeReturns !== 'object') memory.activeReturns = {};
-  memory.activeReturns[String(entityId)] = { aceId, requestId };
+  memory.activeReturns[String(entityId)] = { aceId, requestId, role };
 }
 
 function emit(bus, evt, payload) {

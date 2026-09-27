@@ -12,10 +12,13 @@ import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { pirateDisengage } from '../src/systems/pirateDisengage.js';
 import { chronicler } from '../src/systems/chronicler.js';
 import {
+  PROMOTED_PILOT_EXPIRY_S,
   PROMOTED_PILOT_MAX,
   promotedPilotIdFor,
   promotedPilotIdentity,
 } from '../src/data/pilotCallsigns.js';
+import { ACE_LOYALTY_WORK_AT } from '../src/data/namedAces.js';
+import { revealMoralDebt } from '../src/systems/moralMemory.js';
 
 const SEED = 4242;
 const SECTOR = 'sector_helios_prime';
@@ -310,4 +313,180 @@ test('promoted records round-trip a save/load and still return with the same ide
   assert.ok(boss, 'the return body exists after load');
   assert.equal(boss.data.ai.name, rec.name, 'the same name comes back after load');
   assert.equal(boss.data.aceMemory.grudgeKey, 'fled_fire');
+});
+
+test('killing a return escort does not settle the pilot; the pilot hull does', () => {
+  const t = boot();
+  const pirate = spawnPirate(t);
+  emitFled(t, pirate);
+  const pilotId = promotedPilotIdFor(pirate.id);
+  const rec = t.state.aceMemory[pilotId];
+
+  advanceTo(t, rec.returnAt + 1);
+  const spawned = t.events.find((row) => row.name === 'aceMemory:returnSpawned'
+    && row.payload.aceId === pilotId);
+  assert.ok(spawned, 'the promoted return spawns');
+  const [bossId, ...escortIds] = spawned.payload.spawnedIds;
+  assert.ok(escortIds.length >= 1, 'the return fields escorts around the pilot hull');
+  const escort = t.state.entities.get(escortIds[0]);
+  assert.ok(escort, 'the escort is a live body');
+  assert.equal(escort.data.aceMemory.role, 'escort');
+  assert.equal(escort.data.aceMemory.promoted, true, 'escorts wear the same identification tag');
+
+  t.bus.emit('entity:killed', { id: escort.id, killerId: t.player.id, type: 'ship' });
+  assert.notEqual(rec.defeated, true, 'an escort kill must not settle the pilot record');
+  assert.ok(!t.events.some((row) => row.name === 'aceMemory:transition'
+    && row.payload.aceId === pilotId && row.payload.transition === 'defeated'),
+    'no defeated transition off an escort kill');
+  assert.equal(t.state.entities.get(bossId).data.aceMemory.role, 'boss',
+    'the pilot hull is still standing with the boss tag');
+
+  t.bus.emit('entity:killed', { id: bossId, killerId: t.player.id, type: 'ship' });
+  assert.equal(rec.defeated, true, 'killing the hull that carries the pilot settles the record');
+  assert.equal(rec.returnScheduled, false);
+});
+
+test('after save/load, a recycled entity id cannot settle a promoted pilot', () => {
+  const t = boot();
+  const pirate = spawnPirate(t);
+  emitFled(t, pirate);
+  const pilotId = promotedPilotIdFor(pirate.id);
+  const rec = t.state.aceMemory[pilotId];
+  advanceTo(t, rec.returnAt + 1);
+  const spawned = t.events.find((row) => row.name === 'aceMemory:returnSpawned'
+    && row.payload.aceId === pilotId);
+  assert.ok(spawned, 'the promoted return spawns before the save');
+  const crewIds = spawned.payload.spawnedIds.slice();
+  assert.ok(Object.keys(t.state.aceMemory.activeReturns).length >= crewIds.length,
+    'live crew bindings exist at save time');
+
+  const snapshot = JSON.parse(JSON.stringify(t.aceSystem.serialize()));
+  const t2 = boot();
+  t2.aceSystem.deserialize(snapshot);
+  const restored = t2.state.aceMemory[pilotId];
+  assert.ok(restored && restored.promoted === true, 'the promoted record survives the load');
+  assert.equal(restored.returned, true, 'the return-of-record survives the load');
+  assert.deepEqual(Object.keys(t2.state.aceMemory.activeReturns), [],
+    'entity-id bindings from the old sim are dropped at load — those hulls are gone');
+
+  // The fresh sim's allocator reissues low ids: spawn until one reuses a stale crew id.
+  let recycled = null;
+  for (let i = 0; i < 12 && !recycled; i++) {
+    const fresh = spawnPirate(t2, { squadId: `sq_recycle_${i}` });
+    if (crewIds.includes(fresh.id)) recycled = fresh;
+  }
+  assert.ok(recycled, 'the allocator reuses a stale crew id');
+  t2.bus.emit('entity:killed', { id: recycled.id, killerId: t2.player.id, type: 'ship' });
+  assert.notEqual(restored.defeated, true,
+    'a recycled id whose live entity carries no pilot identity fails closed');
+
+  // The pure fallback path — a kill receipt for an id with no live entity — must not
+  // settle either: the load dropped the stale bindings it would have resolved through.
+  for (const id of crewIds) {
+    t2.bus.emit('entity:killed', { id: id + 100000, killerId: t2.player.id, type: 'ship' });
+  }
+  assert.notEqual(restored.defeated, true, 'no binding, no settle');
+});
+
+test('a pilot who returned and fled again can time-expire', () => {
+  const t = boot();
+  const pirate = spawnPirate(t);
+  emitFled(t, pirate);
+  const pilotId = promotedPilotIdFor(pirate.id);
+  const rec = t.state.aceMemory[pilotId];
+
+  advanceTo(t, rec.returnAt + 1);
+  assert.equal(rec.returned, true, 'the first return spawned');
+  const firstSpawns = t.events.filter((row) => row.name === 'aceMemory:returnSpawned'
+    && row.payload.aceId === pilotId).length;
+
+  // The same hull breaks off again — the re-armed record is a live window, not a settled one.
+  emitFled(t, pirate);
+  assert.equal(rec.returned, false, 're-arm clears the settled return flag');
+  assert.equal(rec.returnedAt, null);
+  assert.equal(rec.resolvedVia, null);
+  assert.equal(rec.returnScheduled, true);
+  assert.equal(rec.fleeCount, 2);
+
+  // Push the clock past the expiry window from the re-flee: the record must lapse instead
+  // of standing revived forever on a stale `returned` flag.
+  t.state.simTime = rec.fledAt + PROMOTED_PILOT_EXPIRY_S + 1;
+  t.sim.runTicks(Math.ceil(0.6 / SIM_DT));
+  assert.equal(rec.expired, true, 'the re-armed window can lapse');
+  assert.equal(rec.returnScheduled, false);
+  const spawns = t.events.filter((row) => row.name === 'aceMemory:returnSpawned'
+    && row.payload.aceId === pilotId).length;
+  assert.equal(spawns, firstSpawns, 'no second crew fields off a lapsed record');
+});
+
+test('a work-offer return without a spawn helper retries instead of resolving', () => {
+  const t = boot();
+  const pirate = spawnPirate(t);
+  emitFled(t, pirate, { reason: 'profit-risk-bad' });
+  const pilotId = promotedPilotIdFor(pirate.id);
+  const rec = t.state.aceMemory[pilotId];
+  // Force the loyal wing stance deterministically rather than fishing for an ally seed.
+  rec.loyalty = ACE_LOYALTY_WORK_AT;
+  rec.grudge = 0;
+
+  // No spawn helper on aceMemory's helper copy: the offer must stay owed, not resolve.
+  const helpers = t.aceSystem.helpers;
+  const spawnEntity = helpers.spawnEntity;
+  helpers.spawnEntity = null;
+  advanceTo(t, rec.returnAt + 1);
+  assert.notEqual(rec.returned, true, 'a spawnless offer does not resolve the record');
+  assert.equal(rec.returnScheduled, true, 'the return stays scheduled for retry');
+  assert.ok(Number.isFinite(rec.nextReturnAttemptAt) && rec.nextReturnAttemptAt > rec.returnAt,
+    'a retry is scheduled');
+  assert.ok(!t.events.some((row) => row.name === 'aceMemory:workOffered'
+    && row.payload.aceId === pilotId), 'no work offer was emitted for an empty spawn');
+
+  helpers.spawnEntity = spawnEntity;
+  t.state.simTime = rec.nextReturnAttemptAt + 1;
+  t.sim.runTicks(Math.ceil(0.6 / SIM_DT));
+  const offered = t.events.find((row) => row.name === 'aceMemory:workOffered'
+    && row.payload.aceId === pilotId);
+  assert.ok(offered, 'the work offer fires once spawning is possible again');
+  assert.ok(offered.payload.spawnedIds.length > 0, 'the retry fields a real crew');
+  assert.equal(rec.returned, true);
+});
+
+test('a live h7 spared-return window defers the promoted return of the same pilot', () => {
+  const t = boot();
+  const pirate = spawnPirate(t);
+  emitFled(t, pirate);
+  const pilotId = promotedPilotIdFor(pirate.id);
+  const rec = t.state.aceMemory[pilotId];
+
+  // h7 binds the pilot's debt into live.vars.debt the moment it fires — while the debt is
+  // still pending (e1EncounterRuntime settleMoralReturn reveals it only on choice/timeout).
+  const debt = t.state.story.moralMemory.debts[pilotId];
+  assert.ok(debt && debt.status === 'pending', 'the spared debt is still pending');
+  t.state.encounterDirector = {
+    live: {
+      enc_h7_test: {
+        id: 'enc_h7_test',
+        shapeId: 'depth_h7_spared_return',
+        phase: 'offer',
+        vars: { debt: { ...debt } },
+      },
+    },
+  };
+
+  advanceTo(t, rec.returnAt + 1);
+  assert.ok(!t.events.some((row) => row.name === 'aceMemory:returnSpawned'
+    && row.payload.aceId === pilotId), 'no second crew fields inside the choice window');
+  assert.equal(rec.returnScheduled, true, 'the promoted return is deferred, not consumed');
+  assert.notEqual(rec.returned, true);
+
+  // The window resolves the way h7 resolves it: the debt reveals and the encounter ends.
+  delete t.state.encounterDirector.live.enc_h7_test;
+  revealMoralDebt(t.state, pilotId);
+  t.state.simTime = (rec.nextReturnAttemptAt || rec.returnAt) + 1;
+  t.sim.runTicks(Math.ceil(0.6 / SIM_DT));
+  assert.equal(rec.returned, true);
+  assert.equal(rec.resolvedVia, 'moralReturn', 'the spared-return encounter owns the comeback');
+  assert.equal(rec.returnScheduled, false);
+  assert.ok(!t.events.some((row) => row.name === 'aceMemory:returnSpawned'
+    && row.payload.aceId === pilotId), 'still no promoted crew — the debt was already answered');
 });
