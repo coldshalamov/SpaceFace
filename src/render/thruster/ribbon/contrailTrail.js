@@ -181,6 +181,7 @@ const TRAIL_VERT = /* glsl */`
   varying float vCore;
   varying float vSeam;
   varying float vWidthGain;
+  varying float vRunout;
   varying vec3  vWorldPos;
   varying vec3  vNormal;
 
@@ -357,8 +358,14 @@ const TRAIL_VERT = /* glsl */`
     // drawing a bridge across a teleport or a period when the engine was not emitting. Rows beyond
     // the live range never reach the shader: the draw range covers live sample boundaries only.
     float segmentEdge = 1.0 - max(1.0 - prevSame, 1.0 - nextSame);
-    radius *= segmentEdge;
-    halfWidth *= segmentEdge;
+    // The first recorded burn is still young when its finite mesh end becomes visible. Let each
+    // sheet close over a few rows instead of exposing a full-width cross-section there. This caps
+    // the retained surface only: its recorded centres, birth state and time-based retirement stay
+    // untouched, and the sheet seed gives the outer filaments slightly different exit lengths.
+    float runout = smoothstep(0.0, 5.0 + sheetSeed * 2.0, max(uLive - 1.0 - aSample, 0.0));
+    float edgeCoverage = segmentEdge * runout;
+    radius *= edgeCoverage;
+    halfWidth *= edgeCoverage;
 
     // EDGE STABILITY. A sheet thinner than a pixel stops covering pixel centres reliably and
     // crawls. Widen it to a stable footprint and hand the fragment stage the exact factor, which it
@@ -366,7 +373,7 @@ const TRAIL_VERT = /* glsl */`
     // wake keeps its brightness instead of gaining energy into the bloom pass as it recedes.
     float wantedHalf = halfWidth;
     float floorHalf = length(uCamPos - p) * uMinPxWidth;
-    halfWidth = max(halfWidth, floorHalf * segmentEdge);
+    halfWidth = max(halfWidth, floorHalf * edgeCoverage);
     vWidthGain = halfWidth > 1e-5 ? clamp(wantedHalf / halfWidth, 0.06, 1.0) : 1.0;
 
     vec3 center = p + ref * (cos(theta) * radius) + up * (sin(theta) * radius);
@@ -393,6 +400,7 @@ const TRAIL_VERT = /* glsl */`
     vStaticTexture = staticTexture;
     vCore = isCore;
     vSeam = seam;
+    vRunout = runout;
     vWorldPos = world;
     vNormal = normalize(cross(tangent, acrossTan + vec3(1e-6)));
 
@@ -429,6 +437,7 @@ const TRAIL_FRAG = /* glsl */`
   varying float vCore;
   varying float vSeam;
   varying float vWidthGain;
+  varying float vRunout;
   varying vec3  vWorldPos;
   varying vec3  vNormal;
 
@@ -453,7 +462,8 @@ const TRAIL_FRAG = /* glsl */`
     float life = pow(max(1.0 - vLife, 0.0), 1.35);
     float filament = 0.72 + vStaticTexture * 0.48;
     float birthEnergy = 0.55 + vDrive * 0.45 + vBoost * 0.18 + vDash * 0.34;
-    float density = across * life * filament * birthEnergy * (1.0 + vCore * 0.6);
+    // Coverage reaches zero with the finite sheet cap; the history's age fade still owns its life.
+    float density = across * life * filament * birthEnergy * (1.0 + vCore * 0.6) * vRunout;
 
     float alpha = clamp(uOpacity * 2.0 * density * (0.6 + spec * 1.1), 0.0, 1.0);
     if (alpha < 0.0015) discard;

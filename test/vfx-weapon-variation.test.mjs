@@ -5,6 +5,7 @@ import { EnergyBoltPool } from '../src/render/weapons/energyBoltPool.js';
 import { WeaponRibbonPool, RIBBON_PROFILE } from '../src/render/weapons/ribbonPool.js';
 import { WeaponVfxPresenter } from '../src/render/weapons/presenter.js';
 import { collectStatusAttachedVictims, planStatusAttachedEmit } from '../src/render/statusAttachedVfx.js';
+import { HullScorchPool } from '../src/render/weapons/contactMarks.js';
 
 function bolt(entityId, x) {
   return {
@@ -13,6 +14,39 @@ function bolt(entityId, x) {
     coreR: 1, coreG: 0.9, coreB: 0.5, sheathR: 1, sheathG: 0.2, sheathB: 0.1,
   };
 }
+
+test('hull contact texture identity survives target motion, origin rebase, and packed slot changes', () => {
+  const pool = new HullScorchPool(null, { capacity: 3 });
+  try {
+    const first = pool.spawn({ targetId: 81, localX: 1, localZ: 3, life: 0.6 });
+    const retained = pool.spawn({ targetId: 82, localX: 2, localZ: 5, life: 2 });
+    const seed = pool.slots[retained].seed;
+    assert.notEqual(seed, pool.slots[first].seed);
+    const pose = { x: 12, y: 0, z: 50, nx: 0, ny: 1, nz: 0 };
+    pool.update(0.05, () => pose);
+    assert.equal(pool.mark.getZ(1), Math.fround(seed));
+    pose.x = -720; pose.z = 900;
+    pool.update(0.6, () => pose);
+    assert.equal(pool.live, 1);
+    assert.equal(pool.mark.getZ(0), Math.fround(seed), 'packing and moving a contact do not create a new crack field');
+    assert.equal(pool.pos.getX(0), pose.x);
+    const age = pool.slots[retained].age;
+    pool.update(-0.2, () => pose);
+    assert.equal(pool.slots[retained].age, age, 'a negative timestep never rewinds heat');
+    const explicit = pool.spawn({ targetId: 83, seed: 0.375 });
+    assert.equal(pool.slots[explicit].seed, 0.375);
+  } finally { pool.dispose(); }
+});
+
+test('weapon wake uses premultiplied additive blending exactly once', () => {
+  const pool = new WeaponRibbonPool(null, { capacity: 1, segments: 4 });
+  try {
+    assert.equal(pool.material.blending, THREE.AdditiveBlending);
+    assert.equal(pool.material.premultipliedAlpha, true,
+      'the shader already weights radiance by coverage; multiplying by alpha again erases thin tails');
+    assert.match(pool.material.fragmentShader, /vec4\(c \* a, a\)/);
+  } finally { pool.dispose(); }
+});
 
 test('projectile variation belongs to identity across sorting and frame reordering', () => {
   const pool = new EnergyBoltPool(new THREE.Scene(), { capacity: 4 });
