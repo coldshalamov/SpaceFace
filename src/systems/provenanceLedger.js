@@ -677,6 +677,12 @@ export const provenanceLedger = {
     this._listen('freight:recovery', (payload) => this._onActOutcome(payload || {}, 'recovered'));
     this._listen('freight:recoveryAbandoned', (payload) => this._onActOutcome(payload || {}, 'abandoned'));
     this._listen('claim:raided', (payload) => this._onClaimOutcome(payload || {}, 'raided'));
+    // A jumped salvage stake is a raid on someone's working claim: same ledger memory.
+    this._listen('salvage:claimJumped', (payload) => this._onClaimOutcome({
+      bodyId: payload && payload.wreckId != null ? `wreck:${payload.wreckId}` : '',
+      text: `${(payload && payload.crewName) || 'Salvor crew'}'s salvage stake jumped by the player.`,
+      sectorId: (payload && payload.sectorId) || null,
+    }, 'raided'));
     this._listen('claim:raidRepelled', (payload) => this._onClaimOutcome(payload || {}, 'repelled'));
     this._listen('claim:defenseResolved', (payload) => this._onClaimDefense(payload || {}));
     this._listen('lossLedger:recorded', (payload) => this._onLossRecorded(payload || {}));
