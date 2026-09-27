@@ -3,6 +3,7 @@ import { fieldSignature, SURFACE_MATERIALS } from './catalog.js';
 import { SweptSurfaceBatch, SURFACE_FLOATS } from './sweptSurfaceBatch.js';
 import { FIELD_LIFECYCLES, FIELD_ROLE, sampleFieldLifecycle } from './effectLifecycle.js';
 import { ForceParticleFlow } from '../vfx/forceParticleFlow.js';
+import { FlowEnvironment } from './flowEnvironment.js';
 export { FIELD_RELEASE_SECONDS } from './effectLifecycle.js';
 
 export const FIELD_PRESENTATION_CAPACITY=7; // six simulation fields PLUS the published Seed
@@ -36,7 +37,8 @@ export class FieldForcePresentation {
     this.particleOptions={reducedMotion:false,reducedFlash:false};
     this.particleBurst={kind:'well',x:0,z:0,y:.7,dx:1,dz:0,radius:1,seed:0,count:6,life:.65,strength:1,halfAngle:.56,halfWidth:52};
     this.local={x:0,z:0};this.descriptor=new Float32Array(SURFACE_FLOATS);
-    this.slots=Array.from({length:10},()=>({
+    this.slots=Array.from({length:10},(_,index)=>({
+      index,ownerId:null,environment:new FlowEnvironment(),
       id:null,seedId:null,kind:null,born:0,character:0,lastSeen:0,release:-1,x:0,z:0,radius:0,angle:0,seen:false,reserved:false,particlePulse:0,
       // The producer REUSES its records. Keep value snapshots, not foreign record references,
       // so a retiring Well cannot become the Cone subsequently stored in the same array cell.
@@ -71,6 +73,7 @@ export class FieldForcePresentation {
       slot.particlePulse=0;
     }
     slot.seen=true;slot.release=-1;slot.lastSeen=this.time;
+    slot.ownerId=field.ownerId??field.sourceId??null;
     slot.field.engaged=field.engaged===true;
     slot.field.halfAngleRad=finite(field.halfAngleRad,0.56);
     slot.field.halfWidth=finite(field.halfWidth,52);
@@ -128,18 +131,19 @@ export class FieldForcePresentation {
         if(this.time-s.release>=releaseSeconds){s.id=null;continue;}
         stats.releasing++;
         // Keep the last visible body for a distinct breakup. The boundary disappears on this
-        // very frame and the shader freezes live transport at releaseAt; only residue retires.
+        // very frame; already supplied parcels coast and retire without creating new fronts.
       }
       const sig=fieldSignature(s.kind);
       if(!sig)continue;
       this._position(s);
+      this._environment(s,state);
       if(cull){
         this.sphere.center.set(this.local.x,0.45,this.local.z);this.sphere.radius=s.radius*1.12;
         if(!this.frustum.intersectsSphere(this.sphere)){stats.culled++;continue;}
       }
       this.slot=s;this.cycle=FIELD_LIFECYCLES[s.kind];this.releasing=s.release>=0;
       this.tint=COLORS.get(sig.color);this.alpha=0.88+(s.field.engaged?0.12:0);
-      this.reveal=1; // birth, geometric build, and release are owned by iLife in the shader
+      this.reveal=1; // per-section arrival and retirement are owned by iLife in the shader
       this.orientation=s.angle;this.engaged=s.field.engaged===true;
       // `engaged` means a body was affected THIS TICK, not that the tool is switched on.
       // Empty-space tools remain alive. The shader's motion uniform handles accessibility.
@@ -171,6 +175,19 @@ export class FieldForcePresentation {
     this.mesh.visible=this.batch.count>0||this.particles.live>0;
     return stats;
   }
+  _environment(slot,state){
+    const env=slot.environment.update(state,this.local.x,this.local.z,slot.radius,slot.ownerId,
+      finite(state.render?.interpolationAlpha,1));
+    const bodies=this.batch.material.uniforms.uBodies.value;
+    const velocities=this.batch.material.uniforms.uBodyVelocity.value;
+    const base=slot.index*3;
+    for(let i=0;i<3;i++){
+      const body=i<env.count?env.records[i]:null;
+      if(body){bodies[base+i].set(body.x,body.z,body.radius,finite(body.strength,1));
+        velocities[base+i].set(finite(body.vx),finite(body.vz));}
+      else {bodies[base+i].set(0,0,0,0);velocities[base+i].set(0,0);}
+    }
+  }
   _position(slot){
     if(this.toLocal)this.toLocal(slot.x,slot.z,this.local);
     else {this.local.x=slot.x;this.local.z=slot.z;}
@@ -195,7 +212,7 @@ export class FieldForcePresentation {
     d[23]=this.radius;
     d[24]=this.slot.born;d[25]=this.cycle.attack;d[26]=this.slot.release;d[27]=this.cycle.release;
     d[28]=this.cycle.code;d[29]=this.role;d[30]=this.phaseOffset+variation;d[31]=this.material.flex;
-    d[32]=this.local.x;d[33]=this.local.z;d[34]=this.material.ribs;d[35]=this.material.heat;
+    d[32]=this.local.x;d[33]=this.local.z;d[34]=this.material.ribs+this.slot.index/16;d[35]=this.material.heat;
     this.batch.add(d);
   }
   /** Select the authored member material. Retained table entries, so no per-strip allocation. */
@@ -300,7 +317,7 @@ export class FieldForcePresentation {
         // Cross-stream scoops point INWARD toward the axis, matching the published sheet kernel.
         const along=r*(.12+i*.14);
         const x=ca*along-sa*(side*w*.76),z=sa*along+ca*(side*w*.76);
-        this.phaseOffset=i/6;
+        this.phaseOffset=i/6;this._member(i%2?'filament':'membrane');
         this._surface(1,-side*Math.PI/2,0,0,w*.60,Math.min(4.4,w*.16),Math.min(4.8,w*.18),w*.16,i/6,2,1,.88,x,z);
       }
     }
@@ -350,9 +367,13 @@ export class FieldForcePresentation {
       instances:this.slots.filter(s=>s.id!==null).map(s=>({
         id:s.id,kind:s.kind,born:s.born,releaseAt:s.release,
         ...sampleFieldLifecycle(this.time,s.born,s.release,FIELD_LIFECYCLES[s.kind],{}),
+        choreography:'propagate-interact-detach',environmentBodies:s.environment.count,
       })),
     };
   }
-  reproject(dx,dz){ this.batch.reproject(dx,dz);this.particles.reproject(dx,dz); } // Also safe when the next simulation dt is zero.
+  reproject(dx,dz){
+    this.batch.reproject(dx,dz);this.particles.reproject(dx,dz);
+    for(const body of this.batch.material.uniforms.uBodies.value)if(body.w>0){body.x+=dx;body.y+=dz;}
+  } // Also safe when the next simulation dt is zero.
   dispose(){if(this.disposed)return;this.disposed=true;this.particles.dispose();this.batch.dispose();for(const s of this.slots){s.id=null;s.release=-1;}}
 }

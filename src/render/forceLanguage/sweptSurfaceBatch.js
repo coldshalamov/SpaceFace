@@ -22,9 +22,11 @@ attribute vec4 iMotion;// flow, phase, radial traveling crest, material style
 attribute vec4 iFinish;// reveal, taper, source envelope, pitch
 attribute vec4 iLife; // birth seconds, build seconds (0 = legacy), releaseAt (-1 = live), release seconds
 attribute vec4 iBehavior; // family animation code, semantic role, local phase, structural flex
-attribute vec4 iPivot; // local source XZ, rib count, working heat; permits whole-tool growth, not strip-by-strip scaling
+attribute vec4 iPivot; // local source XZ, integer rib count + environment slot/16, working heat
 uniform float uTime;
 uniform float uMotion;
+uniform vec4 uBodies[30];
+uniform vec2 uBodyVelocity[30];
 varying vec2 vUv;
 varying vec4 vTint;
 varying vec4 vFlow;
@@ -34,12 +36,14 @@ varying vec4 vMaterial; // structural flex, machined rib count, working heat, re
 varying vec3 vSurfaceWorld;
 varying vec3 vSurfaceNormal;
 varying float vFieldReach;
+varying vec2 vResponse;
 const float PI=3.14159265359;
 void main(){
   float t=position.x;
   float across=position.y;
   bool cycle = iLife.y > 0.0;
   bool releasing = cycle && iLife.z >= 0.0;
+  bool working=cycle && !(iBehavior.y>0.5 && iBehavior.y<1.5);
   float poweredAt = releasing ? min(uTime, iLife.z) : uTime;
   float age = max(0.0, poweredAt - iLife.x);
   // Age, not the session clock. A muzzle flash is a tenth of a second; tying its
@@ -48,10 +52,15 @@ void main(){
   // immediately, but the material does not freeze in mid-air and shrink like a paused clip.
   float residueAge = releasing ? max(0.0,uTime-iLife.z) : 0.0;
   float coast = (1.0-exp(-residueAge*3.0))/3.0;
-  float motionTime = (age+coast) * uMotion;
+  float independentRate=working?0.78+0.44*fract(iBehavior.z*3.731):1.0;
+  float motionTime = (age+coast) * uMotion * independentRate;
+  float mature=cycle?smoothstep(iLife.y*.90,iLife.y*1.85,age-iLife.y*.12*fract(iBehavior.z)):1.0;
+  bool counterflow=working && iBehavior.w>1.3;
   float release = releasing ? smoothstep(0.0, iLife.w, max(0.0, uTime-iLife.z)) : 0.0;
-  float build = cycle ? smoothstep(0.0, iLife.y, age) : 1.0;
-  float phase=fract(motionTime*0.58*iMotion.x+iMotion.y);
+  float poweredPhase=fract(age*uMotion*independentRate*.58*iMotion.x+iMotion.y);
+  // Released fronts finish their current crossing and disappear at phase=1.
+  // Do not wrap a dead emitter back to phase=0 and invent a new powered front.
+  float phase=releasing?poweredPhase+coast*uMotion*independentRate*.58*iMotion.x:poweredPhase;
   bool radial = iMotion.z > 0.5 && iMotion.z < 1.5;
   bool conveyor = iMotion.z > 1.5;
   float front=radial ? 0.10+0.90*phase : 1.0;
@@ -72,7 +81,6 @@ void main(){
   // The legacy discharge strip keeps its exact cross-section. Deployed powers use a
   // separate rolled profile: a genuine luminous volume with sidewalls and parallax,
   // rather than a flat strip whose only visible feature is one narrow hot line.
-  bool working=cycle && !(iBehavior.y>0.5 && iBehavior.y<1.5);
   float height=iShape.z*sin(PI*t);
   vec3 sectionNormal=vec3(0.0,1.0,0.0);
   float sectionDx=1.0,sectionDy=0.0,sourceSpin=0.0;
@@ -140,65 +148,88 @@ void main(){
     float kind=iBehavior.x, role=iBehavior.y;
     float localPhase=iBehavior.z*6.2831853;
     bool boundary=role>0.5 && role<1.5;
-    envelope=smoothstep(0.0,0.10,age)*(1.0-release);
+    envelope=smoothstep(0.0,0.10,age);
     if(boundary){
-      // No decorative persistence of a force boundary, including the first release frame.
-      if(releasing) envelope=0.0;
+      if(releasing)envelope=0.0;
     }else{
-      float growth=mix(1.0,0.055+0.945*build,uMotion);
-      float spin=0.0;
-      // Structural flex. A machined collar, an aperture throat or a splayed spar barely gives;
-      // the working membrane between them does. One authored channel per strip, so a powered tool
-      // reads as a BUILT object with stiff hardware and a live surface, not a uniform jelly.
-      // Unset (legacy weapon descriptors never enter this branch) it is simply 0 = rigid.
+      // The path exists at its real reach throughout. Ignition propagates through
+      // its material; there is no whole-object miniature growing to full size.
+      float partDelay=fract(iBehavior.z)*iLife.y*.20;
+      float activation=smoothstep(partDelay,iLife.y+partDelay,age);
+      float arrival=t; // Well paths start at the outer intake and end at the throat.
+      float bornFront=smoothstep(arrival-.065,arrival+.065,activation);
+      if(kind<1.5)bornFront=smoothstep(partDelay,partDelay+.13,age);
+      if(radial)bornFront*=smoothstep(poweredPhase-.08,poweredPhase+.06,activation);
+      envelope*=mix(1.0,bornFront,uMotion);
+      if(counterflow)envelope*=mature;
       float flex=iBehavior.w;
+      vec2 outward=relative/max(length(relative),.001);
+      vec2 tangent=vec2(-outward.y,outward.x);
+      float detach=smoothstep(fract(iBehavior.z+t*.47)*.24,1.0,release);
+      float wave=sin(t*7.0-motionTime*2.4+localPhase);
       if(kind<1.5){
-        // Seed: opposed lock plates breathe/ratchet, never orbit or imply suction.
-        float stroke=sin(motionTime*3.7+localPhase);
-        relative*=1.0+uMotion*0.075*stroke*flex;
-        height+=uMotion*length(relative)*0.055*flex*sin(motionTime*3.7+localPhase+1.1);
-        spin=uMotion*(1.0-build)*0.48;
-        growth*=mix(1.0,1.0-0.92*release,uMotion);
+        // Opposed parts engage in sequence. The mature lock alternates ratchet
+        // strokes; on release each jaw shears sideways and lifts, never recedes
+        // by replaying its initial slide in reverse.
+        float stroke=max(0.0,sin(motionTime*3.7+localPhase));
+        relative+=outward*uMotion*iShape.y*((1.0-activation)*2.6+stroke*flex*.32);
+        relative+=tangent*uMotion*iShape.y*detach*(1.8+fract(iBehavior.z)*2.2);
+        height+=uMotion*iShape.y*(mature*.38*sin(motionTime*2.2+localPhase)+detach*(.8+t));
       }else if(kind<2.5){
-        // Well: the silhouette itself turns and flexes; illumination is secondary motion.
-        spin=(-0.48*motionTime+uMotion*0.16*flex*sin(motionTime*1.9+t*6.28+localPhase));
-        if(role>1.5)spin=0.64*motionTime;
-        spin+=uMotion*((1.0-build)*1.8-release*1.15);
-        // The outer end is consumed first; independent strands keep winding into the throat.
-        growth*=mix(1.0,1.0-release*(0.56+0.39*(1.0-t)),uMotion);
-        height+=uMotion*iShape.y*0.34*flex*sin(t*9.0-motionTime*3.2+localPhase);
-        // Material is DRAWN IN: each fold's reach creeps toward the throat out of phase with its
-        // neighbours, so the ring visibly swallows even with nothing caught in it. Bounded well
-        // under the authoritative radius, which the separate boundary role still owns exactly.
-        relative*=1.0-uMotion*flex*0.052*(0.5+0.5*sin(motionTime*1.35+localPhase*3.1));
+        // Inflow channels flex independently around anchored paths. Lower mature
+        // currents counter-advect through their interiors; no rigid vortex spin.
+        float curl=wave*.07*flex+sin(motionTime*.71+localPhase)*.035;
+        sourceSpin=uMotion*curl*sin(PI*t);
+        relative=mat2(cos(sourceSpin),sin(sourceSpin),-sin(sourceSpin),cos(sourceSpin))*relative;
+        relative+=tangent*uMotion*iShape.y*(wave*.28+detach*(1.0+2.1*t));
+        relative-=outward*uMotion*iShape.y*detach*(.5+fract(iBehavior.z)*1.3);
+        height+=uMotion*iShape.y*(mature*.28*sin(t*10.0-motionTime*3.2+localPhase)+detach*(.4+1.2*t));
       }else if(kind<3.5){
-        // Repulsor: never a reverse Well on shutdown. Freeze the front, peel into cooling shards.
-        spin=uMotion*0.055*flex*sin(motionTime*1.7+localPhase);
-        // Pressure is delivered in breaths, OUTWARD only: the shell leans out and settles back,
-        // and it never crosses below its built radius, so the verb can never invert into a Well.
-        relative*=1.0+uMotion*flex*0.055*max(0.0,sin(motionTime*2.15+localPhase*4.2));
-        growth*=1.0+uMotion*release*0.04;
-        height+=uMotion*release*iShape.y*(0.7+1.8*sin(t*3.14+localPhase));
-        relative+=normal*uMotion*release*iShape.y*sin(t*8.0+localPhase);
+        // Discrete fronts propagate radially in the path stage. At full stride
+        // crests buckle independently; off-switch detaches curling shell pieces.
+        relative+=tangent*uMotion*iShape.y*wave*.16*mature;
+        relative+=outward*uMotion*iShape.y*detach*(1.1+fract(iBehavior.z)*1.7);
+        height+=uMotion*iShape.y*(mature*.23*sin(t*11.0-motionTime*2.6+localPhase)+detach*(.5+1.2*sin(t*PI)));
       }else if(kind<4.5){
-        // Cone: a flowing pressure curtain, with fixed outer rails.
-        relative+=vec2(-sa,ca)*uMotion*iShape.y*0.70*flex*sin(t*7.0-motionTime*3.6+localPhase)*sin(PI*t);
-        height+=uMotion*release*iShape.y*2.0;
+        // Axial banks flutter and shed sideways as mature countercurrents arrive.
+        // Release peels individual pieces forward at their current position.
+        relative+=vec2(-sa,ca)*uMotion*iShape.y*(.44*flex*wave*sin(PI*t)+detach*sin(localPhase+t*4.0));
+        relative+=vec2(ca,sa)*uMotion*iShape.y*detach*(1.4+1.1*t);
+        height+=uMotion*iShape.y*(mature*.20*sin(t*9.0+motionTime*2.7)+detach*(.8+fract(iBehavior.z)));
       }else{
-        // Skim: lateral scoops travel in the path stage; retiring banks fold onto the centerline.
-        vec2 q=mat2(ca,-sa,sa,ca)*relative;
-        q.y*=1.0-uMotion*release*0.88;
-        // Intake stroke: the bank leans toward the axis and recovers, so the parallel banks are
-        // visibly working. Longitudinal spacing is untouched — Skim must not diverge like a Cone.
-        q.y*=1.0-uMotion*flex*0.06*max(0.0,sin(motionTime*2.6+localPhase*5.0));
-        relative=mat2(ca,sa,-sa,ca)*q;
-        height+=uMotion*iShape.y*0.22*flex*sin(motionTime*2.4+t*7.0+localPhase);
+        // Intake scoops continue travelling while mature return eddies lift from
+        // alternating banks. Released pieces separate upward and downstream,
+        // never collapse every bank onto the same centreline.
+        relative+=vec2(-sa,ca)*uMotion*iShape.y*wave*.24*mature;
+        relative+=vec2(ca,sa)*uMotion*iShape.y*detach*(.8+1.7*t);
+        height+=uMotion*iShape.y*(mature*.34*sin(motionTime*2.4+t*7.0+localPhase)+detach*(.7+1.4*fract(iBehavior.z)));
       }
-      sourceSpin=spin;
-      relative=mat2(cos(spin),sin(spin),-sin(spin),cos(spin))*relative*growth;
-      height*=growth;
+      // Incomplete channels release only material that ignition reached.
+      envelope*=1.0-smoothstep(.55+fract(iBehavior.z)*.20,1.0,release);
     }
   }
+  float contactResponse=0.0;
+  if(working){
+    int contactBase=int(floor(fract(iPivot.z)*16.0+.5))*3;
+    vec2 worldXZ=iPivot.xy+relative;
+    for(int contact=0;contact<3;contact++){
+      vec4 body=uBodies[contactBase+contact];
+      vec2 delta=worldXZ-body.xy;
+      float distanceToBody=length(delta);
+      float range=max(1.0,iShape.y*2.2);
+      float influence=(1.0-smoothstep(body.z,body.z+range,distanceToBody))*body.w*mature;
+      vec2 away=distanceToBody>.001?delta/distanceToBody:vec2(cos(iBehavior.z*6.2831853),sin(iBehavior.z*6.2831853));
+      float shear=clamp(dot(uBodyVelocity[contactBase+contact],vec2(-away.y,away.x))*.015,-1.0,1.0);
+      // Split the decorative current around solid material; never deform its
+      // truthful perimeter or modify any force/collision state.
+      worldXZ+=away*influence*min(iShape.y*1.4,body.z*.35);
+      worldXZ+=vec2(-away.y,away.x)*influence*iShape.y*.35*shear;
+      height+=influence*min(3.5,iShape.y*.65)*(1.0+.25*sin(t*7.0-motionTime*2.4+iBehavior.z*6.2831853));
+      contactResponse=max(contactResponse,influence);
+    }
+    relative=worldXZ-iPivot.xy;
+  }
+
   if(working && iBehavior.x>1.5){
     // Deformation cannot invent force outside the authoritative influence area.
     float reach=max(iFinish.w,0.001);
@@ -224,10 +255,11 @@ void main(){
   vec2 normalXZ=mat2(cos(normalAngle),sin(normalAngle),-sin(normalAngle),cos(normalAngle))*sectionNormal.xz;
   vSurfaceNormal=mat3(modelMatrix)*vec3(normalXZ.x,sectionNormal.y,normalXZ.y);
   vFieldReach=cycle?length(relative)/max(iFinish.w,0.001):0.0;
-  vCycle=vec4(cycle ? iBehavior.x : 0.0,release,motionTime,iBehavior.y);
+  vCycle=vec4(cycle ? iBehavior.x : 0.0,release,counterflow?-motionTime*.73:motionTime,iBehavior.y);
+  vResponse=vec2(mature,contactResponse);
   // Weapon sources keep the smooth, fully hot surface they already ship: the machined channel and
   // the cool-structure channel are lifecycle-only, so a 24-float legacy descriptor is unchanged.
-  vMaterial=vec4(cycle ? iBehavior.w : 1.0, cycle ? iPivot.z : 0.0, cycle ? iPivot.w : 1.0, 0.0);
+  vMaterial=vec4(cycle ? iBehavior.w : 1.0, cycle ? floor(iPivot.z) : 0.0, cycle ? iPivot.w : 1.0, 0.0);
   vUv=vec2(t,across); vTint=iTint;
   vFlow=vec4(iMotion.x,iMotion.y,iMotion.w,iFinish.x);
   vFront=(radial||conveyor ? smoothstep(0.0,0.13,phase)*(1.0-smoothstep(0.76,1.0,phase)) : 1.0)*(cycle?1.0:iFinish.z)*envelope;
@@ -245,6 +277,7 @@ varying vec4 vMaterial;
 varying vec3 vSurfaceWorld;
 varying vec3 vSurfaceNormal;
 varying float vFieldReach;
+varying vec2 vResponse;
 // Integrate unresolved detail toward its mean instead of letting a bright comb become pixels.
 float filteredWave(float phase){
   return 0.5+0.5*sin(phase)*(1.0-smoothstep(0.7,3.14159,fwidth(phase)));
@@ -305,11 +338,18 @@ vec4 fieldVolume(){
     body*=0.36;hot=shoulder*(0.24+0.85*bulk);
     absorbed=max(absorbed,0.42);
   }
+  // Mature colliding streams develop secondary knots; their cadence is slower
+  // than ignition and cannot appear in the build stage.
+  hot+=vResponse.x*(.16*ignition*secondary)+vResponse.y*(.35+.40*ignition)*shoulder;
   float fracture=1.0;
   if(vCycle.y>0.0){
     float tear=0.55*filteredWave(t*17.0+v*3.0+phase)+0.45*filteredWave(t*9.0-v*5.0+phase*1.7);
     fracture=smoothstep(vCycle.y-0.20,vCycle.y+0.10,tear);
-    if(kind>3.5&&kind<4.5)fracture*=smoothstep(vCycle.y-0.12,vCycle.y+0.08,t);
+    if((kind>1.5&&kind<2.5)||(kind>3.5&&kind<4.5)){
+      // Source cutoff progresses through the path while existing charge coasts.
+      float cutoff=vCycle.y*(1.12+.10*sin(phase))-0.08;
+      fracture*=smoothstep(cutoff-.08,cutoff+.08,t);
+    }
     hot*=1.0-0.90*vCycle.y;body*=1.0-0.45*vCycle.y;
   }
   // A substantial coloured body remains below the brightest folds; this is not a
@@ -402,7 +442,9 @@ export class SweptSurfaceBatch {
     }
     this.material=new THREE.ShaderMaterial({
       name:'SF_FoldedForceSurface',vertexShader:SURFACE_VERTEX,fragmentShader:SURFACE_FRAGMENT,
-      uniforms:{uTime:{value:0},uMotion:{value:1},uFlash:{value:1}},
+      uniforms:{uTime:{value:0},uMotion:{value:1},uFlash:{value:1},
+        uBodies:{value:Array.from({length:30},()=>new THREE.Vector4())},
+        uBodyVelocity:{value:Array.from({length:30},()=>new THREE.Vector2())}},
       transparent:true,depthWrite:false,depthTest:true,side:THREE.DoubleSide,forceSinglePass:true,
       blending:THREE.NormalBlending,toneMapped:false,
     });
