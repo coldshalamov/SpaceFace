@@ -203,7 +203,10 @@ export const survivalRun = {
     this._refitClosed = false;
     this._planFailed = false;
     this._waveIntroHandled = false;
-    this._systemEventFired = false;
+    // PQ-133.07: the arc authors TWO system events (wave 20 and the wave-30 finale). The latch is
+    // per-event, not one boolean for the whole run, so the finale still fires while a re-plan of an
+    // already-fired wave can never double-emit it.
+    this._systemEventIds = new Set();
     this._pendingFrom = null;
     this._pendingTo = null;
     this._controlMark = null;
@@ -392,8 +395,8 @@ export const survivalRun = {
       : SURVIVAL_CLEANUP_TICKS;
     this._cleanupTicks = cleanupTicks < 0 ? 0 : cleanupTicks;
     this._emit('run:wavePlanned', { wave: run.wave, plan, tick: this._runTick });
-    if (plan.systemEvent && !this._systemEventFired) {
-      this._systemEventFired = true;
+    if (plan.systemEvent && !this._systemEventIds.has(plan.systemEvent.id)) {
+      this._systemEventIds.add(plan.systemEvent.id);
       this._emit('run:systemEvent', {
         wave: run.wave,
         id: plan.systemEvent.id,
