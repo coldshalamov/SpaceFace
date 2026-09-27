@@ -15758,7 +15758,7 @@
       "priority": 387,
       "title": "Cryo Drift + Storm Lattice (Phase 9)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-133.07"
       ],
@@ -15777,9 +15777,13 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "verification 2026-09-26: pq133-09 suite 19/19 green; sim/combat green; authored boss hull variants, prop meshes and VFX still owed (asset lane) - stays ready. design/program/roadmap/receipts/PQ-133.09-REPORT.md"
+        "design/program/roadmap/receipts/PQ-133.09-REPORT.md",
+        "design/program/roadmap/receipts/PQ-133.09-RECEIPT.md"
       ],
-      "brief": "Thermal quadrants and coolant props with Manifold Warden (CRU-046); bounded conductivity graph (CRU-047); movable relay network with Grid Tyrant (CRU-048); cross-arena tuning."
+      "brief": "Thermal quadrants and coolant props with Manifold Warden (CRU-046); bounded conductivity graph (CRU-047); movable relay network with Grid Tyrant (CRU-048); cross-arena tuning.",
+      "integratedCommit": "fbb89e8cb",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-133.09-RECEIPT.md",
+      "note": "verification 2026-09-26: pq133-09 suite 19/19 green; sim/combat green; authored boss hull variants, prop meshes and VFX still owed (asset lane) - stayed ready. done 2026-09-27 (fbb89e8cb): lawArenaDressing extended to both .09 rooms — roomSpec on the installed payload carries the thermal map/props/pylon ring/relay seeds; cryo quadrant frame + lamps, coolant tank, heat manifold, bank plates, frost shutter; storm conductor pylons + graph wires + two orbit-kernel relays with live feed beams; manifold_warden (4 gimbaling arms on collar) + grid_tyrant (4-drone orbit ring) under the dreadnought hull; zero-strength occupancy fields gated out of generic pylons. pq133-09-dressing 10/10, .08 suites 31/31, check:sim hash-unchanged, check:combat green, check:playable 16/16, live-route probe 20/20 PASS with 4 screenshots. Two-round review subagent: FAIL -> fixes -> PASS."
     },
     {
       "id": "PQ-133.10",
