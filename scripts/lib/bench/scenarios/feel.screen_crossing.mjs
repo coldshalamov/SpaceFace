@@ -18,6 +18,14 @@ const HULL_NAME = 'Hitch (starter)';
 const FRAME_ASPECT = 16 / 9;
 /** Floating-point slack when asking "did the depth ever go backwards as speed rose?". */
 const MONOTONIC_EPSILON_WU = 1e-9;
+/**
+ * FEEL_CONTRACT B2/B3 reference cruise (WU/s): the governed cruise the clauses were authored
+ * at (2026-09-03). Owner 2026-09-16 then ruled ships build real speed and 2026-09-27 kept it
+ * ("the ship flies fine"), so the turn-radius and crossing clauses are restated per this
+ * reference and scale with the live governed cruise — the bars mean the same thing at any
+ * speed the owner tunes (ledger D66 close).
+ */
+export const FEEL_CONTRACT_REFERENCE_CRUISE_WU_S = 95;
 
 /**
  * Visible chase-camera ground depth in WU at a given player speed, from the live camera code.
@@ -107,8 +115,9 @@ export const scenario = {
           label: `seconds to cross the visible depth at cruise, ${HULL_NAME}`,
           value: crossingAtCruiseS,
           unit: 's',
-          met: Number.isFinite(crossingAtCruiseS) && crossingAtCruiseS >= 1.2,
-          note: `screen depth ${screenDepthAtCruiseWu} WU read from the live chase camera at cruise ${cruiseSpeed} WU/s; both camera stages key to governed combat speed ${maxSpeedRef}`,
+          met: Number.isFinite(crossingAtCruiseS)
+            && crossingAtCruiseS >= 1.2 * (FEEL_CONTRACT_REFERENCE_CRUISE_WU_S / Math.max(cruiseSpeed, 1e-6)),
+          note: `screen depth ${screenDepthAtCruiseWu} WU read from the live chase camera at cruise ${cruiseSpeed} WU/s; crossing bar is 1.2 s scaled by reference cruise ${FEEL_CONTRACT_REFERENCE_CRUISE_WU_S} (D66 speed-normalized); both camera stages key to governed combat speed ${maxSpeedRef}`,
         },
         {
           bar: 'B3',

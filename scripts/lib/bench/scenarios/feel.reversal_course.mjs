@@ -9,6 +9,7 @@ import {
   planarSpeed,
   chaseCameraRefs,
   screenDepthWuAtSpeed,
+  FEEL_CONTRACT_REFERENCE_CRUISE_WU_S,
 } from './feel.screen_crossing.mjs';
 
 const CRUISE_HOLD_TICKS = 900;
@@ -57,7 +58,15 @@ async function measureHull(seed, hull, eventTrace) {
 
   const restMet = Number.isFinite(rest.restToCruiseS) && rest.restToCruiseS <= 1.5;
   const reversalMet = Number.isFinite(velocity180TimeS) && velocity180TimeS <= 3.0;
-  const radiusMet = Number.isFinite(turn.turnRadiusScreenDepths) && turn.turnRadiusScreenDepths <= 1.0;
+  // D66 speed-normalized bar: 1 screen depth per reference cruise of governed speed. Turn
+  // radius = speed / yaw authority, so it grows ~linearly with cruise under an unchanged hull;
+  // the visible depth opens with speed (B3's own law), so the per-depth bar scales with it.
+  const turnRadiusBarDepths = Number.isFinite(turn.cruiseSpeed) && turn.cruiseSpeed > 0
+    ? turn.cruiseSpeed / FEEL_CONTRACT_REFERENCE_CRUISE_WU_S
+    : null;
+  const radiusMet = Number.isFinite(turn.turnRadiusScreenDepths)
+    && Number.isFinite(turnRadiusBarDepths)
+    && turn.turnRadiusScreenDepths <= turnRadiusBarDepths;
 
   const restNote = rest.cruiseAsymptoteConverged
     ? undefined

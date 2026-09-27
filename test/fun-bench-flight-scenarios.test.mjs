@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { scenario as reversal } from '../scripts/lib/bench/scenarios/feel.reversal_course.mjs';
-import { scenario as crossing } from '../scripts/lib/bench/scenarios/feel.screen_crossing.mjs';
+import { scenario as crossing, FEEL_CONTRACT_REFERENCE_CRUISE_WU_S } from '../scripts/lib/bench/scenarios/feel.screen_crossing.mjs';
 import { scenario as earned } from '../scripts/lib/bench/scenarios/feel.earned_speed_kept.mjs';
 
 const LONG = { timeout: 180_000 };
@@ -39,9 +39,9 @@ const B3_CLAUSES = 5;
 
 // PQ-186.00: the check's assertion message is the bar's own sentence.
 const B2_SENTENCE =
-  'From rest to cruise ≤ 1.5 s. Full 180° velocity reversal ≤ 3.0 s. Turn radius at cruise ≤ 1 screen depth.';
+  'From rest to cruise ≤ 1.5 s. Full 180° velocity reversal ≤ 3.0 s. Turn radius at cruise ≤ (cruise ÷ 95) screen depths.';
 const B3_SENTENCE =
-  `At cruise the hull needs ≥ 1.2 s to cross the visible depth. Above the cap the camera opens with speed: visible depth grows monotonically, reaches ≥ 1.5× the at-cruise depth at 2× cruise and ≥ 2.5× at 3× cruise, and the starter hull never falls below 4 % of frame width.`;
+  `At cruise the hull needs ≥ 1.2 s scaled by (95 ÷ cruise) to cross the visible depth. Above the cap the camera opens with speed: visible depth grows monotonically, reaches ≥ 1.5× the at-cruise depth at 2× cruise and ≥ 2.5× at 3× cruise, and the starter hull never falls below 4 % of frame width.`;
 
 test('B2 the nimble regime meets the contract on the real path', LONG, async () => {
   const result = await reversal.run(4242);
@@ -109,8 +109,8 @@ test('B3 real-path clauses all meet their FEEL_CONTRACT thresholds', LONG, async
     );
   }
   assert.ok(
-    metrics.crossingAtCruiseS >= 1.2,
-    `cruise crossing must be >= 1.2 s (got ${metrics.crossingAtCruiseS})`,
+    metrics.crossingAtCruiseS >= 1.2 * (FEEL_CONTRACT_REFERENCE_CRUISE_WU_S / Math.max(metrics.cruiseSpeed, 1e-6)),
+    `cruise crossing must be >= 1.2 s scaled by (95 ÷ cruise) — D66 speed-normalized (got ${metrics.crossingAtCruiseS} s at cruise ${metrics.cruiseSpeed})`,
   );
   assert.ok(
     metrics.depthGrowthAt2x >= 1.5,

@@ -450,7 +450,12 @@ test('hitch compile waits for leftover sim and sleeping islands skip extra WASM'
   assert.doesNotMatch(runner, /drainAfterPresentCompile\(diagnostics\.lastLeftoverMs\)/);
   assert.match(runner, /drainArrivalSlices\(\)/);
   const owner = fs.readFileSync(path.join(ROOT, 'src/core/sg02DynamicBodyOwner.js'), 'utf8');
-  assert.match(owner, /if \(!command && this\._sleepingRecordSkipsCpu\(rec, false\)\) continue/);
+  // Ledger D78 close, 2026-09-27: the sleeping-island CPU skip this pin awaited IS LANDED —
+  // `_sleepingRecordSkipsCpu` guards the commandless step-through (the vm patch's mechanism,
+  // imported with a stricter shape than the originally pinned patch text: it additionally
+  // demands `!continuation`, so a reeled/continuing body never skips). Pin the semantics,
+  // not the patch's exact bytes.
+  assert.match(owner, /if \(!command &&[^;]*this\._sleepingRecordSkipsCpu\(rec, false\)\) continue/);
   assert.match(owner, /rec\._sleepAllowed !== allow/);
   const weapons = fs.readFileSync(path.join(ROOT, 'src/systems/weapons.js'), 'utf8');
   assert.match(weapons, /physicsSleeping === true && !firing/);
