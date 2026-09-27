@@ -129,9 +129,10 @@ ${SL} .orr-film__list > .k-row.sf-slot::before, ${SL} .orr-film__list > .k-row.s
 ${SL} .orr-film__list > .k-row.sf-slot > div { grid-area:label; min-width:0; }
 ${SL} .orr-film__list > .k-row.sf-slot > .k-row__num { grid-area:num; justify-self:center; margin-top:calc(4px * var(--sv)); }
 ${SL} .sf-slot-frame { grid-area:frame; position:relative; display:block; height:calc(92px * var(--sv)); margin:0 0 calc(22px * var(--sv));
-  background:${BERTH_STATION} center bottom / min(176px, 78%) max(26px, calc(32px * var(--sv))) no-repeat;
   transform-origin:50% 100%; opacity:.88; transition:transform .32s cubic-bezier(.2, 1.3, .4, 1), opacity .2s linear; }
 ${SL} .sf-slot-frame.is-empty { height:max(30px, calc(38px * var(--sv))); }
+${SL} .sf-slot-berth { position:absolute; left:50%; bottom:0; width:min(176px, 78%); height:max(26px, calc(32px * var(--sv))); transform:translateX(-50%);
+  background:${BERTH_STATION} center / 100% 100% no-repeat; pointer-events:none; }
 ${SL} .sf-slot-frame > img { position:absolute; left:4%; top:0; width:92%; height:calc(100% - max(10px, calc(13px * var(--sv)))); object-fit:contain; object-position:50% 100%;
   opacity:.84; filter:saturate(.8) brightness(.92); transition:opacity .2s linear, filter .2s linear; pointer-events:none; user-select:none; }
 ${SL} .sf-slot-frame.is-filed::after { content:""; position:absolute; left:50%; top:38%; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%;
@@ -157,7 +158,7 @@ ${SL} .orr-film__list .sf-slot-badge--you { color:rgb(${BONE} / .86) !important;
 ${SL} .orr-film__list .sf-slot-badge--foe { color:var(--dp-danger-hot, #ff7a5c) !important; }
 ${SL} .orr-film__list .k-row__sub.sf-slot-sub { ${BODY} margin-top:calc(3px * var(--sv)); font-size:max(11.5px, calc(12.5px * var(--sv))) !important; line-height:1.32; color:rgb(${BONE} / .7) !important;
   white-space:normal !important; overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere; }
-${SL} .orr-film__list .k-row.empty .k-row__sub.sf-slot-sub { color:rgb(${BONE} / .56) !important; }
+${SL} .orr-film__list .k-row.empty .k-row__sub.sf-slot-sub { color:rgb(${BONE} / .66) !important; }
 ${SL} .orr-film__list .k-row__num { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wght" 520, "wdth" 100; font-weight:520;
   font-size:max(11.5px, calc(13px * var(--sv))) !important; line-height:1.3; color:var(--dp-phos, rgb(223 238 255)) !important; text-shadow:none !important; white-space:nowrap; }
 

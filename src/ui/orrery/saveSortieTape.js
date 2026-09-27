@@ -34,6 +34,8 @@ const CSS = `
 .orr-tape__dot { fill:rgb(${BONE} / .9); }
 .orr-tape__label { font-family:var(--dp-face-label, "Archivo"); font-size:calc(10.5px * var(--tape-k, 1)); font-weight:650; letter-spacing:.14em; fill:rgb(${BONE} / .82);
   paint-order:stroke; stroke:rgb(4 5 8 / .9); stroke-width:4px; stroke-linejoin:round; }
+.orr-tape__label.is-at { fill:rgb(250 247 240); }
+.orr-tape__label--threat.is-at { fill:#ff9a82; }
 .orr-tape__mark--threat { stroke:var(--dp-danger, #ff5038); }
 .orr-tape__dot--threat { fill:var(--dp-danger, #ff5038); }
 .orr-tape__label--threat { fill:var(--dp-danger-hot, #ff7a5c); }
@@ -113,6 +115,9 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   let model = { lengthS: null, events: [], killLabel: '' };
   let geo = null;
   let cursor = 0;
+  /** each event's word above the channel, where it had room */
+  const labelFor = new Map();
+  let litLabel = null;
   let geoK = 1;
 
   const empty = () => !(model.lengthS > 0);
@@ -188,6 +193,7 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     // and where its own mark runs through no word below it
     const rows = [[], []];
     const marks = [];
+    labelFor.clear();
     const placed = [];
     for (const ev of model.events) {
       const xx = x(ev.t);
@@ -210,8 +216,10 @@ export function createSortieTape({ host, onScrub = null } = {}) {
       if (row >= 0) {
         rows[row].push([xx - w / 2, xx + w / 2]);
         placed.push(ev);
-        staticG.appendChild(Object.assign(svg('text', { x: f(xx), y: top, 'text-anchor': 'middle', class: `orr-tape__label${ev.threat ? ' orr-tape__label--threat' : ''}` }),
-          { textContent: String(ev.label).toUpperCase() }));
+        const word = Object.assign(svg('text', { x: f(xx), y: top, 'text-anchor': 'middle', class: `orr-tape__label${ev.threat ? ' orr-tape__label--threat' : ''}` }),
+          { textContent: String(ev.label).toUpperCase() });
+        labelFor.set(ev, word);
+        staticG.appendChild(word);
       }
     }
     // the kill: a red blade across the channel at the far end, its word over it
@@ -221,8 +229,10 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     staticG.appendChild(Object.assign(svg('text', { x: kx, y: f(bandBot + 26 * k), 'text-anchor': 'end', class: 'orr-tape__kill-word' }),
       { textContent: `LOST · ${fmtSortieTime(L)}` }));
     // the Hand
-    handG.appendChild(svg('path', { class: 'orr-tape__hand-bloom', d: `M 0 ${bandTop - 12} L 0 ${bandBot + 18}` }));
-    handG.appendChild(svg('path', { class: 'orr-tape__hand-needle', d: `M 0 ${bandTop - 12} L 0 ${bandBot + 18}` }));
+    // the needle stops above the time row (it never touches LOST or a minute's word)
+    const needleBot = f(mid + 10 * k);
+    handG.appendChild(svg('path', { class: 'orr-tape__hand-bloom', d: `M 0 ${bandTop - 12} L 0 ${needleBot}` }));
+    handG.appendChild(svg('path', { class: 'orr-tape__hand-needle', d: `M 0 ${bandTop - 12} L 0 ${needleBot}` }));
     handG.appendChild(svg('circle', { class: 'orr-tape__hand-glow', cx: 0, cy: bandTop + bandH / 2, r: 12 }));
     const cyb = bandTop + bandH / 2;
     handG.appendChild(svg('path', { class: 'orr-tape__hand-bead', d: `M 0 ${cyb - 7} L 7 ${cyb} L 0 ${cyb + 7} L -7 ${cyb} Z` }));
@@ -249,8 +259,14 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     const played = cx - geo.x0 > 2 ? `M ${f(geo.x0)} ${f(geo.mid)} L ${f(cx)} ${f(geo.mid)}` : 'M 0 0';
     for (const p of [playedBloom, playedBand, playedCore]) p.setAttribute('d', played);
     const ev = atEnd ? null : eventAt(cursor);
-    readW.textContent = ev ? ev.label : '';
-    read.hidden = !ev;
+    // the moment's word shows once: its own word above the channel lights up; only a moment whose word
+    // had no room there is named under the Hand
+    const above = ev ? labelFor.get(ev) : null;
+    if (litLabel && litLabel !== above) litLabel.classList.remove('is-at');
+    if (above) above.classList.add('is-at');
+    litLabel = above || null;
+    readW.textContent = ev && !above ? ev.label : '';
+    read.hidden = !(ev && !above);
     readW.classList.toggle('is-threat', !!(ev && ev.threat));
     read.style.top = `${f(geo.bandBot + 32 * geoK)}px`;
     // the readout rides the cursor, held inside the tape

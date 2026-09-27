@@ -923,6 +923,7 @@ export const saveLoadScreen = {
         // hull with no render stands as a quiet ring; an empty station is its corners alone.
         const frame = el('span', 'sf-slot-frame');
         frame.setAttribute('aria-hidden', 'true');
+        frame.appendChild(el('span', 'sf-slot-berth'));
         const art = item.occupied ? hullPosterUrl(slotShipId(slots[item.id], null), 'side') : null;
         if (art) {
           const img = el('img', 'sf-slot-thumb');
