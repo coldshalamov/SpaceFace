@@ -1338,7 +1338,8 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     const bounds = { x: 2, y: 2, w: geo.W - 4, h: geo.H - 4 };
     // within a rank, the label with the fewest free places goes first
     // a name beside the screen's title would read as part of its line: it keeps a wide berth to the right
-    const titleRects = (geo.avoid || []).map((r) => ({ x: r.x, y: r.y, w: r.w + 120, h: r.h + 6 }));
+    // (the berth is the heading's: the line under it only keeps its own margin)
+    const titleRects = (geo.avoid || []).map((r, i) => ({ x: r.x, y: r.y, w: r.w + (i === 0 ? 120 : 12), h: r.h + 6 }));
     const statics = { discs, rects: [...tierRects, ...titleRects], points: rimPoints, bounds };
     for (const it of items) it.room = freePlaces(it, statics);
     items.sort((a, b) => (a.rank - b.rank) || (a.room - b.room) || (a.depth - b.depth));
