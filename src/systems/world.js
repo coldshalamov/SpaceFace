@@ -65,6 +65,7 @@ import {
 import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
+import { isPlayerWanted } from './heat.js';            // WANTED threshold is heat-owned — never restate it
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import {
@@ -3135,7 +3136,9 @@ export const world = {
     // drop near the player so the threat is immediate, not ambient. High-sec already has patrols,
     // so hunters matter most in the lawless fringe where a criminal hides.
     const heatVal = this.state.player && this.state.player.heat;
-    if (typeof heatVal === 'number' && heatVal >= 0.15 && sector.security < 0.6) {
+    // WANTED is the heat owner's constant (heat.js THRESHOLD): read the lawful predicate, never
+    // restate the number — a drifting literal here silently detaches hunters from the ledger.
+    if (isPlayerWanted(this.state) && sector.security < 0.6) {
       const hunters = Math.min(4, Math.round(heatVal * 4 + 0.5));
       const player = this.state.entities.get(this.state.playerId);
       if (this._playerInNoHostileSpawnZone(sector, active, player)) return;

@@ -43,6 +43,7 @@ Current save version: `14`
 - `bandRadio`
 - `v2Flavor`
 - `aftermathWrecks`
+- `lawSecurity`
 - `fieldDepletion`
 - `livingPoiBehaviors`
 - `signalInvestigation`
@@ -203,6 +204,7 @@ Current save version: `14`
 | `$.flight.modeReason` | string | save |
 | `$.flight.previousMode` | string | manual |
 | `$.formations` | object | {} |
+| `$.lawSecurity` | object | {} |
 | `$.livingPoiBehaviors` | object | {} |
 | `$.lossLedger` | object | {} |
 | `$.meta` | object | {} |

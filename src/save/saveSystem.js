@@ -466,6 +466,9 @@ export const save = {
       ['bandRadio', () => this._callSerialize('bandRadio') || clonePlain(state.bandRadio || {})],
       ['v2Flavor', () => this._callSerialize('v2Flavor') || clonePlain(state.v2Flavor || {})],
       ['aftermathWrecks', () => this._callSerialize('aftermathWrecks') || clonePlain(state.aftermathWrecks || {})],
+      // Discovered-crime bookkeeping: the unreported-kill docket + priced-incident ledger.
+      // Without it a save boundary launders unwitnessed kills — the wreck can never convict.
+      ['lawSecurity', () => this._callSerialize('lawSecurity') || {}],
       ['fieldDepletion', () => this._callSerialize('fieldDepletion') || clonePlain(state.fieldDepletion || {})],
       ['livingPoiBehaviors', () => this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {})],
       ['signalInvestigation', () => this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {})],
@@ -531,6 +534,7 @@ export const save = {
     data.bandRadio = this._callSerialize('bandRadio') || clonePlain(state.bandRadio || {});
     data.v2Flavor = this._callSerialize('v2Flavor') || clonePlain(state.v2Flavor || {});
     data.aftermathWrecks = this._callSerialize('aftermathWrecks') || clonePlain(state.aftermathWrecks || {});
+    data.lawSecurity = this._callSerialize('lawSecurity') || {};
     data.fieldDepletion = this._callSerialize('fieldDepletion') || clonePlain(state.fieldDepletion || {});
     data.livingPoiBehaviors = this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {});
     data.signalInvestigation = this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {});
@@ -3076,6 +3080,9 @@ export const save = {
       this._callDeserialize('lossLedger', data.lossLedger);
       this._callDeserialize('provenanceLedger', data.provenance);
       this._callDeserialize('aftermathWrecks', data.aftermathWrecks);
+      // Pending kill cases + priced incidents must land before any post-load wreck resolution;
+      // absent key (pre-docket saves) clears both ledgers — an honest empty case file.
+      this._callDeserialize('lawSecurity', data.lawSecurity);
       this._callDeserialize('fieldDepletion', data.fieldDepletion);
       // Genie 01: world memory. deserialize() validates a detached candidate and re-derives its
       // graph BEFORE adopting; null/absent starts an empty archive (old saves migrate cleanly).

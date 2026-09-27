@@ -97,13 +97,15 @@ export const WANTED_TIER_INFO = Object.freeze({
 // and a piracy kill (0.28: someone died). Openly taking lawful cargo in front of witnesses is the
 // more brazen act of the two lesser ones, but nobody was hurt.
 const THEFT_INCIDENT = 0.22;
-// A witnessed/detected collision kill is reckless endangerment, not murder: real heat, but below
-// the WANTED threshold on its own — the law treats a slammed hull differently from a shot one.
-const RECKLESS_KILL = 0.12;
+// A witnessed/detected collision kill is reckless endangerment, not murder: priced off the SAME
+// class-scaled murder table at a fixed fraction, so ramming a victim can never out-price shooting
+// it. (The old flat 0.12 exceeded the murder price for fighter/default/large victims — a ram was
+// the more expensive crime. At 0.5× the heaviest reckless price stays below WANTED on its own.)
+const RECKLESS_KILL_FRACTION = 0.5;
 // A validated incident of a kind this table does not price still raises SOMETHING. Silence would
 // make every future crime type free until someone remembered to add a row here.
 const INCIDENT_HEAT_DEFAULT = 0.12;
-const INCIDENT_HEAT_BY_KIND = Object.freeze({ payload_theft: THEFT_INCIDENT, reckless_kill: RECKLESS_KILL });
+const INCIDENT_HEAT_BY_KIND = Object.freeze({ payload_theft: THEFT_INCIDENT });
 
 // Paying a posted bounty visibly cools the ledger: every credit of settled bounty quiets the
 // hunt a little, capped so a fat payoff never launders a massacre in one receipt.
@@ -328,9 +330,11 @@ export const heat = {
       ? KILL_NONHOSTILE * 1.3
       : receipt.kind === 'unlawful_kill'
         ? KILL_NONHOSTILE * killClassMultiplier(receipt.victimClass)
-        : INCIDENT_HEAT_BY_KIND[receipt.kind] != null
-          ? INCIDENT_HEAT_BY_KIND[receipt.kind]
-          : INCIDENT_HEAT_DEFAULT;
+        : receipt.kind === 'reckless_kill'
+          ? KILL_NONHOSTILE * killClassMultiplier(receipt.victimClass) * RECKLESS_KILL_FRACTION
+          : INCIDENT_HEAT_BY_KIND[receipt.kind] != null
+            ? INCIDENT_HEAT_BY_KIND[receipt.kind]
+            : INCIDENT_HEAT_DEFAULT;
 
     // Record BEFORE mutating. If `_raise` ever throws, the alternative ordering would leave the
     // incident un-recorded and a retry would double-charge; this ordering can at worst under-apply,
@@ -654,4 +658,7 @@ function wantedHeatVictimType(state, payload, victimId) {
 export const INCIDENT_HEAT = Object.freeze({
   byKind: INCIDENT_HEAT_BY_KIND,
   fallback: INCIDENT_HEAT_DEFAULT,
+  // reckless_kill is priced off the class-scaled unlawful table at this fraction, never flat.
+  recklessFraction: RECKLESS_KILL_FRACTION,
+  killBase: KILL_NONHOSTILE,
 });

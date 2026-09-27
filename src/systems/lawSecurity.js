@@ -287,6 +287,40 @@ export const lawSecurity = {
     publishSanctuaryQuiet(this.state, false);
   },
 
+  /**
+   * Save contract: only the discovered-crime bookkeeping is durable. `unreportedKills` is the
+   * pending-case docket — without it a save/load boundary silently launders an unwitnessed kill
+   * and the wreck can never convict. `reportedIncidents` is the reportId ledger that keeps the
+   * dedupe triple-latch (pending delete → reportId → receipt id) closed across the boundary, so
+   * a re-resolved hulk can never charge twice. Everything else on the bag — live incidents,
+   * warrants, response receipts — references session entity ids and stays session-scoped.
+   */
+  serialize() {
+    const own = ensureState(this.state);
+    const out = {
+      version: LAW_SECURITY_VERSION,
+      unreportedKills: cloneLawPlain(own.unreportedKills) || {},
+    };
+    // reportedIncidents stays lazy: a save that never priced an incident emits no key, matching
+    // the live state of a run that never stored a receipt (the sim:compare laziness contract).
+    if (own.reportedIncidents != null) {
+      out.reportedIncidents = cloneLawPlain(own.reportedIncidents) || {};
+    }
+    return out;
+  },
+
+  deserialize(data) {
+    const own = ensureState(this.state);
+    const src = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+    own.unreportedKills = normalizeUnreportedKillLedger(src.unreportedKills);
+    if (src.reportedIncidents != null) {
+      own.reportedIncidents = normalizeReportedIncidentLedger(src.reportedIncidents);
+    } else if (own.reportedIncidents != null) {
+      delete own.reportedIncidents; // a different slot's priced ledger must not bleed into this load
+    }
+    return own;
+  },
+
   update(_dt, state) {
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     this._reconcileJobResponses();
@@ -2294,9 +2328,11 @@ export const lawSecurity = {
   // ── Discovered crime: the wreck testifies later ────────────────────────────────────────────
   //
   // An unwitnessed kill leaves a bounded pending case (`unreportedKills`, keyed by the victim's
-  // entity id). When the wreck's aftermath provenance is later resolved — a targeted scan pulse
-  // reading the hull, or the salvage beam finishing — the black box names the killer and the
-  // pending case becomes a real charge through the SAME stable reportId the witnessed path uses.
+  // STABLE id — the same basis reportId derives from, so a recycled runtime id can never collide
+  // a pending case with an unrelated wreck). When the wreck's aftermath provenance is later
+  // resolved — a targeted scan pulse reading the hull, or the salvage beam finishing — the black
+  // box names the killer and the pending case becomes a real charge through the SAME stable
+  // reportId the witnessed path uses.
   // Lawful kills and already-priced crimes never enter the pending ledger, so this door can only
   // reopen a kill the law already evaluated as a crime it could not yet prove.
 
@@ -2306,8 +2342,8 @@ export const lawSecurity = {
       || Array.isArray(own.unreportedKills)) {
       own.unreportedKills = {};
     }
-    if (!entry || entry.victimEntityId == null || !entry.reportId) return;
-    const key = String(entry.victimEntityId);
+    if (!entry || entry.victimEntityId == null || entry.victimStableId == null || !entry.reportId) return;
+    const key = String(entry.victimStableId);
     if (!own.unreportedKills[key]) own.unreportedKills[key] = entry;
     const keys = Object.keys(own.unreportedKills);
     while (keys.length > UNREPORTED_KILL_CAP) delete own.unreportedKills[keys.shift()];
@@ -2337,9 +2373,33 @@ export const lawSecurity = {
     if (victimEntityId == null && marker && marker.victimId != null) victimEntityId = marker.victimId;
     if (victimEntityId == null) return null;
 
-    const key = String(victimEntityId);
-    const pending = pendingMap[key];
-    if (!pending) return null; // lawful clear, witnessed charge, or never a crime candidate
+    // The pending docket is keyed by the victim's STABLE id, but a wreck only knows the kill-time
+    // runtime id — so resolve the case key the way the docket was written:
+    //   * record-less victims file under `entity:<id>` — the same fallback victimStableIdOf emits;
+    //   * a durable victim files under its worldRecordId, unreachable from a dead runtime id —
+    //     scan the bounded docket for the case whose entity id AND kill tick both match this
+    //     marker. The tick is the recycling disambiguator: entity ids reset/reuse, but a pending
+    //     case and its wreck share the exact tick the kill was adjudicated.
+    // A black box that cannot date the death binds nothing — fail closed.
+    const killTick = Number.isInteger(marker && marker.tick) ? marker.tick
+      : (wreckData && wreckData.aftermath && Number.isInteger(wreckData.aftermath.tick)
+        ? wreckData.aftermath.tick : null);
+    if (killTick == null) return null;
+    const directKey = victimStableIdOf(null, { id: victimEntityId });
+    let key = directKey;
+    let pending = directKey ? pendingMap[directKey] || null : null;
+    if (pending && pending.causalTick !== killTick) pending = null;
+    if (!pending) {
+      for (const k of Object.keys(pendingMap)) {
+        const candidate = pendingMap[k];
+        if (!candidate || !sameLawEntityId(candidate.victimEntityId, victimEntityId)) continue;
+        if (candidate.causalTick !== killTick) continue;
+        key = k;
+        pending = candidate;
+        break;
+      }
+    }
+    if (!pending) return null; // lawful clear, witnessed charge, another kill's hulk, or never a case
     // If the marker's own black box names a different killer this is not the player's crime.
     if (marker && marker.killerId != null && marker.killerId !== state.playerId) return null;
 
@@ -4558,10 +4618,9 @@ const LAW_DOCK_FINE_PER_LEVEL_CR = 100;
  * and not the other. No heist is scheduled in the golden scenario, so this object is never built
  * there and the seam is provably inert.
  *
- * NOTE (live-symbol delta): `state.lawSecurity` is NOT in the save owner's capture plan, so this
- * ledger is session-scoped. Cross-reload idempotence does not depend on it: `incidentReceiptId` is a
- * content hash of stable inputs, so the same report reproduces the same id after a load, and the
- * arbiter's durable effect journal is what stops an effect from being applied twice.
+ * Durable: `unreportedKills`/`reportedIncidents` ride the save owner's capture plan through this
+ * system's serialize()/deserialize(). Content-hashed `incidentReceiptId` plus the player's durable
+ * applied-incident ledger keep cross-reload idempotence honest even if a receipt is re-emitted.
  */
 function readReportedIncident(state, reportId) {
   const own = state && state.lawSecurity;
@@ -4697,6 +4756,70 @@ function victimStableIdOf(victim, payload) {
     || (payload && payload.id != null ? `entity:${payload.id}` : null)
     || (victim && victim.id != null ? `entity:${victim.id}` : null);
   return id == null ? null : String(id);
+}
+
+/** Defensive deep copy for save-bound state (JSON-safe shapes only; unreadable → null). */
+function cloneLawPlain(value) {
+  if (value == null || typeof value !== 'object') return value;
+  try { return JSON.parse(JSON.stringify(value)); } catch (_) { return null; }
+}
+
+/**
+ * Pending-case entries a restored save is allowed to reopen. A case must be able to convict:
+ * stable victim id, the SAME reportId the witnessed path would mint, a chargeable kind, and the
+ * kill tick the wreck's black box is checked against. Anything less fails closed — a malformed
+ * entry is dropped, never trusted. Re-keyed by victimStableId so a crafted map key cannot smuggle
+ * an entry under a name that is not its own.
+ */
+function normalizeUnreportedKillLedger(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const key of Object.keys(raw).slice(0, UNREPORTED_KILL_CAP * 2)) {
+    const e = raw[key];
+    if (!e || typeof e !== 'object' || Array.isArray(e)) continue;
+    const victimStableId = typeof e.victimStableId === 'string' && e.victimStableId.trim()
+      ? e.victimStableId : null;
+    const reportId = cleanLawId(e.reportId);
+    const kind = typeof e.kind === 'string' && e.kind.trim() ? e.kind : null;
+    if (victimStableId == null || reportId == null || kind == null) continue;
+    if (e.victimEntityId == null) continue;
+    out[victimStableId] = {
+      victimEntityId: e.victimEntityId,
+      victimStableId,
+      victimClass: typeof e.victimClass === 'string' && e.victimClass ? e.victimClass : null,
+      victimFactionId: typeof e.victimFactionId === 'string' && e.victimFactionId ? e.victimFactionId : null,
+      kind,
+      killCause: typeof e.killCause === 'string' && e.killCause ? e.killCause : null,
+      surface: typeof e.surface === 'string' && e.surface ? e.surface : null,
+      pos: finiteLawPoint(e.pos),
+      causalTick: Number.isInteger(e.causalTick) && e.causalTick >= 0 ? e.causalTick : 0,
+      reportId,
+    };
+    if (Object.keys(out).length >= UNREPORTED_KILL_CAP) break;
+  }
+  return out;
+}
+
+/**
+ * Priced-incident receipts a restored save may re-emit for dedupe. Keep only receipts that still
+ * satisfy the contract the heat owner reads (accepted, law-signed, identified, kinded) and file
+ * each under its own reportId — a mismatched map key is evidence of a torn write, not authority.
+ */
+function normalizeReportedIncidentLedger(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const key of Object.keys(raw).slice(0, REPORTED_INCIDENT_CAP * 2)) {
+    const receipt = cloneLawPlain(raw[key]);
+    if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) continue;
+    const reportId = cleanLawId(receipt.reportId);
+    if (reportId == null || reportId !== key) continue;
+    if (receipt.accepted !== true || receipt.source !== 'lawSecurity') continue;
+    if (typeof receipt.incidentReceiptId !== 'string' || !receipt.incidentReceiptId) continue;
+    if (typeof receipt.kind !== 'string' || !receipt.kind) continue;
+    out[reportId] = receipt;
+    if (Object.keys(out).length >= REPORTED_INCIDENT_CAP) break;
+  }
+  return out;
 }
 
 export default lawSecurity;

@@ -17,6 +17,14 @@
 //     posted bounty once stale — one levy per day, never twice.
 //   * An unwitnessed kill is a pending case, not a free murder: resolving the wreck's black box
 //     (scan pulse or finished salvage) convicts through provenance — once, deduplicated.
+//   * Reckless prices off the SAME class-scaled murder table at a fixed fraction — a ram can never
+//     out-price a shot at any victim class (fighter and hauler pinned).
+//   * A witnessed kill the law CLEARS (truth.kind === null) pays no standing — the blameless-none
+//     tier; only a charge the law actually issued moves reputation.
+//   * The pending-case docket + priced-incident ledger ride the save: an unwitnessed kill still
+//     convicts from the wreck after a save/load boundary — once, never twice.
+//   * Pending cases key on STABLE victim identity, never the bare runtime id — a recycled entity
+//     id cannot cross-charge an unrelated wreck; the kill tick is the recycling disambiguator.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,6 +36,7 @@ import { factions } from '../src/systems/factions.js';
 import { economy } from '../src/systems/economy.js';
 import { scanner, isHostileToPlayer } from '../src/systems/scanner.js';
 import { isHostileForAI } from '../src/ai/engagementAuthority.js';
+import { save as saveDefinition } from '../src/save/saveSystem.js';
 
 const SEED = 43117;
 const SECTOR = 'sector_tethys_junction';
@@ -67,6 +76,30 @@ function civilianVictim(run, pos = { x: 80, z: 0 }, factionId = 'faction_free') 
     pos: { x: pos.x, z: pos.z }, hull: 40, hullMax: 40, radius: 8,
     data: { shipClass: 'hauler', ai: { archetype: 'fleeing_trader' } },
   });
+}
+
+function classedVictim(run, pos, victimClass, factionId = 'faction_free') {
+  return run.sim.spawn({
+    type: 'ship', team: 2, factionId,
+    pos: { x: pos.x, z: pos.z }, hull: 40, hullMax: 40, radius: 8,
+    data: { shipClass: victimClass, ai: { archetype: 'fleeing_trader' } },
+  });
+}
+
+function makeSaveHarness(sim) {
+  // Mirrors the capital-boss round-trip harness: the real save definition bound to a sim's
+  // state/bus/registry — the same seam the Continue path runs through.
+  const save = Object.create(saveDefinition);
+  save.state = sim.state;
+  save.bus = sim.bus;
+  save.registry = { get: (name) => sim.registry.get(name) || null };
+  save.helpers = sim.helpers;
+  save._restoring = false;
+  save._pendingRunTransition = null;
+  save._restoreSequence = 0;
+  save._rollbackCaptureActive = false;
+  save._rollbackInProgress = false;
+  return save;
 }
 
 function killPayload(run, victim, overrides = {}) {
@@ -275,8 +308,10 @@ test('an unwitnessed kill comes back through the wreck\'s black box — once, no
   run.bus.emit('entity:killed', killPayload(run, victim, { presentation: KINETIC }));
   assert.equal(run.state.player.heat, 0, 'unwitnessed: no charge yet');
   const pending = run.state.lawSecurity.unreportedKills;
-  assert.ok(pending && pending[String(victim.id)],
-    'the unwitnessed kill is retained as a bounded pending case');
+  // The docket keys on the victim's STABLE id (the same basis as reportId), never the bare
+  // runtime id — a recycled entity number can never collide the case with a stranger's wreck.
+  assert.ok(pending && pending[`entity:${victim.id}`],
+    'the unwitnessed kill is retained as a bounded pending case keyed by stable identity');
 
   // The victim's wreck persists with durable provenance: the black box names the killer.
   const markerId = 'aft_test_blackbox_1';
@@ -379,4 +414,207 @@ test('a WANTED player in high-sec space eventually meets one lawful patrol; clea
   assert.equal(lowPosted.length, 0, 'frontier space has no lawful coverage to answer with');
   run.sim.dispose();
   low.sim.dispose();
+});
+
+// ── 7. Reckless is a fraction of the same-class murder — fighter and hauler pinned ────────────
+
+test('reckless endangerment never out-prices the same-class murder — fighter and hauler', () => {
+  // The old flat reckless price (0.12) exceeded the class-scaled murder price for fighter,
+  // default, and large victims — ramming a light hull was the MORE expensive crime. Reckless is
+  // now a fixed fraction of the same murder table, so the ordering can never invert.
+  for (const victimClass of ['fighter', 'hauler']) {
+    const outcome = {};
+    for (const [leg, presentation] of [['shot', KINETIC], ['slam', TERRAIN_SLAM]]) {
+      const run = boot([lawSecurity, heat]);
+      const victim = classedVictim(run, { x: 80, z: 0 }, victimClass);
+      lawfulWitness(run, { x: 140, z: 0 });
+      run.bus.emit('entity:killed', killPayload(run, victim, { victimClass, presentation }));
+      assert.equal(run.receipts.length, 1,
+        `${victimClass}/${leg}: a witnessed kill signs a receipt`);
+      outcome[leg] = { kind: run.receipts[0].kind, heat: run.state.player.heat };
+      run.sim.dispose();
+    }
+    assert.equal(outcome.shot.kind, 'unlawful_kill');
+    assert.equal(outcome.slam.kind, 'reckless_kill');
+    assert.ok(outcome.slam.heat > 0, `${victimClass}: the ram is still a crime`);
+    assert.ok(outcome.slam.heat < outcome.shot.heat,
+      `${victimClass}: ram (${outcome.slam.heat}) must cost less than shot (${outcome.shot.heat})`);
+    assert.ok(Math.abs(outcome.slam.heat - outcome.shot.heat * 0.5) < 1e-9,
+      `${victimClass}: reckless is the class-scaled murder table at half, not a flat price`);
+  }
+});
+
+// ── 8. A witnessed kill the law clears pays no standing ──────────────────────────────────────
+
+test('a witnessed kill the law clears costs no standing — the blameless none tier', () => {
+  const run = boot([lawSecurity, factions]);
+  const fsys = run.sim.registry.get('factions');
+  // faction_helix on purpose: it holds no standing relationships, so rep can only move if the
+  // kill path itself prices it — no enemy-approval or spillover can smuggle a delta in here.
+  fsys.applyRep('faction_helix', 5, 'seed_record');
+  const repStart = run.state.factions.faction_helix.rep;
+  const repDeltas = [];
+  run.bus.on('faction:repChanged', (p) => repDeltas.push(p));
+
+  const victim = civilianVictim(run, { x: 80, z: 0 }, 'faction_helix');
+  lawfulWitness(run, { x: 140, z: 0 });
+  run.bus.emit('entity:killed', killPayload(run, victim, {
+    presentation: KINETIC, targetHostileToPlayer: true,
+  }));
+
+  assert.ok(run.lawResponses.some((r) => r.action === 'kill_adjudicated' && r.outcome === 'lawful'),
+    'the law clears the defensive kill on its own record');
+  assert.equal(run.receipts.length, 0, 'a cleared kill signs no charge');
+  assert.equal(run.state.factions.faction_helix.rep, repStart,
+    'the blameless-none tier pays nothing for a kill the law refused to price');
+  assert.ok(!repDeltas.some((p) => p && (p.reason === 'kill_faction_ship'
+    || p.reason === 'kill_faction_ship_collision')),
+    'no kill-priced standing delta fires for the cleared kill');
+
+  // Control: the same eyes and the same scene with a non-hostile victim still docks standing.
+  const repBeforeControl = run.state.factions.faction_helix.rep;
+  const victim2 = civilianVictim(run, { x: 90, z: 0 }, 'faction_helix');
+  lawfulWitness(run, { x: 150, z: 0 });
+  run.bus.emit('entity:killed', killPayload(run, victim2, { presentation: KINETIC }));
+  assert.equal(run.receipts.length, 1, 'the witnessed hostile-on-civilian kill charges');
+  assert.ok(run.state.factions.faction_helix.rep < repBeforeControl,
+    'a witnessed hostile-on-civilian kill still docks the killer\'s standing');
+  run.sim.dispose();
+});
+
+// ── 9. The pending case rides the save — the wreck still convicts after reload ────────────────
+
+test('an unwitnessed kill survives a save/load boundary — the wreck still convicts once', () => {
+  // Session A: the kill nobody saw becomes a pending case; the save seam must carry it.
+  const a = boot([lawSecurity, factions, heat, scanner]);
+  const victim = civilianVictim(a, { x: 5000, z: 0 });
+  a.bus.emit('entity:killed', killPayload(a, victim, { presentation: KINETIC }));
+  const key = `entity:${victim.id}`;
+  assert.ok(a.state.lawSecurity.unreportedKills[key], 'the pending case is recorded');
+  assert.equal(a.state.player.heat, 0, 'unwitnessed: not yet convicted');
+
+  const saveA = makeSaveHarness(a.sim);
+  const data = saveA.serializeData();
+  assert.ok(data.lawSecurity && data.lawSecurity.unreportedKills
+    && data.lawSecurity.unreportedKills[key],
+    'the discovered-crime docket rides the save payload');
+  const savedSlice = JSON.parse(JSON.stringify(data.lawSecurity)); // disk-shaped, not aliased
+  a.sim.dispose();
+
+  // Session B: a fresh sim adopts the saved law slice — the Continue path.
+  const b = boot([lawSecurity, factions, heat, scanner]);
+  const saveB = makeSaveHarness(b.sim);
+  saveB._callDeserialize('lawSecurity', savedSlice);
+  const restored = b.state.lawSecurity.unreportedKills[key];
+  assert.ok(restored, 'the pending case survives the reload');
+  assert.equal(restored.reportId, `kill:${key}`, 'the case re-derives the same stable reportId');
+
+  // The hulk persists through its own owner; scanning it must convict the restored case once.
+  const markerId = 'aft_test_reload_blackbox';
+  if (!b.state.aftermathWrecks) b.state.aftermathWrecks = { bySector: {} };
+  b.state.aftermathWrecks.bySector[SECTOR] = [{
+    markerId, sectorId: SECTOR,
+    victimId: restored.victimEntityId, victimClass: 'hauler', victimFactionId: 'faction_free',
+    killerId: b.state.playerId, pos: { x: 5000, z: 0 }, tick: restored.causalTick,
+  }];
+  b.sim.spawn({
+    type: 'wreck', team: 2, pos: { x: 5000, z: 0 }, radius: 10,
+    data: { markerId, aftermath: { victimId: restored.victimEntityId, markerId, tick: restored.causalTick } },
+  });
+  b.player.pos.x = 5000; b.player.pos.z = 0;
+  if (!b.state.input) b.state.input = {};
+  if (!b.state.input.actions) b.state.input.actions = {};
+  b.state.input.actions.scanPulse = true;
+  b.sim.step();
+
+  assert.equal(b.receipts.length, 1, 'the restored case convicts on the first resolve');
+  assert.equal(b.receipts[0].discovery, true, 'the receipt still says how the law learned');
+  assert.equal(b.receipts[0].kind, 'unlawful_kill');
+  assert.ok(b.state.player.heat >= WANTED_THRESHOLD,
+    'the saved kill convicts after reload — the boundary laundered nothing');
+  assert.equal(Object.keys(b.state.lawSecurity.unreportedKills).length, 0,
+    'the pending case closes on conviction');
+
+  // The dedupe latch survived the boundary: replayed resolves cannot charge twice.
+  b.bus.emit('scan:wreckResolved', { wreckId: null, markerId, pos: { x: 5000, z: 0 } });
+  b.bus.emit('salvage:completed', { wreckId: null, markerId, pos: { x: 5000, z: 0 } });
+  assert.equal(b.receipts.length, 1, 'post-load resolves dedupe through the same latches');
+  assert.ok(b.state.lawSecurity.reportedIncidents
+    && b.state.lawSecurity.reportedIncidents[b.receipts[0].reportId],
+    'the priced-incident ledger recorded the conviction it must dedupe');
+  b.sim.dispose();
+});
+
+// ── 10. A recycled entity id cannot cross-charge an unrelated wreck ──────────────────────────
+
+test('a recycled victim id cannot cross-charge an unrelated wreck', () => {
+  const run = boot([lawSecurity, factions, heat, scanner]);
+  const law = run.sim.registry.get('lawSecurity');
+
+  // The kill nobody saw files a pending case under the victim's STABLE id.
+  const victim = civilianVictim(run, { x: 5000, z: 0 });
+  run.bus.emit('entity:killed', killPayload(run, victim, { presentation: KINETIC }));
+  const killTick = run.state.tick | 0;
+  assert.ok(run.state.lawSecurity.unreportedKills[`entity:${victim.id}`],
+    'the record-less victim files under the entity:<id> fallback');
+
+  // Runtime ids recycle: a LATER, unrelated death wears the same number. Its black box dates a
+  // different kill — even naming the player as killer it must bind no charge.
+  if (!run.state.aftermathWrecks) run.state.aftermathWrecks = { bySector: {} };
+  run.state.aftermathWrecks.bySector[SECTOR] = [{
+    markerId: 'aft_test_recycled_stranger', sectorId: SECTOR,
+    victimId: victim.id,                          // the same recycled runtime id
+    victimClass: 'hauler', victimFactionId: 'faction_free',
+    killerId: run.state.playerId,                 // black box even blames the player…
+    pos: { x: 9000, z: 0 }, tick: killTick + 60,  // …but it dates a different death
+  }];
+  const stranger = law._handleWreckCrimeDiscovery(
+    { wreckId: null, markerId: 'aft_test_recycled_stranger', pos: { x: 9000, z: 0 } },
+    'wreck_scan');
+  assert.equal(stranger, null, 'a recycled id at a foreign kill tick binds nothing');
+  assert.equal(run.receipts.length, 0, 'no charge minted for the stranger');
+  assert.ok(run.state.lawSecurity.unreportedKills[`entity:${victim.id}`],
+    'the real pending case is untouched by the stranger\'s wreck');
+
+  // The victim's own hulk — same recycled id, the case's own tick — still convicts.
+  run.state.aftermathWrecks.bySector[SECTOR].push({
+    markerId: 'aft_test_recycled_own', sectorId: SECTOR,
+    victimId: victim.id, victimClass: 'hauler', victimFactionId: 'faction_free',
+    killerId: run.state.playerId, pos: { x: 5000, z: 0 }, tick: killTick,
+  });
+  const own = law._handleWreckCrimeDiscovery(
+    { wreckId: null, markerId: 'aft_test_recycled_own', pos: { x: 5000, z: 0 } },
+    'wreck_scan');
+  assert.ok(own && own.accepted === true, 'the victim\'s own wreck still convicts');
+  assert.equal(own.kind, 'unlawful_kill');
+  assert.equal(run.receipts.length, 1);
+
+  // Durable victim: the case files under worldRecordId, unreachable from the bare runtime id —
+  // discovery resolves it through the bounded (entityId, killTick) match, and only that match.
+  const durable = civilianVictim(run, { x: 6000, z: 0 });
+  durable.data.worldRecordId = 'wr_npc_test_durable';
+  run.bus.emit('entity:killed', killPayload(run, durable, { presentation: KINETIC }));
+  const durTick = run.state.tick | 0;
+  assert.ok(run.state.lawSecurity.unreportedKills.wr_npc_test_durable,
+    'the durable case files under the record id, not the runtime id');
+  run.state.aftermathWrecks.bySector[SECTOR].push({
+    markerId: 'aft_test_durable_stranger', sectorId: SECTOR,
+    victimId: durable.id, victimClass: 'hauler', victimFactionId: 'faction_free',
+    killerId: run.state.playerId, pos: { x: 6000, z: 0 }, tick: durTick + 30,
+  });
+  assert.equal(law._handleWreckCrimeDiscovery(
+    { wreckId: null, markerId: 'aft_test_durable_stranger', pos: { x: 6000, z: 0 } },
+    'wreck_scan'), null,
+    'the durable case ignores a recycled id at a foreign tick');
+  run.state.aftermathWrecks.bySector[SECTOR].push({
+    markerId: 'aft_test_durable_own', sectorId: SECTOR,
+    victimId: durable.id, victimClass: 'hauler', victimFactionId: 'faction_free',
+    killerId: run.state.playerId, pos: { x: 6000, z: 0 }, tick: durTick,
+  });
+  const hit = law._handleWreckCrimeDiscovery(
+    { wreckId: null, markerId: 'aft_test_durable_own', pos: { x: 6000, z: 0 } },
+    'wreck_scan');
+  assert.ok(hit && hit.accepted === true && hit.reportId === 'kill:wr_npc_test_durable',
+    'the durable case resolves through its stable key');
+  run.sim.dispose();
 });

@@ -249,7 +249,12 @@ export const factions = {
       // no spatial query fail CLOSED — unseen blood does not move standing.
       const witnessed = truth ? truth.witnessed === true
         : (p.witnessed != null ? p.witnessed === true : this._witnessed(p.pos, victim));
-      if (witnessed) {
+      // The verdict narrows "seen" to "charged": kind:null means the law CLEARED the act on the
+      // record (lawful self-defense, blameless) or could not prove it — the blameless-none tier
+      // pays no standing for a kill the law itself refused to price. Compatibility payloads keep
+      // the witnessed gate.
+      const charged = truth ? truth.kind != null : witnessed;
+      if (charged) {
         const mult = KILL_CLASS_MULT[cls] != null ? KILL_CLASS_MULT[cls] : 1.0;
         const causeMult = collision ? COLLISION_REP_MULT : 1;
         this.applyRep(victim, KILL_BASE * mult * causeMult,
