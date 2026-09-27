@@ -1,6 +1,6 @@
 // PQ-136.00 — wreck & aftermath pack catalog and ordinary-sector placement.
 //
-// Forty-four legal release bodies (37 source + 7 authored-down). Place IDs resolve
+// Forty-five legal release bodies (37 source + 8 authored-down). Place IDs resolve
 // through partsLibrary behind the wreckAftermath flag. Dressing uses a dedicated
 // sector-seeded stream so the world dressing/combat RNG (and therefore Save/Continue)
 // does not shift. Wrecks are landmarks: one family per field, hero hulls rare,
@@ -62,6 +62,7 @@ export const WRECK_AFTERMATH_RELEASE_URL_BY_ID = Object.freeze({
   place_aftermath_frag_grating_sheet_authored_down: 'assets/ships/release/parts/places/place_aftermath_frag_grating_sheet_authored_down.glb',
   place_aftermath_frag_pipe_tangle: 'assets/ships/release/parts/places/place_aftermath_frag_pipe_tangle.glb',
   place_aftermath_frag_strut_shard: 'assets/ships/release/parts/places/place_aftermath_frag_strut_shard.glb',
+  place_aftermath_wreck_mining_barge_authored_down: 'assets/ships/release/parts/places/place_aftermath_wreck_mining_barge_authored_down.glb',
 });
 
 function row(donorId, kind, family, grammar, longestM, meshes, opts = {}) {
@@ -84,6 +85,7 @@ function row(donorId, kind, family, grammar, longestM, meshes, opts = {}) {
     spawn,
     live: opts.live !== false,
     authoredDown,
+    sourceTwin: opts.sourceTwin !== false,
     file: `places/${id}.glb`,
     releaseUrl: WRECK_AFTERMATH_RELEASE_URL_BY_ID[id],
     releasePath: `${RELEASE_PLACES}/${id}.glb`,
@@ -136,11 +138,16 @@ const LIVE_MODELS = Object.freeze([
   row('wreck_ore_freighter_bow__stripped', 'hero', 'ore_freighter', 'truss', 179, 177, { label: 'Stripped Freighter Bow' }),
   row('wreck_ore_freighter_hopper', 'hero', 'ore_freighter', 'truss', 49, 14, { authoredDown: true, label: 'Ore Hopper' }),
   row('wreck_ore_freighter_stern', 'hero', 'ore_freighter', 'truss', 145, 172, { label: 'Ore Freighter Stern' }),
+  // The mining barge (vm-drop mining-barge-wreck, 146.8 m, 93 meshes) is authored_down only — the
+  // pack's build report closed at 37 source assets before it landed, so it has no source-donor
+  // release and therefore no source twin. Heavy: routed for reachability, never spawned.
+  row('wreck_mining_barge', 'hero', 'ore_freighter', 'truss', 147, 93,
+    { authoredDown: true, sourceTwin: false, label: 'Mining Barge Wreck' }),
 ]);
 
 const SOURCE_TWINS = Object.freeze(
   LIVE_MODELS
-    .filter((model) => model.authoredDown)
+    .filter((model) => model.authoredDown && model.sourceTwin)
     .map((model) => row(model.stem, model.kind, model.family, model.grammar, model.longestM, model.meshes, {
       live: false,
       spawn: false,

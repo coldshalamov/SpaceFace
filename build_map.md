@@ -1944,15 +1944,12 @@ here and there in the fixing commit.
 | **GFX-1** | Forge trade hub published; the three faction overlays verified sitting on it. |
 | **GFX-3** | Remaining pre-Forge places rebuilt, in order: opening route → claim outposts / conveyor / industry props → law & travel → the rest. |
 | **GFX-4** | Quiessence dark freighters as a Forge family (replaces the dead-hulk stand-ins). |
-| **GFX-5** | Posters for all 14 player hulls enabled in `src/ui/hullPosters.js` (assets rendered; **ORRERY lane owns `src/ui`**). |
-| **GFX-6** | Kit upgrades the agents asked for. Builders: truss, multi-box/beam, annulus, sphere, ladder. Plates and bands: vertical plate, region band. Also a rock primitive + stone finish, a front-lens work lamp, and a place look view. |
 | **GFX-7** | Wrecks derived from the Forge ships replace the pre-Forge aftermath pack. |
 | **GFX-8** | Rocks: procedural geology + authored rock places reviewed and rebuilt to the Forge material language. |
 | **GFX-9** | Bolt-on parts audit: no pre-Forge weapon, pod or engine draws on the default route. |
 | **GFX-10** | Forge performance pass. Dedupe the shared tile textures in the loader, instance repeated hulls, and record frame p50/p95 and texture MB in §21.4. |
 | **GFX-11** | Runtime attachments on Forge hulls: retro shells on the nozzles, damage hooks shedding, player paint on all 14 hulls. |
 | **GFX-12** | Wave F F3: the pending-body stand-in is the hull's own Forge LOD2. |
-| **GFX-13** | Finish master's C8 wreck import (pack builder rejects the eighth file; receipts red). |
 | **GFX-14** | Shipworks dock interiors rebuilt in Forge, keeping the composition check at 0 hits. |
 
 ### Wave D — shelf that beats live

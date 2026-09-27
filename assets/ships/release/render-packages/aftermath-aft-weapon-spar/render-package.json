@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3014a79ed7921afabbcceb78ef21a7e64ab7b73fac2b7350d701b586b23e09ac",
+  "contentHash": "02bb2f895594d50cdfc9807258b922be9a72ba492bd1b5cfc5a0f32f3380fc1c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.aftermath-aft-weapon-spar.node.as-barrel.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "0f57980100b6f1b770239d21a2e1ce04b40a7e5e63eabce512691fcfb9d6f104",
+      "materialHash": "5a08f6356737023df8d0b8c200b3cddba90c6179f5beaeccf9db2e4c227b9b15",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.aftermath-aft-weapon-spar.node.as-barrel",
@@ -99,7 +99,7 @@
       "id": "sf.render.aftermath-aft-weapon-spar.node.as-mount.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
       "nodeId": "sf.render.aftermath-aft-weapon-spar.node.as-mount",
@@ -124,7 +124,7 @@
       "id": "sf.render.aftermath-aft-weapon-spar.node.remaster-material-hull-deepseaenamel.primitive.0",
       "indexCount": 1008,
       "indexed": true,
-      "materialHash": "382cf55d4ddfa9b79cd68ce2923dde6867dee1eafb13c37e1f58966defc4b55b",
+      "materialHash": "3e69f95e781ec5e3462b93703e8c64a4503f037f3b8ed9879a0155b0c090470c",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_SparReceiverCheek",
       "nodeId": "sf.render.aftermath-aft-weapon-spar.node.remaster-material-hull-deepseaenamel",
@@ -149,7 +149,7 @@
       "id": "sf.render.aftermath-aft-weapon-spar.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 1308,
       "indexed": true,
-      "materialHash": "d005e2bbffd505ba75ab33bb0e3affe93b83716f49820e205894daea4354db44",
+      "materialHash": "cd4ef2431d6f6aa83e87af7f52617493ddc80701140c98693e9d159e0572fe5b",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_SparExposedReceiverBearing",
       "nodeId": "sf.render.aftermath-aft-weapon-spar.node.remaster-material-mechanical-brushednickel",
@@ -174,7 +174,7 @@
       "id": "sf.render.aftermath-aft-weapon-spar.node.remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 708,
       "indexed": true,
-      "materialHash": "7469c0141f8ea1ee87e581488f1ad6975b2ecdd058f2021ae688c8d820171f56",
+      "materialHash": "1c4ca9bee0dad8f9c966d5c7f0cc3ba7a4d9666e4ff6c042fbb836f0de797a89",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_SparOpenBore",
       "nodeId": "sf.render.aftermath-aft-weapon-spar.node.remaster-material-mechanical-shadowenamel",
@@ -187,49 +187,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0f57980100b6f1b770239d21a2e1ce04b40a7e5e63eabce512691fcfb9d6f104",
-      "id": "material:0f57980100b6f1b770239d21",
-      "name": "wrk_hull_bare",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "382cf55d4ddfa9b79cd68ce2923dde6867dee1eafb13c37e1f58966defc4b55b",
-      "id": "material:382cf55d4ddfa9b79cd68ce2",
-      "name": "Material_Hull_DeepSeaEnamel",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Hull_DeepSeaEnamel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_DeepSeaEnamel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "7469c0141f8ea1ee87e581488f1ad6975b2ecdd058f2021ae688c8d820171f56",
-      "id": "material:7469c0141f8ea1ee87e58148",
+      "hash": "1c4ca9bee0dad8f9c966d5c7f0cc3ba7a4d9666e4ff6c042fbb836f0de797a89",
+      "id": "material:1c4ca9bee0dad8f9c966d5c7",
       "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:front",
+      "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -258,17 +219,56 @@
       ]
     },
     {
-      "hash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
-      "id": "material:cd6123b380f546013af23403",
-      "name": "wrk_frame_steel",
-      "pipelineKey": "opaque:front",
+      "hash": "3e69f95e781ec5e3462b93703e8c64a4503f037f3b8ed9879a0155b0c090470c",
+      "id": "material:3e69f95e781ec5e3462b9370",
+      "name": "Material_Hull_DeepSeaEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_DeepSeaEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "5a08f6356737023df8d0b8c200b3cddba90c6179f5beaeccf9db2e4c227b9b15",
+      "id": "material:5a08f6356737023df8d0b8c2",
+      "name": "wrk_hull_bare",
+      "pipelineKey": "opaque:double",
       "textures": []
     },
     {
-      "hash": "d005e2bbffd505ba75ab33bb0e3affe93b83716f49820e205894daea4354db44",
-      "id": "material:d005e2bbffd505ba75ab33bb",
+      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "id": "material:8c682904cd449a1872aaaa7a",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "cd4ef2431d6f6aa83e87af7f52617493ddc80701140c98693e9d159e0572fe5b",
+      "id": "material:cd4ef2431d6f6aa83e87af7f",
       "name": "Material_Mechanical_BrushedNickel",
-      "pipelineKey": "opaque:front",
+      "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -643,19 +643,19 @@
       "sha256": "168d9161c083681cbfe8a90c59ebd0b91d0df7fe2e21e2640f7d1eca799464a8"
     },
     "sourceGlb": {
-      "bytes": 46956,
-      "sha256": "5a580fb789e79987e17d0b2ed58357ef1b25b429c8bb8b83769f64d92adfbe5c",
+      "bytes": 46952,
+      "sha256": "a5f96abca76eef1deaa857c3578ff97f89564434349590887f3a507a647e678b",
       "uri": "place_aftermath_aft_weapon_spar.glb"
     },
     "sourceManifest": {
-      "bytes": 199726,
-      "sha256": "7637b7f5ceea5ba4b8791c17a98e7bc67a8125fdeaafe3714950e8679ad2ba26",
+      "bytes": 199725,
+      "sha256": "a5883860a66e59255af94ff3d3335dcf35d95e02a77f65747199d5bee0b78bcd",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 66920,
-    "sha256": "455603a4228025608c099b7107e96c65e3cd494bd474d0436f0a00d6ac3eb001",
+    "bytes": 67016,
+    "sha256": "e3be25dd6e6e98e94facbb7650d40e901d090bfe902a95cba0b89281de06c10b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -899,7 +899,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_weapon_spar.glb"
   },
-  "runtimeHash": "847bb21e72c47b1eb31a9444d1931f748d8f6d1e8e740379da86e766fd61ff7d",
+  "runtimeHash": "ddf9498a8e9523c6a650b0dcebf7bad08a0000f3db2417365a36c213e9dff269",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

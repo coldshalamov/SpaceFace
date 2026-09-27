@@ -88,11 +88,11 @@ function packagePilot(asset, json) {
   };
 }
 
-test('all 74 release bodies pass the identity, manifest, compression, and headless loader seam', async () => {
-  assert.equal(PACK_RELEASE_ASSETS.length, 74);
+test('all 75 release bodies pass the identity, manifest, compression, and headless loader seam', async () => {
+  assert.equal(PACK_RELEASE_ASSETS.length, 75);
   assert.equal(
     PACK_RELEASE_ASSETS.filter((asset) => asset.family === 'wreck_aftermath_pack').length,
-    44,
+    45,
   );
   assert.equal(
     PACK_RELEASE_ASSETS.filter((asset) => asset.family === 'everyday_space_kit').length,

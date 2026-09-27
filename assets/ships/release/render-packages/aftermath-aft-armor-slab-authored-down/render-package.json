@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6fc786efba83e6542f44bbf763fb244334caffb1824e33684f2a93c4c7cc55d7",
+  "contentHash": "dc22e4c1ab9fedeffa0a0a8dcb3d3d301f5ce8383ed59592eeb0f461fb37895f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod0-aft-armor-slab-material-armor.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "a962ae0d0e8b152d646f647bb0b0c3fe81fda53e2601fc259e9a6fbc77c4011c",
+      "materialHash": "24e5c4f4d576d8482ab5a8f627141093b0c7743b6b4df8f3c8dc39abd90c3652",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_aft_armor_slab_Material_Armor_mesh",
       "nodeId": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod0-aft-armor-slab-material-armor",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod0-aft-armor-slab-material-heat.primitive.0",
       "indexCount": 432,
       "indexed": true,
-      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_aft_armor_slab_Material_Heat_mesh",
       "nodeId": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod0-aft-armor-slab-material-heat",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod0-aft-armor-slab-material-insulation.primitive.0",
       "indexCount": 432,
       "indexed": true,
-      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_aft_armor_slab_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod0-aft-armor-slab-material-insulation",
@@ -102,7 +102,7 @@
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod0-aft-armor-slab-material-structural.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
+      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_aft_armor_slab_Material_Structural_mesh",
       "nodeId": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod0-aft-armor-slab-material-structural",
@@ -127,7 +127,7 @@
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod1-aft-armor-slab-material-armor.primitive.0",
       "indexCount": 15,
       "indexed": true,
-      "materialHash": "a962ae0d0e8b152d646f647bb0b0c3fe81fda53e2601fc259e9a6fbc77c4011c",
+      "materialHash": "24e5c4f4d576d8482ab5a8f627141093b0c7743b6b4df8f3c8dc39abd90c3652",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_aft_armor_slab_Material_Armor_mesh",
       "nodeId": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod1-aft-armor-slab-material-armor",
@@ -152,7 +152,7 @@
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod1-aft-armor-slab-material-heat.primitive.0",
       "indexCount": 207,
       "indexed": true,
-      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_aft_armor_slab_Material_Heat_mesh",
       "nodeId": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod1-aft-armor-slab-material-heat",
@@ -177,7 +177,7 @@
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod1-aft-armor-slab-material-insulation.primitive.0",
       "indexCount": 207,
       "indexed": true,
-      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_aft_armor_slab_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod1-aft-armor-slab-material-insulation",
@@ -202,7 +202,7 @@
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod1-aft-armor-slab-material-structural.primitive.0",
       "indexCount": 33,
       "indexed": true,
-      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
+      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_aft_armor_slab_Material_Structural_mesh",
       "nodeId": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod1-aft-armor-slab-material-structural",
@@ -227,7 +227,7 @@
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod2-aft-armor-slab-material-armor.primitive.0",
       "indexCount": 6,
       "indexed": true,
-      "materialHash": "a962ae0d0e8b152d646f647bb0b0c3fe81fda53e2601fc259e9a6fbc77c4011c",
+      "materialHash": "24e5c4f4d576d8482ab5a8f627141093b0c7743b6b4df8f3c8dc39abd90c3652",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_aft_armor_slab_Material_Armor_mesh",
       "nodeId": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod2-aft-armor-slab-material-armor",
@@ -252,7 +252,7 @@
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod2-aft-armor-slab-material-heat.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_aft_armor_slab_Material_Heat_mesh",
       "nodeId": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod2-aft-armor-slab-material-heat",
@@ -277,7 +277,7 @@
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod2-aft-armor-slab-material-insulation.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_aft_armor_slab_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod2-aft-armor-slab-material-insulation",
@@ -302,7 +302,7 @@
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod2-aft-armor-slab-material-structural.primitive.0",
       "indexCount": 12,
       "indexed": true,
-      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
+      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_aft_armor_slab_Material_Structural_mesh",
       "nodeId": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod2-aft-armor-slab-material-structural",
@@ -315,42 +315,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
-      "id": "material:13ad3b2a75af6f212673762d",
-      "name": "Material_Heat",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "wreck_heat_affected_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_heat_affected_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_heat_affected_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_heat_affected_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
-      "id": "material:24f30cbfe23e02dc19ae4afc",
+      "hash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "id": "material:124d57494b8cd5aee7fba823",
       "name": "Material_Structural",
-      "pipelineKey": "opaque:front",
+      "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -379,42 +347,10 @@
       ]
     },
     {
-      "hash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
-      "id": "material:35b85f4e71e79d43154f62ec",
-      "name": "Material_Insulation",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "wreck_rupture_insulation_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_rupture_insulation_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_rupture_insulation_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_rupture_insulation_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "a962ae0d0e8b152d646f647bb0b0c3fe81fda53e2601fc259e9a6fbc77c4011c",
-      "id": "material:a962ae0d0e8b152d646f647b",
+      "hash": "24e5c4f4d576d8482ab5a8f627141093b0c7743b6b4df8f3c8dc39abd90c3652",
+      "id": "material:24e5c4f4d576d8482ab5a8f6",
       "name": "Material_Armor",
-      "pipelineKey": "opaque:front",
+      "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -437,6 +373,70 @@
         {
           "colorSpace": "linear",
           "name": "wreck_armor_dark_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "id": "material:8ef9abc48d34d6bb9186e0d0",
+      "name": "Material_Heat",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_heat_affected_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_heat_affected_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_heat_affected_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_heat_affected_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "id": "material:d405a7105bef6f7b733d5dbb",
+      "name": "Material_Insulation",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_rupture_insulation_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1293,19 +1293,19 @@
       "sha256": "5df10dac48e0eddad558a231f79bc6692c75a7d70afe9096429df34b62843fd1"
     },
     "sourceGlb": {
-      "bytes": 1095476,
-      "sha256": "ac9f1083edd5fdaaa42b52642caf996544c258b0770c21ca1b79a50ad37dc622",
+      "bytes": 1095472,
+      "sha256": "b5189c6e713f49af89231dc43149f3b5e03254619a360ebd4dab7ea4c29dcceb",
       "uri": "place_aftermath_aft_armor_slab_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 199726,
-      "sha256": "7637b7f5ceea5ba4b8791c17a98e7bc67a8125fdeaafe3714950e8679ad2ba26",
+      "bytes": 199725,
+      "sha256": "a5883860a66e59255af94ff3d3335dcf35d95e02a77f65747199d5bee0b78bcd",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1108636,
-    "sha256": "5c874db037ed8cae5ea994b0e9bd316768915230922c1dd959eeaba4d4088737",
+    "bytes": 1108712,
+    "sha256": "b0357b8b282762e24e03b1e06fb2e323a1e28779b44c131f6f769810c7ac09ad",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1731,7 +1731,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_armor_slab_authored_down.glb"
   },
-  "runtimeHash": "e75d9aac185f4ed5ebd83a1f3c540610240cdca7cfcae4ac61a4792238a5df8b",
+  "runtimeHash": "7ea0b5db38cae220a1d672acb6e3a3a3c52ee2bf154f9acef55f079d54a887da",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

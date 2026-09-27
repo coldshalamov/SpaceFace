@@ -20,13 +20,14 @@ const shipId = process.argv[2];
 const entry = FLEET.ships[shipId];
 if (!entry) throw new Error(`unknown forge ship ${shipId}; known: ${Object.keys(FLEET.ships).join(', ')}`);
 
+const BLENDER = process.env.BLENDER || 'blender';
 const run = (cmd, args, opts = {}) => {
   console.log(`[publish] ${cmd} ${args.join(' ')}`);
   return execFileSync(cmd, args, { cwd: ROOT, stdio: opts.quiet ? 'pipe' : 'inherit', encoding: 'utf8', maxBuffer: 1 << 28 });
 };
 
 if (!process.argv.includes('--skip-blender')) {
-  run('blender', ['-b', '--python', `tools/blender/forge/ships/${shipId}.py`, '--', '--live'], { quiet: true });
+  run(BLENDER, ['-b', '--python', `tools/blender/forge/ships/${shipId}.py`, '--', '--live'], { quiet: true });
 }
 
 const place = entry.layout === 'place';
@@ -71,10 +72,16 @@ run('node', ['scripts/build-sg04-release-assets.mjs', '--no-clean', '--only', re
 const pilotsPath = join(ROOT, 'assets/ships/render-packages/pilots.json');
 const pilots = JSON.parse(readFileSync(pilotsPath, 'utf8'));
 const list = Array.isArray(pilots) ? pilots : (pilots.pilots || pilots.packages);
+// Flight-static packages are fully merged: their pilots must not carry dynamic-name groups.
+const flightStaticKeys = new Set(
+  JSON.parse(readFileSync(join(ROOT, 'assets/ships/render-packages/flight-static-v3.json'), 'utf8')).packages || [],
+);
 for (const key of pilotKeys) {
   const pilot = list.find((p) => p.key === key);
   if (!pilot) throw new Error(`no render-package pilot ${key}`);
-  pilot.dynamicNameIncludes = ['HOOK_DRIVE', 'HOOK_NAV', 'HOOK_SECONDARY', 'HOOK_SENSOR', 'HOOK_ARMOR'];
+  pilot.dynamicNameIncludes = flightStaticKeys.has(key)
+    ? []
+    : ['HOOK_DRIVE', 'HOOK_NAV', 'HOOK_SECONDARY', 'HOOK_SENSOR', 'HOOK_ARMOR'];
 }
 writeFileSync(pilotsPath, `${JSON.stringify(pilots, null, 2)}\n`);
 run('node', ['scripts/refresh-render-package-pilots.mjs', `--only=${pilotKeys.join(',')}`], { quiet: true });

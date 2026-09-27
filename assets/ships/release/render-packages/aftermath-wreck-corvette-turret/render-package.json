@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ded6d7b0908dc1508fad2d046fccd9df207cc3d604417db393f76068d718fbba",
+  "contentHash": "8b3a751aa0c99352d302d2dffc287f180909011761ccabb33e581761dfa2dfd4",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.aftermath-wreck-corvette-turret.node.cvt-gun.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "04b25837d69193ba9433d3594783f5984cd6f657ca7f242a20faa48597023653",
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
       "nodeId": "sf.render.aftermath-wreck-corvette-turret.node.cvt-gun",
@@ -99,7 +99,7 @@
       "id": "sf.render.aftermath-wreck-corvette-turret.node.remaster-material-hull-deepseaenamel.primitive.0",
       "indexCount": 120,
       "indexed": true,
-      "materialHash": "382cf55d4ddfa9b79cd68ce2923dde6867dee1eafb13c37e1f58966defc4b55b",
+      "materialHash": "3e69f95e781ec5e3462b93703e8c64a4503f037f3b8ed9879a0155b0c090470c",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_TurretCastArmorCheek",
       "nodeId": "sf.render.aftermath-wreck-corvette-turret.node.remaster-material-hull-deepseaenamel",
@@ -124,7 +124,7 @@
       "id": "sf.render.aftermath-wreck-corvette-turret.node.remaster-material-hull-serviceochre.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "b78190155515bc1343a114e32b009c42e60e0b5e8afbd413e2b232c8ed1d1b19",
+      "materialHash": "969953f08cd95a1f1e0e7ae9a37f0a732c050d1e421785a44fc3562d95face07",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_TurretCrossCradle",
       "nodeId": "sf.render.aftermath-wreck-corvette-turret.node.remaster-material-hull-serviceochre",
@@ -149,7 +149,7 @@
       "id": "sf.render.aftermath-wreck-corvette-turret.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 5886,
       "indexed": true,
-      "materialHash": "d005e2bbffd505ba75ab33bb0e3affe93b83716f49820e205894daea4354db44",
+      "materialHash": "cd4ef2431d6f6aa83e87af7f52617493ddc80701140c98693e9d159e0572fe5b",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_TurretBrokenBearing",
       "nodeId": "sf.render.aftermath-wreck-corvette-turret.node.remaster-material-mechanical-brushednickel",
@@ -174,7 +174,7 @@
       "id": "sf.render.aftermath-wreck-corvette-turret.node.remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 384,
       "indexed": true,
-      "materialHash": "7469c0141f8ea1ee87e581488f1ad6975b2ecdd058f2021ae688c8d820171f56",
+      "materialHash": "1c4ca9bee0dad8f9c966d5c7f0cc3ba7a4d9666e4ff6c042fbb836f0de797a89",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_TurretMuzzleBore",
       "nodeId": "sf.render.aftermath-wreck-corvette-turret.node.remaster-material-mechanical-shadowenamel",
@@ -187,49 +187,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "04b25837d69193ba9433d3594783f5984cd6f657ca7f242a20faa48597023653",
-      "id": "material:04b25837d69193ba9433d359",
-      "name": "wrk_scorch_edge",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "382cf55d4ddfa9b79cd68ce2923dde6867dee1eafb13c37e1f58966defc4b55b",
-      "id": "material:382cf55d4ddfa9b79cd68ce2",
-      "name": "Material_Hull_DeepSeaEnamel",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Hull_DeepSeaEnamel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_DeepSeaEnamel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "7469c0141f8ea1ee87e581488f1ad6975b2ecdd058f2021ae688c8d820171f56",
-      "id": "material:7469c0141f8ea1ee87e58148",
+      "hash": "1c4ca9bee0dad8f9c966d5c7f0cc3ba7a4d9666e4ff6c042fbb836f0de797a89",
+      "id": "material:1c4ca9bee0dad8f9c966d5c7",
       "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:front",
+      "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -258,10 +219,42 @@
       ]
     },
     {
-      "hash": "b78190155515bc1343a114e32b009c42e60e0b5e8afbd413e2b232c8ed1d1b19",
-      "id": "material:b78190155515bc1343a114e3",
+      "hash": "3e69f95e781ec5e3462b93703e8c64a4503f037f3b8ed9879a0155b0c090470c",
+      "id": "material:3e69f95e781ec5e3462b9370",
+      "name": "Material_Hull_DeepSeaEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_DeepSeaEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "969953f08cd95a1f1e0e7ae9a37f0a732c050d1e421785a44fc3562d95face07",
+      "id": "material:969953f08cd95a1f1e0e7ae9",
       "name": "Material_Hull_ServiceOchre",
-      "pipelineKey": "opaque:front",
+      "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -290,10 +283,10 @@
       ]
     },
     {
-      "hash": "d005e2bbffd505ba75ab33bb0e3affe93b83716f49820e205894daea4354db44",
-      "id": "material:d005e2bbffd505ba75ab33bb",
+      "hash": "cd4ef2431d6f6aa83e87af7f52617493ddc80701140c98693e9d159e0572fe5b",
+      "id": "material:cd4ef2431d6f6aa83e87af7f",
       "name": "Material_Mechanical_BrushedNickel",
-      "pipelineKey": "opaque:front",
+      "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -320,6 +313,13 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "id": "material:e4ff96995aa92d7316acce8e",
+      "name": "wrk_scorch_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
     }
   ],
   "nodes": [
@@ -667,19 +667,19 @@
       "sha256": "fd5985e064b6cd618bcc53507b65cead945c647a688f97e32c072d048c6b9e6d"
     },
     "sourceGlb": {
-      "bytes": 84464,
-      "sha256": "bdf9d38b33b5bd613d0666efa8768a5a013a36db177011f44b8b415fdc8b0f73",
+      "bytes": 84460,
+      "sha256": "b1bd745c240e115a4a44c04d61ed70ef4bc4012bec427198ef72337f98721c3e",
       "uri": "place_aftermath_wreck_corvette_turret.glb"
     },
     "sourceManifest": {
-      "bytes": 199726,
-      "sha256": "7637b7f5ceea5ba4b8791c17a98e7bc67a8125fdeaafe3714950e8679ad2ba26",
+      "bytes": 199725,
+      "sha256": "a5883860a66e59255af94ff3d3335dcf35d95e02a77f65747199d5bee0b78bcd",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 138528,
-    "sha256": "f3eea1166c23d9d39100dce4a85c8d4c0f677c4d8ae20b1004a9283247f04abd",
+    "bytes": 138624,
+    "sha256": "e9d1d36e756af400552c8b8e87de71ca5859d3289774624ff81c845a32961563",
     "uri": "render.glb"
   },
   "runtime": {
@@ -926,7 +926,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_turret.glb"
   },
-  "runtimeHash": "11c670c8c7a55d980eeb02618a56429d52df2266a99bd79a7a5cf47c6147496d",
+  "runtimeHash": "6fc3f4c884006f8bf56c8ba2f36f62086e34bcdf0f2d26269e513d73a7962f68",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

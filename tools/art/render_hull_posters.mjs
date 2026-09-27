@@ -13,13 +13,14 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = path.join(ROOT, 'assets/ui/renders/hulls');
-const TMP = process.env.SF_POSTER_TMP || '/tmp/sf-hull-posters';
+const TMP = process.env.SF_POSTER_TMP || path.join(os.tmpdir(), 'sf-hull-posters');
 const MANIFEST = path.join(OUT, 'manifest.json');
 const POSTERS_JS = path.join(ROOT, 'src/ui/hullPosters.js');
 const SAMPLES = process.env.SF_POSTER_SAMPLES || '64';
@@ -33,6 +34,8 @@ export const PLAYER_HULLS = {
 };
 const VIEWS = { hero: [2400, 1350], side: [2400, 1100], top: [1024, 1024] };
 
+const BLENDER = process.env.BLENDER || 'blender';
+const PYTHON = process.env.PYTHON || 'python3';
 const run = (cmd, args) => execFileSync(cmd, args, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 1 << 26 }).toString();
 
 async function renderHull(id, file) {
@@ -40,7 +43,7 @@ async function renderHull(id, file) {
   const entry = { sourceGlb: glb, sourceGlbSha256: createHash('sha256').update(readFileSync(path.join(ROOT, glb))).digest('hex').toUpperCase() };
   for (const [view, [w, h]] of Object.entries(VIEWS)) {
     const raw = path.join(TMP, `${id}.${view}.png`);
-    const log = run('blender', ['-b', '-P', 'tools/art/render_hull.py', '--', glb, raw, view, String(w), String(h), SAMPLES]);
+    const log = run(BLENDER, ['-b', '-P', 'tools/art/render_hull.py', '--', glb, raw, view, String(w), String(h), SAMPLES]);
     if (!/RENDER_DONE/.test(log)) throw new Error(`${id} ${view}: render failed`);
     const meta = JSON.parse(readFileSync(raw.replace(/\.png$/, '.json'), 'utf8'));
     let marks = meta.marks;
@@ -58,11 +61,11 @@ async function renderHull(id, file) {
   }
   // Instrument-light glyph from the plan render (its own crop), and the refit-jig line drawing in
   // the plan view's frame so the top marks land on it.
-  run('python3', ['tools/art/holo_glyph.py', path.join(TMP, `${id}.top.png`), path.join(OUT, `${id}.holo.webp`), '90']);
+  run(PYTHON, ['tools/art/holo_glyph.py', path.join(TMP, `${id}.top.png`), path.join(OUT, `${id}.holo.webp`), '90']);
   rmSync(path.join(OUT, `${id}.holo_prev.jpg`), { force: true }); // holo_glyph.py's review preview
   const jigRaw = path.join(TMP, `${id}.jigraw.png`);
-  run('blender', ['-b', '-P', 'tools/art/render_jig.py', '--', glb, jigRaw, '1024']);
-  run('python3', ['tools/art/jig_glyph.py', jigRaw, path.join(OUT, `${id}.jig.webp`)]);
+  run(BLENDER, ['-b', '-P', 'tools/art/render_jig.py', '--', glb, jigRaw, '1024']);
+  run(PYTHON, ['tools/art/jig_glyph.py', jigRaw, path.join(OUT, `${id}.jig.webp`)]);
   process.stdout.write(`  ${id} holo+jig ok\n`);
   return entry;
 }

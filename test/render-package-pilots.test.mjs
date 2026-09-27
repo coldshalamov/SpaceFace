@@ -505,8 +505,15 @@ test('production manifest packages every live whole-ship family and admitted aut
     assert.ok(metadata.geometry.every((geometry) => geometry.indexed === true),
       `${binding.key} preserves indexed production geometry`);
     if (binding.key === 'helios-trade-hub') {
-      assert.ok(metadata.nodes.filter((node) => node.parentId === null).length > 1,
-        'scene-root package preserves the authored multi-root hierarchy');
+      const sourceJson = JSON.parse(
+        sourceBytes.subarray(20, 20 + sourceBytes.readUInt32LE(12)).toString('utf8'),
+      );
+      const authoredRoots = (sourceJson.scenes?.[sourceJson.scene ?? 0]?.nodes || []).length;
+      assert.equal(
+        metadata.nodes.filter((node) => node.parentId === null).length,
+        authoredRoots,
+        'scene-root package preserves the authored root hierarchy',
+      );
       assert.ok(metadata.anchors.some((anchor) => anchor.nodeName === 'SOCKET_Structure_Core'));
       assert.ok(metadata.collisions.some((collision) => collision.reference === 'COLLISION_HULL'));
     }

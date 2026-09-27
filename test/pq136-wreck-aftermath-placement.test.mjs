@@ -97,10 +97,10 @@ function collectWrecks(seed, sectorId) {
   return { wrecks, stations };
 }
 
-test('all 44 pack models are routed through the place resolver', () => {
-  assert.equal(WRECK_AFTERMATH_MODELS.length, 44);
-  assert.equal(Object.keys(WRECK_AFTERMATH_PLACE_FILE_BY_ID).length, 44);
-  assert.equal(Object.keys(WRECK_AFTERMATH_RELEASE_URL_BY_ID).length, 44);
+test('all 45 pack models are routed through the place resolver', () => {
+  assert.equal(WRECK_AFTERMATH_MODELS.length, 45);
+  assert.equal(Object.keys(WRECK_AFTERMATH_PLACE_FILE_BY_ID).length, 45);
+  assert.equal(Object.keys(WRECK_AFTERMATH_RELEASE_URL_BY_ID).length, 45);
   const files = new Set();
   const urls = new Set();
   for (const model of WRECK_AFTERMATH_MODELS) {
@@ -121,8 +121,8 @@ test('all 44 pack models are routed through the place resolver', () => {
       `mutation: routing row missing for ${model.id}`,
     );
   }
-  assert.equal(files.size, 44);
-  assert.equal(urls.size, 44);
+  assert.equal(files.size, 45);
+  assert.equal(urls.size, 45);
 });
 
 test('ordinary Ceres belt places pack wrecks deterministically within the sector bound', () => {
