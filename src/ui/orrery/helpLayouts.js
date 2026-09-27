@@ -248,6 +248,11 @@ html.sf-gamepad-focus ${H} .orr-hscale:focus .orr-hi__edge { stroke:rgb(255 255 
 html.sf-gamepad-focus ${H} .orr-hreg__scroll:focus .orr-hreg__list { background-color:rgb(248 244 234 / .03); }
 html.sf-gamepad-focus ${H} .orr-help-reading__name.sf-entity-link:focus { color:rgb(255 255 255) !important; text-shadow:0 0 22px rgb(255 250 236 / .3); }
 ${H} .orr-hmix__lbl:focus-visible { outline:none; }
+/* a large screen: the crests on the orbit grow with it (the library draws them at a fixed 50px) */
+@media (min-width:2200px) {
+  ${H} .orr-help-factions__orbit .orr-crest { scale:1.3; }
+  ${H} .orr-help-factions__orbit .orr-crest__name, ${H} .orr-help-factions__orbit .orr-crest__rep { font-size:12px; }
+}
 @media (max-width:1500px) {
   ${H} .orr-hreg__secword { letter-spacing:.12em; }
   ${H} .orr-help__tabs .sf-tab { padding-left:56px !important; letter-spacing:.14em !important; font-size:12px !important; }
