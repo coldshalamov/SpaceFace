@@ -35,7 +35,7 @@ COLORS = {
     'paint.graphite': '#23282e',  # charcoal
     'paint.primer': '#4a4f4a',    # weathered freight grey
     'paint.hall': '#8e8674',
-    'paint.apron': '#1a1d21',     # harbour floor, darker than the charcoal so hulls and lights pop      # hall roofs: ivory a step down so the wide ring does not glare in plan
+    'paint.apron': '#131518',     # harbour floor, darker than the charcoal so hulls and lights pop      # hall roofs: ivory a step down so the wide ring does not glare in plan
     'dark': '#15181c',
 }
 
@@ -310,7 +310,8 @@ def build_drum(s):
     F.ring(s, 'MastRing', (CX, 0, 46.4), 0.8, 0.1, axis=(0, 0, 1), material='gunmetal', segments=12, sides=4)
     F.cylinder(s, 'DishMast', (CX - 8.5, 5.5, ROOF_Z1), (CX - 8.5, 5.5, 31.0), 0.4, material='gunmetal', segments=10,
                bevel=0.0)
-    F.dish(s, 'Dish', (CX - 8.5, 5.5, 31.0), 2.6, 0.8, axis=(-0.5, 0.4, 1.0), material='gunmetal', face='paint')
+    F.dish(s, 'Dish', (CX - 8.5, 5.5, 31.0), 2.6, 0.8, axis=(-0.5, 0.4, 1.0), material='gunmetal', face='paint',
+           segments=20)
     F.sensor_dome(s, 'SensorA', (CX + 8.5, -6.0, ROOF_Z1), 1.4)
     # the drum stands on the apron: buttresses between the apron and the concourse
     for k in range(12):
@@ -764,8 +765,8 @@ def build_pier_details(s):
     F.beacon(s, 'DockBeacon', (x1 + 1.6, 0, DOCK_Z + 3.55), 'glow_amber', size=0.9)
     # apron lane lights guiding from the pier root round the harbour floor
     lane = []
-    for k in range(48):
-        a = 3.75 + 7.5 * k
+    for k in range(36):
+        a = 5.0 + 10.0 * k
         x, y, _ = polar(APRON_R0 + 1.6, a)
         lane.append(((x, y, APRON_Z1 + 0.08), (0.45, 0.25, 0.12), math.radians(a)))
     cluster(s, 'LaneLights', lane, 'glow_cyan')
@@ -813,7 +814,14 @@ def build_terminal_details(s):
         for side in (1, -1):
             for i in range(6):
                 win.append(((x0 + 1.8 + i * 1.9, side * (hy + 0.06), z), (1.2, 0.12, 0.55), 0.0))
+    # roof: two rows of warehouse skylights either side of the loading spine, teal-edged
+    for side in (1, -1):
+        for i in range(8):
+            y = side * (2.4 + i * 3.1)
+            win.append(((x0 + 5.0, y, 26.66), (3.0, 1.7, 0.1), 0.0))
     cluster(s, 'TerminalWin', win, 'glow_warm')
+    F.vent(s, 'TermVent0', (x0 + 10.0, 25.5, 26.6), (2.4, 3.2, 0.3), slats=5)
+    F.vent(s, 'TermVent1', (x0 + 10.0, -25.5, 26.6), (2.4, 3.2, 0.3), slats=5)
     F.light(s, 'TermNavP', (x0 - 0.3, hy - 0.5, 26.3), 'glow_red', size=0.8)
     F.light(s, 'TermNavS', (x0 - 0.3, -hy + 0.5, 26.3), 'glow_green', size=0.8)
     F.beacon(s, 'TermBeacon', (x0 + 9.0, 0, 26.5), 'glow_amber', size=0.8)

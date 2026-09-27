@@ -142,3 +142,46 @@ Inspect GLBs with `node tools/blender/forge/glbinfo.cjs <file>`.
 
 Pick a row, read FORGE.md and this page, and use the matching brief template. When a row is done,
 delete it here and in `build_map.md` §13D Wave GFX in the same commit.
+
+## 5. Handoff: finishing the trade hub (GFX-1)
+
+The source is `tools/blender/forge/ships/place_station_trade_hub.py`, committed as work in progress,
+and the brief is `tools/blender/forge/briefs/trade_hub.md`. To finish it:
+
+1. Build a preview and render it with `fleet-look`.
+2. Import each overlay GLB `assets/ships/parts/places/var_station_trade_hub_{free,mts,scn}_overlay_v01.glb` into the built Blender scene and render a Cycles still of hub plus overlay. The source GLBs import fine.
+3. Fix any overlay part that floats in empty space or cuts through the hub.
+4. `node tools/blender/forge/publish.mjs place_station_trade_hub`.
+5. Run `node scripts/check-graphics-asset-receipts.mjs`. The Helios receipt block already accepts a Forge-stamped hub.
+6. Run `node scripts/flight-look.mjs`. The hub is the first building a new player sees.
+
+## 6. Directions beyond the backlog (where the picture goes next)
+
+These are bigger bets, in rough value order. Each needs a short packet (outcome, done-when, files)
+before dispatch.
+
+1. **Life on the structures.** Make stations and ships feel alive, all with cheap uniforms or node rotations and no per-frame allocation:
+   - radar arms that sweep, cranes that traverse, landing lights that chase toward the dock mouth, beacons that blink;
+   - parked shuttles that sometimes undock.
+
+   Forge can tag parts (`s.detail`, or a new `s.anim = 'spin:z:0.4'`) that the runtime drives. Start with the nav blink and the dock-approach chase lights: they make docking readable.
+2. **Damage you can read.** Forge hulls carry `HOOK_SECONDARY/SENSOR/ARMOR` parts. Add authored damage states:
+   - scorched panel sets;
+   - a sheared sponsor;
+   - an exposed frame variant per finish;
+   - blackened bands swapped in by hull fraction.
+
+   Wrecks (GFX-7) and damage share the same fracture tooling.
+3. **Faction language in the silhouette.** Helios is rounded and ivory, Ashline angular and rust, the work fleet chunky with hazard bands. Extend that to every faction that flies (Coalition navy, Choir, Quiet, Reach), so a contact reads by outline before its colour. Build variants with `tools/blender/forge/variant.py` for paint-only kits, and give a faction its own hull when its role differs.
+4. **Sector mood from light, not texture.** The same Forge bodies look different under each sector's key/fill/rim (`SECTOR_VISUAL_PROFILES`). Tune the six way-of-life sectors so the Vesta foundry is hot, Pallas cold and Sker Haven sodium. Verify with `fleet-look` using that sector's lighting; add a `--sector=` flag.
+5. **One kit for rocks and wrecks.** Add a Forge "geology" and "debris" module (GFX-6/7/8) so asteroids, wreck fields and quarried station rocks share one material language with the ships.
+6. **Close-zoom hero detail.** At 58 WU the ship is about 450 px. Add a close-only LOD0+ detail layer: rivet rows, hatch outlines, cockpit interiors behind the glass. Drop it at chase zoom so the fleet budget holds.
+7. **Interface as instrument.** The ORRERY lane owns the screens. Graphics owns the art feeding them: holo glyphs, jig drawings and hero posters for every flyable ship, station exteriors for dock screens. Keep them regenerated from the models (`render_hull_posters.mjs`); never hand-draw a ship.
+8. **Measure what it costs.** Make `probe-frame-solid` in a crowded Helios scene part of every graphics packet's evidence (GFX-10). The Forge fleet shares one texture set, so texture memory should fall as older assets are retired; record it.
+
+## 7. How to judge a graphics change (the review ritual)
+
+- **Look at the real renderer.** Use `fleet-look` for models, `flight-look` for the game and `ui-bench` for screens. A receipt, a triangle count or a passing check is not a picture.
+- **Compare against neighbours.** Check the contact sheet (`fleet-look --fleet`) and the whole station row. The failure mode of a big program is one body drifting off-palette.
+- **Stranger test.** Would someone who never saw the game say these belong to one game, and can they tell what each thing does?
+- **Push every packet.** The VM is ephemeral. Commit with pathspecs and push after every finished body or batch.
