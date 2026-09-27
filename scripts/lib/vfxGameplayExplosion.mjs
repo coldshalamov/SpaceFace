@@ -86,6 +86,8 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     return accessibility;
   }
   function publish(dt) {
+    // Shipping update reacquires this owner after WebGL context restoration.
+    owner._initArcadeStructural();
     owner._integrateParticles(dt);
     owner._integrateSprites(dt);
     owner._integrateTrailStreaks(dt);
@@ -136,6 +138,7 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     while (owner._liveSpriteCount) owner._retireSprite(owner._activeSprites[owner._liveSpriteCount - 1]);
     owner._clearTrailStreaks();
     for (const light of owner._lights) owner._retireEventLightSlot(light);
+    owner._initArcadeStructural();
     owner._arcadeStructural.clear();
     owner._gas.clear();
     if (typeof owner._explosionRupture?.clear === 'function') owner._explosionRupture.clear();
