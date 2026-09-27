@@ -94,7 +94,8 @@ ${CX} > .k-hang { position:relative; display:grid !important; grid-template-colu
   column-gap:var(--cx-gap); row-gap:clamp(12px, 2.2vh, 22px); min-height:0 !important; overflow:visible !important; padding:0 !important; ${PLAIN} -webkit-mask-image:none !important; mask-image:none !important; }
 ${CX} > .k-hang > .cx-search { grid-column:1 / -1; grid-row:1; position:relative; }
 ${CX} > .k-hang > .cx-search[hidden] { display:none !important; }
-${CX} > .k-hang > .sf-tabbar { grid-column:1; grid-row:2; align-self:start; }
+${CX} > .k-hang > .sf-tabbar { grid-column:1; grid-row:2; align-self:stretch; margin-bottom:calc(var(--cx-foot-gap, 24px) + 6px) !important; }
+${CX}[data-plate="on"] > .k-hang > .cx-ladder { padding-bottom:calc(var(--cx-foot-gap, 24px) + 6px) !important; }
 ${CX} > .k-hang > .cx-ladder { grid-column:2; grid-row:2; min-height:0; position:relative; overflow:hidden auto; scrollbar-width:none; padding:0 0 18px !important; }
 ${CX} > .k-hang > .cx-ladder::-webkit-scrollbar { display:none; }
 ${CX} > .k-hang > .cx-ladder > .orr-extent::before { display:none !important; }
@@ -103,7 +104,7 @@ ${CX} > .k-hang > .cx-wedge { position:absolute; left:0; top:0; width:100%; heig
 ${CX} .cx-wedge > svg { position:absolute; left:0; top:0; overflow:visible; }
 ${CX} .cx-wedge .cx-wedge__fan { stroke:none; }
 ${CX} .cx-wedge .cx-wedge__edge { fill:none; stroke:rgb(${BONE} / .62); stroke-width:2; vector-effect:non-scaling-stroke; }
-${CX} .cx-wedge .cx-wedge__bloom { fill:none; stroke:rgb(${BONE} / .16); stroke-width:7; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+${CX} .cx-wedge .cx-wedge__bloom { fill:none; stroke:rgb(${BONE} / .3); stroke-width:8; stroke-linecap:round; vector-effect:non-scaling-stroke; }
 ${CX} .cx-wedge .cx-wedge__pip { fill:${INK}; }
 /* the search: a field of light on a ruled line, no box */
 ${CX} .cx-search .sf-codex-search { ${PLAIN} ${BODY} display:block; width:100% !important; min-height:0 !important; height:34px !important; box-sizing:border-box; padding:0 0 4px 26px !important;
@@ -137,7 +138,7 @@ ${CX} .sf-tabbar .sf-tab[aria-current="true"] { color:${INK} !important; font-va
 ${CX} .sf-tabbar .sf-tab[aria-current="true"]::after { width:20px !important; height:3px !important; margin-top:-1.5px !important; box-shadow:0 0 8px rgb(255 250 236 / .45) !important; background:${INK} !important; }
 ${CX} .sf-tabbar .sf-tab[aria-current="true"]:focus-visible { text-shadow:0 0 12px rgb(255 250 236 / .45) !important; }
 /* the open section's rail: a tick per entry, the section heads as long graduations */
-${CX} .cx-ladder > .k-rows { position:relative; margin:0 !important; padding:2px 0 0 !important; list-style:none; ${PLAIN}
+${CX} .cx-ladder > .k-rows { position:relative; margin:0 !important; padding:2px 0 0 !important; list-style:none; min-height:calc(100% - 12px); box-sizing:border-box; ${PLAIN}
   background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .56) 7px, rgb(${BONE} / .56) 9px, transparent 9px) 0 0 / 100% 100% no-repeat,
     linear-gradient(90deg, transparent 3px, rgb(${BONE} / .07) 3px, rgb(${BONE} / .07) 13px, transparent 13px) 0 0 / 100% 100% no-repeat,
     repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 3px 0 / 4px 100% no-repeat !important; }
@@ -177,7 +178,8 @@ ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + clamp(2
 ${CX} > .k-stage { display:flex !important; flex-direction:column; }
 ${CX} .sf-codex-entry { ${PLAIN} position:relative; display:block !important; max-width:none !important; min-height:0 !important; padding:0 !important; margin:0 !important; color:${INK}; }
 /* the reading stands level with the plate's heart; a long one starts at the top and scrolls */
-${CX}[data-plate="on"] .sf-codex-entry { margin-block:auto !important; }
+${CX}[data-plate="on"] .sf-codex-entry { margin-top:auto !important; margin-bottom:0 !important; }
+${CX}[data-plate="on"] > .k-stage { padding-bottom:calc(var(--cx-foot-gap, 0px) + 6px) !important; }
 ${CX} .cx-reader__num { display:flex; align-items:baseline; gap:12px; margin:0 0 6px !important; line-height:1; }
 ${CX} .cx-reader__num-n { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 230; font-weight:230;
   font-size:clamp(60px, 9.5vh, 108px); line-height:.82; letter-spacing:-.03em; color:rgb(223 238 255); font-variant-numeric:tabular-nums lining-nums; }
@@ -216,16 +218,16 @@ ${CX} .cx-plate__art.is-station > img, ${CX} .cx-plate__art.is-still > img { tra
 ${CX} .cx-plate__art.is-locked > img { filter:blur(16px) brightness(.55) saturate(.45); transform:scale(1.2); }
 ${CX} .cx-plate__art.is-locked::after { background:radial-gradient(circle, rgb(5 7 10 / .2), rgb(5 7 10 / .7) 90%); }
 /* the ring: bands of light with a bloom of their own, graded by what the player has read */
-${CX} .orr-arc-major { fill:none; stroke:rgb(${BONE} / .42); stroke-width:2; vector-effect:non-scaling-stroke; }
+${CX} .orr-arc-major { fill:none; stroke:rgb(${BONE} / .5); stroke-width:2.5; vector-effect:non-scaling-stroke; }
 ${CX} .orr-arc-band { fill:none; stroke:rgb(${BONE} / .07); vector-effect:non-scaling-stroke; }
 ${CX} .orr-arc-seg { fill:none; vector-effect:non-scaling-stroke; stroke-linecap:butt; stroke-width:8; }
 ${CX} .orr-arc-seg-glow { fill:none; vector-effect:non-scaling-stroke; stroke-linecap:butt; stroke-width:16; }
-${CX} .orr-arc-seg--read { stroke:rgb(${BONE} / .56); }
-${CX} .orr-arc-seg-glow--read { stroke:rgb(${BONE} / .15); }
-${CX} .orr-arc-seg--open { stroke:rgb(${BONE} / .34); }
-${CX} .orr-arc-seg-glow--open { stroke:rgb(${BONE} / .1); }
-${CX} .orr-arc-seg--locked { stroke:rgb(${BONE} / .15); }
-${CX} .orr-arc-seg-glow--locked { stroke:none; }
+${CX} .orr-arc-seg--read { stroke:rgb(${BONE} / .66); }
+${CX} .orr-arc-seg-glow--read { stroke:rgb(${BONE} / .16); }
+${CX} .orr-arc-seg--open { stroke:rgb(${BONE} / .46); }
+${CX} .orr-arc-seg-glow--open { stroke:rgb(${BONE} / .12); }
+${CX} .orr-arc-seg--locked { stroke:rgb(${BONE} / .3); }
+${CX} .orr-arc-seg-glow--locked { stroke:rgb(${BONE} / .08); }
 ${CX} .orr-arc-seg--now { stroke:rgb(223 238 255); stroke-width:10; }
 ${CX} .orr-arc-seg-bloom { fill:none; stroke:rgb(223 238 255 / .26); stroke-width:24; vector-effect:non-scaling-stroke; }
 ${CX} .orr-arc-now.is-locked .orr-arc-seg--now { stroke:rgb(${BONE} / .6); }
@@ -246,9 +248,21 @@ ${CX} .cx-blade__tip { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:2
 ${CX} .cx-blade__pip { fill:var(--dp-hand-hot, #ffd98c); stroke:rgb(5 7 10); stroke-width:1.5; vector-effect:non-scaling-stroke; }
 ${CX} .cx-plate:is(:focus-visible, .is-dragging, .is-over-ring) .cx-blade__core { stroke:var(--dp-hand-hot, #ffd98c); }
 ${CX} .cx-plate.is-dragging .cx-blade__bloom { stroke:rgb(255 217 140 / .42); }
+/* pointing at the ring: the arc under the pointer lights and its name hangs on a leader over the aperture */
+${CX} .cx-plate__hover { position:absolute; inset:0; pointer-events:none; z-index:1; }
+/* while the pointer names an entry the engraving steps back so the leader reads clean */
+${CX} .cx-plate .orr-arc-engrave { transition:opacity .18s ease; }
+${CX} .cx-plate.is-pointing .orr-arc-engrave { opacity:.28; }
+${CX} .cx-plate__hover > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+${CX} .cx-hover__arc { fill:none; stroke:rgb(248 244 234 / .92); stroke-width:9; vector-effect:non-scaling-stroke; }
+${CX} .cx-hover__bloom { fill:none; stroke:rgb(248 244 234 / .2); stroke-width:22; vector-effect:non-scaling-stroke; }
+${CX} .cx-hover__leader { fill:none; stroke:rgb(248 244 234 / .92); stroke-width:2; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+${CX} .cx-hover__leader-bloom { fill:none; stroke:rgb(5 7 10 / .7); stroke-width:6; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+${CX} .cx-hover__pip { fill:rgb(248 244 234); }
 /* the reading under the plate while the ring is being turned or pointed at */
-${CX} .cx-plate__caption { position:absolute; left:50%; top:calc(100% + 10px); transform:translateX(-50%); white-space:nowrap; pointer-events:none; display:flex; align-items:baseline; gap:12px;
-  padding:4px 14px; background:radial-gradient(closest-side, rgb(5 7 10 / .9), rgb(5 7 10 / .6) 70%, rgb(5 7 10 / 0)); }
+${CX} .cx-plate__caption { position:absolute; left:50%; top:50%; z-index:2; transform:translate(calc(-100% - 8px), -50%); white-space:nowrap; pointer-events:none; display:flex; align-items:baseline; gap:10px;
+  padding:6px 12px; background:radial-gradient(closest-side, rgb(5 7 10 / .92), rgb(5 7 10 / .78) 70%, rgb(5 7 10 / 0)); }
+${CX} .cx-plate__caption.is-right { transform:translate(8px, -50%); }
 ${CX} .cx-plate__caption[hidden] { display:none !important; }
 ${CX} .cx-plate__caption-at { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 480; font-size:12px; letter-spacing:.06em; color:rgb(223 238 255); font-variant-numeric:tabular-nums; }
 ${CX} .cx-plate__caption-name { ${BODY} font-size:14px !important; color:${INK}; }
@@ -299,6 +313,7 @@ ${CX} .cx-reader__turn-key--next::after { content:"  ›" !important; display:in
 ${CX} .cx-reader__turn-at { order:-1; font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 420; font-size:13px; letter-spacing:.06em; color:rgb(223 238 255); font-variant-numeric:tabular-nums; min-width:4.2em; }
 /* a conditional return to the chart: a verb, not a second amber */
 ${CX} .sf-codex-entry > [data-action="tethys-return"] { margin-top:22px !important; justify-self:start; }
+${CX} .sf-codex-entry > .cx-play { margin-top:22px !important; }
 /* the Signal Archive: four stills with their corners marked in light, no frames */
 ${CX} .sf-codex-entry > ul.fh-cluster { align-items:start !important; display:grid !important; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:26px 22px; width:100%; margin:22px 0 0 !important; padding:0 !important; list-style:none; grid-column:1 / -1; }
 ${CX} .sf-codex-entry > ul.fh-cluster > li { display:flex !important; flex-direction:column; gap:8px; min-width:0; }
@@ -349,8 +364,6 @@ ${RCX} .sf-tabbar > li, ${RCX} .cx-index__item, ${RCX} .cx-plate__art { animatio
 ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
 @media (max-width:1400px) {
   ${CX} { --cx-sections:124px; --cx-gap:30px; }
-  ${CX} .cx-index__dial { width:50px; height:50px; }
-  ${CX} .cx-index__item { grid-template-rows:50px auto; }
   ${CX} .cx-index__n { font-size:14px !important; }
 }
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale is folded into the zoom), as the station does */
