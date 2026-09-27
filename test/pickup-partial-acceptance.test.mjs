@@ -17,6 +17,7 @@ import { presentationOrchestrator } from '../src/systems/presentationOrchestrato
 import { pickupFloatingTextSpec } from '../src/ui/floatingText.js';
 import { audio } from '../src/audio/audioSystem.js';
 import { vfx } from '../src/render/vfx.js';
+import { resolveAdditionalActionVfxReceipt } from '../src/render/vfx/actionEventRecipes.js';
 
 const COMMODITY_ID = 'cmdty_scrap_metal';
 const DT = 1 / 60;
@@ -538,18 +539,7 @@ test('pickup VFX resolves into the exact winning collector and only legacy recei
   const player = entity({ type: 'ship', team: 0, pos: { x: 0, z: 0 } }, 1);
   const raider = entity({ type: 'ship', team: 1, pos: { x: 54, z: -12 } }, 9);
   const entities = new Map([[player.id, player], [raider.id, raider]]);
-  const lights = [];
-  const sink = Object.assign(Object.create(vfx), {
-    state: { playerId: player.id, entities },
-    helpers: { player: () => player },
-    _scene: {},
-    _ent: (id) => entities.get(id) || null,
-    _spawnSprite() {},
-    _spawnParticle() {},
-    _flashLight(pos) { lights.push({ ...pos }); },
-    _c0: { set() {} },
-    _c1: { set() {} },
-  });
+  const state = { playerId: player.id, entities };
   const base = {
     pickupId: 900,
     kind: 'cargo',
@@ -558,12 +548,19 @@ test('pickup VFX resolves into the exact winning collector and only legacy recei
     pos: { x: 10, z: 3 },
   };
 
-  sink._onPickup({ ...base, collectorId: raider.id });
-  assert.deepEqual(lights.pop(), { x: raider.pos.x, z: raider.pos.z });
+  // The live receipt seam is the ActionVfx recipe: it resolves collectorId (falling back to the
+  // player only when the receipt carries none) and lands the effect on that hull's surface.
+  const won = resolveAdditionalActionVfxReceipt('pickup:collected', { ...base, collectorId: raider.id }, state);
+  assert.ok(won, 'a successful pickup receipt must resolve to a live effect');
+  assert.equal(won.targetId, raider.id, 'the effect must attach to the hull that won the pickup');
+  const aWon = Math.atan2(base.pos.z - raider.pos.z, base.pos.x - raider.pos.x);
+  assert.ok(Math.abs(won.pos.x - (raider.pos.x + Math.cos(aWon) * (raider.radius || 6))) < 1e-6
+    && Math.abs(won.pos.z - (raider.pos.z + Math.sin(aWon) * (raider.radius || 6))) < 1e-6,
+    `the effect must land on the winning collector's surface, got ${JSON.stringify(won.pos)}`);
 
-  sink._onPickup({ ...base, pickupId: 901 });
-  assert.deepEqual(lights.pop(), { x: player.pos.x, z: player.pos.z });
+  const legacy = resolveAdditionalActionVfxReceipt('pickup:collected', { ...base, pickupId: 901 }, state);
+  assert.ok(legacy && legacy.targetId === player.id, 'a receipt with no collector falls back to the player');
 
-  sink._onPickup({ ...base, pickupId: 902, collectorId: 999 });
-  assert.equal(lights.length, 0, 'an explicit missing collector cannot fabricate player collection');
+  const missing = resolveAdditionalActionVfxReceipt('pickup:collected', { ...base, pickupId: 902, collectorId: 999 }, state);
+  assert.equal(missing, null, 'an explicit missing collector cannot fabricate player collection');
 });
