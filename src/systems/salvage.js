@@ -85,16 +85,16 @@ export const salvage = {
       state.salvage.points = [];
       state.salvage.plannedSectorId = null;
     });
-    // BP-01.1 receipt: the vulture-scan hook a communicator actually answers with — a fixed
-    // acknowledgment so the deck/test seam can prove the offer round-tripped. Pure receipt;
-    // the offer itself already went out on mission:offered.
+    // BP-01.1 receipt: an NPC vulture crew claims the field (e1EncounterRuntime H6 settle) —
+    // a fixed acknowledgment on the existing toast/comms seams so the claim is legible to the
+    // player instead of a silent event. Pure receipt; no gameplay outcome is applied here.
     this.bus.on('salvage:fieldVulture', (p) => {
       const text = p && p.text ? String(p.text)
-        : 'Field vulture logged — the wreck field is on your board, not just your scanner.';
+        : 'Vulture crew on the field — a salvage claim is already being stripped.';
       this.bus.emit('toast', { text, kind: 'info', ttl: 4 });
       this.bus.emit('comms:log', {
         from: 'WRECK FIELD',
-        text: p && p.detail ? String(p.detail) : 'Salvage claim filed to the local contract board.',
+        text: p && p.detail ? String(p.detail) : 'A scavenger outfit filed the salvage claim first. What is left still drifts.',
         kind: 'salvage',
       });
     });

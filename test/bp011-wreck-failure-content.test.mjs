@@ -438,8 +438,15 @@ test('salvage:fieldVulture acknowledges the claim on the existing toast/comms se
   const bus = new Bus();
   const salvageSys = { ...salvage };
   salvageSys.init({ state, bus, helpers: { hash32, mulberry32 }, registry: { get: () => null } });
-  bus.emit('salvage:fieldVulture', { text: 'Vulture scan complete.', detail: 'Claim filed.' });
+  // The real e1EncounterRuntime H6 settle payload (winner/risk/loot) — no text fields.
+  bus.emit('salvage:fieldVulture', {
+    encounterId: 'e1_h6', sectorId: 'sector_helios_prime', loot: 'highest', risk: 'high',
+    winner: 'reach', resolution: 'fled',
+  });
   assert.ok(count(bus, 'toast', (p) => /vulture/i.test(p.text || '')) >= 1);
   assert.ok(count(bus, 'comms:log', (p) => p.kind === 'salvage') >= 1);
+  // An authored caller may still override the copy.
+  bus.emit('salvage:fieldVulture', { text: 'Vulture scan complete.', detail: 'Claim filed.' });
+  assert.ok(count(bus, 'toast', (p) => p.text === 'Vulture scan complete.') >= 1);
   salvageSys.destroy && salvageSys.destroy();
 });
