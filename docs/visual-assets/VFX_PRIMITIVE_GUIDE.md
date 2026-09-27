@@ -25,6 +25,11 @@ Use this with [the technique standard](VFX_TECHNIQUE_STANDARD.md),
 | Induction | Branching prismatic channels with a diamond section and delayed forks | ECM, disruption, optical contact, command transmission |
 | Capture | Opposed angular hooks, staggered closure, late material bridges, tangential unloading | Net catch, arming, priming, charge attachment |
 
+Weapon heat and Well lensing use the existing `DistortionField` producers. The default bloom
+compositor consumes the presenter's retained producer array, skips the pass when both are idle,
+and composites the same encoded offsets as the optional render graph. Use that owner and its
+accessibility controls; adding a field to the scene alone does not bend the rendered background.
+
 The primitive is a physical construction, not an event recipe. Multiple primitives may coexist
 inside a recipe. For example, a concussion uses distinct receipted shove directions; thermite
 throws hot matter and deposits it on actual victims; an anchor bomb establishes loaded
