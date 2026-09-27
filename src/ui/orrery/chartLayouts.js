@@ -84,6 +84,7 @@ ${C} .gm-rail-sec { position:relative; background:none !important; border:0 !imp
 ${C} .gm-rail-sum { position:relative; padding:3px 0 3px 34px !important; min-height:26px; align-items:center !important; white-space:nowrap !important;
   ${LABEL} font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 650 !important; font-size:12px !important; letter-spacing:.12em !important; color:rgb(${BONE} / .8) !important; }
 ${C} .gm-rail-sum::after { ${RESET_PSEUDO} }
+${C} .gm-rail-sum-t { white-space:normal !important; line-height:1.25 !important; }
 ${C} .gm-rail-sum-n { font-family:"Archivo", system-ui, sans-serif !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 300 !important; font-weight:300 !important;
   font-size:17px !important; letter-spacing:0 !important; }
 ${C} .gm-rail-sum::before { ${TICK(18, 0.72)} }
