@@ -34,6 +34,7 @@ import {
   forEachFieldRock,
   forEachJobInteractable,
   forEachLivingWorldActor,
+  indexedWorldRecordEntity,
 } from '../world/livingWorldViews.js';
 import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { getFarActor } from '../world/farActorTable.js';
@@ -4299,9 +4300,10 @@ export const traffic = {
 
   _stepWorldSiteRoute(entity, rec, stations, dt, worldRecordIndex = null) {
     const route = rec.worldSiteRoute;
-    const site = worldRecordIndex
-      ? (worldRecordIndex.get(route.siteWorldRecordId) || null)
-      : entityWithWorldRecord(this.state, route.siteWorldRecordId);
+    // The per-tick map can miss a carrier stamped with its record id after spawn; the helper
+    // resolves those through the same entity walk and reseeds the index map on a hit.
+    const site = (worldRecordIndex && worldRecordIndex.get(route.siteWorldRecordId))
+      || entityWithWorldRecord(this.state, route.siteWorldRecordId);
     const station = stations.find((candidate) => stationIdentity(candidate) === route.stationId);
     const target = route.endpoint === 'station' ? station : site;
     let targetPos = target && target.pos;
@@ -10411,17 +10413,23 @@ function dominantAsteroidCommodity(asteroid) {
 }
 
 function entityWithWorldRecord(state, worldRecordId) {
-  if (!state || !state.entities || !worldRecordId) return null;
-  for (const entity of state.entities.values()) {
-    if (entity && entity.alive !== false && entity.data && entity.data.worldRecordId === worldRecordId) return entity;
-  }
-  return null;
+  return indexedWorldRecordEntity(state, worldRecordId);
 }
 
 // Per-tick worldRecordId → entity index for callers that resolve several records in one pass
-// (world-site routes). One walk of the entity map replaces one walk per lookup.
+// (world-site routes). When the entity index is ready its byWorldRecordId map is the source
+// (O(record count) instead of O(entity count) per tick); otherwise one walk of the entity
+// map replaces one walk per lookup, as before.
 function buildWorldRecordIndex(state, into) {
   into.clear();
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && index.byWorldRecordId instanceof Map) {
+    for (const [worldRecordId, entity] of index.byWorldRecordId) {
+      if (entity && entity.alive !== false) into.set(worldRecordId, entity);
+    }
+    return into;
+  }
   const entities = state && state.entities;
   if (!entities || typeof entities.values !== 'function') return into;
   for (const entity of entities.values()) {

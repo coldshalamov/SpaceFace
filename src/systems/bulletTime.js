@@ -306,7 +306,12 @@ export const bulletTime = {
     const player=this.state.entities.get(this.state.playerId);
     if(Math.hypot(player?.vel?.x??0,player?.vel?.z??0)>=1.25*(trick.metrics?.referenceCruise??0))return false;
     const w=window.innerWidth,h=window.innerHeight;
-    for(const e of this.state.entities.values())if(e?.pos&&e.collides!==false&&e.alive!==false){
+    // collidables bucket is a superset of live colliders (collides only ever flips true→false
+    // post-spawn), so the same live flag test keeps membership identical to the map walk.
+    const index=this.state.entityIndex;
+    const source=index&&index.__spacefaceEntityIndexV1&&index.ready===true&&Array.isArray(index.collidables)
+      ?index.collidables:this.state.entities.values();
+    for(const e of source)if(e?.pos&&e.collides!==false&&e.alive!==false){
       const p=this.helpers.worldToScreen(e.pos,_btScreenA);
       if(p?.onScreen&&(p.x<w*.08||p.x>w*.92||p.y<h*.08||p.y>h*.92))return false;
     }
