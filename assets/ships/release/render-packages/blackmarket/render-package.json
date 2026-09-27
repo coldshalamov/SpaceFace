@@ -197,7 +197,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "771df0e9ce7145fe96bc01b525f6ede9592df9949a4527e9c66ce03b510137b5",
+  "contentHash": "1d83ffd1cac2ec616a4f7c00eee87ce721400b1c75165bc9f0b1d0885a463eac",
   "dynamicGroups": [
     {
       "id": "sf.render.blackmarket.node.lod0-hook-nav-port.dynamic",
@@ -496,13 +496,13 @@
       },
       "drawMode": 4,
       "geometryHash": "fbdc12a7885ce1fefcffcdb406c99ea45cd05ee83ceb211f747a2e91ab732fa2",
-      "id": "sf.render.blackmarket.node.lod0-hull-rust.primitive.0",
+      "id": "sf.render.blackmarket.node.lod0-hull.primitive.0",
       "indexCount": 18048,
       "indexed": true,
-      "materialHash": "26f8757386aea058c46cfa48b8ecbbf1f8c66f83efa5c974062f91e76d4d81f3",
+      "materialHash": "17edc817556dcb36f5fe4da3658dc9a248fb6ac2abcf67786b83fb340f0e993f",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Hull_rust",
-      "nodeId": "sf.render.blackmarket.node.lod0-hull-rust",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.blackmarket.node.lod0-hull",
       "primitiveIndex": 0,
       "vertexCount": 5648
     },
@@ -620,7 +620,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7827dee90c0f0a1673d6c6ce9cd69bcf29dc1e1c06efccf86e3d7bf43fee730c",
+      "geometryHash": "58de61801eed9863a882b29660777c96e0e882a0ee35f4661ea0b4d4d2fc3091",
       "id": "sf.render.blackmarket.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 8760,
       "indexed": true,
@@ -896,13 +896,13 @@
       },
       "drawMode": 4,
       "geometryHash": "b5db9bb3299fee76f8f2dad4efdd4aaab1e727c8bc033c46cb4cd856a4baecf2",
-      "id": "sf.render.blackmarket.node.lod1-hull-rust.primitive.0",
+      "id": "sf.render.blackmarket.node.lod1-hull.primitive.0",
       "indexCount": 3810,
       "indexed": true,
-      "materialHash": "26f8757386aea058c46cfa48b8ecbbf1f8c66f83efa5c974062f91e76d4d81f3",
+      "materialHash": "17edc817556dcb36f5fe4da3658dc9a248fb6ac2abcf67786b83fb340f0e993f",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Hull_rust",
-      "nodeId": "sf.render.blackmarket.node.lod1-hull-rust",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.blackmarket.node.lod1-hull",
       "primitiveIndex": 0,
       "vertexCount": 1644
     },
@@ -1020,7 +1020,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72d28b6623dcad34658017f6853d0af1a562cbb975929a15a1d10aeb0a03c349",
+      "geometryHash": "25d115f7035b627ada7ab14a302c88b516071cd98a913af4603f590f52d32ad4",
       "id": "sf.render.blackmarket.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 3819,
       "indexed": true,
@@ -1296,13 +1296,13 @@
       },
       "drawMode": 4,
       "geometryHash": "7e4a9ab249227a590d22ca43f0e90cf055f338e478da841f8ce480febef242a8",
-      "id": "sf.render.blackmarket.node.lod2-hull-rust.primitive.0",
+      "id": "sf.render.blackmarket.node.lod2-hull.primitive.0",
       "indexCount": 1152,
       "indexed": true,
-      "materialHash": "26f8757386aea058c46cfa48b8ecbbf1f8c66f83efa5c974062f91e76d4d81f3",
+      "materialHash": "17edc817556dcb36f5fe4da3658dc9a248fb6ac2abcf67786b83fb340f0e993f",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Hull_rust",
-      "nodeId": "sf.render.blackmarket.node.lod2-hull-rust",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.blackmarket.node.lod2-hull",
       "primitiveIndex": 0,
       "vertexCount": 768
     },
@@ -1558,9 +1558,9 @@
       ]
     },
     {
-      "hash": "1c335a6d77438c6088e4a4b2257a99407337a6546d5bdf579db10c3aee23a228",
-      "id": "material:1c335a6d77438c6088e4a4b2",
-      "name": "Material_Armor",
+      "hash": "17edc817556dcb36f5fe4da3658dc9a248fb6ac2abcf67786b83fb340f0e993f",
+      "id": "material:17edc817556dcb36f5fe4da3",
+      "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1590,9 +1590,9 @@
       ]
     },
     {
-      "hash": "26f8757386aea058c46cfa48b8ecbbf1f8c66f83efa5c974062f91e76d4d81f3",
-      "id": "material:26f8757386aea058c46cfa48",
-      "name": "Material_Hull_rust",
+      "hash": "1c335a6d77438c6088e4a4b2257a99407337a6546d5bdf579db10c3aee23a228",
+      "id": "material:1c335a6d77438c6088e4a4b2",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -2243,6 +2243,55 @@
       ]
     },
     {
+      "id": "sf.render.blackmarket.node.lod0-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.blackmarket.node.lod0-hull-ivory",
       "localTransform": [
         1,
@@ -2267,7 +2316,7 @@
       "nodeName": "LOD0_Hull_ivory",
       "nodePath": [
         0,
-        8
+        9
       ],
       "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
       "role": "immutable",
@@ -2314,55 +2363,6 @@
       "materialPipelineKey": "opaque",
       "mergeBoundary": "LOD0_Hull_olive",
       "nodeName": "LOD0_Hull_olive",
-      "nodePath": [
-        0,
-        9
-      ],
-      "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.blackmarket.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.blackmarket.node.lod0-hull-rust",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Hull_rust",
-      "nodeName": "LOD0_Hull_rust",
       "nodePath": [
         0,
         10
@@ -3027,6 +3027,55 @@
       ]
     },
     {
+      "id": "sf.render.blackmarket.node.lod1-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.blackmarket.node.lod1-hull-ivory",
       "localTransform": [
         1,
@@ -3051,7 +3100,7 @@
       "nodeName": "LOD1_Hull_ivory",
       "nodePath": [
         0,
-        24
+        25
       ],
       "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
       "role": "immutable",
@@ -3098,55 +3147,6 @@
       "materialPipelineKey": "opaque",
       "mergeBoundary": "LOD1_Hull_olive",
       "nodeName": "LOD1_Hull_olive",
-      "nodePath": [
-        0,
-        25
-      ],
-      "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.blackmarket.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.blackmarket.node.lod1-hull-rust",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Hull_rust",
-      "nodeName": "LOD1_Hull_rust",
       "nodePath": [
         0,
         26
@@ -3811,6 +3811,55 @@
       ]
     },
     {
+      "id": "sf.render.blackmarket.node.lod2-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.blackmarket.node.lod2-hull-ivory",
       "localTransform": [
         1,
@@ -3835,7 +3884,7 @@
       "nodeName": "LOD2_Hull_ivory",
       "nodePath": [
         0,
-        40
+        41
       ],
       "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
       "role": "immutable",
@@ -3882,55 +3931,6 @@
       "materialPipelineKey": "opaque",
       "mergeBoundary": "LOD2_Hull_olive",
       "nodeName": "LOD2_Hull_olive",
-      "nodePath": [
-        0,
-        41
-      ],
-      "parentId": "sf.render.blackmarket.node.sf-place-station-blackmarket-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.blackmarket.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.blackmarket.node.lod2-hull-rust",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Hull_rust",
-      "nodeName": "LOD2_Hull_rust",
       "nodePath": [
         0,
         42
@@ -4498,22 +4498,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "6d1830d17e03961c1541f257091ac974e3b46016a42c3bc651f86a1e98c05dcc"
+      "sha256": "1c4ab1d67109fe0512e3fc1cb5fd16dfe315fb169543565b9073a458eef678f2"
     },
     "sourceGlb": {
-      "bytes": 2086344,
-      "sha256": "a3a92a8869ad424c3abf9a95882a7a5f21c12b495f6bb3eeb1f0a6e36b039161",
+      "bytes": 2086312,
+      "sha256": "6ee5d7c6f04f5a07c4b9f69aa045f42ae372ce4b1f785919cd344863143f05d3",
       "uri": "place_station_blackmarket.glb"
     },
     "sourceManifest": {
-      "bytes": 197401,
-      "sha256": "65dc86d802b567269bc70b9c9126b51da51b8d54c5ecc7f3cfc8bdfdd4d213da",
+      "bytes": 197520,
+      "sha256": "4d6c1aaa976b2ea81867efe3edf9da195357bf1d8b923e37668faa096ad35e90",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3990036,
-    "sha256": "3555f1279c5f8d24a4fa441953e5a07206e4814b6ab8b5f1fef681152e248c19",
+    "bytes": 3989864,
+    "sha256": "673e9195471cab7073af6f7e3c5c53fcb35b9d1d0341fc6005e462100e71133c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5164,7 +5164,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hull_ivory",
+        "name": "LOD0_Hull",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -5191,7 +5191,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hull_olive",
+        "name": "LOD0_Hull_ivory",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -5218,7 +5218,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hull_rust",
+        "name": "LOD0_Hull_olive",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -5598,7 +5598,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hull_ivory",
+        "name": "LOD1_Hull",
         "planIndex": 26,
         "tags": {
           "canopy": false,
@@ -5625,7 +5625,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hull_olive",
+        "name": "LOD1_Hull_ivory",
         "planIndex": 27,
         "tags": {
           "canopy": false,
@@ -5652,7 +5652,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hull_rust",
+        "name": "LOD1_Hull_olive",
         "planIndex": 28,
         "tags": {
           "canopy": false,
@@ -6032,7 +6032,7 @@
           0,
           1
         ],
-        "name": "LOD2_Hull_ivory",
+        "name": "LOD2_Hull",
         "planIndex": 42,
         "tags": {
           "canopy": false,
@@ -6059,7 +6059,7 @@
           0,
           1
         ],
-        "name": "LOD2_Hull_olive",
+        "name": "LOD2_Hull_ivory",
         "planIndex": 43,
         "tags": {
           "canopy": false,
@@ -6086,7 +6086,7 @@
           0,
           1
         ],
-        "name": "LOD2_Hull_rust",
+        "name": "LOD2_Hull_olive",
         "planIndex": 44,
         "tags": {
           "canopy": false,
@@ -6260,7 +6260,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_blackmarket.glb"
   },
-  "runtimeHash": "b67bba3389adfabe5defdb6262bbe32368ca2576da878c0638ef10478332b24a",
+  "runtimeHash": "d6082b70299d2e2aaaf84c21b01bddf760b234ee4d2e69aa95e8d3d402234bf7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -6286,9 +6286,9 @@
         "sf.render.blackmarket.node.lod0-ceramic-shadow",
         "sf.render.blackmarket.node.lod0-hook-nav-port",
         "sf.render.blackmarket.node.lod0-hook-nav-starboard",
+        "sf.render.blackmarket.node.lod0-hull",
         "sf.render.blackmarket.node.lod0-hull-ivory",
         "sf.render.blackmarket.node.lod0-hull-olive",
-        "sf.render.blackmarket.node.lod0-hull-rust",
         "sf.render.blackmarket.node.lod0-lights-cyan",
         "sf.render.blackmarket.node.lod0-lights-warm",
         "sf.render.blackmarket.node.lod0-livery",
@@ -6302,9 +6302,9 @@
         "sf.render.blackmarket.node.lod1-ceramic-shadow",
         "sf.render.blackmarket.node.lod1-hook-nav-port",
         "sf.render.blackmarket.node.lod1-hook-nav-starboard",
+        "sf.render.blackmarket.node.lod1-hull",
         "sf.render.blackmarket.node.lod1-hull-ivory",
         "sf.render.blackmarket.node.lod1-hull-olive",
-        "sf.render.blackmarket.node.lod1-hull-rust",
         "sf.render.blackmarket.node.lod1-lights-cyan",
         "sf.render.blackmarket.node.lod1-lights-warm",
         "sf.render.blackmarket.node.lod1-livery",
@@ -6318,9 +6318,9 @@
         "sf.render.blackmarket.node.lod2-ceramic-shadow",
         "sf.render.blackmarket.node.lod2-hook-nav-port",
         "sf.render.blackmarket.node.lod2-hook-nav-starboard",
+        "sf.render.blackmarket.node.lod2-hull",
         "sf.render.blackmarket.node.lod2-hull-ivory",
         "sf.render.blackmarket.node.lod2-hull-olive",
-        "sf.render.blackmarket.node.lod2-hull-rust",
         "sf.render.blackmarket.node.lod2-lights-cyan",
         "sf.render.blackmarket.node.lod2-lights-warm",
         "sf.render.blackmarket.node.lod2-livery",

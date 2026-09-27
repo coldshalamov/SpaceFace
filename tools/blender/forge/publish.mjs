@@ -6,7 +6,8 @@
 // 2. parts_manifest row: forge material names, drive hook, note; then --sync (bytes/tris/bounds)
 // 3. release build (KTX2 + meshopt) for exactly this ship's files
 // 4. render-package pilots: refresh release hash, mark forge hooks dynamic, rebuild packages
-// 5. model-truth census regenerated and spliced to this ship's rows only
+// 5. model-truth census regenerated (test/model-truth-census.test.mjs requires the committed census
+//    to equal a fresh run, so the whole file is kept)
 // Every step is the repo's own tooling; this script only sequences it for one ship.
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -81,5 +82,4 @@ run('node', ['scripts/build-render-package-pilots.mjs', `--only=${pilotKeys.join
 
 // 5. census
 run('node', ['scripts/model-truth-census.mjs'], { quiet: true });
-run('node', ['scripts/lib/splice-census-rows.mjs', `--match=/${dir}/${entry.file}.glb`], { quiet: false });
 console.log(`[publish] ${shipId}: ${files.join(', ')} live`);

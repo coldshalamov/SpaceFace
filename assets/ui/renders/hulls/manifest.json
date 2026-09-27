@@ -1900,6 +1900,247 @@
      ]
     }
    }
+  },
+  "ship_bastion": {
+   "sourceGlb": "assets/ships/parts/wholeships/bastion_production_v1.glb",
+   "sourceGlbSha256": "137CC9B9CD416F6939DF480F51C5997BD7E0B7C852DF290811C8132C28B37DA5",
+   "hero": {
+    "file": "ship_bastion.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 87758,
+    "hullSize": [
+     21.104,
+     8.6,
+     5.079
+    ],
+    "longAxis": 0,
+    "marks": {
+     "BASTION_LOD0_ROOT": [
+      0.4926,
+      0.5901,
+      55.181
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      53.607
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6407,
+      55.883
+     ],
+     "SOCKET_Engine_Main": [
+      0.6807,
+      0.3904,
+      63.154
+     ],
+     "SOCKET_Mining_Front": [
+      0.2635,
+      0.7542,
+      47.409
+     ],
+     "SOCKET_RCS_Port": [
+      0.5768,
+      0.5389,
+      53.519
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4269,
+      0.463,
+      56.223
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5891,
+      0.3781,
+      58.121
+     ],
+     "SOCKET_Trail_Main": [
+      0.6872,
+      0.3833,
+      63.468
+     ],
+     "SOCKET_Trail_Port": [
+      0.7161,
+      0.396,
+      62.905
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6588,
+      0.3708,
+      64.031
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.354,
+      53.858
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2605,
+      0.7473,
+      47.274
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_bastion.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 46954,
+    "hullSize": [
+     21.104,
+     8.6,
+     5.079
+    ],
+    "longAxis": 0,
+    "marks": {
+     "BASTION_LOD0_ROOT": [
+      0.5148,
+      0.6261,
+      63.312
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      63.312
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.7181,
+      63.312
+     ],
+     "SOCKET_Engine_Main": [
+      0.0891,
+      0.6349,
+      63.312
+     ],
+     "SOCKET_Mining_Front": [
+      0.9037,
+      0.5131,
+      63.312
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      65.892
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      60.732
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4518,
+      63.312
+     ],
+     "SOCKET_Trail_Main": [
+      0.0723,
+      0.6349,
+      63.312
+     ],
+     "SOCKET_Trail_Port": [
+      0.0723,
+      0.6349,
+      64.387
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0723,
+      0.6349,
+      62.237
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.2819,
+      63.312
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9077,
+      0.5,
+      63.312
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_bastion.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 33146,
+    "hullSize": [
+     21.104,
+     8.6,
+     5.079
+    ],
+    "longAxis": 0,
+    "marks": {
+     "BASTION_LOD0_ROOT": [
+      0.5,
+      0.4852,
+      64.752
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      63.312
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      65.802
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9109,
+      64.852
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0963,
+      63.462
+     ],
+     "SOCKET_RCS_Port": [
+      0.3964,
+      0.5,
+      63.312
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.6036,
+      0.5,
+      63.312
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      62.762
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9277,
+      64.852
+     ],
+     "SOCKET_Trail_Port": [
+      0.4568,
+      0.9277,
+      64.852
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5432,
+      0.9277,
+      64.852
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      60.823
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0923,
+      63.312
+     ]
+    }
+   }
   }
  }
 }

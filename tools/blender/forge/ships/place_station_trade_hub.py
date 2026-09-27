@@ -34,6 +34,7 @@ COLORS = {
     'hazard': '#a8861c',
     'paint.graphite': '#23282e',  # charcoal
     'paint.primer': '#4a4f4a',    # weathered freight grey
+    'paint.hall': '#8e8674',      # hall roofs: ivory a step down so the wide ring does not glare in plan
     'dark': '#15181c',
 }
 
@@ -323,7 +324,7 @@ def build_drum(s):
 def build_drum_details(s):
     win = []
     for z in (11.3, 16.1, 19.0):
-        win += radial_windows(17.0, z, 72, (0.8, 0.55), skip=lambda a: near_spoke(a, 5.0))
+        win += radial_windows(17.0, z, 60, (1.1, 0.5), skip=lambda a: near_spoke(a, 5.0))
     cluster(s, 'DrumWin', win, 'glow_warm')
     # the lit concourse: tall glazing all round the recessed gallery band
     gallery = radial_windows(16.82, 13.6, 56, (1.35, 2.6), depth=0.2)
@@ -347,6 +348,20 @@ def build_drum_details(s):
     F.antenna(s, 'CrownMastB', polar(10.5, 315, ROOF_Z1), 3.2, tip='glow_green')
     for k in range(2):
         F.vent(s, f'CrownVent{k}', polar(9.5, 22.5 + 180 * k, ROOF_Z1 + 0.05), (2.4, 1.6, 0.3), slats=5)
+    # crown roof: recessed service panels between the spokes and a ring of warm deck lights
+    cpan = []
+    for k in range(12):
+        a = 15 + 30 * k
+        if near_spoke(a, 10.0):
+            continue
+        x, y, _ = polar(9.8, a)
+        cpan.append(((x, y, ROOF_Z1 + 0.03), (3.6, 2.2, 0.08), math.radians(a)))
+    cluster(s, 'CrownPanels', cpan, 'dark')
+    dl = []
+    for k in range(24):
+        x, y, _ = polar(7.4, 7.5 + 15 * k)
+        dl.append(((x, y, ROOF_Z1 + 0.05), (0.4, 0.4, 0.1), 0.0))
+    cluster(s, 'CrownDeckLights', dl, 'glow_warm')
     lower = radial_windows(12.2, 3.6, 40, (0.7, 0.45))
     cluster(s, 'KeelWin', lower, 'glow_warm')
     F.light(s, 'KeelBeacon', (CX, 0, -5.6), 'glow_amber', size=0.8)
@@ -521,7 +536,10 @@ def build_ring(s):
                          material='paint2', steps=3, chamfer=0.08, bevel=0.0)
             continue
         sector_plate(s, f'Hall{k}', RING_R0 + 1.2, RING_R1 - 3.6, b0, b1, RING_Z1, ROOF_Z1 - RING_Z1,
-                     material='paint', steps=3, chamfer=0.3, bevel=0.05)
+                     material='paint.hall', steps=3, chamfer=0.3, bevel=0.05)
+        am = math.radians((b0 + b1) / 2)
+        F.band(s, f'Hall{k}', polar(45.0, (b0 + b1) / 2, 0), (-math.sin(am), math.cos(am), 0), 1.1, 'glass',
+               facing=(0, 0, 1), min_facing=0.6, inset=0.04, depth=-0.06)
     # teal inlay walk round the outer edge, amber-edged
     ring_body(s, 'TealWalk', RING_R1 - 3.0, RING_R1 - 1.2, RING_Z1, RING_Z1 + 0.2, a0 + 0.6, a1 - 0.6, 96,
               top='paint2', outer='paint2', inner='paint2', bottom='paint2', cap='paint2', bevel=0.0)
@@ -579,12 +597,12 @@ def build_ring_details(s):
     skip_heads = lambda a: in_mouth(a) or abs(((a + 180) % 360) - 180) < MOUTH + 7.5  # noqa: E731
     out = []
     for z in (19.9, 23.2, 25.3):
-        out += radial_windows(RING_R1, z, 170, (0.95, 0.6), skip=skip_heads)
+        out += radial_windows(RING_R1, z, 150, (1.35, 0.5), skip=skip_heads)
     # the teal band row stays dark on z 21.3, the 22.7 row is a thin strip
     cluster(s, 'RingWinOut', out, 'glow_warm')
     inn = []
-    for z in (21.0, 23.6, 25.6):
-        inn += radial_windows(RING_R0, z, 120, (1.0, 0.6), skip=lambda a: in_mouth(a) or near_spoke(a, 5.0),
+    for z in (21.2, 24.6):
+        inn += radial_windows(RING_R0, z, 110, (1.3, 0.55), skip=lambda a: in_mouth(a) or near_spoke(a, 5.0),
                               depth=0.16)
     for i, it in enumerate(inn):
         c, sz, rz = it
@@ -636,6 +654,22 @@ def build_ring_details(s):
         dx, dy = -(x - CX), -y
         ln = math.hypot(dx, dy)
         F.work_lamp(s, f'RingLamp{k}', (x, y, RING_Z0 - 0.8), aim=(dx / ln * 0.6, dy / ln * 0.6, 0.5), size=1.0)
+    hw = []
+    for side in (1, -1):
+        a = side * (MOUTH + 3.4)
+        rad = Vector((math.cos(math.radians(a)), math.sin(math.radians(a)), 0))
+        tang = Vector((-rad.y, rad.x, 0))
+        c = Vector(polar((RING_R0 + RING_R1) / 2 + 1.0, a))
+        for z in (12.6, 18.4, 20.6, 22.8, 25.0):
+            for i in range(9):
+                u = -7.6 + i * 1.9
+                p = c + rad * u - tang * side * 3.63
+                hw.append(((p.x, p.y, z), (1.2, 0.12, 0.55), math.radians(a)))
+            p = c + rad * 9.28
+            for j in range(3):
+                q = p + tang * (j - 1) * 2.0
+                hw.append(((q.x, q.y, z), (0.12, 1.2, 0.55), math.radians(a)))
+    cluster(s, 'HeadWin', hw, 'glow_warm')
     gate = []
     for i in range(12):
         a = -(MOUTH + 1.0) + 2 * (MOUTH + 1.0) * (i + 0.5) / 12
@@ -656,6 +690,12 @@ def build_spokes(s):
                'paint2', inset=0.05, depth=0.14)
         F.box(s, f'SpokeRoof{a:.0f}', polar((r0 + r1) / 2 + 1.0, a, 28.05), (r1 - r0 - 4.0, 6.6, 0.3),
               material='paint.graphite', rot_z=math.radians(a), bevel=0.05)
+        # glazed arcade ridge down the spoke roof, ribbed
+        F.box(s, f'SpokeArcade{a:.0f}', polar((r0 + r1) / 2 + 1.5, a, 28.5), (r1 - r0 - 7.0, 2.4, 0.7),
+              material='glass', rot_z=math.radians(a), bevel=0.2)
+        ribs = [(polar(r0 + 5.0 + i * 1.8, a, 28.55), (0.3, 2.7, 0.85), math.radians(a))
+                for i in range(int((r1 - r0 - 7.0) / 1.8))]
+        cluster(s, f'SpokeRibs{a:.0f}', ribs, 'paint.graphite')
         truss(s, f'SpokeTruss{a:.0f}', polar(17.0, a, 20.0), polar(RING_R0 + 0.5, a, 20.0), 5.0, 2.2, 5,
               material='gunmetal', chord=0.5, web=0.28)
 
@@ -673,9 +713,10 @@ def build_spoke_details(s):
                         continue
                     p = Vector(polar(r, a, z)) + tang * side * 4.23
                     win.append((tuple(p), (0.8, 0.1, 0.55), math.radians(a)))
-        for i in range(5):
-            p = Vector(polar(20.0 + i * 3.4, a, 28.22))
-            win.append((tuple(p), (1.2, 2.2, 0.1), math.radians(a)))
+        for side in (1, -1):
+            for i in range(9):
+                p = Vector(polar(18.4 + i * 1.8, a, 28.22)) + tang * side * 2.2
+                win.append((tuple(p), (1.1, 0.6, 0.1), math.radians(a)))
     cluster(s, 'SpokeWin', win, 'glow_warm')
 
 

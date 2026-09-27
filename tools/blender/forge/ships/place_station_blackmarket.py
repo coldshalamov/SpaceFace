@@ -20,7 +20,7 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_station_blackmarket'
 COLORS = {
-    'paint': '#2a2622',        # grimy hull plate
+    'paint': '#4a2818',        # rust-red shanty modules (the station's primary hull paint)
     'paint2': '#1a1918',       # charcoal steel modules
     'ceramic': '#181614',      # rock: dark umber stone (machinery texture: no panel seams on stone)
     'ceramic.shadow': '#100f0e',  # rock underside facets
@@ -28,7 +28,6 @@ COLORS = {
     'stripe': '#1d4643',       # faded teal shanty paint
     'hazard': '#6a4e14',
     'dark': '#121315',
-    'paint.rust': '#4a2818',   # rust-red shanty modules
     'paint.olive': '#34351f',  # olive drab modules
     'paint.ivory': '#6b6558',  # stolen Helios panels (patches)
 }
@@ -46,7 +45,7 @@ ROCKS = [
 # per-rock stretch (x, z): the lumps are elongated, not balls
 STRETCH = {'Core': (1.12, 0.92), 'Crown': (1.25, 0.85), 'Stern': (0.9, 1.15), 'Keel': (1.2, 0.85), 'Beak': (1.3, 0.9),
            'SternLow': (1.1, 1.2), 'Chin': (1.25, 0.9)}
-SHANTY = ['paint.rust', 'stripe', 'paint.olive', 'paint2', 'paint.ivory']
+SHANTY = ['paint', 'stripe', 'paint.olive', 'paint2', 'paint.ivory']
 
 
 def boxes(s, name, items, material, bevel=0.0):
@@ -417,7 +416,7 @@ def build():
     sx0, sy0, base = -16.0, -2.5, 40.0
     spire, sw_, sn_ = [], [], []
     z = base - 1.0
-    for k, (w, h, fin) in enumerate(((7.0, 3.6, 'paint2'), (6.0, 3.2, 'paint.rust'), (5.2, 3.2, 'stripe'),
+    for k, (w, h, fin) in enumerate(((7.0, 3.6, 'paint2'), (6.0, 3.2, 'paint'), (5.2, 3.2, 'stripe'),
                                      (4.4, 3.0, 'paint2'), (3.4, 2.8, 'paint.olive'))):
         yaw = 0.25 * ((k % 2) * 2 - 1)
         spire.append((fin, ((sx0, sy0, z + h / 2), (w, w * 0.8, h), yaw)))

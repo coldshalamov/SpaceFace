@@ -25,16 +25,17 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_landmark_skerris_throne'
 COLORS = {
-    'paint': '#3a2216',            # Ashline rust (the raiders' own plate)
-    'paint2': '#1c1b1c',           # raider black
+    'paint': '#2c180f',            # Ashline rust (the raiders' own plate), authored dark
+    'paint2': '#161516',           # raider black
     'stripe': '#8a4212',           # sodium-orange livery, authored dark
     'hazard': '#8a6a16',
     'paint.graphite': '#262a2e',   # welds, frames, machinery
-    'paint.helios': '#8d8574',     # captured Helios ivory
-    'paint.work': '#6e3212',       # captured work-fleet orange
-    'paint.teal': '#1b4744',       # captured freight teal
-    'paint.navy': '#263044',       # captured patrol navy
-    'paint.bone': '#6a6254',       # the skull's bleached plate
+    'paint.helios': '#766f61',     # captured Helios ivory
+    'paint.work': '#55250d',       # captured work-fleet orange
+    'paint.teal': '#143634',       # captured freight teal
+    'paint.navy': '#1d2536',       # captured patrol navy
+    'paint.bone': '#6a6254',
+    'dark.deck': '#0e0e0f',        # the yard deck       # the skull's bleached plate
     'dark': '#121314',
     'glow_amber': '#ff8a1e',       # sodium light
     'glow_warm': '#ffae5a',
@@ -275,11 +276,11 @@ def build_deck(s):
     """Patchwork yard: the deck the wall stands on, welded from plates of every captured paint."""
     outline = [(n[0] * 0.97, n[1] * 0.97) for n in NODES] + [(92.0, 0.0)]
     outline = [outline[-1]] + outline[:-1]
-    F.plate(s, 'Deck', outline, z0=DECK_Z - 5.0, thickness=5.0, material='paint2', top_material='paint2',
+    F.plate(s, 'Deck', outline, z0=DECK_Z - 5.0, thickness=5.0, material='paint2', top_material='dark.deck',
             chamfer=1.2, chamfer_bottom=3.0, bevel=0.2)
     patches = []
-    fins = ['paint.graphite', 'paint', 'paint.navy', 'paint.graphite', 'paint', 'paint.teal', 'paint.graphite',
-            'paint', 'paint.work']
+    fins = ['paint.graphite', 'paint', 'paint2', 'paint.graphite', 'paint', 'paint.navy', 'paint2', 'paint.graphite',
+            'paint', 'paint.teal', 'paint2', 'paint.graphite']
     k = 0
     for gx in range(-62, 70, 13):
         for gy in range(-52, 56, 13):
@@ -346,8 +347,62 @@ def build_bastions(s, lights):
                        0.0))
 
 
+THRONE_K = 1.3                       # the throne is built at hull scale, then enlarged to dominate the yard
+THRONE_PIVOT = Vector((-8.0, 0.0, DECK_Z))
+
+
+def throne_pt(p):
+    return THRONE_PIVOT + (Vector(p) - THRONE_PIVOT) * THRONE_K
+
+
 def build_throne(s, windows, lights):
-    """The Throne: a seat of two freighters, patrol-hull arm-rests, a high back of standing hulls."""
+    """The Throne: a seat of two freighters, patrol-hull arm-rests, a high back of standing hulls,
+    built at hull scale and then enlarged about its foot so it towers over the wall."""
+    n_obj, n_win, n_lit = len(s.objects), len(windows), len(lights)
+    build_throne_parts(s, windows, lights)
+    m = Matrix.Translation(THRONE_PIVOT) @ Matrix.Scale(THRONE_K, 4) @ Matrix.Translation(-THRONE_PIVOT)
+    for o in s.objects[n_obj:]:
+        o.data.transform(m)
+    for lst, n in ((windows, n_win), (lights, n_lit)):
+        for i in range(n, len(lst)):
+            c, sz, rz = lst[i]
+            lst[i] = (tuple(throne_pt(c)), tuple(v * 1.15 for v in sz), rz)
+
+
+def build_bridges(s):
+    """Welded bridges from the throne out to the wall bastions."""
+    for k, (ni, z, start) in enumerate(((2, 10.0, (-8.0, 12.0)), (7, 9.0, (-8.0, -12.0)), (4, 8.0, (-30.0, 24.5)))):
+        nx, ny, nr, top = NODES[ni]
+        p0 = throne_pt((start[0], start[1], DECK_Z + z))
+        p1 = Vector((nx, ny, top - 6.0))
+        p1 = p1 - (p1 - p0).normalized() * nr
+        beams(s, f'Bridge{k}', [(p0, p1)], 3.4, material='paint', h=1.6)
+        rails = []
+        for sgn in (-1, 1):
+            side = (p1 - p0).cross(Vector((0, 0, 1))).normalized() * sgn * 1.8
+            rails.append((p0 + side + Vector((0, 0, 1.4)), p1 + side + Vector((0, 0, 1.4))))
+        beams(s, f'BridgeRail{k}', rails, 0.3, material='paint.graphite')
+
+
+def build_yard(s, windows, lights):
+    """Barracks hulls lying in the yard, and the lamp-lit avenue from the skull's gate to the throne."""
+    for k, (make, x, y, yaw, L) in enumerate((('helios', 36.0, 38.0, -0.45, 30.0), ('work', 36.0, -38.0, 0.5, 28.0),
+                                              ('navy', -56.0, -18.0, 1.25, 26.0), ('teal', -8.0, 46.0, 0.08, 24.0))):
+        hull(s, f'Barracks{k}', make, L, 4.4, 3.8, (x, y, DECK_Z + 3.4), yaw=yaw, nose=k % 2 == 0, tail=True,
+             windows=windows, lights=lights, bands=2, bridge=True, drives=2)
+    lamps, posts = [], []
+    for i in range(9):
+        x = 22.0 + i * 5.2
+        for sgn in (1, -1):
+            posts.append(((x, sgn * 7.0, DECK_Z), (x, sgn * 7.0, DECK_Z + 3.2)))
+            lamps.append(((x, sgn * 7.0, DECK_Z + 3.5), (0.9, 0.9, 0.6), 0.0))
+    beams(s, 'AvenuePosts', posts, 0.5, material='paint.graphite')
+    lights += lamps
+    F.plate(s, 'Avenue', [(66.0, -5.0), (66.0, 5.0), (20.0, 5.0), (20.0, -5.0)], z0=DECK_Z, thickness=0.3,
+            material='paint.graphite', bevel=0.0)
+
+
+def build_throne_parts(s, windows, lights):
     # seat: two big freighter hulls side by side along X (the seat faces +X)
     hull(s, 'SeatP', 'teal', 42.0, 7.5, 6.5, (-6.0, 8.2, DECK_Z + 6.0), nose=True, tail=False, windows=windows,
          lights=lights)
@@ -396,18 +451,6 @@ def build_throne(s, windows, lights):
         blades.append((base, base + Vector((-1.5, 9.0 * math.sin(a), 8.0 * math.cos(a) + 2.0))))
     beams(s, 'ThroneCrown', blades, 1.0, material='paint2', h=0.5)
     F.beacon(s, 'ThroneBeacon', (-27.0, 0.0, DECK_Z + 60.0), 'glow_amber', size=2.2)
-    # welded bridges from the throne out to the wall bastions
-    for k, (ni, z, start) in enumerate(((2, 10.0, (-8.0, 12.0)), (7, 9.0, (-8.0, -12.0)), (4, 8.0, (-30.0, 24.5)))):
-        nx, ny, nr, top = NODES[ni]
-        p0 = Vector((start[0], start[1], DECK_Z + z))
-        p1 = Vector((nx, ny, top - 6.0))
-        p1 = p1 - (p1 - p0).normalized() * nr
-        beams(s, f'Bridge{k}', [(p0, p1)], 3.4, material='paint', h=1.6)
-        rails = []
-        for sgn in (-1, 1):
-            side = (p1 - p0).cross(Vector((0, 0, 1))).normalized() * sgn * 1.8
-            rails.append((p0 + side + Vector((0, 0, 1.4)), p1 + side + Vector((0, 0, 1.4))))
-        beams(s, f'BridgeRail{k}', rails, 0.3, material='paint.graphite')
 
 
 def ccw(poly):
@@ -562,13 +605,13 @@ def build_details(s, windows, lights):
         aim = Vector((-x, -y, 60.0)).normalized()
         F.work_lamp(s, f'Flood{i}', (x * 0.9, y * 0.9, top - 2.0), aim=tuple(aim), size=1.4, lens='glow_amber')
     # exposed machinery in the yard: generator drums, pipe runs
-    for k, (x, y) in enumerate(((30.0, 30.0), (34.0, -30.0), (-50.0, 20.0), (-46.0, -26.0))):
+    for k, (x, y) in enumerate(((10.0, 40.0), (12.0, -44.0), (-50.0, 20.0), (-40.0, -40.0))):
         F.cylinder(s, f'Gen{k}', (x - 5.0, y, DECK_Z + 2.4), (x + 5.0, y, DECK_Z + 2.4), 2.4, material='gunmetal',
                    segments=14, cap_material='paint2', bevel=0.0)
         F.box(s, f'GenSkid{k}', (x, y, DECK_Z + 0.4), (11.0, 5.2, 0.8), material='paint2', bevel=0.05)
         lights.append(((x + 5.2, y, DECK_Z + 2.4), (0.3, 0.9, 0.9), 0.0))
-    pipes = [((30.0, 30.0, DECK_Z + 1.2), (-6.0, 12.0, DECK_Z + 1.2)), ((34.0, -30.0, DECK_Z + 1.2), (-6.0, -12.0, DECK_Z + 1.2)),
-             ((-50.0, 20.0, DECK_Z + 1.2), (-24.0, 12.0, DECK_Z + 1.2)), ((-46.0, -26.0, DECK_Z + 1.2), (-24.0, -12.0, DECK_Z + 1.2))]
+    pipes = [((10.0, 40.0, DECK_Z + 1.2), (0.0, 16.0, DECK_Z + 1.2)), ((12.0, -44.0, DECK_Z + 1.2), (0.0, -16.0, DECK_Z + 1.2)),
+             ((-50.0, 20.0, DECK_Z + 1.2), (-24.0, 12.0, DECK_Z + 1.2)), ((-40.0, -40.0, DECK_Z + 1.2), (-24.0, -14.0, DECK_Z + 1.2))]
     beams(s, 'YardPipes', pipes, 1.0, material='gunmetal')
 
 
@@ -583,6 +626,8 @@ def build():
     build_walls(s, windows, lights)
     build_bastions(s, lights)
     build_throne(s, windows, lights)
+    build_bridges(s)
+    build_yard(s, windows, lights)
     build_skull(s, lights)
     build_spars(s, lights)
     s.detail = 1

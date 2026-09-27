@@ -52,12 +52,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.blackmarket",
-    "expectedContentHash": "771df0e9ce7145fe96bc01b525f6ede9592df9949a4527e9c66ce03b510137b5",
+    "expectedContentHash": "1d83ffd1cac2ec616a4f7c00eee87ce721400b1c75165bc9f0b1d0885a463eac",
     "key": "blackmarket",
     "metadataUrl": "assets/ships/release/render-packages/blackmarket/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_BLACKMARKET",
     "slot": "place",
-    "sourceSha256": "a3a92a8869ad424c3abf9a95882a7a5f21c12b495f6bb3eeb1f0a6e36b039161",
+    "sourceSha256": "6ee5d7c6f04f5a07c4b9f69aa045f42ae372ce4b1f785919cd344863143f05d3",
     "sourceUrl": "assets/ships/release/parts/places/place_station_blackmarket.glb"
   },
   {
@@ -684,12 +684,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.jump-ring",
-    "expectedContentHash": "f4c80bcb0f7054e47053669aeef95d0373850340eb49e1ddcea2df28d16205b6",
+    "expectedContentHash": "ad5b1ba9fd15f7de08aee24c79b45092cd61c8b449b34b18177aa403dffcdac1",
     "key": "jump-ring",
     "metadataUrl": "assets/ships/release/render-packages/jump-ring/render-package.json",
     "runtimeAssetId": "SF_PLACE_GATE_JUMP_RING",
     "slot": "place",
-    "sourceSha256": "c56f8c56959cf35814a458269ea5dbb59b96c3583361c42d763516d0f3318a7a",
+    "sourceSha256": "39d8ca0c6342ffb4e244c7d072d7a6d638e1c1da8cb1257383957fc54aae0f2f",
     "sourceUrl": "assets/ships/release/parts/places/place_gate_jump_ring.glb"
   },
   {

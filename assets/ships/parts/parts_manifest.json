@@ -3206,12 +3206,15 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_gate_jump_ring.glb",
-      "tris": 43644,
-      "bytes": 11853328,
+      "tris": 49252,
+      "bytes": 5762992,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Accent"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy"
       },
       "note": "Helios Massline Gate — jump_gate_landmark; authored station family, PBR, explicit LOD0/1/2. LOD0 40808 tris / 5 draw groups.",
       "factionAccentVariants": {
@@ -3243,19 +3246,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -10,
-          -40.900001525878906,
-          -40.90000009536743
+          -9.5,
+          -48.61000061035156,
+          -50.650001525878906
         ],
         "max": [
-          10,
-          44.661468505859375,
-          44.066654205322266
+          9.5,
+          56.67499923706055,
+          50.650001525878906
         ],
         "dimensionsM": [
-          20,
-          85.56147003173828,
-          84.9666543006897
+          19,
+          105.28499984741211,
+          101.30000305175781
         ]
       },
       "triangleMetric": "lod0"
@@ -3805,9 +3808,10 @@
       "priority": "P0",
       "file": "places/place_station_blackmarket.glb",
       "tris": 55980,
-      "bytes": 6760232,
+      "bytes": 6760192,
       "textureSize": 1024,
       "tintable": {
+        "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"

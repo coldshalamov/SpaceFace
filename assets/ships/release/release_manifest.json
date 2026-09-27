@@ -3000,20 +3000,6 @@
       }
     },
     {
-      "id": "place_gate_jump_ring",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_gate_jump_ring.glb",
-      "release": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
-      "sourceSha256": "6c60c3fcb7a2447993774bcae1a06c9786228cb08244c59c061fcee92c760397",
-      "releaseSha256": "c56f8c56959cf35814a458269ea5dbb59b96c3583361c42d763516d0f3318a7a",
-      "sourceBytes": 11853328,
-      "releaseBytes": 8150744,
-      "textures": 24,
-      "ktx2Textures": 24,
-      "meshoptBufferViews": 81,
-      "contractNodeCount": 27
-    },
-    {
       "id": "place_lane_pin",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_lane_pin.glb",
@@ -4400,14 +4386,28 @@
       "contractNodeCount": 41
     },
     {
+      "id": "place_gate_jump_ring",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_gate_jump_ring.glb",
+      "release": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
+      "sourceSha256": "1d5728694d0455aee238f9cd78a8b86d61aee70e2414a5a4aecfc3ce384c514d",
+      "releaseSha256": "39d8ca0c6342ffb4e244c7d072d7a6d638e1c1da8cb1257383957fc54aae0f2f",
+      "sourceBytes": 5762992,
+      "releaseBytes": 1855980,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 139,
+      "contractNodeCount": 41
+    },
+    {
       "id": "place_station_blackmarket",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_station_blackmarket.glb",
       "release": "assets/ships/release/parts/places/place_station_blackmarket.glb",
-      "sourceSha256": "85eab8f07d1c99043edb7a6208fc02ab053557b386c2b448bd066e8d16259a41",
-      "releaseSha256": "a3a92a8869ad424c3abf9a95882a7a5f21c12b495f6bb3eeb1f0a6e36b039161",
-      "sourceBytes": 6760232,
-      "releaseBytes": 2086344,
+      "sourceSha256": "501c1f5d32b61ee1bcd07aa094b150052e334322ddf5f429bc9afb5abe1cab50",
+      "releaseSha256": "6ee5d7c6f04f5a07c4b9f69aa045f42ae372ce4b1f785919cd344863143f05d3",
+      "sourceBytes": 6760192,
+      "releaseBytes": 2086312,
       "textures": 6,
       "ktx2Textures": 6,
       "meshoptBufferViews": 184,

@@ -113,8 +113,8 @@
       "slot": "place",
       "releaseAssetId": "place_station_blackmarket",
       "sourceUrl": "assets/ships/release/parts/places/place_station_blackmarket.glb",
-      "releaseSha256": "a3a92a8869ad424c3abf9a95882a7a5f21c12b495f6bb3eeb1f0a6e36b039161",
-      "releaseBytes": 2086344,
+      "releaseSha256": "6ee5d7c6f04f5a07c4b9f69aa045f42ae372ce4b1f785919cd344863143f05d3",
+      "releaseBytes": 2086312,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1106,9 +1106,15 @@
       "slot": "place",
       "releaseAssetId": "place_gate_jump_ring",
       "sourceUrl": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
-      "releaseSha256": "c56f8c56959cf35814a458269ea5dbb59b96c3583361c42d763516d0f3318a7a",
-      "releaseBytes": 8150744,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "39d8ca0c6342ffb4e244c7d072d7a6d638e1c1da8cb1257383957fc54aae0f2f",
+      "releaseBytes": 1855980,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/jump-ring",
       "metadataUrl": "assets/ships/release/render-packages/jump-ring/render-package.json",
       "sceneRoot": true
