@@ -92,6 +92,7 @@ const STATE_HOLD_S = 1.5;       // hysteresis
 const IN_COMBAT_WINDOW = 6;     // s since last damage counts as "in combat"
 const MUSIC_RECOMPUTE_S = 0.1;  // analysis cadence; state changes still have 1.5s hysteresis
 const LOOP_POSITION_UPDATE_S = 0.05; // AudioParam smoothing already runs over this window
+const LOOP_HEARING_RELEASE_S = 0.5;  // grace before a culled loop releases its node graph
 export const BULLET_TIME_AUDIO = Object.freeze({
   cutoffHz: 1100,
   openHz: 20000,
@@ -4373,7 +4374,9 @@ export const audio = {
       if (!Number.isFinite(position.x) || !Number.isFinite(position.z)) return null;
       const pp = this._playerPos();
       const d = Math.hypot(position.x - pp.x, position.z - pp.z);
-      if (d > D_FAR && busName !== 'ui' && busName !== 'combat') return null;
+      // A positioned loop past hearing attenuates to the silent floor on every mix term — the
+      // node graph would render silence. Same cull law play() already applies to one-shots.
+      if (d > D_FAR) return null;
       att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
       pan = clamp((position.x - pp.x) / PAN_SPAN, -1, 1);
     }
@@ -5802,6 +5805,29 @@ export const audio = {
         }
         return;
       }
+      if (preserveRemote && d > D_FAR) {
+        // Combat/UI loops skip the residency mute, so a beam carried past hearing would hold
+        // its node graph at the gain floor forever. Hold the floor briefly, then release it —
+        // want flags survive, and _frame re-arms through _startLoopVoice (a cheap no-op while
+        // still out of range) the moment the source crosses back inside hearing.
+        if (v._audioCulledSince == null) {
+          v._audioCulledSince = now;
+        } else if (now - v._audioCulledSince >= LOOP_HEARING_RELEASE_S) {
+          for (const k in rt.loops) {
+            if (rt.loops[k] !== v) continue;
+            this._endLoopVoice(v);
+            delete rt.loops[k];
+          }
+          return;
+        }
+        if (v._audioResidencyActive !== false) {
+          try { v.gain.gain.setTargetAtTime(0.0001, now, 0.05); } catch (_) {}
+          v._audioResidencyActive = false;
+          v._audioGainTarget = 0.0001;
+        }
+        return;
+      }
+      v._audioCulledSince = null;
       v._audioResidencyActive = true;
       let att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
       const pan = clamp((e.pos.x - pp.x) / PAN_SPAN, -1, 1);
@@ -6371,7 +6397,10 @@ export const audio = {
         if (!v || !v.gain || !v.gain.gain) continue;
         const isWeaponLoop = key.startsWith('beam_') || v.role === 'weaponLoop'
           || (v.busName === 'combat' && v.loop);
-        if (!isWeaponLoop) continue;
+        // Tracked loops belong to _updateLoopPositions, which already composes
+        // _priorityDuckWeapon with the distance attenuation — a second writer on the same
+        // AudioParam would push the un-attenuated product and re-boost culled loops.
+        if (!isWeaponLoop || v.trackId != null) continue;
         const base = v._baseGain != null ? v._baseGain : (v.callGain != null ? v.callGain : 0.5);
         this._setParam(v.gain.gain, Math.max(0.0001, base * wDuck), rt.ctx.currentTime, 0.04);
       }

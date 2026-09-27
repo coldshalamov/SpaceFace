@@ -5,11 +5,25 @@
 
 import { bombDef } from '../data/bombs.js';
 import { bombFieldEnvelope } from '../combat/bombDynamics.js';
+import { TABLE_HEARING_FAR_WU } from '../render/tabletopPolicy.js';
 
 export const BOMB_FIELD_LOOP_PREFIX = 'bombField_';
 export const BOMB_STATUS_LOOP_PREFIX = 'bombStatus_';
 export const BOMB_STATUS_LOOP_CAP = 8;
 export const BOMB_AUDIO_TICK_HZ = 60;
+
+// Sources past hearing attenuate to silence on every mix term — wanted loops only exist
+// inside the table so reconcile releases drifted-out voices instead of holding them floored.
+const HEARING_FAR2 = TABLE_HEARING_FAR_WU * TABLE_HEARING_FAR_WU;
+
+function playerPos(state) {
+  const entities = state && state.entities;
+  const player = entities && typeof entities.get === 'function' && state.playerId != null
+    ? entities.get(state.playerId)
+    : null;
+  const pos = player && player.pos;
+  return pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? pos : null;
+}
 
 export const BOMB_AUDIO_CUES = Object.freeze({
   bomb_frag: Object.freeze({ detonate: 'bombs.frag.burst', recipeId: 'sfx_bomb_frag_burst' }),
@@ -145,12 +159,20 @@ function liveBombList(state) {
 export function collectBombFieldLoopSpecs(state, out = []) {
   out.length = 0;
   if (!state) return out;
+  const player = playerPos(state);
+  const px = player ? player.x : 0;
+  const pz = player ? player.z : 0;
   for (const bomb of liveBombList(state)) {
     if (!bomb || bomb.alive === false || bomb.type !== 'bomb') continue;
     const data = bomb.data;
     if (!data || data.phase !== 'field') continue;
     const recipeId = bombFieldLoopRecipeId(data.bombId);
     if (!recipeId) continue;
+    const pos = bomb.pos;
+    if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
+      const dx = pos.x - px, dz = pos.z - pz;
+      if (dx * dx + dz * dz > HEARING_FAR2) continue;
+    }
     const envelope = bombFieldLoopEnvelope(state, bomb);
     if (!(envelope > 0)) continue;
     out.push({
@@ -173,8 +195,9 @@ export function collectBombStatusLoopSpecs(state, out = []) {
   if (!table || typeof table !== 'object' || !entities || typeof entities.get !== 'function') return out;
   const tick = Number.isInteger(state.tick) ? state.tick : 0;
   const player = state.playerId != null ? entities.get(state.playerId) : null;
-  const px = player && player.pos ? player.pos.x : 0;
-  const pz = player && player.pos ? player.pos.z : 0;
+  const ppos = player && player.pos;
+  const px = ppos && Number.isFinite(ppos.x) ? ppos.x : 0;
+  const pz = ppos && Number.isFinite(ppos.z) ? ppos.z : 0;
   const ranked = [];
   for (const key of Object.keys(table)) {
     const runtime = table[key];
@@ -189,6 +212,7 @@ export function collectBombStatusLoopSpecs(state, out = []) {
       const stacks = Math.max(1, Number(active.stacks) || 1);
       const dx = entity.pos.x - px;
       const dz = entity.pos.z - pz;
+      if (dx * dx + dz * dz > HEARING_FAR2) continue;
       ranked.push({
         key: bombStatusLoopKey(entity.id, statusId),
         targetId: entity.id,
