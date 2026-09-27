@@ -30,6 +30,7 @@ COLORS = {
     'paint.graphite': '#23272c',   # charcoal
     'paint.scorch': '#1e1c1b',     # the recovered hull: burnt, unlit
     'dark': '#131518',
+    'dark.pool': '#07080a',         # the still point's matte black pool
     'glass': '#06090c',            # the still pool: black mirror
     'glow_warm': '#ffb86a',        # flame body
     'glow_amber': '#ff9a2a',       # flame root and votive rings
@@ -43,6 +44,7 @@ STEP = 360.0 / N
 PYLON_TOP = 27.0
 BOWL_Z = PYLON_TOP
 TENDER_A = 266.4            # midway between two candles on the -Y side
+CROWN_K = 1.3               # votive crown scale: the flames are the landmark's plan read
 
 
 def polar(r, a_deg, z=0.0):
@@ -228,7 +230,7 @@ def build_candle(s, i):
     out = Vector((math.cos(rz), math.sin(rz), 0))
     tan = Vector((-math.sin(rz), math.cos(rz), 0))
     # stone pad and plinth: grey stone step, ivory die, charcoal cornice
-    lathe(s, f'Pad{i}', (x, y), [(WALK_Z1, 6.2), (WALK_Z1 + 0.55, 6.2), (WALK_Z1 + 0.9, 5.8)], 'paint2', segs=8,
+    lathe(s, f'Pad{i}', (x, y), [(WALK_Z1 - 0.8, 7.2), (WALK_Z1 + 0.55, 7.6), (WALK_Z1 + 0.9, 7.2)], 'paint2', segs=8,
           phase=rz + math.pi / 8, smooth=20.0)
     lathe(s, f'Plinth{i}', (x, y), [
         (WALK_Z1 + 0.9, 3.4, 'paint2'), (WALK_Z1 + 1.9, 3.4, 'paint2'), (WALK_Z1 + 1.9, 2.9), (WALK_Z1 + 6.4, 2.6),
@@ -243,33 +245,35 @@ def build_candle(s, i):
     prof += [(PYLON_TOP - 2.2, 1.05, 'stripe'), (PYLON_TOP - 1.4, 1.05, 'stripe'), (PYLON_TOP - 1.4, 1.25),
              (PYLON_TOP - 0.9, 1.25)]
     lathe(s, f'Pylon{i}', (x, y), prof, 'paint', segs=14, smooth=40.0)
-    # votive bowl: charcoal cup, amber votive ring round the lip
+    # votive bowl: charcoal cup, amber votive ring round the lip (crown scaled by CROWN_K)
+    K = CROWN_K
+    T = PYLON_TOP
     lathe(s, f'Bowl{i}', (x, y), [
-        (PYLON_TOP - 0.9, 0.9), (PYLON_TOP - 0.2, 1.8), (PYLON_TOP + 0.9, 2.7), (PYLON_TOP + 1.3, 2.9),
-        (PYLON_TOP + 1.3, 2.3, 'dark'), (PYLON_TOP + 0.7, 1.9),
+        (T - 0.9, 1.0), (T - 0.2 * K, 1.8 * K), (T + 0.9 * K, 2.7 * K), (T + 1.3 * K, 2.9 * K),
+        (T + 1.3 * K, 2.3 * K, 'dark'), (T + 0.7 * K, 1.9 * K),
     ], 'paint.graphite', segs=16, smooth=50.0)
-    F.ring(s, f'Votive{i}', (x, y, PYLON_TOP + 1.35), 2.75, 0.2, axis=(0, 0, 1), material='glow_amber', segments=20,
+    F.ring(s, f'Votive{i}', (x, y, T + 1.35 * K), 2.75 * K, 0.24, axis=(0, 0, 1), material='glow_amber', segments=20,
            sides=4)
     # the flame: amber root, warm body, a teardrop tip
-    fz = PYLON_TOP + 0.6
+    fz = T + 0.6 * K
     lathe(s, f'Flame{i}', (x, y), [
-        (fz, 0.01, 'glow_amber'), (fz + 0.5, 1.9, 'glow_amber'), (fz + 1.6, 2.35), (fz + 3.1, 2.2), (fz + 4.7, 1.5),
-        (fz + 6.1, 0.75), (fz + 7.4, 0.0),
+        (fz, 0.01, 'glow_amber'), (fz + 0.5 * K, 1.9 * K, 'glow_amber'), (fz + 1.6 * K, 2.35 * K), (fz + 3.1 * K, 2.2 * K),
+        (fz + 4.7 * K, 1.5 * K), (fz + 6.1 * K, 0.75 * K), (fz + 7.4 * K, 0.0),
     ], 'glow_warm', segs=16, smooth=80.0)
     # lantern cage: six bronze ribs from the lip curving in to a crown ring, a finial on top
     ribs = []
     for k in range(6):
         ang = rz + math.pi / 6 * (2 * k + 1)
         d = Vector((math.cos(ang), math.sin(ang), 0))
-        p0 = Vector((x, y, PYLON_TOP + 1.2)) + d * 2.95
-        p1 = Vector((x, y, PYLON_TOP + 5.2)) + d * 2.75
-        p2 = Vector((x, y, PYLON_TOP + 8.6)) + d * 0.7
+        p0 = Vector((x, y, T + 1.2 * K)) + d * 2.95 * K
+        p1 = Vector((x, y, T + 5.2 * K)) + d * 2.75 * K
+        p2 = Vector((x, y, T + 8.6 * K)) + d * 0.7 * K
         ribs += [(p0, p1), (p1, p2)]
-    beams(s, f'Cage{i}', ribs, 0.22, material='stripe')
-    F.ring(s, f'CageCrown{i}', (x, y, PYLON_TOP + 8.6), 0.7, 0.14, axis=(0, 0, 1), material='stripe', segments=10,
+    beams(s, f'Cage{i}', ribs, 0.26, material='stripe')
+    F.ring(s, f'CageCrown{i}', (x, y, T + 8.6 * K), 0.7 * K, 0.16, axis=(0, 0, 1), material='stripe', segments=10,
            sides=4)
     lathe(s, f'Finial{i}', (x, y), [
-        (PYLON_TOP + 8.5, 0.3), (PYLON_TOP + 9.4, 0.18), (PYLON_TOP + 10.4, 0.0),
+        (T + 8.5 * K, 0.35), (T + 9.4 * K, 0.2), (T + 10.4 * K, 0.0),
     ], 'stripe', segs=8)
     # underside: the pylon's counterweight finial through the keel to the under-truss
     lathe(s, f'Root{i}', (x, y), [
@@ -279,7 +283,7 @@ def build_candle(s, i):
     vot = []
     for k in range(8):
         ang = rz + math.pi / 8 + k * math.pi / 4
-        vot.append(((x + 5.0 * math.cos(ang), y + 5.0 * math.sin(ang), WALK_Z1 + 1.1), (0.45, 0.45, 0.4), ang))
+        vot.append(((x + 6.1 * math.cos(ang), y + 6.1 * math.sin(ang), WALK_Z1 + 1.15), (0.5, 0.5, 0.45), ang))
     cluster(s, f'PadVotives{i}', vot, 'glow_warm')
     # bronze family plaque on the outward face of the die, a second on the inward face
     for side, nm in ((1, 'O'), (-1, 'I')):
@@ -355,33 +359,54 @@ def build_dark_plinth(s):
             p2 = Vector((x + sx * 3.6, y + sy * 4.2, ztop + 8.5))
             claws += [(p0, p1), (p1, p2)]
     beams(s, 'Cradle', claws, 0.9, material='paint.graphite')
-    # the recovered hull fragment: a torn section of a work-fleet hauler, set on its side, burnt
+    # the recovered hull fragment: the bow section of a convoy hauler, torn off aft, burnt, its
+    # windows dark. It rides nose-up in the cradle, nose outward along the convoy's last course.
+    zc = ztop + 6.2
     F.loft(s, 'Fragment', [
-        dict(x=x - 8.4, w=2.8, ht=3.1, hb=2.6, zc=ztop + 5.8, n=2.8, y=y + 0.6),
-        dict(x=x - 7.6, w=3.6, ht=3.8, hb=3.2, zc=ztop + 5.8, n=2.9, y=y + 0.2),
-        dict(x=x - 1.0, w=4.0, ht=4.2, hb=3.4, zc=ztop + 5.9, n=3.0, y=y),
-        dict(x=x + 4.5, w=3.7, ht=3.6, hb=3.2, zc=ztop + 5.6, n=2.9, y=y - 0.4),
-        dict(x=x + 6.2, w=2.2, ht=2.9, hb=2.3, zc=ztop + 5.2, n=2.3, y=y - 1.2),
-        dict(x=x + 7.0, w=0.9, ht=1.8, hb=1.2, zc=ztop + 4.8, n=2.0, y=y - 1.8),
-    ], material='paint.scorch', back_material='dark', front_material='dark', count=32, bevel=0.05)
-    frag_pivot = Vector((x, y, ztop + 5.8))
-    # the convoy's livery survives as one faded orange band and a charcoal frame course
-    F.band(s, 'Fragment', (x - 3.2, 0, 0), (1, 0, 0), 1.3, 'hazard', inset=0.05, depth=0.06)
-    F.band(s, 'Fragment', (x + 1.6, 0, 0), (1, 0, 0), 0.6, 'paint.graphite', inset=0.05, depth=0.1)
-    # the torn aft edge: exposed frames and stringers where the hull broke
-    frames = []
+        dict(x=x - 6.6, w=3.9, ht=3.7, hb=3.1, zc=zc, n=2.9),
+        dict(x=x - 3.5, w=4.1, ht=3.9, hb=3.2, zc=zc, n=3.0),
+        dict(x=x + 1.0, w=3.8, ht=3.6, hb=3.0, zc=zc + 0.1, n=2.9),
+        dict(x=x + 4.6, w=3.0, ht=2.9, hb=2.4, zc=zc + 0.1, n=2.6),
+        dict(x=x + 7.2, w=1.7, ht=1.8, hb=1.4, zc=zc, n=2.3),
+        dict(x=x + 8.6, w=0.5, ht=0.6, hb=0.5, zc=zc - 0.1, n=2.0),
+    ], material='paint.scorch', back_material='dark', count=32, bevel=0.05)
+    frag_pivot = Vector((x, y, zc))
+    # the convoy's livery survives as one faded orange band; a charcoal frame course; dark bridge glass
+    F.band(s, 'Fragment', (x - 1.4, 0, 0), (1, 0, 0), 1.5, 'hazard', inset=0.05, depth=0.06)
+    F.band(s, 'Fragment', (x + 2.6, 0, 0), (1, 0, 0), 0.5, 'paint.graphite', inset=0.05, depth=0.1)
+    F.band(s, 'Fragment', (x + 5.9, 0, zc), (1, 0, 0), 1.5, 'glass', facing=(0.5, 0, 0.85), min_facing=0.3)
+    # the torn aft edge: jagged skin plates bent back from the break, frames and stringers exposed
     torn = []
-    for k in range(7):
-        ang = math.radians(20 + k * 46)
-        py = y + 0.6 + 3.1 * math.cos(ang)
-        pz = ztop + 5.8 + 2.8 * math.sin(ang)
-        frames.append(((x - 8.2, py, pz), (x - 11.0 + (k % 3) * 0.9, py * 1.05, pz + 0.3 * (k % 2))))
-    torn.append(beams(s, 'TornStringers', frames, 0.35, material='paint.graphite'))
-    torn.append(F.ring(s, 'TornFrame', (x - 8.3, y + 0.6, ztop + 5.8), 3.0, 0.3, axis=(1, 0, 0),
-                       material='paint.graphite', segments=18, sides=4))
-    # held aloft: the fragment rides nose-up and slightly yawed in its cradle, torn end to the centre
-    tilt = (Matrix.Translation(frag_pivot) @ Matrix.Rotation(math.radians(8), 4, 'Z') @
-            Matrix.Rotation(math.radians(-16), 4, 'Y') @ Matrix.Translation(-frag_pivot))
+    jag = []
+    for k in range(11):
+        ang = 2 * math.pi * k / 11 + 0.2
+        ry, rz_ = 3.9 * math.cos(ang), (3.7 if math.sin(ang) > 0 else 3.1) * math.sin(ang)
+        ln = (1.2, 2.8, 0.7, 2.1, 3.3, 1.0, 2.4, 0.9, 3.0, 1.6, 2.2)[k]
+        jag.append(((x - 6.6 - ln / 2, y + ry * 0.97, zc + rz_ * 0.97), (ln, 1.9, 0.14), ang))
+    bm = bmesh.new()
+    for c, sz, ang in jag:
+        g = bmesh.ops.create_cube(bm, size=1.0)
+        vs = g['verts']
+        for v in vs:
+            v.co.x *= sz[0]
+            v.co.y *= sz[1]
+            v.co.z *= sz[2]
+        bmesh.ops.rotate(bm, verts=vs, cent=(0, 0, 0), matrix=Matrix.Rotation(ang + math.pi / 2, 3, 'X'))
+        bmesh.ops.rotate(bm, verts=vs, cent=(0, 0, 0), matrix=Matrix.Rotation(0.25 * math.sin(3 * ang), 3, 'Z'))
+        bmesh.ops.translate(bm, verts=vs, vec=c)
+    torn.append(s.add(F._new_object('TornPlates', bm, s.slots(['paint.scorch']), bevel=0.0, smooth_angle=30.0)))
+    frames = []
+    for k in range(6):
+        ang = math.radians(15 + k * 60)
+        py = y + 3.3 * math.cos(ang)
+        pz = zc + 3.0 * math.sin(ang)
+        frames.append(((x - 5.0, py, pz), (x - 9.2 + (k % 3) * 0.8, py * 1.04, pz + 0.3 * (k % 2))))
+    torn.append(beams(s, 'TornStringers', frames, 0.3, material='paint.graphite'))
+    torn.append(F.ring(s, 'TornFrame', (x - 5.6, y, zc), 3.4, 0.3, axis=(1, 0, 0), material='paint.graphite',
+                       segments=20, sides=4))
+    # held aloft: nose raised and slightly yawed, torn end toward the still point
+    tilt = (Matrix.Translation(frag_pivot) @ Matrix.Rotation(math.radians(10), 4, 'Z') @
+            Matrix.Rotation(math.radians(-24), 4, 'Y') @ Matrix.Translation(-frag_pivot))
     for o in [bpy_obj('Fragment')] + torn:
         o.data.transform(tilt)
     # the flight recorder in a glass case on the plinth's inward face (towards the still point)
@@ -405,7 +430,7 @@ def build_still_point(s):
     rings, an ivory rim, three tension spokes to the ring and the bronze course line to the dark plinth."""
     lathe(s, 'Lens', (0, 0), [
         (-8.5, 0.0), (-7.6, 5.5), (-4.6, 12.0), (-1.4, 15.2), (0.2, 15.6, 'paint.graphite'), (0.7, 15.6),
-        (0.7, 13.6, 'dark'), (0.3, 13.2),
+        (0.7, 13.6, 'dark.pool'), (0.3, 13.2),
     ], 'paint.graphite', segs=56, smooth=35.0)
     F.ring(s, 'Rim', (0, 0, 0.72), 14.6, 0.42, axis=(0, 0, 1), material='paint', segments=72, sides=6)
     F.ring(s, 'RimInner', (0, 0, 0.5), 13.4, 0.14, axis=(0, 0, 1), material='stripe', segments=72, sides=4)

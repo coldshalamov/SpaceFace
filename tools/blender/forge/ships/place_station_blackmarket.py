@@ -185,7 +185,9 @@ def cliff(s, rng, name, c, r, sq, seed, n):
         boxes(s, f'{name}_CliffNeon', neon, ('glow_red', 'glow_cyan', 'glow_amber')[seed % 3])
 
 
-KEEP_OUT = [(-21.0, -3.0, 4.2), (-13.0, 3.5, 6.0), (25.0, 0.0, 6.5), (-47.0, -3.0, 5.5), (6.0, -6.0, 4.5)]
+# terrace footprints kept clear for the spire and the sign boards: (x0, x1, y0, y1, zmin, zmax)
+KEEP_OUT = [(-20.0, -12.0, -6.5, 1.5, 38, 42), (-19.0, -7.0, 3.4, 9.0, 38, 42), (19.0, 31.0, -1.6, 1.6, 30, 34),
+            (-52.0, -42.0, -5.0, -1.0, 11, 15), (4.0, 8.0, -10.0, -2.0, 13, 17)]
 
 
 def shanty(s, rng, tag, c, r, sq, flat, top=True, density=1.0):
@@ -203,7 +205,8 @@ def shanty(s, rng, tag, c, r, sq, flat, top=True, density=1.0):
             d = rng.uniform(3.0, 5.5)
             cx, cy = x + w / 2, y + d / 2
             # stay inside an ellipse of the terrace
-            clear = all((cx - kx_) ** 2 + (cy - ky_) ** 2 > kr ** 2 for kx_, ky_, kr in KEEP_OUT) or not top
+            clear = not top or not any(x0 - w / 2 < cx < x1 + w / 2 and y0 - d / 2 < cy < y1 + d / 2 and z0 <= flat <= z1
+                                       for x0, x1, y0, y1, z0, z1 in KEEP_OUT)
             if clear and ((cx - tx) / ex) ** 2 + ((cy - ty) / ey) ** 2 < 0.85 and rng.random() < 0.9 * density:
                 floors = rng.choice((1, 1, 2, 2, 3))
                 z = flat
@@ -406,12 +409,12 @@ def build():
 
     # --- neon signs: the warren's advertising, facing the flight lanes ----------------------------
     sign(s, 'SignBeak', (25.0, 0.0, 32.0), 11.0, 4.0, 'glow_red', yaw=0.0)
-    sign(s, 'SignCrown', (-13.0, 3.5, 40.0), 10.0, 3.6, 'glow_cyan', yaw=0.2)
+    sign(s, 'SignCrown', (-13.0, 4.8, 40.0), 10.0, 3.6, 'glow_cyan', yaw=0.0)
     sign(s, 'SignStern', (-47.0, -3.0, 13.0), 9.0, 3.2, 'glow_amber', yaw=-0.25)
     sign(s, 'SignCore', (6.0, -6.0, 15.0), 7.0, 2.6, 'glow_red', yaw=math.pi / 2 - 0.3)
 
     # --- the Spire: a neon-banded stack of shanty floors on the Crown, the warren's landmark from above
-    sx0, sy0, base = -21.0, -3.0, 40.0
+    sx0, sy0, base = -16.0, -2.5, 40.0
     spire, sw_, sn_ = [], [], []
     z = base - 1.0
     for k, (w, h, fin) in enumerate(((7.0, 3.6, 'paint2'), (6.0, 3.2, 'paint.rust'), (5.2, 3.2, 'stripe'),

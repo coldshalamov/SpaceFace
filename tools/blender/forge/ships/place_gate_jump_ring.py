@@ -150,6 +150,14 @@ def build():
                 sector(s, f'CoilHaz{i}{e}', R_OUT + 2.55, R_OUT + 2.75, gc + e * 0.016 - 0.006, gc + e * 0.016 + 0.006,
                        -HX - 1.2, HX + 1.2, material='hazard', steps=1, bevel=0.0)
 
+    # aperture pilots: two long emitters on the platform housings reach in toward the aperture and
+    # carry the gate's emissive anchor (SOCKET_Emissive sits on the port one)
+    for gc in (0.0, math.pi):
+        F.box(s, f'Pilot{gc:.1f}', polar(29.6, gc), (3.6, 3.0, 6.4), material='paint2', rot=(gc + math.pi / 2, 0, 0),
+              taper=0.5, bevel=0.1)
+        glow_tips.append((polar(26.4, gc), (1.4, 1.0, 1.0), (gc + math.pi / 2, 0.0, 0.0)))
+        for sx in (1, -1):
+            glow_tips.append((polar(29.4, gc, sx * 1.75), (0.1, 0.6, 4.6), (gc + math.pi / 2, 0.0, 0.0)))
     boxes(s, 'Windows', win, 'glow_warm')
     boxes(s, 'EmitterGlow', glow_tips, 'glow_cyan')
     boxes(s, 'FieldCoils', coil_glow, 'glow_cyan')

@@ -305,7 +305,7 @@ def build_drum(s):
         a = 15 + 30 * k
         p0 = polar(16.8, a, APRON_Z1)
         F.box(s, f'Buttress{k}', polar(17.4, a, APRON_Z1 + 1.1), (1.6, 1.6, 2.2), material='paint.graphite',
-              rot_z=math.radians(a), bevel=0.05, taper=0.8)
+              rot_z=math.radians(a), bevel=0.0, taper=0.8)
         del p0
 
 
@@ -495,10 +495,9 @@ def build_yards(s):
 
 def build_ring(s):
     a0, a1 = MOUTH, 360.0 - MOUTH
-    ring_body(s, 'Ring', RING_R0, RING_R1, RING_Z0, RING_Z1, a0, a1, 120, top='paint.graphite', outer='paint',
+    ring_body(s, 'Ring', RING_R0, RING_R1, RING_Z0, RING_Z1, a0, a1, 96, top='paint.graphite', outer='paint',
               inner='paint', bottom='paint.graphite', cap='paint.graphite', bevel=0.15)
     F.band(s, 'Ring', (CX, 0, 21.3), (0, 0, 1), 1.1, 'paint2', inset=0.06, depth=0.18)
-    F.band(s, 'Ring', (CX, 0, RING_Z0 + 0.35), (0, 0, 1), 0.5, 'paint.graphite', inset=0.04, depth=0.1)
     # market hall roofs: ivory sectors with charcoal gaps between them (the ring's rhythm in plan)
     n = 22
     span = (a1 - a0) / n
@@ -508,7 +507,7 @@ def build_ring(s):
         sector_plate(s, f'Hall{k}', RING_R0 + 1.2, RING_R1 - 3.6, b0, b1, RING_Z1, ROOF_Z1 - RING_Z1,
                      material='paint', steps=4, chamfer=0.3, bevel=0.05)
     # teal inlay walk round the outer edge, amber-edged
-    ring_body(s, 'TealWalk', RING_R1 - 3.0, RING_R1 - 1.2, RING_Z1, RING_Z1 + 0.2, a0 + 0.6, a1 - 0.6, 120,
+    ring_body(s, 'TealWalk', RING_R1 - 3.0, RING_R1 - 1.2, RING_Z1, RING_Z1 + 0.2, a0 + 0.6, a1 - 0.6, 96,
               top='paint2', outer='paint2', inner='paint2', bottom='paint2', cap='paint2', bevel=0.0)
     # fender ribs on the outer wall (the SCN cladding band closes on them)
     fend = []
@@ -516,7 +515,7 @@ def build_ring(s):
         a = a0 + 3.0 + k * (a1 - a0 - 6.0) / 29
         x, y, _ = polar(RING_R1 + 1.3, a)
         fend.append(((x, y, (RING_Z0 + RING_Z1) / 2 + 0.3), (2.8, 1.0, RING_Z1 - RING_Z0 + 0.4), math.radians(a)))
-    cluster(s, 'Fenders', fend, 'paint.graphite', bevel=0.06)
+    cluster(s, 'Fenders', fend, 'paint.graphite')
     # ring supports: 16 columns to the apron with knee braces (the old hub's supported bays)
     cols, braces = [], []
     for k in range(16):
@@ -593,7 +592,7 @@ def build_ring_details(s):
         rim.append(((x, y, RING_Z1 + 0.2), (0.3, 0.5, 0.25), math.radians(a)))
     cluster(s, 'RimLights', rim, 'glow_amber')
     # roof plant between halls: vents and little antenna masts
-    for k in range(0, 22, 3):
+    for k in range(0, 22, 4):
         aa = a0 + (k + 1.0) * span
         F.vent(s, f'HallVent{k}', polar(RING_R1 - 5.9, aa - span * 0.5, RING_Z1 + 0.12), (1.8, 2.2, 0.3), slats=4)
     for k, aa in enumerate((64.0, 118.0, 244.0, 298.0)):
