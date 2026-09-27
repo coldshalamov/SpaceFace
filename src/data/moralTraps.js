@@ -21,6 +21,10 @@
 //   fitsTypes   — offer types this trap can attach to
 //   revealAt    — when the reveal fires: 'mid_run' (after accept, on first scan/proximity cue)
 //   revealLine  — the one-line comms reveal (the moment of truth)
+//   patrolRevealLine — the WITNESSED variant, spoken when the reveal lands under a live law
+//                 sweep (patrol:proximity — a real cutter alongside running the hold): the
+//                 patrol is inside the fiction, and the fork stands with it there. Falls back
+//                 to revealLine when absent.
 //   choice      — { prompt, options:[{id,label,blurb,settle,consequence}] } — the binary choice
 //   settle      — 'continue': the job still runs to normal settlement (the rep mark lands now, the
 //                 pay lands at delivery — "keep the pay" is literal). 'end': the contract is broken
@@ -36,6 +40,7 @@ export const MORAL_TRAPS = Object.freeze({
     fitsTypes: Object.freeze(['smuggling_run', 'cargo_delivery']),
     revealAt: 'mid_run',
     revealLine: 'The manifest was sealed — but the crate shifted, and what you saw wasn\'t industrial equipment. These are weapons.',
+    patrolRevealLine: 'Under the patrol\'s sweep the crate shifts again — that is not industrial equipment, and the cutter alongside knows it too.',
     choice: Object.freeze({
       prompt: 'The cargo is weapons, not equipment. What do you do?',
       options: Object.freeze([
@@ -59,6 +64,7 @@ export const MORAL_TRAPS = Object.freeze({
     fitsTypes: Object.freeze(['passenger_transport']),
     revealAt: 'mid_run',
     revealLine: 'The passenger\'s credentials don\'t scan. The face on the Concord bulletin matches. They\'re a fugitive.',
+    patrolRevealLine: 'The patrol sweep pings your hull and your passenger\'s forged credentials go pale — the bulletin face is in your hold, and the cutter is alongside.',
     choice: Object.freeze({
       prompt: 'Your passenger is a wanted fugitive. What do you do?',
       options: Object.freeze([
@@ -82,6 +88,7 @@ export const MORAL_TRAPS = Object.freeze({
     fitsTypes: Object.freeze(['cargo_delivery', 'smuggling_run']),
     revealAt: 'mid_run',
     revealLine: 'You ran the standard purity check. Half these doses are inert filler. The relief cargo is counterfeit.',
+    patrolRevealLine: 'While the patrol sweep holds you, you crack a vial on the excuse: half the doses are inert filler. The relief cargo is counterfeit.',
     choice: Object.freeze({
       prompt: 'The medicine is counterfeit. What do you do?',
       options: Object.freeze([
@@ -106,6 +113,7 @@ export const MORAL_TRAPS = Object.freeze({
     fitsTypes: Object.freeze(['smuggling_run', 'cargo_delivery']),
     revealAt: 'mid_run',
     revealLine: 'The canister seals match a Pit relief batch withdrawn three cycles ago. This is rebreathed air sold back to the station that was promised it.',
+    patrolRevealLine: 'The patrol\'s sweep rattles the canister racks, and the seals it paints match a Pit relief batch withdrawn three cycles ago — rebreathed air, sold back to the station promised it.',
     choice: Object.freeze({
       prompt: 'The air was stolen from the people waiting for it. What do you do?',
       options: Object.freeze([
@@ -130,6 +138,7 @@ export const MORAL_TRAPS = Object.freeze({
     fitsTypes: Object.freeze(['cargo_delivery', 'smuggling_run']),
     revealAt: 'mid_run',
     revealLine: 'The slurry assay reads organic. Two crew from Shaft 7 are still listed as 0.7t moisture loss. This ore is the column that hides them.',
+    patrolRevealLine: 'The patrol\'s hold x-ray reads the slurry as organic. Two crew from Shaft 7 are still filed as 0.7t moisture loss — this is the column that hides them, and the cutter is watching you read it.',
     choice: Object.freeze({
       prompt: 'The cargo is the cover for two dead miners. What do you do?',
       options: Object.freeze([
