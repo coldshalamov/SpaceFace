@@ -82,6 +82,92 @@ function spacefaceShadowCastersIn( scene ) {
 
 }
 
+// SpaceFace (PERF-59): upstream walks every child of every node once per frame in
+// updateMatrixWorld — O(scene nodes) work even when nothing moved. A subtree whose every
+// node has matrixAutoUpdate === false can never recompose a local matrix, so when no
+// ancestor rewrote this frame (force === false) and the node itself has no pending
+// matrixWorldNeedsUpdate, descending into it is dead work. src/render/staticChildMatrices.js
+// marks such subtrees via userData.sfMatrixFrozen; this override skips them on clean frames.
+// Under force === true (an ancestor rewrote — e.g. the frame membrane re-origins every
+// entity root at once) the descent still happens so frozen subtrees track moving parents —
+// world-matrix output is identical to the unpatched walk either way. A manual
+// updateMatrix() on a frozen node sets matrixWorldNeedsUpdate, which defeats the skip for
+// exactly one pass — that is the dirty path. add()/attach() clear the mark up the ancestor
+// chain so children grafted under a frozen subtree are walked normally.
+Object3D.prototype.updateMatrixWorld = function ( force ) {
+
+	if ( this.matrixAutoUpdate ) this.updateMatrix();
+
+	if ( this.matrixWorldNeedsUpdate || force ) {
+
+		if ( this.matrixWorldAutoUpdate === true ) {
+
+			if ( this.parent === null ) {
+
+				this.matrixWorld.copy( this.matrix );
+
+			} else {
+
+				this.matrixWorld.multiplyMatrices( this.parent.matrixWorld, this.matrix );
+
+			}
+
+		}
+
+		this.matrixWorldNeedsUpdate = false;
+
+		force = true;
+
+	}
+
+	// make sure descendants are updated if required
+
+	const children = this.children;
+
+	for ( let i = 0, l = children.length; i < l; i ++ ) {
+
+		const child = children[ i ];
+
+		// !force (not force === false): the per-frame walk calls updateMatrixWorld() with no
+		// argument, and upstream treats undefined identically to false.
+		if ( !force && child.matrixWorldNeedsUpdate === false
+			&& child.userData.sfMatrixFrozen === true ) continue;
+
+		child.updateMatrixWorld( force );
+
+	}
+
+};
+
+const _sfBaseAdd = Object3D.prototype.add;
+const _sfBaseAttach = Object3D.prototype.attach;
+
+function spacefaceUnfreezeStaticAncestors( node ) {
+
+	for ( let p = node; p !== null; p = p.parent ) {
+
+		if ( p.userData.sfMatrixFrozen === true ) p.userData.sfMatrixFrozen = false;
+
+	}
+
+}
+
+Object3D.prototype.add = function ( /* ...objects */ ) {
+
+	const result = _sfBaseAdd.apply( this, arguments );
+	spacefaceUnfreezeStaticAncestors( this );
+	return result;
+
+};
+
+Object3D.prototype.attach = function ( object ) {
+
+	const result = _sfBaseAttach.call( this, object );
+	spacefaceUnfreezeStaticAncestors( this );
+	return result;
+
+};
+
 function WebGLAnimation() {
 
 	let context = null;

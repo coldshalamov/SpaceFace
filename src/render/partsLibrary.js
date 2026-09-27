@@ -32,7 +32,7 @@ import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
 import { attachRetroMounts } from './thruster/retroMounts.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
-import { freezeStaticChildMatrices } from './staticChildMatrices.js';
+import { freezeStaticChildMatrices, freezeStaticTransformRoot } from './staticChildMatrices.js';
 import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
 import {
@@ -2912,6 +2912,9 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   // still relies on for failure controls. The authored GLB root batches itself inside
   // buildPlacePropRoot when it arrives; the hidden substrate keeps its shared primitives intact.
   freezeStaticChildMatrices(stationed);
+  // The boundary root's own pose arrives only via mount/seat/snapshot writers, which recompose
+  // it through the matrixAutoUpdate === false dirty hook (PERF-59).
+  freezeStaticTransformRoot(stationed);
   return stationed;
 }
 
@@ -3021,6 +3024,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   const placed = attachPlaceHlod(boundary, entity);
   optimizeStaticBatchesForRoot(placed);
   freezeStaticChildMatrices(placed);
+  freezeStaticTransformRoot(placed);
   return placed;
 }
 
@@ -3251,6 +3255,7 @@ function commitAuthoredPlaceBoundary(
   // buildAuthoredPlaceRoot already batches the authored meshes before binding their LODs and
   // specialized materials. Re-batching here replaces those meshes and leaves stale LOD bindings.
   freezeStaticChildMatrices(authored.root);
+  freezeStaticTransformRoot(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
   boundary.userData.authoredReadableFallbackRetained = false;

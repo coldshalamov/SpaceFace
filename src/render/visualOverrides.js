@@ -10,7 +10,7 @@ import { buildDriftBarge } from './ships/driftBarge.js';
 import { buildQuietRaider } from './ships/quietRaider.js';
 import { buildVaelSniper } from './ships/vaelSniper.js';
 import { loadAuthoredPart } from './assetLoader.js';
-import { freezeStaticChildMatrices } from './staticChildMatrices.js';
+import { freezeStaticChildMatrices, freezeStaticTransformRoot } from './staticChildMatrices.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import {
   batchPackagedPropOpaqueMeshes,
@@ -395,6 +395,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       fitPackagedGroup(packaged, packagedFitRadius(entity, spec));
       batchPackagedPropOpaqueMeshes(packaged);
       freezeStaticChildMatrices(packaged);
+      freezeStaticTransformRoot(packaged);
       root.userData.authoredAssetState = 'compiling-pipelines';
       try {
         await prepareAuthoredVisualPipelines(packaged, admissionOptions());

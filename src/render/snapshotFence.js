@@ -221,6 +221,9 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
   mesh.position.y = (snapshot.columns.position[p + 1] || 0) - oy;
   mesh.position.z = z - oz;
   mesh.rotation.y = -2 * Math.atan2(qy, qw || 1);
+  // Static-presentation roots keep matrixAutoUpdate=false (PERF-59): compose the pose here or
+  // the walk never sees it.
+  if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
   const hull = mesh.userData && mesh.userData.hull;
   if (hull && snapshot.columns.bank && snapshot.columns.pitch) {
     let bank = snapshot.columns.bank[index] || 0;

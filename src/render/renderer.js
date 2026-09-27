@@ -5109,6 +5109,12 @@ export const render = {
     // before whichever post route draws. RenderGraph's AO path renders this scene twice per
     // frame; with the flag on, every render pass re-walked every Object3D.
     scene.matrixWorldAutoUpdate = false;
+    // PERF-59: the scene's own transform is never written, but the default compose still set
+    // matrixWorldNeedsUpdate every frame — which forced=true propagated to every child and
+    // defeated both the static-subtree prune (sfMatrixFrozen) and the matrixWorldAutoUpdate
+    // write skip. With the compose off, the per-frame walk only rewrites subtrees whose nodes
+    // actually re-posed this frame.
+    scene.matrixAutoUpdate = false;
     const dynamicBuffers = createDynamicBufferCoordinator(scene);
     this._dynamicBuffers = dynamicBuffers;
     state.render.dynamicBufferRanges = dynamicBuffers.getDiagnostics();
@@ -6008,6 +6014,7 @@ export const render = {
         const local = this._frameMembrane.toLocal(entity.pos, _meshLocalXZ);
         boundary.position.set(local.x, 0, local.z);
         boundary.rotation.y = -entity.rot;
+        if (boundary.matrixAutoUpdate === false) boundary.updateMatrix();
         if (entity.type === 'ship' || entity.type === 'station') {
           attachContactShadow(boundary, entity);
           const lodLevel = boundary.userData && boundary.userData.lod
@@ -6064,6 +6071,7 @@ export const render = {
             const local = this._frameMembrane.toLocal(entity.pos, _meshLocalXZ);
             boundary.position.set(local.x, 0, local.z);
             boundary.rotation.y = -entity.rot;
+            if (boundary.matrixAutoUpdate === false) boundary.updateMatrix();
           },
           meshes: this._meshes,
           bindPresentationMesh: (entity, boundary) => this._bindPresentationMesh(entity, boundary),
@@ -13064,6 +13072,7 @@ export const render = {
       const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
       m.position.set(local.x, 0, local.z);
       m.rotation.y = -e.rot;
+      if (m.matrixAutoUpdate === false) m.updateMatrix();
       if (e.type === 'ship' || e.type === 'station') {
         attachContactShadow(m, e);
         const lodLevel = m.userData && m.userData.lod ? m.userData.lod.level : null;
@@ -13159,6 +13168,7 @@ export const render = {
     const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
     m.position.set(local.x, 0, local.z);
     m.rotation.y = -e.rot;
+    if (m.matrixAutoUpdate === false) m.updateMatrix();
     // carry the bank pose so the rebuilt hull doesn't momentarily sit level mid-turn
     const hull = m.userData && m.userData.hull;
     if (hull && e.bank != null) hull.rotation.x = e.bank;
@@ -13989,6 +13999,7 @@ export const render = {
       const local = this._frameMembrane.toLocal(row.pos, _meshLocalXZ);
       mesh.position.set(local.x, 0, local.z);
       mesh.rotation.y = -(row.rot || 0);
+      if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
       return true;
     };
     if ((this._worldFieldPoseOriginSeq !== originSeq
