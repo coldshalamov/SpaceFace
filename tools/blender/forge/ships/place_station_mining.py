@@ -294,7 +294,8 @@ def build_cutter(s):
     F.band(s, 'Housing', (0, 0, 5.2), (0, 0, 1), 0.8, 'paint2', inset=0.05, depth=0.12)
     F.band(s, 'Housing', (-7.6, 0, 0), (1, 0, 0), 0.8, 'hazard', facing=(0, 0, 1))
     for side in (1, -1):
-        F.box(s, f'DrumArm{side}', ((DRUM_X - 8.2) / 2, side * 7.6, 0.0), (abs(DRUM_X + 8.2) + 0.6, 1.4, 3.4), material='paint2', bevel=0.1)
+        F.box(s, f'DrumArm{side}', ((DRUM_X - 8.2) / 2, side * 7.6, 0.0), (abs(DRUM_X + 8.2) + 0.6, 1.4, 3.4),
+              material='paint2', bevel=0.1)
     F.cylinder(s, 'Drum', (DRUM_X, -7.0, 0.0), (DRUM_X, 7.0, 0.0), 3.3, material='bare', segments=24, bevel=0.0,
                cap_material='paint.graphite')
     for yb in (-3.5, 0.0, 3.5):

@@ -434,7 +434,7 @@ def build_cranes(s):
 
 def build_arms(s):
     """Service arms from the walls to the hull; the welding heads throw cyan sparks."""
-    arms = [(-34.0, 1, 3.0), (-18.0, 1, -1.0), (0.0, 1, 0.0), (-40.0, -1, 0.5), (-26.0, -1, 3.5), (-8.0, -1, -1.5)]
+    arms = [(-34.0, 1, 3.0), (-18.0, 1, -1.0), (0.0, 1, -2.2), (-40.0, -1, 0.5), (-26.0, -1, 3.5), (-8.0, -1, -1.5)]
     heads = []
     for k, (x, side, z) in enumerate(arms):
         w, ht, hb, zc = hull_sec(x)

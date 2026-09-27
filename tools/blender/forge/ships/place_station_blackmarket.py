@@ -20,9 +20,11 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_station_blackmarket'
 COLORS = {
-    'paint': '#1f1c19',        # rock: dark umber stone
-    'paint2': '#151413',       # rock shadow facets / charcoal steel
-    'paint.cut': '#3a342c',    # quarried terrace floors (cut stone, lighter)
+    'paint': '#2a2622',        # grimy hull plate
+    'paint2': '#1a1918',       # charcoal steel modules
+    'ceramic': '#1f1c19',      # rock: dark umber stone (machinery texture: no panel seams on stone)
+    'ceramic.shadow': '#141312',  # rock underside facets
+    'ceramic.cut': '#3a342c',  # quarried terrace floors (cut stone, lighter)
     'stripe': '#1d4643',       # faded teal shanty paint
     'hazard': '#6a4e14',
     'dark': '#121315',
@@ -117,7 +119,7 @@ def rock(s, name, c, r, sq, flat, seed):
     if cut:
         TERRACE[name] = (min(v.x for v in cut), max(v.x for v in cut), min(v.y for v in cut), max(v.y for v in cut))
     # quarried terrace faces are cut stone (lighter) with a dark shadow ring; facets alternate tone
-    mats = ['paint', 'paint2', 'paint.cut']
+    mats = ['ceramic', 'ceramic.shadow', 'ceramic.cut']
     for f in bm.faces:
         n = f.normal
         cz_ = f.calc_center_median().z

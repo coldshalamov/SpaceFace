@@ -201,7 +201,7 @@ def build():
     kd = Vector((-0.62, 0.0, -0.78))
     kc = Vector((0.0, 0.0, -38.0)) + kd * 2.2
     F.cylinder(s, 'KeelDishHub', (0, 0, -37.0), tuple(kc), 1.8, 1.3, material='paint2', segments=20)
-    F.dish(s, 'KeelDish', tuple(kc), 9.0, 2.6, axis=tuple(kd), material='paint', face='paint2', segments=48)
+    F.dish(s, 'KeelDish', tuple(kc), 7.5, 2.3, axis=tuple(kd), material='paint2', face='paint', segments=48)
     F.light(s, 'KeelTip', (0.0, 0.0, -38.3), 'glow_red', size=0.5)
 
     # --- four truss arms in the flight plane --------------------------------------------------
