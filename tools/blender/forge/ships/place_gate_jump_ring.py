@@ -145,9 +145,15 @@ def build():
                     lst.append((polar((R_IN - 0.35 + R_OUT + 1.05) / 2, ac, sx * (HX + e / 2)),
                                 (e, R_OUT + 1.4 - R_IN + 2 * e, w), (ac, 0.0, 0.0)))
         # hazard band across the housing's outer face
+        # louvred vent in the housing's outer face
+        ro = R_OUT + (2.6 if big else 1.8)
+        hatches.append((polar(ro + 0.02, gc), (9.0, 2.2, 0.12), (gc - math.pi / 2, 0.0, 0.0)))
+        for k in range(7):
+            xk = -3.9 + k * 1.3
+            coil_clamp.append((polar(ro + 0.1, gc, xk), (0.35, 2.0, 0.14), (gc - math.pi / 2, 0.0, 0.0)))
         if big:
             for e in (-1, 1):
-                sector(s, f'CoilHaz{i}{e}', R_OUT + 2.55, R_OUT + 2.75, gc + e * 0.016 - 0.006, gc + e * 0.016 + 0.006,
+                sector(s, f'CoilHaz{i}{e}', R_OUT + 2.55, R_OUT + 2.75, gc + e * 0.032 - 0.005, gc + e * 0.032 + 0.005,
                        -HX - 1.2, HX + 1.2, material='hazard', steps=1, bevel=0.0)
 
     # aperture pilots: two long emitters on the platform housings reach in toward the aperture and
