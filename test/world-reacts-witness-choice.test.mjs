@@ -623,8 +623,12 @@ test('ordinary-holder cleanup: holder with no target clears witness state and re
     sectorId: 'sector_helios_prime',
   });
 
-  const holder = h.responders[0];
-  assert.equal(holder.data.ai.witnessRole, 'hold');
+  // With fewer ambient responders than the cap a reserve launches on scene and can be the
+  // nearest unit: the holder is whoever the split picked, not a fixed harness slot.
+  const holder = incident.responderIds
+    .map((id) => h.state.entities.get(id))
+    .find((e) => e && e.data && e.data.ai && e.data.ai.witnessRole === 'hold');
+  assert.ok(holder, 'one responder must hold the wreck');
   assert.equal(holder.data.ai.securityTargetId, null);
 
   // Threat clear: attacker destroyed
@@ -976,7 +980,11 @@ test('repeated wreck and pod events: duplicate wreck and subsequent pod events d
   });
 
   assert.equal(h.events.filter((e) => e.name === 'law:witnessChoice').length, 1);
-  const holder = h.responders[0];
+  // Same as above: a scene-launched reserve may be the nearest unit and hold.
+  const holder = incident.responderIds
+    .map((id) => h.state.entities.get(id))
+    .find((e) => e && e.data && e.data.ai && e.data.ai.witnessRole === 'hold');
+  assert.ok(holder, 'one responder must hold the wreck');
   const initialStartedTick = holder.data.ai.activity.startedTick;
   assert.deepEqual(holder.data.ai.activity.anchor, { x: 150, z: 0 });
 

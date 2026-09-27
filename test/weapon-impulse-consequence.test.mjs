@@ -31,8 +31,17 @@ test('every canonical weapon declares a finite provenance-bearing impulse identi
     'PQ-009 application must have one mutable Tier-B combat flag');
   assert.ok(WEAPONS.length > 0, 'weapon catalog must not be empty');
   for (const weapon of WEAPONS) {
-    assert.ok(Number.isFinite(weapon.impulsePerHit) && weapon.impulsePerHit > 0,
-      `${weapon.id} must declare a positive impulsePerHit`);
+    // Gravity wellheads are the one sustained-impulse weapon: they never detonate, so their
+    // identity is the pull (mineWellPull) plus the same provenance law — never a fake blast
+    // momentum (65111ed04; same law as scripts/check-impulse-authority.mjs).
+    const isGravityWell = weapon.deployKind === 'gravity_well';
+    if (isGravityWell) {
+      assert.ok(Number.isFinite(weapon.mineWellPull) && weapon.mineWellPull > 0,
+        `${weapon.id} must declare a positive mineWellPull`);
+    } else {
+      assert.ok(Number.isFinite(weapon.impulsePerHit) && weapon.impulsePerHit > 0,
+        `${weapon.id} must declare a positive impulsePerHit`);
+    }
     assert.ok(Number.isFinite(weapon.tumbleTorque) && weapon.tumbleTorque >= 0,
       `${weapon.id} must declare a finite tumbleTorque`);
     assert.match(String(weapon.impulseProvenance || ''), /^[a-z0-9_]+$/,

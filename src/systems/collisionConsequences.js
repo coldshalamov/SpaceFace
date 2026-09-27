@@ -188,11 +188,15 @@ export const collisionConsequences = {
     const targetHullMax = life?.hull ?? Math.max(0, Number(target.hullMax) || 0);
     const targetHullBefore = Math.max(0, Number(target.hull) || 0);
     // A ram/flail identity check must read the CONTACT's own causal attribution: while towing
-    // (or after any recorded impulse) the rope's freshest provenance would otherwise shadow the
-    // direct-contact fact and silently disarm the strike verb.
+    // the rope's freshest provenance would otherwise shadow the direct-contact fact and silently
+    // disarm the strike verb. Rope-family records ride a body the tether is already working —
+    // they are not this contact's fresh cause. Any other recorded impulse (a gun hit, a blast,
+    // a well pull) IS the real cause and outranks the plate.
     const explicitContact = explicitContactProvenance(payload, tick);
     const ramProvenance = explicitContact
-      && explicitContact.actorId === state.playerId ? explicitContact : causalProvenance;
+      && explicitContact.actorId === state.playerId
+      && causalProvenanceShadowsOnlyRope(causalProvenance)
+        ? explicitContact : causalProvenance;
     const ramPlate = playerRamPlateImpact(other, state.playerId, tick, ramProvenance, state);
     const observed=evidenceForConsequence({tick,targetId:target.id,otherId:other.id,
       surface:['asteroid','planet'].includes(other.type)?'terrain':other.type==='station'?'structure':'craft',otherMass:positiveMass(other)},state);
@@ -436,6 +440,18 @@ function snapshotContactPayload(payload, tick) {
     snap.preSolveClosingSpeed = payload.preSolveClosingSpeed;
   }
   return Object.freeze(snap);
+}
+
+// Tags/weapon ids whose impulse records ride a body the rope or the plate itself is already
+// working; none of them is a fresh contact's real cause, so they must not shadow direct_contact
+// for the ram/flail identity check. Every other recorded provenance stays authoritative.
+const RAM_SHADOW_ROPE_TAG = /^(massline|rope|tether|sling|whip|bridle|twin_bridle|monofilament|snarl|tow_flail|flail|ram_plate)/;
+const RAM_SHADOW_ROPE_WEAPON = new Set(['massline', 'mod_ram_plate', 'mod_mass_flail_rig']);
+
+function causalProvenanceShadowsOnlyRope(causalProvenance) {
+  if (!causalProvenance || causalProvenance.tag === 'direct_contact') return true;
+  if (RAM_SHADOW_ROPE_WEAPON.has(causalProvenance.weaponId)) return true;
+  return RAM_SHADOW_ROPE_TAG.test(String(causalProvenance.tag || ''));
 }
 
 function explicitContactProvenance(payload, tick) {

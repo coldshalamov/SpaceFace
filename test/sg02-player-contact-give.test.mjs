@@ -325,10 +325,12 @@ test('physics adapter forwards appliedPlayerDeltaV without aliasing raw playerDe
   const prevSg02 = physics._sg02;
   const prevBus = physics.bus;
   const prevScratch = physics._pairMaterialScratch;
+  const prevSg02Scratch = physics._sg02ImpactOptionsScratch;
   physics.bus = bus;
   physics._pairMaterialScratch = {
     push: 1, restitution: 0.18, tangentDamping: 0.04, impactScale: 1,
   };
+  physics._sg02ImpactOptionsScratch = { normal: { x: 0, z: 0 } };
   physics._sg02 = {
     drainContactImpacts() {
       return [{
@@ -359,6 +361,7 @@ test('physics adapter forwards appliedPlayerDeltaV without aliasing raw playerDe
     physics._sg02 = prevSg02;
     physics.bus = prevBus;
     physics._pairMaterialScratch = prevScratch;
+    physics._sg02ImpactOptionsScratch = prevSg02Scratch;
   }
 
   assert.equal(payloads.length, 1);
@@ -390,8 +393,10 @@ test('a receipt with no measured owner angles carries no invented zero', () => {
   const prevSg02 = physics._sg02;
   const prevBus = physics.bus;
   const prevScratch = physics._pairMaterialScratch;
+  const prevSg02Scratch = physics._sg02ImpactOptionsScratch;
   physics.bus = bus;
   physics._pairMaterialScratch = { push: 1, restitution: 0.18, tangentDamping: 0.04, impactScale: 1 };
+  physics._sg02ImpactOptionsScratch = { normal: { x: 0, z: 0 } };
   physics._sg02 = {
     drainContactImpacts() {
       return [{ aId: 7, bId: 8, impulse: 12, pos: { x: 3, z: 0 }, normal: { x: 1, z: 0 } }];
@@ -403,6 +408,7 @@ test('a receipt with no measured owner angles carries no invented zero', () => {
     physics._sg02 = prevSg02;
     physics.bus = prevBus;
     physics._pairMaterialScratch = prevScratch;
+    physics._sg02ImpactOptionsScratch = prevSg02Scratch;
   }
   assert.equal(payloads.length, 1);
   // A hole must stay a hole: an unmeasured angle that arrived as 0 would read as "the solver asked

@@ -71,6 +71,14 @@ test('the catalog holds exactly three visibly distinct starters', () => {
   }
   assert.equal(ids.size, 3, 'starter ids are unique');
   assert.equal(shipIds.size, 3, 'starters fly three different hulls');
+  const lines = NEW_GAME_STARTERS.map((s) => s.line);
+  assert.equal(new Set(lines).size, 3, 'each starter has its own sentence');
+  assert.match(lines[0], /swinger/i);
+  assert.match(lines[1], /tow|winch/i);
+  assert.match(lines[2], /ram plate/i);
+  const screen = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
+  assert.match(screen, /hullBlurb\.textContent = starter\.line/,
+    'the card the player reads must be the starter sentence, not a blank');
 });
 
 test('every starter fit is legal, T0-available, and inside the hull budgets', () => {

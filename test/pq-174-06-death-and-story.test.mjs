@@ -351,7 +351,7 @@ test('PQ-174.06 bar 3: best chain, moments, build and build code all come from l
   for (const moment of resultA.moments) {
     assert.match(moment.text, /\d/, `moment "${moment.text}" carries its number`);
   }
-  assert.match(resultA.moments.map((m) => m.text).join('\n'), /Best chain 11/);
+  assert.match(resultA.moments.map((m) => m.text).join('\n'), /Best kill chain 11/);
   assert.match(resultA.buildName, /Pierce/, 'the build is the converged draft');
   assert.ok(resultA.buildCode.includes('W2:Volume') && resultA.buildCode.includes('W3:Pierce'),
     `shareable code reads the draft order (${resultA.buildCode})`);
@@ -370,7 +370,7 @@ test('PQ-174.06 bar 3: best chain, moments, build and build code all come from l
   const lines = storySentences(resultA);
   assert.ok(lines.some((line) => /Maw Brawler/.test(line)), 'the cause is told');
   assert.ok(lines.some((line) => /ms of warning/.test(line)), 'the tell is told with its lead');
-  assert.ok(lines.some((line) => /Best chain 11/.test(line)), 'the best chain is told');
+  assert.ok(lines.some((line) => /Best kill chain 11/.test(line)), 'the best kill chain is told');
   assert.ok(lines.some((line) => /Build code W2:Volume \/ W3:Pierce/.test(line)), 'the code is told');
 });
 
@@ -385,7 +385,7 @@ test('PQ-174.06: the mounted plate carries the story band from live telemetry', 
   const { lines } = mountResults(resultA);
   const text = lines.join('\n');
   assert.ok(lines.includes('The run'), 'the story band leads the plate');
-  assert.ok(text.includes('Best chain 11 on wave 2'), 'the best chain with its wave');
+  assert.ok(text.includes('Best kill chain 11 on wave 2'), 'the best kill chain with its wave');
   assert.ok(text.includes('12 kills'), 'a moment with its number');
   assert.ok(text.includes('You converged on'), 'the converged build');
   assert.ok(text.includes('Build code W2:Volume / W3:Pierce'), 'the shareable code');

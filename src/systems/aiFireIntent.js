@@ -20,6 +20,15 @@ const RECENT_DEFENSIVE_DAMAGE_TICKS = 180;
 const FIRE_WINDOW_ADMISSION = new WeakMap();
 const PD_CONTACT_ID_SCRATCH = [];
 const PD_TABLE_RADIUS_PAD_WU = 80;
+// Perf memo for recentlyDamagedBy: the backward walk over the combat trace costs O(events in the
+// 180-tick window) per armed actor per tick, and the window holds thousands of entries during a
+// busy swarm wave. The memo is INCREMENTAL: a cached `false` stands while trace.nextSeq is
+// unchanged (no append since it was computed — front-splice cannot fake that), and a cached
+// `true` stands while its proving event is inside the window and still retained (seq above
+// trace.dropped). Otherwise only the appended tail (seq above the answer's watermark) is
+// rescanned. Answers are therefore always identical to a full fresh walk.
+const RECENT_DAMAGE_MEMOS = new WeakMap();
+const RECENT_DAMAGE_MEMO_CAP = 512;
 
 export function applyAIFiringIntent(decision, state) {
   if (!decision || !state || !state.entities || typeof state.entities.get !== 'function') return;
@@ -77,6 +86,8 @@ export function applyAIFiringIntent(decision, state) {
   }
   const ai = data.ai || {};
   const recentlyDamaged = recentlyDamagedBy(state, e.id, engagementTarget.id);
+  // Pure read this tick; both doctrine and engagement gates consume the same value.
+  const playerWanted = isPlayerWanted(state);
   // SCREEN activity.targetId names the defended charge, so it is not an offensive target lock.
   // Map the selected intercept into the ordinary ENGAGE doctrine gate while preserving SCREEN
   // activity/ROE semantics and the final engagement authority below.
@@ -90,7 +101,7 @@ export function applyAIFiringIntent(decision, state) {
     objectiveKind,
     target: engagementTarget,
     self: e,
-    wanted: isPlayerWanted(state),
+    wanted: playerWanted,
     recentlyDamaged,
   });
   const authorization = permitted ? authorizeAIEngagement({
@@ -99,7 +110,7 @@ export function applyAIFiringIntent(decision, state) {
     target: engagementTarget,
     tick: state.tick,
     objectiveReason: objective && objective.reason,
-    wanted: isPlayerWanted(state),
+    wanted: playerWanted,
     recentlyDamaged,
   }) : null;
   if (!permitted || !authorization || !authorization.ok) {
@@ -320,10 +331,19 @@ function clearFire(intent, reason = null, blockerId = null) {
 
 function admittedFireWindow(entity, doctrine, action) {
   if (!doctrine) return true;
-  const key = `${doctrine.doctrineId || ''}|${doctrine.cycle || 0}|${doctrine.phase || ''}|${doctrine.phaseStartedTick ?? ''}`;
   let runtime = FIRE_WINDOW_ADMISSION.get(entity);
-  if (!runtime || runtime.key !== key) {
-    runtime = { key, admitted: false };
+  // The identity key is compared field-by-field instead of being rebuilt as a template string
+  // every call; the four stringified fields are exactly the segments the old key joined.
+  const doctrineId = String(doctrine.doctrineId || '');
+  const cycle = String(doctrine.cycle || 0);
+  const phase = String(doctrine.phase || '');
+  const phaseStartedTick = String(doctrine.phaseStartedTick ?? '');
+  if (!runtime
+    || runtime.doctrineId !== doctrineId
+    || runtime.cycle !== cycle
+    || runtime.phase !== phase
+    || runtime.phaseStartedTick !== phaseStartedTick) {
+    runtime = { doctrineId, cycle, phase, phaseStartedTick, admitted: false };
     FIRE_WINDOW_ADMISSION.set(entity, runtime);
   }
   if (action && action.actionId) runtime.admitted = true;
@@ -340,18 +360,67 @@ function mutableIntent(data) {
 
 function recentlyDamagedBy(state, entityId, targetId) {
   const tick = Number.isInteger(state && state.tick) ? state.tick : 0;
-  const events = state.combat && state.combat.trace && Array.isArray(state.combat.trace.events)
-    ? state.combat.trace.events
-    : [];
+  const trace = state.combat && state.combat.trace;
+  const events = trace && Array.isArray(trace.events) ? trace.events : [];
+  // nextSeq only moves on appendCombatTrace, so it is an exact "any append since" watermark even
+  // when capacity splice keeps events.length pinned; dropped counts front-evicted events, so a
+  // retained proof is exactly `proofSeq > dropped`. An events.length sentinel can do neither —
+  // at capacity it stays constant while content shifts and cannot see eviction at all.
+  const nextSeq = trace && Number.isInteger(trace.nextSeq) ? trace.nextSeq : null;
+  const dropped = trace && Number.isInteger(trace.dropped) ? trace.dropped : 0;
+  let memo = RECENT_DAMAGE_MEMOS.get(state);
+  if (!memo || memo.events !== events) {
+    memo = { events, byPair: new Map() };
+    RECENT_DAMAGE_MEMOS.set(state, memo);
+  }
+  let perTarget = memo.byPair.get(entityId);
+  if (!perTarget) {
+    perTarget = new Map();
+    if (memo.byPair.size < RECENT_DAMAGE_MEMO_CAP) memo.byPair.set(entityId, perTarget);
+  }
+  const entry = perTarget.get(targetId);
+  if (entry) {
+    if (entry.answer) {
+      // A `true` holds until the proving event ages out of the window — and only while the
+      // proof is still retained; a fresh walk cannot find an evicted event.
+      if (tick <= entry.untilTick && entry.proofSeq > dropped) return true;
+    } else if (entry.seq === nextSeq) {
+      return false;
+    }
+  }
+  // Scan the appended delta: events with seq >= entry.seq are exactly the post-answer tail.
+  // Everything below is covered by the stored answer — a `false` found no in-window proof there
+  // (events only age further out), and the newest in-window match is always the recorded proof,
+  // so no older match below can outlive it.
+  const coveredSeq = entry && Number.isInteger(entry.seq) ? entry.seq : -Infinity;
+  let result = false;
+  let resultUntilTick = -1;
+  let resultProofSeq = -1;
   for (let index = events.length - 1; index >= 0; index--) {
     const event = events[index];
     if (!event) continue;
+    if (Number.isInteger(event.seq) && event.seq < coveredSeq) break;
     const eventTick = Number.isInteger(event.tick) ? event.tick : tick;
     if (tick - eventTick > RECENT_DEFENSIVE_DAMAGE_TICKS) break;
     if (event.kind !== 'damage.routed') continue;
-    if (event.targetId === entityId && (targetId == null || event.attackerId === targetId)) return true;
+    if (event.targetId === entityId && (targetId == null || event.attackerId === targetId)) {
+      result = true;
+      resultUntilTick = eventTick + RECENT_DEFENSIVE_DAMAGE_TICKS;
+      resultProofSeq = Number.isInteger(event.seq) ? event.seq : -1;
+      break;
+    }
   }
-  return false;
+  if (!result && entry && entry.answer && tick <= entry.untilTick && entry.proofSeq > dropped) {
+    // The stored proof is still retained and inside the window and the tail held no newer
+    // proof — the old `true` stands.
+    result = true;
+    resultUntilTick = entry.untilTick;
+    resultProofSeq = entry.proofSeq;
+  }
+  perTarget.set(targetId, result
+    ? { answer: true, seq: nextSeq, untilTick: resultUntilTick, proofSeq: resultProofSeq }
+    : { answer: false, seq: nextSeq, untilTick: -1, proofSeq: -1 });
+  return result;
 }
 
 function leadAngleFor(shooter, tgt, weapons) {
