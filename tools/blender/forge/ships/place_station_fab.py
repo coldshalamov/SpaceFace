@@ -290,6 +290,24 @@ def build_shop_roof(s):
                    segments=6, bevel=0.0)
         F.box(s, f'JibHook{k}', (13.4, y * 0.72, 6.8), (0.8, 0.8, 0.5), material='hazard', bevel=0.0)
     F.panel(s, 'Shop', (27.0, 0.0), (6.0, 12.0), 'dark', inset=0.08, depth=-0.1)
+    # two roof pads for yard shuttles, one occupied
+    for k, y in enumerate((-11.4, 11.4)):
+        F.box(s, f'Pad{k}', (27.0, y, 6.62), (5.6, 5.6, 0.2), material='paint.graphite', bevel=0.0)
+        F.box(s, f'PadRing{k}', (27.0, y, 6.74), (4.4, 4.4, 0.06), material='hazard', bevel=0.0)
+        F.box(s, f'PadCore{k}', (27.0, y, 6.78), (3.8, 3.8, 0.06), material='paint.graphite', bevel=0.0)
+        for cx in (-2.6, 2.6):
+            for cy in (-2.6, 2.6):
+                F.light(s, f'PadLight{k}{cx:+.0f}{cy:+.0f}', (27.0 + cx, y + cy, 6.8), 'glow_green', size=0.3)
+    F.loft(s, 'Shuttle', [
+        dict(x=25.0, w=0.8, ht=0.7, hb=0.6, zc=7.8, n=2.4, y=-11.4),
+        dict(x=25.8, w=1.2, ht=0.9, hb=0.8, zc=7.8, n=2.6, y=-11.4),
+        dict(x=28.4, w=1.2, ht=0.9, hb=0.8, zc=7.8, n=2.6, y=-11.4),
+        dict(x=29.6, w=0.5, ht=0.4, hb=0.4, zc=7.7, n=2.2, y=-11.4),
+    ], material='paint', belly='paint.graphite', back_material='dark', count=24, bevel=0.0)
+    F.band(s, 'Shuttle', (29.0, -11.4, 7.8), (1, 0, 0), 0.7, 'glass', facing=(0.6, 0, 0.8), min_facing=0.35)
+    F.band(s, 'Shuttle', (26.8, -11.4, 0), (1, 0, 0), 0.4, 'stripe')
+    for e in (-0.8, 0.8):
+        F.box(s, f'ShuttleSkid{e:+.0f}', (27.2, -11.4 + e, 6.95), (2.4, 0.2, 0.3), material='gunmetal', bevel=0.0)
     F.panel(s, 'Shop', (34.5, 0.0), (2.0, 30.0), 'paint', inset=0.06, depth=0.08)
 
 

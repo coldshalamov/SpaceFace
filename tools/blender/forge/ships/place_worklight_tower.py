@@ -19,7 +19,7 @@ from mathutils import Vector  # noqa: E402
 
 SHIP_ID = 'place_worklight_tower'
 COLORS = {
-    'paint': '#8c6c1e',       # safety yellow (work fleet)
+    'paint': '#7a5c18',       # safety yellow (work fleet)
     'paint2': '#23282e',      # charcoal
     'stripe': '#23282e',
     'hazard': '#b88a22',
@@ -52,7 +52,7 @@ def flood(s, name, pos, aim, r=0.3, lens='glow_warm'):
            sides=5)
     up = Vector((0, 0, 1))
     F.sweep(s, name + 'Visor', [tuple(back + up * r * 1.0), tuple(front + a * 0.15 + up * r * 1.12)], r * 2.1, 0.05,
-            material='paint', bevel=0.0)
+            material='paint2', bevel=0.0)
     F.box(s, name + 'Back', tuple(back - a * 0.05), (0.16, 0.16, 0.16), material='dark', bevel=0.0)
 
 

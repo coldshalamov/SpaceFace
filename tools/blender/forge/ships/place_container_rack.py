@@ -22,10 +22,10 @@ COLORS = {
     'paint2': '#23282e',         # charcoal rack steel
     'stripe': '#9c7a2a',
     'hazard': '#b88a22',
-    'paint.teal': '#17494a',     # container colours
-    'paint.ochre': '#6a4a18',
-    'paint.rust': '#4c201c',
-    'paint.blue': '#1f3a5c',
+    'paint.teal': '#113a3a',     # container colours
+    'paint.ochre': '#5a3e14',
+    'paint.rust': '#3e1a17',
+    'paint.blue': '#182f4c',
 }
 
 CL, CW, CH = 6.0, 3.3, 3.1          # container length (along y), width (x), height
@@ -150,6 +150,12 @@ def build():
     for (c, lv), fin in fills.items():
         cz = Z_FLOORS[lv] + 0.14 + CH / 2
         container(s, f'Box{c}{lv}', COLS[c], cz, fin)
+
+    # bay occupancy lamps on the approach-side beams: green = loaded, amber = free
+    for c, cx in enumerate(COLS):
+        for lv in range(3):
+            lit = 'glow_green' if (c, lv) in fills else 'glow_amber'
+            F.light(s, f'BayLamp{c}{lv}', (cx, UY + 0.16, Z_FLOORS[lv] + 0.02), lit, size=0.16)
 
     # --- ladders at both ends -----------------------------------------------------------------------
     ladder(s, 'LadE', 6.15)

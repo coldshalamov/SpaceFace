@@ -178,6 +178,8 @@ def build():
     for sy in (-1, 1):
         F.box(s, f'LampSide{sy}', (HX + 0.05, sy * 0.81, (ARM_Z0 + ARM_Z1) / 2), (0.6, 0.05, 0.9),
               material='glow_cyan', bevel=0.0)
+    F.light(s, 'TipPort', (HX + 0.35, 0.82, ARM_Z1 + 0.25), 'glow_red', size=0.14)
+    F.light(s, 'TipStbd', (HX + 0.35, -0.82, ARM_Z1 + 0.25), 'glow_green', size=0.14)
     F.beacon(s, 'TipBeacon', (HX - 0.1, 0, ARM_Z1 + 0.3), finish='glow_amber', size=0.42)
     F.box(s, 'LampUnder', (HX, 0, ARM_Z0 - 0.02), (0.7, 1.0, 0.05), material='glow_cyan', bevel=0.0)
     s.detail = 2

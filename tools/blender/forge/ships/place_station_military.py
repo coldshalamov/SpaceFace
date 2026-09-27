@@ -22,7 +22,7 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_station_military'
 COLORS = {
-    'paint': '#1f2935',       # Coalition blue-slate (brief #39434f, deepened: the key light lifts ~2.5x)
+    'paint': '#243142',       # Coalition blue-slate (brief #39434f, deepened: the key light lifts ~2.5x)
     'paint2': '#10141a',      # dark armour: battle-deck, glacis, keel
     'stripe': '#6e1812',      # warning red
     'hazard': '#6e5214',
@@ -191,7 +191,7 @@ def build():
     # --- upper keep: stepped tiers, each a chamfered armour slab -------------------------------
     for name, x0, x1, hw, c, z0, th, ch in UPPER:
         F.plate(s, name, octo(x0, x1, hw, c), z0=z0, thickness=th, material='paint', chamfer=ch,
-                side_material='paint', top_material='paint.pale' if name == 'T3' else None)
+                side_material='paint', top_material={'T1': 'paint', 'T2': 'paint2', 'T3': 'paint.pale'}[name])
     for name, x0, x1, hw, c, z0, th, ch in LOWER:
         F.plate(s, name, octo(x0, x1, hw, c), z0=z0, thickness=th, material='paint2', chamfer_bottom=ch,
                 side_material='paint')
@@ -218,10 +218,10 @@ def build():
             F.box(s, f'RadFin{sy}{k}', (-39.2, yy, 0.0), (1.8, 0.16, 9.0), material='gunmetal', bevel=0.0)
 
     # --- main battery: heavy turrets on the bow terraces, superfiring --------------------------
-    turret(s, 'Main1', 21.0, 0.0, 7.2, 1.45)          # on the hangar roof
-    turret(s, 'Main2', 12.8, 0.0, 17.1, 1.45)         # T1 bow terrace, fires over Main1
-    F.cylinder(s, 'Main3Barbette', (5.4, 0, 25.0), (5.4, 0, 25.6), 2.1, material='paint2', segments=28, bevel=0.0)
-    turret(s, 'Main3', 5.4, 0.0, 25.7, 1.3)           # T2 bow terrace, raised
+    turret(s, 'Main1', 21.6, 0.0, 7.2, 1.95)          # on the hangar roof
+    turret(s, 'Main2', 13.2, 0.0, 17.1, 1.8)         # T1 bow terrace, fires over Main1
+    F.cylinder(s, 'Main3Barbette', (5.2, 0, 25.0), (5.2, 0, 25.6), 2.4, material='paint2', segments=28, bevel=0.0)
+    turret(s, 'Main3', 5.2, 0.0, 25.7, 1.6)           # T2 bow terrace, raised
     turret(s, 'Gate1', 22.5, 11.5, 8.1, 1.0, barrels=2, yaw=0.35, housing='paint2', sight=False)
     turret(s, 'Gate1S', 22.5, -11.5, 8.1, 1.0, barrels=2, yaw=-0.35, housing='paint2', sight=False)
     # broadside batteries on the bastions, facing outboard; point defence on the belt terrace

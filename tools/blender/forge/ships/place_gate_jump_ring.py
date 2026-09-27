@@ -20,10 +20,10 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_gate_jump_ring'
 COLORS = {
-    'paint': '#847e6f',       # Helios ivory
+    'paint': '#6e695c',       # Helios ivory
     'paint2': '#23282e',      # charcoal: coil housings, clamp towers
     'stripe': '#1b4d5e',      # Massline blue
-    'hazard': '#8c6a1a',
+    'hazard': '#6e5214',
     'dark': '#14171b',
 }
 
@@ -81,6 +81,7 @@ def build():
     s = F.Ship(SHIP_ID, COLORS)
     step = 2 * math.pi / N_SEG
     win, strips, glow_tips = [], [], []
+    coil_glow, coil_clamp, ribs = [], [], []
 
     for i in range(N_SEG):
         gc = i * step                      # gap centre (coil housing); 0 = port platform, 90 = tower
@@ -103,8 +104,7 @@ def build():
             # panel seams on the faces: raised charcoal ribs
             for t in (0.33, 0.66):
                 a = a0 + (a1 - a0) * t
-                boxes(s, f'Rib{i}{sx}{t}', [(polar(37.8, a, sx * (HX + 0.1)), (0.3, 0.5, 4.6),
-                                             (a - math.pi / 2, 0.0, 0.0))], 'paint2', bevel=0.03)
+                ribs.append((polar(37.8, a, sx * (HX + 0.1)), (0.3, 0.5, 4.6), (a - math.pi / 2, 0.0, 0.0)))
         # crew corridor: two rows of lit windows round the outer cap
         n = 7
         for k in range(n):
@@ -124,18 +124,28 @@ def build():
         big = i in (0, 3, 6, 9)
         sector(s, f'Coil{i}', R_IN - 0.8, R_OUT + (2.6 if big else 1.8), gc - GAP / 2 - 0.02, gc + GAP / 2 + 0.02,
                -HX - 1.6, HX + 1.6, material='paint2', steps=3, bevel=0.15)
+        # field coils: rectangular collars wound round the ring body either side of the housing,
+        # glowing cyan between charcoal clamp collars
         for d in (-1, 1):
-            ac = gc + d * (GAP / 2 + math.radians(1.6))
-            F.ring(s, f'Field{i}{d}', polar(36.6, ac), 4.9, 0.32, axis=(0, -math.sin(ac), math.cos(ac)),
-                   material='glow_cyan', segments=28, sides=6)
-            F.ring(s, f'Wrap{i}{d}', polar(36.6, gc + d * (GAP / 2 + math.radians(3.0))), 5.0, 0.4,
-                   axis=(0, -math.sin(gc), math.cos(gc)), material='gunmetal', segments=28, sides=6)
+            for k, (off, fin) in enumerate(((1.4, 'glow'), (2.6, 'glow'), (3.8, 'clamp'))):
+                ac = gc + d * (GAP / 2 + math.radians(off))
+                lst = coil_glow if fin == 'glow' else coil_clamp
+                e = 0.28 if fin == 'glow' else 0.45
+                w = 0.55 if fin == 'glow' else 1.0
+                lst += [(polar(R_OUT + 1.05 + e / 2, ac), (2 * HX + 2 * e, e, w), (ac, 0.0, 0.0)),
+                        (polar(R_IN - e / 2 - 0.35, ac), (2 * HX + 2 * e, e, w), (ac, 0.0, 0.0))]
+                for sx in (1, -1):
+                    lst.append((polar((R_IN - 0.35 + R_OUT + 1.05) / 2, ac, sx * (HX + e / 2)),
+                                (e, R_OUT + 1.4 - R_IN + 2 * e, w), (ac, 0.0, 0.0)))
         # hazard band across the housing's outer face
         sector(s, f'CoilHaz{i}', R_OUT + (2.55 if big else 1.75), R_OUT + (2.8 if big else 2.0), gc - 0.02,
                gc + 0.02, -HX - 1.2, HX + 1.2, material='hazard', steps=2, bevel=0.0)
 
     boxes(s, 'Windows', win, 'glow_warm')
     boxes(s, 'EmitterGlow', glow_tips, 'glow_cyan')
+    boxes(s, 'FieldCoils', coil_glow, 'glow_cyan')
+    boxes(s, 'CoilClamps', coil_clamp, 'paint2', bevel=0.0)
+    boxes(s, 'FaceRibs', ribs, 'paint2', bevel=0.0)
     # aperture rims: two thin light lines on the inner edge of the ring
     for sx in (1, -1):
         F.ring(s, f'ApertureRim{sx}', (sx * (HX - 0.5), 0, 0), R_IN - 0.45, 0.18, axis=(1, 0, 0),

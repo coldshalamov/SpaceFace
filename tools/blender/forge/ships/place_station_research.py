@@ -190,12 +190,19 @@ def build():
         a = math.pi / 4 + i * math.pi / 2
         trusses.append((tuple(sec), tuple(sec + (sx * math.cos(a) + sy_ * math.sin(a)) * 5.3)))
     F.light(s, 'ScopeTip', tuple(top_c + axis * 0.9 + sx * 5.4), 'glow_red', size=0.5)
-    # deep-space dish under the keel
-    F.dish(s, 'KeelDish', (0, 0, -41.0), 11.0, 3.2, axis=(0, 0, -1), material='paint', face='paint2', segments=48)
-    F.cylinder(s, 'KeelDishHub', (0, 0, -38.2), (0, 0, -41.2), 2.2, 1.4, material='paint2', segments=20)
-    for i in range(6):
-        a = 2 * math.pi * i / 6
-        struts.append(((1.4 * math.cos(a), 1.4 * math.sin(a), -36.0), (8.5 * math.cos(a), 8.5 * math.sin(a), -41.2)))
+    # keel: a lab drum on the lower spine, then the deep-space dish aimed aft and down
+    F.cylinder(s, 'LabDrum', (0, 0, -19.5), (0, 0, -26.5), 5.2, material='paint', segments=40,
+               cap_material='paint2')
+    F.band(s, 'LabDrum', (0, 0, -23.0), (0, 0, 1), 1.2, 'paint2', inset=0.04, depth=0.1, min_facing=-1.0)
+    for z in (-21.0, -25.0):
+        for i in range(20):
+            a = 2 * math.pi * (i + 0.5) / 20
+            win.append(((5.22 * math.cos(a), 5.22 * math.sin(a), z), (0.2, 0.9, 0.6), a))
+    kd = Vector((-0.62, 0.0, -0.78))
+    kc = Vector((0.0, 0.0, -38.0)) + kd * 2.2
+    F.cylinder(s, 'KeelDishHub', (0, 0, -37.0), tuple(kc), 1.8, 1.3, material='paint2', segments=20)
+    F.dish(s, 'KeelDish', tuple(kc), 9.0, 2.6, axis=tuple(kd), material='paint', face='paint2', segments=48)
+    F.light(s, 'KeelTip', (0.0, 0.0, -38.3), 'glow_red', size=0.5)
 
     # --- four truss arms in the flight plane --------------------------------------------------
     arms = [((1, 0), 20.2, 31.0), ((-1, 0), 20.2, 36.0), ((0, 1), 20.2, 30.0), ((0, -1), 20.2, 30.0)]

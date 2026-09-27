@@ -20,10 +20,11 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_station_blackmarket'
 COLORS = {
-    'paint': '#2b2723',        # rock: dark umber stone
-    'paint2': '#1a1816',       # rock shadow facets / charcoal steel
+    'paint': '#1f1c19',        # rock: dark umber stone
+    'paint2': '#151413',       # rock shadow facets / charcoal steel
+    'paint.cut': '#3a342c',    # quarried terrace floors (cut stone, lighter)
     'stripe': '#1d4643',       # faded teal shanty paint
-    'hazard': '#7a5a16',
+    'hazard': '#6a4e14',
     'dark': '#121315',
     'paint.rust': '#4a2818',   # rust-red shanty modules
     'paint.olive': '#34351f',  # olive drab modules
@@ -38,8 +39,11 @@ ROCKS = [
     ('Keel', (-6.0, 0.0, -48.0), 19.0, 0.75, -34.0, 4),
     ('Beak', (25.0, 0.0, 26.0), 9.5, 0.9, 32.0, 5),
     ('SternLow', (-48.0, 0.0, -30.0), 11.0, 0.85, -22.0, 6),
-    ('Chin', (22.0, 0.0, -30.0), 10.0, 0.9, -23.0, 7),
+    ('Chin', (22.0, 0.0, -30.0), 10.0, 0.9, -24.5, 7),
 ]
+# per-rock stretch (x, z): the lumps are elongated, not balls
+STRETCH = {'Core': (1.12, 0.92), 'Crown': (1.25, 0.85), 'Stern': (0.9, 1.15), 'Keel': (1.2, 0.85), 'Beak': (1.3, 0.9),
+           'SternLow': (1.1, 1.2), 'Chin': (1.25, 0.9)}
 SHANTY = ['paint.rust', 'stripe', 'paint.olive', 'paint2', 'paint.ivory']
 
 
@@ -80,21 +84,28 @@ def beams(s, name, segs, r, material='gunmetal', sides=6):
 def rock_radius(d, seed):
     """Low-frequency lobes: a designed lump, not noise. d = unit direction."""
     k = seed * 1.7
-    return 1.0 + 0.13 * math.sin(2.1 * d.x + k) * math.cos(1.7 * d.z - k) + 0.09 * math.sin(3.3 * d.y + 2.0 * d.z + k) \
-        + 0.06 * math.cos(4.1 * d.x - 3.0 * d.z + 0.5 * k)
+    return 1.0 + 0.17 * math.sin(2.1 * d.x + k) * math.cos(1.7 * d.z - k) + 0.11 * math.sin(3.3 * d.y + 2.0 * d.z + k) \
+        + 0.08 * math.cos(4.1 * d.x - 3.0 * d.z + 0.5 * k)
+
+
+def facet(v, seed):
+    """Facet-scale chip per icosphere vertex (deterministic): breaks the lump into hard planes."""
+    h = math.sin(v.x * 12.9898 + v.y * 78.233 + v.z * 37.719 + seed * 4.1) * 43758.5453
+    return 1.0 + 0.09 * ((h - math.floor(h)) - 0.5)
 
 
 def rock(s, name, c, r, sq, flat, seed):
     """Faceted asteroid: icosphere, lobed, squashed in y, quarried flat at `flat` (a terrace plane:
     a top terrace when above the centre, an underside quarry when below)."""
     bm = bmesh.new()
-    bmesh.ops.create_icosphere(bm, subdivisions=3, radius=1.0)
+    bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)
     cx, cy, cz = c
     top = flat > cz
+    kx, kz = STRETCH.get(name, (1.0, 1.0))
     for v in bm.verts:
         d = v.co.normalized()
-        rr = r * rock_radius(d, seed)
-        p = Vector((cx + d.x * rr, cy + d.y * rr * sq, cz + d.z * rr))
+        rr = r * rock_radius(d, seed) * facet(d, seed)
+        p = Vector((cx + d.x * rr * kx, cy + d.y * rr * sq, cz + d.z * rr * kz))
         if top and p.z > flat:
             p.z = flat
         if not top and p.z < flat:
@@ -102,38 +113,92 @@ def rock(s, name, c, r, sq, flat, seed):
         v.co = p
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.05)
     bm.normal_update()
+    cut = [v.co for v in bm.verts if abs(v.co.z - flat) < 1e-4]
+    if cut:
+        TERRACE[name] = (min(v.x for v in cut), max(v.x for v in cut), min(v.y for v in cut), max(v.y for v in cut))
     # quarried terrace faces are cut stone (lighter) with a dark shadow ring; facets alternate tone
-    mats = ['paint', 'paint2']
-    for i, f in enumerate(bm.faces):
+    mats = ['paint', 'paint2', 'paint.cut']
+    for f in bm.faces:
         n = f.normal
-        f.material_index = 1 if (n.z < -0.35 or (i * 7 + seed) % 5 == 0) else 0
+        cz_ = f.calc_center_median().z
+        if abs(cz_ - flat) < 0.05 and abs(n.z) > 0.98:
+            f.material_index = 2
+        else:
+            f.material_index = 1 if n.z < -0.45 else 0
     obj = s.add(F._new_object(name, bm, s.slots(mats), bevel=0.0, smooth_angle=12.0))
     return obj
 
 
-def terrace_extent(c, r, sq, flat, seed):
-    """Approximate half-extents (x, y) of the flat terrace cut."""
-    dz = abs(flat - c[2]) / (r * 0.98)
+TERRACE = {}
+
+
+def terrace_extent(name, c, r, sq, flat):
+    """Half-extents and centre of the flat terrace cut, measured from the rock mesh."""
+    if name in TERRACE:
+        x0, x1, y0, y1 = TERRACE[name]
+        return (x1 - x0) / 2 * 0.86, (y1 - y0) / 2 * 0.86, (x0 + x1) / 2, (y0 + y1) / 2
+    kx, kz = STRETCH.get(name, (1.0, 1.0))
+    dz = abs(flat - c[2]) / (r * kz * 0.9)
     k = math.sqrt(max(0.0, 1 - dz * dz))
-    return r * k * 0.82, r * k * 0.82 * sq
+    return r * kx * k * 0.8, r * k * 0.8 * sq, c[0], c[1]
+
+
+def cliff(s, rng, name, c, r, sq, seed, n):
+    """Cliff dwellings: modules bolted into the rock flanks, half-buried, windows and neon outward."""
+    kx, kz = STRETCH.get(name, (1.0, 1.0))
+    mods = {k: [] for k in SHANTY}
+    win, neon = [], []
+    for i in range(n):
+        az = rng.uniform(0, 2 * math.pi)
+        el = rng.uniform(-0.45, 0.35)
+        d = Vector((math.cos(az) * math.cos(el), math.sin(az) * math.cos(el), math.sin(el)))
+        rr = r * rock_radius(d, seed) * 0.9
+        p = Vector((c[0] + d.x * rr * kx, c[1] + d.y * rr * sq, c[2] + d.z * rr * kz))
+        nrm = Vector((d.x / kx, d.y / sq, 0.0))
+        if nrm.length < 1e-3:
+            continue
+        nrm.normalize()
+        yaw = math.atan2(nrm.y, nrm.x)
+        dep, wid, hgt = rng.uniform(4.0, 6.0), rng.uniform(3.0, 5.5), rng.uniform(2.2, 3.4)
+        cc = p + nrm * 0.4
+        fin = SHANTY[i % len(SHANTY)]
+        mods[fin].append((tuple(cc), (dep, wid, hgt), yaw))
+        face = cc + nrm * (dep / 2 + 0.02)
+        side = Vector((-nrm.y, nrm.x, 0.0))
+        nw = max(3, int(wid / 0.8))
+        for row, dz in enumerate((-0.45, 0.55)):
+            for k in range(nw):
+                if (k + row + i) % 4 == 2:
+                    continue
+                q = face + side * (-wid / 2 + 0.3 + (k + 0.5) * (wid - 0.6) / nw)
+                win.append(((q.x, q.y, q.z + dz), (0.14, 0.45, 0.4), yaw))
+        if i % 3 == 0:
+            q = face + Vector((0, 0, hgt / 2 - 0.3))
+            neon.append(((q.x, q.y, q.z), (0.2, wid * 0.8, 0.22), yaw))
+    for fin, items in mods.items():
+        if items:
+            boxes(s, f'{name}_Cliff_{fin}', items, fin, bevel=0.08)
+    boxes(s, f'{name}_CliffWin', win, 'glow_warm')
+    if neon:
+        boxes(s, f'{name}_CliffNeon', neon, ('glow_red', 'glow_cyan', 'glow_amber')[seed % 3])
 
 
 def shanty(s, rng, tag, c, r, sq, flat, top=True, density=1.0):
     """Mismatched modules crowded onto a terrace: stacks of boxes, windows, roof neon, containers."""
-    ex, ey = terrace_extent(c, r, sq, flat, 0)
+    ex, ey, tx, ty = terrace_extent(tag, c, r, sq, flat)
     sgn = 1 if top else -1
     mods = {k: [] for k in SHANTY}
     win, neon_r, neon_a, neon_c, conts = [], [], [], [], []
-    x = c[0] - ex + 2.0
+    x = tx - ex + 1.5
     placed = 0
-    while x < c[0] + ex - 2.0:
+    while x < tx + ex - 1.5:
         w = rng.uniform(3.0, 6.0)
-        y = -ey + 2.0
-        while y < ey - 2.0:
+        y = ty - ey + 1.5
+        while y < ty + ey - 1.5:
             d = rng.uniform(3.0, 5.5)
             cx, cy = x + w / 2, y + d / 2
             # stay inside an ellipse of the terrace
-            if ((cx - c[0]) / ex) ** 2 + (cy / ey) ** 2 < 0.8 and rng.random() < 0.85 * density:
+            if ((cx - tx) / ex) ** 2 + ((cy - ty) / ey) ** 2 < 0.85 and rng.random() < 0.9 * density:
                 floors = rng.choice((1, 1, 2, 2, 3))
                 z = flat
                 yaw = rng.uniform(-0.12, 0.12)
@@ -152,11 +217,13 @@ def shanty(s, rng, tag, c, r, sq, flat, top=True, density=1.0):
                     mods[fin].append(((cx, cy, zc), (sw, sd, hh), yaw))
                     # windows on the two long faces and the ends
                     zw = z + sgn * h * 0.55
-                    for k in range(max(1, int(sw / 1.4))):
-                        xx = cx - sw / 2 + (k + 0.5) * sw / max(1, int(sw / 1.4))
-                        if rng.random() < 0.7:
+                    nwin = max(3, int(sw / 0.85))
+                    lit = rng.random() < 0.85
+                    for k in range(nwin):
+                        xx = cx - sw / 2 + 0.3 + (k + 0.5) * (sw - 0.6) / nwin
+                        if lit and (k + fl) % 5 != 3:
                             for sy_ in (1, -1):
-                                win.append((R(xx, cy + sy_ * (sd / 2 + 0.02), zw), (0.7, 0.14, 0.5), yaw))
+                                win.append((R(xx, cy + sy_ * (sd / 2 + 0.02), zw), (0.45, 0.14, 0.42), yaw))
                     if rng.random() < 0.5:
                         win.append((R(cx + sw / 2 + 0.02, cy, zw), (0.14, 0.8, 0.5), yaw))
                     z = z + sgn * h
@@ -252,6 +319,7 @@ def build():
         rock(s, name, c, r, sq, flat, seed)
     for name, c, r, sq, flat, seed in ROCKS:
         shanty(s, rng, name, c, r, sq, flat, top=flat > c[2], density=1.0 if flat > c[2] else 0.6)
+        cliff(s, rng, name, c, r, sq, seed, int(r / 1.6))
 
     # --- hollowed core: octagonal steel mouth on the +X face at the flight plane ------------------
     F.cylinder(s, 'MouthCavity', (14.0, 0, 0), (21.5, 0, 0), 8.2, material='dark', segments=8,
@@ -266,8 +334,10 @@ def build():
     for sy in (1, -1):
         F.box(s, f'ClampArm{sy}', (31.0, sy * 6.0, -4.5), (20.0, 1.8, 2.2), material='paint2', bevel=0.12)
         F.box(s, f'ClampRail{sy}', (31.0, sy * 6.0, -3.2), (19.0, 0.6, 0.4), material='gunmetal', bevel=0.0)
-        F.box(s, f'ClampJaw{sy}', (41.2, sy * 5.0, -4.5), (2.6, 3.6, 3.2), material='hazard', bevel=0.1,
-              rot_z=-sy * 0.3)
+        F.box(s, f'ClampJaw{sy}', (41.4, sy * 5.2, -4.5), (3.2, 1.2, 2.4), material='hazard', bevel=0.1,
+              rot_z=-sy * 0.45)
+        F.box(s, f'ClampPad{sy}', (42.6, sy * 4.2, -4.5), (0.8, 0.5, 2.0), material='dark', bevel=0.04,
+              rot_z=-sy * 0.45)
         F.box(s, f'ClampRoot{sy}', (21.8, sy * 6.0, -6.0), (3.4, 3.4, 5.0), material='gunmetal', bevel=0.12)
         boxes(s, f'ClampLights{sy}', [((24.0 + k * 3.2, sy * 6.95, -4.2), (0.4, 0.2, 0.4)) for k in range(6)],
               'glow_green' if sy < 0 else 'glow_red')
@@ -306,10 +376,10 @@ def build():
         F.box(s, f'Anchor{p}', (p[0], p[1], p[2] + 0.2), (0.8, 0.8, 1.6), material='gunmetal', bevel=0.04)
 
     # --- neon signs: the warren's advertising, facing the flight lanes ----------------------------
-    sign(s, 'SignBeak', (25.0, 0.0, 37.5), 8.0, 3.0, 'glow_red', yaw=0.0)
-    sign(s, 'SignCrown', (-15.0, 3.5, 48.0), 7.0, 2.6, 'glow_cyan', yaw=0.2)
-    sign(s, 'SignStern', (-47.0, -3.0, 19.0), 6.0, 2.4, 'glow_amber', yaw=-0.25)
-    sign(s, 'SignCore', (6.0, -6.0, 21.0), 5.0, 2.0, 'glow_cyan', yaw=math.pi / 2 - 0.3)
+    sign(s, 'SignBeak', (25.0, 0.0, 38.5), 11.0, 4.0, 'glow_red', yaw=0.0)
+    sign(s, 'SignCrown', (-15.0, 3.5, 49.0), 10.0, 3.6, 'glow_cyan', yaw=0.2)
+    sign(s, 'SignStern', (-47.0, -3.0, 20.0), 9.0, 3.2, 'glow_amber', yaw=-0.25)
+    sign(s, 'SignCore', (6.0, -6.0, 21.5), 7.0, 2.6, 'glow_red', yaw=math.pi / 2 - 0.3)
 
     # --- patched plates on the rock faces: stolen ivory hull panels bolted over breaches ----------
     patches = []

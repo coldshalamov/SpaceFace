@@ -27,9 +27,9 @@ COLORS = {
     'hazard': '#a8861c',
     'paint.graphite': '#26292d',  # graphite
     'dark': '#16191d',
-    'ceramic': '#181512',         # the captive rock, near black
-    'ceramic.cut': '#3e372f',     # sawn rock face, lighter
-    'ceramic.ore': '#3c2410',     # rusty ore seams
+    'ceramic': '#0f0d0b',         # the captive rock, near black (the key light lifts it a lot)
+    'ceramic.cut': '#3a332b',     # sawn rock face, lighter
+    'ceramic.ore': '#4a280c',     # rusty ore seams
 }
 
 RC = Vector((-26.0, 0.0, 0.0))   # rock centre
@@ -159,10 +159,35 @@ def rock(s):
     return s.add(F._new_object('Rock', bm, s.slots(mats), bevel=0.0, smooth_angle=16.0))
 
 
+def boulder(s, name, center, radius, seed, finish='ceramic'):
+    """A faceted boulder half-sunk into the rock surface (breaks up the big lump's silhouette)."""
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=1, radius=1.0)
+    for i, v in enumerate(bm.verts):
+        k = 0.75 + 0.45 * (0.5 + 0.5 * math.sin(seed * 12.9898 + i * 78.233))
+        v.co *= radius * k
+    bmesh.ops.rotate(bm, verts=bm.verts, cent=(0, 0, 0), matrix=Matrix.Rotation(seed * 1.7, 3, 'Z'))
+    bmesh.ops.translate(bm, verts=bm.verts, vec=center)
+    return s.add(F._new_object(name, bm, s.slots([finish]), bevel=0.0, smooth_angle=16.0))
+
+
+def rock_point(theta, phi, sink=0.35):
+    """A point on the rock surface at spherical angles (degrees), pulled `sink` of the way in."""
+    t, p = math.radians(theta), math.radians(phi)
+    d = Vector((math.cos(p) * math.cos(t), math.cos(p) * math.sin(t), math.sin(p)))
+    r = rock_radius(d.x, d.y, d.z)
+    return RC + d * r * (1.0 - sink * 0.08)
+
+
 # --- build ------------------------------------------------------------------------------------
 
 def build_cradle(s):
     rock(s)
+    for k, (th, ph, r) in enumerate(((150, 30, 3.2), (200, 45, 2.6), (110, 55, 2.4), (250, 20, 3.0),
+                                     (175, 70, 2.2), (90, 15, 2.8), (270, 50, 2.4), (210, -10, 3.0),
+                                     (130, -20, 2.6), (60, 40, 2.0), (300, 30, 2.2))):
+        boulder(s, f'Boulder{k}', tuple(rock_point(th, ph)), r, seed=k + 3,
+                finish='ceramic.ore' if k % 4 == 1 else 'ceramic')
     # rails and cross members of the cradle frame
     F.box(s, 'Rail', (-24.5, RAIL_Y, RAIL_Z), (53.0, 2.6, 3.2), material='paint2', bevel=0.15, mirror=True)
     for x in (-48.0, -1.5):
@@ -249,6 +274,11 @@ def build_cradle_details(s):
                 continue
             holes.append(((XCUT + 0.05, y, z), (0.2, 0.9, 0.9), 0.0))
     cluster(s, 'BoreHoles', holes, 'dark')
+    for k, (th, ph) in enumerate(((160, 60), (220, 35), (125, 40), (190, 15), (240, 60))):
+        p = rock_point(th, ph, sink=0.6)
+        F.cylinder(s, f'Survey{k}', tuple(p), tuple(p + Vector((0, 0, 2.4))), 0.12, material='gunmetal', segments=6,
+                   bevel=0.0)
+        F.light(s, f'SurveyLamp{k}', tuple(p + Vector((0, 0, 2.5))), 'glow_amber' if k % 2 else 'glow_cyan', size=0.4)
     F.light(s, 'NavPortAft', (-50.0, RAIL_Y + 1.4, RAIL_Z + 1.0), 'glow_red', size=0.8)
     F.light(s, 'NavStbdAft', (-50.0, -RAIL_Y - 1.4, RAIL_Z + 1.0), 'glow_green', size=0.8)
     F.light(s, 'NavPortFwd', (1.0, RAIL_Y + 1.4, RAIL_Z + 1.0), 'glow_red', size=0.8)
@@ -275,6 +305,11 @@ def build_cutter(s):
             y = -6.0 + j * 2.4 + (0.6 if i % 2 else 0.0)
             teeth.append(((DRUM_X + 3.5 * math.cos(a), y, 3.5 * math.sin(a)), (0.9, 0.5, 0.5), 0.0))
     cluster(s, 'Teeth', teeth, 'dark')
+    # spoil chute under the drum funnels the cut ore into the housing
+    F.box(s, 'SpoilChute', ((DRUM_X - 8.2) / 2 + 0.3, 0, -4.9), (abs(DRUM_X + 8.2) + 1.2, 12.0, 2.6),
+          material='paint.graphite', bevel=0.1, taper=1.18)
+    F.box(s, 'SpoilChuteMouth', ((DRUM_X - 8.2) / 2 + 0.3, 0, -3.55), (abs(DRUM_X + 8.2) + 2.2, 13.6, 0.14),
+          material='dark', bevel=0.0)
     # hot bite: glowing seams on the sawn face where the drum cuts
     F.box(s, 'BiteTop', (XCUT + 0.1, 0, 3.75), (0.3, 13.4, 0.5), material='glow_amber', bevel=0.0)
     F.box(s, 'BiteLow', (XCUT + 0.1, 0, -3.75), (0.3, 13.4, 0.5), material='glow_amber', bevel=0.0)

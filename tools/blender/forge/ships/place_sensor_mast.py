@@ -50,6 +50,7 @@ def build():
         F.box(s, f'PadHaz{k}', polar(1.8, a, 0.27), (0.5, 0.5, 0.08), material='hazard', bevel=0.01, rot_z=a)
         F.band(s, f'PadHaz{k}', polar(1.8, a, 0.27), (math.cos(a + 0.8), math.sin(a + 0.8), 0), 0.12, 'paint.graphite')
         strut(s, f'Leg{k}', polar(0.32, a, Z_HUB + 0.2), foot, 0.27, material='paint', bevel=0.02)
+        F.band(s, f'Leg{k}', polar(1.0, a, 1.3), (math.cos(a), math.sin(a), -0.7), 0.22, 'paint2')
         F.cylinder(s, f'Knee{k}', polar(1.75, a, 0.25), polar(1.75, a, 0.55), 0.12, material='gunmetal', segments=10)
         # ties between legs
         b = angles[(k + 1) % 3]
@@ -82,6 +83,7 @@ def build():
     ZD = 6.4
     F.box(s, 'ArmRoot', (0.3, 0, ZD), (0.36, 0.44, 0.44), material='paint.graphite', bevel=0.03)
     strut(s, 'Arm', (0.4, 0, ZD), (2.6, 0, ZD + 0.3), 0.22, material='paint', bevel=0.02)
+    F.band(s, 'Arm', (0.9, 0, ZD), (1, 0, 0), 0.24, 'hazard')
     strut(s, 'ArmStay', (0.2, 0, ZD - 1.2), (2.2, 0, ZD + 0.22), 0.1)
     F.box(s, 'DishYoke', (2.75, 0, ZD + 0.35), (0.36, 0.6, 0.36), material='paint2', bevel=0.03)
     ax = (0.8, 0.0, 0.6)

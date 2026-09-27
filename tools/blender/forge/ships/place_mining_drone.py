@@ -51,6 +51,8 @@ def build():
     F.panel(s, 'Body', (1.2, 0), (1.2, 0.9), 'paint2', inset=0.04, depth=-0.04)   # ore intake well
     F.panel(s, 'Body', (1.2, 0.62), (1.4, 0.2), 'paint', inset=0.02, depth=0.02, mirror=True)
 
+    # charcoal side bumpers along the flanks
+    F.box(s, 'Bumper', (1.2, 0.83, ZC + 0.08), (1.5, 0.12, 0.26), material='paint2', bevel=0.03, mirror=True)
     # ore intake grille in the well
     for i in range(6):
         F.box(s, f'Grille{i}', (0.7 + i * 0.2, 0, ZC + 0.44), (0.06, 0.82, 0.05), material='gunmetal', bevel=0.0)

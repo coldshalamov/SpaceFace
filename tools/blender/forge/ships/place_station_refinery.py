@@ -356,7 +356,7 @@ def build_dock(s):
         F.band(s, 'ArmTube', (x, 0, 0), (1, 0, 0), 0.8, 'paint2', inset=0.05, depth=0.12)
     truss(s, 'ArmTruss', (DECK_R1 - 3.0, 0, -2.2), (45.5, 0, -2.2), 3.6, 2.2, 8, material='gunmetal')
     F.box(s, 'ArmRoot', (DECK_R1 - 0.2, 0, 1.2), (4.6, 7.0, 5.4), material='paint.graphite', bevel=0.25)
-    F.band(s, 'ArmRoot', (DECK_R1 - 0.2, 0, 3.9), (0, 0, 1), 0.3, 'hazard')
+    F.band(s, 'ArmRoot', (DECK_R1 - 0.2, 0, 2.6), (0, 0, 1), 0.5, 'hazard')
     # docking collar
     F.cylinder(s, 'Collar', (44.0, 0, 1.6), (47.2, 0, 1.6), 3.6, 3.3, material='paint2', segments=40, bevel=0.15)
     F.band(s, 'Collar', (45.2, 0, 0), (1, 0, 0), 0.6, 'hazard')
@@ -478,6 +478,8 @@ def build_exchanger(s):
         fins.append(((x, 42.25, 0.95), (0.18, 7.4, 0.3), 0.0))
     cluster(s, 'RadFins', fins, 'gunmetal')
     beam(s, 'RadStrut', (0, 37.8, 0.3), (0, 46.6, 0.3), 1.0, 1.4, material='paint.graphite')
+    for x in (-7.5, 7.5):
+        beam(s, f'RadRib{x:+.0f}', (x, 38.2, 1.0), (x, 46.3, 1.0), 0.5, 0.5, material='paint2')
     F.light(s, 'NavPort', (15.6, 46.6, 0.8), 'glow_red', size=0.8)
     F.light(s, 'NavPort2', (-15.6, 46.6, 0.8), 'glow_red', size=0.8)
 
@@ -524,6 +526,10 @@ def build_hab_details(s):
     brw += [((1.0 + i * 1.2, -32.75, 6.7), (0.7, 0.12, 0.6), 0.0) for i in range(6)]
     cluster(s, 'BridgeWin', brw, 'glow_warm')
     F.antenna(s, 'HabMast', (-1.5, -38.0, 5.6), 4.5)
+    F.panel(s, 'Hab', (-7.0, -33.6), (6.0, 2.6), 'dark', inset=0.06, depth=-0.08)
+    for k, x in enumerate((-9.2, -6.8)):
+        F.container(s, f'HabStore{k}', (x, -39.6, 6.3), (2.0, 2.4, 1.4), finish='paint2', ribs=2)
+    F.vent(s, 'HabVent', (-2.5, -33.2, 5.65), (2.6, 1.6, 0.3), slats=5)
 
 
 def build():

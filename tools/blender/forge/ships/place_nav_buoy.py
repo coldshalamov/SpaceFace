@@ -127,9 +127,9 @@ def build():
     for z in (Z_LAMP0 + 0.2, (Z_LAMP0 + Z_LAMP1) / 2, Z_LAMP1 - 0.2):
         F.ring(s, f'CageHoop{z:.2f}', (0, 0, z), 0.87, 0.05, axis=(0, 0, 1), material='gunmetal', segments=32, sides=6)
     # hooded cap: ivory annulus with a lit oculus so the plan view sees the lantern
-    F.cylinder(s, 'Cap', (0, 0, Z_LAMP1), (0, 0, Z_LAMP1 + 0.28), 1.05, 0.95, material='paint', segments=32,
+    F.cylinder(s, 'Cap', (0, 0, Z_LAMP1), (0, 0, Z_LAMP1 + 0.28), 1.05, 0.95, material='paint2', segments=32,
                bevel=0.03)
-    F.band(s, 'Cap', (0, 0, Z_LAMP1 + 0.14), (0, 0, 1), 0.1, 'stripe')
+    F.band(s, 'Cap', (0, 0, Z_LAMP1 + 0.14), (0, 0, 1), 0.12, 'paint')
     F.ring(s, 'CapRim', (0, 0, Z_LAMP1 + 0.28), 0.62, 0.08, axis=(0, 0, 1), material='gunmetal', segments=32, sides=8)
     F.cylinder(s, 'Oculus', (0, 0, Z_LAMP1 + 0.2), (0, 0, Z_LAMP1 + 0.32), 0.56, 0.56, material='glow_cyan',
                segments=32, bevel=0.0)
