@@ -249,12 +249,12 @@ const CSS = `
 .fp-dial.is-scrubbing .fp-sector.is-open .fp-sector__edge { stroke:rgb(${PHOS}); }
 /* the tokens: each source's produced mark seated on a lit pad inside the ring (a power's crest, the bounty's seal) */
 .fp-token { position:absolute; left:0; top:0; box-sizing:border-box; width:var(--fp-tok, 44px); height:var(--fp-tok, 44px); margin:calc(var(--fp-tok, 44px) / -2) 0 0 calc(var(--fp-tok, 44px) / -2);
-  display:grid; place-items:center; border-radius:50%; pointer-events:none; background:rgb(${BONE} / .2); box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .6), 0 0 0 5px rgb(5 7 10 / .55);
+  display:grid; place-items:center; border-radius:50%; pointer-events:none; background:rgb(${BONE} / .27); box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .6), 0 0 0 5px rgb(5 7 10 / .55);
   transition:transform .3s var(--dp-ease-over, ease-out), background-color .2s linear; }
 .fp-token > img { display:block; width:78%; height:78%; object-fit:contain; opacity:.86; filter:drop-shadow(0 0 2px rgb(0 0 0 / .9)); transition:opacity .2s linear; }
-.fp-token.is-open { background:rgb(${BONE} / .24); }
+.fp-token.is-open { background:rgb(${BONE} / .3); }
 .fp-token.is-open > img { opacity:.96; }
-.fp-token.is-traced { transform:scale(1.18); background:rgb(${BONE} / .3); box-shadow:inset 0 0 0 2px rgb(252 249 240 / .9), 0 0 0 5px rgb(5 7 10 / .55), 0 0 14px 2px rgb(255 244 222 / .22); }
+.fp-token.is-traced { transform:scale(1.18); background:rgb(${BONE} / .36); box-shadow:inset 0 0 0 2px rgb(252 249 240 / .9), 0 0 0 5px rgb(5 7 10 / .55), 0 0 14px 2px rgb(255 244 222 / .22); }
 .fp-token.is-traced > img { opacity:1; }
 .fp-token.is-settles { background:rgb(5 7 10 / .7); box-shadow:inset 0 0 0 1.5px rgb(143 203 255 / .8), 0 0 0 5px rgb(5 7 10 / .55); }
 .fp-token.is-settles > img { opacity:.5; filter:grayscale(1); }
