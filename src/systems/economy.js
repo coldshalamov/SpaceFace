@@ -2559,6 +2559,10 @@ export const economy = {
     if (lawfulInspectionCaseId) scannedPayload.lawfulInspectionCaseId = lawfulInspectionCaseId;
     if (p.source) scannedPayload.source = p.source;
     if (p.stationId) scannedPayload.stationId = p.stationId;
+    // The scanner's identity travels with the verdict so listeners (e.g. the busted mission
+    // successor) can route back through the patrol's lawful jurisdiction rather than only the
+    // station the proximity case happened to name.
+    if (p.patrolId != null) scannedPayload.patrolId = p.patrolId;
     this.bus.emit('player:scannedByPatrol', scannedPayload);
     if (!hasContraband) return { found: false };
     const security = p.security != null ? p.security : this.currentSecurity();

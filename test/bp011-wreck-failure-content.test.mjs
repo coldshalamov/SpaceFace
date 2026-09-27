@@ -433,6 +433,184 @@ test('survivorPod persistence: a stripped pod stays stripped and cannot be re-ex
   restored.destroy && restored.destroy();
 });
 
+test('a boarded communicator offer survives a mission-board epoch refresh', () => {
+  const state = baseState();
+  const bus = new Bus();
+  const missionSystem = initMissions(state, bus);
+  const salvageSys = { ...salvage };
+  salvageSys.init({ state, bus, helpers: { hash32, mulberry32 }, registry: { get: () => null } });
+
+  const template = wreckMissionById('wm_shaft_seven_blackbox');
+  const offer = salvageSys._buildOffer(template, HELIOS_POINT);
+  bus.emit('mission:offered', offer);
+  const stationId = offer.stationId;
+  assert.ok(state.missions.boards[stationId].slots.some((o) => o.id === offer.id));
+
+  // Epoch rolls: the board rebuilds, but a discovered contract is progress, not a reroll.
+  const refreshSec = (state.missions.config && state.missions.config.refreshSec) || 600;
+  state.simTime += refreshSec * 2 + 10;
+  const board = missionSystem.ensureBoard(stationId);
+  assert.ok(board.refreshEpoch > 0, 'the epoch actually advanced');
+  assert.ok(board.slots.some((o) => o.id === offer.id && o.source === 'salvage'),
+    'the communicator row rides through the refresh until accepted');
+
+  // A distinct find in the same sector boards beside it — no one-row-per-source squeeze.
+  // (ensureBoard rebuilds the board object wholesale, so re-read the live row; sal2 hashes to
+  // the same deterministic station slot as sal0, keeping both rows on one board.)
+  const second = salvageSys._buildOffer(template, { ...HELIOS_POINT, id: 'zone_derelict_01:sal2' });
+  assert.equal(second.stationId, stationId, 'fixture: both finds resolve the same host dock');
+  bus.emit('mission:offered', second);
+  assert.ok(state.missions.boards[stationId].slots.some((o) => o.id === second.id),
+    'two communicators can hold two board rows at once');
+  salvageSys.destroy && salvageSys.destroy();
+});
+
+test('a settled communicator contract never re-offers — the receipt is the authority', () => {
+  const state = baseState();
+  const bus = new Bus();
+  const missionSystem = initMissions(state, bus);
+  const salvageSys = { ...salvage };
+  salvageSys.init({ state, bus, helpers: { hash32, mulberry32 }, registry: { get: () => null } });
+
+  const template = wreckMissionById('wm_shaft_seven_blackbox');
+  const offer = salvageSys._buildOffer(template, HELIOS_POINT);
+  bus.emit('mission:offered', offer);
+  bus.emit('ui:acceptMission', { missionId: offer.id });
+  const mission = state.missions.active.find((m) => m.sourceOfferId === offer.id);
+  assert.ok(mission, 'the communicator contract accepted');
+  state.player.cargo.items.cmdty_classified_salvage = 1;
+
+  missionSystem._completeMission(mission, state.missions.active.indexOf(mission));
+  assert.ok(state.missions.receipts.some((r) => r.sourceOfferId === offer.id && r.outcome === 'completed'),
+    'the settle receipt names the offer id it came from');
+
+  // Re-emitting the same offer id bounces off the receipt — the completed contract never
+  // double-posts on the board. (Every emit lands in the bus log; rejection is a return, not a
+  // swallowed signal.)
+  const offersForPoint = () => count(bus, 'mission:offered', (p) => p && p.id === offer.id);
+  assert.equal(offersForPoint(), 1, 'the point emitted its offer once');
+  bus.emit('mission:offered', offer);
+  assert.equal(
+    state.missions.boards[offer.stationId].slots.some((o) => o.id === offer.id), false,
+    'a settled contract cannot re-board',
+  );
+
+  // Sector replan rebuilt the point un-offered (stable id, fresh flags): the rediscovery stays
+  // silent — no replayed signal, no re-emitted row, but the point still marks itself spent.
+  const replanned = { ...HELIOS_POINT, offered: false };
+  const logBefore = count(bus, 'comms:log');
+  salvageSys._offerFromPoint(replanned);
+  assert.equal(replanned.offered, true, 'the point remembers it has nothing left to say');
+  assert.equal(count(bus, 'comms:log'), logBefore, 'no second distress read on a settled find');
+  assert.equal(offersForPoint(), 2,
+    '_offerFromPoint re-emitted nothing — the only second emit was the manual bounce above');
+  salvageSys.destroy && salvageSys.destroy();
+});
+
+test('a rep-gated sector reroutes its wreck claim to a reachable mission board', () => {
+  const state = baseState();
+  const bus = new Bus();
+  const salvageSys = { ...salvage };
+  salvageSys.init({ state, bus, helpers: { hash32, mulberry32 }, registry: { get: () => null } });
+  // Sker Bazaar is the sector's only dock and it is rep-gated — a wreck claim posted there is
+  // a row the player may never be allowed to read.
+  const gated = salvageSys._wreckStation({
+    id: 'zone_sker_field:sal0', sectorId: 'sector_sker_haven', zoneId: 'zone_sker_field',
+    pos: { x: 0, z: 0 },
+  });
+  assert.ok(gated, 'the offer still resolves — it does not silently drop');
+  assert.notEqual(gated.id, 'station_sker', 'never a rep-gated dock for a wreck claim');
+  assert.ok((gated.services || []).includes('missions'), 'the fallback hosts a real mission board');
+  assert.equal(gated.repGated, undefined,
+    'the remote desk is one any pilot can reach');
+  const again = salvageSys._wreckStation({
+    id: 'zone_sker_field:sal0', sectorId: 'sector_sker_haven', zoneId: 'zone_sker_field',
+    pos: { x: 0, z: 0 },
+  });
+  assert.equal(again.id, gated.id, 'the remote pick is deterministic per point');
+  // Eunomia's dock lists no mission service at all — same reroute, different reason.
+  const eunomia = salvageSys._wreckStation({
+    id: 'zone_eunomia_field:sal0', sectorId: 'sector_eunomia_gulf', zoneId: 'zone_eunomia_field',
+    pos: { x: 0, z: 0 },
+  });
+  assert.ok(eunomia && !eunomia.repGated && (eunomia.services || []).includes('missions'),
+    'a sector with no eligible dock still lands its offer somewhere reachable');
+  salvageSys.destroy && salvageSys.destroy();
+});
+
+test('a stripped pod stamps the loss site — the recovery pocket spawns where the pod died', () => {
+  const state = baseState();
+  const bus = new Bus();
+  initMissions(state, bus);
+  const podSys = { ...survivorPod };
+  podSys.init({ state, bus, helpers: { hash32 }, registry: { get: () => null } });
+
+  const entity = { id: 7005, alive: true, type: 'wreck', pos: { x: 640, z: -880 }, data: {} };
+  state.entities.set(entity.id, entity);
+  state.salvage.points.push({
+    id: 'zone_derelict_01:sal6', sectorId: 'sector_helios_prime', zoneId: 'zone_derelict_01',
+    pos: { x: 640, z: -880 }, entityId: entity.id, isCommunicator: true,
+    wreckMissionId: 'wm_survivor_pod', offered: true,
+  });
+  const rec = {
+    salvagePointId: 'zone_derelict_01:sal6', entityId: entity.id, sectorId: 'sector_helios_prime',
+    zoneId: null, wreckMissionId: 'wm_survivor_pod', factionId: 'faction_scn',
+    destStationId: 'station_helios', destSectorId: 'sector_helios_prime',
+    oxygenStartedAt: 0, oxygenDueAt: 500, oxygenDecayWindow_s: 240,
+    minRewardMultiplier: 0.45, rewardMultiplier: 1,
+    stripPool: { cmdty_salvage_electronics: 2 }, stripCredits: 280,
+    rescueSelected: true, stripped: false,
+  };
+  state.survivorPod.promotedByPoint[rec.salvagePointId] = rec;
+
+  const offer = {
+    id: 'salvage_zone_derelict_01:sal6', source: 'salvage', type: 'passenger_transport',
+    stationId: 'station_helios', destStationId: 'station_helios', destSectorId: 'sector_helios_prime',
+    factionId: 'faction_scn', title: 'The Survivor Pod', reward_cr: 750, collateral_cr: 0,
+    riskTier: 1, salvagePointId: rec.salvagePointId,
+    params: { passengers: 1, survivorPodId: rec.salvagePointId, salvagePointId: rec.salvagePointId },
+  };
+  bus.emit('mission:offered', offer);
+  bus.emit('ui:acceptMission', { missionId: offer.id });
+  const accepted = state.missions.active.find((m) => m.sourceOfferId === offer.id);
+  assert.ok(accepted);
+
+  bus.emit('survivorPod:stripped', { salvagePointId: rec.salvagePointId, entityId: entity.id });
+  const successor = state.missions.active.find((m) => m.mutatedFromMissionId === accepted.id);
+  assert.ok(successor, 'the strip leaves recovery residue');
+  assert.equal(successor.type, 'salvage_retrieval');
+  assert.equal(successor.params.lostSectorId, 'sector_helios_prime');
+  assert.deepEqual(successor.params.lostWreckPos, { x: 640, z: -880 },
+    'the recovery site is the pod’s actual drift, not a sector rumor');
+  podSys.destroy && podSys.destroy();
+});
+
+test('ship_lost recovery co-locates on the player wreck — no ring offset', async () => {
+  const { convoyWreckPocket } = await import('../src/systems/missions.js');
+  const successor = {
+    id: 'm_41', type: 'salvage_retrieval', status: 'active', mutationTag: 'recovery',
+    params: {
+      cmdtyId: 'cmdty_salvage_electronics', qty: 2,
+      lostSectorId: 'sector_helios_prime', lostWreckPos: { x: 777, z: -222 },
+      playerWreckSite: true,
+    },
+  };
+  const pocket = convoyWreckPocket(successor, {
+    nowS: 500, ringAngle: 1.2, driftAngle: 0.4, currentSectorId: 'sector_helios_prime',
+  });
+  assert.ok(pocket, 'the successor authors a physical pocket');
+  assert.deepEqual(pocket.spec.pos, { x: 777, z: -222 },
+    'the manifest claim is the marker itself — the pocket sits exactly on the wreck');
+  assert.equal(pocket.spec.data.authoredScanLabel, 'Your wreck — unstable core');
+  // An ordinary convoy-wreck successor still rings the loss site.
+  const convoy = convoyWreckPocket({
+    ...successor,
+    params: { ...successor.params, playerWreckSite: undefined },
+  }, { nowS: 500, ringAngle: 0, driftAngle: 0, currentSectorId: 'sector_helios_prime' });
+  assert.ok(Math.hypot(convoy.spec.pos.x - 777, convoy.spec.pos.z + 222) > 0,
+    'only the player-wreck claim co-locates');
+});
+
 test('salvage:fieldVulture acknowledges the claim on the existing toast/comms seams', () => {
   const state = baseState();
   const bus = new Bus();

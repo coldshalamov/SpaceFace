@@ -355,3 +355,166 @@ test('mutation fields round-trip the save, and an unmutated mission never carrie
   assert.equal('mutatedFromMissionId' in restoredPlain, false);
   clauseSystem.destroy();
 });
+
+// ── typed deadline successors + busted jurisdiction ───────────────────────────
+// A lapsed contract refiles by what the job was: an escorted convoy is still a hull on the lane
+// (resumed escort, live escortee handed over), a slipped warrant reposts as a fresh hunt, and a
+// patrol bust answers to the post that ran the scan — never an invented station.
+
+function makeBountyOffer(overrides = {}) {
+  return {
+    id: 'offer_bounty_1',
+    type: 'bounty_hunt',
+    stationId: 'station_helios',
+    factionId: 'faction_mts',
+    params: { clearCount: 1, killCount: 0, targetStrength: 2, fValue: 2, taskTime: 60 },
+    reward_cr: 1100,
+    collateral_cr: 0,
+    riskTier: 2,
+    destStationId: 'station_beltout',
+    destSectorId: 'sector_ceres_belt',
+    distance: 1400,
+    title: 'End the marked raider',
+    summary: 'A writ on a corsair working the belt.',
+    source: 'careerContract',
+    ...overrides,
+  };
+}
+
+test('a lapsed escort re-issues as a resumed escort — the live convoy hands over intact', () => {
+  const { state, bus, missionSystem, clauseSystem } = initSystems(makeEscortOffer());
+  bus.emit('ui:acceptMission', { missionId: 'offer_escort_convoy_1' });
+  const escort = state.missions.active[0];
+  // A live convoy hull is bound to the run when its window lapses.
+  state.entities.set(555, {
+    id: 555, alive: true, type: 'ship', pos: { x: 30, z: 30 }, data: { missionTag: escort.id },
+  });
+  escort._escorteeId = 555;
+  escort.targetEntityIds = [555];
+  escort.deadline_s = state.simTime + 600;           // a 600s window, already running
+  escort.acceptedAt_s = state.simTime;
+
+  missionSystem._expireMission(escort, 0);
+
+  const successor = state.missions.active.find((m) => m && m.mutatedFromMissionId === escort.id);
+  assert.ok(successor, 'a missed window mutates the escort, not dead-ends it');
+  assert.equal(successor.type, 'escort', 'the successor is an escort again — the convoy still needs seeing home');
+  assert.equal(successor.mutationTag, 'resumed');
+  assert.equal(successor.mutationDepth, 1, 'depth is bounded — a successor cannot chain');
+  assert.equal(successor._escorteeId, 555, 'the live escortee crossed to the re-issued contract');
+  assert.deepEqual(successor.targetEntityIds, [555], 'the escortee was handed over, not swept');
+  assert.equal(state.entities.get(555).alive, true, 'the convoy hull survives the handoff');
+  assert.equal(successor.destStationId, 'station_forge', 'same destination berth');
+  assert.equal(successor.destSectorId, 'sector_vesta_forge', 'same lane');
+  assert.equal(successor.reward_cr, 450, 'half the original fee');
+  assert.equal(successor.deadline_s, state.simTime + 600,
+    'the client re-opens the same window it posted — never a free contract');
+  assert.equal(successor.stationId, 'station_helios', 'the successor boards where the leg was posted');
+  const expired = bus.log.find((e) => e.name === 'mission:expired');
+  assert.equal(expired.payload.mutationTag, 'resumed');
+  assert.equal(count(bus, 'mission:failed'), 0, 'expiry settles through mission:expired, not a failure');
+  clauseSystem.destroy();
+});
+
+test('a lapsed bounty reposts as a renewed warrant in the same hunt sector', () => {
+  const { state, bus, missionSystem, clauseSystem } = initSystems(makeBountyOffer());
+  bus.emit('ui:acceptMission', { missionId: 'offer_bounty_1' });
+  const hunt = state.missions.active[0];
+  hunt.deadline_s = state.simTime + 300;
+  hunt.acceptedAt_s = state.simTime;
+
+  missionSystem._expireMission(hunt, 0);
+
+  const successor = state.missions.active.find((m) => m && m.mutatedFromMissionId === hunt.id);
+  assert.ok(successor, 'a slipped window reposts the writ');
+  assert.equal(successor.type, 'bounty_hunt', 'the successor is a hunt, not a courier leg');
+  assert.equal(successor.mutationTag, 'warrant');
+  assert.equal(successor.mutationDepth, 1);
+  assert.equal(successor.destSectorId, 'sector_ceres_belt',
+    'the mark resurfaced on the same lane — the successor hunts the old sector');
+  assert.equal(successor.stationId, 'station_helios', 'the repost lands on the origin board');
+  assert.equal(successor.needsTargets, true, 'a fresh mark spawns when the player arrives');
+  assert.equal(successor.reward_cr, 550, 'half pay on the reposted writ');
+  assert.equal(successor.deadline_s, state.simTime + 300, 'the renewed writ keeps a real window');
+  clauseSystem.destroy();
+});
+
+test('a lapsed ordinary contract still refiles as a restitution debt (generic fallback)', () => {
+  const { state, bus, missionSystem, clauseSystem } = initSystems(makeCargoIntactOffer({ clauses: [] }));
+  bus.emit('ui:acceptMission', { missionId: 'offer_clause_cargo_intact_1' });
+  const job = state.missions.active[0];
+  job.deadline_s = state.simTime + 120;
+  job.acceptedAt_s = state.simTime;
+
+  missionSystem._expireMission(job, 0);
+
+  const successor = state.missions.active.find((m) => m && m.mutatedFromMissionId === job.id);
+  assert.ok(successor);
+  assert.equal(successor.type, 'cargo_delivery', 'the generic deadline shape is unchanged');
+  assert.equal(successor.mutationTag, 'restitution');
+  assert.equal(successor.params.cmdtyId, 'cmdty_salvage_electronics',
+    'the debt replaces the manifest the contract carried');
+  assert.equal(successor.params.qty, 2);
+  clauseSystem.destroy();
+});
+
+test('a scan bust boards the restitution at the patrol’s lawful station', () => {
+  // The inspection packet names its post directly — a berth/checkpoint stamp.
+  const direct = initSystems(makeSmugglingOffer({ id: 'offer_smuggle_dock' }));
+  direct.bus.emit('ui:acceptMission', { missionId: 'offer_smuggle_dock' });
+  direct.bus.emit('player:scannedByPatrol', { hasContraband: true, stationId: 'station_customs' });
+  const directSuccessor = direct.state.missions.active.find((m) => m && m.mutatedFromMissionId);
+  assert.ok(directSuccessor, 'the confiscated manifest mutates');
+  assert.equal(directSuccessor.stationId, 'station_customs',
+    'the restitution boards at the lawful post that ran the scan');
+  assert.equal(directSuccessor.destStationId, 'station_beltout',
+    'the client still wants the replaced lot at the original destination');
+  assert.ok(
+    direct.state.missions.boards.station_customs,
+    'the successor offer was physically posted to the jurisdiction board (accept consumed the row)',
+  );
+  direct.clauseSystem.destroy();
+
+  // A patrol hull scan carries only its identity — resolve through its jurisdiction zone.
+  const patrol = initSystems(makeSmugglingOffer({ id: 'offer_smuggle_patrol' }));
+  patrol.state.entities.set(77, {
+    id: 77, alive: true, type: 'ship', pos: { x: 9999, z: 9999 },
+    data: { ai: { zoneId: 'jurisdiction:station_tethys' } },
+  });
+  patrol.bus.emit('ui:acceptMission', { missionId: 'offer_smuggle_patrol' });
+  patrol.bus.emit('player:scannedByPatrol', { hasContraband: true, patrolId: 77 });
+  const patrolSuccessor = patrol.state.missions.active.find((m) => m && m.mutatedFromMissionId);
+  assert.ok(patrolSuccessor);
+  assert.equal(patrolSuccessor.stationId, 'station_tethys',
+    'the patrol’s jurisdiction zone resolves its lawful post');
+  patrol.clauseSystem.destroy();
+
+  // Nothing resolvable → the successor keeps the contract's own stations, never an invention.
+  const bare = initSystems(makeSmugglingOffer({ id: 'offer_smuggle_bare' }));
+  bare.bus.emit('ui:acceptMission', { missionId: 'offer_smuggle_bare' });
+  bare.bus.emit('player:scannedByPatrol', { hasContraband: true, patrolId: 909 });
+  const bareSuccessor = bare.state.missions.active.find((m) => m && m.mutatedFromMissionId);
+  assert.ok(bareSuccessor);
+  assert.equal(bareSuccessor.stationId, 'station_helios',
+    'no lawful post resolves → the origin board owns the restitution, as before');
+  bare.clauseSystem.destroy();
+});
+
+test('one scan mints one successor; a depth-1 successor expires plainly', () => {
+  const { state, bus, missionSystem, clauseSystem } = initSystems(makeSmugglingOffer());
+  bus.emit('ui:acceptMission', { missionId: 'offer_smuggle_1' });
+  bus.emit('player:scannedByPatrol', { hasContraband: true, patrolId: 9 });
+  bus.emit('player:scannedByPatrol', { hasContraband: true, patrolId: 9 });
+  assert.equal(count(bus, 'mission:failed'), 1, 'a duplicate scan cannot double-settle');
+  assert.equal(state.missions.active.length, 1, 'one failure minted exactly one successor');
+  const successor = state.missions.active[0];
+  assert.equal(successor.mutationDepth, 1);
+  successor.deadline_s = state.simTime + 10;
+  successor.acceptedAt_s = state.simTime;
+  missionSystem._expireMission(successor, 0);
+  assert.equal(state.missions.active.length, 0,
+    'the chain bound holds — residue expires plainly, no successor-of-successor');
+  const last = bus.log.filter((e) => e.name === 'mission:expired').pop();
+  assert.equal('mutatedToMissionId' in last.payload, false);
+  clauseSystem.destroy();
+});

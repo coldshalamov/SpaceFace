@@ -1099,7 +1099,13 @@ export const survivorPod = {
     offer.reward_cr = reward;
     offer.collateral_cr = 0;
     offer.riskTier = offer.riskTier == null ? 1 : offer.riskTier;
-    offer.time_limit_s = offer.time_limit_s || (meta.oxygenRemaining_s + 300);
+    // The card's advertised window is the oxygen clock (roughly the paid-decay span), never the
+    // generic 2400s wreck duration _buildOffer stamps — so bound DOWN, not only when absent.
+    // duration_s stays the real contract clock: a decayed pod is still physically rescuable.
+    offer.time_limit_s = Math.min(
+      Number.isFinite(offer.time_limit_s) ? offer.time_limit_s : Infinity,
+      meta.oxygenRemaining_s + 300,
+    );
     offer.choice = clone(template.choice);
     offer.tag = template.tag || 'wreck_salvage';
     offer.factionId = CONCORD_FACTION_ID;
