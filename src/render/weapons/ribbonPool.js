@@ -51,6 +51,15 @@ const RIBBON_FRAG = /* glsl */`
   uniform float uGrazeGain;
   uniform float uModulation;
 
+  // Average subpixel periodic detail instead of aliasing it into stationary pixels.
+  float ribbonWave(float phase) {
+    return sin(phase) * (1.0-smoothstep(0.7,3.14159,fwidth(phase)));
+  }
+  float ribbonStrand(float distance, float width) {
+    float resolved=max(width,fwidth(distance));
+    return exp(-pow(distance/resolved,2.0))*width/resolved;
+  }
+
   void main() {
     if (vAlpha <= 0.002) discard;
     float across = abs(vUv.y * 2.0 - 1.0);
@@ -71,47 +80,47 @@ const RIBBON_FRAG = /* glsl */`
     vec3 V = normalize(vViewW);
     float facing = clamp(abs(dot(N, V)), 0.0, 1.0);
     float depth = clamp(1.0 / max(facing, 0.16), 1.0, uGrazeGain);
-    float edgeOn = smoothstep(0.62, 0.08, facing);
+    float edgeOn = 1.0 - smoothstep(0.08, 0.62, facing);
 
     float body = 0.0;
     float hot = 0.0;
 
     if (id < 0.5) {
       // CORD — machined impulse. Needle core, hard lateral cutoff, shock beads pinned to arc.
-      float beads = 0.82 + uModulation * 0.18 * sin(arc * 2.6 - flow * 38.0 + phase);
+      float beads = 0.82 + uModulation * 0.18 * ribbonWave(arc * 2.6 - flow * 38.0 + phase);
       float core = pow(max(0.0, 1.0 - across), 13.0);
       float jacket = 1.0 - smoothstep(0.24, 0.52, across);
       body = (core * 1.20 + jacket * 0.32) * beads;
       hot = core;
     } else if (id < 1.5) {
       // BRAID — transported plasma. Two counter-wound convection lobes cross down the wake.
-      float wind = sin(arc * 0.85 - flow * 6.0 + phase);
-      float lobeA = exp(-pow((across - (0.30 + 0.34 * wind)) / 0.29, 2.0));
-      float lobeB = exp(-pow((across - (0.30 - 0.34 * wind)) / 0.29, 2.0));
+      float wind = ribbonWave(arc * 0.85 - flow * 6.0 + phase);
+      float lobeA = ribbonStrand(across - (0.30 + 0.34 * wind), 0.29);
+      float lobeB = ribbonStrand(across - (0.30 - 0.34 * wind), 0.29);
       float skin = 1.0 - smoothstep(0.72, 1.0, across);
-      float convection = 0.90 + uModulation * 0.10 * sin(arc * 1.7 - flow * 9.0 + phase * 2.1);
+      float convection = 0.90 + uModulation * 0.10 * ribbonWave(arc * 1.7 - flow * 9.0 + phase * 2.1);
       body = ((lobeA + lobeB) * 0.60 + 0.14) * skin * convection;
       hot = max(lobeA, lobeB) * 0.75;
     } else if (id < 2.5) {
       // FORK — induced current. Two conductors with real open air between them. Both branches
       // start at the round and die together at the tail; neither is left dangling.
-      float split = 0.50 + 0.16 * sin(arc * 1.9 - flow * 10.0 + phase);
-      float branch = exp(-pow((across - split) / 0.14, 2.0));
+      float split = 0.50 + 0.16 * ribbonWave(arc * 1.9 - flow * 10.0 + phase);
+      float branch = ribbonStrand(across - split, 0.14);
       float root = (1.0 - smoothstep(0.0, 0.22, along)) * pow(max(0.0, 1.0 - across), 5.0);
-      float current = 0.90 + uModulation * 0.10 * sin(arc * 4.1 - flow * 24.0 + phase);
+      float current = 0.90 + uModulation * 0.10 * ribbonWave(arc * 4.1 - flow * 24.0 + phase);
       body = (branch * 1.30 + root * 0.60) * current;
       hot = branch;
       // The gap is a silhouette feature, not a pale stripe painted over a solid body.
-      if (body < 0.055) discard;
+      body *= smoothstep(0.015,0.055,body);
     } else if (id < 3.5) {
       // SHEET — staged motor. Twin vapour banks around a dark, unlit exhaust channel.
-      float curl = sin(arc * 0.72 - flow * 3.6 + phase) * 0.07;
+      float curl = ribbonWave(arc * 0.72 - flow * 3.6 + phase) * 0.07;
       float bank = smoothstep(0.12 + curl, 0.44 + curl, across) * (1.0 - smoothstep(0.70, 1.0, across));
       float channel = 1.0 - smoothstep(0.0, 0.20, across);
-      float exhaust = 0.91 + uModulation * 0.09 * sin(arc * 1.4 - flow * 5.0 + phase);
+      float exhaust = 0.91 + uModulation * 0.09 * ribbonWave(arc * 1.4 - flow * 5.0 + phase);
       body = bank * exhaust + channel * 0.08;
-      hot = bank * smoothstep(0.38, 0.0, along);
-      if (body < 0.05) discard;
+      hot = bank * (1.0 - smoothstep(0.0, 0.38, along));
+      body *= smoothstep(0.012,0.05,body);
     } else {
       // FILAMENT — coherent afterimage. Narrow, clean, no combustion detail at all.
       float core = pow(max(0.0, 1.0 - across), 7.0);
@@ -177,6 +186,9 @@ export class WeaponRibbonPool {
       fragmentShader: RIBBON_FRAG,
       transparent: true,
       blending: THREE.AdditiveBlending,
+      // Fragment output already contains coverage. ONE/ONE preserves the intended thin wake;
+      // SRC_ALPHA/ONE applied that coverage twice, erasing tails and over-amplifying hot knots.
+      premultipliedAlpha: true,
       depthWrite: false,
       side: THREE.DoubleSide,
       toneMapped: false,

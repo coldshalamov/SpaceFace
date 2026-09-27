@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { ActionVfx, ACTION_VFX_EVENTS } from '../src/render/actionVfx.js';
 import { vfx } from '../src/render/vfx.js';
 import { FieldForcePresentation } from '../src/render/forceLanguage/fieldForcePresentation.js';
+import { WeaponVfxPresenter } from '../src/render/weapons/presenter.js';
 
 function fixture(){
   const player={id:1,alive:true,pos:{x:0,z:0},vel:{x:6,z:2},radius:7};
@@ -70,6 +71,55 @@ test('cut strands shrink without crossing their retained starts or reversing dir
   s.simTime+=.4;out.update(s);
   const path=out.batch.attributes[1],shape=out.batch.attributes[2];
   for(let i=0;i<out.mesh.count;i++){assert.ok(shape.getX(i)>=path.getW(i));assert.ok(shape.getX(i)-path.getW(i)<8);}
+  out.dispose();
+});
+
+test('movement, salvage and cargo receipts resolve their actual payload body and retire transport',()=>{
+  const s=fixture(),out=new ActionVfx(new THREE.Scene());
+  const receipts=[['ship:boostPreKick',{shipId:2}],['salvage:reactorVented',{targetId:2}],
+    ['cargo:caughtByNet',{podId:2,netId:1}],['mining:richCoreCompleted',{asteroidId:2}],
+    ['mining:richCoreFizzle',{asteroidId:2}]];
+  for(const [name,p]of receipts){
+    assert.ok(out.emit(name,p,s));s.simTime+=.09;out.update(s);
+    const slot=out.slots.find(x=>x.event===name&&x.alive);assert.equal(slot.id,2);assert.equal(slot.x,20);
+    assert.ok(out.particles.live>0,name+' has transported aftermath');
+    s.simTime+=3;out.update(s);assert.equal(out.particles.live,0);assert.equal(out.mesh.visible,false);
+  }
+  out.dispose();
+});
+
+test('live force transport freezes at the same simulation time and clears on rewind/reduced motion',()=>{
+  const s=fixture(),out=new FieldForcePresentation(new THREE.Scene());out.update(0,s);
+  s.simTime+=.2;out.update(.2,s);assert.ok(out.particles.live>0);
+  const age=out.particles.system.particles[0].age,live=out.particles.live;
+  out.update(1,s);assert.equal(out.particles.live,live);assert.equal(out.particles.system.particles[0].age,age);
+  s.settings.video.motionReduce=true;s.simTime+=.1;out.update(.1,s);
+  assert.equal(out.particles.live,0);assert.ok(out.mesh.count>0);
+  s.settings.video.motionReduce=false;s.simTime=0;out.update(0,s);assert.equal(out.particles.live,0);
+  out.dispose();
+});
+
+test('mine arming resolves the mine and detonation keeps its receipted point after removal',()=>{
+  const s=fixture(),out=new ActionVfx(new THREE.Scene());
+  out.emit('weapons:mineArmed',{mineId:2,ownerId:1,pos:{x:20,z:30}},s);
+  s.simTime+=.15;out.update(s);
+  assert.equal(out.slots[0].id,2);assert.equal(out.mesh.count,4);
+  s.entities.delete(2);
+  out.emit('weapons:mineDetonated',{mineId:2,ownerId:1,pos:{x:20,z:30},blastRadius:150},s);
+  s.entities.get(1).pos.x=500;s.simTime+=.2;out.update(s);
+  const detonation=out.slots.find(x=>x.recipe?.verb==='shove');
+  assert.equal(detonation.x,20);assert.equal(detonation.z,30);assert.ok(Math.abs(detonation.radius-21)<1e-9);
+  s.settings.video.motionReduce=true;out.update(s);assert.equal(out.particles.live,0);
+  s.simTime+=2;out.update(s);assert.equal(out.mesh.visible,false);out.dispose();
+});
+
+test('weapon particle aftermath follows simulation time through paused rendering and save rewinds',()=>{
+  const s=fixture(),out=new WeaponVfxPresenter({scene:new THREE.Scene(),state:s});
+  out.quarks.spawnExplosion(0,0,0,12);s.simTime+=.1;out.update(.1,{state:s});
+  const particle=out.quarks.flow.system.particles[0],age=particle.age,position=particle.position.clone();
+  out.update(.1,{state:s});assert.equal(particle.age,age);assert.deepEqual(particle.position,position);
+  assert.ok(out.getOwnerRoots().includes(out.quarks.root),'particle owners participate in residency/isolation');
+  s.simTime=0;out.update(.1,{state:s});assert.equal(out.quarks.flow.live,0);
   out.dispose();
 });
 

@@ -828,6 +828,9 @@ function applyObstacleAvoidance(desired, self, contacts, intent, config, counter
   const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
   const speed = Math.hypot(self.vel.x, self.vel.z);
   const lookahead = Math.max(config.obstacleLookahead, speed * 1.25);
+  // Self hull radius is loop-invariant; it was re-derived twice per contact inside the margin.
+  const selfRadius = bodyRadius(self);
+  const selfMarginBase = Math.min(config.obstacleClearance, Math.max(6, selfRadius * 0.6)) + selfRadius;
   let obstacle = null, nearest = Infinity, clearance = 0, lateral = 0, along = 0;
   for (const contact of contacts) {
     countContactVisit(counters, counterMode);
@@ -847,7 +850,7 @@ function applyObstacleAvoidance(desired, self, contacts, intent, config, counter
     const ahead = dx * dir.x + dz * dir.z;
     const across = -dx * dir.z + dz * dir.x;
     // Leave real hull clearance without sealing every authored choke with a 55-WU halo.
-    const margin = Math.min(config.obstacleClearance, Math.max(6, bodyRadius(self) * 0.6)) + bodyRadius(self) + bodyRadius(contact);
+    const margin = selfMarginBase + bodyRadius(contact);
     if (ahead < 0 || ahead > lookahead + margin || Math.abs(across) >= margin) continue;
     const entry = ahead - Math.sqrt(Math.max(0, margin * margin - across * across));
     if (entry >= nearest) continue;

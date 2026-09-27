@@ -35,6 +35,12 @@ const SECTIONS = [
   { id: 'notices', label: 'Third-party notices' },
 ];
 
+/** How far below the reel's top edge a section's head sits when it is the one being read. */
+function readOffset(stage, reel) {
+  const pad = reel && reel.firstElementChild ? (reel.firstElementChild.offsetTop || 0) : 0;
+  return Math.max(0, Math.min(Math.round((stage.clientHeight || 0) * 0.09), pad));
+}
+
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
   if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
@@ -81,7 +87,8 @@ function noticeBlock(notice) {
   const copyright = paragraphs.find((p) => /^copyright\b|\(c\)|©/i.test(p) && p.length < 240)
     || paragraphs.find((p) => p.length < 240 && !/^-+$/.test(p) && !/^[A-Z0-9 ,.'"()\-]+$/.test(p)
       && !String(notice.name || '').startsWith(p) && !/license$/i.test(p)) || '';
-  if (copyright) block.appendChild(el('p', 'orr-cr-copy', copyright));
+  const summary = copyright ? el('p', 'orr-cr-copy', copyright) : null;
+  if (summary) block.appendChild(summary);
   const full = el('div', 'orr-cr-full');
   for (const text of paragraphs) full.appendChild(el('p', 'k-sentence k-measure fh-body', text));
   full.hidden = true;
@@ -95,6 +102,7 @@ function noticeBlock(notice) {
     unfold.addEventListener('click', () => {
       const open = full.hidden;
       full.hidden = !open;
+      if (summary) summary.hidden = open;
       unfold.setAttribute('aria-expanded', String(open));
       unfold.textContent = open ? 'Fold the licence' : 'Read the licence';
       cue(open ? 'open' : 'close');
@@ -207,7 +215,7 @@ export const creditsScreen = {
     const stage = refs.stage;
     if (sec && typeof stage.scrollTo === 'function') {
       const reel = sec.parentElement;
-      const top = Math.max(0, (sec.offsetTop || 0) + ((reel && reel.offsetTop) || 0) - Math.round((stage.clientHeight || 0) * 0.09));
+      const top = Math.max(0, (sec.offsetTop || 0) + ((reel && reel.offsetTop) || 0) - readOffset(stage, reel));
       refs.lock = id;
       clearTimeout(refs.lockTimer);
       refs.lockTimer = setTimeout(() => { if (refs) { refs.lock = null; this._spy(); } }, 900);
@@ -225,7 +233,8 @@ export const creditsScreen = {
     if (refs.progress) refs.progress.set(top / span);
     if (refs.drift) refs.drift.setScroll(top);
     // the section whose head has reached the reel's reading line (where a pick scrolls it to) is the one read
-    const line = top + (stage.clientHeight || 0) * 0.09 + 2;
+    const firstSec = refs.sections[SECTIONS[0].id];
+    const line = top + readOffset(stage, firstSec && firstSec.parentElement) + 1;
     const tops = SECTIONS.map((s) => {
       const sec = refs.sections[s.id];
       const reel = sec && sec.parentElement;

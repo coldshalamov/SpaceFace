@@ -34,11 +34,11 @@
      panels photographed green, why .sx-sw__main was a grid instead of a column, and why the ship
      stage was pinned to 240px against a 340px floor set three sheets later.
 
-     styles/station.css was linked eagerly. The game injects it at runtime (stationApp's
-     ensureStylesheet), which puts it AFTER the Deckplate <style> in the head; a <link> here put it
-     BEFORE, inverting the cascade between the bench and the game on every station surface. The
-     station and ship screens both call ensureStylesheet on mount, so dropping the link is what
-     makes the bench match.
+     styles/station.css was linked eagerly. The game injects it at runtime
+     (src/ui/station/stationStyles.js — called at boot since ledger D15, and again on station/ship
+     mount), which puts it AFTER the Deckplate <style> in the head; a <link> here put it BEFORE,
+     inverting the cascade between the bench and the game on every station surface. ui-bench.js
+     calls ensureStylesheet at startup, so dropping the link is what makes the bench match.
 
      hud.css and prompt-deck.css were missing and are in index.html. -->
 <link rel="stylesheet" href="../styles/ui.css" />

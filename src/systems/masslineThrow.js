@@ -487,9 +487,12 @@ export const masslineThrow = {
       strain: tetherSnapshot ? tetherSnapshot.strain : null,
       load: tetherSnapshot ? tetherSnapshot.load : null,
     });
+    // Assess the taut tangent release BEFORE the cut: attachments.cut emits tether:broken
+    // synchronously, and the gameplay listener clears state.player.tether inside that emit —
+    // an assess after the cut always reads a cleared mirror and can never name the release.
+    const tangentRelease = assessTangentRelease(state, payload.id);
     const result = attachments.cut(attachmentId, player.id, 'tether_cut');
     if (!result || !result.ok) return false;
-    const tangentRelease = assessTangentRelease(state, payload.id);
     if (tangentRelease) this._beginTangentMeeting(state, tangentRelease);
 
     this._releaseAttemptTick = state.tick;

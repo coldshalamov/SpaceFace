@@ -51,7 +51,11 @@ export const survivalRewards = {
     if (this.state.stunts.rewards?.version !== 2) this.state.stunts.rewards = freshRewards();
     return this.state.stunts.rewards;
   },
-  _reset() { if (this.state) { this.state.stunts ||= {}; this.state.stunts.rewards = freshRewards(); } },
+  _reset() {
+    // A dead run's wave plan must never pay into a new run — drop it with the ledgers.
+    this._plan = null; this._planWave = 0;
+    if (this.state) { this.state.stunts ||= {}; this.state.stunts.rewards = freshRewards(); }
+  },
   serialize() { return JSON.parse(JSON.stringify(this._ensure())); },
   deserialize(data) {
     if (data?.version === 2 && data.deaths && data.entitlements && data.chips) this.state.stunts.rewards = JSON.parse(JSON.stringify(data));
@@ -188,7 +192,10 @@ export const survivalRewards = {
     r.clearedWaves[wave] = true;
     if (this.state.stunts?.combo) resetRound(this.state.stunts.combo, this.state.tick);
     this._syncBanks(); this.sweepChips('round_clear');
-    this._emit('run:awardRequested', { xp: this._plan?.rewards?.xp || 0, reason: 'wave_cleared', wave });
+    // The XP purse belongs to exactly the planned wave — a cleared receipt for a wave we
+    // hold no live plan for still scores but invents no XP (CRU-014).
+    const xp = wave === this._planWave ? (this._plan?.rewards?.xp || 0) : 0;
+    this._emit('run:awardRequested', { xp, reason: 'wave_cleared', wave });
   },
   _onDeath() {
     if (this.state.stunts?.combo) settleCrash(this.state.stunts.combo, { tick: this.state.tick, playerDeath: true });

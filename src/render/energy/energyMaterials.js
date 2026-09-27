@@ -183,46 +183,72 @@ const RIBBON_FRAGMENT = /* glsl */`
   // (vAlong 1) back to the ship (vAlong 0) in the first beat after the hitch bites. 1 = spent.
   uniform float uLatchWave;
 
-  float hash(float n) { return fract(sin(n) * 43758.5453123); }
+  float ribbonProfileIntegral(float side, float exponent) {
+    float x = clamp(abs(side), 0.0, 1.0);
+    return sign(side) * (1.0 - pow(1.0 - x, exponent + 1.0)) / (exponent + 1.0);
+  }
+  float ribbonProfile(float side, float exponent) {
+    float pixel = max(fwidth(side), 0.0001);
+    return (ribbonProfileIntegral(side + pixel * 0.5, exponent)
+      - ribbonProfileIntegral(side - pixel * 0.5, exponent)) / pixel;
+  }
+  float ribbonSine(float phase) {
+    float footprint = fwidth(phase) * 0.5;
+    float bandLimit = abs(footprint) < 0.001 ? 1.0 : sin(footprint) / footprint;
+    return sin(phase) * bandLimit;
+  }
+  float ribbonPulse(float phase, float inner, float outer) {
+    float pixel = fwidth(phase);
+    float distance = abs(fract(phase) - 0.5);
+    float pulse = 1.0 - smoothstep(inner - pixel * 0.5, outer + pixel * 0.5, distance);
+    // A subpixel train becomes its integrated energy, never alternating isolated bright pixels.
+    return mix(pulse, inner + outer, smoothstep(0.20, 0.75, pixel));
+  }
 
   void main() {
     float t = clamp(uTension, 0.0, 1.0);
-    float s = clamp(abs(vSide), 0.0, 1.0);
-
     // Two cross-sections. The filament tightens as the line loads (a taut cable reads thinner and
     // hotter); the sheath stays broad so the coloured falloff never disappears.
-    float coreShape = pow(max(0.0, 1.0 - s), mix(9.0, 18.0, t));
-    float sheathShape = pow(max(0.0, 1.0 - s), mix(1.35, 2.1, t));
+    float coreExponent = mix(9.0, 18.0, t);
+    float coreShape = ribbonProfile(vSide, coreExponent);
+    float sheathShape = ribbonProfile(vSide, mix(1.35, 2.1, t));
     float shape = mix(coreShape, sheathShape, uSheath);
+    // Coverage integrates the narrow filament once. Preserve its temperature when it is narrower
+    // than a pixel; multiplying two filtered profiles would incorrectly extinguish the hot core.
+    float sidePixel = max(fwidth(vSide), 0.0001);
+    float corePeak = 2.0 * ribbonProfileIntegral(sidePixel * 0.5, coreExponent) / sidePixel;
+    float coreHeat = clamp(coreShape / max(corePeak, 0.0001), 0.0, 1.0);
 
     // Strain waves travelling toward the anchor. Wider and softer than the old razor band so they
     // read as load moving through the line rather than as marching dashes.
-    float pulse = smoothstep(0.34, 0.02, abs(fract(vAlong * 6.0 - uTime * uPulseSpeed) - 0.5));
-    float winch = smoothstep(0.20, 0.0, abs(fract(vAlong * 10.0 - uTime * (uPulseSpeed * 1.35 + uReel * 4.0)) - 0.5));
+    float pulse = ribbonPulse(vAlong * 6.0 - uTime * uPulseSpeed, 0.02, 0.34);
+    float winch = ribbonPulse(vAlong * 10.0 - uTime * (uPulseSpeed * 1.35 + uReel * 4.0), 0.0, 0.20);
 
-    // Visible strain: high-frequency brightness chatter along the line as it works, plus a harder
-    // flicker once the controller reports overload.
+    // Visible strain: unequal compression waves travel through the line. This replaces the old
+    // 96-cell hash that changed all its cells 34 times per second and looked like pixel chatter.
     //
     // uStrain and uTension are BOTH derived from tether.load; neither is the physical ratio. The
     // split that keeps "hot-looking" and "genuinely being fought" distinguishable is that uStrain
     // is the past-capture remainder and therefore sits strictly below uTension: a line that has
     // merely caught (load 0.35) reads uTension 0.35 but uStrain 0, so it colours up without
     // chattering, while a line being fought drives both. Squaring uStrain widens that gap further.
-    float grain = hash(floor(vAlong * 96.0 + floor(uTime * 34.0) * 7.13));
-    float shiver = grain * (uStrain * uStrain * 0.9 + uOverload * 1.1);
+    float compression = 0.5 + 0.5 * ribbonSine(vAlong * 81.6814 - uTime * (17.0 + uReel * 9.0));
+    float stressEnvelope = 0.72 + 0.28 * ribbonSine(vAlong * 17.2788 - uTime * 3.1 + 0.7);
+    float shiver = compression * stressEnvelope * (uStrain * uStrain * 0.9 + uOverload * 1.1);
 
     // Latch kinetic wave: a single bright band collapsing from the anchor end (vAlong 1) toward
     // the ship (vAlong 0) as uLatchWave sweeps 0→1, dimming as it arrives. A bounded one-shot, not
     // a marching pattern — it is the hook's energy visibly running home to the hull.
     float waveT = clamp(uLatchWave, 0.0, 1.0);
-    float waveBand = smoothstep(0.16, 0.015, abs(vAlong - (1.0 - waveT)))
-      * (1.0 - waveT) * step(waveT, 0.999);
+    float alongPixel = fwidth(vAlong);
+    float waveBand = (1.0 - smoothstep(0.015 - alongPixel * 0.5, 0.16 + alongPixel * 0.5,
+      abs(vAlong - (1.0 - waveT)))) * (1.0 - waveT);
 
     // Colour: the authored tension colour lives in the sheath; the filament saturates to white.
     vec3 sheathColor = mix(uColor, vec3(1.0, 0.30, 0.10), uOverload * 0.8);
     sheathColor = mix(sheathColor, vec3(0.74, 0.95, 1.0), uReel * 0.26);
     float whiteMix = (1.0 - uSheath) * clamp(
-      coreShape * (0.55 + 0.45 * t) + pulse * 0.30 + winch * uReel * 0.45 + uWhip * 0.6
+      coreHeat * (0.55 + 0.45 * t) + pulse * 0.30 + winch * uReel * 0.45 + uWhip * 0.6
         + waveBand * 1.2,
       0.0, 1.0);
     vec3 col = mix(sheathColor, vec3(1.0), whiteMix);
@@ -232,7 +258,7 @@ const RIBBON_FRAGMENT = /* glsl */`
     float radiance = uIntensity * (
         0.30
       + sheathShape * mix(0.55, 1.15, uSheath)
-      + coreShape * (1.0 - uSheath) * (2.4 + 3.6 * t)
+      + coreHeat * (1.0 - uSheath) * (2.4 + 3.6 * t)
       + pulse * (1.2 + 1.1 * t)
       + winch * uReel * 1.6
       + shiver * 1.7

@@ -228,3 +228,40 @@ test('real render package: KTX2 bytes handed to the transcoder are identical wit
     setEmbeddedKtx2DirectSliceForBench(true);
   }
 });
+
+test('on the vendored loader (#168 in-place GLB body) the direct slice reads the fetched GLB and never materializes the body', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { setEmbeddedKtx2DirectSliceForBench } = await import('../src/render/embeddedKtx2Textures.js');
+  const { GLTFLoader: VendoredGLTFLoader } = await import('../vendor/addons/loaders/GLTFLoader.js');
+  const glb = readFileSync(new URL('../assets/ships/release/render-packages/aftermath-aft-weapon-spar/render.glb', import.meta.url));
+  const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+  await MeshoptDecoder.ready;
+
+  async function collect(Loader, on) {
+    setEmbeddedKtx2DirectSliceForBench(on);
+    const seen = [];
+    let parser = null;
+    const loader = new Loader();
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.register(registerEmbeddedKtx2Textures);
+    loader.register((p) => { parser = p; return { name: 'ktx2-168-probe' }; });
+    loader.setKTX2Loader({
+      parse(buffer, onLoad) {
+        seen.push(Buffer.from(buffer.slice(0)).toString('base64'));
+        structuredClone(buffer, { transfer: [buffer] });
+        onLoad(new THREE.CompressedTexture([], 4, 4));
+      },
+    });
+    await loader.parseAsync(glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength), '');
+    return { seen: seen.sort(), binary: parser.extensions.KHR_binary_glTF };
+  }
+  try {
+    const stockOff = await collect(GLTFLoader, false);
+    const vendoredOn = await collect(VendoredGLTFLoader, true);
+    assert.ok(stockOff.seen.length > 0);
+    assert.deepEqual(vendoredOn.seen, stockOff.seen);
+    assert.equal(vendoredOn.binary._body, null, 'the GLB body is never copied out');
+  } finally {
+    setEmbeddedKtx2DirectSliceForBench(true);
+  }
+});

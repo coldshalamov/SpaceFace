@@ -79,6 +79,13 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
   const float SF_SHIELD_WALL_COS = 0.85065081;
   const float SF_SHIELD_TAU = 6.2831853;
 
+  // Thin structure retains its integrated energy as it becomes subpixel. This filters seams
+  // and contact fronts in the material, so the shell does not depend on bloom to hide stair steps.
+  float sfShieldBand(float distance, float width) {
+    float resolved = max(width, fwidth(distance));
+    return exp(-pow(distance / resolved, 2.0)) * width / resolved;
+  }
+
   void sfShieldAxis(vec3 dir, vec3 axis, float id, inout float best, inout float second,
                     inout float bestId, inout vec3 bestAxis, inout vec3 secondAxis) {
     float d = dot(dir, axis);
@@ -114,8 +121,10 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     sfShieldAxis(dir, SF_SHIELD_AXIS_E, 4.0, best, second, bestId, bestAxis, secondAxis);
     sfShieldAxis(dir, SF_SHIELD_AXIS_F, 5.0, best, second, bestId, bestAxis, secondAxis);
     float gap = best - second;
-    float wall = 1.0 - smoothstep(0.0, 0.055, gap);
-    float rib = 1.0 - smoothstep(0.0, 0.030, abs(gap - 0.135));
+    float wallWidth = max(0.055, fwidth(gap));
+    float ribWidth = max(0.030, fwidth(gap));
+    float wall = (1.0 - smoothstep(0.0, wallWidth, gap)) * 0.055 / wallWidth;
+    float rib = (1.0 - smoothstep(0.0, ribWidth, abs(gap - 0.135))) * 0.030 / ribWidth;
     // A low-discrepancy per-panel constant, not a noise lookup: it only orders the panels.
     float cell = fract(bestId * 0.6180339887);
     float inward = clamp((best - SF_SHIELD_WALL_COS) * 6.71, 0.0, 1.0);
@@ -163,13 +172,13 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     // The travelling wave gathers along manufactured panel directions. This gives
     // each hit a scalloped liquid-glass edge instead of another perfect neon circle.
     float scallop = 1.0 + 0.16 * sin(N.x * 21.0 + N.z * 13.0) * sin(N.y * 17.0 - N.z * 9.0);
-    float s = (d - ringR * scallop * hexMod) / ringW;
-    float ring = exp(-s * s) * w * (0.35 + 0.65 * w);
+    float ring = sfShieldBand(d - ringR * scallop * hexMod, ringW) * w * (0.35 + 0.65 * w);
     // Trailing inner cell: a fainter hex echo at 60% of the front's reach — the lattice charging
     // behind the wavefront. Same facet modulation, tighter band, so the grid read survives bloom.
-    float s2 = (d - ringR * scallop * hexMod * 0.62) / (ringW * 0.55);
-    ring += exp(-s2 * s2) * w * (0.30 + 0.40 * w);
-    float core = exp(-d / (0.016 + age * 0.020)) * w * w;
+    ring += sfShieldBand(d - ringR * scallop * hexMod * 0.62, ringW * 0.55) * w * (0.30 + 0.40 * w);
+    float coreWidth = 0.016 + age * 0.020;
+    float resolvedCore = max(coreWidth, fwidth(d));
+    float core = exp(-d / resolvedCore) * coreWidth / resolvedCore * w * w;
     return vec2(core, ring);
   }
 
@@ -194,7 +203,9 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     // With the clock unset all three collapse to constants and the shell is simply the old still.
     float sweep = 1.0 - abs(fract(cell - clock * 0.19) * 2.0 - 1.0);
     float circulation = sweep * sweep * sweep;
-    float current = pow(0.5 + 0.5 * cos((along * 3.4 - clock * 0.62 + cell) * SF_SHIELD_TAU), 6.0);
+    float currentPhase = (along * 3.4 - clock * 0.62 + cell) * SF_SHIELD_TAU;
+    float current = mix(pow(0.5 + 0.5 * cos(currentPhase), 6.0), 0.225586,
+      smoothstep(0.7,3.14159,fwidth(currentPhase)));
     float breath = 0.5 + 0.5 * sin(clock * 1.7 + cell * SF_SHIELD_TAU);
 
     // Absorbed charge does not light every panel at once: each panel has its own place in the
@@ -205,7 +216,7 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     float activity = clamp(load * 4.0 + panelCharge * 2.0 + (core + ring) * 2.5 + base * 4.0, 0.0, 1.0);
 
     // CONSTRUCTED MEMBERS. A machined frame set a little inside each weld, and a pane left clear.
-    float frame = exp(-pow((inward - 0.20) / 0.085, 2.0));
+    float frame = sfShieldBand(inward - 0.20, 0.085);
     float pane = smoothstep(0.30, 0.90, inward);
 
     // A stress seam is a weld CARRYING load, and the travelling current is what says so. Without

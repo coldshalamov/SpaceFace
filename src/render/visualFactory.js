@@ -3510,7 +3510,7 @@ export function updateHulkEmber(ember, simTime) {
   if (!ember || !ember.mats) return;
   const intensity = hulkEmberIntensityAt((Number(simTime) || 0) - (Number(ember.killedAt) || 0));
   for (const m of ember.mats) {
-    if (m) m.emissiveIntensity = intensity;
+    if (m) m.emissiveIntensity = intensity * (m.userData?.hulkEmberGain ?? 1);
   }
 }
 
@@ -3543,6 +3543,14 @@ export function deadenPackagedHulk(group) {
             clone.emissive.setHex(HULK_EMBER_COLOR);
           }
           clone.emissiveIntensity = 0;
+          // Heat remains in authored drive/thermal hardware. Heating every hull panel equally
+          // erases the ship's material detail into a solid orange silhouette during the blast.
+          // Uniform-only weights retain the live program identity and add no kill-time shader.
+          const heatName = String(m.name || '').toLowerCase();
+          clone.userData.hulkEmberGain = /drivecore|drive_core|reactor/.test(heatName) ? 1
+            : /engine|radiator|heat|coolant/.test(heatName) ? 0.55
+            : /mechanical/.test(heatName) ? 0.18
+            : /glass|rubber|decal|marking|nav|sensor/.test(heatName) ? 0 : 0.025;
           if ('envMapIntensity' in clone) {
             clone.envMapIntensity = (Number.isFinite(clone.envMapIntensity) ? clone.envMapIntensity : 1) * HULK_ENVMAP_SCALE;
           }

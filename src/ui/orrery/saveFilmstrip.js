@@ -88,12 +88,13 @@ let gradSeq = 0;
  * @param {object} o
  * @param {HTMLElement} o.host   the box the strip fills (position:relative; its height is the sheet's)
  * @param {string} [o.frameSel] the element inside each row whose foot the rail passes under
+ * @param {string} [o.berthSel] the berth inside a frame that the beam lands on (its rim, not the air above a hull)
  * @param {(row: HTMLElement) => boolean} [o.isEmpty] a station with nothing filed (an open ring)
  * @param {(id: string) => void} [o.onScrub] the Hand passed a new station while the strip was scrubbed
  * @param {() => ({x:number, y:number}|null)} [o.beamTarget] where the chosen save's hull stands, in page px
  * @returns {{ attach(list: HTMLElement, o?: {chosen?: string, arrive?: boolean}): void, choose(id: string, o?: {instant?: boolean}): void, layout(): void, dispose(): void }}
  */
-export function createSaveFilmstrip({ host, frameSel = '.sf-slot-frame', isEmpty = (row) => row.classList.contains('empty'), onScrub = null, beamTarget = null } = {}) {
+export function createSaveFilmstrip({ host, frameSel = '.sf-slot-frame', berthSel = '.sf-slot-berth', isEmpty = (row) => row.classList.contains('empty'), onScrub = null, beamTarget = null } = {}) {
   const doc = (host && host.ownerDocument) || globalThis.document;
   if (!host || !doc || typeof doc.createElementNS !== 'function' || typeof host.getBoundingClientRect !== 'function') return INERT;
   injectOrrery(doc);
@@ -201,15 +202,29 @@ export function createSaveFilmstrip({ host, frameSel = '.sf-slot-frame', isEmpty
     const hb = host.getBoundingClientRect();
     const row = rows[idx];
     const frame = row && row.querySelector ? row.querySelector(frameSel) : null;
-    const sx = geo.stations[idx].x;
-    const sy = (parseFloat(row.style.top) || 0) + (frame ? frame.offsetTop : 0) - 4;
     const tx = to.x - hb.left;
     const ty = to.y - hb.top;
+    // the beam leaves the chosen slot's own berth: from the rim's side that faces the hero berth, or,
+    // for an open berth right under it, from the top of its rim
+    const berth = frame && frame.querySelector ? frame.querySelector(berthSel) : null;
+    const br = berth && typeof berth.getBoundingClientRect === 'function' ? berth.getBoundingClientRect() : null;
+    let sx = geo.stations[idx].x;
+    let sy = (parseFloat(row.style.top) || 0) + (frame ? frame.offsetTop : 0) - 4;
+    let vertical = true;
+    if (br && br.width > 0) {
+      const bcx = br.left - hb.left + br.width / 2;
+      const hasHull = !!(frame.querySelector && frame.querySelector('img'));
+      if (!hasHull && Math.abs(tx - bcx) < br.width) { sx = bcx; sy = br.top - hb.top + 2; }
+      else { vertical = false; sx = tx >= bcx ? br.right - hb.left - 2 : br.left - hb.left + 2; sy = br.top - hb.top + br.height / 2; }
+    }
     if (!(sy - ty > 24)) return;
-    // one curve: out along the strip from the frame's head (under the reading's keys, never through them),
-    // then up into the berth's near rim from below
     const dy = sy - ty;
-    const d = `M ${f(sx)} ${f(sy)} C ${f(sx + (tx - sx) * 0.62)} ${f(sy)} ${f(tx)} ${f(ty + dy * 0.72)} ${f(tx)} ${f(ty)}`;
+    // one curve: off the berth's rim, rising at once over the neighbouring slots' ships, across under the
+    // reading's keys, and up into the hero berth's near rim from below
+    const dir = tx >= sx ? 1 : -1;
+    const d = vertical
+      ? `M ${f(sx)} ${f(sy)} C ${f(sx)} ${f(sy - dy * 0.5)} ${f(tx)} ${f(ty + dy * 0.5)} ${f(tx)} ${f(ty)}`
+      : `M ${f(sx)} ${f(sy)} C ${f(sx + dir * 50)} ${f(sy - dy * 0.7)} ${f(tx)} ${f(ty + dy * 0.5)} ${f(tx)} ${f(ty)}`;
     beamG.appendChild(svg('path', { d, class: 'orr-film__beam-bloom' }));
     beamG.appendChild(svg('path', { d, class: 'orr-film__beam-band' }));
     beamG.appendChild(svg('path', { d, class: 'orr-film__beam' }));

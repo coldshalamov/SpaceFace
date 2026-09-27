@@ -41,7 +41,11 @@ void main(){
   float age = max(0.0, poweredAt - iLife.x);
   // Age, not the session clock. A muzzle flash is a tenth of a second; tying its
   // travel to uTime made the band crawl at ignition and thrash after a long flight.
-  float motionTime = age * uMotion;
+  // After power stops, charge still travels into a slowing residue. The force footprint dies
+  // immediately, but the material does not freeze in mid-air and shrink like a paused clip.
+  float residueAge = releasing ? max(0.0,uTime-iLife.z) : 0.0;
+  float coast = (1.0-exp(-residueAge*3.0))/3.0;
+  float motionTime = (age+coast) * uMotion;
   float release = releasing ? smoothstep(0.0, iLife.w, max(0.0, uTime-iLife.z)) : 0.0;
   float build = cycle ? smoothstep(0.0, iLife.y, age) : 1.0;
   float phase=fract(motionTime*0.58*iMotion.x+iMotion.y);
@@ -73,7 +77,7 @@ void main(){
   if(working){
     float wave=t*10.0-motionTime*(2.2+iMotion.y*.3)+iMotion.y*6.283;
     float crest=sin(wave+across*2.4)*sin(PI*t);
-    float flex=iBehavior.w*uMotion*(1.0-release);
+    float flex=iBehavior.w*uMotion*(1.0-release*0.55);
     height+=iShape.y*flex*(0.42*crest+0.18*sin(wave*.63-across*4.0));
     p+=normal*iShape.y*flex*0.17*crest*(1.0-across*across);
   }
@@ -111,7 +115,8 @@ void main(){
         spin=(-0.48*motionTime+uMotion*0.16*flex*sin(motionTime*1.9+t*6.28+localPhase));
         if(role>1.5)spin=0.64*motionTime;
         spin+=uMotion*((1.0-build)*1.8-release*1.15);
-        growth*=mix(1.0,1.0-0.95*release,uMotion);
+        // The outer end is consumed first; independent strands keep winding into the throat.
+        growth*=mix(1.0,1.0-release*(0.56+0.39*(1.0-t)),uMotion);
         height+=uMotion*iShape.y*0.34*flex*sin(t*9.0-motionTime*3.2+localPhase);
         // Material is DRAWN IN: each fold's reach creeps toward the throat out of phase with its
         // neighbours, so the ring visibly swallows even with nothing caught in it. Bounded well
@@ -124,7 +129,8 @@ void main(){
         // and it never crosses below its built radius, so the verb can never invert into a Well.
         relative*=1.0+uMotion*flex*0.055*max(0.0,sin(motionTime*2.15+localPhase*4.2));
         growth*=1.0+uMotion*release*0.04;
-        height+=uMotion*release*iShape.y*2.8;
+        height+=uMotion*release*iShape.y*(0.7+1.8*sin(t*3.14+localPhase));
+        relative+=normal*uMotion*release*iShape.y*sin(t*8.0+localPhase);
       }else if(kind<4.5){
         // Cone: a flowing pressure curtain, with fixed outer rails.
         relative+=vec2(-sa,ca)*uMotion*iShape.y*0.70*flex*sin(t*7.0-motionTime*3.6+localPhase)*sin(PI*t);
@@ -166,37 +172,50 @@ varying float vFront;
 varying vec4 vCycle;
 varying vec4 vMaterial;
 varying vec3 vSurfaceWorld;
+// Integrate unresolved detail toward its mean instead of letting a bright comb become pixels.
+float filteredWave(float phase){
+  return 0.5+0.5*sin(phase)*(1.0-smoothstep(0.7,3.14159,fwidth(phase)));
+}
+float strand(float distance,float width){
+  float footprint=max(fwidth(distance),0.001);
+  float resolved=max(width,footprint);
+  return exp(-pow(distance/resolved,2.0))*min(1.0,width/footprint);
+}
 void main(){
   float t=vUv.x; float v=vUv.y;
   float edge=1.0-smoothstep(0.90-max(fwidth(v),0.015),1.0,abs(v));
-  float tips=smoothstep(0.0,0.018,t)*(1.0-smoothstep(0.97,1.0,t));
+  float tipAA=max(fwidth(t)*1.3,0.018);
+  float tips=smoothstep(0.0,tipAA,t)*(1.0-smoothstep(1.0-tipAA,1.0,t));
   float reveal=1.0-smoothstep(vFlow.w-0.07,vFlow.w+0.01,t);
-  float pixel=max(fwidth(v)*1.15,0.055);
-  float fold=exp(-pow((v+0.40)/max(0.13,pixel),2.0));
-  float rim=exp(-pow((v-0.68)/max(0.08,pixel),2.0));
+  float wandering=0.17*sin(t*8.0-vCycle.z*1.7+vFlow.y*8.0)*sin(t*3.14159);
+  float fold=strand(v+0.40+wandering,0.105);
+  float rim=strand(v-0.68+wandering*.4,0.065);
   // Broad pigment folds survive play scale. A high-frequency sine comb used to make
   // every force resemble corrugated ribbon irrespective of its physical construction.
   float warp=0.32*sin(t*9.0-vCycle.z*2.1+vFlow.y*8.0);
-  float groove=0.5+0.5*sin(t*18.0+v*4.0+vFlow.y*9.0+warp);
-  float packet=pow(0.5+0.5*cos(t*16.0-vCycle.z*vFlow.x*5.0+vFlow.y*6.283),3.0);
+  float groove=filteredWave(t*18.0+v*4.0+vFlow.y*9.0+warp);
+  float packet=pow(filteredWave(t*16.0-vCycle.z*vFlow.x*5.0+vFlow.y*6.283+1.5708),3.0);
   // TRANSPORT SIGNATURE — which way material actually moves through this surface, which is the
   // family's identity before any colour. Weapon sources (kind 0) keep the generic packet exactly.
   // All of it is driven by vCycle.z, which is already scaled by uMotion, so reduced motion freezes
   // transport without touching the lifecycle fades.
   float kind=vCycle.x;
+  bool field=kind>0.5;
+  bool boundary=vCycle.w>0.5 && vCycle.w<1.5;
+  bool opticalField=kind>1.5 && !boundary;
   if(kind>1.5&&kind<2.5){
     // Well: caustic fringes run from the rim INTO the throat.
-    packet=pow(0.5+0.5*cos((1.0-t)*15.0-vCycle.z*3.05+vFlow.y*6.283),4.0);
+    packet=pow(filteredWave((1.0-t)*15.0-vCycle.z*3.05+vFlow.y*6.283+1.5708),4.0);
   }else if(kind>2.5&&kind<3.5){
     // Repulsor: one hot leading crest with its own cooling wake trailing behind it, outward.
-    float front=fract(t*0.62-vCycle.z*0.44+vFlow.y);
-    packet=smoothstep(0.55,1.0,front)*(0.30+0.70*front);
+    float front=t*3.9-vCycle.z*2.76+vFlow.y*6.283;
+    packet=pow(filteredWave(front),5.0);
   }else if(kind>3.5&&kind<4.5){
     // Cone: discrete packets carried source-to-tip inside the authoritative sector.
-    packet=pow(0.5+0.5*cos(t*9.0-vCycle.z*4.15+vFlow.y*6.283),5.0);
+    packet=pow(filteredWave(t*9.0-vCycle.z*4.15+vFlow.y*6.283+1.5708),5.0);
   }else if(kind>4.5){
     // Skim: intake banding runs ACROSS the bank toward the centreline, never along it.
-    packet=pow(0.5+0.5*cos((v*0.5+0.5)*9.0-vCycle.z*3.4+vFlow.y*6.283),4.0);
+    packet=pow(filteredWave((v*0.5+0.5)*9.0-vCycle.z*3.4+vFlow.y*6.283+1.5708),4.0);
   }
   float body=0.12+0.38*smoothstep(0.28,0.64,groove);
   float hot=(fold*(0.75+0.48*packet)+rim*0.58)*uFlash;
@@ -207,12 +226,12 @@ void main(){
   }
   if(vFlow.z>1.5 && vFlow.z<2.5){
     // Frame-lock jaws are solid, machined force plates, not another glowing ring.
-    float ratchet=pow(0.5+0.5*cos(t*11.0-vCycle.z*4.4+vFlow.y*6.283),4.0);
+    float ratchet=pow(filteredWave(t*11.0-vCycle.z*4.4+vFlow.y*6.283+1.5708),4.0);
     body=0.48+0.20*groove;hot=(fold*(0.22+ratchet*0.70)+rim*0.68)*uFlash;
   }
   if(vFlow.z>2.5 && vFlow.z<3.5){
     // Kinetic: torn, hard striations and dead metal between the directed explosive blades.
-    body=0.12+0.18*step(0.45,groove); hot*=0.82+0.18*step(0.3,sin(t*87.0+v*13.0));
+    body=0.12+0.18*smoothstep(0.4,0.5,groove); hot*=0.82+0.18*filteredWave(t*87.0+v*13.0);
   }
   // MACHINED CROSS-SECTION. Discrete ribs with a dark channel between them, filtered by fwidth so
   // the edges stay stable at play distance instead of degenerating into noise. Members authored
@@ -226,44 +245,74 @@ void main(){
   float ribW=clamp(fwidth(ribU)*1.6,0.004,0.45);
   float crest=ribs>0.5 ? 1.0-smoothstep(0.16-ribW,0.16+ribW,ribQ) : 0.0;
   float channel=ribs>0.5 ? smoothstep(0.58-ribW,0.58+ribW,ribQ) : 0.0;
-  body=body*(1.0-0.44*channel)+0.19*crest;
-  hot=hot*heat+crest*packet*0.34*uFlash*heat;
-  bool field=vCycle.x>0.5;
-  bool boundary=vCycle.w>0.5 && vCycle.w<1.5;
+  float filmCoverage=0.0;
+  float bodyFocus=1.0;
+  if(opticalField){
+    // A full-width fract band prints rectangular plates onto a transparent strip. Metric
+    // members carry a continuous optical thickness instead: the ribs curve through the fold,
+    // and transmission integrates that thickness rather than stepping between opaque cells.
+    // Seed's lock jaws and the legacy weapon sources retain their machined cross-section.
+    float roll=v+0.22*sin(t*7.0-vCycle.z*1.8+vFlow.y*6.283)*sin(t*3.14159);
+    float ribPhase=ribU*6.2831853+1.65*sin(roll*2.6+t*3.2)+roll*1.9;
+    float interference=filteredWave(ribPhase);
+    crest=ribs>0.5 ? interference*interference*interference : 0.0;
+    channel=ribs>0.5 ? (1.0-interference)*(1.0-interference) : 0.0;
+    float foldedSection=roll/0.78;
+    bodyFocus=exp(-foldedSection*foldedSection);
+    float thickness=(0.42+0.34*bodyFocus)*(0.78+0.22*interference);
+    filmCoverage=1.0-exp(-thickness*mix(0.80,0.16,clamp(heat,0.0,1.0)));
+    if(!(vFlow.z>0.5 && vFlow.z<1.5))body=0.12+0.38*groove;
+  }
+  // A transport crest illuminates the curved folds, never the strip's entire rectangular
+  // cross-section. Full-width rib emission looked like solid tabs sliding along the field.
+  float crestFocus=mix(1.0,0.06+0.94*max(fold,rim),clamp(heat,0.0,1.0));
+  body=body*(1.0-(opticalField?0.24:0.44)*channel*bodyFocus)+0.19*crest*crestFocus*bodyFocus;
+  hot=hot*heat+crest*packet*0.34*uFlash*heat*crestFocus;
+  float filament=0.0;
   // Interfering caustic folds are sculpted on the membrane. HDR lives in moving narrow
   // shoulders; the broader blue/amber body stays below bloom so nearby hulls remain legible.
   if(field && !boundary){
     float flow=vCycle.z;
     float bend=0.28*sin(t*11.0-flow*2.7+vFlow.y*8.0);
-    float crease=abs(v-bend+0.16*sin(t*21.0-flow*3.4));
-    float aa=max(fwidth(crease)*1.1,0.035);
-    float caustic=1.0-smoothstep(0.055,0.055+aa,crease);
-    float braids=0.5+0.5*sin(t*31.0+v*7.0-flow*3.8+vFlow.y*17.0);
+    float crease=v-bend+0.16*sin(t*21.0-flow*3.4);
+    float caustic=strand(crease,0.065);
+    float braids=filteredWave(t*31.0+v*7.0-flow*3.8+vFlow.y*17.0);
     float junction=pow(braids,5.0)*caustic;
     vec3 normal=normalize(cross(dFdx(vSurfaceWorld),dFdy(vSurfaceWorld)));
     float grazing=pow(1.0-abs(dot(normal,normalize(cameraPosition-vSurfaceWorld))),2.0);
-    hot+=(caustic*(1.15+packet*1.8)+junction*1.25+grazing*rim*.6)*heat*uFlash;
-    body+=0.13*braids*heat;
+    filament=caustic*(0.55+packet*.45);
+    hot+=(caustic*(2.1+packet*2.4)+junction*1.65+grazing*rim*.6)*heat*uFlash;
+    body*=1.0-0.65*heat;
   }
   float fracture=1.0;
   if(vCycle.y>0.0){
     // Persistent fragments cool and erode; they do not remain active conveyor/force symbols.
     // Continuous tear contours, not square hash cells that become visible pixels on shutdown.
-    float tear=0.5+0.25*sin(t*23.0+v*5.0+vFlow.y*17.0)
-      +0.25*sin(t*11.0-v*8.0+vFlow.y*9.0);
+    float tear=0.5*filteredWave(t*23.0+v*5.0+vFlow.y*17.0+vCycle.z*.7)
+      +0.5*filteredWave(t*11.0-v*8.0+vFlow.y*9.0-vCycle.z*.4);
     float tearAA=max(fwidth(tear),0.035);
     fracture=smoothstep(vCycle.y-0.18-tearAA,vCycle.y+0.06+tearAA,tear);
     if(vCycle.x>3.5 && vCycle.x<4.5)fracture*=smoothstep(vCycle.y-0.12,vCycle.y+0.08,t);
     hot*=1.0-0.88*vCycle.y;
     body*=1.0-0.45*vCycle.y;
   }
-  float shadowPool=1.0-smoothstep(0.20,0.55,groove);
+  float shadowPool=opticalField ? 1.0-groove : 1.0-smoothstep(0.20,0.55,groove);
   vec3 pigment=mix(vTint.rgb,vTint.rgb*vec3(0.30,0.24,0.68),shadowPool*0.78);
   // Cool members drift toward machined steel rather than a dimmer copy of the field's own colour,
   // so hardware and working surface separate by MATERIAL, not by brightness alone.
   pigment=mix(pigment*vec3(0.46,0.50,0.60)+vec3(0.030,0.034,0.042),pigment,clamp(heat,0.0,1.0));
-  vec3 color=pigment*body+vTint.rgb*hot*1.5+vec3(0.55,0.68,0.78)*pow(fold,3.0)*hot*0.40;
-  float alpha=edge*tips*reveal*vTint.a*vFront*fracture*(0.57+0.43*max(fold,rim));
+  vec3 emission=vTint.rgb*hot*1.5+vec3(0.55,0.68,0.78)*pow(fold,3.0)*hot*0.40;
+  // Energy has open space between filaments. Only cold source hardware retains solid coverage.
+  float coverage=0.07+0.37*fold+0.22*rim+0.35*filament;
+  if(!field)coverage=0.57+0.43*max(fold,rim);
+  if(field&&!boundary)coverage=mix(0.57+0.43*max(fold,rim),coverage,clamp(heat,0.0,1.0));
+  if(opticalField)coverage=min(0.98,filmCoverage+0.37*fold+0.22*rim+0.35*filament);
+  if(boundary)coverage=0.36+0.5*max(fold,rim);
+  // The filtered emission already contains filament coverage. Undo that factor in straight-alpha
+  // RGB so normal blending integrates it once; squaring coverage makes fine energy disappear.
+  float emissionCoverage=field&&!boundary?mix(1.0,max(coverage,0.05),clamp(heat,0.0,1.0)):1.0;
+  vec3 color=pigment*body+emission/emissionCoverage;
+  float alpha=edge*tips*reveal*vTint.a*vFront*fracture*coverage;
   if(alpha<0.003)discard;
   gl_FragColor=vec4(color,alpha);
   #include <colorspace_fragment>

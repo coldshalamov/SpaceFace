@@ -1,0 +1,124 @@
+LIVING ADVENTURE — the open-ended strong-agent lane for SpaceFace.
+
+Copy this prompt as-is. This is not a task list. The task list is the floor;
+the assignment is the experience.
+
+Read, in this order, then start:
+  design/VISION.md            (the owner's fantasy — the only authority on feel)
+  build_map.md                §23.0 (campaign laws), §27 (lane model)
+  design/program/FINISH_LANES.md §7 (THE WORLD) and §8 (THE LONG GAME)
+  design/program/NOW.md       (exact paths other agents own right now)
+  then the live owner of whatever you actually touch
+
+THE ASSIGNMENT, in one breath
+
+Make a stranger feel they were dropped into a busy little mechanical universe
+that was already mid-shift — everything real enough to fuck with — and that an
+hour of touching it produces decisions worth making and at least one story they
+would retell starting with "so then." Authored, not populated. You are not here
+to implement the campaign briefs. You are here to make the adventure half of
+this game feel like the game VISION.md describes, and the campaigns only named
+the holes somebody had already noticed.
+
+The briefs are floor, not assignment. Every §23 campaign (CV-DAY, CV-SO,
+CV-QUIET and all eight CR-*), every §22 world/economy row, and every queue leaf
+in THE WORLD and THE LONG GAME lanes is the list of what we already know is
+missing. Do them, fold them together, supersede them, or invent better — a
+better foundation than the brief is the success, not a miss (build_map.md
+§23). When a campaign's *feeling* is already ordinary on the default route,
+say so and move on; do not build the letter of it.
+
+WHERE THE UNEXPLORED TERRITORY IS (known blind spots, 2026-09)
+
+  - Early play recycles ambush, patrol, convoy. Trade, yard, archive and
+    escort encounters are almost unique — almost nobody has met them.
+  - Six factions have a voice and no address. Nowhere remembers you standing
+    in it.
+  - Kill machines and weather exist in data and the opening neighbourhood
+    never meets them.
+  - Most "places" in the first sector are beacons. Busy means ships that
+    should not be together; quiet means work that is hushed. Both are
+    currently bare aprons.
+  - The sim already runs more life than the session shows. The gap is usually
+    a missing listener, a dead seam, or a chain that resets when you look
+    away — not a missing feature.
+
+THE TYPES OF THING THAT COUNT (invent inside these — not a checklist)
+
+  1. Places that are bodies, not beacons. Somewhere a stranger can fly back
+     to, that has a job, a cycle, and people doing something with their hands.
+     A berth that is different because of what you did is worth six new
+     sectors that are not.
+  2. Chains already running. Work the player can watch or interrupt anywhere
+     along it — mining → accumulation → haulage → attention → response —
+     that continues whether or not anyone pressed accept.
+  3. Consequences that outlive the scene. A failure leaves a body with a job:
+     salvage someone wants, a pilot who comes back, a price that moved, a
+     patrol that remembers. Within a cap the machine can hold.
+  4. Toys made of the world. Machinery, wells, weather, geometry — objects
+     with a cycle the existing verbs (rope, shove, well, fields, hitch, tow)
+     already know how to use. Discovered by curiosity, not a hazard label.
+  5. A way of life per place. Occupation a stranger reads in thirty seconds
+     of unlabeled activity. Sectors differ by what the job *is*, never by a
+     density slider.
+  6. Specifics a stranger remembers. One-offs wired to a rumor or a skyline —
+     the tug spinning by the refinery, the memorial that is a destination,
+     the tanker that makes your ship feel small. They need no system. They
+     need to be specific.
+  7. Decisions an hour. Fits, routes, custody, forecasts — a choice a player
+     can reason about and be right about. Six interesting ones per hour is
+     the §17 bar; the fit, the market and the story are where they live.
+
+WHAT THIS RUN REFUSES (inherited law — violations get reverted)
+
+  - No dialogue trees, empire screens, loot-rarity ladders, character
+    creators, second renderers, second physics/economy/heat/AI systems.
+  - No decorative orbiters, briefing text, beacon-plus-flavor-text, density
+    bumps sold as life, combo meters, tutorial modals, captioned feelings.
+  - No drag, no clamping earned momentum, no NPC gyros, no hit-point scaling,
+    no starter-tool limits, no overheat locks, no ammo starvation.
+  - Failure mutates the situation; it never reloads it. Determinism:
+    state.rng and state.simTime only. Single writers for credits, rep, cargo,
+    derived stats, heat — other systems emit intents.
+  - Nothing player-facing exists unless it is reachable on the default route
+    with no flag, URL, or debug key.
+  - Screen *styling* belongs to THE INSTRUMENT's agent. You own the content,
+    model and decisions behind station/market/outfitting screens; do not
+    restyle them. Coordinate by exact path, or ledger the seam.
+
+WHAT "BETTER" LOOKS LIKE
+
+  - The bars a stranger would feel: one "so then" story per hour of play;
+    each sector recognisable from thirty seconds of unlabeled activity; every
+    actor able to finish "I am here because ___" and "if something changes,
+    I will ___"; six interesting decisions an hour; a kill, a spill or a
+    screw-up still doing something when you come back.
+  - Know the area before you change it, and show that your change moved it.
+    The instruments already exist for every kind of claim — seeded headless
+    sessions and the event bus for world behavior, fixed-seed fixtures for
+    beats, scripted slices, ui-bench and a live look for surfaces. Which
+    evidence a claim needs is your call; a cheap agent can take a look at
+    anything you build.
+  - Thin means: a label, a tint, a toast, a timer, a second system beside the
+    one that already computes the thing. Connect the listener first. Then
+    make it beautiful.
+
+HOW TO RUN
+
+  - Work where the stranger walks: opening neighbourhood → first dock and
+    job loop → the sectors outward → the hour-scale decisions. The checklist
+    is unordered; follow whatever the area needs next.
+  - One slice is a commit the player can perceive. Land it by pathspec, drop
+    a checkpoint row while mutating, take the next.
+  - A defect outside this lane follows root AGENTS.md §7: small, fix it now;
+    medium, subagent it; big or unknown, one row in the demo defect ledger —
+    never a second bug list.
+  - When a §23 campaign's feeling becomes ordinary because of your work,
+    write one line under its heading in build_map.md: the feeling, and the
+    commit that made it ordinary. Do not delete headings.
+  - Report in the owner's words (build_map.md §1.4). No file paths in the
+    summary. Say what a stranger now sees, what still falls short, and what
+    you invented that no brief named.
+
+You are trusted with the taste. The briefs were a weaker agent's map of the
+territory; your map should be better than it by the time you stop.

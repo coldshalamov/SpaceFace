@@ -119,7 +119,10 @@ test('passive AI sleeps beyond the largest table, not a 1400 WU horizon', () => 
 test('live traffic consults the ambient hauler planner', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../src/systems/traffic.js', import.meta.url), 'utf8');
-  assert.match(source, /shouldAmbientHaulerPlan\(/);
+  // traffic.js gates per-role planning through _ambientPlanGate — its allocation-free mirror of
+  // the scheduler's shouldAmbientHaulerPlan, documented next to the mirror. Either spelling proves
+  // the ambient gate is consulted on the live path.
+  assert.match(source, /_ambientPlanGate\(|shouldAmbientHaulerPlan\(/);
   assert.match(source, /tableSimAuthorityWuFromState/);
   const ai = await readFile(new URL('../src/ai/stack.js', import.meta.url), 'utf8');
   assert.match(ai, /TABLE_AI_AUTHORITY_WU/);

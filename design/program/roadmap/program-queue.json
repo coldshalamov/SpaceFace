@@ -11132,7 +11132,7 @@
       "priority": 230,
       "title": "Freeze, calibrate, and run the held-out 30/90-minute Gold Corridor qualification",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-019.promote",
         "PQ-020.promote",
@@ -11156,7 +11156,9 @@
         "npm run check:launch-policy",
         "npm run check:sim:compare"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "claimed 2026-09-27: PERF cloud lane (owner dispatch) — local agents keep off"
+      ],
       "brief": "Freeze the draft matrix and profiles, perform Phase 2 calibration, then run held-out Browser/Electron 30- and 90-minute routes for all three careers.",
       "blocker": null
     },
@@ -11983,7 +11985,7 @@
       "priority": 257,
       "title": "PERF-06 dirty-range Browser/Electron acceptance",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-040.focused-implementation"
@@ -12002,7 +12004,9 @@
         "node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-browser",
         "node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-electron"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "claimed 2026-09-27: PERF cloud lane (owner dispatch) — local agents keep off"
+      ],
       "brief": "Integrated dirty-range production and focused real-WebGL correctness remain focused-green. Commits 4eafbf1a and e982b593 added the tracked paired broker manifests plus the causal dirty-range-versus-full-span comparator, so one clean candidate may now run Browser then Electron acceptance. Upload-byte, dense-combat parity, allocation/GC, and matched-performance acceptance remain unproven until those one-use claims pass.",
       "blocker": null
     },

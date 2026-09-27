@@ -22,9 +22,24 @@ export function hashOwnerKey(ownerKey) {
   return hash >>> 0;
 }
 
+// Perf memo: ownerPhase/shouldRunOnTick run for every scheduled owner every tick, and the FNV
+// walk over the owner key was re-done on each call. The phase is a pure function of
+// (ownerKey, period), so the cache cannot drift from a fresh hash.
+const PHASE_CACHE = new Map();
+
 export function ownerPhase(ownerKey, periodTicks) {
   const period = Math.max(1, Math.floor(Number(periodTicks) || 1));
-  return hashOwnerKey(ownerKey) % period;
+  let perPeriod = PHASE_CACHE.get(ownerKey);
+  if (!perPeriod) {
+    perPeriod = new Map();
+    PHASE_CACHE.set(ownerKey, perPeriod);
+  }
+  let phase = perPeriod.get(period);
+  if (phase === undefined) {
+    phase = hashOwnerKey(ownerKey) % period;
+    perPeriod.set(period, phase);
+  }
+  return phase;
 }
 
 export function shouldRunOnTick(tick, ownerKey, periodTicks) {

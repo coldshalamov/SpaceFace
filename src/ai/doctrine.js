@@ -42,10 +42,30 @@ const DEFAULT_LEASH_RADIUS = 2600;
 // already-normalized activity (the common case inside one decision pass) can return it as-is.
 const NORMALIZED_ACTIVITIES = new WeakSet();
 
+// Perf: a raw activity object that survives across ticks (the common case — the stack re-reads
+// the same authored/morale record every tick) previously rebuilt and re-froze its normalized
+// form every call. The output is a pure function of the source fields, so the raw values are
+// cached beside the output and compared before any rebuild; any difference rebuilds.
+const NORMALIZED_BY_SRC = new WeakMap();
+
 export function normalizeActivity(value, fallback = null) {
   if (value && typeof value === 'object' && NORMALIZED_ACTIVITIES.has(value)) return value;
   const src = value && typeof value === 'object' ? value : fallback;
   if (!src || typeof src !== 'object') return null;
+  const cached = value === src ? NORMALIZED_BY_SRC.get(src) : null;
+  if (cached
+    && cached.kind === src.kind
+    && cached.reason === src.reason
+    && cached.anchor === src.anchor
+    && cached.leashRadius === src.leashRadius
+    && cached.preferredRange === src.preferredRange
+    && cached.startedTick === src.startedTick
+    && cached.deadlineTick === src.deadlineTick
+    && cached.targetId === src.targetId
+    && cached.routeId === src.routeId
+    && cached.encounterId === src.encounterId) {
+    return cached.out;
+  }
   const kind = ACTIVITY_VALUES.has(String(src.kind)) ? String(src.kind) : ActivityKind.LOITER;
   const activity = Object.freeze({
     kind,
@@ -60,6 +80,21 @@ export function normalizeActivity(value, fallback = null) {
     encounterId: src.encounterId == null ? null : String(src.encounterId),
   });
   NORMALIZED_ACTIVITIES.add(activity);
+  if (value === src) {
+    NORMALIZED_BY_SRC.set(src, {
+      kind: src.kind,
+      reason: src.reason,
+      anchor: src.anchor,
+      leashRadius: src.leashRadius,
+      preferredRange: src.preferredRange,
+      startedTick: src.startedTick,
+      deadlineTick: src.deadlineTick,
+      targetId: src.targetId,
+      routeId: src.routeId,
+      encounterId: src.encounterId,
+      out: activity,
+    });
+  }
   return activity;
 }
 
