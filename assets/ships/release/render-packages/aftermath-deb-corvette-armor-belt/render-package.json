@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6a9e05c217825409fc666c96ff50e8c147bb355dd6aa468421f691dab4219c31",
+  "contentHash": "85d7c14caf94298c752c50ba1e1939442b5a6fbe434bb81a1ec28c6551fc9548",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1280,8 +1280,8 @@
       "uri": "place_aftermath_deb_corvette_armor_belt.glb"
     },
     "sourceManifest": {
-      "bytes": 199726,
-      "sha256": "7637b7f5ceea5ba4b8791c17a98e7bc67a8125fdeaafe3714950e8679ad2ba26",
+      "bytes": 199725,
+      "sha256": "0472bccb7d9cda8cc0d4c1724b33ffef5f04a49bd1e88dc693be2f324efe46b9",
       "uri": "pilots.json"
     }
   },
@@ -1840,7 +1840,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_corvette_armor_belt.glb"
   },
-  "runtimeHash": "883710f9c19860a9f381f84f065a0837db61bd5a0cca7ac9aa1741f11ef5040c",
+  "runtimeHash": "294781de42c6c6a08dd752080da25cbb46942da40fa61628e8f5c833abd700f7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

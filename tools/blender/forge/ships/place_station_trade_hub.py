@@ -316,10 +316,8 @@ def build_drum(s):
     # the drum stands on the apron: buttresses between the apron and the concourse
     for k in range(12):
         a = 15 + 30 * k
-        p0 = polar(16.8, a, APRON_Z1)
         F.box(s, f'Buttress{k}', polar(17.4, a, APRON_Z1 + 1.1), (1.6, 1.6, 2.2), material='paint.graphite',
               rot_z=math.radians(a), bevel=0.0, taper=0.8)
-        del p0
 
 
 def build_drum_details(s):
@@ -579,7 +577,7 @@ def build_ring(s):
         F.light(s, f'HeadLamp{side:+d}', (tip[0], tip[1], ROOF_Z1 + 1.4), lamp, size=1.1)
         F.light(s, f'HeadLampLow{side:+d}', polar(RING_R1 + 1.0, a, 12.0), lamp, size=0.9)
     # the gate bridge: an open lattice span across the mouth at the deck plane
-    for dz, rr in ((0.0, RING_R0 + 3.0), (0.0, RING_R1 - 3.0)):
+    for rr in (RING_R0 + 3.0, RING_R1 - 3.0):
         pts = [polar(rr, -(MOUTH + 1.5) + 2 * (MOUTH + 1.5) * i / 6, 25.8) for i in range(7)]
         for i in range(6):
             truss(s, f'Gate{rr:.0f}_{i}', pts[i], pts[i + 1], 2.6, 2.6, 2, material='gunmetal', chord=0.5, web=0.28)

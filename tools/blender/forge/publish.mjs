@@ -74,7 +74,8 @@ const list = Array.isArray(pilots) ? pilots : (pilots.pilots || pilots.packages)
 for (const key of pilotKeys) {
   const pilot = list.find((p) => p.key === key);
   if (!pilot) throw new Error(`no render-package pilot ${key}`);
-  pilot.dynamicNameIncludes = ['HOOK_DRIVE', 'HOOK_NAV', 'HOOK_SECONDARY', 'HOOK_SENSOR', 'HOOK_ARMOR'];
+  // Ships animate their hooks; places (some are flightStaticV3 packages) stay fully static.
+  if (!place) pilot.dynamicNameIncludes = ['HOOK_DRIVE', 'HOOK_NAV', 'HOOK_SECONDARY', 'HOOK_SENSOR', 'HOOK_ARMOR'];
 }
 writeFileSync(pilotsPath, `${JSON.stringify(pilots, null, 2)}\n`);
 run('node', ['scripts/refresh-render-package-pilots.mjs', `--only=${pilotKeys.join(',')}`], { quiet: true });
