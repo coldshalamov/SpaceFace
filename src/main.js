@@ -322,6 +322,11 @@ async function boot() {
       // ensure the render system has registered its scene/renderer handles on state.render
       setTimeout(() => { runShipPreview({ state, registry, THREE }).catch((e) => console.error('[shipPreview]', e)); }, 500);
     }
+    // Dev-only fleet look harness: ?dev=fleetlook exposes window.SF_fleetLook (scripts/fleet-look.mjs).
+    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'fleetlook') {
+      const { installFleetLook } = await import('./render/fleetLook.js');
+      setTimeout(() => { try { installFleetLook({ state, registry, THREE }); } catch (e) { console.error('[fleetLook]', e); } }, 500);
+    }
     // Dev-only single-frame Kestrel hero capture: ?dev=shipshot renders the player Kestrel once (no
     // rAF loop, so it's robust under headless Chrome) and POSTs kestrel_hero_live.jpg to /__shot.
     SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'shipshot') {

@@ -1,0 +1,13 @@
+{
+  "about": "Forge fleet registry: which live body each forge ship file replaces. tools/blender/forge/publish.mjs reads it.",
+  "ships": {
+    "hornet": {
+      "layout": "player",
+      "file": "hornet_production_v1",
+      "asset_id": "SF_HORNET_PRODUCTION_V1",
+      "part_id": "wholeship_hornet_production_v1",
+      "root": "HORNET",
+      "note": "PQ-050.01 forge-v1 rebuild (tools/blender/forge/ships/hornet.py): yellow-jacket interceptor, cranked delta with flap row and tip cannon pods, twin drives, shared forge panel surface set."
+    }
+  }
+}

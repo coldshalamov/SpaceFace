@@ -6911,8 +6911,14 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   {
     const podRecordsForFit = library.get('pod') || [];
     const greebleRecordsForFit = library.get('greeble') || [];
-    for (const mount of fittedModuleMounts(entity, podRecordsForFit, greebleRecordsForFit, assemblySeed)) {
+    const authoredJobs = wholeShip ? authoredHullJobs(hullRecord) : null;
+    const integrated = wholeShip && hullIntegratesHardpoints(hullRecord);
+    for (const mount of integrated ? [] : fittedModuleMounts(entity, podRecordsForFit, greebleRecordsForFit, assemblySeed)) {
       if (!mount.record) continue;
+      // A production body that already models the hardware for this job (Kestrel's mining head)
+      // shows the fit through that hardware; a second kit part on the same socket reads as a box
+      // bolted to the nose.
+      if (authoredJobs && authoredJobs.has(mount.socket)) continue;
       const placement = mount.placement;
       const socketPos = hullLocalPositionForSocket(hull, mount.socket);
       if (socketPos) {
@@ -6922,6 +6928,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
           socketPos[2] + mount.ordinal * 0.10,
         ];
       }
+      if (wholeShip) keepPlacementBehindNose(placement, mount.record, hullRecord);
       const partRoot = instantiatePart(mount.record, hull, placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
       bindings.secondary.push(partRoot);
@@ -6929,7 +6936,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     }
   }
 
-  if (wholeShip) {
+  if (wholeShip && !hullIntegratesHardpoints(hullRecord)) {
     const fitWeaponMounts = authoredWeaponMounts(entity, shipDef, library.get('weapon') || [], assemblySeed, { fittedOnly: true });
     const weaponSocketPos = hullLocalPositionForSocket(hull, 'SOCKET_Weapon_Front');
     for (let index = 0; index < fitWeaponMounts.length; index += 1) {
@@ -6944,6 +6951,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
           weaponSocketPos[2] + side * (0.08 + row * 0.05),
         ];
       }
+      keepPlacementBehindNose(mount.placement, mount.record, hullRecord);
       instantiatePart(mount.record, hull, mount.placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
       noteUsed('weapon', mount.record);
@@ -8209,6 +8217,63 @@ export function visibleFittingsForEntity(entity) {
     });
   }
   return { modules, driveGlow, fittedWeaponIds };
+}
+
+// Whole-ship hulls are mounted at this normalized +X length (see the Hull placement above).
+const WHOLE_SHIP_HULL_TARGET_LENGTH = 1.72;
+const NOSE_CLEARANCE = 0.02;
+
+/** Hull-local +X of the authored nose: the hull part is scaled so its +X extent spans 1.72. */
+function hullNoseX(hullRecord) {
+  const bounds = hullRecord && hullRecord.bounds;
+  if (!bounds || !Array.isArray(bounds.max) || !Array.isArray(bounds.size) || !(bounds.size[0] > 0)) return null;
+  return bounds.max[0] * (WHOLE_SHIP_HULL_TARGET_LENGTH / bounds.size[0]);
+}
+
+/**
+ * Fitted hardware rides inside the body's plan outline: a gun or module whose tip passes the nose
+ * reads as a box stuck on the front of the ship. Slide the mount aft until its +X tip sits just
+ * behind the nose. Pure placement arithmetic, applied before the part is instanced.
+ */
+export function keepPlacementBehindNose(placement, record, hullRecord) {
+  const noseX = hullNoseX(hullRecord);
+  const bounds = record && record.bounds;
+  if (noseX == null || !placement || !Array.isArray(placement.position) || !bounds
+    || !Array.isArray(bounds.max) || !Array.isArray(bounds.size) || !(bounds.size[0] > 0)) return false;
+  if (placement.quaternion) return false;
+  if (Array.isArray(placement.rotation) && placement.rotation.some((v) => Math.abs(Number(v) || 0) > 1e-6)) return false;
+  const scale = (Number(placement.targetLength) || 0) / bounds.size[0];
+  const tipX = placement.position[0] + bounds.max[0] * scale;
+  const limit = noseX - NOSE_CLEARANCE;
+  if (!(tipX > limit)) return false;
+  placement.position = [placement.position[0] - (tipX - limit), placement.position[1], placement.position[2]];
+  return true;
+}
+
+/**
+ * Forge hulls model their own guns, drills and pods as part of the design. Generic kit parts bolted
+ * onto their sockets read as boxes stuck to a finished ship, so those bodies opt out of bolt-ons.
+ */
+export function hullIntegratesHardpoints(hullRecord) {
+  const meta = hullRecord && (hullRecord.metadata || (hullRecord.blueprint && hullRecord.blueprint.metadata));
+  return !!(meta && (meta.integratedHardpoints === true || meta.surfaceGeometryRemaster === 'forge-v1'));
+}
+
+const AUTHORED_JOB_SOCKETS = Object.freeze([
+  [/mining|drill|extract/i, 'SOCKET_Mining_Front'],
+]);
+
+/** Sockets whose job the production body already models (by authored primitive name). */
+function authoredHullJobs(hullRecord) {
+  const jobs = new Set();
+  if (!hullRecord) return jobs;
+  let primitives = [];
+  try { primitives = compositionPrimitives(hullRecord) || []; } catch (_) { primitives = []; }
+  for (const primitive of primitives) {
+    const name = String(primitive && primitive.name || '');
+    for (const [pattern, socket] of AUTHORED_JOB_SOCKETS) if (pattern.test(name)) jobs.add(socket);
+  }
+  return jobs;
 }
 
 /** Resolve a standard/authored fit socket to a placement position in normalized hull space. */
@@ -11457,6 +11522,10 @@ function authoredMaterialFamily(base, tags = {}, role = 'hull') {
  */
 export function applyAuthoredSurfaceTint(material, hex, role, explicitOverride = false) {
   if (role === 'none') return material;
+  // A forge hull's paint is its identity. Only an explicit player paint job replaces it; faction
+  // palette multiplies would muddy authored colour and the authored stripes/metals stay exact.
+  if (material && material.userData && material.userData.spacefaceFinish === 'forge-v1'
+    && !(explicitOverride && (role === 'hull' || role === 'accent'))) return material;
   const tint = new THREE.Color(hex);
   if (material.color) {
     if (explicitOverride && (role === 'hull' || role === 'accent')) {
@@ -11548,6 +11617,7 @@ export function authoredSurfaceTintRole(tags = {}, material = null) {
 
 function applyAppearanceFinish(material, palette, role) {
   if (!material || !palette || !Number.isFinite(Number(material.roughness))) return material;
+  if (material.userData && material.userData.spacefaceFinish === 'forge-v1') return material;
   if (!['hull', 'accent', 'dark'].includes(role)) return material;
   const wear = Math.max(0, Math.min(1, Number(palette.wear) || 0));
   if (palette.finish === 'polished') {
@@ -11693,7 +11763,10 @@ function materialShareSignature(material, tags = {}) {
   const role = authoredSurfaceTintRole(tags, material);
   // Palette tint is applied after sharing and lives in the instance key (`role|tint|...`).
   // Including authored base color here splits fleets that share maps but differ by tiny albedo.
-  const tintable = role === 'hull' || role === 'accent' || role === 'dark' || role === 'thruster';
+  // Forge hulls share one panel texture set fleet-wide and carry identity in the colour factor, so
+  // their colour must stay in the share key or every forged ship would inherit the first one's paint.
+  const forge = !!(material.userData && material.userData.spacefaceFinish === 'forge-v1');
+  const tintable = !forge && (role === 'hull' || role === 'accent' || role === 'dark' || role === 'thruster');
   const emissiveHex = colorSig(material.emissive);
   return [
     material.type || 'Material',

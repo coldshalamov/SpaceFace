@@ -1,0 +1,70 @@
+#!/usr/bin/env node
+// Forge publish: one command from a forge ship file to the live, packaged game body.
+//   node tools/blender/forge/publish.mjs hornet [--skip-blender]
+//
+// 1. Blender builds the ship and exports the contract GLB(s) into assets/ships/parts/wholeships
+// 2. parts_manifest row: forge material names, drive hook, note; then --sync (bytes/tris/bounds)
+// 3. release build (KTX2 + meshopt) for exactly this ship's files
+// 4. render-package pilots: refresh release hash, mark forge hooks dynamic, rebuild packages
+// 5. model-truth census regenerated and spliced to this ship's rows only
+// Every step is the repo's own tooling; this script only sequences it for one ship.
+import { execFileSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+
+const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+const FLEET = JSON.parse(readFileSync(join(ROOT, 'tools/blender/forge/fleet.json'), 'utf8'));
+const shipId = process.argv[2];
+const entry = FLEET.ships[shipId];
+if (!entry) throw new Error(`unknown forge ship ${shipId}; known: ${Object.keys(FLEET.ships).join(', ')}`);
+
+const run = (cmd, args, opts = {}) => {
+  console.log(`[publish] ${cmd} ${args.join(' ')}`);
+  return execFileSync(cmd, args, { cwd: ROOT, stdio: opts.quiet ? 'pipe' : 'inherit', encoding: 'utf8', maxBuffer: 1 << 28 });
+};
+
+if (!process.argv.includes('--skip-blender')) {
+  run('blender', ['-b', '--python', `tools/blender/forge/ships/${shipId}.py`, '--', '--live'], { quiet: true });
+}
+
+const files = entry.layout === 'player'
+  ? [entry.file, `${entry.file}_lod1`, `${entry.file}_lod2`]
+  : [entry.file];
+const releaseIds = files.map((f) => `wholeship_${f}`);
+const pilotKeys = files.map((f) => f.replace(/_/g, '-'));
+
+// 2. manifest row
+const manifestPath = join(ROOT, 'assets/ships/parts/parts_manifest.json');
+const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+const row = manifest.parts.find((r) => r.id === `wholeship_${entry.file}`);
+if (!row) throw new Error(`no parts_manifest row wholeship_${entry.file}`);
+row.tintable = {
+  hull: 'Material_Hull', dark: 'Material_Armor', mechanical: 'Material_Mechanical',
+  accent: 'Material_Accent', canopy: 'Material_Canopy', thruster: 'Material_Thruster',
+};
+row.hooks = ['HOOK_DRIVE_CORE'];
+if (entry.note) row.note = entry.note;
+writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+run('node', ['scripts/check-parts-manifest.mjs', '--sync'], { quiet: true });
+
+// 3. release
+run('node', ['scripts/build-sg04-release-assets.mjs', '--no-clean', '--only', releaseIds.join(',')], { quiet: true });
+
+// 4. packages
+const pilotsPath = join(ROOT, 'assets/ships/render-packages/pilots.json');
+const pilots = JSON.parse(readFileSync(pilotsPath, 'utf8'));
+const list = Array.isArray(pilots) ? pilots : (pilots.pilots || pilots.packages);
+for (const key of pilotKeys) {
+  const pilot = list.find((p) => p.key === key);
+  if (!pilot) throw new Error(`no render-package pilot ${key}`);
+  pilot.dynamicNameIncludes = ['HOOK_DRIVE', 'HOOK_NAV'];
+}
+writeFileSync(pilotsPath, `${JSON.stringify(pilots, null, 2)}\n`);
+run('node', ['scripts/refresh-render-package-pilots.mjs', `--only=${pilotKeys.join(',')}`], { quiet: true });
+run('node', ['scripts/build-render-package-pilots.mjs', `--only=${pilotKeys.join(',')}`], { quiet: true });
+
+// 5. census
+run('node', ['scripts/model-truth-census.mjs'], { quiet: true });
+run('node', ['scripts/lib/splice-census-rows.mjs', `--match=/${entry.file}.glb`], { quiet: false });
+console.log(`[publish] ${shipId}: ${files.join(', ')} live`);

@@ -6683,8 +6683,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
-      "tris": 13306,
-      "bytes": 1188652,
+      "tris": 12724,
+      "bytes": 848804,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6694,7 +6694,9 @@
         "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -6712,22 +6714,22 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.399999618530273,
-          -1.0499999523162842,
-          -4.550000190734863
+          -5.220080852508545,
+          -0.4906860888004303,
+          -4.400000095367432
         ],
         "max": [
-          5.699999809265137,
-          1.6799999475479126,
-          4.550000190734863
+          4.619999885559082,
+          0.9371601343154907,
+          4.400000095367432
         ],
         "dimensionsM": [
-          11.09999942779541,
-          2.7299998998641968,
-          9.100000381469727
+          9.840080738067627,
+          1.427846223115921,
+          8.800000190734863
         ]
       },
-      "note": "PQ-050.01 chase_form_v17. Cycle 5: darker hull, plate course, HN/07 lettering, hull-wide dirt, extra hoses/cargo. Hitch/Kestrel untouched. Chase Hitch-plus PASS for the four C4 notes."
+      "note": "PQ-050.01 forge-v1 rebuild (tools/blender/forge/ships/hornet.py): yellow-jacket interceptor, cranked delta with flap row and tip cannon pods, twin drives, shared forge panel surface set."
     },
     {
       "id": "wholeship_inspection_cutter",
@@ -7047,8 +7049,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_express_candidate",
-      "tris": 58211,
-      "bytes": 13125660,
+      "tris": 54637,
+      "bytes": 12667384,
       "textureSize": 1024,
       "hooks": [],
       "sockets": [
@@ -7056,12 +7058,10 @@
         "SOCKET_Cargo_Ventral",
         "SOCKET_Dock_Port",
         "SOCKET_Engine_Main",
-        "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
         "SOCKET_Service_Starboard",
         "SOCKET_Tether_Keel",
-        "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
@@ -7077,12 +7077,12 @@
         ],
         "max": [
           19.799999237060547,
-          5.666805744171143,
+          5.634999752044678,
           9.479999542236328
         ],
         "dimensionsM": [
           40.79999923706055,
-          11.136805534362793,
+          11.104999542236328,
           18.959999084472656
         ]
       },
