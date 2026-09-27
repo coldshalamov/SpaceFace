@@ -30,7 +30,7 @@ ${S} #hud .sf-discovery-plate__frame {
 ${S} #hud .sf-discovery-plate__frame::before { ${pool('-22px -40px -22px -14px')} }
 ${S} #hud .sf-discovery-plate__frame::after { content:""; position:absolute; left:8px; top:7px; width:6px; height:6px; border-radius:50%;
   background:rgb(236 230 216 / .95); box-shadow:0 0 0 3px rgb(232 226 212 / .08), 0 0 10px rgb(223 238 255 / .4); }
-${S} #hud .sf-discovery-plate__kicker { font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size:10px; line-height:14px;
+${S} #hud .sf-discovery-plate__kicker { font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size: 12px; line-height:14px;
   letter-spacing:.22em; text-transform:uppercase; color:var(--dp-ink-dim, #b7b4a6); }
 ${S} #hud .sf-discovery-plate__title { font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-weight:800; font-size:23px;
   line-height:1; letter-spacing:-.01em; color:var(--dp-ink, #e8e2d4); margin-top:9px; }
@@ -46,7 +46,7 @@ ${S} #hud .sf-toast::after { content:""; position:absolute; left:0; top:50%; wid
   background:linear-gradient(90deg, transparent, rgb(232 226 212 / .75)); }
 ${S} #hud .sf-toast--warn::after, ${S} #hud .sf-toast--error::after, ${S} #hud .sf-toast--danger::after {
   height:1.5px; background:linear-gradient(90deg, transparent, var(--dp-danger, #ff5038)); box-shadow:0 0 6px rgb(255 80 56 / .35); }
-${S} #hud .sf-toast__count { font-family:var(--dp-face-numeral); font-weight:700; font-size:11px; color:var(--dp-phos, #dfeeff);
+${S} #hud .sf-toast__count { font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff);
   background:none; border:0; box-shadow:none; margin-left:8px; }
 
 /* ---- the floor caption and the dock prompt: one line of light on the glass ---------------------- */
@@ -57,7 +57,7 @@ ${S} .sf-alert.sf-alert--floor { color:var(--dp-ink, #e8e2d4); }
 
 /* ---- the band key: an engraved word and a lamp ring, lit only while a channel is tuned ---------- */
 ${S} #hud .sf-band-hud__button { position:relative; background:none !important; background-image:none !important; box-shadow:none !important;
-  border:0 !important; padding:4px 0 4px 20px; font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size:10px;
+  border:0 !important; padding:4px 0 4px 20px; font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size: 12px;
   letter-spacing:.22em; text-transform:uppercase; color:var(--dp-ink-dim, #b7b4a6); ${HALO} }
 ${S} #hud .sf-band-hud__button::before { content:""; position:absolute; left:5px; top:50%; width:2px; height:11px; margin-top:-5.5px;
   background:rgb(232 226 212 / .42); }
@@ -99,7 +99,7 @@ ${S} #hud .sf-radar-wrap--orrery .sf-radar canvas { clip-path:circle(50%); }
 /* the kit bezel, face ring and north caret are the old instrument's chrome; the frame replaces them */
 ${S} #hud .sf-radar-wrap--orrery :is(.sf-kit-radar__bezel, .sf-kit-radar__face, .sf-kit-radar__n) { display:none; }
 ${S} #hud .sf-radar-wrap--orrery .sf-radar-objective-key { margin-top:26px; font-family:var(--dp-face-label); font-stretch:112%;
-  font-weight:600; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--dp-hand, #f2b950); ${HALO} }
+  font-weight:600; font-size: 12px; letter-spacing:.16em; text-transform:uppercase; color:var(--dp-hand, #f2b950); ${HALO} }
 
 html.sf-reduce-motion ${S} #hud .sf-discovery-plate { transition:opacity .2s linear; }
 @media (forced-colors: active) {

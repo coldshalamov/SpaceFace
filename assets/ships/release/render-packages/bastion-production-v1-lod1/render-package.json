@@ -519,7 +519,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "09c77b6ecac62b0d42d5ae2eff9140f541b32113033c86ebe39e5f9a2705daa4",
+=======
+  "contentHash": "d910775555e36988ed3f5214cce6c5c03b85778346dacda70693fb98580f8193",
+>>>>>>> origin/master
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2250,8 +2254,13 @@
       "uri": "bastion_production_v1_lod1.glb"
     },
     "sourceManifest": {
+<<<<<<< HEAD
       "bytes": 193703,
       "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
+=======
+      "bytes": 189651,
+      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
+>>>>>>> origin/master
       "uri": "pilots.json"
     }
   },
@@ -3142,7 +3151,11 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/bastion_production_v1_lod1.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "db65877bcdfa7c24fb7d364b62de00d3df6d041633012058c28b16ac7a032d8b",
+=======
+  "runtimeHash": "92ed1ba013270dcb008af4bd1ace0f727bb33fa3302d337b4542f78ad1f2c78a",
+>>>>>>> origin/master
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -130,10 +130,15 @@ test('the wave-20 system event is on the plan exactly once in the arc', () => {
   for (let i = 0; i < plans.length; i++) {
     if (plans[i].systemEvent) flagged.push(i + 1);
   }
-  assert.deepEqual(flagged, [20]);
+  // PQ-133.07: the arc authors exactly two system events — the wave-20 plate theft and the wave-30
+  // Forge Regent finale crown. Neither may appear twice.
+  assert.deepEqual(flagged, [20, 30]);
   assert.equal(plans[19].systemEvent.id, 'foundry_plate_theft');
   assert.equal(plans[19].objective.kind, 'system_event');
+  assert.equal(plans[29].systemEvent.id, 'forge_regent_crown');
+  assert.equal(plans[29].objective.kind, 'boss');
   assert.equal(bodyCount(plans[19].packages), bodyCount(plans[9].packages));
+  assert.equal(bodyCount(plans[29].packages), bodyCount(plans[9].packages));
 });
 
 test('waves 1, 5 and 10 stay the authored ten-wave plans', () => {
@@ -210,19 +215,18 @@ function driveArc(seed = 7) {
   return harness;
 }
 
-test('the run machine fires the wave-20 event once and cannot double-fire it', () => {
+test('the run machine fires each authored system event once and cannot double-fire it', () => {
   const { state, emitted } = driveArc(11);
   assert.equal(state.run.phase, 'victory');
   assert.equal(state.run.wave, 30);
   assert.equal(state.run.act, 2);
   const events = emitted.filter((entry) => entry.event === 'run:systemEvent');
-  assert.equal(events.length, 1);
-  assert.equal(events[0].payload.wave, 20);
-  assert.equal(events[0].payload.id, 'foundry_plate_theft');
+  assert.deepEqual(events.map((entry) => entry.payload.wave), [20, 30]);
+  assert.deepEqual(events.map((entry) => entry.payload.id), ['foundry_plate_theft', 'forge_regent_crown']);
 
   const planned = emitted.filter((entry) => entry.event === 'run:wavePlanned');
   assert.equal(planned.length, 30);
-  assert.equal(planned.filter((entry) => entry.payload.plan && entry.payload.plan.systemEvent).length, 1);
+  assert.equal(planned.filter((entry) => entry.payload.plan && entry.payload.plan.systemEvent).length, 2);
 });
 
 test('a second run of the same seed plans the same thirty waves from the machine', () => {

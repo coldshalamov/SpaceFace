@@ -17,6 +17,7 @@
 // loop/alarm state and (re)started once audio resumes.
 
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
+import { WEAPONS } from '../data/weapons.js';
 import { CUE_GAIN } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe } from './combatVerbCues.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
@@ -482,6 +483,11 @@ export const COLLISION_CUE = Object.freeze({
 // plays an ascending melody rather than the same note eight times.
 const SCOOP_CHIME_RATES = Object.freeze([1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.888, 2.0]);
 
+// Stunt chain ladder (CV-EAR) — each player trick in the active combo plucks one step higher.
+// The step reads stuntCombo's own acts.length (the real link count, already bumped before the
+// event lands), so a combo reset drops the pitch back to the bottom for free.
+const STUNT_CHAIN_RATES = Object.freeze([1, 1.125, 1.25, 1.5, 1.667, 2.0]);
+
 const COLLISION_TIER_RECIPES = Object.freeze({
   kiss: 'sfx_dock_clunk',
   knock: 'sfx_mining_impact',
@@ -893,15 +899,81 @@ export const BARK_PUNCT = Object.freeze({
 export const INSTRUCTOR_REPEAT_WINDOW_S = 8;
 
 // Weapon-id / kind -> SFX recipe id. Player & NPC weapon defIds are 'wpn_*'; the combat:fire
-// payload carries weaponId. We classify by substring so any catalog id resolves. A mount whose id
-// carries no known family must NEVER borrow the starter pulse's voice: two different guns would
-// become indistinguishable, and an unknown weapon would masquerade as the player's first one. Those
-// fall to the authored generic combat discharge (`sfx_wpn_unclassified`) instead.
-function recipeForWeapon(weaponId) {
+// payload carries weaponId. CV-EAR: classify from the weapon DEF first (damageType, mount,
+// tracking, deployKind, mineArmS, statuses, emergentPrimitive — what the mount IS), with id
+// substrings only for ids outside the catalog. A mount whose id carries no known family must
+// NEVER borrow the starter pulse's voice: two different guns would become indistinguishable, and
+// an unknown weapon would masquerade as the player's first one. Those fall to the authored
+// generic combat discharge (`sfx_wpn_unclassified`) instead.
+const WEAPON_DEF_BY_ID = new Map(WEAPONS.map((d) => [d.id, d]));
+// Field-tool primitives (src/data/emergentPrimitives.js): standing-field emitters ride the
+// gravitic voice, crackle payloads the disruptor, placed bombs the charge.
+const GRAVITIC_PRIMITIVES = new Set(['grav', 'polarity', 'viscosity', 'quantum', 'prism']);
+const DISRUPTOR_PRIMITIVES = new Set(['primer', 'hijack']);
+const CHARGE_PRIMITIVES = new Set(['sticky']);
+const GRAVITIC_STATUS_IDS = new Set(['status_gravity_marked', 'status_momentum_sink']);
+// Kinetic projectile guns at or above this impulse read as shove weapons (concussion family),
+// not bullet streams — the concussion cannons (520/920) and the seismic gong (220).
+const CONCUSSION_IMPULSE_MIN = 200;
+
+export function recipeForWeapon(weaponId) {
   const id = (weaponId || '').toLowerCase();
+  const def = WEAPON_DEF_BY_ID.get(weaponId);
+  if (def) {
+    // Sustained hitscan emitters sound like beams whatever their damageType reads (beam lasers,
+    // and the thermal cooker — a cooking beam, not a placed charge).
+    if (def.continuous && def.tracking === 'hitscan') return 'sfx_wpn_beam_laser';
+    // Spinal barrels and named slug drivers are the rail family.
+    if (def.mount === 'spinal' || /(rail|lance|driver)/.test(id)) return 'sfx_wpn_railgun';
+    // Gravitic: gravity/inertia/field tools — deployed wellheads, mark/sink statuses, and the
+    // emergent field primitives (grav anchor, polarity, viscosity, quantum, hardlight prism).
+    if (def.deployKind === 'gravity_well'
+      || (def.statuses || []).some((s) => GRAVITIC_STATUS_IDS.has(s && s.id))
+      || GRAVITIC_PRIMITIVES.has(def.emergentPrimitive)
+      || /(gravity|grav|anchor|inertial|momentum)/.test(id)) {
+      return 'sfx_wpn_gravitic';
+    }
+    // Disruptor: EMP/ion-class payloads and the hijack/primer tools (thruster hijacker, primer,
+    // disruptors — and the snarl webcaster's ion entangle).
+    if (def.damageType === 'emp' || def.damageType === 'ion'
+      || DISRUPTOR_PRIMITIVES.has(def.emergentPrimitive)
+      || /(disruptor|emp|hijack|primer|snarl)/.test(id)) {
+      return 'sfx_wpn_disruptor';
+    }
+    // Charge: placed or delayed payloads — armed mines, deploy frames, sticky bombs.
+    if (def.mineArmS != null || def.deployKind
+      || CHARGE_PRIMITIVES.has(def.emergentPrimitive)
+      || /(mine|detonator|sticky|charge)/.test(id)) {
+      return 'sfx_wpn_charge';
+    }
+    // Missile: launched seekers.
+    if ((def.mount === 'launcher' && def.tracking === 'homing')
+      || /(missile|rocket|torp)/.test(id)) return 'sfx_wpn_missile';
+    // Concussion: the big kinetic shove guns — concussion cannons and the seismic gong.
+    if (def.damageType === 'kinetic' && (def.impulsePerHit || 0) >= CONCUSSION_IMPULSE_MIN) {
+      return 'sfx_wpn_concussion';
+    }
+    // Plasma: thermal bolt throwers.
+    if (def.damageType === 'thermal') return 'sfx_wpn_plasma';
+    // Autocannon: kinetic projectile guns.
+    if (def.damageType === 'kinetic') return 'sfx_wpn_autocannon';
+    // Pulse: energy projectile guns — the starter voice belongs to this family only.
+    if (def.damageType === 'energy') return 'sfx_wpn_pulse_laser';
+    return 'sfx_wpn_unclassified';
+  }
+  // Unknown id — substring families, then the authored generic combat discharge.
   if (id.includes('beam')) return 'sfx_wpn_beam_laser';
   if (id.includes('rail') || id.includes('lance') || id.includes('driver')) return 'sfx_wpn_railgun';
-  if (id.includes('missile') || id.includes('rocket') || id.includes('torp') || id.includes('mine')) return 'sfx_wpn_missile';
+  if (id.includes('concussion') || id.includes('seismic')) return 'sfx_wpn_concussion';
+  if (id.includes('plasma')) return 'sfx_wpn_plasma';
+  if (id.includes('gravity') || id.includes('grav') || id.includes('inertial')
+    || id.includes('momentum') || id.includes('polarity') || id.includes('viscosity')
+    || id.includes('quantum') || id.includes('anchor')) return 'sfx_wpn_gravitic';
+  if (id.includes('disruptor') || id.includes('emp') || id.includes('hijack')
+    || id.includes('primer') || id.includes('snarl')) return 'sfx_wpn_disruptor';
+  if (id.includes('mine') || id.includes('detonator') || id.includes('sticky')
+    || id.includes('charge')) return 'sfx_wpn_charge';
+  if (id.includes('missile') || id.includes('rocket') || id.includes('torp')) return 'sfx_wpn_missile';
   if (id.includes('cannon') || id.includes('gatling') || id.includes('flak') || id.includes('auto') || id.includes('stream')) return 'sfx_wpn_autocannon';
   if (id.includes('pulse') || id.includes('laser') || id.includes('blaster')) return 'sfx_wpn_pulse_laser';
   // No recognized family — a named generic combat voice, never the starter pulse.
@@ -1751,6 +1823,10 @@ export const audio = {
     bus.on('traffic:ceresCausalChain', (p) => this._onCeresCausalChain(p));
     bus.on(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresWorkAction(p));
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
+    // Stunt chain voices (CV-EAR slice 3): player links pluck up a pentatonic ladder, the
+    // bank lands a rising interval. Bridges stay silent — the near-miss bark already speaks.
+    bus.on('stunt:trickDetected', (p) => this._onStuntTrickDetected(p));
+    bus.on('stunt:styleBanked', (p) => this._onStuntStyleBanked(p));
     // Salvage plate unlock: hydraulic release hiss + the freed panel's clunk. The spark shower is
     // vfx-owned (salvage:cutComplete subscription there); this is its sound.
     bus.on('salvage:cutComplete', (p) => {
@@ -1921,8 +1997,11 @@ export const audio = {
       this.play('sfx_firsthour_coldopen', { gain: 0.7, critical: true });
     });
     bus.on('fields:deployed', (p) => {
-      if (p && p.kind && p.kind !== 'well') return;
-      this._playAccessibilityCue('well', { position: p && p.center });
+      // CV-EAR: every field power carries its own deploy voice through the accessibility
+      // cue table (NPC deploys included — the position already attenuates by distance).
+      const kind = p && p.kind;
+      if (!kind) return;
+      this._playAccessibilityCue(kind, { position: p && p.center });
     });
     bus.on(VISUAL_EVENT_BUS, (p) => this._onVisualEventAudio(p));
     bus.on('bulletTime:start', () => {
@@ -3570,6 +3649,27 @@ export const audio = {
         rate: SCOOP_CHIME_RATES[step],
       });
     }
+  },
+
+  // Stunt chain (CV-EAR slice 3): each player trick in the live combo plucks one step up the
+  // pentatonic ladder, read from the combo's own link count (state.stunts.combo.acts — the act
+  // is committed before stunt:trickDetected lands). trickAmended upgrades the same link and
+  // never reaches this handler; stunt:bridge plays nothing (the near-miss bark already speaks).
+  _onStuntTrickDetected(trick) {
+    if (!trick) return;
+    // Same player gate the callout owner uses (src/ui/stuntCallout.js): only a foreign actor
+    // silences the link; the detector itself is already player-scoped.
+    const playerId = this.state && this.state.playerId;
+    if (playerId != null && trick.actorId != null && trick.actorId !== playerId) return;
+    const combo = this.state && this.state.stunts && this.state.stunts.combo;
+    const acts = combo && Array.isArray(combo.acts) ? combo.acts.length : 0;
+    const step = Math.min(Math.max(0, acts - 1), STUNT_CHAIN_RATES.length - 1);
+    this.play('sfx_stunt_link', { gain: 0.45, rate: STUNT_CHAIN_RATES[step] });
+  },
+
+  _onStuntStyleBanked(bank) {
+    if (!bank) return;
+    this.play('sfx_stunt_bank', { gain: 0.6 });
   },
 
   // Cargo jettison (HUD cargo panel → cargo.dumpCargo): an audible world act that was total

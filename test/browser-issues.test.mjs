@@ -107,3 +107,25 @@ test('collectPageIssues routes GLTF texture-blob aborts to ignored only during e
   assert.deepEqual(tracker.ignoredIssues[0].expectedNavigation, ['gold-corridor-continue']);
   assert.equal(tracker.issues.length, 3, 'live error and post-navigation blob abort stay issues');
 });
+
+test('a cancelled media stream is ignored; a failed or missing clip and cancelled scripts still count', () => {
+  const page = new FakePage();
+  const tracker = collectPageIssues(page);
+  const media = (url, errorText) => ({ ...failedRequest(url, errorText), resourceType: () => 'media' });
+
+  page.emit('requestfailed', media('http://game.test/assets/cinematics/intro-visualizer.mp4', 'net::ERR_ABORTED'));
+  page.emit('requestfailed', media('http://game.test/assets/cinematics/broken.mp4', 'net::ERR_FAILED'));
+  page.emit('response', { status: () => 404, url: () => 'http://game.test/assets/cinematics/missing.mp4' });
+  page.emit('requestfailed', { ...failedRequest('http://game.test/app.js', 'net::ERR_ABORTED'), resourceType: () => 'script' });
+
+  assert.equal(tracker.ignoredIssues.length, 1);
+  assert.equal(tracker.ignoredIssues[0].cancelledMedia, true);
+  assert.deepEqual(
+    tracker.errorIssues().map((issue) => issue.text),
+    [
+      'Request failed http://game.test/assets/cinematics/broken.mp4: net::ERR_FAILED',
+      'HTTP 404 http://game.test/assets/cinematics/missing.mp4',
+      'Request failed http://game.test/app.js: net::ERR_ABORTED',
+    ],
+  );
+});

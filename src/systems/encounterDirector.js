@@ -1157,6 +1157,13 @@ export const encounterDirector = {
         ai.doctrine = sh.doctrine || ai.doctrine;
         if (sh.combatDoctrineId) ai.combatDoctrineId = sh.combatDoctrineId;
         if (sh.formation) ai.formation = sh.formation;
+        // A squad declaring a fodder choreography opts its disposable hulls into the shared
+        // cohort director; anchors and heavies stay on the full tactical stack (the recipe is
+        // fodder flow, not command language). Filter at stamp time so a guaranteeArchetypes
+        // swap resolves against the final member archetype.
+        if (sh.cohortRecipe && ENEMY_BY_ID.get(sh.archetype)?.aiArchetype === 'swarmer') {
+          ai.cohortRecipe = sh.cohortRecipe;
+        }
         const docDef = sh.doctrine ? pirateDoctrineForEntity(sh.doctrine) : null;
         const cultureDef = sh.cultureId ? reachCultureDoctrineById(sh.cultureId) : null;
         const resolvedDoctrine = sh.factionPresenceDoctrine
@@ -3095,6 +3102,7 @@ function addSquad(ships, squad, factionId, context, zone, levelBand, rng, role) 
       role: role || 'squad',
       factionPresenceDoctrine: squad.factionPresenceDoctrine,
       cultureId: squad.cultureId,
+      cohortRecipe: squad.cohortRecipe,
     });
   }
   // A squad may name archetypes that must appear at least once — a teaching raid that needs

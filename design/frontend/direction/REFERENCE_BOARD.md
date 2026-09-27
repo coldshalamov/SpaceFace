@@ -1,6 +1,9 @@
 <!-- LIFETIME: DURABLE -->
 # PQ-187.00 Reference Board
 
+> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](../ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](../OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](../ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
+
+
 **Status:** `CONTROLLER_CURATED` — controller-curated source board, prepared 2026-09-06.
 
 This board brackets the frontend with the ten references in [`FRONTEND_DIRECTION.md` §6](../../FRONTEND_DIRECTION.md#6-the-reference-board) and its two genre baselines. It names one reviewable frame per game, the transfer worth testing, and the failure mode SpaceFace should avoid. The board is a curation input for `.01`; it is not a direction lock.

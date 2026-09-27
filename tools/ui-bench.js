@@ -24,6 +24,7 @@ import { ensureStylesheet as ensureStationStylesheet } from '../src/ui/station/s
 import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCatalog.mjs';
 import { createBenchSaveSystem } from './ui-bench-saves.js';
 import { benchWorldFor, loadBenchWorld, seedChartShot, unseedChartShot } from './ui-bench-chart.js';
+import { seedFootprintShot, unseedFootprintShot } from './ui-bench-footprint.js';
 
 window.__BENCH_READY = false;
 window.__BENCH_OVERLAY = '';
@@ -386,6 +387,12 @@ const bus = {
   },
 };
 window.__BENCH_BUS = bus;
+/** Reseed a mounted Footprint with another record ('wanted' | 'marked' | 'clean' | 'empty' | 'loading') and refresh it. */
+window.__benchFootprint = (kind) => {
+  seedFootprintShot(state, kind);
+  if (current === 'footprint' && currentScreen) currentScreen.refresh?.({ state, bus, screenManager: manager, registry });
+  return kind;
+};
 const manager = {
   pushScreen(id) { void goto(id); },
   popScreen() { void back(); },
@@ -569,6 +576,8 @@ async function goto(rawId) {
         restoreBaseline();
         seedCrucibleShot(id, shot);
       }
+      // A footprint shot mounts over a lived-in record (tools/ui-bench-footprint.js); every other shot over none.
+      if (id === 'footprint') seedFootprintShot(state, shot.footprint || 'wanted'); else unseedFootprintShot(state);
       const screen = await loader();
       const ctx = { state, bus, screenManager: manager, registry, writeStorePage() {}, publishStoreStill() {} };
       screen.mount(root, ctx);

@@ -1,6 +1,9 @@
 <!-- LIFETIME: DURABLE -->
 # The Frontend Direction — the A-list plan
 
+> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](frontend/ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](frontend/OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](frontend/ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
+
+
 **Owner ruling, 2026-09-05, verbatim:**
 
 > "I'm not sure I support the decision to build everything on existing design authority, less

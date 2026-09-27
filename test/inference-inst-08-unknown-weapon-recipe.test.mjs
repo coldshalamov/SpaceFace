@@ -53,5 +53,6 @@ test('recognized families still resolve to their authored voices', () => {
   // Named families that used to fall through to the starter pulse now classify honestly.
   assert.equal(recipeFor('wpn_bank_stream_m'), 'sfx_wpn_autocannon');
   assert.equal(recipeFor('wpn_siege_lance_l'), 'sfx_wpn_railgun');
-  assert.equal(recipeFor('wpn_vector_mine_m'), 'sfx_wpn_missile');
+  // CV-EAR: the vector mine is a placed charge, not a missile — its own thunk family.
+  assert.equal(recipeFor('wpn_vector_mine_m'), 'sfx_wpn_charge');
 });

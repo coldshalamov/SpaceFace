@@ -160,17 +160,26 @@ export const difficultyDirector = {
       };
       this.bus.on('combat:damage', this._onDamage);
       this._unsubs = [
-        this.bus.on('save:loaded', () => this._wakeDifficultyQuiet()),
-        this.bus.on('game:new', () => this._wakeDifficultyQuiet()),
+        // Run boundaries reset the runtime books: flee-hold `until` stamps and
+        // damage/credit windows are stamped in a run's own simTime — carrying them
+        // into a restarted clock wedges the latch (holds never expire) and leaks
+        // prior-run stress into the new run's pacing.
+        this.bus.on('save:loaded', () => this._resetRunBookkeeping(false)),
+        this.bus.on('game:new', () => this._resetRunBookkeeping(true)),
+        this.bus.on('game:newGame', () => this._resetRunBookkeeping(true)),
         this.bus.on('sector:enter', () => this._wakeDifficultyQuiet()),
       ].filter(Boolean);
     }
   },
 
   newGame() {
+    this._resetRunBookkeeping(true);
+  },
+
+  _resetRunBookkeeping(republish) {
     this._w = freshInternals();
     this._wakeDifficultyQuiet();
-    if (this.state) {
+    if (republish && this.state) {
       this.state.difficulty = { pacing: freshPublished(Number(this.state.simTime) || 0) };
       publishDifficultyQuiet(this.state, false);
     }

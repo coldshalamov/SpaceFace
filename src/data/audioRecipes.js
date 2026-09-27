@@ -111,6 +111,78 @@ export const RECIPES = [
     pitchRange: [0.9, 1.12],
   },
 
+  // --- Physics-weapon families (CV-EAR slice 2) — the physics tools stop borrowing the
+  // autocannon and generic discharge: concussion/plasma/gravitic/disruptor/charge each read
+  // their own one-shot, classified from weapon data in recipeForWeapon.
+  {
+    // Concussion cannon / seismic gong: a compressed deep thoom — the shove guns.
+    id: 'sfx_wpn_concussion',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 90, freqSweep: [90, 40], sweepTimeS: 0.18,
+    gainEnvelope: { attack: 0.003, decay: 0.1, sustain: 0.0, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 260,
+    distortionAmount: 0.55, distortionCurve: 'tanh',
+    subBass: { startFreq: 95, endFreq: 34, dur: 0.3, gain: 1.0 },
+    transientClick: { gain: 0.5 },
+    pitchRange: [0.94, 1.06],
+  },
+  {
+    // Plasma cannon: a thick bubbling bolt.
+    id: 'sfx_wpn_plasma',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 220, freqSweep: [220, 120], sweepTimeS: 0.18,
+    freqMod: 0.12,
+    gainEnvelope: { attack: 0.004, sustain: 0.04, release: 0.25 },
+    filterType: 'bandpass', filterFreq: 600, filterQ: 1.8,
+    distortionAmount: 0.45, distortionCurve: 'softclip',
+    subBass: { startFreq: 140, endFreq: 70, dur: 0.2, gain: 0.5 },
+    pitchRange: [0.93, 1.07],
+  },
+  {
+    // Gravity / inertia / field tools: a low warbling sub sweep — the fight folding.
+    id: 'sfx_wpn_gravitic',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 70, freqSweep: [70, 35], sweepTimeS: 0.38,
+    freqMod: 0.18,
+    gainEnvelope: { attack: 0.05, sustain: 0.06, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 220,
+    subBass: { startFreq: 80, endFreq: 30, dur: 0.5, gain: 0.8 },
+    pitchRange: [0.95, 1.05],
+  },
+  {
+    // EMP / RCS disruptor / hijack / primer tools: a crackling burst.
+    id: 'sfx_wpn_disruptor',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 900, freqSweep: [900, 300], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.2 },
+    filterType: 'bandpass', filterFreq: 1500, filterQ: 4.0,
+    distortionAmount: 0.5, distortionCurve: 'tanh',
+    transientClick: { gain: 0.6 },
+    pitchRange: [0.9, 1.1],
+  },
+  {
+    // Placed charges (vector mine, sticky detonator): a hard magnetic click-thunk on the throw.
+    id: 'sfx_wpn_charge',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 260, freqSweep: [260, 140], sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.14 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 2.2,
+    distortionAmount: 0.4, distortionCurve: 'tanh',
+    subBass: { startFreq: 130, endFreq: 55, dur: 0.1, gain: 0.6 },
+    transientClick: { gain: 0.7 },
+    pitchRange: [0.95, 1.05],
+  },
+
   // --- Combat doctrine signatures ---------------------------------------------------------
   // These are short telegraphs, never loops. One squad cue is enough to teach the ear whether the
   // incoming actor will fly through, seize with a line, or hold range and charge a shot.
@@ -1775,6 +1847,72 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.12, sustain: 0.0, release: 0.7 },
     filterType: 'lowpass', filterFreq: 420,
     reverbMix: 0.45, reverbDecay: 1.8,
+  },
+
+  // --- Field deploy voices (CV-EAR) — every field power gets its own one-shot; no more
+  // borrowed anomaly swell on the Well and no UI confirm click on force powers. Combat bus.
+  {
+    // WELL — the Intake: a sucking drop, energy falling inward.
+    id: 'sfx_field_deploy_well',
+    category: 'weapon', type: 'oscillator', wave: 'sine',
+    baseFreq: 140, freqSweep: [140, 46], sweepTimeS: 0.42,
+    gainEnvelope: { attack: 0.08, sustain: 0.04, release: 0.7 },
+    filterType: 'lowpass', filterFreq: 300, filterQ: 0.8,
+  },
+  {
+    // REPULSOR — the Plow: a push thump, energy thrown outward.
+    id: 'sfx_field_deploy_repulsor',
+    category: 'weapon', type: 'oscillator', wave: 'sine',
+    baseFreq: 55, freqSweep: [55, 170], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 600, filterQ: 0.9,
+    transientClick: { gain: 0.3 },
+  },
+  {
+    // CONE — the Sluice: a directional gust opened ahead of the nose.
+    id: 'sfx_field_deploy_cone',
+    category: 'weapon', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.006, sustain: 0.03, release: 0.35 },
+    filterType: 'bandpass', filterFreq: 1200, filterQ: 1.2,
+  },
+  {
+    // SKIM — the scoop sheet: a high shimmer as the sheet opens.
+    id: 'sfx_field_deploy_skim',
+    category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 480, freqSweep: [480, 640], sweepTimeS: 0.15,
+    gainEnvelope: { attack: 0.01, sustain: 0.04, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 3.0,
+  },
+  {
+    // SEED — the lock-ring: a short mechanical clack as the ring locks.
+    id: 'sfx_field_deploy_seed',
+    category: 'weapon', type: 'oscillator', wave: 'square',
+    baseFreq: 320, freqSweep: [320, 190], sweepTimeS: 0.06,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 700, filterQ: 2.0,
+    transientClick: { gain: 0.4 },
+  },
+
+  // --- Stunt chain voices (CV-EAR slice 3) — the combo the ear can follow.
+  {
+    // Chain link: a short bright pluck; the combo's own link count pitches it up a pentatonic
+    // ladder via the `rate` option (see STUNT_CHAIN_RATES in audioSystem).
+    id: 'sfx_stunt_link',
+    category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 880, freqSweep: [880, 840], sweepTimeS: 0.05,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 2000, filterQ: 1.4,
+    transientClick: { gain: 0.15 },
+  },
+  {
+    // Style banked: the cash-out — a main voice rising a fifth over a second voice a fifth
+    // below, so the bank reads as a two-note interval rather than another pluck.
+    id: 'sfx_stunt_bank',
+    category: 'weapon', type: 'oscillator', wave: 'sine',
+    baseFreq: 660, freqSweep: [660, 990], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.008, sustain: 0.1, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 2400,
+    subBass: { startFreq: 440, endFreq: 660, dur: 0.4, gain: 0.5 },
   },
 
   // --- First-hour identity motifs (procedural, exclusive roles) ---

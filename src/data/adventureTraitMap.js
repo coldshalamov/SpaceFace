@@ -283,6 +283,25 @@ export const ADVENTURE_TRAIT_MAP = freezeDeep([
     collateral: { civilians: 'wide_cone', cargo: 'none' },
     blurb: 'Spreads the root volley. Heat up a little; damage stays the same.',
   },
+  {
+    traitId: 'mod_storm_carom',
+    form: 'rig',
+    fittedId: 'mod_storm_carom',
+    name: 'Storm Carom',
+    slotType: 'utility',
+    size: 'S',
+    mass: 6,
+    energyDraw: 6,
+    price: 96000,
+    tech: 'tech_ricochet_ballistics',
+    // The Crucible names it a synthesis — Bank Shot + Relay Arc + Ion Payload converted at the
+    // armory. In the living game the same artifact is a forge-built relic, not a stock part.
+    acquisition: ['recovered'],
+    recoveredSiteId: 'zone_vesta_forge',
+    legality: 'restricted',
+    collateral: { civilians: 'bounced_chain', cargo: 'none' },
+    blurb: 'Forged convergence rig. A bounced hit storms through Ionized hulls; a direct hit cannot jump.',
+  },
 ]);
 
 export const ADVENTURE_TRAIT_MAP_BY_ID = freezeDeep(

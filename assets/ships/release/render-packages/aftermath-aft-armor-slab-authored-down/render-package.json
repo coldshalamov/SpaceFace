@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "0c70b4dcf42e79f107ff02fea44810e8c1b1b717870a04958fef8a13a021b4b6",
+=======
+  "contentHash": "f47a79640feae124227bc3ceaa0d98c6b96b5fefd4adbc0252391472787b0f86",
+>>>>>>> origin/master
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1298,8 +1302,13 @@
       "uri": "place_aftermath_aft_armor_slab_authored_down.glb"
     },
     "sourceManifest": {
+<<<<<<< HEAD
       "bytes": 193703,
       "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
+=======
+      "bytes": 189651,
+      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
+>>>>>>> origin/master
       "uri": "pilots.json"
     }
   },
@@ -1731,7 +1740,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_armor_slab_authored_down.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "70de0d6be3b69005480fb0e77fffb59cb87dae1da942a4a91943ecb4fa1135e1",
+=======
+  "runtimeHash": "2d0185146fe0669a7171bd38ffe6b89cf012f7ef4c61bdf1dc126afd986f1f89",
+>>>>>>> origin/master
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

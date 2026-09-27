@@ -155,6 +155,7 @@ only an unrun headed capture or a refused percentage are in §F.
 | `roadmap/receipts/PQ-180-00-REPORT.md` §What this does not claim | Nine UI surfaces never open under the probe | UI reachability lane (`PQ-180 .00`) |
 | `roadmap/receipts/PQ-195.01-REPORT.md` §Residuals | Legacy custom backend `maskOf(fx)=0` broadphase-invisible; arrestor overlap | physics follow-up, contract holds on default route |
 | `roadmap/receipts/CHECK-ALL-REPAIR-ROUND2-2026-09-18.md` §Residuals | `check:all:smoke` 22/27; 5 reds are foreign defects/host load | filed here; owners fix in their lanes |
+| `roadmap/receipts/PQ-135-0*-REPORT.md` (umbrella) | `test/motion-lab-scenarios.test.mjs` red at fresh-root and HEAD (M1 stop ordering, M6 scissors, M8 morph abort, two mutation levers); never green in-tree; `squadRecipe` still stamped only by the lab (`cohortRecipe` live opt-in landed `ac870970d` — three Reach fodder squads + both swarm-screen reinforcement packages now stamp it on the ordinary spawn path) | kinematics/AI leaf — the scissors rail aims at a stale point while the target moves; PQ-135 stays open on the lab reds + striker fire-window admission + GPU chase-cam review, not a player-visible defect yet |
 
 ## D. `NOW.md` result rows with a named next action
 

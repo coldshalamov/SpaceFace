@@ -246,13 +246,14 @@ test('a specialist cuts a player bridle and a heavy NPC takes the throw', () => 
   const ANCHOR = ENEMY_TYPES.find((row) => row.id === 'field_anchor_controller');
   const RAIDER = ENEMY_TYPES.find((row) => row.id === 'tether_control_raider');
   // Live heavies at or above 150 kg. The leftover admission floor is gone; this census still
-  // names who can shrug a bridle by mass. The Mirrorjaw Foreman (PQ-133.04, Foundry wave ten) is
-  // heavy on purpose: it flies the Anchor's 420 kg Bastion body, its "mass and commitment are the
-  // fight" (CRUCIBLE_SURVIVAL_MASTER_PLAN.md §15.7), and its wave asks for escorts thrown into it.
+  // names who can shrug a bridle by mass. The Mirrorjaw Foreman (PQ-133.04, Foundry wave ten) and
+  // its Forge Regent crown (PQ-133.07, Foundry wave thirty) are heavy on purpose: both fly the
+  // Anchor's 420 kg Bastion body, their "mass and commitment are the fight"
+  // (CRUCIBLE_SURVIVAL_MASTER_PLAN.md §15.7), and their waves ask for escorts thrown into them.
   const heavies = ENEMY_TYPES.filter((row) => Number(row.mass) >= 150);
   assert.deepEqual(
     heavies.map((row) => row.id),
-    ['dreadnought_boss', 'field_anchor_controller', 'mirrorjaw_foreman'],
+    ['dreadnought_boss', 'field_anchor_controller', 'mirrorjaw_foreman', 'forge_regent'],
   );
   assert.ok(heavies.every((row) => Number(row.mass) >= ANCHOR.mass),
     'the shrug is proven at the Anchor mass; a lighter live heavy would sit outside that proof');

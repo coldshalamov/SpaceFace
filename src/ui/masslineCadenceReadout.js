@@ -12,12 +12,12 @@ export function createMasslineCadenceReadout(parent) {
     border-left:3px solid var(--ml-accent);border-radius:3px;background:#0c191bf2;color:var(--ml-ink);
     font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;pointer-events:none}
   .ml-cadence[hidden]{display:none}.ml-cadence__top{display:flex;justify-content:space-between;gap:14px;
-    color:var(--ml-muted);font-size:10px;letter-spacing:.13em}.ml-cadence__phase{color:var(--ml-accent)}
+    color:var(--ml-muted);font-size: 12px;letter-spacing:.13em}.ml-cadence__phase{color:var(--ml-accent)}
   .ml-cadence__status{margin:9px 0 2px;font:600 23px/1.1 system-ui,sans-serif;letter-spacing:-.04em}
-  .ml-cadence__hint{font:11px/1.5 system-ui,sans-serif;color:var(--ml-muted);min-height:17px}
+  .ml-cadence__hint{font:12px/1.5 system-ui,sans-serif;color:var(--ml-muted);min-height:17px}
   .ml-cadence__bar{width:100%;height:19px;margin:9px 0 2px;display:block}
   .ml-cadence__stats{display:flex;justify-content:space-between;gap:14px;border-top:1px solid #34504a;padding-top:9px}
-  .ml-cadence__value{font-size:15px}.ml-cadence__label{display:block;font-size:9px;letter-spacing:.12em;color:var(--ml-muted)}
+  .ml-cadence__value{font-size:15px}.ml-cadence__label{display:block;font-size: 12px;letter-spacing:.12em;color:var(--ml-muted)}
   .ml-cadence[data-open="true"]{border-color:var(--ml-accent)}
   .ml-cadence[data-open="true"] .ml-cadence__status{color:var(--ml-accent)}
   .ml-cadence[data-field="true"] .ml-cadence__status{color:var(--ml-warn)}

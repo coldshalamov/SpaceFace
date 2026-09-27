@@ -42,6 +42,7 @@ import {
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { applyNpcFieldDeploy } from '../ai/npcFieldDeploy.js';
+import { stepEgressExits } from '../ai/egressExit.js';
 import { getCombatKernel } from '../combat/kernel.js';
 
 const OWNERSHIP_REFRESH_TICKS = 3;
@@ -400,6 +401,9 @@ export function createTacticalAISystem({
       // is fetched once here and threaded through instead of re-scanning (and re-classifying each
       // entity) four to six times per fixed step.
       const shipLikeList = indexedShipLikeScan(state);
+      // Egress exit bound runs ahead of the quiet latch: a latched-quiet world still owes its
+      // fleeing hulls the 960 WU exit, and the pass is cadence-gated and cheap.
+      stepEgressExits(state, shipLikeList, ctxRef && ctxRef.bus);
       if (TACTICAL_AI_QUIET_LATCH !== false && productionPortDefaults) {
         if (!anyNonPlayerNeedsAiThink(state, shipLikeList)) {
           quietLatch = {

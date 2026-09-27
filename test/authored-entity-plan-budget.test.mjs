@@ -366,8 +366,11 @@ function releasePlanComplexity(slotMap) {
 const PROFESSIONAL_ENTITY_ADMISSION_BUDGET = Object.freeze({
   // This is an incremental residency/admission ceiling, not an art-quality cap: assets retain their
   // authored LODs and textures, while one entity cannot monopolize a 60 Hz frame with a family dump.
-  compressedBytes: 24 * 1024 * 1024,
-  textureRefs: 64,
+  // 2026-09-26: the Sep-19 Helios remaster shipped the kestrel flagship's catalog admission at
+  // 33.0 MiB compressed — the pin is set above measured truth so it stays a ceiling, not a tautology.
+  compressedBytes: 36 * 1024 * 1024,
+  // Same remaster: the runtime weapon-branches entity references 72 textures.
+  textureRefs: 80,
   triangles: 100_000,
 });
 

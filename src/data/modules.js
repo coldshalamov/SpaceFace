@@ -490,6 +490,12 @@ const SHIPPED_MODULES = [
     id: 'mod_herald_fan', name: 'Herald Fan', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 11000,
     requiresTech: 'tech_attack_topology', energyDraw: 1,
   },
+  {
+    // CRU-038 named synthesis (src/data/survivalEvolutions.js): the armory conversion consumes
+    // Bank Shot + Relay Arc + Ion Payload, so one S slot carries what used to need three.
+    id: 'mod_storm_carom', name: 'Storm Carom', slotType: 'utility', size: 'S', tier: 4, mass: 6, price: 96000,
+    requiresTech: 'tech_ricochet_ballistics', energyDraw: 6, legality: 'restricted',
+  },
 ];
 
 // ─────────────────────────────── user content (PQ-172.00) ───────────────────────────────
@@ -663,6 +669,7 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_cryo_payload: 'A hit locks the target in cryo.',
   mod_cryo_gyros: 'Two orbiting nodes freeze whatever passes close.',
   mod_herald_fan: 'The volley spreads wider and runs a little hotter. The damage does not change.',
+  mod_storm_carom: 'A bounced hit storms through ionized targets. A direct hit cannot jump.',
 });
 
 function attachAirSentences(list) {

@@ -1,5 +1,8 @@
 # S2 scene plates
 
+> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](../../ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](../../OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](../../ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
+
+
 RESULT: DONE for the local draft-plate packet. Four new scene builders plus the optional
 cold berth are added; all five native 1920 x 1080 RGB PNGs were rendered and visually inspected.
 Nothing was staged or committed. No requested draft plate or report is missing.

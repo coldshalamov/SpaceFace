@@ -39,6 +39,7 @@ export default defineEncounter(trigger, {
     size: [3, 4],
     doctrine: 'scavenger',
     formation: 'wedge',
+    cohortRecipe: 'fodder_crescent',
   },
   bark: 'toll_demand',
   offerS: 14,

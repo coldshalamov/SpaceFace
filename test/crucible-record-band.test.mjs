@@ -12,6 +12,7 @@ import {
   unlockConditionText,
   unlockLadderRows,
   lifetimeFigures,
+  historyRunRows,
   recentRunRows,
   todayBoardFigures,
 } from '../src/ui/screens/crucible.js';
@@ -86,21 +87,51 @@ test('lifetime figures are five named numbers and never NaN', () => {
 
 test('recent runs read newest-first and are never re-sorted by score', () => {
   const profile = emptyCrucibleProfile();
+  // History stores oldest→newest (settleCrucibleRun appends): the last row is the most recent.
   profile.history = [
     { outcome: 'defeat', wave: 4, score: 10 },
     { outcome: 'victory', wave: 30, score: 999 },
     { outcome: 'aborted', wave: 2, score: 1 },
   ];
   const rows = recentRunRows(profile, 3);
-  assert.deepEqual(rows.map((r) => r.wave), [4, 30, 2],
-    'history order is the record; sorting it by score would rewrite what happened');
-  assert.deepEqual(rows.map((r) => r.outcome), ['LOST', 'WON', 'LEFT']);
+  assert.deepEqual(rows.map((r) => r.wave), [2, 30, 4],
+    'newest first from the stored tail; a score sort would give 30,4,2');
+  assert.deepEqual(rows.map((r) => r.outcome), ['LEFT', 'WON', 'LOST']);
 });
 
 test('an empty or absent history yields no rows rather than throwing', () => {
   assert.deepEqual(recentRunRows(emptyCrucibleProfile()), []);
   assert.deepEqual(recentRunRows(null), []);
   assert.deepEqual(recentRunRows({ history: 'not an array' }), []);
+});
+
+test('the run log lists every recorded run newest-first with context and tally', () => {
+  const profile = emptyCrucibleProfile();
+  profile.history = [
+    { outcome: 'defeat', wave: 4, deepestWave: 6, kills: 9, wavesCleared: 4, credits: 120, score: 10, arenaId: 'arena_lagrange_crucible', ruleset: 'scored' },
+    { outcome: 'victory', wave: 30, kills: 41, wavesCleared: 30, score: 999, arenaId: 'arena_helios_core', ruleset: 'boss_circuit', mutators: ['glass'], dailyDateKey: '2026-09-26', ghostHash: 'abc', bestLineId: 'line_1' },
+    { outcome: 'aborted', wave: 2, score: 1, arenaId: 'arena_cinder_sluice', ruleset: 'scored', mutators: ['a', 'b'] },
+  ];
+  const log = historyRunRows(profile);
+  assert.equal(log.length, 3);
+  assert.deepEqual(log.map((r) => r.wave), [2, 30, 4], 'newest run first');
+  const won = log[1];
+  assert.equal(won.outcome, 'WON');
+  assert.match(won.context, /helios core/);
+  assert.match(won.context, /boss circuit/);
+  assert.match(won.context, /1 mutator/);
+  assert.match(won.context, /daily/);
+  assert.match(won.context, /ghost on file/);
+  assert.match(won.context, /best line/);
+  assert.match(won.tally, /41 kills/);
+  assert.match(won.tally, /30 cleared/);
+  const deepest = log[2];
+  assert.equal(deepest.distance, '4/6', 'deepest beats the wave reached');
+  const aborted = log[0];
+  assert.match(aborted.context, /cinder sluice/);
+  assert.match(aborted.context, /2 mutators/);
+  assert.deepEqual(historyRunRows(emptyCrucibleProfile()), []);
+  assert.deepEqual(historyRunRows(null), []);
 });
 
 test('today daily figures surface score and wave when a board row exists', () => {

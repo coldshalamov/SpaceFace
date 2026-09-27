@@ -15,6 +15,14 @@ import { BINDINGS } from '../src/ui/bindings.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
+// Same starvation allowance as check-mission-cargo-loading: the loaded headless host
+// brick-walls frames for hundreds of ms, so waits that would pass in under a second on
+// a quiet host need real headroom. These budget wall-clock, not gameplay behavior.
+const UI_TIMEOUT_MS = 30000;
+// The station-mount burst can pin the page's main thread for tens of seconds on this host —
+// polling (raf or interval) cannot observe anything while it is blocked, then the wait times out
+// with the element already open. Same environment allowance class as START/MENU budgets.
+const HEAVY_TIMEOUT_MS = 90000;
 const MISSION_LOG_LABEL = `Mission Log (${BINDINGS.missionLog.label})`;
 const { chromium } = await loadPlaywright();
 
@@ -38,13 +46,14 @@ try {
   // it did, intermittently, across five checks. A real GPU HAS the extension (verified), so
   // this is an environment allowance, not a behavioural assertion being loosened. Everything
   // these checks actually assert happens after boot and is untouched.
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
-  await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000, polling: 250 });
+  await waitForVisible(page, '[data-screen="mainMenu"]', UI_TIMEOUT_MS, 'main menu');
   await clickButton(page, 'New Game');
-  await waitForVisible(page, '[data-screen="newGame"]', 10000, 'new game');
+  await waitForVisible(page, '[data-screen="newGame"]', UI_TIMEOUT_MS, 'new game');
   await clickButton(page, 'Launch');
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.state.mode === 'flight', null, {
     timeout: START_TIMEOUT_MS,
+    polling: 250,
   });
 
   await page.evaluate(() => {
@@ -72,22 +81,77 @@ try {
         time_limit_s: 900,
       }],
     };
+    // The station-exit gate only rewrites bare undocks into station:exitRequest when the docked
+    // flag is set — a fabricated berth must carry it or the click launches straight out with no
+    // Departure Check.
+    sf.state.ui.docked = true;
     sf.state.ui.dockedStationId = 'station_coalition';
     if (sf.state.fuel) sf.state.fuel.current = 0;
     sf.ctx.screenManager.pushScreen('station');
     sf.ctx.screenManager.syncVisibility && sf.ctx.screenManager.syncVisibility();
   });
-  await waitForVisible(page, '[data-screen="station"] .sx-app', 10000, 'station command app');
+  // `.sx-app` is display:contents since the ORRERY station rewrite — the wrapper has no box, so
+  // a visibility wait must name a real region (the berth hub) rather than the wrapper.
+  await waitForVisible(page, '[data-screen="station"] .sx-app .sxb-berth', HEAVY_TIMEOUT_MS, 'station command app')
+    .catch(async (err) => {
+      const dump = await page.evaluate(() => {
+        const sf = window.SF;
+        const screens = [...document.querySelectorAll('[data-screen]')].map((el) => ({
+          id: el.dataset.screen,
+          display: getComputedStyle(el).display,
+          ariaHidden: el.getAttribute('aria-hidden'),
+          w: Math.round(el.getBoundingClientRect().width),
+        }));
+        const st = sf && sf.state;
+        return {
+          mode: st && st.mode,
+          docked: st && st.ui && st.ui.docked,
+          dockedStationId: st && st.ui && st.ui.dockedStationId,
+          screens,
+          hasSxApp: !!document.querySelector('[data-screen="station"] .sx-app'),
+        };
+      });
+      throw new Error(err.message + ' :: screen state ' + JSON.stringify(dump)
+        + ' :: page issues ' + JSON.stringify(issues.errorIssues().slice(-5)));
+    });
   assert.equal(await openStationDestination(page, 'bar', '.sx-bar'), true,
     'current station dock should expose the Bar destination');
 
-  assert.equal(await page.evaluate(() => {
+  const undockReport = await page.evaluate(() => {
     const button = document.querySelector('[data-screen="station"] [data-act="undock"]');
-    if (!button) return false;
+    if (!button) return { clicked: false };
     button.click();
-    return true;
-  }), true, 'station command dock should expose Undock');
-  await waitForVisible(page, '[data-screen="station"] .sx-pop--dep', 5000, 'Departure Check popover');
+    const pop = document.querySelector('[data-screen="station"] .sx-pop');
+    return {
+      clicked: true,
+      disabled: button.classList.contains('is-disabled'),
+      outer: (button.outerHTML || '').slice(0, 220),
+      popAfterClick: pop ? { cls: pop.className, hidden: pop.hidden } : null,
+      docked: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.docked,
+    };
+  });
+  assert.equal(undockReport.clicked, true, 'station command dock should expose Undock :: ' + JSON.stringify(undockReport));
+  await waitForVisible(page, '[data-screen="station"] .sx-pop--dep', HEAVY_TIMEOUT_MS, 'Departure Check popover')
+    .catch(async (err) => {
+      const dump = await page.evaluate(() => {
+        const st = document.querySelector('[data-screen="station"]');
+        const pop = document.querySelector('[data-screen="station"] .sx-pop');
+        const popRect = pop && pop.getBoundingClientRect();
+        const popStyle = pop && getComputedStyle(pop);
+        return {
+          stationDisplay: st && getComputedStyle(st).display,
+          docked: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.docked,
+          popClass: pop && pop.className,
+          popHidden: pop && pop.hidden,
+          popDisplay: popStyle && popStyle.display,
+          popVisibility: popStyle && popStyle.visibility,
+          popRect: popRect && { w: popRect.width, h: popRect.height, x: popRect.x, y: popRect.y },
+          popText: pop && (pop.textContent || '').replace(/\s+/g, ' ').slice(0, 160),
+        };
+      });
+      throw new Error(err.message + ' :: ' + JSON.stringify(dump)
+        + ' :: page issues ' + JSON.stringify(issues.errorIssues().slice(-5)));
+    });
 
   const departureReport = await page.evaluate(() => {
     const strip = document.querySelector('[data-screen="station"] .sx-pop--dep');
@@ -103,7 +167,9 @@ try {
     };
   });
   assert.equal(departureReport.visible, true, 'station should render the Departure Check popover');
-  assert.match(departureReport.label, /Departure Check/, 'departure popover should be labeled for pre-undock trust');
+  // Authored header case is "Departure check · <STATE>" — the trust surface is the word pair
+  // plus the readiness state, not headline casing.
+  assert.match(departureReport.label, /Departure check/i, 'departure popover should be labeled for pre-undock trust');
   for (const label of ['Track', 'Hold', 'Fuel', 'Hull']) {
     assert(departureReport.chips.some((chip) => chip.label === label),
       `departure strip missing ${label} chip: ${JSON.stringify(departureReport)}`);
@@ -120,11 +186,25 @@ try {
     return true;
   }), true, 'Bar contact rail should expose its bounty hunter');
 
+  // The contact's dialog mounts on the row click; poll for the bounty choice rather than
+  // count once — the talk stage repaints a tick behind the click on a loaded host.
+  await page.waitForFunction(() => {
+    const choices = [...document.querySelectorAll('[data-screen="station"] .sx-talk [data-choice]')];
+    return choices.some((el) => /bounties worth chasing/i.test(el.textContent || ''));
+  }, null, { timeout: UI_TIMEOUT_MS, polling: 250 }).catch(async (err) => {
+    const dump = await page.evaluate(() => ({
+      activeContact: document.querySelector('[data-screen="station"] .sx-bar-row.is-active[data-contact]')?.dataset.contact,
+      talkChoices: [...document.querySelectorAll('[data-screen="station"] .sx-talk [data-choice]')].map((el) => (el.textContent || '').trim()),
+      talkText: (document.querySelector('[data-screen="station"] .sx-talk')?.textContent || '').replace(/\s+/g, ' ').slice(0, 400),
+    }));
+    throw new Error('Rook bounty choice should be reachable in the Bar: ' + err.message + ' :: ' + JSON.stringify(dump));
+  });
   const bountyButton = page.getByRole('button', { name: 'Any bounties worth chasing?' });
   assert.equal(await bountyButton.count(), 1, 'Rook bounty choice should be reachable in the Bar');
   await bountyButton.click();
   await page.waitForFunction(() => !!document.querySelector('.sx-bar-offer .sx-bar-offer__chip'), null, {
-    timeout: 5000,
+    timeout: UI_TIMEOUT_MS,
+    polling: 250,
   }).catch(async (err) => {
     const debug = await page.evaluate(() => ({
       operation: document.querySelector('[data-screen="station"] .sx-app')?.dataset.operation,
@@ -141,6 +221,12 @@ try {
     }));
     throw new Error('Timed out waiting for Bar offer chips: ' + err.message + ' ' + JSON.stringify(debug));
   });
+
+  // The reply is retyped by the talk typewriter — snapshotting early reads ''. Wait for the
+  // authored tracking line to finish landing before reading the offer report.
+  await page.waitForFunction(() => /Accept \+ Track/i.test(
+    (document.querySelector('.sx-bar-offer')?.closest('.sx-talk')?.querySelector('.sx-talk__reply')?.textContent) || ''
+  ), null, { timeout: UI_TIMEOUT_MS, polling: 250 });
 
   const report = await page.evaluate(() => {
     const offer = document.querySelector('.sx-bar-offer');
@@ -180,7 +266,8 @@ try {
     'bar offer should show failure consequence stakes: ' + JSON.stringify(report));
   assert.equal(report.blocker, 'Need 500 cr collateral',
     'bar offer should show visible collateral blocker: ' + JSON.stringify(report));
-  assert.equal(report.buttonText, 'ACCEPT + TRACK', 'bar button should match board tracking language');
+  // The verb renders in caps styling but the authored textContent is title case.
+  assert.match(report.buttonText, /^accept \+ track$/i, 'bar button should match board tracking language');
   assert.equal(report.buttonDisabled, true, 'bar button should disable blocked offers');
 
   await page.evaluate(() => {
@@ -208,7 +295,7 @@ try {
   await page.waitForFunction(() => {
     const button = document.querySelector('.sx-bar-offer [data-accept-mission="bar_probe_ready_bounty"]');
     return !!(button && !button.disabled);
-  }, null, { timeout: 5000 });
+  }, null, { timeout: UI_TIMEOUT_MS, polling: 250 });
   const acceptClickReport = await page.evaluate((missionLogLabel) => {
     const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
     const button = document.querySelector('.sx-bar-offer [data-accept-mission="bar_probe_ready_bounty"]');
@@ -239,7 +326,7 @@ try {
   await page.waitForFunction(() => {
     const button = document.querySelector('.sx-bar-offer [data-open-mission-log]');
     return !!(button && !button.disabled);
-  }, null, { timeout: 10000 }).catch(async (err) => {
+  }, null, { timeout: UI_TIMEOUT_MS, polling: 250 }).catch(async (err) => {
     const debug = await page.evaluate((clickReport) => {
       const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
       const state = window.SF.state;
@@ -269,6 +356,12 @@ try {
     }, acceptClickReport);
     throw new Error('Timed out waiting for accepted Bar Mission Log handoff: ' + err.message + ' ' + JSON.stringify(debug));
   });
+
+  // Same typewriter hazard as the offer reply: the handoff button mounts synchronously at
+  // accept, but the reply line types in behind it — read only once the tail phrase has landed.
+  await page.waitForFunction(() => /Departure Check is green/i.test(
+    (document.querySelector('.sx-bar-offer')?.closest('.sx-talk')?.querySelector('.sx-talk__reply')?.textContent) || ''
+  ), null, { timeout: UI_TIMEOUT_MS, polling: 250 });
 
   const acceptedReport = await page.evaluate((missionLogLabel) => {
     const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
@@ -314,7 +407,7 @@ try {
     if (!button) throw new Error('Open Mission Log button not found');
     button.click();
   });
-  await waitForVisible(page, '[data-screen="missionLog"]', 10000, 'Mission Log opened from Bar handoff');
+  await waitForVisible(page, '[data-screen="missionLog"]', UI_TIMEOUT_MS, 'Mission Log opened from Bar handoff');
   const logReport = await page.evaluate(() => {
     const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
     const state = window.SF.state;
@@ -348,7 +441,10 @@ async function waitForVisible(page, selector, timeoutMs, label) {
     const cs = getComputedStyle(el);
     const r = el.getBoundingClientRect();
     return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 20 && r.height > 10;
-  }, selector, { timeout: timeoutMs }).catch((err) => {
+    // Interval polling, not raf: on a starved headless-SwiftShader host rAF can stall for tens of
+    // seconds, so elements that mount in the same tick (the Departure Check pop after a click)
+    // go unobserved until the timeout fires even though they are already visible.
+  }, selector, { timeout: timeoutMs, polling: 250 }).catch((err) => {
     throw new Error('Timed out waiting for ' + label + ': ' + err.message);
   });
 }
@@ -361,7 +457,7 @@ async function openStationDestination(page, destinationId, screenSelector) {
     return true;
   }, destinationId);
   if (!opened) return false;
-  await waitForVisible(page, `[data-screen="station"] ${screenSelector}`, 10000, `station ${destinationId} operation`);
+  await waitForVisible(page, `[data-screen="station"] ${screenSelector}`, UI_TIMEOUT_MS, `station ${destinationId} operation`);
   return true;
 }
 

@@ -2927,8 +2927,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_dock_interior.glb",
-      "tris": 22452,
-      "bytes": 23024444,
+      "tris": 21912,
+      "bytes": 22969332,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

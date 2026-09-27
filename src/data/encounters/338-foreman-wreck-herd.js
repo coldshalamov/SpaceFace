@@ -40,6 +40,7 @@ export default defineEncounter(trigger, {
     size: [3, 4],
     doctrine: 'scavenger',
     formation: 'loose',
+    cohortRecipe: 'fodder_crescent',
   },
   bark: 'ambush_tele',
   telegraph: 'Foreman committing through the ribs. Cross the charge line.',

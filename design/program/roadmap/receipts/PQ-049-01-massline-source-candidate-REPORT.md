@@ -54,3 +54,11 @@ This receipt does not accept the whole asset. PQ-049.02 through PQ-049.05
 remain responsible for promotion/release records, render-package and express
 mapping, and independent player-route/whole-asset acceptance before Massline
 can be called live.
+
+## 2026-09-26 verification (leaf closure)
+
+`npm run check:baseline` re-run green 16/16 at candidate HEAD (earlier 12/14
+baseline reds were repaired by subsequent commits). The leaf's declared gate is
+baseline alone; source-candidate scope is complete and this receipt's PASS
+disposition stands. Closed as `done`; whole-asset acceptance remains with
+PQ-049.02–.05 as named above.

@@ -73,6 +73,13 @@ export function collectPageIssues(page, options = {}) {
       });
       return;
     }
+    // Chromium cancels media range fetches as a matter of course (seek, re-range, the title's
+    // intro video unmounting when a run starts). A missing clip still fails loudly as HTTP 404
+    // through the response handler above; only the cancelled stream is not an error.
+    if (isCancelledMediaRequest(request, failure)) {
+      ignoredIssues.push({ ...issue, cancelledMedia: true });
+      return;
+    }
     issues.push(issue);
   });
   page.on('pageerror', (err) => {
@@ -107,6 +114,12 @@ export function collectPageIssues(page, options = {}) {
 
 export function isNavigationCancelledRequest(failure) {
   return /^net::ERR_ABORTED$/i.test(String(failure && failure.errorText || '').trim());
+}
+
+export function isCancelledMediaRequest(request, failure) {
+  let type = '';
+  try { type = typeof request?.resourceType === 'function' ? request.resourceType() : ''; } catch (_) { /* best-effort */ }
+  return type === 'media' && isNavigationCancelledRequest(failure);
 }
 
 export function isExpectedNavigationTextureAbort(text, phase) {

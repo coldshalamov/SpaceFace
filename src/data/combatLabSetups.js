@@ -86,6 +86,28 @@ export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
       { slotIndex: 7, defId: 'mod_elastic_whip_m' },
     ],
   },
+  // THE SYNTHESIS FORGE (CRU-038 / PQ-133.07). The Hawser is the smallest hull in the lab
+  // with THREE utility slots — the only starter that can mount every Storm Carom part at
+  // once: Bank Shot, Relay Arc and Ion Payload side by side. In the swarm armory the named
+  // synthesis then offers its conversion, three held parts for one evolved item and two
+  // freed hardpoints. The lab package is the reversible door: launch it, take the trade
+  // (or refuse it), read the new gun law, and leave — nothing persists.
+  // Hawser slot order: weapon M (0) | shield M (1) | engine M (2) | cargo S (3) |
+  // utility M x3 (4,5,6) | thruster M (7). S parts sit in the M utility slots legally.
+  {
+    id: 'storm_carom_forge',
+    label: 'Storm Carom Forge',
+    hullId: 'ship_hawser',
+    blurb: 'Three loose laws held at once. The armory will offer to weld them into one.',
+    // Hawser weapon capacity is 6, so the forge gun is the honest starter bolt rather than the
+    // ricochet stream — Bank Shot is the part that bends it anyway.
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_m' },
+      { slotIndex: 4, defId: 'mod_bank_shot' },
+      { slotIndex: 5, defId: 'mod_relay_arc' },
+      { slotIndex: 6, defId: 'mod_ion_payload' },
+    ],
+  },
   // PQ-176.01 — the drive/thruster split, as two kits you can actually launch.
   //
   // Same hull. Same gun. The ONLY difference is which half of the propulsion the credits went to,

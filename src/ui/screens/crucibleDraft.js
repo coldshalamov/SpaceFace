@@ -195,14 +195,18 @@ const SLOT_WORD = Object.freeze({
 /** Card text for one offer. Exported so a check can assert the wording without a DOM. */
 export function offerCardLines(offer, state) {
   if (!offer) return null;
+  const slot = Array.isArray(offer.consumes) && offer.consumes.length
+    // A synthesis says its whole trade: the parts it eats and the slot the product lands in.
+    ? `Consumes ${offer.consumes.map(fittingName).join(' + ')} — lands on hardpoint ${offer.slotIndex + 1}`
+    : offer.replaces
+      ? `Hardpoint ${offer.slotIndex + 1} — replaces ${fittingName(offer.replaces)}`
+      : `Hardpoint ${offer.slotIndex + 1} — empty`;
   return {
     verb: offer.verb || offer.id || '',
     name: offer.name || offer.defId || '',
     blurb: offer.blurb || '',
     activation: crucibleFittingDescription(offer.defId, state),
-    slot: offer.replaces
-      ? `Hardpoint ${offer.slotIndex + 1} — replaces ${fittingName(offer.replaces)}`
-      : `Hardpoint ${offer.slotIndex + 1} — empty`,
+    slot,
   };
 }
 

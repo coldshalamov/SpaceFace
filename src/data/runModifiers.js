@@ -63,6 +63,8 @@ export const RUN_MODIFIER_VERBS = Object.freeze([
   'Chaff',
   'Web',
   'Trap',
+  // Named-synthesis records (kind: 'evolution') — the build converts parts into an evolved item.
+  'Evolve',
 ]);
 
 const VERB_SET = new Set(RUN_MODIFIER_VERBS);

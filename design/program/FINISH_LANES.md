@@ -51,7 +51,7 @@ refusals still refuse.
 | 4 | **THE WORLD** | you arrived in the middle of their day: sectors, jobs, consequences, ordinary life | BETA |
 | 5 | **THE LONG GAME** | the fit, the market, the story: decisions an hour, a spine that builds to an ending | BETA |
 | 6 | **THE PICTURE** | one game on the glass: hulls, rocks, skies, residency honesty, the camera | BETA |
-| 7 | **THE INSTRUMENT** | every 2D surface is the same instrument of light — ORRERY, not a webpage | BETA |
+| 7 | **THE INSTRUMENT** — **CLAIMED 2026-09-26 (ORRERY frontend overhaul lane); do not take** | every 2D surface is the same instrument of light — ORRERY, not a webpage | BETA |
 | 8 | **THE EAR** | a signature by ear: every verb has a voice, the mix has a hierarchy, silence exists | RELEASE |
 | 9 | **THE RELEASE** | the demo path and the package: title → Crucible → adventure → end card → store | RELEASE |
 
@@ -327,6 +327,14 @@ that is THE MACHINE's job and it has the same prohibition.
 for anything Blender-side.
 
 ## 10. Lane seven — THE INSTRUMENT
+
+> **CLAIMED 2026-09-26 — the ORRERY frontend overhaul lane (owner-directed 2026-09-25).** This lane is taken:
+> do not start it, and do not take any of its absorbed units (PQ-162, PQ-168, PQ-180–185, PQ-187, PQ-188,
+> PQ-192, PQ-194, §22 C1–C4 and the HUD G-rows, CV-KIT, §25 Phase 4) from the queue or the gap list. The
+> Asteroid Works world-art units PQ-130/PQ-131 stay with their own campaign. The authority is
+> [`design/frontend/ORRERY.md`](../frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](../frontend/OVERHAUL_PLAN_2026-09-25.md);
+> live per-surface status is [`design/frontend/ORRERY_HANDOFF.md`](../frontend/ORRERY_HANDOFF.md) §2. A frontend defect found by
+> another lane goes to one row in `DEMO_READINESS_2026-09-20.md` §6, never a parallel implementation.
 
 **The feeling.** Flight, dock, map, pause, prompt and the Crucible door are the same ship's
 instrument: an orrery of light, the amber Hand that swings to your choice, rings and scales and

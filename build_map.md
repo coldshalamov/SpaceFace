@@ -40,6 +40,13 @@ wrong still starts at the fun loop (§1.7), then returns here.
 
 1. Glance at `git status --short` and [`design/program/NOW.md`](./design/program/NOW.md) so you do
    not collide with another agent's live, exact paths. A dirty foreign hunk is protected.
+   **The frontend is claimed (owner, 2026-09-26).** Every 2D surface — title, menus, station tabs,
+   chart, meta screens, Crucible screens, Help, Footprint, THE SHIP, Range, Automation, replay, Asteroid
+   Works UI, the flight HUD, and the frontend library (`src/ui/**`, `styles/**`, `design/frontend/**`,
+   `tools/ui-bench*`) — belongs to the ORRERY overhaul lane until it closes: §11, §18, §20, §22.5
+   C1–C4, the §22.9 HUD rows, §25 Phase 4 and §27 THE INSTRUMENT are marked CLAIMED. Do not take
+   frontend work from any queue, lane or catalog; route a frontend defect to the lane (§7 of
+   `AGENTS.md`). Authority: [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md).
 2. If this sitting is a finishing or A-list pass with no named packet — "make it better", "finish
    the game", "polish", a long build session — take a lane from
    [§27](#27-the-finish-in-lanes--admitted-2026-09-24) / [`FINISH_LANES.md`](./design/program/FINISH_LANES.md):
@@ -91,7 +98,7 @@ wait for, so content cannot be handed out before the ship handles.
 | **A2 · Picture, light, ear** | BETA | In order, [§23.4](#234-actualize-the-tools): `AQ-CAS` · `AQ-LOD` · `AQ-LIGHT` · `AQ-SURFACE` · `AQ-VOICE` · `AQ-HIT`. Each waits until the one before it is committed. This lane is how the outside tools become the picture. |
 | **B · The swarm and the world** | BETA | `PQ-190` **the style slice** (stylized industrial energy, approved at the shipping camera before any fleet pass) · `PQ-193` **the 3D picture never looks broken** (complete bodies, opening flyby, tubes, shelf, places) · `PQ-175` swarm content at craft · `PQ-029` `PQ-030` `PQ-031` `PQ-026` heads and coupling · `PQ-147` field toys · `PQ-027` `PQ-028` machinery and infrastructure · `PQ-148` cargo is physics · `PQ-149` the storyteller · `PQ-150` people who remember · `PQ-151` the wanted loop · `PQ-154` wrecks as terrain · `PQ-161` readable at zoom · `PQ-169` Crucible as replay surface |
 | **C · Adventure depth** | BETA | `PQ-177.06`/`.07` cargo custody and visible industrial limits · `PQ-145.01` the first durable site loop · `PQ-176` customization with consequences · `PQ-155` the verb curve · `PQ-156` three starters · `PQ-142` progression and my ship · `PQ-177` an economy you can read · `PQ-178` the story pipeline · `PQ-032` the linear spine · `PQ-152` set pieces from verbs · `PQ-153` six sectors · `PQ-143` ordinary life · `PQ-145` industry authorship · `PQ-171` content grammar · `PQ-195` the Third Shift finished |
-| **D · Frontend to the newest version** | BETA | `PQ-162` the station redesign · `PQ-168` the chart finished · `PQ-181` the meta shell · `PQ-182` Crucible screens · `PQ-183` everything is a link · `PQ-184` UI performance · `PQ-185` Asteroid Works accepted (with the live `PQ-130` / `PQ-131`) |
+| **D · Frontend to the newest version** — **CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane; do not dispatch** | BETA | `PQ-162` the station redesign · `PQ-168` the chart finished · `PQ-181` the meta shell · `PQ-182` Crucible screens · `PQ-183` everything is a link · `PQ-184` UI performance · `PQ-185` Asteroid Works accepted (with the live `PQ-130` / `PQ-131`) |
 | **E · It ships** | RELEASE | `PQ-158` audio direction · `PQ-159` camera and photo mode · `PQ-160` replay and clips · `PQ-164` input truth · `PQ-165` accessibility and options · `PQ-166` five languages · `PQ-144` density and perf guard · `PQ-033` the release closeout |
 | **F · After** | POST | `PQ-170` endgame pulls · `PQ-172` mods |
 
@@ -1112,6 +1119,8 @@ the packet explicitly requires that evidence.
 A receipt must say what changed, what passed, what route was observed, what performance profile was measured, what remains unproven, and which follow-ups were deliberately excluded. “Tests pass” is not a substitute for those facts; neither is a screenshot a substitute for simulation truth.
 
 ## 11. The frontend is the strategic half of the game
+
+> **CLAIMED 2026-09-26 — the ORRERY frontend overhaul lane (owner-directed 2026-09-25).** The whole section — the surface manifest, the Power Bar, the J01–J16 jobs and their order. Do not take, execute or "finish" any of it. The authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md); everything in this section is **superseded wherever it differs** and stays only as history (earlier frontend passes built from these instructions and the owner judged the result cheap and generic). Live status: [`design/frontend/ORRERY_HANDOFF.md`](./design/frontend/ORRERY_HANDOFF.md) §2. Found a frontend defect? One row in [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) §6 for the lane — never a parallel implementation.
 
 The screens and the HUD are not connective tissue between the fun parts. They are where the player
 understands the world, understands their ship, and decides what to do next. Owner direction,
@@ -3088,6 +3097,8 @@ A voice says Berth Three is down a flywheel and the replacement is in transit. Y
 
 ## 18. Frontend: every surface to the newest version, optimized (`PQ-180`–`PQ-185`) — ADMITTED 2026-09-03
 
+> **CLAIMED 2026-09-26 — the ORRERY frontend overhaul lane (owner-directed 2026-09-25).** The whole section — `PQ-180`–`PQ-185` and their plans. Do not take, execute or "finish" any of it. The authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md); everything in this section is **superseded wherever it differs** and stays only as history (earlier frontend passes built from these instructions and the owner judged the result cheap and generic). Live status: [`design/frontend/ORRERY_HANDOFF.md`](./design/frontend/ORRERY_HANDOFF.md) §2. Found a frontend defect? One row in [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) §6 for the lane — never a parallel implementation.
+
 > **DIRECTION OVERRIDE — 2026-09-05.** The owner ruled that the frontend design authority this
 > section builds on was written by agents and "will keep reverting the frontend back to cheap if
 > you rely on them as an authority." [`design/FRONTEND_DIRECTION.md`](./design/FRONTEND_DIRECTION.md)
@@ -3393,6 +3404,8 @@ The game cannot regress silently. Each FEEL_CONTRACT bar has a scenario check; e
 - **How agents get this wrong:** Writing a check that imports a node:test file and cannot fail (§7): run suites as child processes and honour exit codes; Encoding a bar with a tolerance so wide it never fails: inject the old defect and watch it go red before committing.
 
 ## 20. The frontend direction — the A-list plan (`PQ-187`, `PQ-188`; re-gates `PQ-162`, `PQ-168`, `PQ-181`, `PQ-182`, `PQ-185`) — ADMITTED 2026-09-05
+
+> **CLAIMED 2026-09-26 — the ORRERY frontend overhaul lane (owner-directed 2026-09-25).** The whole section — the 2026-09-05 direction, `PQ-187`/`PQ-188`, the 2026-09-06 task series and §20.15 Field Hardware (`PQ-194`), whose aesthetics the owner has since replaced. Do not take, execute or "finish" any of it. The authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md); everything in this section is **superseded wherever it differs** and stays only as history (earlier frontend passes built from these instructions and the owner judged the result cheap and generic). Live status: [`design/frontend/ORRERY_HANDOFF.md`](./design/frontend/ORRERY_HANDOFF.md) §2. Found a frontend defect? One row in [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) §6 for the lane — never a parallel implementation.
 
 **Source:** the owner, 2026-09-05, verbatim:
 
@@ -3959,6 +3972,10 @@ combat toys the description already names. Build these. Do not wait for a person
 Every screen in the surface manifest, the sound of every verb, the sky, and the fleet. Close on
 tests and on the chase loop. Do not close on an opinion.
 
+> **Rows C1–C4 are CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane** — do not take them. Their
+> "machined bezels / one structural kit" wording is the superseded Field Hardware direction; the
+> authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md). C5–C8 (sound, skies, hulls, wrecks) are not frontend and stay open.
+
 | Id | The player gets | Done when | Files |
 |---|---|---|---|
 | **C1** | Station uses the same structural kit as the flight HUD: one accent, machined bezels, no second card language. | A test of the same shape as the flight-HUD pin: bezel present, one accent variable, no raw default button chrome. Every control has a label from the binding map. | `src/ui/station/`, `styles/station-workbench.css`, `src/ui/screens/stationHub.js`. |
@@ -4388,6 +4405,11 @@ tether. Healing the player for free by tethering a rock. Instant full repair on 
 These are the small jobs. One row is one agent and one sitting. Take any row whose files are not
 dirty and not listed on an open Wave A–F row. Do not widen the row. Close on the fixture. If the
 fixture already passes, skip.
+
+> **Rows G1, G3, G5, G7, G8, G12, G13 and G14 (what the flight HUD and the screens show) are CLAIMED
+> 2026-09-26 by the ORRERY frontend overhaul lane** — do not take them; the lane lands them in the
+> HUD pass ([`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md)). The other G-rows (sound, impact shape, the objective key, throttle
+> audio, module numbers, bound-key prompts) stay open.
 
 `PQ-155.04` already owns in-flight mining skill. A clean aim pays more ore than a sloppy aim, at
 least 2× on the same rock. That gradient is yield. The starter beam still never locks. A vent
@@ -5008,7 +5030,7 @@ rank out-shouts a higher one fails, whatever the numbers say.
 | **1 · The body** — camera and hull presentation | CV-GLASS, `PQ-159`, §22 G4, B3b | `probe:body-scale`: player hull p10 ≥ 48 px calm / 36 px fight / 28 px top speed; plume never covers the hull; B3b still holds |
 | **2 · The frame** — one sky, arena lines at rest, substances | CV-PAINT, `AQ-LIGHT`, `AQ-SURFACE`, §22 C6, `PQ-190.01` | ≤ 1 hero celestial body per profile; sky below muzzle and engine |
 | **3 · The hit you can see** | CV-HAND, CV-AMMO, `PQ-210.04`, §22 A7, B3, B5, B9, F1, F5 | A kill leaves ≥ 2 moving, lit wreck bodies within 250 ms at readable size |
-| **4 · The instrument** | ORRERY Phases 1 and 3, CV-KIT, §22 G1/G3/G5/G7/G8/G13/G14, ledger D14 | 0 persistent sentence cards in flight; no truncated primary label; results is replay + stunts + Again |
+| **4 · The instrument** — **CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane** | ORRERY Phases 1 and 3, CV-KIT, §22 G1/G3/G5/G7/G8/G13/G14, ledger D14 | 0 persistent sentence cards in flight; no truncated primary label; results is replay + stunts + Again |
 | **5 · The demo path** — demo flag, live title, round zero, load, end card (mostly NEW) | `PQ-160`, `PQ-163`, `PQ-210.08` | Crucible launch → control ≤ 15 s quiet; the fifteen-minute path plays |
 | **6 · The world on the way** | CV-DAY, CV-QUIET, §22 A1–A6, ORRERY Phase 4 (hub, market) | A6 slice scenario |
 | **7 · Ship the demo** | `PQ-033.02`, `PQ-033.03`, §22 E1, E8, `PQ-167` | Electron demo package, photo-mode store shots, a replay-cut trailer |
@@ -5062,7 +5084,7 @@ lanes are finished** — features, polish and fun are one lane, not three passes
 | **THE WORLD** | you arrived in the middle of their day — sectors, jobs, consequences | PQ-138/143/145/148–151/153/154/171, §22 world rows, CV-DAY/CV-SO/CV-QUIET + all CR-*, §24 |
 | **THE LONG GAME** | the fit, the market, the story — decisions an hour, a spine to an ending | PQ-032/142/152/155/156/170/172/176–178/195, §22 economy rows, §17 |
 | **THE PICTURE** | one game on the glass — hulls, rocks, skies, residency, the camera | PQ-049/050/134/136/159/161/190/193, §22 art rows, CV-GLASS/CV-PAINT/CV-MOTION, §13B/§13D |
-| **THE INSTRUMENT** | every 2D surface is the same instrument of light — ORRERY | PQ-130–132/162/168/180–185/187/188/192/194, §22 screen rows, CV-KIT, §11/§18/§20 |
+| **THE INSTRUMENT** — **CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane; do not take** | every 2D surface is the same instrument of light — ORRERY (authority: `design/frontend/ORRERY.md` + `OVERHAUL_PLAN_2026-09-25.md`; the Asteroid Works world-art units `PQ-130`/`PQ-131` stay with their own campaign) | PQ-130–132/162/168/180–185/187/188/192/194, §22 screen rows, CV-KIT, §11/§18/§20 |
 | **THE EAR** | a signature by ear — verb voices, the mix, room tone | PQ-158, §22 audio rows, CV-EAR |
 | **THE RELEASE** | the demo path and the package — title to end card to store | PQ-033/164–167/191/210, §22 E2/E4/E5/E7, §25 Phases 5/7 |
 

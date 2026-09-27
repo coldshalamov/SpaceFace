@@ -203,7 +203,9 @@ assert.equal(envelope.phase0ObservedTraceCounts['combat:fire'], 17, 'expected te
 assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 4, 'expected telemetry should pin observed projectile hit count');
 assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 4, 'expected telemetry should pin observed combat damage count');
 assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected telemetry should pin observed economy tick count');
-assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 6, 'expected telemetry should pin SG-08 presentation cue count');
+// 2026-09-25 3d6491e1e (D46) restored the authored 47-A tether warn arc, which adds one presentation cue in the
+// accepted golden (6 -> 7); the pin follows the accepted record, it does not re-record it.
+assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 7, 'expected telemetry should pin SG-08 presentation cue count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:loaded'], 1, 'expected telemetry should pin scenario load count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:factsInitialized'], 1, 'expected telemetry should pin scenario fact initialization count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:actorBindings'], 1, 'expected telemetry should pin scenario actor-binding audit count');

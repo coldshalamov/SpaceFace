@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "f274fadc8d4f4502458a613c8446825b128ae8b33773194fd8361a08edeadf4b",
+=======
+  "contentHash": "10dca10f8ae0ff5400edb9141630e16696237579c9464eba135bb1f6e56f8566",
+>>>>>>> origin/master
   "dynamicGroups": [],
   "geometry": [
     {
@@ -607,8 +611,13 @@
       "uri": "place_aftermath_frag_pipe_tangle.glb"
     },
     "sourceManifest": {
+<<<<<<< HEAD
       "bytes": 193703,
       "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
+=======
+      "bytes": 189651,
+      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
+>>>>>>> origin/master
       "uri": "pilots.json"
     }
   },
@@ -880,7 +889,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_pipe_tangle.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "9de86c5ddc59d08942c6f6fee4ab2d6909feffde99fd2d41f00cd2908d944fc4",
+=======
+  "runtimeHash": "2bbbf88a709ed71cc792b9c291d256575b41191e782b821b0dace20652ef9801",
+>>>>>>> origin/master
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

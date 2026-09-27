@@ -135,7 +135,7 @@ const CSS = `
   background:radial-gradient(closest-side, rgb(4 6 9 / .74), rgb(4 6 9 / .5) 58%, rgb(4 6 9 / 0)); }
 /* the legend: the row being worked, and what it does */
 .orr-set-read { display:flex; flex-direction:column; gap:10px; min-height:96px; }
-.orr-set-read__kicker { ${LABEL} font-size:10.5px; letter-spacing:.24em; color:rgb(${BONE} / .64); display:flex; align-items:center; gap:12px; }
+.orr-set-read__kicker { ${LABEL} font-size: 12px; letter-spacing:.24em; color:rgb(${BONE} / .64); display:flex; align-items:center; gap:12px; }
 .orr-set-read__kicker::after { content:""; flex:0 0 56px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .4), rgb(${BONE} / 0)); }
 .orr-set-read__name { ${LABEL} font-size:15px; letter-spacing:.2em; color:rgb(248 244 234); display:inline-flex; align-self:flex-start; align-items:center; gap:14px;
   transition:color .5s var(--dp-ease-out, ease-out), text-shadow .5s var(--dp-ease-out, ease-out); }
@@ -174,7 +174,7 @@ const CSS = `
 .orr-set-mixer__out .orr-counter__digit { width:.56em; }
 .orr-set-mixer__out small { font-size:.42em; margin-left:3px; color:rgb(${BONE} / .7); }
 .orr-set-mixer.is-muted .orr-set-mixer__out { font-size:22px; font-variation-settings:"wdth" 112, "wght" 650; letter-spacing:.24em; text-transform:uppercase; color:rgb(248 244 234); }
-.orr-set-mixer__outlab { ${LABEL} font-size:9.5px; letter-spacing:.2em; color:rgb(${BONE} / .7); white-space:nowrap; }
+.orr-set-mixer__outlab { ${LABEL} font-size: 12px; letter-spacing:.2em; color:rgb(${BONE} / .7); white-space:nowrap; }
 /* the miniature HUD */
 .orr-set-hud { --dp-hand:rgb(${BONE}); --dp-hand-hot:rgb(248 244 234); --dp-lamp:rgb(${BONE}); --dp-lamp-hot:rgb(248 244 234); overflow:visible; }
 .orr-set-hud__frame { position:absolute; left:0; top:0; width:760px; height:540px; transform-origin:0 0; }
@@ -202,12 +202,12 @@ const CSS = `
 .orr-set-hud__scale b .orr-counter__digit { width:.56em; }
 .orr-set-hud__scale b { display:inline-flex; font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 300; font-weight:300; font-size:24px; line-height:1; color:rgb(248 244 234);
   font-variant-numeric:tabular-nums; }
-.orr-set-hud__scale > i { font-style:normal; ${LABEL} font-size:10px; letter-spacing:.2em; color:rgb(${BONE} / .72); }
+.orr-set-hud__scale > i { font-style:normal; ${LABEL} font-size: 12px; letter-spacing:.2em; color:rgb(${BONE} / .72); }
 /* overlays the HUD really draws: a damage number, a hint, a caption */
 .orr-set-hud__dmg { position:absolute; font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 420; font-weight:420; font-size:22px;
   color:rgb(248 244 234); text-shadow:0 0 2px rgb(3 4 7), 0 0 8px rgb(3 4 7 / .8); opacity:0; transition:opacity .2s linear; white-space:nowrap; }
 .orr-set-hud__dmg.is-on { opacity:1; }
-.orr-set-hud__hint { position:absolute; left:0; right:0; top:0; ${LABEL} font-size:11px; letter-spacing:.18em; color:rgb(248 244 234 / .9);
+.orr-set-hud__hint { position:absolute; left:0; right:0; top:0; ${LABEL} font-size: 12px; letter-spacing:.18em; color:rgb(248 244 234 / .9);
   text-shadow:0 0 2px rgb(3 4 7), 0 0 8px rgb(3 4 7 / .8); opacity:0; transition:opacity .2s linear; white-space:nowrap; }
 .orr-set-hud__hint.is-on { opacity:1; }
 .orr-set-hud__hint b { font-weight:800; color:rgb(248 244 234); margin:0 .3em; }
@@ -231,14 +231,14 @@ const CSS = `
   display:inline-flex; font-variant-numeric:tabular-nums; }
 .orr-set-hud__fovread b .orr-counter { height:1em; }
 .orr-set-hud__fovread b .orr-counter__digit { width:.56em; }
-.orr-set-hud__fovread > i { font-style:normal; ${LABEL} font-size:10px; letter-spacing:.22em; color:rgb(${BONE} / .72); }
+.orr-set-hud__fovread > i { font-style:normal; ${LABEL} font-size: 12px; letter-spacing:.22em; color:rgb(${BONE} / .72); }
 /* the bind dial: a glass disc inside a lit annulus, the key at its centre */
 .orr-set-dial__key { position:absolute; left:50%; top:50%; transform:translate(-50%, -58%); max-width:52%; text-align:center;
   font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 250; font-weight:250; font-size:92px; line-height:.9;
   color:rgb(248 244 234); letter-spacing:-.01em; white-space:nowrap; text-shadow:0 0 22px rgb(0 0 0 / .5); }
 .orr-set-dial__key.is-mid { font-size:58px; }
 .orr-set-dial__key.is-long { font-size:34px; white-space:normal; line-height:1.05; }
-.orr-set-dial__verb { position:absolute; left:50%; top:50%; transform:translate(-50%, 0); margin-top:calc(var(--orr-set-side, 420px) * .11); ${LABEL} font-size:11px; letter-spacing:.2em;
+.orr-set-dial__verb { position:absolute; left:50%; top:50%; transform:translate(-50%, 0); margin-top:calc(var(--orr-set-side, 420px) * .11); ${LABEL} font-size: 12px; letter-spacing:.2em;
   color:rgb(${BONE} / .76); white-space:nowrap; text-align:center; max-width:46%; overflow:hidden; text-overflow:ellipsis; }
 .orr-set-dial .orr-set-dial__band { stroke:rgb(${BONE} / .26); transition:stroke .2s linear; }
 .orr-set-dial.is-live .orr-set-dial__band { stroke:rgb(${BONE} / .38); }
@@ -252,7 +252,7 @@ const CSS = `
 .orr-set-dial.is-dz .orr-set-dial__verb { margin-top:calc(var(--orr-set-side, 420px) * .24); }
 .orr-set-dial .orr-set-dial__rim text { font-size:calc(9.5px * var(--orr-set-kd, 1)); letter-spacing:.3em; fill:rgb(${BONE} / .7); font-weight:650; }
 /* the foot line: what the preview is */
-.orr-set-foot { ${LABEL} font-size:10px; letter-spacing:.22em; color:rgb(${BONE} / .66); display:flex; gap:10px; align-items:center; }
+.orr-set-foot { ${LABEL} font-size: 12px; letter-spacing:.22em; color:rgb(${BONE} / .66); display:flex; gap:10px; align-items:center; }
 .orr-set-foot::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--dp-phos, #dfeeff); box-shadow:0 0 6px rgb(223 238 255 / .6); animation:orr-set-live 2.4s ease-in-out infinite; }
 @keyframes orr-set-live { 50% { opacity:.35; } }
 html.sf-reduce-motion .orr-set-preview *, html.sf-reduce-motion .orr-set-preview *::before { animation:none !important; transition:none !important; }

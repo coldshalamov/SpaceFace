@@ -1434,6 +1434,12 @@ export const ships = {
     // re-derive on fit/research changes coming from other systems
     bus.on('module:equipped', ({ shipId }) => this.recomputeEntity(shipId));
     bus.on('module:unequipped', ({ shipId }) => this.recomputeEntity(shipId));
+    // Canonical grant intent: career ladders, keepsakes, and mission rewards route module grants
+    // through the ships-owned inventory authority. Callers own idempotent reward receipts.
+    bus.on('ships:grantModule', (p) => this.grantModule({
+      defId: p && p.defId,
+      reason: (p && p.reason) || 'reward',
+    }));
     bus.on('tech:researched', () => this.recomputeActiveShip());
     bus.on('cargo:changed', () => { this._cargoMassRefreshPending = true; });
     bus.on('cargo:massSettled', () => this.flushCargoMassRefresh());

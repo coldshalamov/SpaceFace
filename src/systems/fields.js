@@ -614,6 +614,12 @@ export const fields = {
           lockStrength: def.lockStrength,
           tag: 'external',
         });
+        // CV-EAR: the lock-ring appearing IS the seed's deploy — publish it so the audio
+        // voice path (fields:deployed → accessibility cue) hears it like every other power.
+        this.bus.emit('fields:deployed', {
+          fieldId, kind: 'seed', sourceId: ms.seedId, ownerId: ms.ownerId,
+          center: { x: sx, z: sz }, radius: def.radius,
+        });
       } else {
         rec.center.x = sx;
         rec.center.z = sz;
@@ -937,7 +943,8 @@ export const fields = {
 
     this.bus.emit('fields:deployed', { fieldId, kind, sourceId: emitter.id, center: { x: cx, z: cz }, radius: def.radius, expireAt });
     this._emitDeployCue(kind, cx, cz, def.radius);
-    this.bus.emit('audio:cue', { id: 'confirm' });
+    // CV-EAR: no generic UI confirm here — each power's own deploy voice arrives via the
+    // fields:deployed → accessibility-cue path in audioSystem.
   },
 
   _toggleCone(state, rt) {
@@ -969,8 +976,12 @@ export const fields = {
       });
       rt.coneActive = true;
       rt.coneFieldId = fieldId;
+      // CV-EAR: the cone's deploy is a fields:deployed emit like every other power (the wedge
+      // only used coneToggled before, so the audio voice path never saw a player cone open).
+      this.bus.emit('fields:deployed', {
+        fieldId, kind: 'cone', sourceId: player.id, center, radius: def.radius, isPlayer: true,
+      });
       this.bus.emit('fields:coneToggled', { active: true, fieldId });
-      this.bus.emit('audio:cue', { id: 'confirm' });
     } else {
       if (rt.coneFieldId) this._kernel.unregister(rt.coneFieldId);
       const wasId = rt.coneFieldId;
@@ -1167,6 +1178,11 @@ export const fields = {
       });
       rt.skimFieldId = fieldId;
       this._emitDeployCue('sheet', center.x, center.z, def.radius);
+      // CV-EAR: the sheet opening IS the skim deploy — publish it so the audio voice path
+      // (fields:deployed → accessibility cue) hears it like every other power.
+      this.bus.emit('fields:deployed', {
+        fieldId, kind: 'skim', sourceId: player.id, center, radius: def.radius, isPlayer: true,
+      });
     } else {
       this._kernel.update(fieldId, { center, dir });
     }

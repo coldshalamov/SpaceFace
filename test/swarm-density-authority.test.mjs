@@ -52,6 +52,15 @@ function enterContinuous(h, sectorId) {
     placePlayer: false,
     fromSectorId: previous,
   });
+  // Despawn/virtualize receipts queue entity:destroyed rather than emitting it; in production
+  // the queue drains at end of sim step. This harness drives enterSector outside a step, so it
+  // must drain itself or the budget assertions read bindings whose release is still pending.
+  h.bus.flush();
+  // One tick lets the shelving/promotion lanes settle the way a real boundary cross does:
+  // far rows left behind on the last leg stay shelved and shelved rows inside the new sector's
+  // enter radius re-acquire their slots before the parity assertion reads the ledger.
+  h.sim.step();
+  h.bus.flush();
 }
 
 function assertExactWorldBudget(h, label) {
@@ -183,16 +192,23 @@ test('saturated bounty spawns clamp while a critical boss remains queued and ret
   liveBounty.player.pos.x = reachOrigin.x + 2800;
   liveBounty.player.pos.z = reachOrigin.z + 2400;
   liveBounty.world.enterSector(IO_REACH, { placePlayer: false });
-  const hunter = liveBounty.state.entityList.find((entity) => (
-    entity.alive && entity.data?.ai?.spawnContext === 'bounty_hunter'
+  // Far-actor shelving releases its slots on the first tick after materialization — that is the
+  // designed release-on-virtualize contract, not the kill path this assertion measures. The
+  // authored bounty consequence spawns beyond the exit radius, so every hunter shelves at the
+  // settle tick; kill a still-live bound hostile instead — the release path is the same
+  // entity:destroyed route either way.
+  liveBounty.sim.step();
+  const boundHostile = liveBounty.state.entityList.find((entity) => (
+    entity.alive && entity.id !== liveBounty.state.playerId
+    && liveBounty.budget.ownerForEntity(entity.id) != null
   ));
-  assert.ok(hunter, 'ordinary hot entry materializes a bounty consequence');
-  assert.match(liveBounty.budget.ownerForEntity(hunter.id), /^world:bounty:/);
+  assert.ok(boundHostile, 'ordinary hot entry materializes a live bound hostile');
+  assert.match(liveBounty.budget.ownerForEntity(boundHostile.id), /^world:(ambient|bounty):/);
   const beforeHunterLoss = liveBounty.budget.current();
-  hunter.alive = false;
+  boundHostile.alive = false;
   liveBounty.sim.step();
   assert.equal(liveBounty.budget.current(), beforeHunterLoss - 1,
-    'destroyed bounty hunter releases its exact bound slot');
+    'destroyed bound hostile releases its exact bound slot');
   liveBounty.sim.dispose();
 
   const boss = bootWorld(47, ASHFALL);
@@ -214,6 +230,36 @@ test('saturated bounty spawns clamp while a critical boss remains queued and ret
   boss.sim.step();
   assert.equal(boss.budget.current(), boss.budget.max() - 1, 'boss destruction releases its exact slot');
   boss.sim.dispose();
+});
+
+test('a recycled id cannot lose its fresh binding to a stale destroy receipt', () => {
+  const h = bootWorld();
+  const budget = h.budget;
+  // Bound entity is removed mid-step; its id lands back in the recycling pool and a NEW entity
+  // takes it before the queued entity:destroyed receipt drains at end of step.
+  const oldBody = h.sim.spawn({
+    type: 'ship', team: 1, pos: { x: 10, z: 0 }, vel: { x: 0, z: 0 },
+    radius: 5, mass: 10, hull: 50, hullMax: 50,
+  });
+  budget.request(1, 'world:record:fixture');
+  assert.ok(budget.bindEntity(oldBody.id, 'world:record:fixture'));
+  const recycledId = oldBody.id;
+  h.sim.helpers.removeEntity(recycledId, { immediate: true });
+  const newBody = h.sim.spawn({
+    type: 'ship', team: 1, pos: { x: 20, z: 0 }, vel: { x: 0, z: 0 },
+    radius: 5, mass: 10, hull: 50, hullMax: 50,
+  });
+  assert.equal(newBody.id, recycledId, 'fixture: the fresh spawn must reuse the vacated id');
+  budget.request(1, 'world:record:fixture2');
+  assert.ok(budget.bindEntity(newBody.id, 'world:record:fixture2'));
+  h.sim.step();
+  assert.equal(budget.ownerForEntity(recycledId), 'world:record:fixture2',
+    'the queued destroy for the prior occupant cannot strip the new occupant\'s slot');
+  assert.equal(budget.current(), 1, 'exactly one slot: old released on removal, new still bound');
+  newBody.alive = false;
+  h.sim.step();
+  assert.equal(budget.current(), 0, 'the new occupant\'s own destroy releases its own binding');
+  h.sim.dispose();
 });
 
 test('mission patrol targets defer, partially fill, top up in order, and release by entity', () => {

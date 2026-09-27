@@ -7,6 +7,7 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 import * as THREE from 'three';
 
+import { modelTruthPlaceDrawScale } from '../src/data/modelTruth.js';
 import {
   buildAuthoredPlaceProp,
   buildAuthoredStationArchetype,
@@ -104,9 +105,14 @@ for (const fixture of CASES) {
   const expectedTargetRadius = entity.type === 'station'
     ? Math.max(40, Number(entity.data.placeTargetRadius || entity.data.visualRadius || entity.data.dockRadius || entity.radius))
     : null;
-  const expectedScale = expectedTargetRadius
-    ? (expectedTargetRadius * 2) / sourceEnvelope
-    : (Number(entity.data.placeScale) || 1);
+  // Live scale authority mirrors the runtime: the measured model-truth census wins when a row
+  // exists, then the station target-radius fit, then the raw authored place scale.
+  const censusScale = modelTruthPlaceDrawScale(entity);
+  const expectedScale = Number.isFinite(censusScale) && censusScale > 0
+    ? censusScale
+    : expectedTargetRadius
+      ? (expectedTargetRadius * 2) / sourceEnvelope
+      : (Number(entity.data.placeScale) || 1);
   const expectedAuthoredSize = new THREE.Vector3(...records.get(fixture.id).bounds.size).multiplyScalar(expectedScale);
   const expectedVisibleSize = new THREE.Vector3(...records.get(fixture.id).visibleBounds.size).multiplyScalar(expectedScale);
   const publishedVisualSize = new THREE.Vector3(...authoredRoot.userData.visualBounds.size);

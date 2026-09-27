@@ -73,7 +73,7 @@ const CSS = `
 .orr-cluster__speed .orr-numeral.is-rest { color:var(--dp-ink-dim, #b7b4a6); }
 .orr-cluster__speed .orr-numeral.is-over { color:var(--dp-ice, #8fcbff); }
 .orr-cluster__speedfoot { display:flex; gap:12px; align-items:baseline; }
-.orr-cluster__speedstate { font-size:10px; letter-spacing:.18em; color:var(--dp-ink-dim, #b7b4a6); }
+.orr-cluster__speedstate { font-size: 12px; letter-spacing:.18em; color:var(--dp-ink-dim, #b7b4a6); }
 .orr-cluster__speedstate.is-ice { color:var(--dp-ice, #8fcbff); }
 .orr-cluster__speedfoot b { font-family:var(--dp-face-numeral); font-weight:520; font-size:12px; color:var(--dp-ink, #e8e2d4); margin-left:4px; letter-spacing:.02em; }
 .orr-cluster__key { position:absolute; width:48px; height:48px; margin:-24px 0 0 -24px;
@@ -96,10 +96,10 @@ const CSS = `
 .orr-cluster__key.is-armed .orr-cluster__keytag { color:var(--dp-hand, #f2b950); }
 .orr-cluster__key.is-armed .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); }
 .orr-cluster__key.is-locked .orr-cluster__keytag, .orr-cluster__key.is-empty .orr-cluster__keytag { opacity:.55; }
-.orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-numeral); font-weight:700; font-size:9px; color:var(--dp-phos, #dfeeff); }
+.orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff); }
 .orr-cluster__payload { position:absolute; display:flex; flex-direction:column; gap:3px; white-space:nowrap; }
 .orr-cluster__payload .orr-counter { font-family:var(--dp-face-numeral); font-weight:320; font-size:26px; color:var(--dp-phos, #dfeeff); }
-.orr-cluster__payload small { font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size:11px; letter-spacing:.12em; color:var(--dp-ink-dim, #b7b4a6); }
+.orr-cluster__payload small { font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size: 12px; letter-spacing:.12em; color:var(--dp-ink-dim, #b7b4a6); }
 .orr-cluster__beam { stroke-dasharray:1 5; }
 .orr-cluster__pulse { stroke-dasharray:14 400; animation:orr-pulse 1.6s linear infinite; }
 @keyframes orr-pulse { from { stroke-dashoffset:14; } to { stroke-dashoffset:-400; } }

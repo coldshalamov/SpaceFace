@@ -82,8 +82,12 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // sector_ceres_belt, so zones 5 → 6, the asteroid/entity census and collider count grow
 // (66 → 108 colliders), and authored counts are otherwise unchanged. Prior digest was
 // efa15466778447cf900b74fee7fa4f483168f7ce1bd826468139e289ffbe5cd0.
+// 2026-09-26: the sanctioned release rebuild rewrote the cathedral GLB (serialization only —
+// every pinned socket transform verified unmoved), so worldSite.releaseSha256 moved
+// 32094bcd… → 6de8743a…. Only the embedded hash changed; all shape/census assertions still
+// pass. Prior digest was 78a37d85d07aa6be57bcf885cd94e0e327246edea1a29b5d0dc46a119d63b38b.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  '78a37d85d07aa6be57bcf885cd94e0e327246edea1a29b5d0dc46a119d63b38b';
+  'ee36315ae7010ee127d17f10432c08ee8bbfc5a8737e3663f897a0d2b8827aa9';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({

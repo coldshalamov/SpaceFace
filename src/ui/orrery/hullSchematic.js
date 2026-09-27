@@ -42,7 +42,7 @@ html.sf-reduce-motion .orr-hull--settled .orr-hull__label { transition:none; }
 .orr-svg .orr-hull__leader--hidden { stroke-dasharray:3 3; }
 .orr-svg .orr-hull__leader-halo { stroke:rgb(6 8 11 / .9); stroke-linecap:round; }
 .orr-svg .orr-hull__leader--hidden.is-lit { opacity:.85; }
-.orr-svg .orr-hull__bearing { font-size:10px; font-weight:650; letter-spacing:.08em; fill:rgb(236 230 216 / .5); }
+.orr-svg .orr-hull__bearing { font-size: 12px; font-weight:650; letter-spacing:.08em; fill:rgb(236 230 216 / .5); }
 .orr-svg .orr-hull__leader-bloom { opacity:0; transition:opacity .18s linear; }
 .orr-svg .orr-hull__leader-bloom.is-lit { opacity:.22; }
 .orr-hull__node { transform-box:fill-box; transform-origin:center; transition:transform .28s var(--dp-ease-over, ease-out); }
@@ -59,7 +59,7 @@ html.sf-reduce-motion .orr-hull--settled .orr-hull__label { transition:none; }
 .orr-hull__node.is-lit .orr-hull__ring { stroke:var(--dp-hand-hot, #ffd98c); stroke-dasharray:none; }
 .orr-hull__node.is-lit .orr-hull__core { fill:var(--dp-hand-hot, #ffd98c); }
 .orr-hull__node.is-lit .orr-hull__glow { opacity:.24; }
-.orr-svg text.orr-hull__num { font-size:11.5px; font-weight:700; letter-spacing:.04em; fill:rgb(236 230 216 / .86); paint-order:stroke; stroke:rgb(6 8 11 / .85); stroke-width:3px; stroke-linejoin:round;
+.orr-svg text.orr-hull__num { font-size: 12px; font-weight:700; letter-spacing:.04em; fill:rgb(236 230 216 / .86); paint-order:stroke; stroke:rgb(6 8 11 / .85); stroke-width:3px; stroke-linejoin:round;
   paint-order:stroke; stroke:rgb(4 6 9 / .95); stroke-width:4px; stroke-linejoin:round; }
 .orr-svg .orr-hull__fitted { fill:none; stroke-linecap:butt; }
 .orr-svg .orr-hull__fitted.is-fitted { stroke:rgb(236 230 216 / .8); }

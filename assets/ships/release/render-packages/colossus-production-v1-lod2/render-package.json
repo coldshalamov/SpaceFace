@@ -519,7 +519,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "2b8fbbb3364896943bd85191b36c14a82d5de18b81cee25068945192689564ab",
+=======
+  "contentHash": "186a35512fac979258b747326b83653831fb50591a9ab444234c9f90f1da3513",
+>>>>>>> origin/master
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1391,8 +1395,13 @@
       "uri": "colossus_production_v1_lod2.glb"
     },
     "sourceManifest": {
+<<<<<<< HEAD
       "bytes": 193703,
       "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
+=======
+      "bytes": 189651,
+      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
+>>>>>>> origin/master
       "uri": "pilots.json"
     }
   },
@@ -2144,7 +2153,11 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/colossus_production_v1_lod2.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "c04b83b8733af9b872c113b2e56dc21493d524870845f6767af835a3c0849ba4",
+=======
+  "runtimeHash": "0798b2eb9bd29b2b9544a18b02b11628a80304c51231a51eee81bed809863606",
+>>>>>>> origin/master
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

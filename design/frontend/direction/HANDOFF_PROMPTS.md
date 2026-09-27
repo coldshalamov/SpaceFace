@@ -6,6 +6,9 @@
 
 # The four frontend handoffs — starter prompts
 
+> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](../ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](../OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](../ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
+
+
 Copy one prompt per agent, in order. **Task A must be finished, reviewed and accepted before B, C
 or D start.** B, C and D then run in parallel on separate agents (they touch disjoint files); D's
 sweep and proof wait for B and C to land. Each prompt is self-contained.

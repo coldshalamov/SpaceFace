@@ -443,4 +443,42 @@ export const ENEMY_TYPES = [
     bountyCr: 0, shipClass: 'gunship',
     loot: null,
   },
+  // PQ-133.07 (CRU-043): the Foundry FINALE. Wave thirty does not replay the wave-ten Foreman —
+  // the Mirrorjaw core returns as the Forge Regent, under a wider crown than the Foreman's prow.
+  //
+  // It is a DIFFERENT PROBLEM, not a bigger health bar (master plan §14 "no HP inflation"): its
+  // defensive numbers are the Foreman's, and what changed is the geometry and the gun.
+  //   * directionalArmor / prowSurface arc 150° -> 180°: the crown sheds more of the head-on
+  //     hemisphere, so the correct answer is to cross its committed pass and work the stern — a
+  //     wider no-bank zone, not a thicker wall.
+  //   * the light pulse repeater becomes a sustained furnace beam: the finale reads as the room's
+  //     own heat turned on the player, matching the wave's "furnace control" identity.
+  // The rotating crown / plate machinery is an authored presentation asset (GPU lane); the systems
+  // identity, telegraph and kill geometry ship here. Zero pay and no loot stay as for the Foreman:
+  // combat pays d.bountyCr/d.loot without a run-ownership gate, and this is a survival boss.
+  {
+    id: 'forge_regent', name: 'Forge Regent', shipId: 'ship_bastion',
+    silhouette: 'bruiser_armor', factionId: 'faction_reach',
+    aiArchetype: 'brawler', levelRange: [4, 4],
+    combatDoctrineId: 'brawler_commit',
+    hull: 720, armor: 120, armorFlat: 2, shield: 160, shieldRegen: 0,
+    cap: 240, capRegen: 26,
+    maxSpeed: 84, accel: 52, turnRate: 0.55, collisionRadius: 32, mass: 420,
+    weapons: [
+      { id: 'wpn_concussion_cannon_m' },
+      { id: 'wpn_beam_laser_m' },
+    ],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 220, leashRadius: 2400 },
+    directionalArmor: { frontArcDeg: 180, frontMult: 0.2, rearArcDeg: 180, rearMult: 1.7 },
+    prowSurface: { arcDeg: 180, material: 'plate' },
+    surfaceMaterial: 'plate',
+    telegraph: {
+      bark: 'warn', cue: 'engine_flare',
+      line: 'Forge Regent takes the furnace. Mirror crown wider than the Foreman — cross the pass and work the stern.',
+    },
+    counterHint: 'The crown sheds the whole front half. Cross its committed pass and shoot the stern, or bank a shot off the room plate into the exposed back.',
+    behavior: 'finale committed ram under the furnace crown; wider mirror plate, sustained furnace beam and the room\'s own system',
+    bountyCr: 0, shipClass: 'gunship',
+    loot: null,
+  },
 ];

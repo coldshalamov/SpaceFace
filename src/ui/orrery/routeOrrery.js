@@ -26,7 +26,7 @@ const CSS = `
   background:radial-gradient(closest-side, rgb(6 8 11 / .82), rgb(6 8 11 / .6) 55%, rgb(6 8 11 / 0)); }
 .orr-route > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
 .orr-route__caption { position:absolute; left:0; right:0; bottom:0; display:flex; align-items:baseline; justify-content:center; gap:12px; pointer-events:none;
-  font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+  font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.14em; text-transform:uppercase;
   color:rgb(${BONE} / .66); white-space:nowrap; }
 .orr-route__caption > .orr-route__jumps { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:400; font-size:24px; letter-spacing:0;
   color:rgb(248 244 234); font-variant-numeric:tabular-nums; line-height:1; }
@@ -57,12 +57,12 @@ const CSS = `
 .orr-svg .orr-route__hand-ring { stroke:var(--dp-hand, #f2b950); }
 .orr-svg .orr-route__threat { stroke:var(--dp-danger, #ff5038); opacity:.85; }
 .orr-svg .orr-route__threat-bloom { stroke:var(--dp-danger, #ff5038); opacity:.22; }
-.orr-svg text.orr-route__name { font-size:10px; font-weight:650; letter-spacing:.1em; fill:rgb(${BONE} / .78); text-transform:uppercase;
+.orr-svg text.orr-route__name { font-size: 12px; font-weight:650; letter-spacing:.1em; fill:rgb(${BONE} / .78); text-transform:uppercase;
   paint-order:stroke; stroke:rgb(4 6 9 / .85); stroke-width:3px; stroke-linejoin:round; }
-.orr-svg text.orr-route__name--faint { fill:rgb(${BONE} / .58); font-size:9.5px; }
+.orr-svg text.orr-route__name--faint { fill:rgb(${BONE} / .58); font-size: 12px; }
 .orr-svg text.orr-route__name--live { fill:rgb(248 244 234); }
-.orr-svg text.orr-route__name--berth { fill:rgb(${BONE} / .7); font-size:8.5px; letter-spacing:.1em; }
-.orr-svg text.orr-route__tag { font-size:8px; font-weight:650; letter-spacing:.28em; fill:rgb(${BONE} / .5); }
+.orr-svg text.orr-route__name--berth { fill:rgb(${BONE} / .7); font-size: 12px; letter-spacing:.1em; }
+.orr-svg text.orr-route__tag { font-size: 12px; font-weight:650; letter-spacing:.28em; fill:rgb(${BONE} / .5); }
 .orr-svg .orr-route__crosshair { stroke:rgb(248 244 234); opacity:.78; }
 .orr-route__fade { opacity:0; animation:orr-route-fade .46s var(--dp-ease-out, ease-out) forwards; animation-delay:var(--orr-delay, 0ms); }
 @keyframes orr-route-fade { to { opacity:1; } }

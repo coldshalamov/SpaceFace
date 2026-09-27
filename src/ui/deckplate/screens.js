@@ -911,7 +911,7 @@ ${printedKey(`${CR} .k-foot .k-word`)}
 ${printedKey(`${CR} .sf-cru-row .k-word`)}
 ${CR} .sf-cru-row .k-word { min-height:36px; font-size:12px; }
 /* the keyboard key a verb answers to, printed inside the verb: a hairline glyph from a manual */
-${CR} .sf-cru-kbd { ${HINT} margin-left:4px; height:22px; min-width:22px; padding:0 5px; font-size:11px; }
+${CR} .sf-cru-kbd { ${HINT} margin-left:4px; height:22px; min-width:22px; padding:0 5px; font-size: 12px; }
 ${CR} .k-word--primary .sf-cru-kbd { border-color:rgb(12 12 14 / .38); color:var(--dp-metal-0); }
 /* the refit: the field hugs its hardpoints and stops at a readable width */
 ${CR} .sf-cru-stage.k-stage--scroll {
@@ -948,7 +948,7 @@ ${CR} .sf-cru-name { font-family:var(--dp-face-etch); font-variation-settings:"w
 ${CR} .sf-cru-cardhead { display:flex; align-items:center; gap:10px; min-height:22px; }
 ${CR} .sf-cru-cardhead > * { margin:0; }
 ${CR} .sf-cru-cardhead .sf-cru-price { margin-left:auto; }
-${CR} .sf-cru-key { ${HINT} height:22px; min-width:22px; font-size:11px; }
+${CR} .sf-cru-key { ${HINT} height:22px; min-width:22px; font-size: 12px; }
 ${CR} .sf-cru-key:empty { display:none; }
 /* the armory scrolls: its last visible row fades into the edge, which is the cue to scroll */
 ${CR}.sf-crucible-armory .sf-cru-stage {
@@ -1028,7 +1028,7 @@ ${CRRES} .sf-crres__hit-fill, ${CRRES} .k-bar__fill { background:var(--dp-danger
 ${CRRES} .sf-crres__share-item + .sf-crres__share-item { margin-top:8px; }
 ${CRRES} .sf-crres__share-note { margin:0 0 8px; }
 ${CRRES} .sf-crres__share-row { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; column-gap:14px; }
-${CRRES} .sf-crres__share-cap { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--dp-ink-mute); }
+${CRRES} .sf-crres__share-cap { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--dp-ink-mute); }
 ${CRRES} .sf-crres__share-code { display:block; width:100%; min-width:0; overflow-x:auto; scrollbar-width:none; white-space:nowrap;
   font-family:var(--dp-face-code); font-size:13px; color:var(--dp-ink); }
 ${CRRES} .sf-crres__share-link { white-space:nowrap; }

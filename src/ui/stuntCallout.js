@@ -60,7 +60,7 @@ const CSS = `
   font-size:30px; line-height:1; letter-spacing:-.01em; font-variant-numeric:tabular-nums;
   color:rgb(248 244 234 / .95); }
 .sf-stuntcall__names { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650;
-  font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .72); }
+  font-size: 12px; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .72); }
 .sf-stuntcall__scale { position:relative; width:190px; height:3px;
   background:rgb(${BONE} / .22); }
 .sf-stuntcall__scale-fill { position:absolute; inset:0; transform-origin:left center;
@@ -68,7 +68,7 @@ const CSS = `
 .sf-stuntcall__scale-notch { position:absolute; top:-3px; width:1px; height:9px;
   background:rgb(${BONE} / .55); }
 .sf-stuntcall__rowsub { display:flex; gap:12px; font-family:var(--dp-face-label, "Archivo");
-  font-stretch:112%; font-weight:650; font-size:9.5px; letter-spacing:.16em; text-transform:uppercase;
+  font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.16em; text-transform:uppercase;
   font-variant-numeric:tabular-nums; color:rgb(${BONE} / .58); }
 .sf-stuntcall__rise { animation:sf-stuntcall-rise .34s cubic-bezier(.2, .9, .3, 1) both; }
 @keyframes sf-stuntcall-rise { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }

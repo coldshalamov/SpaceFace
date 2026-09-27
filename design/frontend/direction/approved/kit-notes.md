@@ -1,5 +1,8 @@
 # kit-notes — the numbers behind the approved frames
 
+> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](../../ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](../../OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](../../ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
+
+
 Produced 2026-09-10 for **S1 / PQ-194.00**. Everything here was **measured off the produced
 renders**, not asserted: where a value differs from the art direction's starting values, the
 measurement and the reason are given.

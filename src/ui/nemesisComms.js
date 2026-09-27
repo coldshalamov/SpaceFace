@@ -17,14 +17,14 @@ export function mountNemesisComms({ root, bus, state, claimInput } = {}) {
 [data-nemesis-comms] header{display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--nm-line)}
 [data-nemesis-comms] svg{width:32px;flex:none;fill:none;stroke:var(--nm-accent);stroke-width:1.4}
 [data-nemesis-comms] h2{font:600 14px/1.3 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.10em;margin:0}
-[data-nemesis-comms] .nm-status{font-size:10px;letter-spacing:.1em;color:var(--nm-dim)}
+[data-nemesis-comms] .nm-status{font-size: 12px;letter-spacing:.1em;color:var(--nm-dim)}
 [data-nemesis-comms] p{margin:10px 0 0}
 [data-nemesis-comms] details{margin-top:9px;color:var(--nm-dim)}
 [data-nemesis-comms] summary{cursor:pointer;color:var(--nm-accent)}
 [data-nemesis-comms] button{font:600 12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;width:100%;padding:10px;margin-top:12px;color:#14221a;background:var(--nm-accent);border:1px solid var(--nm-accent);cursor:pointer}
 [data-nemesis-comms] button:hover{filter:brightness(1.12)}
 [data-nemesis-comms] :focus-visible{outline:2px solid #fff;outline-offset:3px}
-[data-nemesis-comms] .nm-live{color:var(--nm-dim);font-size:11px}
+[data-nemesis-comms] .nm-live{color:var(--nm-dim);font-size: 12px}
 @media(prefers-reduced-motion:no-preference){[data-nemesis-comms]{animation:nm-arrival .22s ease-out}@keyframes nm-arrival{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}}
 </style><header><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M7 7h15l11 13-11 13H7M7 7l13 13L7 33M20 20h13M5 20h8"/><circle cx="20" cy="20" r="3"/></svg><div><h2>COUNTEREXAMPLE</h2><div class="nm-status"></div></div></header><p class="nm-line"></p><details><summary>Read the fit</summary><p class="nm-fit"></p><p class="nm-opening"></p></details><p class="nm-live" role="status" aria-live="polite"></p><button type="button" hidden>Accept surrender</button>`;
   panel.hidden = true;

@@ -524,6 +524,56 @@ export const ATTACK_TRAITS = freezeDeep([
       detail: 'Adds spread only. No extra roots, no payload scale, no speed grant. You cover a wider lane and pay heat.',
     },
   },
+  {
+    // CRU-038 build evolution v1 — the named synthesis, not a fourth trigger. The union of its
+    // consumed parts restricted by one law: shots keep ONE bounce, a chain may only begin from a
+    // bounced contact, and hops may only land on Ionized targets. Bank Shot + Relay Arc + Ion
+    // Payload stacked together still allow direct-hit chains; the evolution does not. That is the
+    // design's own rule ("an evolution must simplify or focus the build"), and it is also what
+    // makes the conversion honest rather than a strict upgrade: you trade the loose three-part
+    // behaviour for one bounded storm.
+    id: 'mod_storm_carom',
+    schemaVersion: 1,
+    name: 'Storm Carom',
+    tier: 'evolution',
+    family: 'ricochet',
+    maxRank: 1,
+    compatibility: {
+      emitters: ['bolt', 'missile', 'debris'],
+      trajectories: ['straight', 'inherited_velocity', 'gravity_curved'],
+      forbids: ['hitscan', 'continuous'],
+    },
+    stack: [
+      { mode: 'add', target: 'trajectory.bounces', perRank: 1 },
+      { mode: 'add', target: 'propagation.chain.count', perRank: 2 },
+      { mode: 'set', target: 'propagation.chain.range', perRank: 110 },
+      { mode: 'set', target: 'propagation.chain.requireBounce', perRank: 1 },
+    ],
+    payload: [
+      { kind: 'status', statusId: 'status_ionized', stacks: 1 },
+    ],
+    propagation: {
+      chain: { prerequisiteStatus: 'status_ionized' },
+    },
+    inheritance: inheritBlock(true, true, true),
+    cost: { procBudgetPerBounce: 1, procBudgetPerChain: 2 },
+    triggers: [
+      {
+        event: 'surface_contact',
+        action: 'ricochet',
+        inherit: inheritBlock(true, true, false),
+      },
+      {
+        event: 'entity_contact',
+        action: 'chain_if_eligible',
+        inherit: inheritBlock(true, false, true),
+      },
+    ],
+    text: {
+      summary: 'Bounced hits chain through Ionized targets; direct hits cannot chain.',
+      detail: 'One bounce and a two-hop chain inside the shared proc budget. Hits apply Ionized, so a bounced hit feeds the storm it joins. Synthesized from Bank Shot, Relay Arc and Ion Payload — the conversion consumes all three.',
+    },
+  },
 ]);
 
 export const ATTACK_TRAIT_BY_ID = freezeDeep(

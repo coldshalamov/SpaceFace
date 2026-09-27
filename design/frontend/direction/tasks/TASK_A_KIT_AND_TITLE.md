@@ -5,6 +5,9 @@
 
 # Task A — The kit and the title (queue: `PQ-187.02`, `PQ-187.03`)
 
+> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](../../ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](../../OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](../../ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
+
+
 **Read first:** [`../DIRECTION_SHEET.md`](../DIRECTION_SHEET.md) (all of it), then
 [`../KIT_SPEC.md`](../KIT_SPEC.md) (all of it). This file tells you the order of work, the exact
 files, the title screen's geometry, the checks and the handoff. It does not repeat the spec; where

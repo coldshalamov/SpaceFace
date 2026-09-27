@@ -100,6 +100,13 @@ async function clickButton(page, label) {
   }, label);
 }
 
+// Cohort membership alone does not mean "killable": since e01a87854 a Crucible kill leaves the
+// victim's WRECK on the field, and the wreck carries the same `runCohort: 'survival'` tag so the
+// arena census and Massline eligibility still read it as a body of this run. Wrecks are alive,
+// tagged, and forever — a filter that does not exclude them re-targets the same undamageable
+// bodies every pass and reports them as survivors. The hostile census is cohort bodies the damage
+// router would actually accept — the type list mirrors its `damage` verb membership.
+
 /**
  * Kill every live hostile this wave admitted, through the REAL damage route.
  *
@@ -111,7 +118,8 @@ async function clickButton(page, label) {
 async function killWaveCohort(page) {
   return page.evaluate(() => {
     const st = window.SF.state;
-    const targets = st.entityList.filter((e) => e.alive && e.data && e.data.runCohort === 'survival');
+    const targets = st.entityList.filter((e) => e.alive && e.data && e.data.runCohort === 'survival'
+      && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type));
     for (const target of targets) {
       const lethal = (target.hull || 0) + (target.shield || 0) + (target.armorHp || 0) + 9999;
       window.SF.bus.emit('projectile:hit', {
@@ -138,7 +146,8 @@ async function killSome(page, n) {
   return page.evaluate((want) => {
     const st = window.SF.state;
     const targets = st.entityList
-      .filter((e) => e.alive && e.data && e.data.runCohort === 'survival')
+      .filter((e) => e.alive && e.data && e.data.runCohort === 'survival'
+        && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type))
       .slice(0, want);
     for (const target of targets) {
       const lethal = (target.hull || 0) + (target.shield || 0) + (target.armorHp || 0) + 9999;
@@ -268,12 +277,14 @@ async function main() {
 
   // ── WAVE ────────────────────────────────────────────────────────────────────────────────────
   await page.waitForFunction(
-    () => window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival'),
+    () => window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival'
+        && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type)),
     null, { timeout: 30000 },
   );
   const wave = await page.evaluate(() => {
     const st = window.SF.state;
-    const cohort = st.entityList.filter((e) => e.alive && e.data && e.data.runCohort === 'survival');
+    const cohort = st.entityList.filter((e) => e.alive && e.data && e.data.runCohort === 'survival'
+        && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type));
     return {
       count: cohort.length,
       ids: [...new Set(cohort.map((e) => e.data.lootTableId))],
@@ -395,7 +406,8 @@ async function main() {
     }
     const cleared = await page.evaluate(() => ({
       phase: window.SF.state.run.phase, wave: window.SF.state.run.wave, xp: window.SF.state.run.xp,
-      alive: window.SF.state.entityList.filter(e => e.alive && e.data?.runCohort === 'survival').length,
+      alive: window.SF.state.entityList.filter(e => e.alive && e.data?.runCohort === 'survival'
+        && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type)).length,
     }));
     record('CLEAR', cleared.phase === 'draft' && cleared.wave === 1 && cleared.xp > 0 && cleared.alive === 0,
       'round 1 resolved: ' + killed + ' scripted kills, ' + cleared.alive + ' survivors, phase ' + cleared.phase);
@@ -454,8 +466,10 @@ async function main() {
     if (!(await clickButton(page, 'Rearrange loadout'))) throw new Error('Round refit control missing');
     await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleRefit');
     const row = page.locator('.sf-crucible-refit .sf-cru-row').first();
-    await row.getByRole('button', { name: 'Strip', exact: true }).click();
-    await row.getByRole('button', { name: 'Fit', exact: true }).click();
+    // The lit row prints its key hint inside the verb ("Strip Enter"), so the accessible name is
+    // not exactly "Strip". Substring match still lands on the one action the row offers.
+    await row.getByRole('button', { name: 'Strip' }).click();
+    await row.getByRole('button', { name: 'Fit' }).click();
     if (!(await clickButton(page, 'Back to armory'))) throw new Error('Refit return control missing');
     record('REFIT', await page.evaluate(() => window.SF.ctx.screenManager.top() === 'crucibleDraft'
       && window.SF.state.run.phase === 'draft'), 'strip and refit between rounds; return to armory');
@@ -476,7 +490,8 @@ async function main() {
     while (guard++ < 400 && Date.now() - startedAt < 600000) {
       const progress = await page.evaluate(() => ({ phase: window.SF.state.run.phase,
         wave: window.SF.state.run.wave,
-        alive: window.SF.state.entityList.filter(e => e.alive && e.data?.runCohort === 'survival').length }));
+        alive: window.SF.state.entityList.filter(e => e.alive && e.data?.runCohort === 'survival'
+          && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type)).length }));
       const phase = progress.phase;
       const progressKey = `${progress.wave}:${phase}`;
       if (VERBOSE && progressKey !== lastProgress) console.log(`  WALK      wave ${progress.wave} · ${phase} · ${progress.alive} live`);
@@ -484,7 +499,8 @@ async function main() {
       if (phase === 'victory' || phase === 'ended') break;
       if (phase === 'active') {
         await page.waitForFunction(
-          () => window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival')
+          () => window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival'
+        && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type))
             || window.SF.state.run.phase !== 'active',
           null, { timeout: 40000 },
         ).catch(() => {});
@@ -494,7 +510,8 @@ async function main() {
         // A batched wave owes more bodies after the first group; keep clearing until it resolves.
         await page.waitForFunction(
           () => window.SF.state.run.phase !== 'active'
-            || window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival'),
+            || window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival'
+        && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type)),
           null, { timeout: 40000 },
         ).catch(() => {});
         continue;
@@ -562,13 +579,15 @@ async function main() {
   // ── RESULTS ─────────────────────────────────────────────────────────────────────────────────
   await page.waitForFunction(() => window.SF.state.run.phase === 'active', null, { timeout: 40000 });
   await page.waitForFunction(
-    () => window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival'),
+    () => window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival'
+        && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type)),
     null, { timeout: 30000 },
   );
   // Kill the player through the real damage route so combat builds its real defeat receipt.
   await page.evaluate(() => {
     const st = window.SF.state;
-    const killer = st.entityList.find((e) => e.alive && e.data && e.data.runCohort === 'survival');
+    const killer = st.entityList.find((e) => e.alive && e.data && e.data.runCohort === 'survival'
+        && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type));
     const player = st.entities.get(st.playerId);
     window.SF.bus.emit('projectile:hit', {
       targetId: st.playerId,
