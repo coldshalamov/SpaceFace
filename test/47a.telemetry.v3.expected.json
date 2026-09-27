@@ -68,7 +68,7 @@
     "audio:cue": 6
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "ebfc2c42f20093d417a1552a4a5de8badce4735c41d9f11dc373134e3a30c81e",
+    "authoritativeHash": "0c96d25797fe9001f60bc3b8e80ecc4ed9732501028bcfa6adb704d65a7680fa",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -202,6 +202,7 @@
     "The prior authoritativeHash was c3fa7d521f2797898ade129cadcebee85b4c2b8142853820e6aa99ecadcb0817.",
     "Snapshot diff at tick 720 (clean HEAD worktree vs candidate) moves exactly 12 leaves, ALL under $.economy.markets — identical stations, stocks and directions as the legacy envelope (industry is flight-model independent).",
     "Zero entity motion fields changed; trace counts and reload@60 unchanged.",
-    "2026-09-27 re-record: alien-ecology adds 2 commodities; $.economy churn (19480 leaves). Zero motion fields changed in the v3 envelope."
+    "2026-09-27 re-record: alien-ecology adds 2 commodities; $.economy churn (19480 leaves). Zero motion fields changed in the v3 envelope.",
+    "2026-09-27 merge re-record on e76675fec: alien-ecology commodities on top of the economy-honesty batch; sim-golden-diff --ref origin/master verdict CONTENT_ONLY, 19480 leaves all under $.economy, zero motion fields changed."
   ]
 }
