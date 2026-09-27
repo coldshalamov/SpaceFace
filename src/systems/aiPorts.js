@@ -19,6 +19,7 @@ import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { cloakHidesEntityFrom, cloakTimeS } from './cloak.js';
 import { modelTruthPlanarRadius } from '../data/modelTruth.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import {
@@ -971,19 +972,140 @@ function explicitRamAuthorization(entity, ai, activity, bands) {
 }
 
 // Massline cloak perception gate (Wave M2 §4.2). True when the cloak runtime is active and the
-// observing entity sits OUTSIDE the player's live detection radius. Pure read of the cloak
-// system's own subtree; flag-gated so headless contract runs never take the branch. Exported for
-// check:massline2 (the perception promise is contract-tested directly).
+// observing entity sits OUTSIDE the player's live detection radius — and false while a scanner
+// pulse has the cloak burned open (revealUntil). The predicate itself lives in cloak.js
+// (cloakHidesEntityFrom) so contacts, weapon locks, and seekers share one rule for the player
+// and for cloaked NPCs alike. Exported for check:massline2 (the perception promise is
+// contract-tested directly).
 export function cloakHidesPlayerFrom(state, self, player) {
-  if (!massline2Flag('cloak')) return false;
-  const cloak = state.massline2 && state.massline2.cloak;
-  if (!cloak || !cloak.active || !(cloak.radius > 0)) return false;
-  if (!self || !self.pos || !player || !player.pos) return false;
-  const dx = finite(self.pos.x) - finite(player.pos.x);
-  const dz = finite(self.pos.z) - finite(player.pos.z);
-  return (dx * dx + dz * dz) > cloak.radius * cloak.radius;
+  return cloakHidesEntityFrom(state, self, player);
 }
 
+// --- Cloak contact-fade ledger --------------------------------------------------------------
+// When an established contact goes dark, the sensor frame keeps reporting a GHOST: the last real
+// fix dead-reckoned along its last velocity, flagged visible:false with confidence bleeding
+// toward the perception floor. PerceptionMemory (read-only) then does the rest — the ghost stays
+// out of doctrine reselection (visible===true required), keeps a directive's stale targetId
+// resolvable for a couple of seconds, and drops out of snapshots the tick our emitted confidence
+// crosses below its 0.08 floor. The ledger lives on state.massline2.cloakTracks: sim-runtime
+// truth, never serialized, cleared by cloak.newGame.
+const CLOAK_CONTACT_FADE_S = 2.0;   // an established contact goes dark over this window
+const CLOAK_TRACK_STALE_S = 30;     // ledger hygiene horizon — far past any tactical need
+const CLOAK_TRACK_OBSERVER_CAP = 128;
+const CLOAK_TRACK_TARGET_CAP = 64;
+
+function cloakTrackLedger(state) {
+  const root = state.massline2 || (state.massline2 = {});
+  return root.cloakTracks || (root.cloakTracks = new Map());
+}
+
+/** Record the live fix for a cloak-capable contact — the seed the ghost fades from. */
+function noteCloakTrackSeen(state, self, other, confidence, now) {
+  const selfId = self && self.id;
+  const targetId = other && other.id;
+  if (selfId == null || targetId == null) return;
+  const ledger = cloakTrackLedger(state);
+  let tracks = ledger.get(selfId);
+  if (!tracks) {
+    if (ledger.size >= CLOAK_TRACK_OBSERVER_CAP) pruneCloakTrackLedger(ledger, now);
+    tracks = new Map();
+    ledger.set(selfId, tracks);
+  }
+  let track = tracks.get(targetId);
+  if (!track) {
+    if (tracks.size >= CLOAK_TRACK_TARGET_CAP) pruneCloakTrackMap(tracks, now);
+    track = {
+      x: 0, z: 0, vx: 0, vz: 0,
+      conf: 1, seenAt: -Infinity,
+      hideStart: -1, lost: false, fadedEmitted: false,
+    };
+    tracks.set(targetId, track);
+  }
+  track.x = finite(other.pos && other.pos.x);
+  track.z = finite(other.pos && other.pos.z);
+  track.vx = finite(other.vel && other.vel.x);
+  track.vz = finite(other.vel && other.vel.z);
+  track.conf = Number.isFinite(confidence) ? confidence : 1;
+  track.seenAt = now;
+  track.hideStart = -1;
+  track.lost = false;
+  track.fadedEmitted = false;
+}
+
+/**
+ * While a cloak-hidden target's ghost still has life in it, emit a stale-track contact: the last
+ * fix drifting on its last velocity, visible:false, confidence decaying linearly to zero. When
+ * the fade completes we stop emitting — the memory record then ages out and deletes itself, and
+ * 'cloak:faded' fires once so audio/VFX/UI lanes can mark the moment a ship truly went dark.
+ */
+function emitCloakFadeContact(state, self, other, kind, now, attachmentIndex, freeze, out, records, cacheOwner) {
+  const selfId = self && self.id;
+  const targetId = other && other.id;
+  if (selfId == null || targetId == null) return;
+  const ledger = state.massline2 && state.massline2.cloakTracks;
+  const track = ledger && ledger.get(selfId) && ledger.get(selfId).get(targetId);
+  // No stored fix (never actually seen, e.g. cloaked before first detection) or already faded:
+  // the contact is simply absent — no ghost appears out of thin air.
+  if (!track || !Number.isFinite(track.seenAt) || track.lost) return;
+  if (track.hideStart < 0) track.hideStart = now;
+  const age = Math.max(0, now - track.hideStart);
+  const fraction = 1 - age / CLOAK_CONTACT_FADE_S;
+  if (fraction <= 0) {
+    track.lost = true;
+    if (!track.fadedEmitted) {
+      track.fadedEmitted = true;
+      const bus = cacheOwner && cacheOwner.bus;
+      if (bus && typeof bus.emit === 'function') {
+        bus.emit('cloak:faded', { observerId: selfId, targetId, simTime: now });
+      }
+    }
+    return;
+  }
+  const confidence = Math.max(0, track.conf * fraction);
+  const runtime = combatRuntimeFor(state, targetId);
+  const hostile = isHostileForAI(state, self, other);
+  const base = cacheOwner && typeof cacheOwner._contactBaseFor === 'function'
+    ? cacheOwner._contactBaseFor(other, runtime, attachmentIndex, kind)
+    : buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, cacheOwner);
+  const threat = threatFor(state, self, other, hostile);
+  const ghostPos = freeze({ x: track.x + track.vx * age, z: track.z + track.vz * age });
+  const ghostVel = freeze({ x: track.vx, z: track.vz });
+  if (records) {
+    const rec = fillSensorContact(ensureSensorContactRecord(records, out.length), base, confidence, threat, hostile);
+    rec.pos = ghostPos;
+    rec.vel = ghostVel;
+    rec.visible = false;
+    out.push(rec);
+  } else {
+    out.push({
+      ...base,
+      pos: ghostPos,
+      vel: ghostVel,
+      visible: false,
+      confidence,
+      threat,
+      hostile,
+    });
+  }
+}
+
+function pruneCloakTrackMap(tracks, now) {
+  for (const [key, track] of tracks) {
+    if (track.lost || now - track.seenAt > CLOAK_TRACK_STALE_S) tracks.delete(key);
+    if (tracks.size <= CLOAK_TRACK_TARGET_CAP) return;
+  }
+}
+
+function pruneCloakTrackLedger(ledger, now) {
+  for (const [observerId, tracks] of ledger) {
+    let fresh = false;
+    for (const track of tracks.values()) {
+      if (!track.lost && now - track.seenAt <= CLOAK_TRACK_STALE_S) { fresh = true; break; }
+    }
+    if (!fresh) ledger.delete(observerId);
+    if (ledger.size <= CLOAK_TRACK_OBSERVER_CAP) return;
+  }
+}
 
 function makeSensorContactRecord() {
   return {
@@ -1067,15 +1189,24 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
   const records = Array.isArray(contactRecords) ? contactRecords : null;
   const candidates = candidateOverride || nearbyEntities(state, self.pos, range, helpers, candidateScratch);
   const rangeSq = range * range;
+  // Massline cloak (Wave M2 §4.2, flag massline2.cloak — OFF headless): a cloaked ship OUTSIDE
+  // its live detection radius is never made a fresh contact, so the tactical stack genuinely
+  // cannot select or fire on it — honest gating at the single perception seam, no downstream
+  // special cases; inside the ring it is an ordinary contact again. And going dark is a verb,
+  // not teleportation: an observer who HAD the contact keeps a fading dead-reckoned ghost for a
+  // couple of seconds (visible:false, confidence bleeding to the floor) before losing it — the
+  // ship exits the picture the way a sensor actually loses a hull. Symmetric for the player
+  // (state.massline2.cloak) and any cloaked NPC (entity.data.cloak) via the shared gate.
+  const cloakLive = massline2Flag('cloak', state.runtime && state.runtime.features);
+  const cloakNow = cloakLive ? cloakTimeS(state) : 0;
   for (const other of candidates) {
     if (!other || other === self || !other.alive) continue;
-    // Massline cloak (Wave M2 §4.2, flag massline2.cloak — OFF headless): a cloaked player
-    // OUTSIDE his live detection radius is never made a contact, so the tactical stack genuinely
-    // cannot select or fire on him — honest gating at the single perception seam, no downstream
-    // special cases. Inside the ring he is an ordinary contact again.
-    if (other.id === state.playerId && cloakHidesPlayerFrom(state, self, other)) continue;
     const kind = contactKindFor(other);
     if (!kind) continue;
+    if (cloakLive && cloakHidesEntityFrom(state, self, other)) {
+      emitCloakFadeContact(state, self, other, kind, cloakNow, attachmentIndex, freeze, out, records, cacheOwner);
+      continue;
+    }
     const dx = finite(self.pos && self.pos.x) - finite(other.pos && other.pos.x);
     const dz = finite(self.pos && self.pos.z) - finite(other.pos && other.pos.z);
     const distanceSq = dx * dx + dz * dz;
@@ -1098,6 +1229,10 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
         hostile,
       });
     }
+    // Keep the per-observer last fix for every live contact — any ship may go dark next tick
+    // (an NPC's data.cloak only exists from the moment its producer engages it), and the fade
+    // ledger needs the fix that was current at that moment. A never-seen target has no ghost.
+    if (cloakLive) noteCloakTrackSeen(state, self, other, confidence, cloakNow);
   }
   // The Crucible pilot is the cohort's broadcast objective. Track that one ship beyond
   // ordinary sensor range so boosting creates a chase, not abandoned enemies. Cloaking
