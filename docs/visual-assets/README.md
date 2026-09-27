@@ -6,6 +6,8 @@ routed every model through a stack of gates (G0–G7 records, five-cycle adversa
 hash-bound acceptance, per-asset material-truth preflights). It produced paperwork and a fleet
 where every hull came from a different pipeline. The replacement is short on purpose.
 
+Graphics program (workflows, rules, backlog): [`design/program/GRAPHICS_PROGRAM.md`](../../design/program/GRAPHICS_PROGRAM.md); skill: `.claude/skills/forge-graphics/SKILL.md`.
+
 ## The rule
 
 **Look at the real picture, fix what you see, keep one system.** The picture is the game's own
