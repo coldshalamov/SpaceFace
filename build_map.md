@@ -113,6 +113,16 @@ Residual packets minted from program sweeps — `PQ-191` (the deferred independe
 people-who-remember, build-identity and actual-game-defect residuals) — carry no phase row; they
 dispatch through `--next` / `--id` like any unit.
 
+**Pre-release preparation is not game development (owner, 2026-09-27).** The goal is a finished,
+polished game to play; no release is being prepared. Quiet-machine acceptance sampling, the demo
+sign-off leaf (`PQ-210.08`, parked `blocked` in the queue), §25 Phase 7 (the demo package, crash
+reporting, store shots, trailer, funnel) and the §27 THE RELEASE lane are **pre-release
+preparation**: parked until there is a release to prepare, and never the dispatch head. Performance
+work stays in scope only as a development instrument — finding and fixing what makes the game worse
+on a real, busy machine — not as a gate that waits on a quiet host. Until pre-release opens, game
+development runs through §27's lanes (THE MACHINE's development half, THE HAND, THE FIGHT, THE
+WORLD, THE LONG GAME, THE PICTURE, THE EAR); a drained queue means take a lane, not stop.
+
 **§23 is the superpower front (owner, 2026-09-22).** The sequential lane is **A2** in the table
 above: [§23.4](#234-actualize-the-tools), `AQ-CAS` then `AQ-LOD` then `AQ-LIGHT` then `AQ-SURFACE`
 then `AQ-VOICE` then `AQ-HIT`. Take the first of those that is not yet committed. Do not start a
@@ -5112,7 +5122,7 @@ lanes are finished** — features, polish and fun are one lane, not three passes
 | **THE PICTURE** | one game on the glass — hulls, rocks, skies, residency, the camera | PQ-049/050/134/136/159/161/190/193, §22 art rows, CV-GLASS/CV-PAINT/CV-MOTION, §13B/§13D |
 | **THE INSTRUMENT** — **CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane; do not take** | every 2D surface is the same instrument of light — ORRERY (authority: `design/frontend/ORRERY.md` + `OVERHAUL_PLAN_2026-09-25.md`; the Asteroid Works world-art units `PQ-130`/`PQ-131` stay with their own campaign) | PQ-130–132/162/168/180–185/187/188/192/194, §22 screen rows, CV-KIT, §11/§18/§20 |
 | **THE EAR** | a signature by ear — verb voices, the mix, room tone | PQ-158, §22 audio rows, CV-EAR |
-| **THE RELEASE** | the demo path and the package — title to end card to store | PQ-033/164–167/191/210, §22 E2/E4/E5/E7, §25 Phases 5/7 |
+| **THE RELEASE** | the demo path and the package — title to end card to store — **pre-release prep, parked (owner, 2026-09-27; see §1.2)** | PQ-033/164–167/191/210, §22 E2/E4/E5/E7, §25 Phases 5/7 |
 
 A finishing session takes a lane, not a leaf: play the area first, work the absorbed checklist in
 any order, and fix whatever else in the area falls short — the open-ended review is part of the

@@ -405,6 +405,10 @@ should have said. Restarting a sample every tick.
 
 ## 12. Lane nine — THE RELEASE
 
+**PARKED — pre-release preparation (owner, 2026-09-27; `build_map.md` §1.2).** No release is being
+prepared. This lane, `PQ-210.08`'s remaining quiet-host gate, and §25 Phase 7 packaging wait until
+a release is real; a lane session never takes this lane before then.
+
 **The feeling.** A stranger boots it and the path plays: live title running a real replay behind
 the menu, one press to a Crucible round zero that teaches by doing, results with a door into
 adventure, a first dock that feels like arriving, an end card that thanks them — all of it on one

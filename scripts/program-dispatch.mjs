@@ -157,7 +157,13 @@ try {
       : ready.filter((unit) => !reservations.has(unit.id));
     const [nextUnit] = candidates;
     if (!nextUnit) {
-      if (!ready.length) fail('no ready dispatch unit found', 1);
+      if (!ready.length) {
+        fail(
+          'queue drained: no ready dispatch unit. The open acceptance leaf PQ-210.08 is parked as pre-release prep (owner 2026-09-27, build_map §1.2). '
+            + 'Game development runs through the finish lanes: take the first lane whose files are free from design/program/FINISH_LANES.md per build_map §1.1 step 2.',
+          1,
+        );
+      }
       fail(`all ${ready.length} ready dispatch units have fresh lookahead reservations; inspect --ready or use --include-reserved explicitly`, 1);
     }
     console.log(JSON.stringify(summarizeUnit(nextUnit, control), null, 2));
