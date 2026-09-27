@@ -31,6 +31,7 @@ import {
   HAULER_ROLE_HULL_DEF_ID,
 } from '../careers/ladders/haulerLadderDefs.js';
 import { HUNTER_ROLE_HULL_DEF_ID } from '../careers/ladders/hunterLadderDefs.js';
+import { recoveryCostQuote } from '../combat/playerDefeat.js';
 import { PROSPECTOR_ROLE_HULL_DEF_ID } from '../careers/ladders/prospectorLadderDefs.js';
 import {
   fieldDepletion as fieldDepletionSystem,
@@ -385,6 +386,7 @@ function findBoardOffer(ctx, typeId, stationIds, options = {}) {
   const maxCredits = options.maxCredits != null ? options.maxCredits : Infinity;
   const fromSectorId = options.fromSectorId || ctx.state.world?.currentSectorId;
   const seed = options.seed != null ? options.seed : (ctx.seed || 0);
+  const excluded = options.excludeOfferIds || null;
   const ordered = preferSectorId
     ? [
       ...stationIds.filter((id) => STATION_TO_SECTOR.get(id)?.id === preferSectorId),
@@ -394,10 +396,14 @@ function findBoardOffer(ctx, typeId, stationIds, options = {}) {
   for (const stationId of ordered) {
     const board = ctx.missions.ensureBoard(stationId);
     if (!board || !board.slots) continue;
+    // D69: skip offers a previous attempt already refused (rep gates, stale slots).
+    // Offer ids are epoch-unique, so a run-long exclusion set never hides a fresh slot.
+    // Callers without exclusions see byte-identical behavior to the old first-match find.
     const offer = board.slots.find((s) => s
       && s.type === typeId
       && !String(s.storyTag || '').startsWith('campaign47a:')
-      && !String(s.id || '').startsWith('offer_sp1_'));
+      && !String(s.id || '').startsWith('offer_sp1_')
+      && !(excluded && s.id != null && excluded.has(s.id)));
     if (!offer) continue;
     const boardSector = STATION_TO_SECTOR.get(stationId)?.id;
     const boardToll = (boardSector && fromSectorId && boardSector !== fromSectorId)
@@ -675,7 +681,11 @@ function applyCombatDamageAndRepair(ctx, damageHp, costs, budget, options = {}) 
   const e = playerEntity(ctx);
   const dmg = Math.max(0, Number(damageHp) || 0);
   if (e && e.hullMax > 0) {
-    e.hull = Math.max(0, (e.hull ?? e.hullMax) - dmg);
+    // D69: modeled return fire is non-lethal outside the death experiment (mirrors the
+    // public route's combat-kernel clamp): damage stops at 1 hull so a bad bout leaves
+    // a battered pilot, not a corpse the model keeps flying.
+    const hullBefore = e.hull ?? e.hullMax;
+    e.hull = Math.max(1, hullBefore - Math.min(dmg, Math.max(0, hullBefore - 1)));
     ctx.hullDamageHp = Math.max(0, e.hullMax - e.hull);
   } else {
     ctx.hullDamageHp = (ctx.hullDamageHp || 0) + dmg;
@@ -687,8 +697,11 @@ function applyCombatDamageAndRepair(ctx, damageHp, costs, budget, options = {}) 
   const minCredits = options.minCreditsAfter != null ? options.minCreditsAfter : 400;
   const readinessGate = options.readinessGate != null ? options.readinessGate : 0.72;
   const forceRepair = !!options.forceRepair;
+  // D69: field damage is applied now but the weld waits for a dock. The caller applies
+  // damage mid-loop with deferRepair, then calls again with 0 new damage while docked.
+  const deferRepair = !!options.deferRepair;
   const canAffordOperating = (ctx.state.player.credits | 0) > minCredits;
-  const shouldRepair = e && ctx.hullDamageHp > 0.5
+  const shouldRepair = !deferRepair && e && ctx.hullDamageHp > 0.5
     && (forceRepair || (readinessNow < readinessGate && canAffordOperating));
 
   // Dock-side repair attempt through live economy handleService when entity exists.
@@ -1233,6 +1246,7 @@ function runHunter(horizonS, options = {}) {
   let techUnlocked = (ctx.state.player.researchedNodes || []).includes('tech_combat_basics');
   let currentSectorId = homeSectorId;
   let deathDone = false;
+  const refusedOfferIds = new Set();
 
   function ensureAmmo(units) {
     if (units <= 0) return 0;
@@ -1357,6 +1371,7 @@ function runHunter(horizonS, options = {}) {
       fromSectorId: currentSectorId,
       maxCredits: wallet,
       seed,
+      excludeOfferIds: refusedOfferIds,
     });
     if (!bountyHit) {
       // Advance board epoch via time so ensureBoard regenerates slots.
@@ -1367,6 +1382,7 @@ function runHunter(horizonS, options = {}) {
         fromSectorId: currentSectorId,
         maxCredits: ctx.state.player.credits | 0,
         seed,
+        excludeOfferIds: refusedOfferIds,
       });
     }
     if (!bountyHit) {
@@ -1433,6 +1449,9 @@ function runHunter(horizonS, options = {}) {
     const mission = acceptBoardOffer(ctx, bountyHit.offer.id, costs, receipt);
     if (!mission || mission.type !== 'bounty_hunt') {
       markBottleneck(receipt, 'bounty_accept_failed', bountyHit.offer.id);
+      // D69: refused once (rep gate, stale slot) — try another listing, never the same
+      // slot nine times. Offer ids are epoch-unique so the set can't hide fresh slots.
+      if (bountyHit.offer.id != null) refusedOfferIds.add(bountyHit.offer.id);
       // Push time so we don't spin forever on a stuck board slot.
       advanceTime(ctx, 30, budget, 'idleS');
       t = ctx.state.simTime;
@@ -1495,7 +1514,10 @@ function runHunter(horizonS, options = {}) {
       // Proportional insurance via economy.chargeCredits. Leave a small working-capital floor so
       // the pilot can still reach a local board (not free repair — residual hull stays damaged).
       const creditsNow = ctx.state.player.credits | 0;
-      const rawIns = round(shipEquity(ctx.currentShipId) * 0.35) || 500;
+      // D69: death bills the LIVE recovery quote (starter hull = the 500 deductible),
+      // not 0.35x equity. The old formula charged 2,800 for a starter loss — 5.6x the
+      // game's own price — and single-handedly sank every death-in-window band cell.
+      const rawIns = recoveryCostQuote(ctx.currentShipId, ctx.state.player.insurance).uninsuredCostCr || 500;
       // Floor covers one early-career dest toll (~200) so recovery bounties remain reachable.
       const workingFloor = Math.min(320, Math.max(0, creditsNow));
       const insurance = Math.min(rawIns, Math.max(0, creditsNow - workingFloor));
@@ -1540,14 +1562,22 @@ function runHunter(horizonS, options = {}) {
     t = ctx.state.simTime;
 
     const damageTaken = enemyDps * fightS * REPAIR_FRAC_OF_DAMAGE;
+    // D69: damage lands mid-fight; the repair happens at the home dock below. Field
+    // repairs never existed — the old call emitted ui:service while undocked, so the
+    // yard answered "Dock first" and the hunter flew 90 minutes without a repair bill.
+    // Entry readiness is captured BEFORE this fight's damage: the readiness dice below
+    // judge the fitness the pilot brought to the bout, not the beating it caused.
+    const entry = playerEntity(ctx);
+    const entryReadiness = entry && entry.hullMax > 0 ? (entry.hull == null ? 1 : entry.hull / entry.hullMax) : 1;
     const repairInfo = applyCombatDamageAndRepair(ctx, damageTaken, costs, budget, {
       minCreditsAfter: 600,
       readinessGate: 0.65,
+      deferRepair: true,
     });
     t = ctx.state.simTime;
 
     const missionSucceeded = (hash32(seed, 'hunter_counterplay', loops + 1) % 7) !== 0;
-    const readinessFail = repairInfo.readiness < 0.5
+    const readinessFail = entryReadiness < 0.5
       && (hash32(seed, 'readiness_fail', loops + 1) % 3) === 0;
     const success = missionSucceeded && !readinessFail;
     let reward = 0;
@@ -1607,6 +1637,16 @@ function runHunter(horizonS, options = {}) {
     t = ctx.state.simTime;
     currentSectorId = homeSectorId;
     completeDeliveryAtDock(ctx, homeStationId);
+    // D69: home-dock weld. The yard only serves a docked hull, so the hunter docks
+    // for real here (not the delivery touch-and-go above) and settles the fight's
+    // damage through the live ui:service path. Stranded loops skip this honestly.
+    ctx.bus.emit('dock:docked', { stationId: homeStationId });
+    applyCombatDamageAndRepair(ctx, 0, costs, budget, {
+      minCreditsAfter: 600,
+      readinessGate: 0.65,
+    });
+    ctx.bus.emit('dock:undocked', { stationId: homeStationId });
+    t = ctx.state.simTime;
 
     loops += 1;
     receipt.completedLoops = completedMissions;

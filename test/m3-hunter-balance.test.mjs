@@ -133,10 +133,17 @@ test('cohort Hunter 30/60/90 clear the healthy band with costs and a mid progres
     assert.ok(band.hi <= HUNTER_HEALTHY_UPPER_CR_PER_MIN);
     assert.equal(HUNTER_HEALTHY_UPPER_CR_PER_MIN, 400);
 
+    // D69: death is forced at 60/90m, where a 500-deductible loss plus downtime and
+    // the abandon cascade can absorb and still measure a band. A 30m window cannot host
+    // a death and remain a band cell (measured: death costs ~2,800 of ~3,500 honest
+    // earnings), so the 30m cell measures living play — which keeps full cost coverage
+    // (repair, tolls, and failures all > 0) without the casualty.
     const cells = [30, 60, 90].map((minutes) => runCareerStrategy('hunter', {
       horizonMin: minutes,
-      forceDeathAtLoop: 6,
+      forceDeathAtLoop: minutes >= 60 ? 6 : -1,
     }));
+    assert.equal(cells[0].deaths || 0, 0, '30m measures living play');
+    assert.ok(cells[1].deaths > 0 && cells[2].deaths > 0, '60/90m carry the death experiment');
     for (const cell of cells) {
       assert.ok(cell.creditsPerMin >= band.lo,
         `${cell.horizonMin}m ${cell.creditsPerMin} < healthy floor ${band.lo}`);
