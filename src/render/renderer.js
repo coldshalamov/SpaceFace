@@ -154,7 +154,7 @@ import {
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
 import { projectedWidthPx } from './lod.js';
-import { resolveWebGlRendererFlags } from './presentPath.js';
+import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
   openingSubjectIdentity,
@@ -5011,8 +5011,22 @@ export const render = {
       video: state.settings && state.settings.video,
       preserveDrawingBuffer: devShot,
     });
+    // three r184 hardcodes alpha:true in the contextAttributes it requests from getContext
+    // itself, so the opaque canvas only takes effect when the context is created here. A
+    // null or attribute-less result (headless/mock canvas, unsupported GL) falls back to
+    // three's own creation path, which keeps its original context-error semantics.
+    let glContext = null;
+    try {
+      const candidate = canvas && typeof canvas.getContext === 'function'
+        ? canvas.getContext('webgl2', resolveWebGlContextAttributes(glFlags))
+        : null;
+      if (candidate && typeof candidate.getContextAttributes === 'function') glContext = candidate;
+    } catch (_) {
+      glContext = null;
+    }
     const renderer = new THREE.WebGLRenderer({
       canvas,
+      context: glContext || undefined,
       antialias: glFlags.antialias,
       alpha: glFlags.alpha === true,
       powerPreference: glFlags.powerPreference,

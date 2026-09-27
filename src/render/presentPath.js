@@ -34,6 +34,11 @@ export function defaultPresentRoute(video = {}) {
 /**
  * Construction flags for THREE.WebGLRenderer that preserve the default image.
  * preserveDrawingBuffer stays off unless the explicit ship-shot capture query is set.
+ * depth/stencil/premultipliedAlpha/failIfMajorPerformanceCaveat pin three's own defaults
+ * so a renderer bump cannot silently change the backbuffer contract: the pipeline never
+ * uses stencil, and software GL is a supported fallback so failIfMajorPerformanceCaveat
+ * must never be set. desynchronized is deliberately absent — low-latency present can tear
+ * under the DOM overlays and cannot be measured headless.
  */
 export function resolveWebGlRendererFlags(options = {}) {
   const presentRoute = options.presentRoute || defaultPresentRoute(options.video || {});
@@ -43,8 +48,33 @@ export function resolveWebGlRendererFlags(options = {}) {
       nativeFallback: options.nativeFallback === true,
     }),
     alpha: false,
+    depth: true,
+    stencil: false,
+    premultipliedAlpha: true,
     powerPreference: options.powerPreference || 'high-performance',
     preserveDrawingBuffer: options.preserveDrawingBuffer === true,
+    failIfMajorPerformanceCaveat: false,
     presentRoute,
+  });
+}
+
+/**
+ * canvas.getContext('webgl2', attrs) dictionary matching resolveWebGlRendererFlags.
+ * three r184 hardcodes alpha:true in the attributes it requests internally, so the opaque
+ * canvas only takes effect when the context is created by the caller and handed to the
+ * renderer as {context}. The canvas is the bottom layer under an opaque clear color and
+ * every alpha<1 clear targets a render target or another canvas, so alpha:false changes
+ * nothing the compositor shows — it only skips blending the canvas layer.
+ */
+export function resolveWebGlContextAttributes(flags = resolveWebGlRendererFlags()) {
+  return Object.freeze({
+    alpha: flags.alpha === true,
+    depth: flags.depth !== false,
+    stencil: flags.stencil === true,
+    antialias: flags.antialias === true,
+    premultipliedAlpha: flags.premultipliedAlpha !== false,
+    preserveDrawingBuffer: flags.preserveDrawingBuffer === true,
+    powerPreference: flags.powerPreference || 'high-performance',
+    failIfMajorPerformanceCaveat: flags.failIfMajorPerformanceCaveat === true,
   });
 }
