@@ -857,7 +857,7 @@ export const helpScreen = {
       for (const b of lad.buttons) {
         let tag = b.querySelector('.orr-help-ladder__pin');
         const on = b.dataset.id === this._pin;
-        if (on && !tag) { tag = el('span', 'orr-help-ladder__pin', 'pinned'); b.querySelector('.orr-help-ladder__name').appendChild(tag); }
+        if (on && !tag) { tag = el('span', 'orr-help-ladder__pin'); tag.appendChild(el('span', 'orr-help-ladder__pin-word', 'pinned')); tag.setAttribute('aria-label', 'pinned'); b.querySelector('.orr-help-ladder__name').appendChild(tag); }
         if (!on && tag) tag.remove();
       }
     };

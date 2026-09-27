@@ -140,10 +140,10 @@ ${H} .orr-hreg__fine { margin:10px 0 0; padding-left:30px; font-family:var(--dp-
 ${H} .orr-hreg .orr-extent::before { left:7px; width:2px; }
 
 /* ------------------------------------------------ the shared ladder + reading ------------------ */
-${H} .orr-help-list { position:relative; display:grid; grid-template-columns:clamp(222px, 18.5vw, 360px) minmax(0, 1fr); grid-template-rows:minmax(0, 1fr);
+${H} .orr-help-list { position:relative; display:grid; grid-template-columns:clamp(222px, 16vw, 340px) minmax(0, 1fr); grid-template-rows:minmax(0, 1fr);
   column-gap:clamp(24px, 3vw, 64px); height:100%; min-height:0; }
 ${H} .orr-help-list__side { position:relative; display:flex; flex-direction:column; min-height:0; }
-${H} .orr-help-list__stage { position:relative; min-width:0; min-height:0; display:grid; grid-template-columns:minmax(0, 1fr) clamp(260px, 21vw, 420px);
+${H} .orr-help-list__stage { position:relative; min-width:0; min-height:0; display:grid; grid-template-columns:minmax(0, 1fr) clamp(260px, 19vw, 400px);
   column-gap:clamp(20px, 2.6vw, 56px); align-items:center; }
 ${H} .orr-help-list__hero { position:relative; height:100%; min-height:0; min-width:0; }
 ${H} .orr-help-loops { position:relative; height:100%; min-height:0; }
@@ -190,9 +190,9 @@ ${H} .orr-help-ladder__item[aria-selected="true"] .orr-help-ladder__fig { color:
 /* the Hand on the chosen rung: a stem off the spine and the notched chevron, amber (the screen's one) */
 ${H} .orr-help-ladder__item[aria-selected="true"]::after { content:""; position:absolute; left:8px; top:50%; width:22px; height:2px; margin-top:-1px; background:var(--dp-hand, #f2b950); }
 ${H} .orr-help-ladder__item[aria-selected="true"]::before { left:29px; width:10px; height:12px; margin-top:-6px; ${HAND} background:var(--dp-hand-hot, #ffd98c); filter:drop-shadow(0 0 6px rgb(255 217 140 / .6)); box-shadow:none; }
-${H} .orr-help-reading__vs { display:flex; align-items:center; gap:10px; margin:18px 0 0; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .76); }
-${H} .orr-help-reading__vs b { font-weight:700; color:rgb(${HOT}); }
-${H} .orr-help-reading__vs-bead { display:block; flex:none; width:10px; height:10px; border-radius:50%; box-shadow:inset 0 0 0 2px rgb(${BONE} / .9); }
+${H} .orr-help-reading__vs { display:block; margin:18px 0 0; line-height:1.6; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .76); }
+${H} .orr-help-reading__vs b { font-weight:700; color:rgb(${HOT}); white-space:nowrap; }
+${H} .orr-help-reading__vs-bead { display:inline-block; vertical-align:-1px; margin-right:10px; width:10px; height:10px; border-radius:50%; box-shadow:inset 0 0 0 2px rgb(${BONE} / .9); }
 ${H} .orr-help-ladder__pin { margin-left:10px; ${LABEL} font-size:12px !important; letter-spacing:.18em; color:rgb(${BONE} / .76); }
 ${H} .orr-help-ladder__pin::before { content:""; display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; box-shadow:inset 0 0 0 2px rgb(${BONE} / .9); vertical-align:1px; }
 /* a small verb on a reading: a word with its key, bone at rest, white where the player reaches it */
@@ -272,6 +272,7 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${H} .orr-help-factions__orbit .orr-crest__name, ${H} .orr-help-factions__orbit .orr-crest__rep { font-size:12px; }
 }
 @media (max-width:1500px) {
+  ${H} .orr-help-ladder__pin-word { display:none; }
   ${H} .orr-hreg__secword { letter-spacing:.12em; }
   ${H} .orr-help__tabs .sf-tab { padding-left:56px !important; letter-spacing:.14em !important; font-size:12px !important; }
   ${H} .orr-help__tabs > li::before { left:32px; }

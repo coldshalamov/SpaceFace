@@ -186,7 +186,8 @@ html.sf-reduce-motion .orr-hmix__rockart { animation:none; }
 .orr-hmix__rock[aria-pressed="true"] .orr-hmix__rock-name, .orr-hmix__rock:is(:hover, :focus-visible) .orr-hmix__rock-name { color:rgb(255 255 255); }
 .orr-hmix__centre { position:absolute; z-index:2; transform:translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none; text-align:center; }
 .orr-hmix__centre > b { line-height:1.05; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800; font-size:clamp(16px, 1.1vw, 24px); letter-spacing:.06em; text-transform:uppercase; color:rgb(${HOT}); }
-.orr-hmix__centre > span { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.22em; color:rgb(${BONE} / .76); }
+.orr-hmix__centre > span { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.22em; color:rgb(${BONE} / .76); white-space:nowrap; }
+.orr-hmix.is-small .orr-hmix__centre > span { letter-spacing:.14em; }
 .orr-hmix__lbl { all:unset; box-sizing:border-box; position:absolute; z-index:3; display:flex; flex-direction:column; gap:1px; white-space:nowrap; cursor:pointer; }
 .orr-hmix__lbl.is-left { align-items:flex-end; text-align:right; }
 .orr-hmix__lbl-name { ${BODY} font-size:clamp(14px, .74vw, 18px); color:rgb(${HOT}); line-height:1.2; }
