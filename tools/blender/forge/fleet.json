@@ -16,6 +16,160 @@
       "part_id": "wholeship_helios_lark",
       "npc_root": "SF_M4_HELIOS_LARK_ROOT",
       "note": "Forge-v1 rebuild (tools/blender/forge/ships/helios_lark.py): Helios civil courier, ivory hull, teal courier band, lit cabin, swept pod drives, parcel rack."
+    },
+    "wasp": {
+      "layout": "player",
+      "file": "wasp_production_v1",
+      "asset_id": "SF_WASP_PRODUCTION_V1",
+      "part_id": "wasp_production_v1",
+      "root": "WASP_PRODUCTION_V1"
+    },
+    "pelican": {
+      "layout": "player",
+      "file": "pelican_production_v1",
+      "asset_id": "SF_PELICAN_PRODUCTION_V1",
+      "part_id": "pelican_production_v1",
+      "root": "PELICAN_PRODUCTION_V1"
+    },
+    "mule": {
+      "layout": "player",
+      "file": "mule_production_v1",
+      "asset_id": "SF_MULE_PRODUCTION_V1",
+      "part_id": "mule_production_v1",
+      "root": "MULE_PRODUCTION_V1"
+    },
+    "drifter": {
+      "layout": "player",
+      "file": "drifter_production_v1",
+      "asset_id": "SF_DRIFTER_PRODUCTION_V1",
+      "part_id": "drifter_production_v1",
+      "root": "DRIFTER"
+    },
+    "ranger": {
+      "layout": "player",
+      "file": "ranger_production_v1",
+      "asset_id": "SF_RANGER_PRODUCTION_V1",
+      "part_id": "ranger_production_v1",
+      "root": "RANGER"
+    },
+    "ironback": {
+      "layout": "player",
+      "file": "ironback_production_v1",
+      "asset_id": "SF_IRONBACK_PRODUCTION_V1",
+      "part_id": "ironback_production_v1",
+      "root": "IRONBACK"
+    },
+    "bastion": {
+      "layout": "player",
+      "file": "bastion_production_v1",
+      "asset_id": "SF_BASTION_PRODUCTION_V1",
+      "part_id": "bastion_production_v1",
+      "root": "BASTION"
+    },
+    "atlas": {
+      "layout": "player",
+      "file": "atlas_production_v1",
+      "asset_id": "SF_ATLAS_PRODUCTION_V1",
+      "part_id": "atlas_production_v1",
+      "root": "ATLAS"
+    },
+    "warden": {
+      "layout": "player",
+      "file": "warden_production_v1",
+      "asset_id": "SF_WARDEN_PRODUCTION_V1",
+      "part_id": "warden_production_v1",
+      "root": "WARDEN"
+    },
+    "colossus": {
+      "layout": "player",
+      "file": "colossus_production_v1",
+      "asset_id": "SF_COLOSSUS_PRODUCTION_V1",
+      "part_id": "colossus_production_v1",
+      "root": "COLOSSUS"
+    },
+    "leviathan": {
+      "layout": "player",
+      "file": "leviathan_production_v1",
+      "asset_id": "SF_LEVIATHAN_PRODUCTION_V1",
+      "part_id": "leviathan_production_v1",
+      "root": "LEVIATHAN"
+    },
+    "ashline_dart": {
+      "layout": "npc",
+      "file": "ashline_dart",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_DART",
+      "part_id": "wholeship_ashline_dart",
+      "npc_root": "SF_M4_ASHLINE_DART_ROOT"
+    },
+    "ashline_lode": {
+      "layout": "npc",
+      "file": "ashline_lode",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_LODE",
+      "part_id": "wholeship_ashline_lode",
+      "npc_root": "SF_M4_ASHLINE_LODE_ROOT"
+    },
+    "ashline_rig": {
+      "layout": "npc",
+      "file": "ashline_rig",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_RIG",
+      "part_id": "wholeship_ashline_rig",
+      "npc_root": "SF_M4_ASHLINE_RIG_ROOT"
+    },
+    "ashline_rig_corsair_blade": {
+      "layout": "npc",
+      "file": "ashline_rig_corsair_blade",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE",
+      "part_id": "wholeship_ashline_rig_corsair_blade",
+      "npc_root": "SF_M4_ASHLINE_RIG_CORSAIR_BLADE_ROOT"
+    },
+    "helios_cradle": {
+      "layout": "npc",
+      "file": "helios_cradle",
+      "asset_id": "SF_WHOLESHIP_HELIOS_CRADLE",
+      "part_id": "wholeship_helios_cradle",
+      "npc_root": "SF_M4_HELIOS_CRADLE_ROOT"
+    },
+    "helios_span": {
+      "layout": "npc",
+      "file": "helios_span",
+      "asset_id": "SF_WHOLESHIP_HELIOS_SPAN",
+      "part_id": "wholeship_helios_span",
+      "npc_root": "SF_M4_HELIOS_SPAN_ROOT"
+    },
+    "ore_barge": {
+      "layout": "npc",
+      "file": "ore_barge",
+      "asset_id": "SF_WHOLESHIP_ORE_BARGE",
+      "part_id": "wholeship_ore_barge",
+      "npc_root": "SF_NPCWORK_ORE_BARGE_ROOT"
+    },
+    "repair_tender": {
+      "layout": "npc",
+      "file": "repair_tender",
+      "asset_id": "SF_WHOLESHIP_REPAIR_TENDER",
+      "part_id": "wholeship_repair_tender",
+      "npc_root": "SF_NPCWORK_REPAIR_TENDER_ROOT"
+    },
+    "salvage_cutter": {
+      "layout": "npc",
+      "file": "salvage_cutter",
+      "asset_id": "SF_WHOLESHIP_SALVAGE_CUTTER",
+      "part_id": "wholeship_salvage_cutter",
+      "npc_root": "SF_NPCWORK_SALVAGE_CUTTER_ROOT"
+    },
+    "survey_pin": {
+      "layout": "npc",
+      "file": "survey_pin",
+      "asset_id": "SF_WHOLESHIP_SURVEY_PIN",
+      "part_id": "wholeship_survey_pin",
+      "npc_root": "SF_NPCWORK_SURVEY_PIN_ROOT"
+    },
+    "yard_tug": {
+      "layout": "npc",
+      "file": "yard_tug",
+      "asset_id": "SF_WHOLESHIP_YARD_TUG",
+      "part_id": "wholeship_yard_tug",
+      "npc_root": "SF_NPCWORK_YARD_TUG_ROOT"
     }
   }
 }
