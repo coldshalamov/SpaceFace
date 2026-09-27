@@ -268,6 +268,10 @@ export const EAST_SECTORS = Object.freeze([
         id: 'poi_triton_anomaly',
         type: 'anomaly',
         name: 'Wake Anomaly',
+        discoveryPlate: Object.freeze({
+          title: 'The Wake Anomaly',
+          body: 'A star once occupied the Tide-Locked Watcher\u2019s gaze; this is the wake it left. Nothing here reflects light \u2014 the distortion bends it around something that departed eighty million years ago and is, by every instrument, still departing.',
+        }),
       }),
       Object.freeze({
         id: 'poi_triton_beacon',
