@@ -2450,6 +2450,7 @@ const HINT_ROWS = Object.freeze([
   ['Zoom / pan the table', 'Wheel · Drag'],
   ['Inspect a mark', 'Click'],
   ['Lay a course', 'Dbl-click'],
+  ['Lay the line (preview, release to set)', 'Drag from you'],
   ['Cycle overlays', 'Tab'],
   ['Inspector tabs', '← →'],
   ['Search the chart', '/'],
