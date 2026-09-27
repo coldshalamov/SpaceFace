@@ -26,6 +26,9 @@ import { hullPosterUrl } from '../hullPosters.js';
 import { loadHullPosterManifest } from '../ship/hullPoster.js';
 
 const STYLE_ID = 'orr-help-rig-style';
+let rigSeq = 0;
+const RIM_ROOT = new URL('../../../assets/ui/generated/help/rim/', import.meta.url).href;
+const RIM_HULLS = new Set(['ship_kestrel', 'ship_pelican', 'ship_wasp', 'ship_hornet']);
 const BONE = '236 230 216';
 const HOT = '248 244 234';
 const ICE = '143 203 255';
@@ -104,8 +107,8 @@ html.sf-reduce-motion .orr-hrig__spot { display:none; }
   transform-origin:50% 50%; }
 .orr-hrig__hull { filter:drop-shadow(0 10px 18px rgb(0 0 0 / .7)); opacity:0; transition:opacity .5s var(--dp-ease-out, ease-out); }
 .orr-hrig__hull.is-ready { opacity:1; }
-.orr-hrig__ghost { opacity:0; visibility:hidden; mix-blend-mode:screen; transition:transform .52s cubic-bezier(.34, 1.36, .64, 1), opacity .2s linear, visibility 0s linear .52s; }
-.orr-hrig__ghost.is-lit { opacity:.62; visibility:visible; transition-delay:0s; }
+.orr-hrig__ghost { opacity:0; visibility:hidden; z-index:4; transition:transform .52s cubic-bezier(.34, 1.36, .64, 1), opacity .2s linear, visibility 0s linear .52s; }
+.orr-hrig__ghost.is-lit { opacity:1; visibility:visible; transition-delay:0s; }
 .orr-hrig__glows { position:absolute; inset:0; pointer-events:none; z-index:4; }
 .orr-hrig__over { z-index:5; }
 .orr-hrig__glow { position:absolute; left:0; top:0; pointer-events:none; opacity:0; visibility:hidden; border-radius:50%;
@@ -203,23 +206,27 @@ html.sf-reduce-motion .orr-hrig__spot { display:none; }
 .orr-hrig__echo i { font-style:normal; color:rgb(${HOT}); }
 .orr-hrig__echo.is-live { color:rgb(${HOT}); }
 .orr-hrig__echo.is-none i { color:rgb(${BONE} / .82); }
-.orr-hrig__dev { display:flex; gap:18px; pointer-events:auto; }
-.orr-hrig__devword { all:unset; box-sizing:border-box; cursor:pointer; position:relative; padding:4px 0 8px; ${LABEL} font-size:clamp(12px, .62vw, 16px); letter-spacing:.2em; color:rgb(${BONE} / .7); }
-.orr-hrig__devword::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; background:rgb(${BONE} / .26); }
+.orr-hrig__dev { display:flex; gap:18px; pointer-events:auto; padding:0 6px 14px;
+  background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 4px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1.5px) / 100% 7px no-repeat; }
+.orr-hrig__devword { all:unset; box-sizing:border-box; cursor:pointer; position:relative; padding:4px 0 4px; ${LABEL} font-size:clamp(12px, .62vw, 16px); letter-spacing:.2em; color:rgb(${BONE} / .72); }
+.orr-hrig__devword::after { content:""; position:absolute; left:50%; bottom:-12px; width:2px; height:9px; margin-left:-1px; background:rgb(${BONE} / .6); }
 .orr-hrig__devword[aria-pressed="true"] { color:rgb(${HOT}); }
-.orr-hrig__devword[aria-pressed="true"]::after { background:rgb(${HOT}); }
+.orr-hrig__devword[aria-pressed="true"]::after { width:9px; height:9px; margin-left:-4.5px; bottom:-14px; border-radius:50%; background:rgb(${HOT}); box-shadow:0 0 8px rgb(255 244 222 / .55); }
 .orr-hrig__devword:is(:hover, :focus-visible) { color:rgb(255 255 255); outline:none; }
-.orr-hrig__devword:focus-visible::after { height:3px; background:rgb(255 255 255); }
+.orr-hrig__devword:focus-visible::after { background:rgb(255 255 255); }
 .orr-hrig__padsvg { display:none; flex:none; overflow:visible; pointer-events:none; }
 .orr-hrig.is-pad .orr-hrig__padsvg, .orr-hrig__padsvg.is-shown { display:block; }
-.orr-hrig__padsvg .orr-hrig__pb { fill:rgb(4 6 9 / .6); stroke:rgb(${BONE} / .62); stroke-width:1.5px; transition:fill .12s linear, stroke .12s linear; }
+.orr-hrig__padsvg .orr-hrig__pb-body { fill:rgb(${BONE} / .12); stroke:none; }
+.orr-hrig__padsvg .orr-hrig__pb-grip { fill:rgb(${BONE} / .08); stroke:none; }
+.orr-hrig__padsvg .orr-hrig__pb { fill:rgb(4 6 9 / .82); stroke:rgb(${BONE} / .7); stroke-width:1.6px; transition:fill .12s linear, stroke .12s linear; }
 .orr-hrig__padsvg .orr-hrig__pb-band { fill:none; stroke:rgb(${BONE} / .27); stroke-width:7px; stroke-linecap:round; stroke-linejoin:round; }
 .orr-hrig__padsvg .orr-hrig__pb-edge { fill:none; stroke:rgb(${BONE} / .6); stroke-width:1.6px; stroke-linecap:round; stroke-linejoin:round; }
 .orr-hrig__padsvg .orr-hrig__pb-arc { fill:none; stroke:rgb(${BONE} / .6); stroke-width:4px; stroke-linecap:round; transition:stroke .12s linear; }
 .orr-hrig__padsvg text { font-family:var(--dp-face-label, "Archivo"); font-size:var(--orr-pad-fs, 12px); font-weight:700; letter-spacing:.06em; fill:rgb(${HOT}); text-anchor:middle; dominant-baseline:central; }
-.orr-hrig__padsvg .is-lit .orr-hrig__pb, .orr-hrig__padsvg .orr-hrig__pb.is-lit { fill:rgb(${ICE} / .5); stroke:rgb(255 255 255); }
+.orr-hrig__padsvg .is-lit .orr-hrig__pb, .orr-hrig__padsvg .orr-hrig__pb.is-lit { fill:rgb(${HOT}); stroke:rgb(255 255 255); }
+.orr-hrig__padsvg .is-lit > circle ~ text { fill:#12100c; }
+.orr-hrig__padsvg .is-lit > path ~ text { fill:rgb(255 255 255); }
 .orr-hrig__padsvg .is-lit .orr-hrig__pb-arc, .orr-hrig__padsvg .orr-hrig__pb-arc.is-lit { stroke:rgb(236 247 255); }
-.orr-hrig__padsvg .is-lit text { fill:rgb(255 255 255); }
 
 .orr-hrig__whisper { position:fixed; z-index:40; left:0; top:0; pointer-events:none; ${LABEL} font-size:12px; letter-spacing:.18em; color:rgb(${HOT});
   padding:6px 10px 6px 12px; white-space:nowrap; opacity:0; transform:translate(14px, -130%); transition:opacity .18s linear;
@@ -254,6 +261,11 @@ function injectStyle(doc) {
 // A drawn pad, Xbox layout, in its own 300 x 132 frame. Each control carries the standard button
 // name(s) it answers to, so the echo can light exactly the button pressed.
 const PAD_BODY = 'M 62 34 C 96 22, 204 22, 238 34 C 270 44, 294 96, 286 116 C 280 132, 252 132, 240 116 L 214 88 C 190 82, 110 82, 86 88 L 60 116 C 48 132, 20 132, 14 116 C 6 96, 30 44, 62 34 Z';
+// the grips: the two lower lobes, a shade fuller than the shell
+const PAD_GRIPS = Object.freeze([
+  'M 62 58 C 44 70, 26 96, 20 112 C 22 124, 44 128, 56 114 L 78 90 C 76 78, 72 64, 62 58 Z',
+  'M 238 58 C 256 70, 274 96, 280 112 C 278 124, 256 128, 244 114 L 222 90 C 224 78, 228 64, 238 58 Z',
+]);
 const PAD_CONTROLS = Object.freeze([
   { names: ['l3'], kind: 'stick', x: 84, y: 56, r: 12, text: 'L' },
   { names: ['r3'], kind: 'stick', x: 186, y: 84, r: 12, text: 'R' },
@@ -276,6 +288,8 @@ const PAD_CONTROLS = Object.freeze([
 
 function padSvg() {
   const root = svg('svg', { class: 'orr-hrig__padsvg', viewBox: '-4 -12 308 150', 'aria-hidden': 'true', focusable: 'false' });
+  root.appendChild(svg('path', { d: PAD_BODY, class: 'orr-hrig__pb-body' }));
+  for (const d of PAD_GRIPS) root.appendChild(svg('path', { d, class: 'orr-hrig__pb-grip' }));
   root.appendChild(svg('path', { d: PAD_BODY, class: 'orr-hrig__pb-band' }));
   root.appendChild(svg('path', { d: PAD_BODY, class: 'orr-hrig__pb-edge' }));
   const els = new Map();
@@ -355,6 +369,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
   const whisperEl = doc.createElement('div'); whisperEl.className = 'orr-hrig__whisper'; whisperEl.setAttribute('aria-hidden', 'true');
   (doc.body || host).appendChild(whisperEl);
 
+  const uid = ++rigSeq;
   let model = null;
   let marks = null;
   let device = 'kbm';
@@ -516,12 +531,12 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
     const url = hullPosterUrl(hullId, 'top');
     if (hull.getAttribute('src') !== url) hull.src = url;
     Object.assign(hull.style, { left: `${f(x0)}px`, top: `${f(y0)}px`, width: `${f(S)}px`, height: `${f(S)}px` });
-    // the ghost that swings through a turn is the hull's holo plate (the plan view as instrument light),
-    // framed tighter than the render: its hull spans 0.956 of its frame against the render's 0.847
-    const holo = hullPosterUrl(hullId, 'holo');
-    const gS = holo ? S * (HULL_SPAN / 0.956) : S;
-    if (ghost.getAttribute('src') !== (holo || url)) ghost.src = holo || url;
-    Object.assign(ghost.style, { left: `${f(cx - gS / 2)}px`, top: `${f(cy - gS / 2)}px`, width: `${f(gS)}px`, height: `${f(gS)}px` });
+    // the ghost that swings through a turn is the hull's rim of light (cut from the render's own alpha,
+    // assets/ui/generated/help/rim), in the render's frame; the hull's texture is never lightened
+    const rim = RIM_HULLS.has(hullId) ? `${RIM_ROOT}${hullId}.rim.webp` : '';
+    if (rim && ghost.getAttribute('src') !== rim) ghost.src = rim;
+    ghost.hidden = !rim;
+    Object.assign(ghost.style, { left: `${f(x0)}px`, top: `${f(y0)}px`, width: `${f(S)}px`, height: `${f(S)}px` });
     const arriveNow = !arrived && !reducedMotion();
     const rise = (node, delay) => { if (arriveNow) { node.classList.add('orr-hrig__rise'); node.style.setProperty('--orr-delay', `${delay}ms`); } return node; };
 
@@ -596,6 +611,22 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
     };
     const anchors = [...placeCol(cols.L, 'L'), ...placeCol(cols.R, 'R')];
 
+    // Every verb has its own anchor on the ship: a centreline part leans toward the verb's own column,
+    // and down each column the anchors run in the same order as the labels, at least a finger apart,
+    // so no two leaders cross and no two share a point.
+    const minSep = small ? 10 : 18;
+    const anchorAt = new Map();
+    for (const side of [-1, 1]) {
+      let prevY = -Infinity;
+      for (const a of anchors.filter((q) => q.side === side)) {
+        let [px, py] = at(P[a.spec.part]);
+        if (Math.abs(px - cx) < S * 0.02) px += side * S * 0.017;
+        py = Math.max(py, prevY + minSep);
+        prevY = py;
+        anchorAt.set(a.spec.id, [px, py]);
+      }
+    }
+
     // ---------------------------------------------------------------- leaders, beams, marks, fx
     over.textContent = '';
     glows.textContent = '';
@@ -609,7 +640,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
     const gatesG = svg('g', {});
     over.append(gatesG, fxG, halos, bands, cores, beams, marksG);
     for (const a of anchors) {
-      const [px, py] = at(P[a.spec.part]);
+      const [px, py] = anchorAt.get(a.spec.id);
       const lim = Rout * 0.94;
       const dy = Math.max(-lim, Math.min(lim, a.ay - cy));
       const rx = cx + a.side * Math.sqrt(Math.max(0, (Rout + 6) * (Rout + 6) - dy * dy));
@@ -629,52 +660,65 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
       const gate = svg('path', { d: arcD(cx, cy, Rb, cross - 7, cross + 7), class: 'orr-hrig__gate', 'stroke-width': bandW });
       gatesG.appendChild(gate);
       leads.set(a.spec.id, { band, core, beam, bloom, gate });
-    }
-    const partNames = new Set(model.stations.map((s) => s.part));
-    for (const part of partNames) {
-      const [px, py] = at(P[part]);
       const g = svg('g', { class: 'orr-hrig__mark' });
       const r = small ? 4.2 : 5.4;
       g.appendChild(svg('circle', { cx: f(px), cy: f(py), r, class: 'orr-hrig__mark-ring' }));
       g.appendChild(svg('circle', { cx: f(px), cy: f(py), r: r * 0.42, class: 'orr-hrig__mark-core' }));
       marksG.appendChild(rise(g, 420));
-      markEls.set(part, g);
+      markEls.set(a.spec.id, g);
     }
 
     const add = (key, node) => { if (!fx.has(key)) fx.set(key, []); fx.get(key).push(node); return node; };
-    const glow = (key, cls, x, y, w, h, extra = {}) => {
-      const g = doc.createElement('i');
-      g.className = `orr-hrig__glow orr-hrig__glow--${cls}`;
-      Object.assign(g.style, { left: `${f(x)}px`, top: `${f(y)}px`, width: `${f(w)}px`, height: `${f(h)}px` }, extra);
-      glows.appendChild(g);
-      return add(key, g);
+    const fxGroup = (key, layer = fxG) => { const g = svg('g', { class: 'orr-hrig__fx' }); layer.appendChild(g); return add(key, g); };
+    // A plume is a tapered cone of light: a white-hot throat at the nozzle closing to a point, an ice
+    // falloff along its length, and a bone core down its axis. It is geometry, never a soft disc.
+    const defs = svg('defs', {});
+    under.insertBefore(defs, under.firstChild);
+    let plumeSeq = 0;
+    const plume = (g, x, y, deg, len, half, { core = true } = {}) => {
+      const id = `orr-hrig-pl-${uid}-${++plumeSeq}`;
+      const [tx, ty] = polar(x, y, len, deg);
+      const grad = svg('linearGradient', { id, gradientUnits: 'userSpaceOnUse', x1: f(x), y1: f(y), x2: f(tx), y2: f(ty) });
+      grad.appendChild(svg('stop', { offset: '0', 'stop-color': 'rgb(248 252 255)', 'stop-opacity': '.95' }));
+      grad.appendChild(svg('stop', { offset: '.22', 'stop-color': `rgb(${ICE})`, 'stop-opacity': '.62' }));
+      grad.appendChild(svg('stop', { offset: '.7', 'stop-color': `rgb(${ICE})`, 'stop-opacity': '.2' }));
+      grad.appendChild(svg('stop', { offset: '1', 'stop-color': `rgb(${ICE})`, 'stop-opacity': '0' }));
+      defs.appendChild(grad);
+      const [ax, ay] = polar(x, y, half, deg - 90);
+      const [bx, by] = polar(x, y, half, deg + 90);
+      const [m1x, m1y] = polar(ax, ay, len * 0.42, deg);
+      const [m2x, m2y] = polar(bx, by, len * 0.42, deg);
+      g.appendChild(svg('path', { d: `M ${f(ax)} ${f(ay)} Q ${f(m1x)} ${f(m1y)} ${f(tx)} ${f(ty)} Q ${f(m2x)} ${f(m2y)} ${f(bx)} ${f(by)} Z`, fill: `url(#${id})` }));
+      if (core) {
+        const [cx2, cy2] = polar(x, y, len * 0.62, deg);
+        g.appendChild(svg('path', { d: `M ${f(x)} ${f(y)} L ${f(cx2)} ${f(cy2)}`, stroke: `url(#${id})`, 'stroke-width': Math.max(2, half * 0.24), 'stroke-linecap': 'round', fill: 'none' }));
+      }
+      return g;
     };
-    const fxGroup = (key) => { const g = svg('g', { class: 'orr-hrig__fx' }); fxG.appendChild(g); return add(key, g); };
-    const Lh = HULL_SPAN * S;
-    // throttle: the drive blooms aft
+    // the drive's plume and the boost's longer one burn under the berth, so AFT stays readable over them
+    const plumeLayer = svg('g', {});
+    under.insertBefore(plumeLayer, defs.nextSibling);
     {
       const [dx, dy] = at(P.drive);
-      glow('drive', 'plume', dx - Lh * 0.13, dy - Lh * 0.02, Lh * 0.26, Lh * 0.5);
+      plume(fxGroup('drive', plumeLayer), dx, dy + S * 0.01, 180, S * 0.27, S * 0.03);
       const [bx, by] = at(P.bloom);
-      // boost: a longer, wider bloom and a ring at the nozzle
-      glow('bloom', 'plume', bx - Lh * 0.17, by - Lh * 0.03, Lh * 0.34, Lh * 0.62);
-      const g = fxGroup('bloom');
-      g.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: Lh * 0.06, class: 'orr-hrig__fx-ring orr-hrig__pulse' }));
+      plume(fxGroup('bloom', plumeLayer), bx, by, 180, S * 0.44, S * 0.046);
+      const ring = fxGroup('bloom');
+      ring.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: S * 0.05, class: 'orr-hrig__fx-ring orr-hrig__pulse' }));
       // brake: the drive clamps -- two arcs close round the nozzle
       const b = fxGroup('brake');
-      const rr = Lh * 0.07;
-      b.appendChild(svg('path', { d: arcD(dx, dy, rr, -70, 70), class: 'orr-hrig__fx-bloom' }));
-      b.appendChild(svg('path', { d: arcD(dx, dy, rr, -70, 70), class: 'orr-hrig__fx-line' }));
-      b.appendChild(svg('path', { d: arcD(dx, dy, rr, 110, 250), class: 'orr-hrig__fx-bloom' }));
-      b.appendChild(svg('path', { d: arcD(dx, dy, rr, 110, 250), class: 'orr-hrig__fx-line' }));
-      glow('brake', 'spot', dx - Lh * 0.06, dy - Lh * 0.06, Lh * 0.12, Lh * 0.12);
+      const rr = S * 0.06;
+      for (const [a0, a1] of [[-70, 70], [110, 250]]) {
+        b.appendChild(svg('path', { d: arcD(dx, dy, rr, a0, a1), class: 'orr-hrig__fx-bloom' }));
+        b.appendChild(svg('path', { d: arcD(dx, dy, rr, a0, a1), class: 'orr-hrig__fx-line' }));
+      }
     }
-    // reverse: retro light out of the bow
+    // reverse: the retro thrusters fire forward out of the bow's shoulders
     {
-      const [nx, ny] = at(P.bow);
-      glow('retro', 'retro', nx - Lh * 0.07, ny - Lh * 0.2, Lh * 0.14, Lh * 0.2);
+      const g = fxGroup('retro');
+      for (const k of ['bowL', 'bowR']) { const [x, y] = at(P[k]); plume(g, x, y, k === 'bowL' ? -12 : 12, S * 0.12, S * 0.013, { core: false }); }
     }
-    // steer: a ghost of the hull swings; an arc ahead of the bow shows the turn
+    // steer: the hull's rim of light swings through the turn; an arc ahead of the bow shows it
     for (const [key, sign] of [['steerL', -1], ['steerR', 1]]) {
       const g = fxGroup(key);
       const r = (0.5 - HULL_TOP) * S + (small ? 10 : 16);
@@ -687,31 +731,30 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
       const [bx2, by2] = polar(cx, cy, r + 7, a1 - sign * 5);
       g.appendChild(svg('path', { d: `M ${f(bx1)} ${f(by1)} L ${f(hx)} ${f(hy)} L ${f(bx2)} ${f(by2)}`, class: 'orr-hrig__fx-line' }));
     }
-    // lateral: the flank thrusters puff outward
+    // lateral: the flank thruster fires outward
     {
       const [lx, ly] = at(P.flankL);
-      glow('flankL', 'puff', lx - Lh * 0.26, ly - Lh * 0.05, Lh * 0.26, Lh * 0.1, { '--orr-puff-x': '100%', transformOrigin: '100% 50%' });
+      plume(fxGroup('flankL'), lx, ly, 270, S * 0.15, S * 0.016, { core: false });
       const [qx, qy] = at(P.flankR);
-      glow('flankR', 'puff', qx, qy - Lh * 0.05, Lh * 0.26, Lh * 0.1, { '--orr-puff-x': '0%', transformOrigin: '0 50%' });
+      plume(fxGroup('flankR'), qx, qy, 90, S * 0.15, S * 0.016, { core: false });
     }
-    // fire: tracers out of the hardpoint toward the berth
+    // fire: two muzzle streaks out of the hardpoint
     {
       const [wx, wy] = at(P.hardpoint);
       const g = fxGroup('fire');
-      const reach = wy - (cy - Rin) + 4;
-      for (const off of [-Lh * 0.018, Lh * 0.018]) {
-        const d = `M ${f(wx + off)} ${f(wy - 6)} L ${f(wx + off)} ${f(wy - reach)}`;
-        g.appendChild(svg('path', { d, class: 'orr-hrig__fx-bloom' }));
-        g.appendChild(svg('path', { d, class: 'orr-hrig__fx-line orr-hrig__fx-draw', pathLength: 1 }));
+      const reach = S * 0.11;
+      for (const off of [-S * 0.014, S * 0.014]) {
+        const d = `M ${f(wx + off)} ${f(wy - 8)} L ${f(wx + off)} ${f(wy - 8 - reach)}`;
+        g.appendChild(svg('path', { d, class: 'orr-hrig__fx-bloom', style: 'stroke-width:6px' }));
+        g.appendChild(svg('path', { d, class: 'orr-hrig__fx-line orr-hrig__fx-draw', pathLength: 1, style: 'stroke-width:2px' }));
       }
-      glow('fire', 'spot', wx - Lh * 0.05, wy - Lh * 0.05, Lh * 0.1, Lh * 0.1);
     }
     // mine: a beam cone forward of the mining head
     {
       const [mx, my] = at(P.mining);
       const g = fxGroup('mine');
       const reach = my - (cy - Rin) + 2;
-      const spread = Lh * 0.06;
+      const spread = S * 0.05;
       g.appendChild(svg('path', { d: `M ${f(mx)} ${f(my)} L ${f(mx - spread)} ${f(my - reach)} L ${f(mx + spread)} ${f(my - reach)} Z`, class: 'orr-hrig__fx-fill' }));
       const d = `M ${f(mx)} ${f(my)} L ${f(mx)} ${f(my - reach)}`;
       g.appendChild(svg('path', { d, class: 'orr-hrig__fx-bloom' }));
@@ -722,7 +765,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
       const [tx, ty] = at(P.winch);
       const g = fxGroup('winch');
       const [ex, ey] = polar(cx, cy, Rout + (small ? 24 : 40), 318);
-      const mx = (tx + ex) / 2 - Lh * 0.1;
+      const mx = (tx + ex) / 2 - S * 0.085;
       const my = (ty + ey) / 2;
       const d = `M ${f(tx)} ${f(ty)} Q ${f(mx)} ${f(my)} ${f(ex)} ${f(ey)}`;
       g.appendChild(svg('path', { d, class: 'orr-hrig__fx-bloom' }));
@@ -737,7 +780,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
       const n = 9;
       for (let i = 0; i < n; i += 1) {
         const deg = (360 * i) / n + 12;
-        const rr = Lh * (0.1 + (i % 3) * 0.035);
+        const rr = S * (0.085 + (i % 3) * 0.03);
         const [dx, dy] = polar(kx, ky, rr, deg);
         const c = svg('circle', { cx: f(dx), cy: f(dy), r: 2.6, class: 'orr-hrig__fx-dot orr-hrig__chaff' });
         c.style.setProperty('--cx0', `${f(kx - dx)}px`);
@@ -750,7 +793,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
       const [hx, hy] = at(P.helm);
       const g = fxGroup('helm');
       const [ex, ey] = polar(cx, cy, Rin - 6, 36);
-      const d = `M ${f(hx)} ${f(hy)} C ${f(hx)} ${f(hy - Lh * 0.34)}, ${f(ex - Lh * 0.22)} ${f(ey + Lh * 0.06)}, ${f(ex)} ${f(ey)}`;
+      const d = `M ${f(hx)} ${f(hy)} C ${f(hx)} ${f(hy - S * 0.29)}, ${f(ex - S * 0.19)} ${f(ey + S * 0.05)}, ${f(ex)} ${f(ey)}`;
       g.appendChild(svg('path', { d, class: 'orr-hrig__fx-bloom' }));
       g.appendChild(svg('path', { d, class: 'orr-hrig__fx-line', style: 'stroke-dasharray:5 6' }));
       g.appendChild(svg('circle', { cx: f(ex), cy: f(ey), r: 3.5, class: 'orr-hrig__fx-dot' }));
@@ -774,16 +817,15 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
     const l = leads.get(id);
     if (l) { l.core.classList.toggle('is-lit', on); l.band.classList.toggle('is-lit', on); if (l.gate) l.gate.classList.toggle('is-lit', on); }
     // a part stays lit while any station that drives it is held
-    const partOn = on || [...held.keys()].some((k) => { const s = specOf(k); return s && s.part === spec.part; });
-    const mk = markEls.get(spec.part);
-    if (mk) mk.classList.toggle('is-lit', partOn);
+    const mk = markEls.get(id);
+    if (mk) mk.classList.toggle('is-lit', on);
     const key = fxKeyOf(spec);
     const keyOn = on || [...held.keys()].some((k) => { const s = specOf(k); return s && fxKeyOf(s) === key; });
     for (const node of fx.get(key) || []) node.classList.toggle('is-lit', keyOn);
     if (key === 'steerL' || key === 'steerR') {
       const lOn = [...held.keys()].some((k) => fxKeyOf(specOf(k) || {}) === 'steerL') || (on && key === 'steerL');
       const rOn = [...held.keys()].some((k) => fxKeyOf(specOf(k) || {}) === 'steerR') || (on && key === 'steerR');
-      const turn = lOn && !rOn ? -11 : rOn && !lOn ? 11 : 0;
+      const turn = lOn && !rOn ? -8 : rOn && !lOn ? 8 : 0;
       ghost.classList.toggle('is-lit', turn !== 0);
       ghost.style.transform = turn ? `rotate(${turn}deg)` : '';
     }

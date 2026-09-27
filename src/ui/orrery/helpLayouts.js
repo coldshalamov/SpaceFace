@@ -32,6 +32,7 @@ ${H} > .k-title { align-self:end; margin:0 !important; padding:0 !important; bor
 ${H} > .k-title .k-t-title { margin:0 !important; }
 ${H} > .k-title > .sf-help-now { ${LABEL} margin:12px 0 0 !important; font-size:clamp(12px, .62vw, 16px) !important; letter-spacing:.26em !important; color:rgb(${BONE} / .66) !important;
   display:flex; align-items:center; gap:14px; }
+${H}:not([data-tab="controls"]) > .k-title > .sf-help-now { visibility:hidden; }
 ${H} > .k-title > .sf-help-now::after { content:""; width:72px; height:1.5px; background:linear-gradient(90deg, rgb(${BONE} / .5), rgb(${BONE} / 0)); }
 
 /* ------------------------------------------------ the section ladder --------------------------- */
@@ -103,13 +104,14 @@ ${H} .orr-hreg { position:relative; display:flex; flex-direction:column; min-hei
 ${H} .orr-hreg__head { display:flex; flex-direction:column; gap:10px; padding:0 0 12px 0; }
 ${H} .orr-hreg__title { margin:0; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800; font-size:clamp(16px, 1.25vw, 22px);
   letter-spacing:.12em; text-transform:uppercase; color:rgb(${HOT}); }
-${H} .orr-hreg__secs { display:flex; gap:clamp(8px, 1vw, 22px); flex-wrap:nowrap; }
-${H} .orr-hreg__secword { all:unset; box-sizing:border-box; cursor:pointer; position:relative; padding:3px 0 8px; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .7); }
-${H} .orr-hreg__secword::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; background:rgb(${BONE} / .22); }
+${H} .orr-hreg__secs { display:flex; gap:clamp(8px, 1vw, 22px); flex-wrap:nowrap; padding-bottom:14px;
+  background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 4px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1.5px) / 100% 7px no-repeat; }
+${H} .orr-hreg__secword { all:unset; box-sizing:border-box; cursor:pointer; position:relative; padding:3px 0 4px; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .72); }
+${H} .orr-hreg__secword::after { content:""; position:absolute; left:50%; bottom:-12px; width:2px; height:9px; margin-left:-1px; background:rgb(${BONE} / .6); }
 ${H} .orr-hreg__secword[aria-current="true"] { color:rgb(${HOT}); }
-${H} .orr-hreg__secword[aria-current="true"]::after { background:rgb(${HOT} / .9); }
+${H} .orr-hreg__secword[aria-current="true"]::after { width:9px; height:9px; margin-left:-4.5px; bottom:-14px; border-radius:50%; background:rgb(${HOT}); box-shadow:0 0 8px rgb(255 244 222 / .55); }
 ${H} .orr-hreg__secword:is(:hover, :focus-visible) { color:rgb(255 255 255); outline:none; }
-${H} .orr-hreg__secword:focus-visible::after { height:3px; background:rgb(255 255 255); }
+${H} .orr-hreg__secword:focus-visible::after { background:rgb(255 255 255); height:12px; }
 ${H} .orr-hreg__pad { display:none; padding:6px 0 0; }
 ${H} .orr-hreg__pad.is-pad { display:block; }
 ${H} .orr-hreg__pad > svg { display:block; margin:0 auto; max-width:100%; height:auto; }
@@ -140,8 +142,6 @@ ${H} .orr-hreg .orr-extent::before { left:7px; width:2px; }
 /* ------------------------------------------------ the shared ladder + reading ------------------ */
 ${H} .orr-help-list { position:relative; display:grid; grid-template-columns:clamp(222px, 18.5vw, 360px) minmax(0, 1fr); grid-template-rows:minmax(0, 1fr);
   column-gap:clamp(24px, 3vw, 64px); height:100%; min-height:0; }
-${H} .orr-help-list--goods { grid-template-rows:auto minmax(0, 1fr); row-gap:clamp(10px, 2vh, 24px); }
-${H} .orr-help-list--goods > .orr-help-scale { grid-column:1 / -1; }
 ${H} .orr-help-list__side { position:relative; display:flex; flex-direction:column; min-height:0; }
 ${H} .orr-help-list__stage { position:relative; min-width:0; min-height:0; display:grid; grid-template-columns:minmax(0, 1fr) clamp(260px, 21vw, 420px);
   column-gap:clamp(20px, 2.6vw, 56px); align-items:center; }
@@ -154,14 +154,16 @@ ${H} .orr-help-list--ores .orr-help-reading > .orr-help-reading__kicker { grid-c
 ${H} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { grid-column:1; font-size:clamp(22px, 1.7vw, 34px); }
 ${H} .orr-help-list--ores .orr-help-terms { grid-column:2; grid-row:1 / span 2; margin:0; grid-template-columns:auto minmax(0, 1fr) auto minmax(0, 1fr); column-gap:18px; }
 ${H} .orr-help-search.sf-lc { margin:0 0 12px !important; padding:0 !important; }
-${H} .orr-help-search .sf-lc__search { ${PLAIN} width:100% !important; max-width:none !important; min-height:38px; padding:6px 2px 8px 30px !important; box-sizing:border-box;
+${H} .orr-help-search .sf-lc__search { ${PLAIN} width:100% !important; max-width:none !important; min-height:38px; padding:6px 2px 12px 2px !important; box-sizing:border-box;
   font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif !important; font-size:clamp(14px, .73vw, 18px) !important; color:rgb(${HOT}) !important;
+  background:linear-gradient(rgb(${BONE} / .55) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat,
+    repeating-linear-gradient(90deg, rgb(${BONE} / .5) 0 1.5px, transparent 1.5px 24px) 0 100% / 100% 8px no-repeat !important; }) !important;
   background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 100% / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .1) 0 0) 0 calc(100% - 2px) / 100% 7px no-repeat !important; }
 ${H} .orr-help-search .sf-lc__search::placeholder { color:rgb(${BONE} / .66) !important; }
-${H} .orr-help-search .sf-lc__search:focus { background:linear-gradient(rgb(255 255 255) 0 0) 0 100% / 100% 2px no-repeat, linear-gradient(rgb(${HOT} / .16) 0 0) 0 calc(100% - 2px) / 100% 8px no-repeat !important; }
+${H} .orr-help-search .sf-lc__search:focus { background:linear-gradient(rgb(255 255 255) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat,
+  repeating-linear-gradient(90deg, rgb(255 255 255 / .8) 0 1.5px, transparent 1.5px 24px) 0 100% / 100% 8px no-repeat !important; }
 ${H} .orr-help-search { position:relative; }
-${H} .orr-help-search::before { content:""; position:absolute; left:4px; top:12px; width:12px; height:12px; border:2px solid rgb(${BONE} / .7); border-radius:50%; pointer-events:none; box-sizing:border-box; }
-${H} .orr-help-search::after { content:""; position:absolute; left:14px; top:23px; width:6px; height:2px; background:rgb(${BONE} / .7); transform:rotate(45deg); pointer-events:none; }
+
 ${H} .orr-help-ladder { ${PLAIN} position:relative; flex:1 1 auto; min-height:0; overflow:hidden auto; scrollbar-width:none; list-style:none; margin:0; padding:2px 8px 22px 0;
   background:${SPINE} !important; background-attachment:local !important;
   -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent); }
@@ -217,6 +219,7 @@ ${H} .sf-entity-link { text-decoration:none !important; box-shadow:none !importa
 
 /* FACTIONS: the orbit beside its reading */
 ${H} .orr-help-factions { position:relative; display:grid; grid-template-columns:minmax(0, 1.25fr) minmax(300px, .75fr); column-gap:clamp(20px, 3vw, 64px); align-items:center; height:100%; min-height:0; }
+${H} .orr-help-factions__orbit .orr-crest__rep { display:none !important; }
 ${H} .orr-help-factions__orbit { position:relative; height:100%; min-height:0; --orr-band-a:.3; --orr-w-band:11px; --orr-edge-a:.6; }
 
 /* KEYBOARD FOCUS: the kit's bone focus box (.k-screen :focus-visible) would draw a rectangle round a rung,

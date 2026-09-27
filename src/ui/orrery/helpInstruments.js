@@ -19,6 +19,21 @@ import { rollTo } from './text.js';
 import { hullPosterUrl } from '../hullPosters.js';
 
 const STYLE_ID = 'orr-help-instruments-style';
+// Hero renders made for Help where the shared set has none (tools/art/render_hull.py, the game's own GLBs;
+// assets/ui/generated/help/manifest.json). Hulls whose GLBs carry only runtime textures render blank in
+// Blender, so they keep the class numeral until their renders exist.
+const HELP_HULL_ROOT = new URL('../../../assets/ui/generated/help/hulls/', import.meta.url).href;
+const HELP_HULLS = new Set(['ship_mule', 'ship_drifter', 'ship_hawser', 'ship_ranger']);
+export function helpHullArt(shipId) {
+  return hullPosterUrl(shipId, 'hero') || (HELP_HULLS.has(shipId) ? `${HELP_HULL_ROOT}${shipId}.hero.webp` : null);
+}
+// The asteroid types, rendered from the game's own rock bodies in their belt palette
+// (tools/art/render_rock_type.py).
+const ROCK_ROOT = new URL('../../../assets/ui/generated/help/rocks/', import.meta.url).href;
+export function rockArt(typeId) {
+  const k = String(typeId || '').replace(/^ast_/, '').replace(/_rock$|_cloud$/, '').replace('rare_', '');
+  return k ? `${ROCK_ROOT}rock_${k}.webp` : null;
+}
 const BONE = '236 230 216';
 const HOT = '248 244 234';
 const ICE = '143 203 255';
@@ -51,35 +66,42 @@ html.sf-reduce-motion .orr-hi-svg .orr-hi__pulse, html.sf-reduce-motion .orr-hi-
 /* ---------------------------------------------------------------- LOOP ORRERY */
 .orr-hloop { position:relative; width:100%; height:100%; min-height:300px; isolation:isolate; }
 .orr-hloop__pool { position:absolute; border-radius:50%; pointer-events:none; z-index:-1;
-  background:radial-gradient(closest-side, rgb(5 7 10 / .82), rgb(5 7 10 / .6) 60%, rgb(5 7 10 / 0)); }
-.orr-hloop__body { all:unset; box-sizing:border-box; position:absolute; left:0; top:0; z-index:3; width:34px; height:34px; margin:-17px 0 0 -17px; border-radius:50%; cursor:pointer;
-  display:flex; align-items:center; justify-content:center; }
-.orr-hloop__num { ${LABEL} font-size:clamp(12px, .56vw, 14px); letter-spacing:.06em; color:rgb(${HOT}); position:relative; z-index:1; font-variant-numeric:tabular-nums; }
-.orr-hloop__body::before { content:""; position:absolute; inset:0; border-radius:50%; background:rgb(5 7 10 / .92); box-shadow:inset 0 0 0 2px rgb(${BONE} / .66); transition:box-shadow .16s linear, background .16s linear; }
-.orr-hloop__body:hover::before { box-shadow:inset 0 0 0 2px rgb(${HOT}); }
+  background:radial-gradient(closest-side, rgb(5 7 10 / .84), rgb(5 7 10 / .62) 60%, rgb(5 7 10 / 0)); }
+.orr-hloop__body { all:unset; box-sizing:border-box; position:absolute; left:0; top:0; z-index:3; width:var(--chip, 46px); height:var(--chip, 46px);
+  margin:calc(var(--chip, 46px) / -2) 0 0 calc(var(--chip, 46px) / -2); border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; color:rgb(${HOT}); }
+.orr-hloop__body::before { content:""; position:absolute; inset:0; border-radius:50%; background:rgb(${BONE} / .12); box-shadow:inset 0 0 0 2px rgb(${BONE} / .72), 0 0 0 5px rgb(5 7 10 / .9);
+  transition:box-shadow .16s linear, background .16s linear; }
+.orr-hloop__glyph { position:relative; z-index:1; width:70%; height:70%; display:block; }
+.orr-hloop__glyph svg { width:100%; height:100%; display:block; }
+.orr-hloop__body:hover::before { box-shadow:inset 0 0 0 2px rgb(255 255 255), 0 0 0 5px rgb(5 7 10 / .9); background:rgb(${BONE} / .2); }
 .orr-hloop__body:focus-visible { outline:none; }
-.orr-hloop__body:focus-visible::before { box-shadow:inset 0 0 0 3px rgb(255 255 255), 0 0 12px rgb(255 250 236 / .5); }
-.orr-hloop__body[aria-selected="true"]::before { background:rgb(${HOT}); box-shadow:0 0 16px rgb(255 244 222 / .5); }
-.orr-hloop__body[aria-selected="true"] .orr-hloop__num { color:#12100c; }
-.orr-hloop__name { position:absolute; ${LABEL} font-size:clamp(12px, .64vw, 16px); letter-spacing:.14em; line-height:1.25; color:rgb(${BONE} / .8); white-space:nowrap; pointer-events:none;
-  text-shadow:0 0 8px rgb(4 6 9 / .95); transition:color .16s linear; }
-.orr-hloop__body:is(:hover, :focus-visible) .orr-hloop__name { color:rgb(255 255 255); }
-.orr-hloop__body[aria-selected="true"] .orr-hloop__name { color:rgb(255 255 255); }
-.orr-hloop__centre { position:absolute; z-index:2; transform:translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; text-align:center; }
-.orr-hloop__big { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250; font-weight:250; line-height:.86;
-  font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.02em; color:var(--dp-phos, #dfeeff); }
-.orr-hloop__of { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.3em; color:rgb(${BONE} / .72); }
+.orr-hloop__body:focus-visible::before { box-shadow:inset 0 0 0 3px rgb(255 255 255), 0 0 0 5px rgb(5 7 10 / .9), 0 0 14px rgb(255 250 236 / .5); }
+.orr-hloop__body[aria-selected="true"]::before { background:rgb(${HOT}); box-shadow:0 0 0 5px rgb(5 7 10 / .9), 0 0 18px rgb(255 244 222 / .5); }
+.orr-hloop__body[aria-selected="true"] { color:#15120d; }
+.orr-hloop__name { position:absolute; left:0; top:0; ${LABEL} font-size:clamp(12px, .66vw, 16px); letter-spacing:.14em; line-height:1.25; color:rgb(${BONE} / .82); white-space:nowrap; pointer-events:none;
+  text-shadow:0 0 8px rgb(4 6 9 / .95); transition:color .16s linear, opacity .16s linear; }
+.orr-hloop__name.is-hot { color:rgb(255 255 255); }
+.orr-hloop__hub { position:absolute; z-index:2; transform:translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; gap:10px; pointer-events:none; text-align:center; color:rgb(${HOT}); }
+.orr-hloop__hubglyph { display:block; filter:drop-shadow(0 0 16px rgb(255 244 222 / .32)); }
+.orr-hloop__hubglyph svg { width:100%; height:100%; display:block; }
+.orr-hloop__of { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.3em; color:rgb(${BONE} / .76); }
 .orr-hloop__read { position:absolute; z-index:2; display:flex; flex-direction:column; gap:0; }
 .orr-hloop__read::before { content:""; position:absolute; z-index:-1; left:-40px; right:-60px; top:-30px; bottom:-30px; pointer-events:none;
   background:radial-gradient(closest-side, rgb(5 7 10 / .7), rgb(5 7 10 / .4) 60%, rgb(5 7 10 / 0)); }
-.orr-hloop__kicker { margin:0 0 8px; ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.26em; color:rgb(${BONE} / .72); }
-.orr-hloop__title { margin:0 0 18px; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800;
+.orr-hloop__kicker { margin:0 0 8px; ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.26em; color:rgb(${BONE} / .76); }
+.orr-hloop__title { margin:0 0 16px; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800;
   font-size:clamp(24px, 2vw, 40px); line-height:1; letter-spacing:.02em; text-transform:uppercase; color:rgb(${HOT}); }
 .orr-hloop__steps { list-style:none; margin:0; padding:0; position:relative; }
-.orr-hloop__step { position:relative; display:flex; align-items:baseline; gap:14px; padding:9px 0 9px 40px; ${BODY} font-size:clamp(15px, .8vw, 19px); line-height:1.35; color:rgb(${HOT}); }
-.orr-hloop__step b { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.12em; color:rgb(${BONE} / .76); font-variant-numeric:tabular-nums; flex:none; width:22px; }
+.orr-hloop__step { position:relative; display:flex; align-items:center; gap:14px; padding:9px 0 9px 40px; ${BODY} font-size:clamp(15px, .8vw, 19px); line-height:1.35; color:rgb(${HOT}); }
+.orr-hloop__step > b { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.12em; color:rgb(${BONE} / .78); font-variant-numeric:tabular-nums; flex:none; width:22px; }
+.orr-hloop__step > span { display:inline-flex; flex-wrap:wrap; align-items:baseline; gap:0 .35em; }
+.orr-hloop__step .orr-hkey { font-size:clamp(15px, .8vw, 19px); padding-bottom:6px; }
 .orr-hloop__why { margin:22px 0 0; max-width:520px; ${BODY} font-size:clamp(14px, .76vw, 18px); line-height:1.5; color:rgb(${BONE} / .86); }
-.orr-hloop__why::before { content:"Why it pays"; display:block; margin:0 0 6px; ${LABEL} font-size:12px; letter-spacing:.24em; color:rgb(${BONE} / .72); }
+.orr-hloop__why::before { content:"Why it pays"; display:block; margin:0 0 6px; ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.24em; color:rgb(${BONE} / .76); }
+.orr-hloop__orbit-pulse { fill:none; stroke:rgb(236 247 255); stroke-width:3px; stroke-linecap:round; stroke-dasharray:.05 .95; animation:orr-hloop-orbit 7s linear infinite; }
+.orr-hloop__orbit-pulse-bloom { fill:none; stroke:rgb(${ICE} / .42); stroke-width:12px; stroke-linecap:round; stroke-dasharray:.07 .93; animation:orr-hloop-orbit 7s linear infinite; }
+@keyframes orr-hloop-orbit { from { stroke-dashoffset:1; } to { stroke-dashoffset:0; } }
+html.sf-reduce-motion .orr-hloop__orbit-pulse, html.sf-reduce-motion .orr-hloop__orbit-pulse-bloom { display:none; }
 .orr-hloop.is-off > * { display:none; }
 
 /* ---------------------------------------------------------------- HULL DIAL */
@@ -95,44 +117,59 @@ html.sf-reduce-motion .orr-hi-svg .orr-hi__pulse, html.sf-reduce-motion .orr-hi-
 .orr-hdial__g { position:absolute; z-index:2; display:flex; flex-direction:column; gap:3px; pointer-events:none; white-space:nowrap; }
 .orr-hdial__g.is-left { align-items:flex-end; text-align:right; }
 .orr-hdial__g-name { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.22em; color:rgb(${BONE} / .74); }
-.orr-hdial__g-val { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 320; font-weight:320; font-size:clamp(24px, 1.5vw, 34px);
+.orr-hdial__g-val { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250; font-weight:250; font-size:clamp(30px, 2.1vw, 48px);
   line-height:1; letter-spacing:-.01em; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
 .orr-hdial__g-val small { font-size:.5em; margin-left:4px; ${LABEL} letter-spacing:.14em; color:rgb(${BONE} / .76); }
 .orr-hdial.is-off > * { display:none; }
 
-/* ---------------------------------------------------------------- PRICE SCALE */
-.orr-hscale { position:relative; width:100%; height:clamp(104px, 12vh, 150px); cursor:ew-resize; outline:none; touch-action:none; isolation:isolate; }
-.orr-hscale::before { content:""; position:absolute; z-index:-1; left:-24px; right:-24px; top:-10px; bottom:-10px; pointer-events:none;
-  background:radial-gradient(60% 70% at 50% 60%, rgb(5 7 10 / .66), rgb(5 7 10 / 0)); }
-.orr-hscale:focus-visible .orr-hi__edge { stroke:rgb(255 255 255); }
-.orr-hscale__title { position:absolute; left:0; top:0; ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.26em; color:rgb(${BONE} / .76); pointer-events:none; }
-.orr-hscale__read { position:absolute; top:0; transform:translateX(-50%); display:flex; align-items:flex-end; gap:10px; white-space:nowrap; pointer-events:none; transition:left .34s cubic-bezier(.34, 1.36, .64, 1); }
-.orr-hscale__read b { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 320; font-weight:320; font-size:clamp(26px, 1.7vw, 38px); line-height:1; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
-.orr-hscale__read > span { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.2em; color:rgb(${HOT}); padding-bottom:3px; }
-.orr-hscale__ghost { position:absolute; bottom:0; transform:translateX(-50%); ${LABEL} font-size:12px; letter-spacing:.14em; color:rgb(255 255 255); white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .12s linear; }
-.orr-hscale.is-hover .orr-hscale__ghost { opacity:1; }
-.orr-hscale .orr-hi-svg text { font-family:var(--dp-face-label, "Archivo"); font-size:12px; font-weight:650; letter-spacing:.12em; fill:rgb(${BONE} / .76); }
-.orr-hscale .orr-hscale__good { stroke:rgb(${BONE} / .56); stroke-width:2px; }
-.orr-hscale .orr-hscale__good.is-out { stroke:rgb(${BONE} / .14); }
-.orr-hscale .orr-hscale__good.is-foe { stroke:rgb(255 122 102 / .8); }
-.orr-hscale .orr-hscale__cursor { stroke:rgb(255 255 255 / .8); stroke-width:1.5px; opacity:0; }
-.orr-hscale.is-hover .orr-hscale__cursor { opacity:1; }
-html.sf-reduce-motion .orr-hscale__read { transition:none; }
+/* ---------------------------------------------------------------- PRICE DIAL */
+.orr-hpdial { position:relative; width:100%; height:100%; min-height:300px; isolation:isolate; cursor:grab; outline:none; touch-action:none; }
+.orr-hpdial.is-turning { cursor:grabbing; }
+.orr-hpdial__pool { position:absolute; border-radius:50%; pointer-events:none; z-index:-1;
+  background:radial-gradient(closest-side, rgb(5 7 10 / .84), rgb(5 7 10 / .62) 60%, rgb(5 7 10 / 0)); }
+.orr-hpdial__hub { position:absolute; z-index:2; transform:translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; gap:6px; pointer-events:none; color:rgb(${HOT}); text-align:center; }
+.orr-hpdial__glyph { display:block; filter:drop-shadow(0 0 14px rgb(255 244 222 / .3)); }
+.orr-hpdial__glyph svg { width:100%; height:100%; display:block; stroke-width:1.05px; }
+.orr-hpdial__glyph svg :is(path, rect, circle, ellipse) { fill:rgb(${HOT} / .13); }
+.orr-hpdial__glyph.is-foe { color:#ff7a66; }
+.orr-hpdial__price { display:flex; align-items:flex-end; gap:8px; margin-top:6px; }
+.orr-hpdial__price b { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250; font-weight:250; line-height:.9;
+  letter-spacing:-.02em; color:var(--dp-phos, #dfeeff); font-variant-numeric:tabular-nums lining-nums; }
+.orr-hpdial__price small { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.2em; color:rgb(${BONE} / .8); padding-bottom:.5em; }
+.orr-hpdial__name { ${LABEL} font-size:clamp(12px, .64vw, 16px); letter-spacing:.2em; color:rgb(${HOT}); }
+.orr-hpdial__hint { position:absolute; transform:translateX(-50%); ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.24em; color:rgb(${BONE} / .74); white-space:nowrap; pointer-events:none; }
+.orr-hpdial .orr-hi-svg text.orr-hpdial__decade { font-family:var(--dp-face-label, "Archivo"); font-size:12px; font-weight:650; letter-spacing:.12em; fill:rgb(${BONE} / .82); }
+.orr-hpdial .orr-hpdial__good { stroke:rgb(5 7 10 / .92); stroke-width:2px; stroke-linecap:butt; }
+.orr-hpdial .orr-hpdial__good.is-foe { stroke:rgb(255 90 70 / .9); }
+.orr-hpdial .orr-hpdial__good.is-out { stroke:rgb(5 7 10 / .28); }
+.orr-hpdial .orr-hpdial__good.is-chosen { stroke:rgb(255 255 255); stroke-width:3px; }
+.orr-hpdial .orr-hpdial__index { stroke:rgb(${HOT}); stroke-width:2.5px; stroke-linecap:round; }
+.orr-hpdial .orr-hpdial__index-bloom { stroke:rgb(255 244 222 / .22); stroke-width:10px; stroke-linecap:round; }
+.orr-hpdial .orr-hpdial__index-bead { fill:rgb(${HOT}); }
+.orr-hpdial:focus-visible .orr-hpdial__index, .orr-hpdial.is-turning .orr-hpdial__index { stroke:rgb(255 255 255); stroke-width:3.5px; }
+.orr-hpdial.is-off > * { display:none; }
 
 /* ---------------------------------------------------------------- ORE MIX */
 .orr-hmix { position:relative; width:100%; height:100%; min-height:300px; isolation:isolate; }
 .orr-hmix__pool { position:absolute; border-radius:50%; pointer-events:none; z-index:-1;
   background:radial-gradient(closest-side, rgb(5 7 10 / .84), rgb(5 7 10 / .62) 60%, rgb(5 7 10 / 0)); }
 .orr-hmix__rock { all:unset; box-sizing:border-box; position:absolute; left:0; top:0; z-index:3; border-radius:50%; cursor:pointer; }
-.orr-hmix__rock::before { content:""; position:absolute; inset:0; border-radius:50%; background:rgb(5 7 10 / .9); box-shadow:inset 0 0 0 2px rgb(${BONE} / .62); transition:box-shadow .16s, background .16s; }
-.orr-hmix__rock:hover::before { box-shadow:inset 0 0 0 2px rgb(${HOT}); }
+.orr-hmix__rock::before { content:""; position:absolute; inset:-5px; border-radius:50%; background:rgb(5 7 10 / .9); box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .4); transition:box-shadow .16s, background .16s; }
+.orr-hmix__thumb { position:relative; display:block; width:118%; height:118%; margin:-9%; object-fit:contain; pointer-events:none; opacity:.78; transition:opacity .16s linear, transform .3s var(--dp-ease-over, ease-out); }
+.orr-hmix__rock:hover .orr-hmix__thumb { opacity:1; transform:scale(1.08); }
 .orr-hmix__rock:focus-visible { outline:none; }
 .orr-hmix__rock:focus-visible::before { box-shadow:inset 0 0 0 3px rgb(255 255 255), 0 0 12px rgb(255 250 236 / .5); }
-.orr-hmix__rock[aria-pressed="true"]::before { background:rgb(${HOT}); box-shadow:0 0 16px rgb(255 244 222 / .5); }
+.orr-hmix__rock[aria-pressed="true"]::before { box-shadow:inset 0 0 0 2.5px rgb(${HOT}), 0 0 16px rgb(255 244 222 / .4); }
+.orr-hmix__rock[aria-pressed="true"] .orr-hmix__thumb { opacity:1; }
+.orr-hmix__rockart { position:absolute; z-index:1; pointer-events:none; object-fit:contain; opacity:0; transition:opacity .4s var(--dp-ease-out, ease-out);
+  animation:orr-hmix-drift 900s linear infinite; filter:drop-shadow(0 18px 26px rgb(0 0 0 / .6)); }
+.orr-hmix__rockart.is-ready { opacity:1; }
+@keyframes orr-hmix-drift { to { transform:rotate(360deg); } }
+html.sf-reduce-motion .orr-hmix__rockart { animation:none; }
 .orr-hmix__rock.is-above .orr-hmix__rock-name { top:auto; bottom:calc(100% + 10px); }
 .orr-hmix__rock-name { position:absolute; left:50%; top:calc(100% + 10px); transform:translateX(-50%); ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.16em; color:rgb(${BONE} / .8); white-space:nowrap; pointer-events:none; text-shadow:0 0 8px rgb(4 6 9 / .95); }
 .orr-hmix__rock[aria-pressed="true"] .orr-hmix__rock-name, .orr-hmix__rock:is(:hover, :focus-visible) .orr-hmix__rock-name { color:rgb(255 255 255); }
-.orr-hmix__centre { position:absolute; z-index:2; transform:translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; gap:6px; pointer-events:none; text-align:center; }
+.orr-hmix__centre { position:absolute; z-index:2; transform:translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none; text-align:center; }
 .orr-hmix__centre > b { line-height:1.05; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800; font-size:clamp(16px, 1.1vw, 24px); letter-spacing:.06em; text-transform:uppercase; color:rgb(${HOT}); }
 .orr-hmix__centre > span { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.22em; color:rgb(${BONE} / .76); }
 .orr-hmix__lbl { all:unset; box-sizing:border-box; position:absolute; z-index:3; display:flex; flex-direction:column; gap:1px; white-space:nowrap; cursor:pointer; }
@@ -144,13 +181,6 @@ html.sf-reduce-motion .orr-hscale__read { transition:none; }
 .orr-hmix__lbl.is-chosen .orr-hmix__lbl-pc { color:rgb(${HOT}); }
 .orr-hmix.is-off > * { display:none; }
 
-/* ---------------------------------------------------------------- GOOD TOKEN */
-.orr-htoken { position:relative; width:100%; height:100%; min-height:220px; isolation:isolate; }
-.orr-htoken::before { content:""; position:absolute; z-index:-1; inset:0; pointer-events:none; background:radial-gradient(closest-side, rgb(5 7 10 / .8), rgb(5 7 10 / .5) 60%, rgb(5 7 10 / 0)); }
-.orr-htoken__glyph { position:absolute; color:rgb(${HOT}); filter:drop-shadow(0 0 14px rgb(255 244 222 / .35)); }
-.orr-htoken__glyph svg { width:100%; height:100%; display:block; stroke-width:.9px; }
-.orr-htoken__glyph.is-foe { color:#ff7a66; }
-.orr-htoken__word { position:absolute; transform:translate(-50%, -50%); ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.24em; color:rgb(${BONE} / .76); white-space:nowrap; pointer-events:none; }
 `;
 
 function injectStyle(doc) {
@@ -226,9 +256,46 @@ export function keyGlyph(label, { small = false } = {}) {
 // ================================================================================================
 // LOOP ORRERY
 
+// The six loops' pictograms, in the interface's icon hand (24 grid, round caps): the berth you dock at,
+// the trade that crosses it, the rock you mine, the wrench you refit with, the recovery arrow, the
+// reticle you track by.
+export const LOOP_GLYPHS = Object.freeze({
+  dock: '<circle cx="12" cy="8.6" r="5.4"/><path d="M9.4 8.6h5.2M12 14v2"/><path d="M12 17.4 14.8 22 12 21 9.2 22Z"/>',
+  trade: '<path d="M5 9h13.5l-3.5-3.5"/><path d="M19 15H5.5L9 18.5"/><circle cx="12" cy="12" r="1.4"/>',
+  mine: '<path d="m5 15.5 2.6-6.2 6-2.3 5 3.6-.8 6.2-6.3 2.4Z"/><path d="m13.6 7 4.6-4.4M9.5 12.5l3 2"/>',
+  refit: '<path d="M14.8 4.4a4.2 4.2 0 0 0-5 5.5L4.2 15.5l4.3 4.3 5.6-5.6a4.2 4.2 0 0 0 5.5-5l-2.8 2.8-3.1-.4-.4-3.1Z"/>',
+  recover: '<path d="M19 12a7 7 0 1 1-2.2-5.1"/><path d="M19.3 4.2v4.3H15"/><path d="M12 9.2v5.6M9.2 12h5.6"/>',
+  track: '<circle cx="12" cy="12" r="6.6"/><circle cx="12" cy="12" r="1.8"/><path d="M12 2.8v3.4M12 17.8v3.4M2.8 12h3.4M17.8 12h3.4"/>',
+});
+
+function loopGlyphSvg(key) {
+  const d = LOOP_GLYPHS[key] || LOOP_GLYPHS.track;
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
+}
+
+/** A step's words, with any key it names drawn as a key glyph ("E near a station", "Mission Log (J)"). */
+function stepNodes(doc, text) {
+  const out = [];
+  const src = String(text || '');
+  const lead = /^([A-Z0-9]{1,2}) (?=[a-z])/.exec(src);
+  let rest = src;
+  if (lead) { out.push(keyGlyph(lead[1], { small: true })); rest = src.slice(lead[0].length); }
+  const parts = rest.split(/\(([A-Z0-9]{1,3})\)/);
+  parts.forEach((p, i) => {
+    if (i % 2) { out.push(keyGlyph(p, { small: true })); return; }
+    const t = p.trim();
+    if (t) out.push(doc.createTextNode(i === 0 && !lead ? t.charAt(0).toUpperCase() + t.slice(1) : t));
+  });
+  return out;
+}
+
 /**
+ * The six core loops ride a lit ring, each a chip carrying its pictogram; a pulse of light runs the
+ * ring clockwise, because the loops feed one another. Choosing one turns the ring (with mass) until
+ * that loop reaches the gate at the Hand; its pictogram stands in the hub, and its steps run out of
+ * the gate as stations on a beam, first step first.
  * @param {HTMLElement} host
- * @param {{ loops: {id:string,name:string,steps:string[],why:string}[], onPick: (index:number) => void }} o
+ * @param {{ loops: {id:string,name:string,glyph:string,steps:string[],why:string}[], onPick: (index:number) => void }} o
  */
 export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
   const doc = canDraw(host);
@@ -243,10 +310,10 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
   const pool = doc.createElement('i'); pool.className = 'orr-hloop__pool';
   const under = svg('svg', { class: 'orr-hi-svg', 'aria-hidden': 'true', focusable: 'false' });
   const over = svg('svg', { class: 'orr-hi-svg', 'aria-hidden': 'true', focusable: 'false', style: 'z-index:2' });
-  const centre = doc.createElement('div'); centre.className = 'orr-hloop__centre';
-  const big = doc.createElement('b'); big.className = 'orr-hloop__big';
+  const hub = doc.createElement('div'); hub.className = 'orr-hloop__hub';
+  const hubGlyph = doc.createElement('span'); hubGlyph.className = 'orr-hloop__hubglyph';
   const of = doc.createElement('span'); of.className = 'orr-hloop__of';
-  centre.append(big, of);
+  hub.append(hubGlyph, of);
   const read = doc.createElement('div'); read.className = 'orr-hloop__read'; read.setAttribute('aria-live', 'polite');
   const kicker = doc.createElement('p'); kicker.className = 'orr-hloop__kicker';
   const title = doc.createElement('h2'); title.className = 'orr-hloop__title';
@@ -257,6 +324,7 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
   group.setAttribute('role', 'listbox');
   group.setAttribute('aria-label', 'Core loops');
   group.style.cssText = 'position:absolute; inset:0; pointer-events:none;';
+  const names = [];
   const bodies = loops.map((loop, i) => {
     const b = doc.createElement('button');
     b.type = 'button';
@@ -265,11 +333,12 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
     b.dataset.loop = String(i);
     b.dataset.action = 'help-loop:' + i;
     b.style.pointerEvents = 'auto';
-    const num = doc.createElement('span'); num.className = 'orr-hloop__num'; num.textContent = String(i + 1).padStart(2, '0');
-    const name = doc.createElement('span'); name.className = 'orr-hloop__name'; name.textContent = loop.name;
-    b.append(num, name);
+    const glyph = doc.createElement('span'); glyph.className = 'orr-hloop__glyph'; glyph.innerHTML = loopGlyphSvg(loop.glyph);
+    b.appendChild(glyph);
     b.setAttribute('aria-label', `${i + 1}. ${loop.name}`);
     b.addEventListener('click', () => onPick(i));
+    b.addEventListener('pointerenter', () => names[i].classList.add('is-hot'));
+    b.addEventListener('pointerleave', () => names[i].classList.toggle('is-hot', i === selected));
     b.addEventListener('keydown', (ev) => {
       const dir = ev.key === 'ArrowDown' || ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowUp' || ev.key === 'ArrowLeft' ? -1 : 0;
       if (!dir) return;
@@ -280,101 +349,96 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
       if (nb && typeof nb.focus === 'function') nb.focus();
     });
     group.appendChild(b);
+    const name = doc.createElement('span'); name.className = 'orr-hloop__name'; name.textContent = loop.name; name.setAttribute('aria-hidden', 'true');
+    names.push(name);
     return b;
   });
-  host.append(pool, under, over, centre, read, group);
+  const nameLayer = doc.createElement('div');
+  nameLayer.style.cssText = 'position:absolute; inset:0; pointer-events:none; z-index:3;';
+  nameLayer.append(...names);
+  host.append(pool, under, over, hub, read, group, nameLayer);
 
   let selected = 0;
   let geo = null;
   let arrived = false;
-  let handG = null;
   let beamG = null;
+  let tickG = null;
   let wheelAt = 0;
   const spring = createSpring({ value: 0, preset: 'swing', onUpdate: (v) => paintBodies(v) });
 
   function paintBodies(v) {
     if (!geo) return;
-    const { cx, cy, R, small } = geo;
+    const { cx, cy, R, chip } = geo;
     bodies.forEach((b, i) => {
       const deg = GATE + (i - v) * STEP;
       const [x, y] = polar(cx, cy, R, deg);
       b.style.left = `${f(x)}px`;
       b.style.top = `${f(y)}px`;
-      const name = b.querySelector('.orr-hloop__name');
-      const a = ((deg % 360) + 360) % 360;
-      // every name reads away from the reading on the right: bodies on the west half name themselves
-      // to their left; the two on the east half name themselves above (upper) or below (lower), their
-      // words running left over the ring; the body at the gate is named in the reading instead
-      const west = a > 182 && a < 358;
-      const upper = a <= 90 || a >= 358;
-      const off = small ? 20 : 24;
-      name.style.textAlign = 'right';
-      if (west) {
-        name.style.left = 'auto'; name.style.right = '44px'; name.style.top = '50%'; name.style.transform = 'translateY(-50%)';
-      } else {
-        // clear of the ring: above its crown for the upper body, below its keel for the lower one
-        const crown = cy - R - geo.bandW / 2 - 10;
-        const keel = cy + R + geo.bandW / 2 + 10;
-        const topPx = upper ? Math.min(y - off + 6, crown) - (y - 17) : Math.max(y + off - 6, keel) - (y - 17);
-        name.style.left = 'auto'; name.style.right = '17px'; name.style.top = `${f(topPx)}px`;
-        name.style.transform = upper ? 'translateY(-100%)' : 'none';
-      }
-      const nearGate = Math.abs(((a - GATE + 540) % 360) - 180) < 38;
-      name.style.opacity = nearGate ? '0' : '1';
+      // the name stands radially outside its own chip, anchored on the side facing the chip
+      const [lx, ly] = polar(cx, cy, R + chip / 2 + 12, deg);
+      const a = (deg * Math.PI) / 180;
+      const tx = -50 + Math.sin(a) * 50;
+      const ty = -50 - Math.cos(a) * 50;
+      const name = names[i];
+      name.style.transform = `translate(${f(lx)}px, ${f(ly)}px) translate(${f(tx)}%, ${f(ty)}%)`;
+      name.style.textAlign = Math.sin(a) > 0.3 ? 'left' : Math.sin(a) < -0.3 ? 'right' : 'center';
+      // the loop at the gate is named in the reading, so its ring name rests
+      const off = ((((deg - GATE) % 360) + 540) % 360) - 180;
+      name.style.opacity = Math.abs(off) < 34 ? '0' : '1';
     });
+    if (tickG) tickG.setAttribute('transform', `rotate(${f(-v * STEP)} ${f(cx)} ${f(cy)})`);
   }
 
   function paintRead(swing) {
     const loop = loops[selected];
     kicker.textContent = `Loop ${String(selected + 1).padStart(2, '0')} of ${String(n).padStart(2, '0')}`;
     title.textContent = loop.name;
-    big.textContent = String(selected + 1).padStart(2, '0');
-    of.textContent = `of ${String(n).padStart(2, '0')} loops`;
+    hubGlyph.innerHTML = loopGlyphSvg(loop.glyph);
+    of.textContent = `Loop ${String(selected + 1).padStart(2, '0')} · ${String(n).padStart(2, '0')}`;
     steps.textContent = '';
     loop.steps.forEach((s, i) => {
       const li = doc.createElement('li');
       li.className = 'orr-hloop__step';
       const num = doc.createElement('b'); num.textContent = String(i + 1).padStart(2, '0');
-      const t = doc.createElement('span'); t.textContent = s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+      const t = doc.createElement('span');
+      t.append(...stepNodes(doc, s));
       li.append(num, t);
       rise(li, 80 + i * 70, swing && !reducedMotion());
       steps.appendChild(li);
     });
     why.textContent = loop.why;
     bodies.forEach((b, i) => { b.setAttribute('aria-selected', String(i === selected)); b.tabIndex = i === selected ? 0 : -1; });
+    names.forEach((nm, i) => nm.classList.toggle('is-hot', i === selected));
   }
 
-  // the steps hang off a beam that leaves the ring at the gate: the list is centred on the gate's
-  // height, a trunk runs from the gate to the beam, and pulses run out of the gate and down the steps
+  // The steps run out of the gate: the first step stands level with it, a trunk carries the light
+  // from the gate to the beam, and one pulse runs the whole way, gate first, last step last.
   function paintBeam() {
     if (!geo || !beamG) return;
     beamG.textContent = '';
-    const { cx, cy, R } = geo;
+    const { cx, cy, R, chip } = geo;
     const items = [...steps.children];
     if (!items.length) return;
-    // centre the steps on the gate
-    const stepsMid = steps.offsetTop + steps.offsetHeight / 2;
-    read.style.top = `${f(Math.max(0, Math.min(geo.H - read.offsetHeight, cy - stepsMid)))}px`;
+    const first = items[0];
+    const firstMid = steps.offsetTop + first.offsetTop + first.offsetHeight / 2;
+    read.style.top = `${f(Math.max(0, Math.min(geo.H - read.offsetHeight, cy - firstMid)))}px`;
     const hostBox = host.getBoundingClientRect();
     const ys = items.map((li) => { const r = li.getBoundingClientRect(); return r.top - hostBox.top + r.height / 2; });
     const xs = read.getBoundingClientRect().left - hostBox.left + 14;
-    const [gx, gy] = polar(cx, cy, R + geo.bandW / 2 + 4, GATE);
+    const [gx, gy] = polar(cx, cy, R + chip / 2 + 4, GATE);
     const top = ys[0];
     const bottom = ys[ys.length - 1];
-    const trunk = `M ${f(gx)} ${f(gy)} L ${f(xs)} ${f(gy)}`;
-    const spine = `M ${f(xs)} ${f(top)} L ${f(xs)} ${f(bottom)}`;
-    for (const d of [trunk, spine]) beamG.appendChild(svg('path', { d, class: 'orr-hi__beam-band' }));
-    for (const d of [trunk, spine]) beamG.appendChild(svg('path', { d, class: 'orr-hi__beam' }));
-    beamG.appendChild(svg('path', { d: trunk, class: 'orr-hi__pulse-bloom', pathLength: 1 }));
-    beamG.appendChild(svg('path', { d: trunk, class: 'orr-hi__pulse', pathLength: 1 }));
-    const sp = svg('path', { d: spine, class: 'orr-hi__pulse-bloom', pathLength: 1, style: 'animation-delay:.9s' });
-    const sc = svg('path', { d: spine, class: 'orr-hi__pulse', pathLength: 1, style: 'animation-delay:.9s' });
-    beamG.append(sp, sc);
+    const run = Math.abs(top - gy) < 2
+      ? `M ${f(gx)} ${f(gy)} L ${f(xs)} ${f(gy)} L ${f(xs)} ${f(bottom)}`
+      : `M ${f(gx)} ${f(gy)} L ${f(xs - 14)} ${f(gy)} Q ${f(xs)} ${f(gy)} ${f(xs)} ${f(gy + Math.sign(top - gy) * 14)} L ${f(xs)} ${f(top)} L ${f(xs)} ${f(bottom)}`;
+    beamG.appendChild(svg('path', { d: run, class: 'orr-hi__beam-band' }));
+    beamG.appendChild(svg('path', { d: run, class: 'orr-hi__beam' }));
+    beamG.appendChild(svg('path', { d: run, class: 'orr-hi__pulse-bloom', pathLength: 1 }));
+    beamG.appendChild(svg('path', { d: run, class: 'orr-hi__pulse', pathLength: 1 }));
     ys.forEach((y) => {
       beamG.appendChild(svg('circle', { cx: f(xs), cy: f(y), r: 7.5, fill: 'rgb(5 7 10)', stroke: `rgb(${BONE} / .82)`, 'stroke-width': 2 }));
       beamG.appendChild(svg('circle', { cx: f(xs), cy: f(y), r: 2.8, fill: `rgb(${HOT})` }));
     });
-    beamG.appendChild(svg('circle', { cx: f(xs), cy: f(gy), r: 4, fill: 'rgb(236 247 255)' }));
   }
 
   function layout() {
@@ -384,12 +448,17 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
     host.classList.remove('is-off');
     const small = W < 900 || H < 480;
     const bandW = small ? 12 : 14;
-    const nameRoom = small ? 140 : 190;
-    // the reading needs its own column (about 360px) right of the gate
-    const R = Math.max(110, Math.min(H * 0.36, W * 0.21, (W - nameRoom - (small ? 70 : 110) - 380) / 2));
-    const cx = nameRoom + R;
+    const chip = small ? 38 : 46;
+    // the widest name on the ring decides how much room the ring leaves for its words
+    let nameW = 0;
+    for (const nm of names) nameW = Math.max(nameW, nm.offsetWidth || 0);
+    if (!nameW) nameW = small ? 170 : 220;
+    const nameRoom = Math.min(nameW + 16, small ? 180 : 250);
+    const R = Math.max(110, Math.min(H * 0.36, W * 0.21, (W - nameRoom - 460) / 2));
+    const cx = nameRoom + R + chip / 2;
     const cy = H / 2;
-    geo = { W, H, R, cx, cy, bandW, small };
+    geo = { W, H, R, cx, cy, bandW, small, chip };
+    host.style.setProperty('--chip', `${chip}px`);
     under.setAttribute('viewBox', `0 0 ${W} ${H}`);
     over.setAttribute('viewBox', `0 0 ${W} ${H}`);
     under.textContent = '';
@@ -399,30 +468,47 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
     Object.assign(pool.style, { left: `${f(cx - pd / 2)}px`, top: `${f(cy - pd / 2)}px`, width: `${f(pd)}px`, height: `${f(pd)}px` });
     const g = svg('g', {});
     bandRing(g, cx, cy, R, bandW, { a: 0.3, notches: 72 });
-    // the inner scale, drifting; the gate's major tick
+    // the loops feed one another: a pulse runs the ring clockwise
+    const orbit = arcD(cx, cy, R, -90, 270);
+    g.appendChild(svg('path', { d: orbit, class: 'orr-hloop__orbit-pulse-bloom', pathLength: 1 }));
+    g.appendChild(svg('path', { d: orbit, class: 'orr-hloop__orbit-pulse', pathLength: 1 }));
+    // the hub's ring: a band with body, a tick under every loop (it turns with the ring)
+    const hubR = R * 0.56;
+    g.appendChild(svg('path', { d: arcD(cx, cy, hubR, 0, 360), class: 'orr-hi__band', style: 'stroke-width:7px; --orr-band-a:.15' }));
+    g.appendChild(svg('path', { d: arcD(cx, cy, hubR, 0, 360), class: 'orr-hi__edge', style: 'stroke:rgb(236 230 216 / .5)' }));
+    tickG = svg('g', {});
+    const tickParts = [];
+    for (let i = 0; i < n; i += 1) {
+      const [t0x, t0y] = polar(cx, cy, hubR - 6, GATE + i * STEP);
+      const [t1x, t1y] = polar(cx, cy, hubR + 8, GATE + i * STEP);
+      tickParts.push(`M ${f(t0x)} ${f(t0y)} L ${f(t1x)} ${f(t1y)}`);
+    }
+    tickG.appendChild(svg('path', { d: tickParts.join(' '), class: 'orr-hi__tick orr-hi__tick--major' }));
+    g.appendChild(tickG);
     const drift = svg('g', { class: 'orr-drift', style: `transform-origin:${f(cx)}px ${f(cy)}px; --orr-drift-s:600s` });
-    drift.appendChild(svg('path', { d: ticksD(cx, cy, R - bandW / 2 - 8, 90, { len: 3, major: 15, majorLen: 9, inward: true }), class: 'orr-hi__tick', style: 'stroke:rgb(236 230 216 / .34)' }));
+    drift.appendChild(svg('path', { d: ticksD(cx, cy, R + bandW / 2 + 12, 120, { len: 3, major: 10, majorLen: 7, inward: false }), class: 'orr-hi__tick', style: 'stroke:rgb(236 230 216 / .3)' }));
     g.appendChild(drift);
-    g.appendChild(svg('path', { d: arcD(cx, cy, R * 0.54, 0, 360), class: 'orr-hi__edge', style: 'stroke:rgb(236 230 216 / .3)' }));
     under.appendChild(rise(g, 0, arriveNow));
-    // the Hand: from the centre's ring to the gate, the screen's one amber
-    handG = svg('g', {});
-    const [h0x, h0y] = polar(cx, cy, R * 0.54 + 6, GATE);
-    const [h1x, h1y] = polar(cx, cy, R - bandW / 2 - 22, GATE);
-    handG.appendChild(svg('path', { d: `M ${f(h0x)} ${f(h0y)} L ${f(h1x)} ${f(h1y)}`, class: 'orr-hi__hand-bloom' }));
-    handG.appendChild(svg('path', { d: `M ${f(h0x)} ${f(h0y)} L ${f(h1x)} ${f(h1y)}`, class: 'orr-hi__hand' }));
-    handG.appendChild(svg('path', { d: `M ${f(h1x - 9)} ${f(h1y - 7)} L ${f(h1x + 2)} ${f(h1y)} L ${f(h1x - 9)} ${f(h1y + 7)}`, class: 'orr-hi__hand' }));
-    handG.appendChild(svg('circle', { cx: f(h0x), cy: f(h0y), r: 3.6, class: 'orr-hi__hand-bead' }));
-    over.appendChild(rise(handG, 360, arriveNow));
+    // the Hand: it pivots on the hub's ring and reaches the gate -- the screen's one amber
+    const hg = svg('g', {});
+    const [h0x, h0y] = polar(cx, cy, hubR, GATE);
+    const [h1x, h1y] = polar(cx, cy, R - chip / 2 - 8, GATE);
+    hg.appendChild(svg('path', { d: `M ${f(h0x)} ${f(h0y)} L ${f(h1x)} ${f(h1y)}`, class: 'orr-hi__hand-bloom', style: 'stroke-width:9px' }));
+    hg.appendChild(svg('path', { d: `M ${f(h0x)} ${f(h0y)} L ${f(h1x)} ${f(h1y)}`, class: 'orr-hi__hand', style: 'stroke-width:3px' }));
+    hg.appendChild(svg('circle', { cx: f(h0x), cy: f(h0y), r: 6, class: 'orr-hi__hand-bead' }));
+    over.appendChild(rise(hg, 360, arriveNow));
     beamG = svg('g', {});
     over.appendChild(beamG);
-    // the centre numeral
-    centre.style.left = `${f(cx)}px`;
-    centre.style.top = `${f(cy)}px`;
-    big.style.fontSize = `${f(Math.max(48, R * 0.4))}px`;
-    // the reading stands right of the gate
-    const readLeft = cx + R + (small ? 70 : 110);
-    Object.assign(read.style, { left: `${f(readLeft)}px`, top: `${f(Math.max(0, cy - R))}px`, width: `${f(Math.max(240, Math.min(620, W - readLeft - 10)))}px` });
+    // the hub holds the chosen loop's pictogram
+    const gs = Math.round(hubR * 1.18);
+    hub.style.left = `${f(cx)}px`;
+    hub.style.top = `${f(cy + 10)}px`;
+    hubGlyph.style.width = `${gs}px`;
+    hubGlyph.style.height = `${gs}px`;
+    // the reading stands right of the gate and right of the names on the ring's east side
+    const eastReach = cx + (R + chip / 2 + 12) * Math.sin(Math.PI / 6) + nameW * 0.75 + 24;
+    const readLeft = Math.max(cx + R + chip / 2 + (small ? 60 : 90), eastReach);
+    Object.assign(read.style, { left: `${f(readLeft)}px`, top: `${f(Math.max(0, cy - R))}px`, width: `${f(Math.max(260, Math.min(620, W - readLeft - 10)))}px` });
     arrived = true;
     paintBodies(spring.value);
     paintBeam();
@@ -442,7 +528,6 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
   return {
     set({ selected: next = 0, swing = false } = {}) {
       const target = Math.max(0, Math.min(n - 1, Number(next) || 0));
-      // turn the short way round
       let t = target;
       const cur = spring.value;
       while (t - cur > n / 2) t -= n;
@@ -548,7 +633,7 @@ export function createHullDial(host, { maxima = {} } = {}) {
     if (!ship || W < 300 || H < 260) { host.classList.add('is-off'); geo = null; return; }
     host.classList.remove('is-off');
     const small = W < 620 || H < 460;
-    const R = Math.max(100, Math.min(H * 0.36, (W - (small ? 200 : 236)) / 2));
+    const R = Math.max(100, Math.min(H * 0.36, (W - (small ? 230 : 330)) / 2));
     const cx = W / 2;
     const cy = H / 2;
     const bandW = small ? 12 : 16;
@@ -563,7 +648,6 @@ export function createHullDial(host, { maxima = {} } = {}) {
     const g = svg('g', {});
     // the gauge tracks: five bands with ticks cut through, a quiet inner ring
     GAUGES.forEach((_, i) => bandRing(g, cx, cy, R, bandW, { a: 0.3, notches: 40, from: startOf(i), to: startOf(i) + span }));
-    g.appendChild(svg('path', { d: arcD(cx, cy, R - bandW - 14, 0, 360), class: 'orr-hi__edge', style: 'stroke:rgb(236 230 216 / .26)' }));
     const drift = svg('g', { class: 'orr-drift orr-drift--rev', style: `transform-origin:${f(cx)}px ${f(cy)}px; --orr-drift-s:720s` });
     drift.appendChild(svg('path', { d: ticksD(cx, cy, R + bandW / 2 + 16, 120, { len: 3, major: 10, majorLen: 8, inward: true }), class: 'orr-hi__tick', style: 'stroke:rgb(236 230 216 / .3)' }));
     g.appendChild(drift);
@@ -595,9 +679,9 @@ export function createHullDial(host, { maxima = {} } = {}) {
       rise(lab, 200 + i * 60, arriveNow);
     });
     // the render: the hero three-quarter where it exists, else the class numeral
-    const url = hullPosterUrl(ship.id, 'hero');
+    const url = helpHullArt(ship.id);
     if (url) {
-      const aw = R * 2.1;
+      const aw = R * 2.75;
       const ah = aw * 1350 / 2400;
       Object.assign(art.style, { left: `${f(cx - aw / 2)}px`, top: `${f(cy - ah / 2)}px`, width: `${f(aw)}px`, height: `${f(ah)}px`, display: 'block' });
       tier.style.display = 'none';
@@ -606,7 +690,7 @@ export function createHullDial(host, { maxima = {} } = {}) {
       tier.style.display = 'flex';
       tier.style.left = `${f(cx)}px`;
       tier.style.top = `${f(cy)}px`;
-      tierNum.style.fontSize = `${f(Math.max(56, R * 0.55))}px`;
+      tierNum.style.fontSize = `${f(Math.max(64, R * 0.8))}px`;
     }
     arrived = true;
     springs.forEach((sp, i) => paintFill(i, sp.value));
@@ -617,7 +701,7 @@ export function createHullDial(host, { maxima = {} } = {}) {
     set({ ship: next = null, swing = false } = {}) {
       ship = next;
       if (!ship) { obs.schedule(); return; }
-      const url = hullPosterUrl(ship.id, 'hero');
+      const url = helpHullArt(ship.id);
       if (url && art.getAttribute('src') !== url) { art.classList.remove('is-ready'); art.src = url; }
       tierNum.textContent = `T${ship.tier}`;
       tierRole.textContent = String(ship.role || '').replace(/_/g, ' ');
@@ -640,188 +724,269 @@ export function createHullDial(host, { maxima = {} } = {}) {
 }
 
 // ================================================================================================
-// PRICE SCALE
+// PRICE DIAL
 
 const P_MIN = 5;
 const P_MAX = 20000;
+const DIAL_SPAN = 300; // degrees of ring the log scale runs round
 
-/** @param {HTMLElement} host @param {{ items: object[], onPick: (id:string) => void }} o */
-export function createPriceScale(host, { items = [], onPick = () => {} } = {}) {
+/** Where a price sits on the dial's scale, in degrees from the scale's start. */
+export function priceAngle(p) {
+  const t = (Math.log10(Math.max(P_MIN, Math.min(P_MAX, p))) - Math.log10(P_MIN)) / (Math.log10(P_MAX) - Math.log10(P_MIN));
+  return -DIAL_SPAN / 2 + t * DIAL_SPAN;
+}
+
+/**
+ * Every good on one logarithmic price scale bent round a dial. The dial turns (with mass) to bring
+ * the chosen good's price under a fixed bone index at the top, its swing band lit there; drag the
+ * ring to turn it and the nearest good under the index is chosen (arrow keys and the wheel step
+ * good by good). The hub holds the good's pictogram as a lit object over its price as a thin numeral.
+ * @param {HTMLElement} host
+ * @param {{ items: object[], glyph: (category:string) => string, onPick: (id:string) => void }} o
+ */
+export function createPriceDial(host, { items = [], glyph = () => '', onPick = () => {} } = {}) {
   const doc = canDraw(host);
   const inert = { set() {}, dispose() {} };
   if (!doc || !items.length) return inert;
   injectOrrery(doc);
   injectStyle(doc);
-  host.classList.add('orr-hscale');
+  host.classList.add('orr-hpdial', 'is-off');
   host.tabIndex = 0;
   host.setAttribute('role', 'slider');
-  host.setAttribute('aria-label', 'Price scale: scrub to choose a good');
-  host.dataset.action = 'help-scale';
-  const layer = svg('svg', { class: 'orr-hi-svg', 'aria-hidden': 'true', focusable: 'false' });
-  const title = doc.createElement('span'); title.className = 'orr-hscale__title'; title.textContent = 'Base price · scrub to choose';
-  const read = doc.createElement('div'); read.className = 'orr-hscale__read';
-  const readNum = doc.createElement('b'); const readName = doc.createElement('span');
-  read.append(readNum, readName);
-  const ghost = doc.createElement('div'); ghost.className = 'orr-hscale__ghost';
-  host.append(layer, title, read, ghost);
+  host.setAttribute('aria-label', 'Price dial: turn it to choose a good by its price');
+  host.dataset.action = 'help-price-dial';
+  const pool = doc.createElement('i'); pool.className = 'orr-hpdial__pool';
+  const under = svg('svg', { class: 'orr-hi-svg', 'aria-hidden': 'true', focusable: 'false' });
+  const over = svg('svg', { class: 'orr-hi-svg', 'aria-hidden': 'true', focusable: 'false', style: 'z-index:2' });
+  const hub = doc.createElement('div'); hub.className = 'orr-hpdial__hub';
+  const pict = doc.createElement('span'); pict.className = 'orr-hpdial__glyph'; pict.setAttribute('aria-hidden', 'true');
+  const priceRow = doc.createElement('span'); priceRow.className = 'orr-hpdial__price';
+  const num = doc.createElement('b');
+  const unit = doc.createElement('small'); unit.textContent = 'cr';
+  priceRow.append(num, unit);
+  const nameEl = doc.createElement('span'); nameEl.className = 'orr-hpdial__name';
+  hub.append(pict, priceRow, nameEl);
+  const hint = doc.createElement('span'); hint.className = 'orr-hpdial__hint'; hint.textContent = 'Drag the ring · base price';
+  host.append(pool, under, over, hub, hint);
 
   const byPrice = items.slice().sort((a, b) => a.basePrice - b.basePrice || a.name.localeCompare(b.name));
   let selectedId = byPrice[0].id;
   let filter = '';
   let geo = null;
-  let dragging = false;
+  let arrived = false;
+  let turnG = null;
   let goodEls = new Map();
-  let bandEl = null; let bandBloom = null; let beadEl = null; let cursor = null;
-
-  const xOf = (p) => {
-    if (!geo) return 0;
-    const t = (Math.log10(Math.max(P_MIN, p)) - Math.log10(P_MIN)) / (Math.log10(P_MAX) - Math.log10(P_MIN));
-    return geo.x0 + t * (geo.x1 - geo.x0);
-  };
+  let swingEls = null;
+  let drag = null;
+  let lastSwingFor = '';
+  const spring = createSpring({ value: 0, preset: 'swing', onUpdate: (v) => { if (turnG && geo) turnG.setAttribute('transform', `rotate(${f(v)} ${f(geo.cx)} ${f(geo.cy)})`); } });
   const visible = () => byPrice.filter((c) => !filter || (c.name + ' ' + (c.category || '')).toLowerCase().includes(filter));
+  const chosen = () => byPrice.find((c) => c.id === selectedId) || byPrice[0];
 
-  function paintChosen() {
+  function paintChosen(swing) {
     if (!geo) return;
-    const c = byPrice.find((x) => x.id === selectedId) || byPrice[0];
+    const c = chosen();
+    const { cx, cy, R, bandW } = geo;
+    // the swing band: the good's price plus and minus its volatility, lit on the ring
     const vol = Math.max(0.04, Number(c.volatility) || 0.1);
-    const xa = xOf(c.basePrice * (1 - vol));
-    const xb = xOf(c.basePrice * (1 + vol));
-    const x = xOf(c.basePrice);
-    const y = geo.y;
-    bandEl.setAttribute('d', `M ${f(xa)} ${f(y)} L ${f(xb)} ${f(y)}`);
-    bandBloom.setAttribute('d', `M ${f(xa)} ${f(y)} L ${f(xb)} ${f(y)}`);
-    beadEl.setAttribute('cx', f(x));
-    beadEl.setAttribute('cy', f(y));
-    rollTo(readNum, c.basePrice);
-    readName.textContent = `cr · ${c.name}`;
-    // the reading follows the bead, but never over the scale's own title
-    const half = (read.offsetWidth || 200) / 2;
-    const minX = (title.offsetWidth || 0) + half + 28;
-    read.style.left = `${f(Math.max(minX, Math.min(geo.W - half - 8, x)))}px`;
-    for (const [id, el] of goodEls) el.setAttribute('d', tickD(byPrice.find((q) => q.id === id), id === selectedId));
+    const a0 = priceAngle(c.basePrice * (1 - vol));
+    const a1 = priceAngle(c.basePrice * (1 + vol));
+    const d = arcD(cx, cy, R, a0, a1);
+    swingEls.bloom.setAttribute('d', d);
+    swingEls.lit.setAttribute('d', d);
+    for (const [id, el] of goodEls) el.classList.toggle('is-chosen', id === c.id);
+    pict.innerHTML = glyph(c.category);
+    pict.classList.toggle('is-foe', c.legality === 'contraband');
+    rollTo(num, c.basePrice);
+    nameEl.textContent = c.name;
     host.setAttribute('aria-valuetext', `${c.name}, ${c.basePrice} credits`);
     host.setAttribute('aria-valuenow', String(c.basePrice));
-  }
-  function tickD(c, chosen) {
-    const x = xOf(c.basePrice);
-    const len = chosen ? 22 : 12;
-    return `M ${f(x)} ${f(geo.y - 6)} L ${f(x)} ${f(geo.y - 6 - len)}`;
+    // turn the ring so the price stands under the index (the short way)
+    let t = -priceAngle(c.basePrice);
+    const cur = spring.value;
+    while (t - cur > 180) t -= 360;
+    while (t - cur < -180) t += 360;
+    if (!drag) spring.set(t, { instant: !swing });
+    void bandW;
   }
 
   function layout() {
     const W = host.clientWidth || 0;
     const H = host.clientHeight || 0;
-    if (W < 300 || H < 60) { geo = null; return; }
-    const x0 = 14;
-    const x1 = W - 14;
-    const y = Math.round(H * 0.66);
-    geo = { W, H, x0, x1, y };
-    layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    layer.textContent = '';
-    // the ruler: a band with body, a lit edge, decades as majors with their figures under
-    layer.appendChild(svg('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-hi__band', style: 'stroke-width:9px' }));
-    layer.appendChild(svg('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-hi__edge', style: 'stroke-width:2px; stroke:rgb(236 230 216 / .62)' }));
+    if (W < 300 || H < 300) { host.classList.add('is-off'); geo = null; return; }
+    host.classList.remove('is-off');
+    const small = W < 560 || H < 480;
+    const R = Math.max(120, Math.min(H * 0.4, W * 0.42));
+    const cx = W / 2;
+    const cy = H / 2 + (small ? 8 : 14);
+    const bandW = small ? 16 : 22;
+    geo = { W, H, R, cx, cy, bandW, small };
+    under.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    over.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    under.textContent = '';
+    over.textContent = '';
+    const arriveNow = !arrived && !reducedMotion();
+    const pd = R * 2.8;
+    Object.assign(pool.style, { left: `${f(cx - pd / 2)}px`, top: `${f(cy - pd / 2)}px`, width: `${f(pd)}px`, height: `${f(pd)}px` });
+    // the ring that turns: the price scale's band, its decades and their figures, a tick for every good
+    turnG = svg('g', {});
+    const band = svg('g', {});
+    bandRing(band, cx, cy, R, bandW, { a: 0.3, notches: 0, from: -DIAL_SPAN / 2, to: DIAL_SPAN / 2 });
+    turnG.appendChild(band);
     const minor = [];
     const major = [];
     for (let dec = 1; dec <= 10000; dec *= 10) {
       for (let k = 1; k <= 9; k += 1) {
         const p = dec * k;
         if (p < P_MIN || p > P_MAX) continue;
-        const x = xOf(p);
-        (k === 1 ? major : minor).push(`M ${f(x)} ${f(y + 5)} L ${f(x)} ${f(y + (k === 1 ? 14 : 9))}`);
+        const a = priceAngle(p);
+        const [x0, y0] = polar(cx, cy, R + bandW / 2, a);
+        const [x1, y1] = polar(cx, cy, R + bandW / 2 + (k === 1 ? 12 : 6), a);
+        (k === 1 ? major : minor).push(`M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)}`);
       }
     }
-    layer.appendChild(svg('path', { d: minor.join(' '), class: 'orr-hi__tick' }));
-    layer.appendChild(svg('path', { d: major.join(' '), class: 'orr-hi__tick orr-hi__tick--major' }));
-    for (const [p, t] of [[10, '10 cr'], [100, '100'], [1000, '1k'], [10000, '10k']]) {
-      const tx = svg('text', { x: f(xOf(p)), y: f(y + 30), 'text-anchor': 'middle' });
+    turnG.appendChild(svg('path', { d: minor.join(' '), class: 'orr-hi__tick' }));
+    turnG.appendChild(svg('path', { d: major.join(' '), class: 'orr-hi__tick orr-hi__tick--major' }));
+    for (const [p, t] of [[10, '10'], [100, '100'], [1000, '1k'], [10000, '10k']]) {
+      const [x, y] = polar(cx, cy, R + bandW / 2 + 28, priceAngle(p));
+      const tx = svg('text', { x: f(x), y: f(y), 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'orr-hpdial__decade' });
       tx.textContent = t;
-      layer.appendChild(tx);
+      turnG.appendChild(tx);
     }
-    // every good, a tick at its base price
+    // every good: a notch cut into the band at its price, longer when it is the chosen one
     goodEls = new Map();
     const shown = new Set(visible().map((c) => c.id));
     for (const c of byPrice) {
-      const p = svg('path', { d: tickD(c, c.id === selectedId), class: 'orr-hscale__good' + (shown.has(c.id) ? '' : ' is-out') + (c.legality === 'contraband' ? ' is-foe' : '') });
-      layer.appendChild(p);
-      goodEls.set(c.id, p);
+      const a = priceAngle(c.basePrice);
+      const [x0, y0] = polar(cx, cy, R - bandW / 2, a);
+      const [x1, y1] = polar(cx, cy, R + bandW / 2, a);
+      const el = svg('path', { d: `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)}`, class: 'orr-hpdial__good' + (shown.has(c.id) ? '' : ' is-out') + (c.legality === 'contraband' ? ' is-foe' : '') });
+      turnG.appendChild(el);
+      goodEls.set(c.id, el);
     }
-    bandBloom = svg('path', { d: '', class: 'orr-hi__lit-bloom', style: 'stroke-width:18px; stroke-linecap:round' });
-    bandEl = svg('path', { d: '', class: 'orr-hi__lit', style: 'stroke-width:5px; stroke-linecap:round' });
-    beadEl = svg('circle', { r: 6.5, fill: 'rgb(255 253 246)' });
-    cursor = svg('path', { d: '', class: 'orr-hscale__cursor' });
-    layer.append(bandBloom, bandEl, cursor, beadEl);
-    paintChosen();
+    swingEls = {
+      bloom: svg('path', { d: '', class: 'orr-hi__lit-bloom', style: `stroke-width:${bandW + 12}px` }),
+      lit: svg('path', { d: '', class: 'orr-hi__lit', style: `stroke-width:${Math.round(bandW * 0.36)}px` }),
+    };
+    turnG.append(swingEls.bloom, swingEls.lit);
+    under.appendChild(rise(turnG, 0, arriveNow));
+    // the fixed parts: the hub's ring (a band with body), the index needle at the top
+    under.appendChild(svg('path', { d: arcD(cx, cy, R * 0.62, 0, 360), class: 'orr-hi__band', style: 'stroke-width:7px; --orr-band-a:.15' }));
+    under.appendChild(svg('path', { d: arcD(cx, cy, R * 0.62, 0, 360), class: 'orr-hi__edge', style: 'stroke:rgb(236 230 216 / .46)' }));
+    const drift = svg('g', { class: 'orr-drift orr-drift--rev', style: `transform-origin:${f(cx)}px ${f(cy)}px; --orr-drift-s:800s` });
+    drift.appendChild(svg('path', { d: ticksD(cx, cy, R * 0.62 - 6, 72, { len: 3, major: 6, majorLen: 7, inward: true }), class: 'orr-hi__tick', style: 'stroke:rgb(236 230 216 / .3)' }));
+    under.appendChild(drift);
+    const [ix0, iy0] = polar(cx, cy, R - bandW / 2 - 16, 0);
+    const [ix1, iy1] = polar(cx, cy, R + bandW / 2 + 40, 0);
+    over.appendChild(svg('path', { d: `M ${f(ix0)} ${f(iy0)} L ${f(ix1)} ${f(iy1)}`, class: 'orr-hpdial__index-bloom' }));
+    over.appendChild(svg('path', { d: `M ${f(ix0)} ${f(iy0)} L ${f(ix1)} ${f(iy1)}`, class: 'orr-hpdial__index' }));
+    over.appendChild(svg('circle', { cx: f(ix1), cy: f(iy1), r: 4, class: 'orr-hpdial__index-bead' }));
+    // the hub
+    hub.style.left = `${f(cx)}px`;
+    hub.style.top = `${f(cy)}px`;
+    const gs = Math.round(R * 0.66);
+    pict.style.width = `${gs}px`;
+    pict.style.height = `${gs}px`;
+    num.style.fontSize = `${f(Math.max(40, Math.min(96, R * 0.26)))}px`;
+    hint.style.left = `${f(cx)}px`;
+    hint.style.top = `${f(cy + R + bandW / 2 + (small ? 16 : 24))}px`;
+    arrived = true;
+    spring.set(spring.target, { instant: true });
+    paintChosen(false);
   }
 
-  const nearest = (clientX) => {
-    if (!geo) return null;
-    const box = host.getBoundingClientRect();
-    const x = clientX - box.left;
-    let best = null; let bd = Infinity;
-    for (const c of visible()) { const d = Math.abs(xOf(c.basePrice) - x); if (d < bd) { bd = d; best = c; } }
-    return best ? { c: best, x } : null;
+  // turning the ring by hand: the angle the pointer moves round the hub turns the scale with it
+  const angleAt = (ev) => {
+    const r = host.getBoundingClientRect();
+    const x = ev.clientX - r.left - geo.cx;
+    const y = ev.clientY - r.top - geo.cy;
+    return (Math.atan2(x, -y) * 180) / Math.PI;
   };
-  const hover = (ev) => {
-    const hit = nearest(ev.clientX);
-    if (!hit || !geo) return;
-    host.classList.add('is-hover');
-    const x = xOf(hit.c.basePrice);
-    cursor.setAttribute('d', `M ${f(x)} ${f(geo.y - 34)} L ${f(x)} ${f(geo.y + 10)}`);
-    ghost.textContent = hit.c.name;
-    ghost.style.left = `${f(Math.max(60, Math.min(geo.W - 60, x)))}px`;
-    if (dragging && hit.c.id !== selectedId) onPick(hit.c.id);
+  const nearestAt = (rot) => {
+    const want = -rot;
+    let best = null; let bd = Infinity;
+    for (const c of visible()) { const d = Math.abs(priceAngle(c.basePrice) - want); if (d < bd) { bd = d; best = c; } }
+    return best;
   };
   const onDown = (ev) => {
-    if (ev.button !== 0) return;
-    dragging = true;
-    try { host.setPointerCapture(ev.pointerId); } catch (e) { /* synthetic events */ }
-    const hit = nearest(ev.clientX);
-    if (hit && hit.c.id !== selectedId) onPick(hit.c.id);
-    hover(ev);
+    if (!geo || ev.button !== 0) return;
+    const r = host.getBoundingClientRect();
+    const dx = ev.clientX - r.left - geo.cx;
+    const dy = ev.clientY - r.top - geo.cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist < geo.R * 0.62 || dist > geo.R + geo.bandW + 50) return;
+    drag = { a0: angleAt(ev), rot0: spring.value };
+    try { host.setPointerCapture(ev.pointerId); } catch (e) { /* synthetic */ }
+    host.classList.add('is-turning');
+    ev.preventDefault();
   };
-  const onUp = () => { dragging = false; };
-  const onLeave = () => { if (!dragging) host.classList.remove('is-hover'); };
-  const onKey = (ev) => {
+  const onMove = (ev) => {
+    if (!drag || !geo) return;
+    let da = angleAt(ev) - drag.a0;
+    while (da > 180) da -= 360;
+    while (da < -180) da += 360;
+    const rot = Math.max(-DIAL_SPAN / 2, Math.min(DIAL_SPAN / 2, drag.rot0 + da));
+    spring.set(rot, { instant: true });
+    const c = nearestAt(rot);
+    if (c && c.id !== selectedId) onPick(c.id);
+  };
+  const onUp = () => {
+    if (!drag) return;
+    drag = null;
+    host.classList.remove('is-turning');
+    paintChosen(true); // settle onto the chosen good's price
+  };
+  const step = (dir) => {
     const list = visible();
     if (!list.length) return;
     let i = list.findIndex((c) => c.id === selectedId);
-    if (ev.key === 'ArrowRight' || ev.key === 'ArrowUp') i = Math.min(list.length - 1, i + 1);
-    else if (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') i = Math.max(0, i - 1);
-    else if (ev.key === 'Home') i = 0;
-    else if (ev.key === 'End') i = list.length - 1;
-    else return;
-    ev.preventDefault();
+    i = Math.max(0, Math.min(list.length - 1, (i < 0 ? 0 : i) + dir));
     if (list[i] && list[i].id !== selectedId) onPick(list[i].id);
   };
+  const onKey = (ev) => {
+    if (ev.key === 'ArrowRight' || ev.key === 'ArrowUp') { ev.preventDefault(); step(1); }
+    else if (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') { ev.preventDefault(); step(-1); }
+  };
+  let wheelAt = 0;
+  const onWheel = (ev) => {
+    const now = Date.now();
+    if (now - wheelAt < 90 || Math.abs(ev.deltaY) < 2) return;
+    wheelAt = now;
+    ev.preventDefault();
+    step(ev.deltaY > 0 ? 1 : -1);
+  };
   host.addEventListener('pointerdown', onDown);
-  host.addEventListener('pointermove', hover);
+  host.addEventListener('pointermove', onMove);
   host.addEventListener('pointerup', onUp);
   host.addEventListener('pointercancel', onUp);
-  host.addEventListener('pointerleave', onLeave);
   host.addEventListener('keydown', onKey);
+  host.addEventListener('wheel', onWheel, { passive: false });
   const obs = observe(host, layout);
 
   return {
-    set({ selectedId: id, filter: q } = {}) {
+    set({ selectedId: id, filter: q, swing = false } = {}) {
       if (id != null) selectedId = id;
       if (q != null) {
         filter = String(q).trim().toLowerCase();
         const shown = new Set(visible().map((c) => c.id));
         for (const [gid, el] of goodEls) el.classList.toggle('is-out', !shown.has(gid));
       }
-      if (geo) paintChosen(); else obs.schedule();
+      const key = selectedId;
+      if (geo) paintChosen(swing && key !== lastSwingFor);
+      else obs.schedule();
+      lastSwingFor = key;
     },
     dispose() {
       obs.stop();
+      spring.stop();
       host.removeEventListener('pointerdown', onDown);
-      host.removeEventListener('pointermove', hover);
+      host.removeEventListener('pointermove', onMove);
       host.removeEventListener('pointerup', onUp);
       host.removeEventListener('pointercancel', onUp);
-      host.removeEventListener('pointerleave', onLeave);
       host.removeEventListener('keydown', onKey);
+      host.removeEventListener('wheel', onWheel);
       host.textContent = '';
-      host.classList.remove('orr-hscale', 'is-hover');
+      host.classList.remove('orr-hpdial', 'is-off', 'is-turning');
     },
   };
 }
@@ -849,8 +1014,10 @@ export function createOreMix(host, { asteroids = [], ores = [], onPickRock = () 
   const under = svg('svg', { class: 'orr-hi-svg', 'aria-hidden': 'true', focusable: 'false' });
   const over = svg('svg', { class: 'orr-hi-svg', 'aria-hidden': 'true', focusable: 'false', style: 'z-index:2' });
   const centre = doc.createElement('div'); centre.className = 'orr-hmix__centre';
-  const cName = doc.createElement('b'); const cSub = doc.createElement('span');
-  centre.append(cName, cSub);
+  const cName = doc.createElement('b'); const cSub = doc.createElement('span'); const cSub2 = doc.createElement('span');
+  centre.append(cName, cSub, cSub2);
+  const rockImg = doc.createElement('img'); rockImg.className = 'orr-hmix__rockart'; rockImg.alt = ''; rockImg.decoding = 'async'; rockImg.draggable = false;
+  rockImg.addEventListener('load', () => rockImg.classList.add('is-ready'));
   const group = doc.createElement('div');
   group.setAttribute('role', 'group');
   group.setAttribute('aria-label', 'Asteroid types');
@@ -866,8 +1033,11 @@ export function createOreMix(host, { asteroids = [], ores = [], onPickRock = () 
     b.dataset.action = 'help-rock:' + a.id;
     b.style.pointerEvents = 'auto';
     b.setAttribute('aria-label', `${nameOf(a)} asteroids`);
+    const thumb = doc.createElement('img'); thumb.className = 'orr-hmix__thumb'; thumb.alt = ''; thumb.decoding = 'async'; thumb.draggable = false;
+    const art = rockArt(a.id);
+    if (art) thumb.src = art;
     const nm = doc.createElement('span'); nm.className = 'orr-hmix__rock-name'; nm.textContent = nameOf(a);
-    b.appendChild(nm);
+    b.append(thumb, nm);
     b.addEventListener('click', () => onPickRock(a.id));
     b.addEventListener('keydown', (ev) => {
       const dir = ev.key === 'ArrowRight' || ev.key === 'ArrowDown' ? 1 : ev.key === 'ArrowLeft' || ev.key === 'ArrowUp' ? -1 : 0;
@@ -883,7 +1053,7 @@ export function createOreMix(host, { asteroids = [], ores = [], onPickRock = () 
   });
   const lblLayer = doc.createElement('div');
   lblLayer.style.cssText = 'position:absolute; inset:0; pointer-events:none;';
-  box.append(pool, under, over, centre, group, lblLayer);
+  box.append(pool, under, rockImg, over, centre, group, lblLayer);
 
   let rockId = asteroids[0].id;
   let oreId = null;
@@ -921,9 +1091,9 @@ export function createOreMix(host, { asteroids = [], ores = [], onPickRock = () 
     const minor = [];
     for (let k = 0; k <= 50; k += 1) {
       const x = sx0 - 24 + ((sx1 - sx0 + 48) * k) / 50;
-      minor.push(`M ${f(x)} ${f(sy - 4.5)} L ${f(x)} ${f(sy + 4.5)}`);
+      minor.push(`M ${f(x)} ${f(sy + 7)} L ${f(x)} ${f(sy + (k % 5 ? 11 : 16))}`);
     }
-    g.appendChild(svg('path', { d: minor.join(' '), class: 'orr-hi__notch' }));
+    g.appendChild(svg('path', { d: minor.join(' '), class: 'orr-hi__tick' }));
     // the mix ring's track and the scales round it
     g.appendChild(svg('path', { d: arcD(cx, cy, R, 0, 360), class: 'orr-hi__band', style: `stroke-width:${bandW}px; --orr-band-a:.12` }));
     const drift = svg('g', { class: 'orr-drift', style: `transform-origin:${f(cx)}px ${f(cy)}px; --orr-drift-s:900s` });
@@ -933,7 +1103,7 @@ export function createOreMix(host, { asteroids = [], ores = [], onPickRock = () 
     under.appendChild(rise(g, 0, arriveNow));
     asteroids.forEach((a, i) => {
       const x = asteroids.length > 1 ? sx0 + ((sx1 - sx0) * i) / (asteroids.length - 1) : cx;
-      const size = Math.round((small ? 16 : 20) + (small ? 12 : 18) * Math.sqrt((a.spawnWeight || 1) / maxW));
+      const size = Math.round((small ? 26 : 34) + (small ? 12 : 16) * Math.sqrt((a.spawnWeight || 1) / maxW));
       const b = rocks[i];
       Object.assign(b.style, { left: `${f(x - size / 2)}px`, top: `${f(sy - size / 2)}px`, width: `${size}px`, height: `${size}px` });
       b.dataset.x = String(x);
@@ -942,9 +1112,12 @@ export function createOreMix(host, { asteroids = [], ores = [], onPickRock = () 
       b.classList.toggle('is-above', i % 2 === 1);
       rise(b, 120 + i * 50, arriveNow);
     });
+    // the open type's rock fills the hub; its words stand under it, inside the ring
+    const rs = R * 1.72;
+    Object.assign(rockImg.style, { left: `${f(cx - rs / 2)}px`, top: `${f(cy - rs / 2 - R * 0.1)}px`, width: `${f(rs)}px`, height: `${f(rs)}px` });
     centre.style.left = `${f(cx)}px`;
-    centre.style.top = `${f(cy)}px`;
-    centre.style.maxWidth = `${f(R * 1.5)}px`;
+    centre.style.top = `${f(cy + R * 0.58)}px`;
+    centre.style.maxWidth = `${f(R * 1.3)}px`;
     arrived = true;
     paintMix(false);
   }
@@ -955,7 +1128,10 @@ export function createOreMix(host, { asteroids = [], ores = [], onPickRock = () 
     const rock = asteroids.find((a) => a.id === rockId) || asteroids[0];
     rocks.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.rock === rock.id)));
     cName.textContent = nameOf(rock);
-    cSub.textContent = `${Math.round((100 * (rock.spawnWeight || 0)) / totalW)}% of rocks · cap T${rock.tierCap}`;
+    cSub.textContent = `${Math.round((100 * (rock.spawnWeight || 0)) / totalW)}% of rocks`;
+    cSub2.textContent = `ore up to tier ${rock.tierCap}`;
+    const art = rockArt(rock.id);
+    if (art && rockImg.getAttribute('src') !== art) { rockImg.classList.remove('is-ready'); rockImg.src = art; }
     over.textContent = '';
     lblLayer.textContent = '';
     // a beam from the chosen type on the scale down into the ring
@@ -1038,64 +1214,6 @@ export function createOreMix(host, { asteroids = [], ores = [], onPickRock = () 
       spin.stop();
       box.remove();
     },
-  };
-}
-
-// ================================================================================================
-// GOOD TOKEN: the chosen good's pictogram as an object of light in a gripped ring
-
-/** @param {HTMLElement} host */
-export function createGoodToken(host, { glyph = () => '' } = {}) {
-  const doc = canDraw(host);
-  const inert = { set() {}, dispose() {} };
-  if (!doc) return inert;
-  injectOrrery(doc);
-  injectStyle(doc);
-  host.classList.add('orr-htoken');
-  const layer = svg('svg', { class: 'orr-hi-svg', 'aria-hidden': 'true', focusable: 'false' });
-  const pict = doc.createElement('div'); pict.className = 'orr-htoken__glyph'; pict.setAttribute('aria-hidden', 'true');
-  const word = doc.createElement('span'); word.className = 'orr-htoken__word';
-  host.append(layer, pict, word);
-  let data = null;
-  let arrived = false;
-  function layout() {
-    const W = host.clientWidth || 0;
-    const H = host.clientHeight || 0;
-    if (!data || W < 160 || H < 160) { layer.textContent = ''; return; }
-    const R = Math.min(Math.min(W, H) * 0.34, 250);
-    const cx = W / 2;
-    const cy = H / 2;
-    layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    layer.textContent = '';
-    const g = svg('g', { class: !arrived && !reducedMotion() ? 'orr-spin-in' : '', style: `transform-origin:${f(cx)}px ${f(cy)}px` });
-    bandRing(g, cx, cy, R, Math.max(12, R * 0.08), { a: 0.3, notches: 60 });
-    g.appendChild(svg('path', { d: arcD(cx, cy, R * 0.72, 0, 360), class: 'orr-hi__edge', style: 'stroke:rgb(236 230 216 / .3)' }));
-    const drift = svg('g', { class: 'orr-drift', style: `transform-origin:${f(cx)}px ${f(cy)}px; --orr-drift-s:700s` });
-    drift.appendChild(svg('path', { d: ticksD(cx, cy, R + Math.max(12, R * 0.08) / 2 + 14, 90, { len: 3, major: 15, majorLen: 8, inward: true }), class: 'orr-hi__tick', style: 'stroke:rgb(236 230 216 / .32)' }));
-    g.appendChild(drift);
-    // the good's swing as a lit arc on the ring: its volatility, both ways from the top
-    const vol = Math.max(0.04, Number(data.volatility) || 0.1);
-    const sweep = Math.min(170, vol * 360);
-    const bw = Math.max(12, R * 0.08);
-    g.appendChild(svg('path', { d: arcD(cx, cy, R, -sweep / 2, sweep / 2), class: 'orr-hi__lit-bloom', style: `stroke-width:${bw + 10}px` }));
-    g.appendChild(svg('path', { d: arcD(cx, cy, R, -sweep / 2, sweep / 2), class: 'orr-hi__lit', style: `stroke-width:${Math.round(bw * 0.42)}px` }));
-    layer.appendChild(g);
-    const gs = R * 0.9;
-    Object.assign(pict.style, { left: `${f(cx - gs / 2)}px`, top: `${f(cy - gs / 2)}px`, width: `${f(gs)}px`, height: `${f(gs)}px` });
-    word.style.left = `${f(cx)}px`;
-    word.style.top = `${f(cy + R + bw / 2 + 30)}px`;
-    arrived = true;
-  }
-  const obs = observe(host, layout);
-  return {
-    set(next) {
-      data = next ? { ...next } : null;
-      pict.innerHTML = data ? glyph(data.category) : '';
-      pict.classList.toggle('is-foe', !!(data && data.legality === 'contraband'));
-      word.textContent = data ? `swing ±${Math.round((Number(data.volatility) || 0) * 100)}%` : '';
-      obs.schedule();
-    },
-    dispose() { obs.stop(); host.textContent = ''; host.classList.remove('orr-htoken'); },
   };
 }
 

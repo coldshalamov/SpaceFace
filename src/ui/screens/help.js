@@ -30,7 +30,7 @@ import { decorateEntityNode } from '../entityResolver.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectHelpLayouts } from '../orrery/helpLayouts.js';
 import { createControlsRig, createInputEcho } from '../orrery/helpRig.js';
-import { createLoopOrrery, createHullDial, createPriceScale, createOreMix, createGoodToken, keyGlyph } from '../orrery/helpInstruments.js';
+import { createLoopOrrery, createHullDial, createPriceDial, createOreMix, keyGlyph } from '../orrery/helpInstruments.js';
 import { commodityGlyphHtml } from '../views/commodityGlyphs.js';
 import { createCrestOrbit } from '../orrery/crestOrbit.js';
 import { syncScrollExtent } from '../orrery/scrollExtent.js';
@@ -63,6 +63,11 @@ const SCHEME_NAMES = { pilot: 'Pilot', 'helm-assist': 'Helm Assist', classic: 'C
 function profileName(state) {
   const scheme = state && state.settings && state.settings.gameplay && state.settings.gameplay.controlScheme;
   return (SCHEME_NAMES[scheme] || SCHEME_NAMES.pilot) + ' profile';
+}
+/** The title's second line on Controls: the control scheme the rig describes. */
+function schemeLine(state) {
+  const scheme = state && state.settings && state.settings.gameplay && state.settings.gameplay.controlScheme;
+  return 'Control scheme · ' + (SCHEME_NAMES[scheme] || SCHEME_NAMES.pilot);
 }
 
 // action -> default human-readable key. Sections group the rows.
@@ -501,7 +506,7 @@ export const helpScreen = {
     const title = el('header', 'k-title orr-help__title');
     const heading = el('h1', 'k-display k-t-title', 'Help');
     title.appendChild(heading);
-    const now = el('p', 'k-t-emph k-62 sf-help-now', profileName(ctx.state));
+    const now = el('p', 'k-t-emph k-62 sf-help-now', schemeLine(ctx.state));
     title.appendChild(now);
     rootEl.appendChild(title);
     this._nowEl = now;
@@ -564,7 +569,7 @@ export const helpScreen = {
     this._body.innerHTML = '';
     this._body.dataset.tab = this._activeTab.toLowerCase();
     if (this._root) this._root.dataset.tab = this._activeTab.toLowerCase();
-    if (this._nowEl) this._nowEl.textContent = profileName(ctx.state);
+    if (this._nowEl) this._nowEl.textContent = schemeLine(ctx.state);
 
     if (this._tabBtns) {
       for (const t of TABS) {
@@ -660,7 +665,7 @@ export const helpScreen = {
     const padHost = el('div', 'orr-hreg__pad');
     padHost.setAttribute('aria-hidden', 'true');
     head.appendChild(padHost);
-    const fine = el('p', 'orr-hreg__fine', 'Flight keys can be rebound in Settings → Controls. UI keys are fixed (ARCHITECTURE §5.6).');
+    const fine = el('p', 'orr-hreg__fine', 'Flight keys can be rebound in Settings → Controls. Interface keys are fixed.');
     reg.append(head, scroll, fine);
     const spy = () => {
       const top = scroll.scrollTop + 8;
@@ -802,8 +807,9 @@ export const helpScreen = {
   _renderLoops() {
     const host = el('div', 'orr-help-loops');
     this._body.appendChild(host);
+    const glyphs = ['dock', 'trade', 'mine', 'refit', 'recover', 'track'];
     const loops = GAMEPLAY_LOOPS.map(([name, route, value], i) => ({
-      id: 'loop' + i, name, steps: route.split(/\s*->\s*/).filter(Boolean), why: value,
+      id: 'loop' + i, name, glyph: glyphs[i] || 'track', steps: route.split(/\s*->\s*/).filter(Boolean), why: value,
     }));
     if (this._loop == null) this._loop = 0;
     const view = createLoopOrrery(host, {
@@ -879,10 +885,9 @@ export const helpScreen = {
       .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
     if (!this._good || !sorted.some((c) => c.id === this._good)) this._good = sorted[0].id;
     const wrap = el('div', 'orr-help-list orr-help-list--goods');
-    const scaleHost = el('div', 'orr-help-scale');
     const side = el('div', 'orr-help-list__side');
     const stage = el('div', 'orr-help-list__stage');
-    wrap.append(scaleHost, side, stage);
+    wrap.append(side, stage);
     this._body.appendChild(wrap);
     const items = [];
     let cat = '';
@@ -898,27 +903,25 @@ export const helpScreen = {
       if (!sorted.some((c) => c.id === id)) return;
       this._good = id;
       lad.choose(id, { focus });
-      scale.set({ selectedId: id, swing: true });
+      dial.set({ selectedId: id, swing: true });
       paint(true);
     };
     this._search(side, 'Search commodities…', (qq) => {
       const n = lad.filter(qq);
       empty.hidden = n > 0;
-      scale.set({ filter: qq });
+      dial.set({ filter: qq });
     });
     const lad = ladder({ items, ariaLabel: 'Commodities', chosenId: this._good, onPick: pick, cls: 'orr-help-ladder--goods' });
     const empty = el('p', 'k-empty orr-help-empty', 'No commodity matches that search.');
     empty.hidden = true;
     side.append(lad.el, empty);
-    const tokenHost = el('div', 'orr-help-list__hero');
-    stage.append(tokenHost, reading);
-    const token = createGoodToken(tokenHost, { glyph: (cat) => commodityGlyphHtml(cat, 'orr-htoken__svg') });
-    const scale = createPriceScale(scaleHost, { items: sorted, onPick: (id) => pick(id) });
+    const dialHost = el('div', 'orr-help-list__hero');
+    stage.append(dialHost, reading);
+    const dial = createPriceDial(dialHost, { items: sorted, glyph: (cat) => commodityGlyphHtml(cat, 'orr-hpdial__svg'), onPick: (id) => pick(id) });
     const paint = (swing) => {
       const c = COMMODITIES.find((x) => x.id === this._good);
       if (!c) return;
       reading.innerHTML = '';
-      token.set(c);
       const legalRole = legalityRole(c.legality);
       const name = el('h2', 'orr-help-reading__name', c.name);
       decorateEntityNode(name, 'commodity:' + c.id);
@@ -938,11 +941,11 @@ export const helpScreen = {
       if (c.lore) reading.appendChild(el('p', 'orr-help-reading__lore', c.lore));
       if (swing && !reducedMotion()) decrypt(name, c.name, { duration: 240 });
     };
-    if (q) { const n = lad.filter(q); empty.hidden = n > 0; scale.set({ filter: q }); }
-    scale.set({ selectedId: this._good, swing: false });
+    if (q) { const n = lad.filter(q); empty.hidden = n > 0; dial.set({ filter: q }); }
+    dial.set({ selectedId: this._good, swing: false });
     paint(false);
     syncScrollExtent(lad.el);
-    return { dispose: () => { scale.dispose(); token.dispose(); } };
+    return { dispose: () => dial.dispose() };
   },
 
   // ---------------------------------------------------------------- ORES: the asteroid mix
@@ -1008,7 +1011,7 @@ export const helpScreen = {
         decorateEntityNode(name, 'commodity:' + o.id);
         reading.append(el('p', 'orr-help-reading__kicker', `Tier ${o.tier} ore`), name);
         reading.appendChild(termLedger([
-          ['Value', o.baseValue + ' cr'], ['Mass', o.mass.toFixed(1)], ['Volume', o.vol.toFixed(1)],
+          ['Value', o.baseValue + ' cr'], ['Mass', o.mass.toFixed(1) + ' t per unit'], ['Volume', o.vol.toFixed(1) + ' per unit'],
           ['Tags', o.tags ? o.tags.join(', ') : ''],
           ['Found in', ASTEROIDS.filter((r) => (r.oreTable[o.id] || 0) > 0).map((r) => `${rockName(r)} ${Math.round(r.oreTable[o.id] * 100)}%`).join(', ') || 'no asteroid type (deep seams only)'],
         ]));
