@@ -76,7 +76,7 @@ test('PQ-003 new profiles reserve Space for Massline, retain F as its alias, and
   const fresh = createGameState(47);
   assert.equal(fresh.settings.controls.masslineBindingProfile, 'space-v1');
   for (const [schemeName, scheme] of Object.entries(DEFAULTS.SCHEMES)) {
-    assert.deepEqual(scheme.tether, ['Space', 'KeyF'], `${schemeName} must expose Space then F`);
+    assert.deepEqual(scheme.tether, ['Space', 'KeyF', 'Digit3'], `${schemeName} must expose Space then F`);
     for (const [action, codes] of Object.entries(scheme)) {
       if (action === 'tether' || !Array.isArray(codes)) continue;
       assert.equal(codes.includes('Space'), false, `${schemeName}.${action} must not steal Massline Space`);
