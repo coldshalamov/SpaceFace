@@ -455,6 +455,12 @@ const CORE_SECTORS = [
     ],
     hazards: [
       {
+        // The charted Roaming Burn. `radius` is the storm's ROAM ENVELOPE, not the burn body:
+        // the live burn is an 840 WU core that circles this envelope on the deterministic law
+        // in environmentalMachinery.js (ASHFALL_BURN_*), venting on the same clock heart as
+        // the ISC Lighthouse's survey window. world.js _resolveMovingHazards stamps the live
+        // center/radius/intensity scale every tick; `afterBossDefeat` still owns the base
+        // intensity (world.js _applyBossHazardAftermath).
         id: 'hazard_ashfall_burn', type: 'radiation', center: { x: 0, z: 0 }, radius: 2000,
         intensity: 0.8, moving: true,
         afterBossDefeat: { poiId: 'poi_boss', intensity: 0.35 },

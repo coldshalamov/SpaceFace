@@ -12,6 +12,7 @@
 import { hash32, mulberry32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { wreckClassById } from './wreckClasses.js';
+import { ASHFALL_BURN_SURGE_PERIOD_S, ASHFALL_BURN_VENT_WINDOW_S } from './environmentalMachinery.js';
 
 export const UNIQUE_WRECK_STATE_SCHEMA_VERSION = 2;
 export const UNIQUE_WRECK_RECEIPT_LIMIT = 24;
@@ -166,7 +167,10 @@ const RAW_UNIQUE_WRECKS = [
     bearingSourceRef: 'campaign.lighthouse_reveal',
     rumorSources: [{ id: 'lighthouse_campaign_reveal', sourceRef: 'campaign.lighthouse_reveal', channelId: 'campaign' }],
     provenance: { lossId: 'loss_isc_lighthouse', incidentId: 'incident_lighthouse_return_fire', sourceRef: 'campaign.lighthouse_reveal', recordType: 'prototype_weapon_loss' },
-    hazardContext: { label: 'Ashfall moving radiation field', anchorType: 'hazard', anchorId: null, zoneId: null, hazardTypes: ['radiation'], hazardSelector: { type: 'radiation', moving: true }, placementRule: 'inside_moving_hazard', approachGate: 'moving_radiation_window', moving: true },
+    // periodS/openWindowS are the Ashfall burn's vent/roar beat (environmentalMachinery.js
+    // ASHFALL_BURN_*): the survey gate's open window IS the burn's vent, phase-locked to the
+    // same deterministic clock heart, so the read window is a physical fact of the storm.
+    hazardContext: { label: 'Ashfall moving radiation field', anchorType: 'hazard', anchorId: null, zoneId: null, hazardTypes: ['radiation'], hazardSelector: { type: 'radiation', moving: true }, placementRule: 'inside_moving_hazard', approachGate: 'moving_radiation_window', moving: true, periodS: ASHFALL_BURN_SURGE_PERIOD_S, openWindowS: ASHFALL_BURN_VENT_WINDOW_S },
     timingGate: { id: 'lighthouse_radiation_window', kind: 'hazard_window', hazardType: 'radiation', requiresMoving: true, clock: 'sim_time' },
     salvageLaw: CONCORD_RESTRICTED_SALVAGE,
     complications: [{ id: 'lighthouse_radiation_timing', kind: 'hazard_window', trigger: 'approach', hazardType: 'radiation' }],
