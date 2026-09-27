@@ -60,7 +60,7 @@ function chainAggro() {
         targetId: 'ship:patrol-4', text: 'Concord patrol reported an unprovoked attack',
       }),
       node('standing', 252660, 4211.5, {
-        factionId: 'faction_scn', delta: -45, newRep: -120, newTier: 'Hostile', tierChanged: true, reason: 'kill_faction_ship',
+        factionId: 'faction_scn', delta: -45, newRep: -180, newTier: 'Hostile', tierChanged: true, reason: 'kill_faction_ship',
       }),
       node('consequence', 252700, 4212, { factionId: 'faction_scn', text: 'Concord patrols hunt you on sight' }),
     ],
@@ -140,11 +140,11 @@ export function seedFootprintShot(state, kind = 'wanted') {
   player.bounty = 0;
   state.factions = {
     ...(state.factions || {}),
-    faction_scn: factionRow(kind === 'wanted' ? -120 : 12, kind === 'wanted'),
+    faction_scn: factionRow(kind === 'wanted' ? -180 : 12, kind === 'wanted'),
     faction_mts: factionRow(kind === 'clean' ? 4 : -85, false),
     faction_free: factionRow(46, false),
     faction_dmc: factionRow(35, false),
-    faction_reach: factionRow(-160, true),
+    faction_reach: factionRow(-120, false),
   };
   // bribeCost() reads the factions module's own state handle, which its init/update sets.
   try { factionsSystem.update(0, state); } catch { /* a bench without the owner shows Bribe gated */ }

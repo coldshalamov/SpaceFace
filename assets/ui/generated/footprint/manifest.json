@@ -1,0 +1,17 @@
+{
+ "schema": "spaceface.generatedArt.v1",
+ "set": "footprint tokens",
+ "use": "ORRERY section 6 Meta, Footprint: the bounty's token on the Heat Dial's source ring (the chains carry their powers' crests from ../crests/)",
+ "generator": "OpenAI image generation via codex exec -m gpt-5.5 (ChatGPT account), 1024x1024 transparent",
+ "date": "2026-09-26",
+ "license": "Generated for SpaceFace by the project; no third-party source image supplied.",
+ "style": "flat single-colour warm bone-white (#E8E2D4) emblem, transparent, matches the faction crests, reads at 32 px, no text",
+ "files": {
+  "bounty_seal": {
+   "file": "bounty_seal.webp",
+   "size": 256,
+   "motif": "a bounty warrant seal: a graduated outer ring, a crosshair reticle crossed by two warrant bars, a five-pointed star at the centre",
+   "prompt": "Use your image generation tool to create ONE image and save it in the current directory as bounty_seal.png. Subject: a flat emblem for a space-game bounty warrant: a circular seal made of warm bone-white (#E8E2D4) geometric line-work on a fully transparent background — an outer ring with fine graduations, inside it a stylized crosshair reticle crossed by a pair of bars like a warrant stamp, a small five-pointed star at the centre. Crisp flat vector-like marks, uniform stroke weight about 4% of the width, single colour bone-white only, no gradients, no shading, no metal, no 3D, no glow. Transparent background (alpha), centred, square 1024x1024, no text, no letters, no frame."
+  }
+ }
+}
