@@ -110,6 +110,12 @@ ${H} .orr-hreg__secword[aria-current="true"] { color:rgb(${HOT}); }
 ${H} .orr-hreg__secword[aria-current="true"]::after { background:rgb(${HOT} / .9); }
 ${H} .orr-hreg__secword:is(:hover, :focus-visible) { color:rgb(255 255 255); outline:none; }
 ${H} .orr-hreg__secword:focus-visible::after { height:3px; background:rgb(255 255 255); }
+${H} .orr-hreg__pad { display:none; padding:6px 0 0; }
+${H} .orr-hreg__pad.is-pad { display:block; }
+${H} .orr-hreg__pad > svg { display:block; margin:0 auto; max-width:100%; height:auto; }
+/* a binding that is a sentence runs under its verb, not beside it */
+${H} .orr-hreg__row:has(> .orr-hkey--text) { grid-template-columns:minmax(0, 1fr); row-gap:3px; }
+${H} .orr-hreg__row.orr-hreg__row > .orr-hkey--text { justify-self:start; text-align:left; justify-content:flex-start; max-width:none; color:rgb(236 230 216 / .74); }
 ${H} .orr-hreg__scroll { position:relative; flex:1 1 auto; min-height:0; overflow:hidden auto; scrollbar-width:none; padding:0 10px 18px 0; outline:none;
   -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent); }
 ${H} .orr-hreg__scroll[data-overflow="0"] { -webkit-mask-image:none; mask-image:none; }

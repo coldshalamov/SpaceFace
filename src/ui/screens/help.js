@@ -655,6 +655,10 @@ export const helpScreen = {
       return b;
     });
     head.appendChild(secNav);
+    // with a pad, the drawn pad stands at the head of the ladder and lights the button pressed
+    const padHost = el('div', 'orr-hreg__pad');
+    padHost.setAttribute('aria-hidden', 'true');
+    head.appendChild(padHost);
     const fine = el('p', 'orr-hreg__fine', 'Flight keys can be rebound in Settings → Controls. UI keys are fixed (ARCHITECTURE §5.6).');
     reg.append(head, scroll, fine);
     const spy = () => {
@@ -682,6 +686,7 @@ export const helpScreen = {
         lightRows(rowsForStation(s), false);
       },
       onDevice: (dev) => { if (dev === 'pad') scrollToSec(2); },
+      padHost,
     });
     rig.set({ hullId: playerHullId(state), stations });
 

@@ -206,7 +206,7 @@ const CSS = `
 .orr-hrig__devword:is(:hover, :focus-visible) { color:rgb(255 255 255); outline:none; }
 .orr-hrig__devword:focus-visible::after { height:3px; background:rgb(255 255 255); }
 .orr-hrig__padsvg { display:none; flex:none; overflow:visible; pointer-events:none; }
-.orr-hrig.is-pad .orr-hrig__padsvg { display:block; }
+.orr-hrig.is-pad .orr-hrig__padsvg, .orr-hrig__padsvg.is-shown { display:block; }
 .orr-hrig__padsvg .orr-hrig__pb { fill:rgb(4 6 9 / .6); stroke:rgb(${BONE} / .62); stroke-width:1.5px; transition:fill .12s linear, stroke .12s linear; }
 .orr-hrig__padsvg .orr-hrig__pb-band { fill:none; stroke:rgb(${BONE} / .27); stroke-width:7px; stroke-linecap:round; stroke-linejoin:round; }
 .orr-hrig__padsvg .orr-hrig__pb-edge { fill:none; stroke:rgb(${BONE} / .6); stroke-width:1.6px; stroke-linecap:round; stroke-linejoin:round; }
@@ -302,7 +302,7 @@ function padSvg() {
  * @param {HTMLElement} host positioned box the rig fills
  * @param {{ onPreview?: (id:string) => void, onDevice?: (dev:'kbm'|'pad') => void }} [opts]
  */
-export function createControlsRig(host, { onPreview = null, onDevice = null } = {}) {
+export function createControlsRig(host, { onPreview = null, onDevice = null, padHost = null } = {}) {
   const doc = host && host.ownerDocument ? host.ownerDocument : globalThis.document;
   const inert = {
     el: host, set() {}, flare() {}, release() {}, releaseAll() {}, setDevice() {}, padLight() {}, whisper() {}, echo() {},
@@ -332,7 +332,10 @@ export function createControlsRig(host, { onPreview = null, onDevice = null } = 
   dev.append(devKb, devPad);
   const echoLine = doc.createElement('p'); echoLine.className = 'orr-hrig__echo'; echoLine.setAttribute('aria-live', 'polite');
   const pad = padSvg();
-  foot.append(dev, pad.root, echoLine);
+  // the drawn pad stands in its own host when the screen gives one (beside the ladder of every key),
+  // so the berth keeps its size when the device changes; else it takes the foot
+  if (padHost && typeof padHost.appendChild === 'function') { foot.append(dev, echoLine); padHost.appendChild(pad.root); }
+  else foot.append(dev, pad.root, echoLine);
   host.append(pool, floor, under, hull, ghost, glows, over, foot);
   const whisperEl = doc.createElement('div'); whisperEl.className = 'orr-hrig__whisper'; whisperEl.setAttribute('aria-hidden', 'true');
   (doc.body || host).appendChild(whisperEl);
@@ -365,6 +368,8 @@ export function createControlsRig(host, { onPreview = null, onDevice = null } = 
 
   function paintDevice() {
     host.classList.toggle('is-pad', device === 'pad');
+    pad.root.classList.toggle('is-shown', device === 'pad');
+    if (padHost) padHost.classList.toggle('is-pad', device === 'pad');
     devKb.setAttribute('aria-pressed', String(device !== 'pad'));
     devPad.setAttribute('aria-pressed', String(device === 'pad'));
     if (!echoLine.classList.contains('is-live')) restEcho();
@@ -397,7 +402,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null } = 
     const padNone = !pd.main;
     const kbHtml = `<span class="orr-hrig__glyph orr-hrig__kb${kbNone ? ' is-none' : ''}"><b class="${keyCls(kb.main || kb.none || 'not bound')}">${esc(kb.main || kb.none || 'not bound')}</b>`
       + (kb.alt ? `<small class="orr-hrig__alt">${esc(kb.alt)}</small>` : '') + '</span>';
-    const padHtml = `<span class="orr-hrig__glyph orr-hrig__pad${padNone ? ' is-none' : ''}"><b class="${keyCls(pd.main || 'no pad bind')}">${esc(pd.main || 'no pad bind')}</b>`
+    const padHtml = `<span class="orr-hrig__glyph orr-hrig__pad${padNone ? ' is-none' : ''}"><b class="${keyCls(pd.main || 'no pad')}">${esc(pd.main || 'no pad')}</b>`
       + (pd.alt ? `<small class="orr-hrig__alt">${esc(pd.alt)}</small>` : '') + '</span>';
     return kbHtml + padHtml;
   }
@@ -452,13 +457,14 @@ export function createControlsRig(host, { onPreview = null, onDevice = null } = 
     host.classList.toggle('is-small', small);
     if (!echoLine.classList.contains('is-live')) restEcho();
     // the foot holds the device words, the echo line and (with a pad) the drawn pad
-    const padW = Math.round(Math.max(210, Math.min(300, W * 0.24)));
+    const hosted = !!padHost;
+    const padW = hosted ? Math.round(Math.max(200, Math.min(340, (padHost.clientWidth || 300)))) : Math.round(Math.max(210, Math.min(300, W * 0.24)));
     const padH = Math.round(padW * 150 / 308);
     pad.root.setAttribute('width', padW);
     pad.root.setAttribute('height', padH);
     // the pad's lettering stays at 12px on screen whatever the drawing's scale
     pad.root.style.setProperty('--orr-pad-fs', `${f(12.5 * 308 / padW)}px`);
-    const footH = device === 'pad' ? padH + 6 : 42;
+    const footH = device === 'pad' && !hosted ? padH + 6 : 42;
     const top = small ? 4 : 10;
     const availH = H - footH - top - (small ? 8 : 18);
     // the station columns take their own width (the widest verb and glyph in each)
