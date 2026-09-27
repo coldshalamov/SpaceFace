@@ -283,6 +283,13 @@
       "part_id": "massline_express_liner_v1",
       "root": "LINER",
       "note": "PQ-049 liner, forge-v1 rebuild (tools/blender/forge/ships/massline_express_liner.py): framed operations wedge with structural windshield, stepped faceted pressure drum, dorsal spine, two lit passenger decks, boarding dock, keel tether fairlead, three drives."
+    },
+    "place_cargo_pod_standard": {
+      "layout": "place",
+      "file": "place_cargo_pod_standard",
+      "asset_id": "place_cargo_pod_standard",
+      "part_id": "place_cargo_pod_standard",
+      "note": "Forge-v1 cargo pod (tools/blender/forge/ships/place_cargo_pod_standard.py): ribbed teal intermodal container, charcoal frame and corner castings, hazard bands, grapple lug, status lamps."
     }
   }
 }

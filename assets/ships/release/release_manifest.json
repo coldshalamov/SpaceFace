@@ -1417,25 +1417,6 @@
       }
     },
     {
-      "id": "place_cargo_pod_standard",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_cargo_pod_standard.glb",
-      "release": "assets/ships/release/parts/places/place_cargo_pod_standard.glb",
-      "sourceSha256": "872b50c4338ae3b2ea76b34c115027ecc9f124de0b85f32feefc35633931b5a8",
-      "releaseSha256": "269c7b162bb0049afd29a31a63d825f73fbdab368fa116cac2635b8a43107c1e",
-      "sourceBytes": 695336,
-      "releaseBytes": 260352,
-      "textures": 12,
-      "ktx2Textures": 12,
-      "meshoptBufferViews": 9,
-      "contractNodeCount": 10,
-      "textureProfiles": {
-        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
-        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
-        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
-      }
-    },
-    {
       "id": "place_cargo_pod_standard_breached",
       "kind": "part:places",
       "source": "assets/incubator/everyday_space_kit/source/cargo_pod_standard_breached.glb",
@@ -4437,6 +4418,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 48,
       "contractNodeCount": 25
+    },
+    {
+      "id": "place_cargo_pod_standard",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_cargo_pod_standard.glb",
+      "release": "assets/ships/release/parts/places/place_cargo_pod_standard.glb",
+      "sourceSha256": "c44c895cca6d3fe12ac1ce1069c6e5e52f10e9d0d5df953db51b829a87871dfd",
+      "releaseSha256": "c350ab31ff72098ebbb2a04d8f3f720dc20cf04842538d0c62675849558dd62f",
+      "sourceBytes": 840932,
+      "releaseBytes": 483916,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 59,
+      "contractNodeCount": 20
     }
   ]
 }

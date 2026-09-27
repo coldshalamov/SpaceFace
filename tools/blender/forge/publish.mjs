@@ -28,15 +28,17 @@ if (!process.argv.includes('--skip-blender')) {
   run('blender', ['-b', '--python', `tools/blender/forge/ships/${shipId}.py`, '--', '--live'], { quiet: true });
 }
 
+const place = entry.layout === 'place';
+const dir = place ? 'places' : 'wholeships';
 const files = entry.layout === 'player'
   ? [entry.file, `${entry.file}_lod1`, `${entry.file}_lod2`]
   : [entry.file];
-const releaseIds = files.map((f) => `wholeship_${f}`);
+const releaseIds = files.map((f) => (place ? f : `wholeship_${f}`));
 // Pilot keys are found by the release file they package (Wasp's LOD0 pilot is plain 'wasp').
 const pilotsDoc = JSON.parse(readFileSync(join(ROOT, 'assets/ships/render-packages/pilots.json'), 'utf8'));
 const pilotKeys = files.map((f) => {
-  const hit = pilotsDoc.pilots.find((p) => p.sourceUrl === `assets/ships/release/parts/wholeships/${f}.glb`);
-  if (!hit) throw new Error(`no render-package pilot packages wholeships/${f}.glb`);
+  const hit = pilotsDoc.pilots.find((p) => p.sourceUrl === `assets/ships/release/parts/${dir}/${f}.glb`);
+  if (!hit) throw new Error(`no render-package pilot packages ${dir}/${f}.glb`);
   return hit.key;
 });
 
@@ -44,18 +46,18 @@ const pilotKeys = files.map((f) => {
 const manifestPath = join(ROOT, 'assets/ships/parts/parts_manifest.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 // Some families (Drifter) are released from build-sg04's WHOLE_SHIP_FILES list, not a manifest row.
-const row = manifest.parts.find((r) => r.id === `wholeship_${entry.file}`) || null;
+const row = manifest.parts.find((r) => r.id === (place ? entry.file : `wholeship_${entry.file}`)) || null;
 if (row) {
 // Tint slots name only materials this body actually carries (a ship without a livery stripe has no
 // Material_Accent).
-const glb = readFileSync(join(ROOT, 'assets/ships/parts/wholeships', `${entry.file}.glb`));
+const glb = readFileSync(join(ROOT, 'assets/ships/parts', dir, `${entry.file}.glb`));
 const glbJson = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8'));
 const present = new Set((glbJson.materials || []).map((m) => m.name));
 row.tintable = Object.fromEntries(Object.entries({
   hull: 'Material_Hull', dark: 'Material_Armor', mechanical: 'Material_Mechanical',
   accent: 'Material_Accent', canopy: 'Material_Canopy', thruster: 'Material_Thruster',
 }).filter(([, name]) => present.has(name)));
-row.hooks = ['HOOK_DRIVE_CORE'];
+row.hooks = place ? [] : ['HOOK_DRIVE_CORE'];
 if (entry.note) row.note = entry.note;
 writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 }
@@ -79,5 +81,5 @@ run('node', ['scripts/build-render-package-pilots.mjs', `--only=${pilotKeys.join
 
 // 5. census
 run('node', ['scripts/model-truth-census.mjs'], { quiet: true });
-run('node', ['scripts/lib/splice-census-rows.mjs', `--match=/${entry.file}.glb`], { quiet: false });
+run('node', ['scripts/lib/splice-census-rows.mjs', `--match=/${dir}/${entry.file}.glb`], { quiet: false });
 console.log(`[publish] ${shipId}: ${files.join(', ')} live`);

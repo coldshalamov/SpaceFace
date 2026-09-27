@@ -268,10 +268,12 @@ def _stamp(path, identity, lod_label):
             'forward': '+X', 'up': '+Y', 'starboard': '+Z', 'unit': 'metre',
             'normalConvention': 'OpenGL', 'ormChannels': 'R=AO,G=Roughness,B=Metallic',
             'textureCompression': 'PNG-source', 'factorOnlyMaterials': factor_only,
-            'spacefaceRemasterGeometry': True, 'lod': lod_label,
-            'surfaceGeometryRemaster': 'forge-v1', 'identitySource': 'tools/blender/forge',
-            'integratedHardpoints': True,
+            'lod': lod_label,
             **identity,
+            # forge truth last: a copied live identity must never mask these
+            'textureCompression': 'PNG-source', 'factorOnlyMaterials': factor_only,
+            'spacefaceRemasterGeometry': True, 'surfaceGeometryRemaster': 'forge-v1',
+            'identitySource': 'tools/blender/forge', 'integratedHardpoints': True,
         }
         scene = doc['scenes'][doc.get('scene', 0)]
         scene.setdefault('extras', {})['spacefaceAsset'] = meta
@@ -292,9 +294,91 @@ def _clear_export_objects(objs):
             bpy.data.objects.remove(obj, do_unlink=True)
 
 
+PLACE_DIR = os.path.join(ROOT, 'assets', 'ships', 'parts', 'places')
+
+
+def _read_glb_json(path):
+    with open(path, 'rb') as f:
+        data = f.read()
+    jlen = struct.unpack_from('<I', data, 12)[0]
+    return json.loads(data[20:20 + jlen].decode('utf-8'))
+
+
+def live_place_contract(file):
+    """Sockets (world transform + extras), root name and identity of the live place GLB, so a forged
+    place drops into the exact gameplay contract the old one held."""
+    from mathutils import Matrix, Quaternion
+    doc = _read_glb_json(os.path.join(PLACE_DIR, f'{file}.glb'))
+    nodes = doc.get('nodes', [])
+    parent = {}
+    for i, n in enumerate(nodes):
+        for c in n.get('children', []):
+            parent[c] = i
+
+    def local(n):
+        t = Matrix.Translation(n.get('translation', [0, 0, 0]))
+        q = n.get('rotation', [0, 0, 0, 1])
+        r = Quaternion((q[3], q[0], q[1], q[2])).to_matrix().to_4x4()
+        sc = n.get('scale', [1, 1, 1])
+        sm = Matrix.Diagonal((sc[0], sc[1], sc[2], 1.0))
+        return Matrix(n['matrix']).transposed() if 'matrix' in n else t @ r @ sm
+
+    def world(i):
+        m = local(nodes[i])
+        while i in parent:
+            i = parent[i]
+            m = local(nodes[i]) @ m
+        return m
+    conv = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))  # glTF -> Blender
+    sockets = []
+    for i, n in enumerate(nodes):
+        if str(n.get('name', '')).startswith('SOCKET_'):
+            sockets.append((n['name'], conv @ world(i) @ conv.inverted(), n.get('extras', {})))
+    scene = doc['scenes'][doc.get('scene', 0)]
+    roots = [nodes[i]['name'] for i in scene['nodes'] if 'ROOT' in str(nodes[i].get('name', '')).upper()]
+    meta = (scene.get('extras') or {}).get('spacefaceAsset') or (doc.get('asset', {}).get('extras') or {}).get('spacefaceAsset') or {}
+    return {'sockets': sockets, 'root': roots[0] if roots else None, 'meta': meta}
+
+
+def export_place(ship, spec, preview=False):
+    out_dir = PREVIEW_DIR if preview else PLACE_DIR
+    os.makedirs(out_dir, exist_ok=True)
+    live = live_place_contract(spec['file'])
+    _rename_materials(ship)
+    root = _root_empty(live['root'] or f"SF_{spec['file'].upper()}_ROOT", {})
+    meshes_all = []
+    for level in (0, 1, 2):
+        meshes = _lod_meshes(ship, level, f'LOD{level}')
+        for m in meshes:
+            m.parent = root
+        meshes_all += meshes
+    _collision_hull(ship, root, [m for m in meshes_all if m.name.startswith('LOD0_')])
+    for name, mat, extras in live['sockets']:
+        e = bpy.data.objects.new(name, None)
+        bpy.context.scene.collection.objects.link(e)
+        e.matrix_world = mat
+        for k, v in (extras or {}).items():
+            e[k] = v
+        e.parent = root
+    path = os.path.join(out_dir, f"{spec['file']}.glb")
+    _export([root] + list(root.children), path)
+    # Identity only: descriptive fields of the old body (triangle counts, material lists, texture
+    # notes) would be false for the forged one.
+    keep = ('contractVersion', 'assetId', 'partId', 'liveId', 'category', 'family', 'role')
+    identity = {k: live['meta'][k] for k in keep if k in live['meta']}
+    identity.update({'assetId': spec['asset_id'], 'partId': spec.get('part_id', spec['file']), 'slot': 'place',
+                     'forge': {'version': 1, 'ship': ship.id}})
+    _stamp(path, identity, 'lod0')
+    tris = sum(sum(len(p.vertices) - 2 for p in m.data.polygons) for m in meshes_all if m.name.startswith('LOD0_'))
+    print(f'[forge] {path} place lod0 tris={tris} sockets={len(live["sockets"])}')
+    return [(path, tris)]
+
+
 def export_ship(ship, spec, out_dir=None, preview=False):
     """spec: dict(layout='player'|'npc', file=<basename>, asset_id, part_id, root=<ROOT token>,
     npc_root=<full root node name>)."""
+    if spec['layout'] == 'place':
+        return export_place(ship, spec, preview=preview)
     out_dir = out_dir or (PREVIEW_DIR if preview else WHOLESHIP_DIR)
     os.makedirs(out_dir, exist_ok=True)
     _rename_materials(ship)

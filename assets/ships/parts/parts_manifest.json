@@ -2047,14 +2047,15 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_cargo_pod_standard.glb",
-      "tris": 168,
-      "bytes": 695336,
+      "tris": 6964,
+      "bytes": 840932,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Struct",
-        "accent": "Material_PaintTeal"
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical"
       },
-      "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `cargo_pod_standard`. LOD0/1/2 tris 168/156/36. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
+      "note": "Forge-v1 cargo pod (tools/blender/forge/ships/place_cargo_pod_standard.py): ribbed teal intermodal container, charcoal frame and corner castings, hazard bands, grapple lug, status lamps.",
       "hooks": [],
       "sockets": [
         "SOCKET_Clamp_Dorsal",
@@ -2064,18 +2065,18 @@
       "bounds": {
         "min": [
           -3.059999942779541,
-          -1.600000023841858,
-          -1.7000000476837158
+          -1.5799999237060547,
+          -1.6999999284744263
         ],
         "max": [
           3.059999942779541,
-          1.6299999952316284,
-          1.7000000476837158
+          2.4000000953674316,
+          1.6999999284744263
         ],
         "dimensionsM": [
           6.119999885559082,
-          3.2300000190734863,
-          3.4000000953674316
+          3.9800000190734863,
+          3.3999998569488525
         ]
       },
       "triangleMetric": "lod0"

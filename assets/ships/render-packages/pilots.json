@@ -128,10 +128,16 @@
       "slot": "place",
       "releaseAssetId": "place_cargo_pod_standard",
       "sourceUrl": "assets/ships/release/parts/places/place_cargo_pod_standard.glb",
-      "releaseSha256": "269c7b162bb0049afd29a31a63d825f73fbdab368fa116cac2635b8a43107c1e",
-      "releaseBytes": 260352,
-      "rootNode": "place_cargo_pod_standard",
-      "dynamicNameIncludes": [],
+      "releaseSha256": "c350ab31ff72098ebbb2a04d8f3f720dc20cf04842538d0c62675849558dd62f",
+      "releaseBytes": 483916,
+      "rootNode": "SF_PLACE_CARGO_POD_STANDARD_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/cargo-pod-standard",
       "metadataUrl": "assets/ships/release/render-packages/cargo-pod-standard/render-package.json"
     },
