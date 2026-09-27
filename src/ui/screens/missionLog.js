@@ -42,7 +42,8 @@ import {
 import { el, rows, hero, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectArchiveLayouts } from '../orrery/archiveLayouts.js';
-import { missionDialSvg, createLadderHand, archiveZoom } from '../orrery/archiveInstruments.js';
+import { missionDialSvg, missionDialGhostSvg, createLadderHand, archiveZoom } from '../orrery/archiveInstruments.js';
+import { hullPosterUrl } from '../hullPosters.js';
 import { createSpring } from '../orrery/motion.js';
 import { rollTo } from '../orrery/text.js';
 import { jumpRoute } from '../orrery/routeOrrery.js';
@@ -67,102 +68,192 @@ function sectorArtUrl(sectorId) {
   return null;
 }
 
-/**
- * The chosen contract's route, drawn across the stage: where you are to where it ends, a tick where
- * each jump lands, a red stretch where the work turns hostile, your progress as a bead on the beam
- * with a pulse running on toward the berth, and the clock as a ruled scale under it.
- */
-function missionRouteBandHtml(state, m, { preview = false } = {}) {
-  const simTime = Number(state && state.simTime) || 0;
+/** The jump-ring still: what an endpoint stands when nothing nearer to it has art. */
+const RELAY_STILL = 'assets/cinematics/C-INTRO-01.jpg';
+
+/** The hull you fly as its plan-view render (for "your position": the nose turned along the lane). */
+function flownHullTop(state) {
+  const player = state && state.player;
+  const owned = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const ship = owned[Number(player && player.activeShipIndex) || 0] || owned[0] || null;
+  return ship && ship.defId ? hullPosterUrl(ship.defId, 'top') : null;
+}
+
+/** A contract's route: where it starts and ends, its jumps, how far it has come, whether it turns hostile. */
+function routeFacts(state, m) {
   const originSector = (state && state.world && state.world.currentSectorId) || null;
-  const originName = originSector && SECTOR_BY_ID.get(originSector) ? SECTOR_BY_ID.get(originSector).name : 'Your position';
+  const origin = originSector ? SECTOR_BY_ID.get(originSector) : null;
   const destSector = missionDestSectorId(m);
   const route = originSector && destSector ? jumpRoute(originSector, destSector) : [];
-  const jumps = route.length ? route.length - 1 : null;
-  const frac = missionProgressFrac(m);
-  const pct = (n) => (Math.round(n * 1000) / 10) + '%';
-  const art = (url, cls) => (url ? '<span class="ml-route__face ' + cls + '"><img src="' + escapeHtml(url) + '" alt="" decoding="async"></span>'
-    : '<span class="ml-route__face ' + cls + ' is-bare"></span>');
-  // the track: the beam, the lit stretch you have come, the pulse on toward the berth
-  let run = '<span class="ml-route__beam"></span>'
-    + '<span class="ml-route__lit" style="width:' + pct(frac) + '"></span>'
-    + '<span class="ml-route__lane" style="left:' + pct(frac) + ';width:' + pct(1 - frac) + '"><i class="ml-route__pulse"></i></span>';
-  // a tick where each jump lands (the destination's sector is the far end)
-  const hops = route.slice(1, -1);
-  hops.forEach((sectorId, k) => {
-    const at = (k + 1) / (hops.length + 1);
-    const sec = SECTOR_BY_ID.get(sectorId);
-    run += '<span class="ml-route__hop" style="left:' + pct(at) + '"><i></i><b>' + escapeHtml(sec ? sec.name : prettyId(sectorId, 'Sector')) + '</b></span>';
-  });
-  // hostile work: a red stretch across the middle of the route, and only there
   const risk = missionRiskTier(m);
-  const hostile = DANGEROUS_MISSION_TYPES.has(m && m.type) || risk >= 3;
-  if (hostile) run += '<span class="ml-route__threat" style="left:34%;width:34%"><b>Hostile · R' + risk + '</b></span>';
-  run += '<span class="ml-route__ship" style="left:' + pct(frac) + '"><b>' + Math.round(frac * 100) + '%</b></span>';
-  // the faces of the two ends stand outside the run, the beam between them
-  const track = '<span class="ml-route__run">' + run + '</span>'
-    + art(sectorArtUrl(originSector), 'ml-route__face--from') + art(stationArtUrl(m && m.destStationId) || sectorArtUrl(destSector), 'ml-route__face--to');
-  // the clock: the contract's whole span as a scale, what is left of it lit (red once it is a threat)
-  const deadline = Number(m && m.deadline_s);
-  const remaining = Math.max(0, (Number.isFinite(deadline) ? deadline : 0) - simTime);
-  const share = missionClockFrac(m, simTime);
-  const urgent = remaining > 0 && remaining < 120;
-  let clock = '';
-  if (share != null) {
-    const total = share > 0 ? remaining / share : remaining;
-    const stepS = total > 1800 ? 600 : total > 600 ? 300 : 60;
-    let ticks = '';
-    for (let t = stepS; t < total; t += stepS) ticks += '<i style="left:' + pct(t / total) + '"></i>';
-    clock = '<div class="ml-route__clock' + (urgent ? ' is-threat' : '') + '"><span class="ml-route__clock-rule">' + ticks
-      + '<span class="ml-route__clock-left" style="left:' + pct(1 - share) + ';width:' + pct(share) + '"></span>'
-      + '<span class="ml-route__clock-now" style="left:' + pct(1 - share) + '"></span></span>'
-      + '<span class="ml-route__clock-read"><b>' + escapeHtml(fmtTime(remaining)) + '</b>left of ' + escapeHtml(fmtTime(total)) + '</span></div>';
-  } else {
-    clock = '<div class="ml-route__clock is-none"><span class="ml-route__clock-rule"></span><span class="ml-route__clock-read">No clock on this contract</span></div>';
-  }
-  const jumpWord = jumps == null ? 'Route pending' : jumps === 0 ? 'This sector' : jumps + (jumps === 1 ? ' jump' : ' jumps');
-  return '<div class="ml-route' + (preview ? ' is-preview' : '') + (hostile ? ' is-hostile' : '') + '" data-route-mid="' + escapeHtml((m && m.id) || '') + '">'
-    + '<p class="ml-route__cap"><span class="ml-route__kicker">' + (preview ? 'Tracing · ' : 'Route · ') + escapeHtml(missionTitle(m)) + '</span>'
-    + '<span class="ml-route__jumps">' + escapeHtml(jumpWord) + '</span></p>'
-    + '<div class="ml-route__track">' + track + '</div>'
-    + '<div class="ml-route__names"><span class="ml-route__from"><small>From</small>' + escapeHtml(originName) + '</span>'
-    + '<span class="ml-route__to"><small>To</small>' + (m && (m.destStationId || m.destSectorId) ? destinationHtml(m) : escapeHtml((m && m.destStationName) || 'Destination on the tracker')) + '</span></div>'
-    + clock
-    + '</div>';
+  return {
+    originSector,
+    originName: origin ? origin.name : 'Your position',
+    destSector,
+    route,
+    jumps: route.length ? route.length - 1 : null,
+    frac: missionProgressFrac(m),
+    risk,
+    hostile: DANGEROUS_MISSION_TYPES.has(m && m.type) || risk >= 3,
+  };
 }
 
-/** The band with nothing on it: where you are, a beam that fades out, no clock. */
+function jumpWordFor(jumps) {
+  return jumps == null ? 'Route pending' : jumps === 0 ? 'This sector' : jumps + (jumps === 1 ? ' jump' : ' jumps');
+}
+
+const pctCss = (n) => (Math.round(n * 1000) / 10) + '%';
+
+function faceHtml(url, cls) {
+  return '<span class="ml-route__face ' + cls + '"><img src="' + escapeHtml(url) + '" alt="" decoding="async"></span>';
+}
+/** The start of a route: the sector's own art, else your hull from above, else the relay still. */
+function fromFaceHtml(state, originSector) {
+  const sector = sectorArtUrl(originSector);
+  if (sector) return faceHtml(sector, 'ml-route__face--from');
+  const hull = flownHullTop(state);
+  return hull ? faceHtml(hull, 'ml-route__face--from is-hull') : faceHtml(RELAY_STILL, 'ml-route__face--from');
+}
+/** The end of a route: the station's art, else its sector's, else the relay still. */
+function destArtUrl(m) {
+  return stationArtUrl(m && m.destStationId) || sectorArtUrl(missionDestSectorId(m)) || RELAY_STILL;
+}
+
+/**
+ * One lane of the band: a filled band with a lit core, the stretch you have come lit, a tick where
+ * each jump lands (named for the sector it lands in), the hostile stretch in red, your chevron.
+ */
+function laneHtml(f, { ghost = false } = {}) {
+  let html = '<span class="ml-lane' + (ghost ? ' ml-lane--ghost' : '') + '"><i class="ml-lane__band"></i>'
+    + '<i class="ml-lane__lit" style="width:' + pctCss(f.frac) + '"></i>';
+  if (!ghost) html += '<span class="ml-lane__run" style="left:' + pctCss(f.frac) + ';width:' + pctCss(1 - f.frac) + '"><i class="ml-route__pulse"></i></span>';
+  const J = f.jumps || 0;
+  for (let k = 1; k <= J; k += 1) {
+    const at = k / (J + 1);
+    const sec = SECTOR_BY_ID.get(f.route[k]);
+    const near = f.frac > 0 && Math.abs(f.frac - at) < 0.2;
+    html += '<span class="ml-lane__hop' + (near ? ' is-near' : '') + '" style="left:' + pctCss(at) + '"><i></i><b>'
+      + escapeHtml(sec ? sec.name : prettyId(f.route[k], 'Sector')) + '</b></span>';
+  }
+  if (f.hostile) {
+    // the work turns hostile where the route ends: past the last jump, in the destination's sector
+    const start = Math.min(0.84, J > 0 ? J / (J + 1) + 0.06 : 0.3);
+    html += '<span class="ml-lane__threat" style="left:' + pctCss(start) + ';width:' + pctCss(0.96 - start) + '"><b>Hostile · R' + f.risk + '</b></span>';
+  }
+  html += '<span class="ml-lane__ship" style="left:' + pctCss(f.frac) + '"><i></i></span>';
+  if (!ghost && f.frac > 0) html += '<b class="ml-lane__pct" style="left:' + pctCss(f.frac) + '">' + Math.round(f.frac * 100) + '%</b>';
+  return html + '</span>';
+}
+
+/**
+ * The clock folded onto the lane: a ruled scale just under it, the contract's whole span from
+ * accept to deadline, the ticks still ahead lit and a mark at now; a contract without a clock keeps
+ * the same scale unlit and says so. The reading stands over the lane, under the jump count.
+ */
+function clockScaleHtml(m, simTime) {
+  const share = m ? missionClockFrac(m, simTime) : null;
+  if (share == null) {
+    let ticks = '';
+    for (let k = 0; k <= 40; k += 1) ticks += '<i' + (k % 5 === 0 ? ' class="is-major"' : '') + ' style="left:' + pctCss(k / 40) + '"></i>';
+    return { scale: '<span class="ml-clock is-none">' + ticks + '</span>', read: '<span class="ml-clock__read">No clock</span>' };
+  }
+  const remaining = Math.max(0, (Number(m.deadline_s) || 0) - simTime);
+  const urgent = remaining > 0 && remaining < 120;
+  const total = share > 0 ? remaining / share : Math.max(1, remaining);
+  const major = total > 1800 ? 600 : total > 600 ? 300 : 60;
+  const minor = total / major > 16 ? major : major / 5;
+  const now = share > 0 ? 1 - share : 1;
+  let ticks = '';
+  let k = 0;
+  let last = 0;
+  for (let t = 0; t <= total + 0.001; t += minor, k += 1) {
+    const at = Math.min(1, t / total);
+    last = at;
+    const cls = [(minor === major || k % 5 === 0) ? 'is-major' : '', at >= now - 1e-6 ? 'is-left' : ''].filter(Boolean).join(' ');
+    ticks += '<i' + (cls ? ' class="' + cls + '"' : '') + ' style="left:' + pctCss(at) + '"></i>';
+  }
+  if (last < 0.995) ticks += '<i class="is-major is-left" style="left:100%"></i>';
+  return {
+    scale: '<span class="ml-clock' + (urgent ? ' is-threat' : '') + '">' + ticks + '<span class="ml-clock__now" style="left:' + pctCss(now) + '"></span></span>',
+    read: '<span class="ml-clock__read' + (urgent ? ' is-threat' : '') + '"><b>' + escapeHtml(fmtTime(remaining)) + '</b>left<span class="ml-clock__of"> of ' + escapeHtml(fmtTime(total)) + '</span></span>',
+  };
+}
+
+/** The bend that carries a traced route off the start of the chosen one, onto the lane below it. */
+const GHOST_ELBOW = '<svg class="ml-ghost__elbow" viewBox="0 0 72 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M 36 72 L 36 86 L 50 100 L 72 100"/></svg>';
+
+/** The slot under the lane at rest: where a traced contract will draw, and how to trace one. */
+function ghostRestHtml() {
+  return GHOST_ELBOW + '<p class="ml-ghost__hint">Trace the beam to weigh another contract</p>';
+}
+
+/** A traced contract as a ghost lane under the chosen one: its own end, its jumps, its progress. */
+function ghostLaneHtml(state, m) {
+  const f = routeFacts(state, m);
+  const stn = m && m.destStationId ? STATION_INFO.get(m.destStationId) : null;
+  const sec = f.destSector ? SECTOR_BY_ID.get(f.destSector) : null;
+  const to = stn ? stn.name : sec ? sec.name + ' sector' : ((m && m.destStationName) || '');
+  return GHOST_ELBOW + laneHtml(f, { ghost: true }) + faceHtml(destArtUrl(m), 'ml-route__face--ghost')
+    + '<p class="ml-ghost__cap"><span class="ml-ghost__name"><b>Tracing</b> · ' + escapeHtml(missionTitle(m)) + '</span>'
+    + '<span class="ml-ghost__to">' + escapeHtml(jumpWordFor(f.jumps) + (to ? ' · ' + to : '')) + '</span></p>';
+}
+
+/**
+ * The chosen contract's route across the stage: where you are to where it ends, the clock ruled
+ * under the lane, and (with more than one contract) the slot a traced contract draws into.
+ */
+function missionRouteBandHtml(state, m, { slot = false } = {}) {
+  const simTime = Number(state && state.simTime) || 0;
+  const f = routeFacts(state, m);
+  const clock = clockScaleHtml(m, simTime);
+  const toHtml = m && (m.destStationId || m.destSectorId) ? destinationHtml(m) : escapeHtml((m && m.destStationName) || 'Destination on the tracker');
+  return '<div class="ml-route' + (f.hostile ? ' is-hostile' : '') + (slot ? ' has-slot' : '') + '" data-route-mid="' + escapeHtml((m && m.id) || '') + '">'
+    + '<div class="ml-route__ends"><span class="ml-route__from"><small>From</small>' + escapeHtml(f.originName) + '</span>'
+    + '<span class="ml-route__mid"><span class="ml-route__jumps">' + escapeHtml(jumpWordFor(f.jumps)) + '</span>' + clock.read + '</span>'
+    + '<span class="ml-route__to"><small>To</small>' + toHtml + '</span></div>'
+    + '<div class="ml-route__track">' + fromFaceHtml(state, f.originSector) + faceHtml(destArtUrl(m), 'ml-route__face--to')
+    + '<span class="ml-route__run">' + laneHtml(f) + clock.scale + '</span>'
+    + (slot ? '<span class="ml-route__ghost is-rest">' + ghostRestHtml() + '</span>' : '')
+    + '</div></div>';
+}
+
+/** The band with nothing on it: where you are, a lane that fades out, the clock unlit. */
 function emptyRouteBandHtml(state) {
   const originSector = (state && state.world && state.world.currentSectorId) || null;
-  const originName = originSector && SECTOR_BY_ID.get(originSector) ? SECTOR_BY_ID.get(originSector).name : 'Your position';
-  const face = sectorArtUrl(originSector);
+  const origin = originSector ? SECTOR_BY_ID.get(originSector) : null;
   return '<div class="ml-route is-empty">'
-    + '<p class="ml-route__cap"><span class="ml-route__kicker">Route · none plotted</span><span class="ml-route__jumps">Standing by</span></p>'
-    + '<div class="ml-route__track"><span class="ml-route__run"><span class="ml-route__beam"></span></span>'
-    + (face ? '<span class="ml-route__face ml-route__face--from"><img src="' + escapeHtml(face) + '" alt="" decoding="async"></span>'
-      : '<span class="ml-route__face ml-route__face--from is-bare"></span>')
-    + '</div>'
-    + '<div class="ml-route__names"><span class="ml-route__from"><small>From</small>' + escapeHtml(originName) + '</span>'
-    + '<span class="ml-route__to"><small>To</small>A contract from a station board</span></div>'
-    + '<div class="ml-route__clock is-none"><span class="ml-route__clock-rule"></span><span class="ml-route__clock-read">No clock</span></div>'
-    + '</div>';
+    + '<div class="ml-route__ends"><span class="ml-route__from"><small>From</small>' + escapeHtml(origin ? origin.name : 'Your position') + '</span>'
+    + '<span class="ml-route__mid"><span class="ml-route__jumps">Standing by</span>' + clockScaleHtml(null, 0).read + '</span>'
+    + '<span class="ml-route__to"><small>To</small>A station board</span></div>'
+    + '<div class="ml-route__track">' + fromFaceHtml(state, originSector)
+    + '<span class="ml-route__run"><span class="ml-lane"><i class="ml-lane__band"></i></span>' + clockScaleHtml(null, 0).scale + '</span></div></div>';
 }
 
-/** The contract dial's markup: the arcs, the destination's art in its heart, the two readings. */
+/** The traced contract's reading under the dial, in ice: how far it has come, its clock. */
+function traceReadHtml(state, m) {
+  const simTime = Number(state && state.simTime) || 0;
+  const remaining = Math.max(0, (Number(m.deadline_s) || 0) - simTime);
+  const clock = missionClockFrac(m, simTime);
+  return 'Tracing<b>' + Math.round(missionProgressFrac(m) * 100) + '%</b>'
+    + (clock != null ? '· <b' + (remaining > 0 && remaining < 120 ? ' class="is-threat"' : '') + '>' + escapeHtml(fmtTime(remaining)) + '</b><span class="orr-mdial__trace-left">left</span>' : '· no clock');
+}
+
+/** The contract dial's markup: the arcs, the destination's art in its heart, the two readings, the ghost's place. */
 function missionDialInnerHtml(state, m) {
   const simTime = Number(state && state.simTime) || 0;
   const clock = missionClockFrac(m, simTime);
   const remaining = Math.max(0, (Number(m.deadline_s) || 0) - simTime);
   const urgent = remaining > 0 && remaining < 120;
   const frac = missionProgressFrac(m);
-  const face = stationArtUrl(m.destStationId) || sectorArtUrl(missionDestSectorId(m));
-  return (face ? '<span class="orr-mdial__face"><img src="' + escapeHtml(face) + '" alt="" decoding="async"></span>' : '')
+  return '<span class="orr-mdial__face"><img src="' + escapeHtml(destArtUrl(m)) + '" alt="" decoding="async"></span>'
     + missionDialSvg({ progress: frac, time: clock, urgent })
+    + '<div class="orr-mdial__ghost" aria-hidden="true"></div>'
     + '<div class="orr-mdial__read"><span class="orr-mdial__pct">' + Math.round(frac * 100) + '<small>%</small></span>'
     + '<span class="orr-mdial__w">Complete</span></div>'
     + (clock != null
       ? '<div class="orr-mdial__clock-read' + (urgent ? ' is-threat' : '') + '"><b>' + escapeHtml(fmtTime(remaining)) + '</b>left</div>'
-      : '<div class="orr-mdial__clock-read">No clock</div>');
+      : '<div class="orr-mdial__clock-read">No clock</div>')
+    + '<div class="orr-mdial__trace-read" hidden></div>';
 }
 
 /** How far a contract has come, 0..1. */
@@ -1954,7 +2045,7 @@ export const missionLogScreen = {
       let frame = 0;
       let pointerY = null;
       const later = globalThis.requestAnimationFrame || ((fn) => setTimeout(fn, 16));
-      const apply = () => { frame = 0; this._traceTo(pointerY); };
+      const apply = () => { frame = 0; this._fadeOnRow(); this._traceTo(pointerY); };
       body.addEventListener('pointermove', (ev) => { pointerY = ev.clientY; if (!frame) frame = later(apply); });
       body.addEventListener('pointerleave', () => { pointerY = null; if (!frame) frame = later(apply); });
       body.addEventListener('scroll', () => { if (!frame) frame = later(apply); }, { passive: true });
@@ -2408,10 +2499,15 @@ export const missionLogScreen = {
         if (sub) sub.classList.add('k-bad');
       }
     }
-    // The stage follows the arrow keys quietly; Enter/Space (rows' onPick) confirms with the cue.
-    list.addEventListener('focusin', (ev) => {
-      const row = ev.target.closest('.k-row');
-      if (row && row.dataset.id !== this._focusedId) this._select(row.dataset.id, { quiet: true });
+    // Focus traces, it does not choose: the arrows and the stick run the trace to a contract (its
+    // ghost lane and ring draw beside the chosen one); Enter, Space or the pad's A picks it. Every
+    // contract is a stop of its own, since the pad's spatial focus passes over a roving -1.
+    const everyStop = () => { for (const r of list.querySelectorAll('.k-row')) r.setAttribute('tabindex', '0'); };
+    everyStop();
+    list.addEventListener('focusin', () => { everyStop(); this._traceTo(this._tracePointer == null ? null : this._tracePointer); });
+    list.addEventListener('focusout', (ev) => {
+      if (ev.relatedTarget && list.contains(ev.relatedTarget)) return;
+      this._traceTo(this._tracePointer == null ? null : this._tracePointer);
     });
     this._listEl.appendChild(list);
 
@@ -2431,7 +2527,31 @@ export const missionLogScreen = {
     const row = this._listEl ? this._listEl.querySelector('.k-row[aria-selected="true"]') : null;
     this._hand.moveTo(row, { instant });
     try { syncScrollExtent(this._hangEl); } catch (_) { /* layout-free host */ }
+    this._fadeOnRow();
     this._traceTo(this._tracePointer == null ? null : this._tracePointer, { instant });
+  },
+
+  /**
+   * When the hang runs on past its foot, the fade ends on a row boundary: the row the foot would
+   * cut is hidden under the fold and the fade falls across the gap above it.
+   */
+  _fadeOnRow() {
+    const hang = this._hangEl;
+    if (!hang || !richDom() || !hang.style || typeof hang.style.setProperty !== 'function') return;
+    const limit = Number(hang.clientHeight) || 0;
+    const more = (Number(hang.scrollHeight) || 0) - (Number(hang.scrollTop) || 0) - limit > 2;
+    if (!more || !(limit > 0)) { hang.style.removeProperty('--ml-cut'); return; }
+    const hr = hang.getBoundingClientRect();
+    const z = archiveZoom(hang, hr);
+    let cut = 0;
+    for (const node of hang.querySelectorAll('.k-row')) {
+      if (node.hidden || node.offsetParent === null) continue;
+      const r = node.getBoundingClientRect();
+      const top = (r.top - hr.top) / z;
+      const bottom = (r.bottom - hr.top) / z;
+      if (top < limit && bottom > limit + 1) { cut = Math.max(0, limit - top); break; }
+    }
+    hang.style.setProperty('--ml-cut', Math.round(cut) + 'px');
   },
 
   /** A node's height on the beam, in the hang's own scrolled pixels (a zoomed screen scales them). */
@@ -2512,6 +2632,11 @@ export const missionLogScreen = {
       let best = null;
       for (const n of nodes) if (!best || Math.abs(n.y - target) < Math.abs(best.y - target)) best = n;
       if (best && Math.abs(best.y - target) < 26) { target = best.y; traced = best.row; }
+    } else if (typeof document !== 'undefined') {
+      const act = document.activeElement;
+      const focused = act && typeof act.closest === 'function' ? act.closest('.k-row[data-id]') : null;
+      const n = focused ? nodes.find((x) => x.row === focused) : null;
+      if (n) { target = n.y; traced = n.row; }
     }
     for (const n of nodes) n.row.classList.toggle('is-traced', n.row === traced);
     this._previewMission(traced ? traced.dataset.id : null);
@@ -2552,7 +2677,10 @@ export const missionLogScreen = {
       const btn = active.closest('[data-act]');
       return btn ? { where: 'stage', act: btn.getAttribute('data-act') } : { where: 'stage' };
     }
-    if (this._listEl && this._listEl.contains(active)) return { where: 'list' };
+    if (this._listEl && this._listEl.contains(active)) {
+      const row = active.closest('.k-row[data-id]');
+      return { where: 'list', id: row ? row.dataset.id : null };
+    }
     if (this._recommendEl && this._recommendEl.contains(active)) {
       const btn = active.closest('[data-rec-act]');
       return btn ? { where: 'rec', act: btn.getAttribute('data-rec-act') } : null;
@@ -2567,7 +2695,8 @@ export const missionLogScreen = {
       target = (token.act && this._stageEl.querySelector('button[data-act="' + token.act + '"]'))
         || this._stageEl.querySelector('button[data-act]');
     } else if (token.where === 'list' && this._listEl) {
-      target = this._listEl.querySelector('.k-row[aria-selected="true"]');
+      target = (token.id && Array.from(this._listEl.querySelectorAll('.k-row[data-id]')).find((r) => r.dataset.id === token.id))
+        || this._listEl.querySelector('.k-row[aria-selected="true"]');
     } else if (token.where === 'rec' && this._recommendEl) {
       target = this._recommendEl.querySelector('button[data-rec-act="' + token.act + '"]');
     }
@@ -2644,7 +2773,7 @@ export const missionLogScreen = {
     }
     card.appendChild(el('h2', 'k-display k-t-title', titleText));
     if (!isTracked) card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-next', stripNextPrefix(nextStepText(m))));
-    else card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-obj', objectiveText(m) + ' · ' + missionProgressLabel(m)));
+    else card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-obj', objectiveText(m)));
 
     const reward = Math.max(0, Number(m.reward_cr) || 0);
     // The hero number is the payout; a contract that pays in a phrase ("close cleanly") has no
@@ -2682,7 +2811,8 @@ export const missionLogScreen = {
 
     // The route across the foot of the stage: here to the berth, the jumps, the clock, your bead.
     const route = el('div', 'ml-route-host');
-    route.innerHTML = missionRouteBandHtml(state, m);
+    const contracts = ((state.missions && state.missions.active) || []).filter((x) => x && x.status === 'active').length;
+    route.innerHTML = missionRouteBandHtml(state, m, { slot: contracts > 1 });
     this._routeEl = route;
     card.appendChild(route);
 
@@ -2695,9 +2825,9 @@ export const missionLogScreen = {
   },
 
   /**
-   * Tracing the beam previews what it passes: the route band redraws for that contract (marked as
-   * traced) and the dial shows its clock; the chosen contract comes back when the trace leaves.
-   * A click on the traced row commits the choice (the rows' own pick).
+   * Tracing the beam weighs what it passes against the chosen contract: the traced one draws as a
+   * ghost lane under the chosen lane and a ghost ring inside the dial, its clock in ice under it.
+   * The stage (title, terms, the chosen lane and dial) stays on the chosen contract until the pick.
    */
   _previewMission(missionId) {
     if (!this._routeEl || !this._dialEl) return;
@@ -2705,14 +2835,22 @@ export const missionLogScreen = {
     if (!state) return;
     const want = missionId && missionId !== this._focusedId ? missionId : null;
     if (want === this._previewId) return;
-    this._previewId = want;
     const active = (state.missions && state.missions.active) || [];
-    const shown = active.find((x) => x && x.id === (want || this._focusedId) && x.status === 'active');
-    if (!shown) return;
-    this._routeEl.innerHTML = missionRouteBandHtml(state, shown, { preview: !!want });
-    this._dialEl.innerHTML = missionDialInnerHtml(state, shown);
-    this._dialEl.classList.toggle('is-preview', !!want);
-    if (this._stageEl && this._stageEl.classList) this._stageEl.classList.toggle('is-previewing', !!want);
+    const m = want ? active.find((x) => x && x.id === want && x.status === 'active') || null : null;
+    this._previewId = m ? want : null;
+    const ghost = this._routeEl.querySelector('.ml-route__ghost');
+    if (ghost) {
+      ghost.innerHTML = m ? ghostLaneHtml(state, m) : ghostRestHtml();
+      ghost.classList.toggle('is-rest', !m);
+    }
+    const band = this._routeEl.querySelector('.ml-route');
+    if (band) band.classList.toggle('is-tracing', !!m);
+    const ring = this._dialEl.querySelector('.orr-mdial__ghost');
+    if (ring) ring.innerHTML = m ? missionDialGhostSvg({ progress: missionProgressFrac(m) }) : '';
+    const read = this._dialEl.querySelector('.orr-mdial__trace-read');
+    if (read) { read.hidden = !m; read.innerHTML = m ? traceReadHtml(state, m) : ''; }
+    this._dialEl.classList.toggle('is-tracing', !!m);
+    if (this._stageEl && this._stageEl.classList) this._stageEl.classList.toggle('is-previewing', !!m);
   },
 
   // Only final disposition / post-ending continuity persists beside normal work. Earlier story

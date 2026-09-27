@@ -207,6 +207,24 @@ export function missionDialSvg({ progress = 0, time = null, urgent = false } = {
   return `<svg class="orr-svg orr-mdial__svg" viewBox="0 0 240 240" aria-hidden="true" focusable="false">${parts.join('')}</svg>`;
 }
 
+/**
+ * The traced contract on the contract dial: a ghost ring just inside the chosen contract's progress,
+ * lit as far as the traced one has come, so the two read side by side.
+ */
+export function missionDialGhostSvg({ progress = 0 } = {}) {
+  const C = 120;
+  const R = 74;
+  const p = clamp01(progress);
+  const ring = arcD(C, C, R, 0, 360);
+  const parts = [`<path class="orr-mdial__ghost-track" d="${ring}"/>`];
+  if (p > 0.004) {
+    const d = p >= 0.999 ? ring : arcD(C, C, R, 0, 360 * p);
+    const [hx, hy] = polar(C, C, R, 360 * p);
+    parts.push(`<path class="orr-mdial__ghost-prog" d="${d}"/><circle class="orr-mdial__ghost-bead" cx="${q(hx)}" cy="${q(hy)}" r="2.6"/>`);
+  }
+  return `<svg class="orr-svg orr-mdial__ghost-svg" viewBox="0 0 240 240" aria-hidden="true" focusable="false">${parts.join('')}</svg>`;
+}
+
 /** The scale between an element's screen pixels and its own CSS pixels (CSS zoom on an ancestor). */
 export function archiveZoom(node, rect = null) {
   if (!node || typeof node.getBoundingClientRect !== 'function') return 1;

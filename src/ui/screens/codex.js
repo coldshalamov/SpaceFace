@@ -997,7 +997,28 @@ export const codexScreen = {
     if (!this._hand) this._hand = createLadderHand(this._index, { className: 'orr-arc-hand orr-arc-hand--bone', nodeY: 15 });
     const row = this._list && typeof this._list.querySelector === 'function'
       ? this._list.querySelector('.k-row[aria-selected="true"]') : null;
+    this._keepRowClear(row);
     this._hand.moveTo(row, { instant });
+  },
+
+  /** The chosen rung stands clear of the ladder's fold (its fade) rather than half under it. */
+  _keepRowClear(row) {
+    const box = this._index;
+    if (!row || !box || typeof box.getBoundingClientRect !== 'function' || typeof row.getBoundingClientRect !== 'function') return;
+    if (!(Number(box.scrollHeight) > Number(box.clientHeight) + 2)) return;
+    const b = box.getBoundingClientRect();
+    const r = row.getBoundingClientRect();
+    if (!(r.height > 0)) return;
+    const z = archiveZoom(box, b);
+    const top = (r.top - b.top) / z;
+    const bottom = (r.bottom - b.top) / z;
+    const limit = Number(box.clientHeight) - 40;
+    let shift = 0;
+    if (bottom > limit) shift = bottom - limit;
+    else if (top < 4) shift = top - 4;
+    if (!shift) return;
+    box.scrollTop = Math.max(0, (Number(box.scrollTop) || 0) + shift);
+    this._drawWedge();
   },
 
   /**
