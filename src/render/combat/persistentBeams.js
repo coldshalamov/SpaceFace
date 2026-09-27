@@ -130,7 +130,7 @@ function applyBeamShaderStructure(material, shared, role) {
   float sfDrainFront = vSfStop < -0.5 ? 1.1 : smoothstep(0.0, 1.0, sfReleaseAge / 0.26);
   float sfDrain = vSfStop < -0.5
     ? 1.0
-    : 1.0 - smoothstep(sfDrainFront - 0.16, sfDrainFront + 0.16, vSfBeam.x);
+    : smoothstep(sfDrainFront - 0.16, sfDrainFront + 0.16, vSfBeam.x);
 
   // A loaded volume has a hot spine, a softer wall, and dark moving separation between the
   // internal strands. These folds are phased on world distance, so a retarget cannot stretch the
@@ -173,7 +173,7 @@ function applyBeamShaderStructure(material, shared, role) {
   float sfDrainFront = vSfStop < -0.5 ? 1.1 : smoothstep(0.0, 1.0, sfReleaseAge / 0.26);
   float sfDrain = vSfStop < -0.5
     ? 1.0
-    : 1.0 - smoothstep(sfDrainFront - 0.18, sfDrainFront + 0.18, vSfBeam.x);
+    : smoothstep(sfDrainFront - 0.18, sfDrainFront + 0.18, vSfBeam.x);
   float sfSheath = pow(max(0.0, 1.0 - sfAcross), 1.65) + (1.0 - smoothstep(0.58, 0.96, sfAcross)) * 0.28;
   float sfTravel = 0.5 + 0.5 * sin(vSfAxial * 1.12 - uSfTime * 78.0);
   float sfContactBand = smoothstep(0.62, 0.98, vSfBeam.x);
