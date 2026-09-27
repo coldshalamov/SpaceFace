@@ -33,6 +33,7 @@ import { KILL_REWARD_RECIPES } from '../data/killRewards.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { RESEARCH_GRANTS } from '../data/researchGrants.js';
 import { SECTORS } from '../data/sectors.js';
+import { conflictPressureForSector } from '../data/conflictZones.js';
 import {
   FIRST_UPGRADE,
   FIRST_UPGRADE_MINUTES,
@@ -2656,7 +2657,17 @@ export const economy = {
     state.economy.econEvents = keep;
   },
 
-  /** Roll a spontaneous event on a random known market (seeded). */
+  /**
+   * Roll a spontaneous event on a random known market (seeded).
+   * The roll reads the station's actual industry so an alert names a good the
+   * berth really trades: shortages and blockades fall on its consume-role
+   * inputs, surpluses on its produce-role outputs (any listing only as a
+   * fallback when the station hosts no matching line). Blockade weight leans on
+   * the sector's factions-owned conflict pressure and piracy on local security,
+   * so war fronts bubble with cordons while quiet, high-security berths mostly
+   * do not cry wolf. Nothing here mutates the world — the type just has to be
+   * believable before the market news invites the player to trade it.
+   */
   rollSpontaneousEvent(state) {
     const stationIds = Object.keys(state.economy.markets);
     if (!stationIds.length) return;
@@ -2668,9 +2679,33 @@ export const economy = {
     const market = state.economy.markets[sid];
     const cids = Object.keys(market);
     if (!cids.length) return;
-    const cid = cids[Math.floor(rng() * cids.length)];
-    const types = ['shortage', 'boom', 'blockade', 'piracy'];
-    const type = types[Math.floor(rng() * types.length)];
+    const info = stationInfo(state, sid);
+    const warPressure = info
+      ? conflictPressureForSector(state.conflicts, info.sectorId)
+      : 0;
+    const rawSecurity = Number(info && info.security);
+    const security = Number.isFinite(rawSecurity) ? Math.min(1, Math.max(0, rawSecurity)) : 0.5;
+    // Type weights name the world. shortage/boom stay the ordinary beat; an
+    // open-war sector (pressure 1) quadruples the blockade weight, and a
+    // lawless berth (security 0) triples the piracy weight.
+    const weights = {
+      shortage: 10,
+      boom: 10,
+      piracy: 2 + (1 - security) * 4,
+      blockade: 2 + warPressure * 6,
+    };
+    let total = 0;
+    for (const k in weights) total += weights[k];
+    let r = rng() * total;
+    let type = 'shortage';
+    for (const k in weights) {
+      r -= weights[k];
+      if (r <= 0) { type = k; break; }
+    }
+    const role = type === 'boom' ? 'produce' : 'consume';
+    const industry = cids.filter((cid) => market[cid] && market[cid].role === role);
+    const pool = industry.length ? industry : cids;
+    const cid = pool[Math.floor(rng() * pool.length)];
     const duration = 90 + Math.floor(rng() * 120); // 90..210s
     this.injectEvent({ type, stationId: sid, commodityId: cid, duration });
   },

@@ -24,7 +24,7 @@ test('a wake longer than the visible arc stops drawing, and the stored path stay
   let drawn = 0;
   let hidden = 0;
   for (let s = 0; s < ribbons.histLen[slot]; s++) {
-    const alpha = ribbons.alpha[(slot * seg + s) * 2];
+    const alpha = ribbons.alpha[(slot * seg + s) * ribbons.sectionVertices];
     if (alpha > 0) drawn += 1;
     else hidden += 1;
   }

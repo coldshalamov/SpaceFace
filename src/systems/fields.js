@@ -1932,6 +1932,8 @@ export const fields = {
       if (!rec) rec = active[n] = { center: { x: 0, z: 0 }, dir: { x: 1, z: 0 } };
       n++;
       rec.id = f.id; rec.kind = f.kind;
+      // Presentation uses these identities to exclude the emitter from surface deflection.
+      rec.sourceId = f.sourceId ?? null; rec.ownerId = f.ownerId ?? null;
       rec.tag = f.tag;
       rec.center.x = f.center.x; rec.center.z = f.center.z;
       rec.dir.x = f.dir.x; rec.dir.z = f.dir.z;
@@ -1983,6 +1985,7 @@ export const fields = {
     let rec = active[n];
     if (!rec) rec = active[n] = { center: { x: 0, z: 0 }, dir: { x: 1, z: 0 } };
     rec.id = 'field_seed_present';
+    rec.sourceId = ms.seedId ?? null; rec.ownerId = ms.ownerId ?? null;
     rec.kind = 'seed';
     rec.tag = 'power';
     rec.volume = fieldVolumeOf(def);

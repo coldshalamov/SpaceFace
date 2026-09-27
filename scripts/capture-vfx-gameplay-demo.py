@@ -22,7 +22,7 @@ def main() -> int:
     parser.add_argument("--url", default=URL, help="Lab URL served by the existing game server")
     parser.add_argument("--scenario", action="append", help="Capture one scenario; repeat to select several")
     parser.add_argument("--seed", type=int, default=17)
-    parser.add_argument("--context", choices=("near", "close", "wide"), default="near")
+    parser.add_argument("--context", choices=("near", "close", "wide", "open"), default="near")
     parser.add_argument("--view", choices=("normal", "wide", "close"), default="normal")
     parser.add_argument("--reduced-motion", action="store_true")
     parser.add_argument("--reduced-flash", action="store_true")
@@ -30,6 +30,24 @@ def main() -> int:
     parser.add_argument("--all", action="store_true", help="Capture every scenario exposed by the page")
     parser.add_argument("--output", type=Path, help="Output directory (defaults to a timestamped folder under .devshots)")
     parser.add_argument("--video", action="store_true", help="Assemble a labeled phase-reel MP4 from captured lifecycle PNGs")
+    parser.add_argument(
+        "--continuous-video",
+        action="store_true",
+        help="Capture the first requested scenario at deterministic fixed-step timing and assemble a normal-speed MP4",
+    )
+    parser.add_argument(
+        "--continuous-max-seconds",
+        type=float,
+        default=8.5,
+        help="Bound continuous-video capture duration (default: 8.5 seconds)",
+    )
+    parser.add_argument(
+        "--continuous-fps",
+        type=int,
+        choices=(24, 30, 60),
+        default=30,
+        help="Output frame rate for continuous-video (simulation remains fixed at 60 Hz; default: 30)",
+    )
     args = parser.parse_args()
     output = args.output or (OUT / time.strftime("%Y%m%d-%H%M%S"))
     output.mkdir(parents=True, exist_ok=True)
@@ -46,6 +64,7 @@ def main() -> int:
         "scenarios": {},
         "errors": errors,
     }
+    report["continuousVideo"] = None
     image_paths: list[Path] = []
 
     def record_error(kind: str, message: str) -> None:
@@ -97,6 +116,7 @@ def main() -> int:
             report["gpu"] = page.evaluate("() => { const gl=window.__vfxDemo.renderer.getContext(); const ext=gl.getExtension('WEBGL_debug_renderer_info'); return ext?{vendor:gl.getParameter(ext.UNMASKED_VENDOR_WEBGL),renderer:gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}:{renderer:gl.getParameter(gl.RENDERER)}; }")
             requested = args.scenario or (catalog["scenarios"] if args.all else ["explosion", "well", "singularity", "repair"])
             known = set(catalog["scenarios"])
+            continuous_scenario = requested[0] if args.continuous_video and requested else None
             for scenario in requested:
                 if scenario not in known:
                     errors.append({"kind": "scenario", "message": f"Unknown scenario: {scenario}"})
@@ -117,6 +137,59 @@ def main() -> int:
                     image_paths.append(image)
                     frames.append({"phase": phase, "image": image.name, "state": state})
                 report["scenarios"][scenario] = frames
+                if scenario == continuous_scenario:
+                    ffmpeg = shutil.which("ffmpeg")
+                    if not ffmpeg:
+                        record_error("video", "ffmpeg was not found; phase PNG captures remain available.")
+                    else:
+                        page.evaluate("id => {window.__vfxDemo.select(id);window.__vfxDemo.pause();}", scenario)
+                        duration = float(page.evaluate("id => window.__vfxDemo.duration(id)", scenario))
+                        duration = max(0.0, min(duration, args.continuous_max_seconds))
+                        frame_count = int(round(duration * args.continuous_fps)) + 1
+                        frame_dir = output / "continuous" / scenario
+                        frame_dir.mkdir(parents=True, exist_ok=True)
+                        for frame_index in range(frame_count):
+                            phase = frame_index / args.continuous_fps
+                            page.evaluate("t => {window.__vfxDemo.pause();return window.__vfxDemo.sample(t);}", phase)
+                            page.screenshot(
+                                path=str(frame_dir / f"frame-{frame_index:06d}.png"),
+                                animations="disabled",
+                            )
+                        video_path = output / f"{scenario}-continuous.mp4"
+                        result = subprocess.run(
+                            [
+                                ffmpeg,
+                                "-y",
+                                "-framerate",
+                                str(args.continuous_fps),
+                                "-start_number",
+                                "0",
+                                "-i",
+                                str(frame_dir / "frame-%06d.png"),
+                                "-c:v",
+                                "libx264",
+                                "-preset",
+                                "veryfast",
+                                "-crf",
+                                "18",
+                                "-pix_fmt",
+                                "yuv420p",
+                                str(video_path),
+                            ],
+                            capture_output=True,
+                            text=True,
+                        )
+                        if result.returncode:
+                            record_error("video", result.stderr[-2000:])
+                        else:
+                            report["continuousVideo"] = {
+                                "scenario": scenario,
+                                "path": video_path.name,
+                                "fps": args.continuous_fps,
+                                "durationSeconds": duration,
+                                "frames": frame_count,
+                                "type": "continuous-fixed-step",
+                            }
             report["runtimeErrors"] = page.evaluate("window.__vfxDemoError || window.__vfxDemo.errors || []")
         else:
             report["loadError"] = report["startupError"] or page.locator("#description").text_content()

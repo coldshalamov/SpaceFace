@@ -932,6 +932,7 @@ export const survivalArena = {
     this._wave = wave;
     this._phase = install.phase;
     this._note = install.note;
+    this._arenaId = run.arenaId;
     this._lawId = isLawArena(run.arenaId) ? run.arenaId : null;
     this._installedAt = simTimeOf(state);
     this._cycleMachinery = run.arenaId === CINDER_ARENA_ID && CINDER_CYCLE_PHASES.has(phase);
@@ -965,6 +966,33 @@ export const survivalArena = {
       // the renderer consumer stays with its controller.
       solids: this._roomIds.length,
       frame: authoredRoomFrame(this._toys),
+      // PQ-133.08: the render layer's room dressing needs the finalized geometry, not counts —
+      // field specs carry kind/center/strength so a pylon can stand where the force is, and toy
+      // specs carry a/b/pos/anvil/dir/cycle so the shutter bars, crusher jaws and current mouths
+      // animate on the SAME authored clocks the sim is ticking (`installedAtSim` anchors them).
+      fieldSpecs: this._installedFields.map((spec) => ({ ...spec })),
+      toySpecs: this._toys.map((toy) => ({ ...toy })),
+      installedAtSim: this._installedAt,
+      // PQ-133.09: the cryo/storm rooms carry authored shape BEYOND fields+toys — the thermal
+      // quadrant map, prop positions, the insulated island's radius, the storm pylon ring and
+      // the relay seed poses. Passing the finished install's own keys keeps the render layer
+      // in phase with the law instead of re-deriving (or guessing) the room.
+      roomSpec: {
+        at: install.at ? { x: install.at.x, z: install.at.z } : null,
+        thermal: install.thermal ? { ...install.thermal } : null,
+        islandRadius: Number.isFinite(install.islandRadius) ? install.islandRadius : null,
+        fieldRadius: Number.isFinite(install.fieldRadius) ? install.fieldRadius : null,
+        props: install.props ? {
+          coolant: (install.props.coolant || []).map((p) => ({ x: p.x, z: p.z })),
+          heat: (install.props.heat || []).map((p) => ({ x: p.x, z: p.z })),
+        } : null,
+        pylons: Array.isArray(install.pylons)
+          ? install.pylons.map((n) => ({ id: n.id, pos: { x: n.pos.x, z: n.pos.z } }))
+          : null,
+        relays: Array.isArray(install.relays)
+          ? install.relays.map((n) => ({ id: n.id, pos: { x: n.pos.x, z: n.pos.z }, phase: n.phase }))
+          : null,
+      },
     });
   },
 
@@ -1072,10 +1100,11 @@ export const survivalArena = {
     const had = released.fields > 0 || released.mines > 0 || released.cover || released.solids > 0;
     const phase = this._phase;
     const wave = this._wave;
+    const arenaId = this._arenaId;
     this._reset();
     if (had) {
       this._emit('survivalArena:released', {
-        wave, arenaPhase: phase, reason, ...released,
+        wave, arenaPhase: phase, reason, arenaId, ...released,
       });
     }
   },
@@ -1370,6 +1399,7 @@ export const survivalArena = {
     this._note = '';
     this._wave = 0;
     this._lawId = null;
+    this._arenaId = null;
     this._installedAt = 0;
     this._cycleMachinery = false;
     this._authoredStrength = 0;

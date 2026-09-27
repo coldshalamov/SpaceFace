@@ -34,6 +34,7 @@ import {
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { describeEntity } from './interactionDescriptors.js';
+import { isHostileToPlayer } from './scanner.js';
 import { resolveBeamVerb, spawnPayloadEntity, BEAM_CUE_IDS } from '../combat/industrialBeam.js';
 import { actionForWreck, poolForAction } from '../data/salvageActions.js';
 import { removeCargo, addCargo } from './cargo.js';
@@ -151,7 +152,9 @@ export const mining = {
     this.registry = ctx.registry;
     this._pickupScratch = [];
     this._mineableScratch = [];
+    this._tenderScratch = [];         // WF-05 beam-tender candidate gather (ship domain)
     this._settledChipKeys = new Set(); // F6 once-only chip receipt ledger (session scope)
+    this._tenderThanks = new Map();    // WF-05 weld-out receipt cooldown, per target (session scope)
     this._diag = {
       pickupScans: 0,
       pickupSpatialQueries: 0,
@@ -160,6 +163,7 @@ export const mining = {
       pickupsCollected: 0,
       targetSpatialQueries: 0,
       targetCandidates: 0,
+      tenderCandidates: 0,
     };
 
     this._beaming = false;     // was the player beam active last tick (start/stop edges)
@@ -434,6 +438,29 @@ export const mining = {
       }
     }
     this.bus.emit('beam:repaired', { targetId: target.id, healAmount: heal });
+
+    // WF-05 weld-out receipt: the moment the hull closes is the moment the player feels. One
+    // cooled toast per casualty (simTime-driven, never wall time; session-scoped keys capped like
+    // the settled-chip ledger), while the per-tick beam:repaired event keeps feeding the repair VFX.
+    const weldedMax = Number(target.hullMax);
+    const weldedNow = Number(target.hull);
+    if (Number.isFinite(weldedMax) && weldedMax > 0 && Number.isFinite(weldedNow)
+      && weldedNow >= weldedMax - 1e-6) {
+      const now = Number(this.state && this.state.simTime) || 0;
+      const lastThanks = this._tenderThanks.get(target.id);
+      if (lastThanks == null || now - lastThanks >= BEAM_TENDER_THANKS_COOLDOWN_S) {
+        if (this._tenderThanks.size >= TENDER_THANKS_KEY_CAP) this._tenderThanks.clear();
+        this._tenderThanks.set(target.id, now);
+        const label = (describeEntity(this.state, target) || {}).label || 'The hull';
+        try {
+          this.bus.emit('toast', {
+            text: `${label} is welded shut and underway — thanks for the weld.`,
+            kind: 'info',
+            ttl: 5,
+          });
+        } catch { /* advisory only */ }
+      }
+    }
   },
 
   _applyTransfer(player, target, resolved, dps, dt) {
@@ -600,7 +627,10 @@ export const mining = {
     // literal). The mined-out and range layers below are UNCHANGED.
     // F12: a jettisoned cargo pod is not `mine` membership — it is split, not mined — but the same
     // beam acquires it, so pod eligibility joins the gate here instead of the catalog table.
-    if (!verbAcceptsType('mine', entity.type) && !isBeamSplittableCargoPod(entity)) return false;
+    // WF-05 beam-tender: a damaged non-hostile hull is mine-membership for the beam too — the
+    // repair verb below it is real, and a held lock has to stay valid while the weld runs.
+    if (!verbAcceptsType('mine', entity.type) && !isBeamSplittableCargoPod(entity)
+      && !weldableHullForBeam(entity, state)) return false;
     if (!presentationAllowsPlayerFacingAction(entity, state)) return false;
     if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
     if (entity.type === 'asteroid' && entity.data && entity.data.opticMaterial) return false;
@@ -646,6 +676,25 @@ export const mining = {
       const inv = 1 / (dist || 1);
       const dot = (dx * inv) * ax + (dz * inv) * az; // -1..1 alignment with the aim direction
       // alignment dominates so the cursor picks the rock; nearer breaks ties.
+      const score = dot * 2 - dist / Math.max(1, range);
+      if (score > bestScore) { bestScore = score; best = e; }
+    }
+    // WF-05 beam-tender pass: limping non-hostile hulls join the SAME aim-biased scan, so the
+    // cursor picks between rock and casualty with one rule. No new target key, no mode switch.
+    // Scratch self-heals for partial hosts (lab/test hosts may build mining without init),
+    // same contract as the dirty-scratch above.
+    const tenderScratch = this._tenderScratch || (this._tenderScratch = []);
+    const tenders = repairShipsNearShip(state, ship, range + MINEABLE_QUERY_RADIUS_PAD, tenderScratch);
+    this._diag.tenderCandidates = tenders.length;
+    for (const e of tenders) {
+      if (!e.alive) continue;
+      if (!repairableHullForBeam(e, state)) continue;
+      if (!presentationAllowsPlayerFacingAction(e, state)) continue;
+      const dx = e.pos.x - ship.pos.x, dz = e.pos.z - ship.pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > range + (e.radius || 0)) continue;
+      const inv = 1 / (dist || 1);
+      const dot = (dx * inv) * ax + (dz * inv) * az; // -1..1 alignment with the aim direction
       const score = dot * 2 - dist / Math.max(1, range);
       if (score > bestScore) { bestScore = score; best = e; }
     }
@@ -2019,6 +2068,62 @@ function isBeamSplittableCargoPod(entity) {
     && entity.data.payloadType === JETTISONED_CARGO_PAYLOAD_TYPE);
 }
 
+// --- WF-05 beam-tender: the beam can finally reach a hull that needs it ----------------------
+// The repair verb has been resolvable for any damaged ship since PQ-016
+// (src/combat/industrialBeam.js isRepairOnlyTarget → checkIsDamaged), and its handler, credit
+// cost, green beam styling (vfx.js shader verb 2) and repair VFX recipe were all live — but every
+// acquisition gate in this file only ever considered asteroid|wreck|pod, so the player could never
+// actually point the beam at a casualty. A ship that has lost real hull and is not hostile joins
+// the beam's candidate set. Hostiles never do: the beam is a tool, not a way to heal your enemy
+// mid-fight. One law — the beam tends; the guns fight.
+export const BEAM_TENDER_DAMAGE_FRAC = 0.85; // hull at or below this fraction of max reads "limping"
+const BEAM_TENDER_THANKS_COOLDOWN_S = 120;   // one weld-out thanks per casualty per window
+const TENDER_THANKS_KEY_CAP = 4096;          // session-scoped, mirrors SETTLED_CHIP_KEY_CAP
+
+function weldableHullForBeam(entity, state) {
+  if (!entity || entity.alive === false) return false;
+  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+  if (entity.flags && entity.flags.docked) return false;
+  const hullMax = Number(entity.hullMax);
+  const hull = Number(entity.hull);
+  if (!Number.isFinite(hullMax) || hullMax <= 0 || !Number.isFinite(hull)) return false;
+  if (hull >= hullMax) return false;
+  if (!state || !state.entities) return false;
+  const player = state.entities.get(state.playerId);
+  if (!player || entity.id === player.id) return false;
+  return !isHostileToPlayer(entity, player.team, state);
+}
+
+// Acquisition bar (free cursor scan): the casualty has to read as limping before the beam steals
+// the lock. Hold bar (weldableHullForBeam, the resolver's own "damaged" truth): once the weld is
+// running it must be allowed to FINISH — dropping the lock at 85% would strand every job mid-weld.
+function repairableHullForBeam(entity, state) {
+  if (!weldableHullForBeam(entity, state)) return false;
+  const hullMax = Number(entity.hullMax);
+  const hull = Number(entity.hull);
+  return hull <= hullMax * BEAM_TENDER_DAMAGE_FRAC;
+}
+
+// Same shape as mineablesNearShip's indexed-domain fast path: the maintained ships domain is
+// authoritative once the index is ready (the caller still live-filters by distance), and the
+// entity-list fallback keeps headless fixtures working. Drones keep their own index domain, so
+// the free scan sees ships; a tethered drone is still weldable through activeMineableTetherTarget.
+function repairShipsNearShip(state, ship, radius, out) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.ships)) {
+    out.length = 0;
+    const r2 = radius * radius;
+    for (let i = 0; i < index.ships.length; i++) {
+      const e = index.ships[i];
+      if (!e || !e.pos) continue;
+      const dx = e.pos.x - ship.pos.x, dz = e.pos.z - ship.pos.z;
+      if (dx * dx + dz * dz <= r2) out.push(e);
+    }
+    return out;
+  }
+  return queryNearbyEntities(state, ship.pos, radius, out, (state && state.entityList) || []);
+}
+
 function activeMineableTetherTarget(state, ship, range) {
   if (!state || !ship) return undefined;
   const ids = [];
@@ -2036,7 +2141,8 @@ function activeMineableTetherTarget(state, ship, range) {
     const tableDist = combatTableRowDistance(table, id, ship.pos.x, ship.pos.z);
     const target = state.entities && state.entities.get && state.entities.get(id);
     if (!target || !target.alive
-      || (target.type !== 'asteroid' && target.type !== 'wreck' && !isBeamSplittableCargoPod(target))) continue;
+      || (target.type !== 'asteroid' && target.type !== 'wreck' && !isBeamSplittableCargoPod(target)
+        && !weldableHullForBeam(target, state))) continue;
     // Optic lattices are not ore — same guard as _isValidMineableTarget / _acquireTarget.
     if (target.type === 'asteroid' && target.data && target.data.opticMaterial) continue;
     const dist = tableDist != null ? tableDist : Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z);
@@ -2071,6 +2177,7 @@ function resetMiningDiagnostics(diag) {
   diag.pickupsCollected = 0;
   diag.targetSpatialQueries = 0;
   diag.targetCandidates = 0;
+  diag.tenderCandidates = 0;
 }
 
 function clamp(n, lo, hi) {

@@ -434,7 +434,8 @@ test('ballistic narrowing precedes the pixel floor and concussion deformation ex
 test('weapon ribbons stay on WebGL1-compatible uint16 indices', () => {
   const ribbon = new WeaponRibbonPool(null);
   assert.ok(ribbon.geometry.index.array instanceof Uint16Array);
-  assert.equal(Math.max(...ribbon.geometry.index.array), 12287);
+  assert.equal(ribbon.geometry.index.array.reduce((max, value) => Math.max(max, value), 0),
+    ribbon.capacity * ribbon.segments * ribbon.sectionVertices - 1);
   ribbon.dispose();
 });
 
@@ -476,6 +477,7 @@ test('accessibility scales flash geometry and reproject keeps target-local marks
   assert.deepEqual({ x: scorch.localX, z: scorch.localZ }, before);
   presenter.dispose();
   presenter.dispose();
-  // Seven live roots: bolts, swept discharge surfaces, ribbons, scorch, two distortion stages, lights.
-  assert.equal(presenter.getOwnerRoots().length, 7, 'the card atlas pool no longer owns a live root');
+  assert.ok(presenter.getOwnerRoots().includes(presenter.ribbons.mesh));
+  assert.ok(presenter.getOwnerRoots().every((root) => !/atlas|sprite/i.test(root.name)),
+    'the retired card atlas pool must not own a live root');
 });

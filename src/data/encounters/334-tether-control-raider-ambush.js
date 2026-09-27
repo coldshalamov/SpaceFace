@@ -45,6 +45,9 @@ export default defineEncounter(trigger, {
     size: [3, 4],
     doctrine: 'scavenger',
     formation: 'wedge',
+    // WF-02 terrain lee: the specialist lurks behind cover until your line is live — the
+    // interdiction reads as a concealed cut, not a ring of ships in the void.
+    terrain: 'lee',
   },
   bark: 'ambush_tele',
   telegraph: 'Enemy Massline spooling. Displace, break anchor, or outmass it.',

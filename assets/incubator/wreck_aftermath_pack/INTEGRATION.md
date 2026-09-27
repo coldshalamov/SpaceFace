@@ -37,12 +37,12 @@ blender --background --factory-startup --python tools/blender/build_wreck_afterm
 | **Passenger liner** | 5 pieces + 2 state variants | Pressure vessel. Outward decompression petal. |
 | **Aftermath component kit** | 8 components | Authored TARGET 8–22 m against `WRECK_RADIUS = 9`; **3 of 8 ship outside it** (24.15–27.80 m). See the size-band breach table in §9. |
 | **Shared fragment kit** | 6 fragments | One kit for all families, not one per family. |
-| **Mining barge** | ✗ **not built** | Specified in fiction §5. |
+| **Mining barge** | ✓ **built** (`wreck_mining_barge.glb`, `cooling` rung, 146.766 m, 47.76 m bay) | vm-drop `mining-barge-wreck` (Blender 4.5.14 LTS), GLB `acc90275…4442c`; source + authored_down mirror. |
 | **Survey ship** | ✗ **not built** | Specified in fiction §5. |
 | **Smuggler / pirate carrier** | ✗ **not built** | Specified in fiction §5. |
 
-**On the three unbuilt hulls — stated plainly rather than buried.** The brief asks for six families.
-Three are delivered and three are authored as specification only: they have identity, cause of death
+**On the unbuilt hulls — stated plainly rather than buried.** The brief asks for six families.
+Four are delivered (the mining barge landed via vm-drop) and two are authored as specification only: they have identity, cause of death
 and surviving-feature notes in fiction §5, but no geometry.
 
 This was a deliberate trade, not an oversight. The first family cost roughly ten build/review cycles,

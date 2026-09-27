@@ -56,6 +56,7 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
   let randomState = seed;
   let lastTime = Number.isFinite(state.simTime) ? state.simTime : 0;
   let fired = 0;
+  let lastReceipt = null;
   let accessibility = resolveVfxAccessibilityProfile(privateState.settings);
   const phases = [];
   const productionEmitter = owner._explosionEmitter;
@@ -85,17 +86,25 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     return accessibility;
   }
   function publish(dt) {
+    // Shipping update reacquires this owner after WebGL context restoration.
+    owner._initArcadeStructural();
     owner._integrateParticles(dt);
     owner._integrateSprites(dt);
     owner._integrateTrailStreaks(dt);
     owner._decayEventLights(dt);
     owner._arcadeStructural.update(dt, camera, viewportHeight);
     owner._gas.update(privateState.simTime, camera);
+    // Newer destruction builds may split the structural rupture layer from the shared phased
+    // pool. Keep this adapter forward-compatible without inventing a lab-only renderer.
+    // ExplosionRupture consumes the absolute simulation clock and accessibility settings.
+    // Passing the frame delta here would pin its lifecycle near the first frame.
+    owner._explosionRupture?.update?.(privateState.simTime, privateState.settings);
     quarks.update(dt, accessibility);
   }
   function inspect() {
     return {
       owner: 'vfx._onDestroyed / vfx._onKilled', seed, time: lastTime, fired,
+      receipt: lastReceipt ? { ...lastReceipt } : null,
       phases: phases.slice(), explosions: owner._explosions.stats(),
       pending: owner._pendingDetonations.filter(record => record.active).length,
       sprites: owner._liveSpriteCount, particles: owner._liveCount,
@@ -105,6 +114,9 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
       gasBodies: owner._gas.mesh.count,
       quarksBatches: quarks.renderer.batches.length,
       structured: owner._arcadeStructural.stats(),
+      rupture: typeof owner._explosionRupture?.inspect === 'function'
+        ? owner._explosionRupture.inspect()
+        : null,
     };
   }
   function reset(options = {}) {
@@ -115,6 +127,7 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     privateState.simTime = lastTime;
     owner._t = lastTime;
     fired = 0;
+    lastReceipt = null;
     phases.length = 0;
     owner._resetPendingDetonations();
     owner._explosions.clear();
@@ -125,8 +138,11 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     while (owner._liveSpriteCount) owner._retireSprite(owner._activeSprites[owner._liveSpriteCount - 1]);
     owner._clearTrailStreaks();
     for (const light of owner._lights) owner._retireEventLightSlot(light);
+    owner._initArcadeStructural();
     owner._arcadeStructural.clear();
     owner._gas.clear();
+    if (typeof owner._explosionRupture?.clear === 'function') owner._explosionRupture.clear();
+    else if (typeof owner._explosionRupture?.reset === 'function') owner._explosionRupture.reset();
     quarks.reset();
     quarks._flowSequence = seed;
     syncContext();
@@ -139,6 +155,19 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     }
     syncContext();
     const payload = { id: seed, type: 'asteroid', radius: 11, ...receipt };
+    lastReceipt = {
+      id: payload.id,
+      type: payload.type,
+      cause: payload.cause || payload.presentation?.cause || 'generic',
+      presentationCause: payload.presentation?.cause || null,
+      radius: payload.radius,
+      mass: payload.mass,
+      capital: !!payload.capital,
+      entityData: payload.entity?.data ? { ...payload.entity.data } : null,
+      position: payload.pos ? { x: payload.pos.x, z: payload.pos.z } : null,
+      direction: payload.presentation?.direction || payload.direction || null,
+      normal: payload.presentation?.normal || payload.normal || null,
+    };
     // Preserve the ordinary killed-ship overload tell. Asteroid/wreck/drone destruction uses the
     // shipped non-ship path, including the complete structured combustion/ignition lifecycle.
     seeded(() => {

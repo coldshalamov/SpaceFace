@@ -33,6 +33,7 @@ export function weaponEffectSeed(entityId) {
 }
 
 const VERTEX_SHADER = /* glsl */`
+  attribute vec2 aBoltTopology;
   attribute vec3 aBoltPos;
   attribute vec3 aBoltPrev;
   attribute vec3 aBoltAxis;
@@ -55,6 +56,8 @@ const VERTEX_SHADER = /* glsl */`
   varying float vVariant;
   varying float vAlong;
   varying vec2 vVariation;
+  varying vec3 vBoltWorld;
+  varying float vPatch;
 
   void main() {
     vUv = uv;
@@ -64,6 +67,11 @@ const VERTEX_SHADER = /* glsl */`
     vVariant = aBoltSize.w;
     vAlong = uv.x;
     vVariation = aBoltVariation;
+    vPatch=aBoltTopology.y;
+    bool special=(aBoltSize.w>0.5&&aBoltSize.w<1.5)||(aBoltSize.w>3.5&&aBoltSize.w<5.5);
+    if(special!=(aBoltTopology.x>0.5)){
+      vBoltWorld=vec3(0.0);gl_Position=vec4(2.0,2.0,2.0,1.0);return;
+    }
 
     vec3 curr = aBoltPos;
     vec3 prev = aBoltPrev;
@@ -110,8 +118,19 @@ const VERTEX_SHADER = /* glsl */`
       shaped.x += (1.0 - side * side) * bow * 0.19;
       shaped.yz *= 0.70 + smoothstep(0.35, 0.80, t) * 0.62;
     } else if (aBoltSize.w < 1.5) {
-      shaped.yz *= 1.10 + 0.24 * sin(t * 12.56637 + side * 2.2 - evolution * 5.0);
-      shaped.x += bow * side * 0.12;
+      // Three unequal hollow convection channels orbit a hot open interior. The
+      // rolled cross-section exposes sidewalls and a dark cavity at every view.
+      float chargePatch=aBoltTopology.y;
+      float helix=chargePatch*2.0943951+t*(1.8+chargePatch*.24)-evolution*2.3;
+      float envelope=pow(max(bow,0.0),.58);
+      float roll=side*2.35;
+      float channel=(.13+.025*sin(t*8.0-evolution*3.2+chargePatch))*envelope;
+      float radius=(.32+.055*sin(t*9.0-evolution*4.1+chargePatch*2.1))*envelope;
+      float radial=radius+sin(roll)*channel;
+      float tangential=(.65-cos(roll))*channel;
+      shaped.x=(t-.5)+envelope*side*.055;
+      shaped.y=cos(helix)*radial-sin(helix)*tangential;
+      shaped.z=sin(helix)*radial+cos(helix)*tangential;
     } else if (aBoltSize.w >= 1.5 && aBoltSize.w < 2.5) {
       // Kinetic sabot: a machined dart, not a recoloured pulse. Needle nose, a hard flared
       // base where the driving band bit, and a rifling twist carried in the velocity frame.
@@ -128,12 +147,23 @@ const VERTEX_SHADER = /* glsl */`
       shaped.yz *= 0.60 + 0.32 * pow(1.0 - t, 2.2) + collar * 1.18;
       shaped.x += collar * side * 0.07;
     } else if (aBoltSize.w >= 3.5 && aBoltSize.w < 4.5) {
-      shaped.yz *= 0.8 + 0.6 * sin(t * 3.14159265);
-      shaped.yz *= 1.0 + bow * 0.12 * sin(t * 11.0 - evolution * 7.0);
-      shaped.x += abs(side) * bow * 0.20;
+      // Induction is an opposed fork, not a thermal helix. Two thick channels
+      // bridge at the heel, split, and reconnect at the charged leading junction.
+      if(aBoltTopology.y>1.5){vBoltWorld=vec3(0.0);gl_Position=vec4(2.0,2.0,2.0,1.0);return;}
+      float branch=aBoltTopology.y<.5?-1.0:1.0;
+      float envelope=pow(max(bow,0.0),.62),crossAngle=side*3.14159265;
+      shaped.x=t-.5;
+      shaped.y=branch*.38*envelope+sin(crossAngle)*.15*envelope;
+      shaped.z=cos(crossAngle)*.15*envelope+branch*.07*envelope*sin(t*9.0-evolution*3.4);
     } else if (aBoltSize.w >= 4.5 && aBoltSize.w < 5.5) {
-      shaped.x = (t - 0.5) * 0.6 + side * side * bow * 0.28;
-      shaped.yz *= 1.65;
+      // Three offset bow shells compress forward and peel at their open shoulders.
+      // Their short axial bowls carry a pressure wall rather than a pointed dart.
+      float shell=aBoltTopology.y;
+      float theta=side*2.2+shell*2.0943951;
+      float span=.18+.42*sin(t*3.14159265)*(.86+.10*sin(evolution*3.0-shell));
+      shaped.x=(t-.5)*.48+.16*cos(side*1.8)-shell*.075;
+      shaped.y=cos(theta)*span;
+      shaped.z=sin(theta)*span;
     } else if (aBoltSize.w >= 5.5) {
       // Flak: a stubby tumbling fragment. Stepped facets instead of a taper, and a body that
       // sits off the flight axis, so fragmentation never reads as a short glowing dart.
@@ -145,6 +175,7 @@ const VERTEX_SHADER = /* glsl */`
     vec3 world = mid
       + axis * shaped.x * dash
       + (r1 * shaped.y + r2 * shaped.z) * width;
+    vBoltWorld=world;
     gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
   }
 `;
@@ -158,6 +189,8 @@ const FRAGMENT_SHADER = /* glsl */`
   varying float vVariant;
   varying float vAlong;
   varying vec2 vVariation;
+  varying vec3 vBoltWorld;
+  varying float vPatch;
 
   uniform sampler2D uSceneDepth;
   uniform float uDepthEnabled;
@@ -185,6 +218,50 @@ const FRAGMENT_SHADER = /* glsl */`
 
   void main() {
     float boltClock = uBoltTime * (0.88 + vVariation.y * 0.24) + vVariation.x;
+    bool thermal=vVariant>.5&&vVariant<1.5;
+    bool induction=vVariant>3.5&&vVariant<4.5;
+    bool pressure=vVariant>4.5&&vVariant<5.5;
+    if(thermal||induction||pressure){
+      float t=vUv.x,v=vUv.y*2.0-1.0;
+      float flow=t*13.0-boltClock*5.8+vPatch*2.1;
+      float curl=v+.19*boltWave(t*9.0-boltClock*3.1+vPatch);
+      float convection=.5+.5*boltWave(flow+curl*2.8);
+      float secondary=.5+.5*boltWave(t*23.0-boltClock*7.0-curl*4.0+vPatch);
+      float broad=boltStrand(curl+.28,.30);
+      float fold=boltStrand(curl-.56,.14);
+      float channel=boltStrand(curl-.08,.18);
+      float patches=smoothstep(.18,.74,convection*.65+secondary*.35);
+      float body=.15+.42*patches;
+      float hot=broad*(.20+.80*convection)+fold*(.45+1.2*secondary);
+      float alpha=(.11+.39*patches+.18*fold)*(1.0-.72*channel);
+      float edge=1.0-smoothstep(.88,1.0,abs(v));
+      if(induction){
+        // The branch is substantial, but charge travels in discrete attached fronts.
+        float conductor=.5+.5*boltWave(v*6.2831853+t*5.0);
+        hot=(.35+.75*conductor)*(.4+.6*pow(convection,3.0));
+        body=.12+.30*conductor;alpha=.18+.42*conductor;edge=1.0;
+      }else if(pressure){
+        float front=boltStrand(t-.73-.05*boltWave(boltClock*3.0+vPatch),.15);
+        hot=front*(.65+.70*secondary)+broad*.22;
+        body=.20+.25*convection;alpha=.13+.40*front+.14*patches;
+      }
+      float tips=smoothstep(0.0,.085,t)*(1.0-smoothstep(.90,1.0,t));
+      alpha*=edge*tips;
+      vec3 N=normalize(cross(dFdx(vBoltWorld),dFdy(vBoltWorld)));
+      float viewDepth=.72+.28*(1.0-abs(dot(N,normalize(cameraPosition-vBoltWorld))));
+      vec3 colour=mix(vSheath*.36,vColor,.20+.25*patches)*body*viewDepth;
+      colour+=mix(vSheath,vColor,.58)*hot*(1.0-.65*channel)*1.5;
+      colour+=vec3(.95,.98,1.0)*pow(fold,3.0)*secondary*.40;
+      float radiance=vIntensity*mix(.52,1.0,uBoltFlicker);
+      if(uDepthEnabled>.5){
+        vec2 screenUv=gl_FragCoord.xy/max(uResolution,vec2(1.0));
+        float sceneZ=linearDepth(texture2D(uSceneDepth,screenUv).x),fragZ=linearDepth(gl_FragCoord.z);
+        float soft=clamp((sceneZ-fragZ)/max(uSoftDistance,1e-4),0.0,1.0);
+        alpha*=soft;radiance*=mix(.4,1.0,soft);
+      }
+      if(alpha<.003)discard;
+      gl_FragColor=vec4(colour*radiance,alpha);return;
+    }
     float across = abs(vUv.y * 2.0 - 1.0);
     float core = pow(max(0.0, 1.0 - across), 6.0);
     float sheath = 1.0 - smoothstep(0.72, 1.0, across);

@@ -137,6 +137,10 @@ test('Well PULLS a light body toward its center (consumer 1)', async () => {
     assert.ok(t.fieldsSys._kernel.size >= 1, 'well field registered');
     assert.ok(body.vel.z < -0.5, `light body pulled inward (-z), got vel.z=${body.vel.z}`);
     assert.ok(t.state.fields.telemetry.affected >= 1, 'telemetry records an affected body');
+    const published = t.state.fields.active.find(field => field.kind === 'well');
+    assert.equal(published.ownerId, t.player.id, 'presentation can exclude the emitting hull');
+    assert.equal(published.sourceId, t.fieldsSys._kernel.get(published.id).sourceId,
+      'surface context receives the actual source identity');
     t.cleanup();
   });
 });

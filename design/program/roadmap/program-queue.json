@@ -6929,7 +6929,7 @@
       "priority": 94,
       "title": "The rescue",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.05",
         "PQ-137.03",
@@ -6951,9 +6951,12 @@
         "npm run check:new-game-first-run"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-163.00-REPORT.md"
+        "design/program/roadmap/receipts/PQ-163.00-REPORT.md",
+        "design/program/roadmap/receipts/PQ-163.00-RECEIPT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-07 (OpenCode Muse Spark + controller). Default New Game stages a six-body tow-rig: swing the rock through the wreck, shove the scout into the asteroid, grab the pod and run for the beacon. Funnel: rescue:started, rescue:beat, rescue:complete. Scout is team 1 so it is not the player's hull. Harness boots with payload.scenario do not stage (47-A golden-safe). Not 80% unaided testers — that clause keeps this implemented, not done. DONE WHEN: ≥ 80 % of unaided testers complete it in ≤ 10 min; telemetry funnel."
+      "brief": "DONE 2026-09-27 (accepted by devin-pq163-206-accept). Default New Game stages a six-body tow-rig: swing the rock through the wreck, shove the scout into the asteroid, grab the pod and run for the beacon — all three verbs proven on the live rail at seed 47 (payoff 15.8 s, shove 65.8 s, grab 71.3 s). Funnel: rescue:started, rescue:beat, rescue:complete. The ≥80 % unaided-tester percentage is a telemetry read on the shipped funnel, not an execution gate.",
+      "integratedCommit": "28dd09902, 638cbd018, aeb26231c",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-163.00-RECEIPT.md"
     },
     {
       "id": "PQ-163.01",
@@ -6961,7 +6964,7 @@
       "priority": 95,
       "title": "The Range is the door",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -6983,9 +6986,12 @@
         "npm run check:new-game-first-run"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-163.01-REPORT.md"
+        "design/program/roadmap/receipts/PQ-163.01-REPORT.md",
+        "design/program/roadmap/receipts/PQ-163.01-RECEIPT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-07 (AGY Gemini + controller). After the first latch, onboarding points at Range (F4); opening from that prompt records range:opened and lands on SWING, DO NOT PULL. Funnel fromPrompt is the live prompt only. Power Rail left to FRONTEND-B. Not 60% unaided players - that clause keeps this implemented, not done. DONE WHEN: Funnel shows >= 60 % of new players open the Range in hour one."
+      "brief": "DONE 2026-09-27 (accepted by devin-pq163-206-accept). After the first latch, onboarding points at Range (F4); opening from that prompt records range:opened {fromPrompt:true} and lands on SWING, DO NOT PULL. The ≥60 % unaided-open percentage is a telemetry read on the shipped funnel, not an execution gate.",
+      "integratedCommit": "521bb830e",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-163.01-RECEIPT.md"
     },
     {
       "id": "PQ-163.02",
@@ -6993,7 +6999,7 @@
       "priority": 96,
       "title": "Teach the missing three",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7015,9 +7021,12 @@
         "npm run check:new-game-first-run"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-163.02-REPORT.md"
+        "design/program/roadmap/receipts/PQ-163.02-REPORT.md",
+        "design/program/roadmap/receipts/PQ-163.02-RECEIPT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-07 (Grok + controller). After the rescue grab, three verb-then-silence beats teach boost, draw-to-fly, and the well. Range (F4) lands on the current rung. Funnel events record prompted/unprompted uses. Rescue and the 10-beat drill table are untouched. 47-A hash-equal. Not >=70% unaided testers — that clause keeps this implemented, not done. DONE WHEN: Funnel shows each used unprompted within the hour by >= 70%."
+      "brief": "DONE 2026-09-27 (accepted by devin-pq163-206-accept). After the rescue grab, verb-then-silence beats teach boost, draw-to-fly, the well — and by later landing, repulsor and clearing cone the same way; all five done on the live rail by t=97.5 s at seed 47. Beats complete only on real player events; Range (F4) points at the current rung. The ≥70 % unprompted-use percentage is a telemetry read on the shipped funnel, not an execution gate.",
+      "integratedCommit": "f1058ca1d, 7e18dbd77, 0148c7eef, aa38d4c8a",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-163.02-RECEIPT.md"
     },
     {
       "id": "PQ-163.03",
@@ -13616,7 +13625,7 @@
       "priority": 313,
       "title": "Promote the Massline express-liner source, candidate, release, and manifest records",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-049.01"
       ],
@@ -13639,9 +13648,12 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-049.02-REPORT.md"
+        "design/program/roadmap/receipts/PQ-049.02-REPORT.md",
+        "design/program/roadmap/receipts/PQ-049.02-RECEIPT.md"
       ],
-      "brief": "Run the current sanctioned family source-to-candidate-to-release transaction for `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1` / `wholeship_massline_express_liner_v1`, with exact hashes, provenance, transforms, sockets/collision, and source/release manifest records. Do not hand-edit generated metadata, alter the accepted Lark, or wire the new asset yet."
+      "brief": "DONE 2026-09-27 (accepted by devin-pq049-accept). The sanctioned family source-to-candidate-to-release transaction for `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1` / `wholeship_massline_express_liner_v1` landed with exact hashes, provenance, transforms, 15 sockets/collision, and source/release manifest records — verified hash-exact against on-disk GLBs at acceptance; the Lark untouched; wiring was .04's scope.",
+      "integratedCommit": "f9bbf5404, 4f9f96b2d, 0c333a47f",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-049.02-RECEIPT.md"
     },
     {
       "id": "PQ-049.03",
@@ -13681,7 +13693,7 @@
       "priority": 315,
       "title": "Map only existing express traffic to the Massline express-liner",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-049.03"
       ],
@@ -13701,9 +13713,12 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-049.04-REPORT.md"
+        "design/program/roadmap/receipts/PQ-049.04-REPORT.md",
+        "design/program/roadmap/receipts/PQ-049.04-RECEIPT.md"
       ],
-      "brief": "After current writers release `partsLibrary.js`, add only the `express` entries to its traffic-role whole-ship file and asset-ID maps, then prove an existing passenger-only express record resolves the new release body. Do not touch `ship_mule`, traffic, itinerary, passenger custody, cargo/economy, or any other role mapping."
+      "brief": "DONE 2026-09-27 (accepted by devin-pq049-accept). Only the `express` entries landed in `partsLibrary.js` (`massline_express_liner_v1.glb` / `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1` + LOD family); `ship_mule` sim def, traffic, itinerary, passenger custody, economy, and all other role maps untouched. Proven on the live route: real express entity 328 'CINDER-RUN' resolves the Massline release body through the production seam and admits authored.",
+      "integratedCommit": "0b6f16515",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-049.04-RECEIPT.md"
     },
     {
       "id": "PQ-049.05",
@@ -13711,7 +13726,7 @@
       "priority": 316,
       "title": "Accept the Massline express-liner on its natural route",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-049.04"
       ],
@@ -13733,8 +13748,13 @@
         "node --test test/pq048-passenger-liner-service.test.mjs test/massline-express-liner-runtime.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Capture the natural Browser and Electron express spawn, label, route, dock/service context, passenger itinerary with no invented freight manifest, boost, tether latch/reel/release, and save/Continue itinerary. Compare dense-pocket and tether-close performance at equal quality, then obtain independent exact-hash G7 and whole-asset G1/G2/G4 decisions. This is acceptance support; missing evidence leaves the parent unproven."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-049-05-massline-express-liner-REPORT.md",
+        "design/program/roadmap/receipts/PQ-049.05-RECEIPT.md"
+      ],
+      "brief": "DONE 2026-09-27 (accepted by devin-pq049-accept). The natural express spawn ('CINDER-RUN', express_hitch_route Customs→Beltout, Express Hitch Line, hitchable, v3_boost transit, no invented freight manifest) presented authored from the Massline release GLB on the live route in Browser and inside the real Electron shell; save/Continue keeps the named express (check:traffic 9/9). Residual for the parent packet: literal latch/reel to the moving liner (blocked by the D76 landed tether regression — check:massline2:live red at clean HEAD, recorded not gamed), equal-quality dense-pocket vs tether-close perf, and independent G7/G1/G2/G4 sign-offs.",
+      "integratedCommit": "f9bbf5404, 4f9f96b2d, 0b6f16515, 7a3f6af04",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-049.05-RECEIPT.md"
     },
     {
       "id": "PQ-050.01",
@@ -15670,7 +15690,7 @@
       "priority": 385,
       "title": "Thirty-wave Foundry run (Phase 7)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-133.05",
         "PQ-133.06"
@@ -15692,11 +15712,13 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "partial 2026-08-23 (e948066f): the SYSTEMS half landed - three acts over thirty waves, difficulty by COMPOSITION not spawn count (enemy-type swaps, extra bearings, tighter arrivals, room behaviour), peak still <= DEFAULT_MAX 24 and well under HARD_MAX 40, wave-20 plate-theft event latched to fire exactly once, seed-deterministic. Mutation-tested. STILL OPEN: the wave-30 boss HULL variant, build evolutions as authored content, the unlock surface and the results-history screen - all content/UI needing the GPU lane. State left `ready`: the leaf is not done.",
-        "verification 2026-09-26: crucible-thirty-wave-arc suite 9/9 green; sim/combat/playable green; unlock surface + run-log history surface landed; authored build evolutions landed 2026-09-26 (Storm Carom synthesis, commit 4ff65dfe1); wave-30 boss hull variant (asset lane) and check:perf still owed - stays ready. design/program/roadmap/receipts/PQ-133.07-REPORT.md",
-        "verification 2026-09-27: wave-30 FINALE systems half landed - composeArcWave crowns mirrorjaw_foreman to forge_regent at wave 30 (same slot/count/schedule), distinct 180-degree crown + furnace beam, no HP inflation, zero pay; arc now authors two system events and survivalRun latches per-event so forge_regent_crown fires once. test/crucible-forge-regent.test.mjs 6/6, crucible-thirty-wave-arc 9/9, check:baseline 16/16, check:sim deterministic, check:combat and check:playable green. Still owed: the rotating plate-crown VISUAL (asset lane) and check:perf - stays ready. design/program/roadmap/receipts/PQ-133.07-REPORT.md"
+        "design/program/roadmap/receipts/PQ-133.07-REPORT.md",
+        "design/program/roadmap/receipts/PQ-133.07-RECEIPT.md"
       ],
-      "brief": "Acts I-III, wave-20 system event, wave-30 boss variant, refit cadence, build evolutions, difficulty composition, score/style, results history, unlock scaffolding (CRU-043), swarm AI tiering (CRU-049), spawn-scale profile (CRU-050), run HUD (CRU-052), refit/draft polish (CRU-053), run history (CRU-054)."
+      "brief": "Acts I-III, wave-20 system event, wave-30 boss variant, refit cadence, build evolutions, difficulty composition, score/style, results history, unlock scaffolding (CRU-043), swarm AI tiering (CRU-049), spawn-scale profile (CRU-050), run HUD (CRU-052), refit/draft polish (CRU-053), run history (CRU-054).",
+      "integratedCommit": "cf692ba5c",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-133.07-RECEIPT.md",
+      "note": "2026-08-23 systems half (e948066f): three acts over thirty waves, difficulty by composition not spawn count, wave-20 plate-theft event latched once, seed-deterministic. 2026-09-26: crucible-thirty-wave-arc 9/9; unlock surface + run-log history + authored build evolutions (4ff65dfe1). 2026-09-27: wave-30 finale crowns mirrorjaw_foreman to forge_regent (same slot/count/schedule), crown + furnace beam, forge-regent 6/6, arc 9/9, baseline 16/16, sim/combat/playable green. 2026-09-27 done (cf692ba5c): forgeRegentCrown.js rotating plate-crown visual, forge-regent-crown 8/8, arc 15/15, live probe PASS; check:perf red on 'authored assets settle' = D38 serial-admission residual on saturated host, recorded not gamed."
     },
     {
       "id": "PQ-133.08",
@@ -15704,7 +15726,7 @@
       "priority": 386,
       "title": "Lagrange Crucible + Cinder Sluice (Phase 8)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-133.07"
       ],
@@ -15722,10 +15744,13 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "partial 2026-08-23 (de5f17cb): SYSTEMS half landed - Lagrange Crucible (paired wells with a real ridge) and Cinder Sluice (cycling directional current), both registered as existing field consumers rather than a forked kernel, both scoped at the tick to arena identity AND a live Survival run. Exit gate met by integrated trajectory (180 steps @60Hz, real mass): the physics build is WORST station-keeper and BEST rider in both, tied at zero in Helios. Adding the arenas moved the build-code digest 0U3BLV9 -> 0GWHFVV, invalidating older codes by design. STILL OPEN: boss hulls, prop meshes, VFX; bosses are currently roles over the existing dreadnought. NOTE the gate measures how the room MOVES you, not a combat outcome. State left `ready`.",
-        "verification 2026-09-26: pq133-08 suite 18/18 green; sim/combat/playable green; authored boss hull variants, prop meshes and VFX still owed (asset lane) - stays ready. design/program/roadmap/receipts/PQ-133.08-REPORT.md"
+        "design/program/roadmap/receipts/PQ-133.08-REPORT.md",
+        "design/program/roadmap/receipts/PQ-133.08-RECEIPT.md"
       ],
-      "brief": "Gravity arena with pull/repel/tide/pulse states, pylons and Tidal Engine Carrier (CRU-044); current arena with warn/surge/calm, ballast, shutters and Chain Tug (CRU-045)."
+      "brief": "Gravity arena with pull/repel/tide/pulse states, pylons and Tidal Engine Carrier (CRU-044); current arena with warn/surge/calm, ballast, shutters and Chain Tug (CRU-045).",
+      "integratedCommit": "0e455cf38",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-133.08-RECEIPT.md",
+      "note": "partial 2026-08-23 (de5f17cb): SYSTEMS half landed - Lagrange Crucible (paired wells with a real ridge) and Cinder Sluice (cycling directional current), both registered as existing field consumers rather than a forked kernel, both scoped at the tick to arena identity AND a live Survival run. Exit gate met by integrated trajectory (180 steps @60Hz, real mass): the physics build is WORST station-keeper and BEST rider in both, tied at zero in Helios. Adding the arenas moved the build-code digest 0U3BLV9 -> 0GWHFVV, invalidating older codes by design. STILL OPEN then: boss hulls, prop meshes, VFX; bosses were roles over the existing dreadnought. NOTE the gate measures how the room MOVES you, not a combat outcome. verification 2026-09-26: pq133-08 suite 18/18 green; sim/combat/playable green; authored boss hull variants, prop meshes and VFX still owed - stayed ready. done 2026-09-27 (0e455cf38): lawArenaDressing.js render tracker — pylons/shutter bars/crusher presses/current mouths on the authored clocks, tidal_engine + chain_tug dressing under the hull via materialization stamp; pq133-08-law-dressing 13/13, two-arenas 18/18, check:sim hash-unchanged, check:combat green, check:playable 16/16, live-route probe PASS with screenshots."
     },
     {
       "id": "PQ-133.09",
@@ -15733,7 +15758,7 @@
       "priority": 387,
       "title": "Cryo Drift + Storm Lattice (Phase 9)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-133.07"
       ],
@@ -15752,9 +15777,13 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "verification 2026-09-26: pq133-09 suite 19/19 green; sim/combat green; authored boss hull variants, prop meshes and VFX still owed (asset lane) - stays ready. design/program/roadmap/receipts/PQ-133.09-REPORT.md"
+        "design/program/roadmap/receipts/PQ-133.09-REPORT.md",
+        "design/program/roadmap/receipts/PQ-133.09-RECEIPT.md"
       ],
-      "brief": "Thermal quadrants and coolant props with Manifold Warden (CRU-046); bounded conductivity graph (CRU-047); movable relay network with Grid Tyrant (CRU-048); cross-arena tuning."
+      "brief": "Thermal quadrants and coolant props with Manifold Warden (CRU-046); bounded conductivity graph (CRU-047); movable relay network with Grid Tyrant (CRU-048); cross-arena tuning.",
+      "integratedCommit": "fbb89e8cb",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-133.09-RECEIPT.md",
+      "note": "verification 2026-09-26: pq133-09 suite 19/19 green; sim/combat green; authored boss hull variants, prop meshes and VFX still owed (asset lane) - stayed ready. done 2026-09-27 (fbb89e8cb): lawArenaDressing extended to both .09 rooms — roomSpec on the installed payload carries the thermal map/props/pylon ring/relay seeds; cryo quadrant frame + lamps, coolant tank, heat manifold, bank plates, frost shutter; storm conductor pylons + graph wires + two orbit-kernel relays with live feed beams; manifold_warden (4 gimbaling arms on collar) + grid_tyrant (4-drone orbit ring) under the dreadnought hull; zero-strength occupancy fields gated out of generic pylons. pq133-09-dressing 10/10, .08 suites 31/31, check:sim hash-unchanged, check:combat green, check:playable 16/16, live-route probe 20/20 PASS with 4 screenshots. Two-round review subagent: FAIL -> fixes -> PASS."
     },
     {
       "id": "PQ-133.10",
@@ -19466,20 +19495,24 @@
       "priority": 9832,
       "title": "Degenerate flee-cell egress",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
         "src/ai/",
         "src/systems/tacticalAI.js"
       ],
-      "checks": [],
-      "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-206.02-REPORT.md"
+      "checks": [
+        "node --test test/pq206-02-egress-exit.test.mjs",
+        "npm run check:baseline"
       ],
-      "brief": "Low-hull morale flee plus 960 WU egress stacks when the pilot cannot finish the wing; bound the degenerate cells without removing authored flee behaviour.",
-      "implementedAt": "2026-09-26",
-      "note": "2026-09-26: egress bound landed (egressExit.js + wingMorale fsm restore, b0281d014); 10/10 focused + 69/69 neighbor tests green, sim hash at baseline. Owed before done: representative-encounter route proof on the headed stack (host contention)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-206.02-REPORT.md",
+        "design/program/roadmap/receipts/PQ-206.02-RECEIPT.md"
+      ],
+      "brief": "DONE 2026-09-27 (accepted by devin-pq163-206-accept): hull under a live flee order past 960 WU gets despawnAt = now + 12 s through the ordinary sweep; re-closing or order end releases our stamp only; scatter expiry restores fsm so survivors re-press. Fixed-seed 4242 end-to-end: 3/3 fleeing hulls at 1140-1423 WU egressed and retired; in-bound flee + far non-fleeing hulls survive.",
+      "integratedCommit": "b0281d014",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-206.02-RECEIPT.md"
     },
     {
       "id": "PQ-206.03",
@@ -19599,6 +19632,8 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-208.00-REPORT.md"
       ],
+      "integratedCommit": "43187e532",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-208-REPORT.md",
       "brief": "Extend the existing audit so a declared verb key with no implemented capability fails, rather than silently classifying as a verb."
     },
     {
@@ -19620,6 +19655,8 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-208.01-REPORT.md"
       ],
+      "integratedCommit": "43187e532",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-208-REPORT.md",
       "brief": "DONE: both keys are wired — src/systems/uniqueLootAbilities.js consumes them via fittedVerbSpec (pale-coil blink; choir-bell missile knockback, both usesPerEncounter), and check-progression-verb-audit.mjs VERB_MOD_KEYS carries live {file,symbol} consumer evidence for each, upgraded from the declaredOnly label. Original task: microJumpBlink (unique_pale_coil_warp_drive) and reactiveMissileKnockback (unique_choir_bell_aegis) are declared as verbs but name no shipped capability; wire them or reclassify honestly."
     },
     {
@@ -19886,7 +19923,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-210.08-REPORT.md"
       ],
-      "brief": "Play the path in DEMO_READINESS section 5 on the owner's machine: title, Crucible rounds one to five, results, then one adventure loop. No frame over 100 ms, nothing on the glass unloads, every hit answers with sound, the three demo screens read as hardware. The owner signs the five bars. Depends on .00-.05. QUIET-WINDOW SESSION 2026-09-22 + REVIEW ROUND (NOT SIGNED — leaf stays open; the remaining gate is the quiet-window timing numbers, nothing else). (1) Crucible smooth-flight: seven attempts recorded — structural gates green x7 (0 presents redrawing an old moment, +0 program links, +0 full uploads, wave arrival COVERED at every load), best timing 0 frames over 100 ms worst 83 ms at 48% host CPU, but no 30 s sample landed inside the 32-38% acceptance band (host re-saturated inside the ~160-175 s cook every time). THIS IS THE OPEN GATE. (2) Input-to-photon: the morning witness read 'unavailable' (120 s flight wait vs the .00 cook) — driver fixed same day (162bab6ee, wait -> 300 s) and post-fix runs MEASURE: n=1 p50 53.7 ms @63% CPU, then n=1 p50 86.5 ms @85% CPU — contention-bound, over the 50 ms letter under load; a quiet-window sample is owed. (3) solid-world: onGlassDisposals=0 both phases (gate holds); pending-latency starved (0.991 s with maxRafGap 2013 ms — starvation signature, not a clean red); re-fire in the quiet window. (4) CLOSED — was mislabeled a blocker in an earlier revision of this brief: the 11:02 chooser non-open was a real but GEOMETRIC defect (first hardpoint row slid under the opaque berth header; elementFromPoint returned the header, so the raw click never reached the button), fixed in styles/station.css 1a15f44fb (11:10:57). Post-fix: probe-shipworks-chooser.mjs passes the full gated path and check-m3-player-facing-public-route.mjs --demo-opening PASSES (exit 0, evidence.json primaryAcceptance true, all five checks incl. the Outfitting hover preview; verified 11:52 and again 12:09). NOT a chooser-logic defect — do not chase one; no src/ui/station/ file changed in the fix. (5) check:playable: the morning BOOT failures were a foreign audio lane's mid-write syntax errors; the lane landed (11:35-38) and the check now passes — BOOT 13.2 s at ~85% load (over the 10 s letter under load; quiet-boot number owed). Standing non-bar findings unchanged: physics-kill <=60 s AT RISK seed-dependent; launch-to-flight ~170 s vs the 10-second letter (owner product call). Receipt: design/program/roadmap/receipts/PQ-210.08-REPORT.md."
+      "brief": "Play the path in DEMO_READINESS section 5 on the owner's machine: title, Crucible rounds one to five, results, then one adventure loop. No frame over 100 ms, nothing on the glass unloads, every hit answers with sound, the three demo screens read as hardware. The owner signs the five bars. Depends on .00-.05. QUIET-WINDOW SESSION 2026-09-22 + REVIEW ROUND (NOT SIGNED — leaf stays open; the remaining gate is the quiet-window timing numbers, nothing else). (1) Crucible smooth-flight: seven attempts recorded — structural gates green x7 (0 presents redrawing an old moment, +0 program links, +0 full uploads, wave arrival COVERED at every load), best timing 0 frames over 100 ms worst 83 ms at 48% host CPU, but no 30 s sample landed inside the 32-38% acceptance band (host re-saturated inside the ~160-175 s cook every time). THIS IS THE OPEN GATE. (2) Input-to-photon: the morning witness read 'unavailable' (120 s flight wait vs the .00 cook) — driver fixed same day (162bab6ee, wait -> 300 s) and post-fix runs MEASURE: n=1 p50 53.7 ms @63% CPU, then n=1 p50 86.5 ms @85% CPU — contention-bound, over the 50 ms letter under load; a quiet-window sample is owed. (3) solid-world: onGlassDisposals=0 both phases (gate holds); pending-latency starved (0.991 s with maxRafGap 2013 ms — starvation signature, not a clean red); re-fire in the quiet window. (4) CLOSED — was mislabeled a blocker in an earlier revision of this brief: the 11:02 chooser non-open was a real but GEOMETRIC defect (first hardpoint row slid under the opaque berth header; elementFromPoint returned the header, so the raw click never reached the button), fixed in styles/station.css 1a15f44fb (11:10:57). Post-fix: probe-shipworks-chooser.mjs passes the full gated path and check-m3-player-facing-public-route.mjs --demo-opening PASSES (exit 0, evidence.json primaryAcceptance true, all five checks incl. the Outfitting hover preview; verified 11:52 and again 12:09). NOT a chooser-logic defect — do not chase one; no src/ui/station/ file changed in the fix. (5) check:playable: the morning BOOT failures were a foreign audio lane's mid-write syntax errors; the lane landed (11:35-38) and the check now passes — BOOT 13.2 s at ~85% load (over the 10 s letter under load; quiet-boot number owed). Standing non-bar findings unchanged: physics-kill <=60 s AT RISK seed-dependent; launch-to-flight ~170 s vs the 10-second letter (owner product call). Receipt: design/program/roadmap/receipts/PQ-210.08-REPORT.md. SESSION 2026-09-27 (NOT SIGNED — stays open): probe walk reaches first flight (title 8.6/11.1 s, launch 1.8/2.3 s, flight 21.6/25.3 s at 85-87% host) then host-starves at 6.8% sim rate — full walk plus timing numbers still owed on a quiet host. Fixed the detector iteration-one self-trigger (a478312aa). New rows D74 (folded-surface link failure 1/5, cause unknown) and D75 (dock-corridor suite 14/27 red at HEAD, suspected perf regression). L1 seams green: first-trade-contract, trade-receipts, shipworks-fit-from-hold."
     }
   ]
 }

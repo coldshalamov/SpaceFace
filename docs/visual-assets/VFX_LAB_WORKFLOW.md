@@ -24,13 +24,23 @@ capture a selected action with the [capture driver](../../scripts/capture-vfx-ga
 ```powershell
 python scripts/capture-vfx-gameplay-demo.py --scenario well --video
 python scripts/capture-vfx-gameplay-demo.py --all --output .devshots/vfx-gameplay-review
+python scripts/capture-vfx-gameplay-demo.py --scenario capital-rupture --continuous-video --continuous-fps 30 --continuous-max-seconds 3
+python scripts/capture-vfx-gameplay-demo.py --scenario singularity --context open --view wide
 ```
 
 The driver uses Python Playwright and saves diagnostic output under
 `.devshots/vfx-gameplay-demo/`. The page exposes `window.__vfxDemo` for deterministic
 selection and time sampling; pause playback before automated sampling.
-The optional video is a labeled phase reel, not real-time playback. Use the interactive
-page to watch continuous motion. Weapon samples follow the actual flight and contact times.
+`--video` produces a labeled phase reel. `--continuous-video` records the first selected case
+at normal speed, with every displayed frame sampled from the same 60 Hz simulation. Its default
+30 fps and duration cap bound capture cost; 24 and 60 fps are also available. Use the interactive
+page for unlimited continuous playback. Weapon samples follow actual flight and contact times.
+Rock fracture, armor breach, volatile fuel, ship collision, and capital rupture use native
+cause-specific receipts. Capital destruction uses the released Colossus and its real radius/mass.
+The `open` context moves actual bodies beyond the field instead of disabling the environment
+response. `near` and `close` use visible, alive released bodies. Compare at the same seed, camera
+and age: local flow should bend where bodies are present, while the true force boundary stays put.
+Timelines include local arrival, early and mature flow, supply cutoff, release and extinction.
 The report records resolution, renderer, asset-manifest identity, selected phases, and errors.
 
 ## Autonomous iteration
@@ -57,10 +67,10 @@ The report records resolution, renderer, asset-manifest identity, selected phase
 
 | Family | Causal motion and finish |
 |---|---|
-| Combustion and impact | Brief hot interfaces, breaking lobes and solid fragments, cooling cavities and residue |
-| Gravity | Unequal inward capture paths, orbital shear, consumption and contracting release |
-| Pressure | Directional separation, a thin advancing front, peeling and slowing wake |
-| Electrical | Branch formation, travelling charge, local contact, retraction and cooling |
+| Destruction | Mineral fracture fans, directional armor tearing, reactor cavities, or rolling fuel fire; material-specific fragments and cooling |
+| Gravity | Unequal inward arrival, differential shear, mature recirculation, then supply cutoff and draining fragments |
+| Pressure | Broad bowed advancing crests with depth, open sectors, peeling and slowing wake |
+| Electrical | Branch formation, travelling charge, local contact, disconnected branches and cooling |
 | Tools and Massline | Connected endpoints, transported work or load, truthful contact and release |
 | Repair and transfer | Directed convergence or arrival, local completion, clean retirement |
 | Propulsion | Nozzle impulse plus recorded world-space history; turns and stops preserve their different roles |
@@ -68,5 +78,5 @@ The report records resolution, renderer, asset-manifest identity, selected phase
 At every stage the hull, target, and gameplay footprint should remain readable. Reject visible
 pixel grids, solid luminous blankets, frozen internal detail, identical repeated bursts, clipped
 edges, and decorative particles unrelated to the action. Judge actual matter as matter and energy
-as structured, optically thin light. Variation changes the character of an event without changing
+as substantial translucent material with moving dark channels and hot crests. Variation changes the character of an event without changing
 what the player understands happened.

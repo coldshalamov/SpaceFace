@@ -23,6 +23,17 @@
 // offer.trap through _instanceFromOffer. This system stays event-driven — it reads
 // state.missions.active, listens to bus events, and EMITS sanctioned intents only.
 // Budget: spawn:none · voice: comms (reveal + choice) · draw:none.
+//
+// MID-RUN CUES (the reveal fires exactly once, on the FIRST of these):
+//   • patrol:proximity — a live law sweep is running the hold (lawful inspection or a patrol-scan
+//     encounter, a real hull alongside). The trap's lie unravels WITNESSED: the trap's
+//     patrolRevealLine speaks instead of revealLine and the fork lands with the cutter there.
+//   • dock:undocked — the guaranteed mid-run cue: the player has left the dock and is en route.
+//     Same-sector jobs (origin sector == dest sector) never cross a sector boundary, so without
+//     this cue their fork could never present at all.
+//   • sector:enter — kept as the fallback mid-run crossing (2+ hop routes mid-flight).
+// Without the undock cue the reveal only fired at the destination-sector threshold — at the
+// doorstep, where both fork options are free — or never, on same-sector runs.
 
 import { MORAL_TRAPS, TRAP_IDS, trapFitsOfferType } from '../data/moralTraps.js';
 import { hash32, mulberry32 } from '../core/rng.js';
@@ -57,6 +68,7 @@ export function attachTrap(offer, seed) {
       id: trap.id,
       revealAt: trap.revealAt,
       revealLine: trap.revealLine,
+      patrolRevealLine: trap.patrolRevealLine,
       choice: trap.choice,
     },
   };
@@ -80,6 +92,7 @@ export function seedHeliosOfferTrap(offer) {
       id: trap.id,
       revealAt: trap.revealAt,
       revealLine: trap.revealLine,
+      patrolRevealLine: trap.patrolRevealLine,
       choice: trap.choice,
     },
   };
@@ -94,14 +107,17 @@ export const moralTrapSystem = {
     this._state = ctx && ctx.state;
     this._bus = ctx && ctx.bus;
     this._helpers = ctx && ctx.helpers;
-    // The reveal fires mid-run. We use the first sector:enter after accept as the deterministic
-    // mid-run cue (the player has left the dock and is en route). Scan/encounter cues are
-    // non-deterministic in timing; sector:enter is the stable, seeded-safe trigger.
+    // The reveal fires mid-run on the FIRST cue: a live law sweep (witnessed), leaving the dock
+    // (guaranteed — same-sector jobs never cross a boundary), or a sector crossing (fallback).
     this._onSectorEnter = (p) => this._maybeReveal(p);
+    this._onUndocked = (p) => this._maybeReveal(p);
+    this._onPatrolProximity = (p) => this._maybeReveal(p, { witnessedByPatrol: true });
     this._onChoice = (p) => this._resolveChoice(p);
     this._onAccepted = (p) => this._revealAcceptedHeliosTrap(p);
     if (this._bus && this._bus.on) {
       this._bus.on('sector:enter', this._onSectorEnter);
+      this._bus.on('dock:undocked', this._onUndocked);
+      this._bus.on('patrol:proximity', this._onPatrolProximity);
       this._bus.on('moralTrap:choose', this._onChoice); // additive seam the choice UI emits
       this._bus.on('mission:accepted', this._onAccepted);
     }
@@ -121,21 +137,32 @@ export const moralTrapSystem = {
     this._speakReveal(line);
   },
 
-  _maybeReveal(p) {
+  _maybeReveal(p, opts = {}) {
     const state = this._state;
     if (!state) return;
+    const witnessed = !!(opts && opts.witnessedByPatrol);
     const active = (state.missions && state.missions.active) || [];
     for (const m of active) {
       if (!m || !m.trap || m._trapRevealed || m._trapResolved) continue;
       if (m.status && m.status !== 'active') continue;
       if (m.trap.revealAt && m.trap.revealAt !== 'mid_run') continue;
-      const line = typeof m.trap.revealLine === 'string' ? m.trap.revealLine.trim() : '';
+      // Under a live law sweep the lie unravels WITNESSED: the trap's patrol line speaks (the
+      // cutter alongside is in the fiction) and the mission remembers who was watching.
+      const lineSource = (witnessed && typeof m.trap.patrolRevealLine === 'string'
+        && m.trap.patrolRevealLine.trim()) ? m.trap.patrolRevealLine : m.trap.revealLine;
+      const line = typeof lineSource === 'string' ? lineSource.trim() : '';
       if (!line) continue;
       m._trapRevealed = true;
+      if (witnessed) m._trapWitnessedByPatrol = true;
       if (!state.ui || typeof state.ui !== 'object') state.ui = {};
-      state.ui.moralTrap = { missionId: m.id, trapId: m.trap.id, choice: m.trap.choice, t: state.simTime || 0 };
+      state.ui.moralTrap = {
+        missionId: m.id, trapId: m.trap.id, choice: m.trap.choice,
+        witnessed, t: state.simTime || 0,
+      };
       if (this._bus && this._bus.emit) {
-        this._bus.emit('moralTrap:revealed', { missionId: m.id, trapId: m.trap.id, choice: m.trap.choice });
+        this._bus.emit('moralTrap:revealed', {
+          missionId: m.id, trapId: m.trap.id, choice: m.trap.choice, witnessed,
+        });
       }
       if (!m._acceptLineSpoken) this._speakReveal(line); // Helios traps already said it at accept
       break;
@@ -204,10 +231,14 @@ export const moralTrapSystem = {
   destroy() {
     if (this._bus && this._bus.off) {
       if (this._onSectorEnter) this._bus.off('sector:enter', this._onSectorEnter);
+      if (this._onUndocked) this._bus.off('dock:undocked', this._onUndocked);
+      if (this._onPatrolProximity) this._bus.off('patrol:proximity', this._onPatrolProximity);
       if (this._onChoice) this._bus.off('moralTrap:choose', this._onChoice);
       if (this._onAccepted) this._bus.off('mission:accepted', this._onAccepted);
     }
     this._onSectorEnter = null;
+    this._onUndocked = null;
+    this._onPatrolProximity = null;
     this._onChoice = null;
     this._onAccepted = null;
   },

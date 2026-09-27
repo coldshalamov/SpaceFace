@@ -314,6 +314,8 @@ export const survivalWave = {
         swarm: !!this._swarm,
         champion: entry.champion === true,
         distance: Number.isFinite(entry.distance) ? entry.distance : this._spawnDistance,
+        // PQ-133.08: law arenas stamp their wave-10 boss's dressing kind off this id.
+        arenaId: run && run.arenaId,
       });
       this._requestedTotal += receipt.requested;
       this._admittedTotal += receipt.admitted;
@@ -409,6 +411,7 @@ export const survivalWave = {
       role: archetype.role,
       swarm: true,
       champion: false,
+      arenaId: run && run.arenaId,
     });
     this._requestedTotal += receipt.requested;
     this._admittedTotal += receipt.admitted;

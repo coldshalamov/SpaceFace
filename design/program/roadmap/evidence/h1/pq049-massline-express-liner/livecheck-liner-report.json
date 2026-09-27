@@ -1,0 +1,251 @@
+{
+  "seed": 47,
+  "route": "http://127.0.0.1:8521/?debug=flight",
+  "steps": [
+    {
+      "name": "server",
+      "detail": {
+        "port": 8521
+      },
+      "at": 1790489098219
+    },
+    {
+      "name": "boot",
+      "detail": {
+        "hasSF": true,
+        "hasState": true,
+        "hasBus": true,
+        "hasRenderer": true
+      },
+      "at": 1790489118559
+    },
+    {
+      "name": "playable",
+      "detail": {
+        "tick": 11,
+        "ships": 21,
+        "presented": 6,
+        "player": {
+          "state": "authored",
+          "mode": "release",
+          "presented": true,
+          "pos": [
+            0,
+            0
+          ]
+        }
+      },
+      "at": 1790489185195
+    },
+    {
+      "name": "express-found",
+      "detail": {
+        "id": 328,
+        "defId": "ship_mule",
+        "role": "express",
+        "label": "CINDER-RUN",
+        "hitchable": true,
+        "itinerary": {
+          "kind": "express_hitch_route",
+          "routeId": "express:sector_helios_prime:station_customs>station_beltout",
+          "sectorId": "sector_helios_prime",
+          "originStationId": "station_customs",
+          "destinationStationId": "station_beltout",
+          "serviceLabel": "Express Hitch Line",
+          "departureSlotS": 90,
+          "hitchable": true,
+          "transitIntent": "v3_boost"
+        },
+        "manifest": {
+          "schemaId": "spaceface.freightCausality.v1",
+          "schemaVersion": 1,
+          "manifestId": "fm_e4073f74",
+          "freighterKey": "wr_convoy_fc14e2d5",
+          "role": "express",
+          "lines": [
+            {
+              "commodityId": "cmdty_food",
+              "qty": 12
+            }
+          ],
+          "totalQty": 12
+        },
+        "freightActive": false,
+        "state": "missing-mesh",
+        "mode": null,
+        "visualRoot": null,
+        "payloadAssetId": null,
+        "slots": null,
+        "partUrls": [],
+        "presented": false,
+        "pos": [
+          11593,
+          7189
+        ]
+      },
+      "at": 1790489185195
+    },
+    {
+      "name": "approach",
+      "detail": {
+        "moved": true,
+        "rangeWu": 13641,
+        "speedWuS": 0
+      },
+      "at": 1790489185295
+    },
+    {
+      "name": "express-admitted",
+      "detail": {
+        "id": 328,
+        "defId": "ship_mule",
+        "role": "express",
+        "label": "CINDER-RUN",
+        "hitchable": true,
+        "itinerary": {
+          "kind": "express_hitch_route",
+          "routeId": "express:sector_helios_prime:station_customs>station_beltout",
+          "sectorId": "sector_helios_prime",
+          "originStationId": "station_customs",
+          "destinationStationId": "station_beltout",
+          "serviceLabel": "Express Hitch Line",
+          "departureSlotS": 90,
+          "hitchable": true,
+          "transitIntent": "v3_boost"
+        },
+        "manifest": {
+          "schemaId": "spaceface.freightCausality.v1",
+          "schemaVersion": 1,
+          "manifestId": "fm_e4073f74",
+          "freighterKey": "wr_convoy_fc14e2d5",
+          "role": "express",
+          "lines": [
+            {
+              "commodityId": "cmdty_food",
+              "qty": 12
+            }
+          ],
+          "totalQty": 12
+        },
+        "freightActive": false,
+        "state": "authored",
+        "mode": "release",
+        "visualRoot": "authored-root",
+        "payloadAssetId": null,
+        "slots": {
+          "hull": [
+            "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb"
+          ]
+        },
+        "partUrls": [
+          "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb"
+        ],
+        "presented": true,
+        "pos": [
+          11645,
+          7512
+        ]
+      },
+      "at": 1790489189154
+    },
+    {
+      "name": "contract",
+      "detail": {
+        "linerUrls": [
+          "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb"
+        ],
+        "hitchable": true,
+        "itinerary": "express_hitch_route"
+      },
+      "at": 1790489189155
+    },
+    {
+      "name": "loaderDiagnostics",
+      "detail": {
+        "available": true,
+        "source": "three/addons/loaders/GLTFLoader.js",
+        "decoders": {
+          "gltf": true,
+          "ktx2": true,
+          "draco": true,
+          "meshopt": true
+        },
+        "linerError": null,
+        "presentedCount": 7,
+        "badPresented": []
+      },
+      "at": 1790489189395
+    }
+  ],
+  "follow": [
+    {
+      "rangeWu": 90,
+      "speedWuS": 0
+    },
+    {
+      "rangeWu": 170,
+      "speedWuS": 121
+    },
+    {
+      "rangeWu": 262,
+      "speedWuS": 165
+    }
+  ],
+  "result": "PASS",
+  "final": {
+    "tick": 215,
+    "express": {
+      "id": 328,
+      "defId": "ship_mule",
+      "role": "express",
+      "label": "CINDER-RUN",
+      "hitchable": true,
+      "itinerary": {
+        "kind": "express_hitch_route",
+        "routeId": "express:sector_helios_prime:station_customs>station_beltout",
+        "sectorId": "sector_helios_prime",
+        "originStationId": "station_customs",
+        "destinationStationId": "station_beltout",
+        "serviceLabel": "Express Hitch Line",
+        "departureSlotS": 90,
+        "hitchable": true,
+        "transitIntent": "v3_boost"
+      },
+      "manifest": {
+        "schemaId": "spaceface.freightCausality.v1",
+        "schemaVersion": 1,
+        "manifestId": "fm_e4073f74",
+        "freighterKey": "wr_convoy_fc14e2d5",
+        "role": "express",
+        "lines": [
+          {
+            "commodityId": "cmdty_food",
+            "qty": 12
+          }
+        ],
+        "totalQty": 12
+      },
+      "freightActive": false,
+      "state": "authored",
+      "mode": "release",
+      "visualRoot": "authored-root",
+      "payloadAssetId": null,
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb"
+        ]
+      },
+      "partUrls": [
+        "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb"
+      ],
+      "presented": true,
+      "pos": [
+        11645,
+        7512
+      ]
+    },
+    "linerUrls": [
+      "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb"
+    ]
+  }
+}
