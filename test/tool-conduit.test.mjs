@@ -25,7 +25,7 @@ test('moving tool endpoints bind local uniforms without uploading new mesh verti
   const initialVersion = position.version;
   system._onMiningStart({ targetId: 2, verb: 'extract' });
   system._updateMiningBeam(0.08);
-  assert.ok(Math.abs(beam.shaderShared.start.value.x - 24.2) < 1e-8);
+  assert.ok(Math.abs(beam.shaderShared.start.value.x - 24.92) < 1e-8);
   assert.equal(beam.shaderShared.start.value.z, 0);
   assert.deepEqual(beam.shaderShared.end.value.toArray(), [90, 1.5, 0]);
   target.pos.x += 10;
@@ -46,7 +46,7 @@ test('tool verbs select distinct shapes and transport direction; reduced motion 
     assert.equal(beam.shaderShared.verb.value, index);
     assert.equal(beam.shaderShared.flow.value, index === 0 ? -1 : 1);
     assert.equal(beam.shaderShared.motion.value, 0);
-    assert.equal(beam.shaderShared.power.value, 0.58);
+    assert.equal(beam.shaderShared.power.value, 0.30);
     for (const mesh of [beam.mesh, beam.glow]) {
       const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.basic.vertexShader, fragmentShader: THREE.ShaderLib.basic.fragmentShader };
       mesh.material.onBeforeCompile(shader);
@@ -57,12 +57,14 @@ test('tool verbs select distinct shapes and transport direction; reduced motion 
   }
 });
 
-test('tool shutdown releases briefly, hides both draws and supports a new attack', () => {
+test('tool shutdown drains material before hiding both draws and supports a new attack', () => {
   const { system, beam } = fixture();
   system._onMiningStart({ targetId: 2 }); system._updateMiningBeam(0.1);
   system._onMiningStop(); system._updateMiningBeam(MINING_BEAM_RELEASE_S * 0.5);
   assert.equal(beam.active, false); assert.equal(beam.mesh.visible, true);
-  assert.equal(beam.shaderShared.power.value, 0.5);
+  assert.equal(beam.shaderShared.power.value, 1, 'supply cutoff travels through material, not a global brightness fade');
+  assert.equal(beam.shaderShared.stop.value, 0.1);
+  assert.ok(beam.shaderShared.time.value > beam.shaderShared.stop.value);
   system.reprojectFrame(-100, 50);
   assert.equal(beam.shaderShared.end.value.x, -10);
   assert.equal(beam.shaderShared.end.value.z, 50);
@@ -82,9 +84,10 @@ test('every supported reduced-flash setting reaches both tool attack and release
     system.state.settings = settings;
     system._onMiningStart({ targetId: 2, verb: 'repair' });
     system._updateMiningBeam(0.1);
-    assert.equal(beam.shaderShared.power.value, 0.58);
+    assert.equal(beam.shaderShared.power.value, 0.30);
     system._onMiningStop();
     system._updateMiningBeam(MINING_BEAM_RELEASE_S * 0.5);
-    assert.equal(beam.shaderShared.power.value, 0.29);
+    assert.equal(beam.shaderShared.power.value, 0.30);
+    assert.equal(beam.shaderShared.stop.value, 0.1, 'accessibility does not replace material cutoff with reverse onset');
   }
 });

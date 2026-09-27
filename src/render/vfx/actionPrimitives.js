@@ -214,6 +214,64 @@ export class ActionPrimitiveComposer {
     const family=s.recipe.primitive||actionPrimitiveForVerb(verb);
     const cutoff=s.recipe.continuous?clamp((progress-.50)*2.2)-.1:clamp((progress-.62)*2.9)-.1;
     const feed=clamp(age/(.10+s.seed*.07));
+    if((s.event==='ai:telegraph'&&s.kind==='engine_flare')||s.event==='ai:flee'){
+      // Supplied parcels leave the drive separately. Cutting supply stops NEW
+      // packets; the existing folds continue aft and erode at different ages.
+      const fleeing=s.event==='ai:flee',supply=life*.56;
+      this._piece(1,s.x,s.z,a,0,r*.46,w*.37,w*.39,w*.08,0,0,seed,
+        alpha*.62,feed,cutoff,.65);
+      for(let i=0;i<3;i++){
+        const period=.25+i*.037,offset=i*.051;
+        const born=Math.floor((Math.min(age,supply)-offset)/period)*period+offset;
+        const packetAge=age-born,flight=reduced?.16:packetAge;
+        const alive=born<0?0:(1-smooth((packetAge-.18)/.34));
+        const heading=a+(i-1)*.075,travel=r*flight*(fleeing?4.1:3.0);
+        this._piece(1,s.x+Math.cos(heading)*travel,s.z+Math.sin(heading)*travel,
+          heading,0,r*(.49+i*.09),w*(.33+i*.04),w*(.38+i*.035),w*(i-1)*.21,
+          (i-1)*w*.20,0,seed+i*2.4,alpha*alive*.72,1,clamp((packetAge-.12)*2.6)-.1,.78);
+      }
+      this._matter(s,age,reduced,'cone',a,r*1.7);return;
+    }
+    if(s.event==='ai:telegraph'&&s.kind==='weapon_charge'){
+      // Unequal tributaries feed INTO the real weapon-side contact. A loaded
+      // throat forms later; there is no identical branching sculpture above the ship.
+      for(let i=0;i<3;i++){
+        const heading=a+(i-1)*.68,reach=r*(.66+i*.14),local=smooth((age-i*.09)/.15);
+        const x=s.x+Math.cos(heading)*reach,z=s.z+Math.sin(heading)*reach;
+        this._piece(5,x,z,heading+Math.PI,0,reach,w*.23,w*.32,(i-1)*w*.34,0,0,
+          seed+i*1.7,alpha*local*.60,clamp((age-i*.09)/.2),cutoff+i*.09,.88);
+      }
+      for(let side=-1;side<=1;side+=2)this._piece(6,s.x,s.z,a+Math.PI/2,
+        -w*.55,w*.55,w*.21,w*.32,w*.09,side*w*.36,0,seed+side,
+        alpha*smooth((age-.20)/.18)*.72,1,cutoff+.12,.72);
+      return;
+    }
+    if(s.event==='ai:formationBroken'){
+      // Former connections break into departing stress fragments, not new arcs
+      // that imply damage. Each fragment has its own delay, direction and cooling.
+      for(let i=0;i<4;i++){
+        const delay=i*.038,local=Math.max(0,flowTime-delay),heading=a+(i-1.5)*.77;
+        const drift=r*(.16+(1-Math.exp(-local*(4.2+i)))*.95);
+        const present=smooth((age-delay)/.045)*(1-smooth((age-delay-.22)/.40));
+        this._piece(5,s.x+Math.cos(heading)*drift,s.z+Math.sin(heading)*drift,
+          heading,0,r*(.32+i*.035),w*.22,w*.33,(i%2?1:-1)*w*.13,0,0,
+          seed+i,alpha*present*.78,1,clamp((age-delay-.18)*2)-.1,.55);
+      }
+      return;
+    }
+    if(s.event==='player:scannedByPatrol'){
+      // Three offset scans cross the measured roof once and leave it; no expanding
+      // ring, static branching object, or inferred scanner-to-player ray.
+      for(let i=0;i<3;i++){
+        const delay=i*.13,scan=reduced?.5:clamp((age-delay)/.64);
+        const present=smooth((age-delay)/.07)*(1-smooth((age-delay-.48)/.25));
+        const along=(scan*2-1)*r;
+        this._piece(i===1?3:5,s.x+Math.cos(a)*along,s.z+Math.sin(a)*along,a+Math.PI/2,
+          -r*.62,r*(.66-i*.05),w*.20,w*.19,(i-1)*w*.18,0,0,seed+i*1.9,
+          alpha*present*(i===1?.34:.70),1,-.1,.52);
+      }
+      return;
+    }
     if(verb.startsWith('travel-')){
       // A drive sequence composes loaded capture rails, expelled compression folds and
       // transverse pressure. Every member clears the hull; no charge flash at its centre.

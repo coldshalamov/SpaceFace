@@ -102,7 +102,13 @@ export function installToolConduitShader(material, shared, role) {
       float body=.20+.34*sfWave(t*11.0-time*2.3+v*4.0+seed),edge=1.0;
       if(kind>.5){edge=(1.0-smoothstep(.66,1.0,abs(v)))*sin(t*3.14159265);
         crest=sfBand(t-fract(time*(.50+id*.037)+id*.163),.13)*(.4+.6*fold);body*=.55;}
-      if(uSfBeamVerb>.5&&uSfBeamVerb<1.5&&kind<.5){body=.48;crest=.35+sfBand(v,.3)*packet;}
+      if(uSfBeamVerb>.5&&uSfBeamVerb<1.5&&kind<.5){
+        // The cutter keeps a coherent core, but its three channels must not add
+        // into one featureless white bar. Charge travels through separated seats.
+        packet=sfWave(t*15.0-time*(8.0+id*.37)+id*1.4+seed);
+        body=.13+.08*packet;
+        crest=.045+sfBand(v-.30*sin(t*8.0-time*2.8+id),.21)*pow(packet,4.0);
+      }
       float heat=arrival*cooling*uSfBeamPower;
       vec3 tint=mix(diffuseColor.rgb*vec3(.34,.26,.42),diffuseColor.rgb,sqrt(cooling));
       diffuseColor.rgb=tint*(body+crest*${role === 'core' ? '5.2' : '2.2'})*vSfFacing*heat;
@@ -110,5 +116,5 @@ export function installToolConduitShader(material, shared, role) {
       diffuseColor.a*=edge*(.24+packet*.45+crest*.25)*arrival*cooling;
     `);
   };
-  material.customProgramCacheKey = () => `sf-tool-work-surface-v4-${role}`;
+  material.customProgramCacheKey = () => `sf-tool-work-surface-v5-${role}`;
 }

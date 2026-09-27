@@ -146,6 +146,10 @@ export class ActionVfx {
           // occluded by the pod's roof at the normal flight camera.
           this.anchor.y=name==='cargo:caughtByNet'?box.max.y+.12:
             box.min.y+(box.max.y-box.min.y)*.60;
+          if(name==='player:scannedByPatrol'){
+            this.anchor.x=center.x+this.origin.x;this.anchor.z=center.z+this.origin.z;
+            this.anchor.y=box.max.y+.16;
+          }
           a=tx<=tz?(dx<0?Math.PI:0):(dz<0?-Math.PI/2:Math.PI/2);
           slot.provenance='model-bounds-surface';
         }else{
