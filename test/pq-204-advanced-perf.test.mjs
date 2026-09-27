@@ -31,6 +31,7 @@ import { installProgramBinaryCache } from '../src/render/programBinaryCache.js';
 import { pickNextContactCompileSubject } from '../src/render/nextContactWarm.js';
 import {
   shouldFreezeFlightSubmit,
+  shouldSkipFlightDraw,
   shouldSkipFullTickSystems,
 } from '../src/core/presentationFreeze.js';
 import { createBus } from '../src/core/eventBus.js';
@@ -499,6 +500,17 @@ test('map, station, and pause freeze 3D submit and skip full-tick systems', () =
   }
   assert.equal(shouldSkipFullTickSystems({ ui: { docked: true, screenStack: [] } }), true);
   assert.equal(shouldSkipFullTickSystems({ ui: { docked: false, screenStack: [] } }), false);
+});
+
+test('fulfillment blackout skips the flight draw but keeps systems ticking', () => {
+  const covered = { mode: 'flight', ui: { docked: false, screenStack: [], fulfillmentBlackoutActive: true } };
+  assert.equal(shouldFreezeFlightSubmit(covered), false);
+  assert.equal(shouldSkipFullTickSystems(covered), false, 'the boarding FSM must keep advancing under the fence');
+  assert.equal(shouldSkipFlightDraw(covered), true, 'opaque cover makes the flight submit pure waste');
+  // During loading the draw call is the cook itself — never skip it.
+  assert.equal(shouldSkipFlightDraw({ mode: 'loading', ui: { fulfillmentBlackoutActive: true } }), false);
+  assert.equal(shouldSkipFlightDraw({ mode: 'flight', ui: { fulfillmentBlackoutActive: false } }), false);
+  assert.equal(shouldSkipFlightDraw({ mode: 'flight', ui: {} }), false);
 });
 
 test('hidden screens keep input and save while the clock and physics stay still', () => {
