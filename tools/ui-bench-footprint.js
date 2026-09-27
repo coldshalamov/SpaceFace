@@ -132,8 +132,11 @@ export function seedFootprintShot(state, kind = 'wanted') {
       factions: structuredClone(state.factions || {}),
       aceMemory: state.aceMemory,
       titles: state.titles,
+      simTime: state.simTime,
     };
   }
+  // The run has been going 72 minutes: the receipts below are minutes old, as a live record's would be.
+  state.simTime = 4320;
   const player = state.player;
   player.heatZone = { active: false, center: { x: 0, z: 0 }, radius: 0, level: 0, outsideS: 0, clearAfterS: 0 };
   player.heat = 0;
@@ -207,5 +210,6 @@ export function unseedFootprintShot(state) {
   state.factions = structuredClone(baseline.factions);
   state.aceMemory = baseline.aceMemory;
   state.titles = baseline.titles;
+  state.simTime = baseline.simTime;
   baseline = null;
 }

@@ -148,3 +148,46 @@ test('a verb preview settles what the ledger would close, and promises no heat',
   }
   assert.equal(state.player.heat, heatBefore, 'previews write nothing');
 });
+
+test('the escape clock: scrubbing forward walks the heat system\'s own level drops to clean', async () => {
+  const { heatAfter, timeToValue, escapeTotal, CLOCK_FULL } = await import('../src/ui/orrery/footprintDial.js');
+  const rd = heatReading(wantedState({ outsideS: 3.1 }));
+  const total = escapeTotal(rd);
+  assert.ok(Math.abs(total - rd.clearsIn) < 1e-9, 'the clock\'s total is the countdown the hub rolls');
+  assert.equal(CLOCK_FULL, 36, 'the face holds the whole scale, T5 to clean');
+  const now = heatAfter(rd, 0);
+  assert.ok(Math.abs(now.head - rd.head) < 1e-9 && now.level === 3, 'zero seconds ahead is now');
+  assert.equal(heatAfter(rd, 3.9).level, 2, 'the rest of T3 runs out: the heat drops to T2');
+  assert.equal(heatAfter(rd, 3.9).heat, 0.4, 'and lands on the value the heat system drops it to');
+  assert.equal(heatAfter(rd, 10).level, 1);
+  assert.equal(heatAfter(rd, total).level, 0, 'at the total it is clean');
+  let last = Infinity;
+  for (let t = 0; t <= total; t += 0.5) {
+    const h = heatAfter(rd, t).head;
+    assert.ok(h <= last + 1e-9, 'the drawn head only falls');
+    last = h;
+    assert.ok(Math.abs(timeToValue(rd, h) - t) < 1e-6, 'timeToValue inverts heatAfter');
+  }
+  const inside = heatReading(wantedState({ playerAt: { x: -2600, z: 900 } }));
+  assert.ok(Math.abs(escapeTotal(inside) - (7 + 6 + 5)) < 1e-9, 'held inside: the whole clock waits for you to leave');
+  const pound = wantedState();
+  pound.player.heat = 1;
+  assert.equal(escapeTotal(heatReading(pound)), 0, 'the pound is not a clock');
+});
+
+test('the words: two chains on one power stay apart, and the reading speaks the player\'s language', async () => {
+  const { footprintReadoutHtml } = await import('../src/ui/screens/footprint.js');
+  const state = wantedState();
+  state.factions = { faction_mts: { rep: -85, aggro: false }, faction_scn: { rep: -180, aggro: true } };
+  const kill = chain('pv:kill', { open: true, bountyPending: true, factionId: 'faction_mts', tick: 300 });
+  const scan = { ...chain('pv:scan', { open: true, amendsActive: true, factionId: 'faction_mts', tick: 200 }), nodes: [
+    { k: 'incident', tick: 200, t: 3, factionId: 'faction_mts', cause: 'contraband', text: 'Customs logged a contraband scan' },
+  ] };
+  const sources = footprintSources(state, [kill, scan]);
+  const words = sources.filter((s) => s.kind === 'chain').map((s) => s.labels[0]);
+  assert.equal(new Set(words).size, words.length, `every sector's long word is its own: ${words.join(' / ')}`);
+  const aggro = chain('pv:hunt', { open: true, factionId: 'faction_scn', tick: 400 });
+  const html = footprintReadoutHtml(aggro, null, state);
+  assert.doesNotMatch(html, /board|Open state|Faction focus|aggro/i, 'no internal wording reaches the player');
+  assert.match(html, /hunts you on sight/);
+});

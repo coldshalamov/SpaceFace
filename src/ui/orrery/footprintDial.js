@@ -1,25 +1,30 @@
 // src/ui/orrery/footprintDial.js — THE HEAT DIAL, Footprint's instrument (design/frontend/ORRERY.md §6 Meta,
 // design/frontend/OVERHAUL_PLAN_2026-09-25.md Footprint row).
 //
-// Two rings round one reading.
+// Three rings round one reading.
 //   THE BEZEL (outer) is your heat, the one number the heat system owns (src/systems/heat.js is its single
 //   writer; this file only reads it). A band of light cut by its scale, the tier stops T0..T5 riding inside
-//   it and the WANTED threshold cut in red. The lit segments run from the clear point to your heat, brighter
-//   toward the head; while you are outside the search zone the heat system counts down to the next level
-//   drop, and the head recedes toward that stop by exactly the fraction of the clock already run
-//   (heatZone.outsideS / clearAfterS), the part already cooled left behind in ice. The dial reads that clock
-//   whenever the screen refreshes; the sim is paused while Footprint is open, so in the game the reading
-//   holds where flight left it.
+//   it and the WANTED threshold cut through it (red only while you are wanted). The lit segments run from
+//   the clear point to your heat, brighter toward the head; while you are outside the search zone the heat
+//   system counts down to the next level drop, and the head recedes toward that stop by exactly the
+//   fraction of the clock already run (heatZone.outsideS / clearAfterS), the part already cooled left
+//   behind as one arc of ice. The dial reads that clock whenever the screen refreshes; the sim is paused
+//   while Footprint is open, so in the game the reading holds where flight left it.
+//   THE ESCAPE CLOCK (the hub's rim) is the same countdown as time: a lit arc of the seconds left to clean
+//   at this pace, on a face that holds the whole scale (T5 to clean), cut at every level drop. Drag the
+//   needle down the bezel (or focus it and use the arrow keys) and the dial scrubs forward: the needle, the
+//   clock and the numeral show the heat after that long out of the zone, and the rim names which sources
+//   outlive it (heat clears by distance; the record does not).
 //   THE SOURCE RING (inner) is the record that keeps the law after you, one sector per source: the bounty on
-//   your hull and every provenance chain, each with its token (the power's crest, the bounty's seal) inside
-//   the ring. It is NOT heat — nothing in state prices heat per source. Open sources share the ring by the
-//   weights the screen gives them (its share of the receipts on the record: footprint.js footprintSources);
-//   a settled chain keeps a fixed sliver, cold. With nothing open the rest of the ring is a cold, complete
-//   arc engraved with the clean record.
+//   your hull and every provenance chain, each with its token (the power's crest, the bounty's seal) seated
+//   on a pad inside the ring. It is NOT heat — nothing in state prices heat per source. Open sources share
+//   the ring by the weights the screen gives them (their share of the receipts on the record:
+//   footprint.js footprintSources); a settled chain keeps a fixed sliver, cold. With nothing open the rest
+//   of the ring is a cold, complete arc engraved with the clean record.
 //   THE HAND is the one amber thing on the dial: an arm from the hub's rim to the traced source's token and a
-//   shoe that hugs its sector. Drag round the dial, arrow round the sector keys, or move a pad over them,
-//   and the Hand sweeps sector to sector; the screen unfolds that source's chain beside the dial and a link
-//   of light runs from the traced sector out of the dial's three-o'clock gate to it.
+//   shoe that hugs its sector, with a grip. Drag round the dial, arrow round the sector keys, or move a pad
+//   over them, and the Hand sweeps sector to sector; the screen unfolds that source's chain beside the dial
+//   and a link of light runs from the traced sector out of the dial's three-o'clock gate to it.
 //   A VERB PREVIEW marks what the verb would settle (those sectors go dark, hollow, an ice edge round them),
 //   what it moves (the hub's bounty line) and, for a verb that is a place, a bearing out to its name.
 //
@@ -35,6 +40,7 @@ const STYLE_ID = 'orr-footprint-dial-style';
 const BONE = '236 230 216';
 const INK = 'rgb(248 244 234)';
 const DARK = 'rgb(12 11 9)';
+const PHOS = '223 238 255';
 
 /** The heat scale: 0 (the clear point) at seven o'clock, 1 at five, clockwise over the top. */
 export const HEAT_FROM = 210;
@@ -46,6 +52,12 @@ const DIVS = 40;
 const GATE_DEG = 90;
 /** A settled chain's sliver of the source ring, in degrees (less when many share the ring). */
 const SLIVER = 16;
+
+/** The escape clock's face: the whole countdown from the top of T5 to clean, seconds. */
+export const CLOCK_FULL = (() => { let s = 0; for (let l = 1; l <= LEVELS; l += 1) s += heatClearSecondsForLevel(l); return s; })();
+
+/** The first trace (or scrub) of a session retires the at-rest hint. */
+let hintRetired = false;
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const clamp01 = (v) => clamp(Number.isFinite(v) ? v : 0, 0, 1);
@@ -102,8 +114,66 @@ export function heatReading(state) {
   }
   return {
     heat, level, tier: tier.id, tierLabel: tier.label, wanted: heat >= THRESHOLD,
-    radius, outside, held, progress, head, dropTo, clearsIn,
+    radius, outside, held, progress, head, dropTo, clearsIn, clearAfter, outsideS,
   };
+}
+
+/**
+ * The countdown ahead as the heat system will run it once you are (or stay) outside the zone: the rest of
+ * this level, then every level below, each dropping one tier when its clock runs out. [] at the pound or
+ * with no heat. Each segment: { level, from, to, dur } in heat and seconds.
+ */
+export function escapeSegments(rd) {
+  if (!rd || !(rd.level > 0) || rd.held === 'impound') return [];
+  const segs = [];
+  const running = !rd.held;
+  segs.push({
+    level: rd.level,
+    from: running ? rd.head : rd.heat,
+    to: rd.dropTo,
+    dur: Math.max(0, num(rd.clearAfter) - (running ? num(rd.outsideS) : 0)),
+  });
+  for (let l = rd.level - 1; l >= 1; l -= 1) {
+    segs.push({ level: l, from: levelValue(l), to: l <= 1 ? 0 : levelValue(l - 1), dur: heatClearSecondsForLevel(l) });
+  }
+  return segs;
+}
+
+/** Seconds from now to clean along escapeSegments (0 with no countdown). */
+export function escapeTotal(rd) {
+  return escapeSegments(rd).reduce((sum, s) => sum + s.dur, 0);
+}
+
+/** The heat after `t` more seconds outside the zone: the drawn head, the true heat and its level. */
+export function heatAfter(rd, t) {
+  const segs = escapeSegments(rd);
+  const total = segs.reduce((sum, s) => sum + s.dur, 0);
+  let left = Math.max(0, num(t));
+  for (let i = 0; i < segs.length; i += 1) {
+    const s = segs[i];
+    if (left < s.dur) {
+      const p = s.dur > 0 ? left / s.dur : 1;
+      return { head: s.from - p * (s.from - s.to), heat: i === 0 ? rd.heat : levelValue(s.level), level: s.level, remaining: total - Math.max(0, num(t)) };
+    }
+    left -= s.dur;
+  }
+  return { head: 0, heat: 0, level: 0, remaining: 0 };
+}
+
+/** The seconds outside it takes the drawn head to reach `value` (its inverse; 0 above the head). */
+export function timeToValue(rd, value) {
+  const segs = escapeSegments(rd);
+  const v = clamp01(num(value));
+  let acc = 0;
+  for (const s of segs) {
+    if (v >= s.to - 1e-9) {
+      const span = s.from - s.to;
+      const p = span > 0 ? clamp01((s.from - v) / span) : 1;
+      return acc + p * s.dur;
+    }
+    acc += s.dur;
+  }
+  return acc;
 }
 
 const CSS = `
@@ -114,17 +184,22 @@ const CSS = `
 .fp-dial__svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
 .fp-dial__svg text { font-family:var(--dp-face-label, "Archivo"), sans-serif; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650;
   text-transform:uppercase; letter-spacing:.16em; dominant-baseline:central; }
-/* THE BEZEL: a band with body (lum ~70 on the glass), its scale cut through it, the heat lit in warm white */
+/* THE BEZEL: a band with body (lum ~74 on the glass), its scale cut through it, the heat lit in warm white */
 .fp-bezel { fill:none; stroke:rgb(${BONE} / .3); stroke-linecap:butt; }
 .fp-bezel-rim { fill:none; stroke:rgb(${BONE} / .6); stroke-width:1.5; }
 .fp-bezel-inner { fill:none; stroke:rgb(${BONE} / .34); stroke-width:1; }
 .fp-seg { fill:none; stroke:rgb(250 246 236); stroke-linecap:butt; }
-.fp-seg--cool { stroke:rgb(143 203 255 / .5); }
 .fp-seg-bloom { fill:none; stroke:rgb(255 240 214 / .16); stroke-linecap:butt; }
+.fp-cool { fill:none; stroke:rgb(143 203 255 / .52); stroke-linecap:butt; }
+.fp-dial.is-scrubbing .fp-cool { stroke:rgb(143 203 255 / .62); }
 .fp-cut { fill:none; stroke:rgb(5 7 10 / .86); stroke-width:1.5; stroke-linecap:butt; }
 .fp-cut--major { stroke-width:2.5; }
 .fp-stop { fill:none; stroke:rgb(${BONE} / .82); stroke-width:2; stroke-linecap:butt; }
-.fp-cut--wanted { stroke:var(--dp-danger, #ff5038); stroke-width:2.5; }
+/* WANTED: bone while you are below it, red only while you are wanted (red is threat) */
+.fp-wanted .fp-cut--wanted { stroke:rgb(${BONE} / .62); stroke-width:2.5; }
+.fp-wanted text { fill:rgb(${BONE} / .66); letter-spacing:.22em; }
+.fp-wanted.is-live .fp-cut--wanted { stroke:var(--dp-danger, #ff5038); }
+.fp-wanted.is-live text { fill:rgb(255 128 106); }
 .fp-tier text { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.14em; fill:${INK}; }
 .fp-tier.is-lit text { fill:${DARK}; }
 .fp-tier.is-cool text { fill:rgb(8 14 22); }
@@ -133,28 +208,33 @@ const CSS = `
 .fp-dial.is-cold .fp-needle, .fp-dial.is-cold .fp-needle-bloom { display:none; }
 .fp-engrave text { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.26em; fill:rgb(${BONE} / .76); }
 .fp-engrave--rule text { fill:rgb(${BONE} / .7); }
-.fp-engrave--wanted text { fill:rgb(255 128 106); letter-spacing:.22em; }
 .fp-engrave--rule.is-preview text { fill:rgb(196 226 255); letter-spacing:.2em; }
-/* the hub's rim: an orrery's inner ring with its fine scale, the Hand pivots on it */
-.fp-hubrim { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1.5; }
+/* THE ESCAPE CLOCK on the hub's rim: a band with body, the seconds left lit in phosphor, a cut at each drop */
+.fp-clock-band { fill:none; stroke:rgb(${BONE} / .26); stroke-linecap:butt; }
+.fp-clock { fill:none; stroke:rgb(${PHOS} / .82); stroke-linecap:butt; }
+.fp-clock-bloom { fill:none; stroke:rgb(${PHOS} / .14); stroke-linecap:butt; }
+.fp-dial.is-held .fp-clock { stroke:rgb(${PHOS} / .38); }
+.fp-clock-cut { fill:none; stroke:rgb(5 7 10 / .86); stroke-width:2; }
 .fp-hubrim-ticks { fill:none; stroke:rgb(${BONE} / .42); stroke-width:1.25; }
-.fp-hubrim-band { fill:none; stroke:rgb(${BONE} / .1); }
-/* THE SOURCE RING: one sector per source, lit while it holds the record open, cold once settled */
+.fp-hint text { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.22em; fill:rgb(${BONE} / .72); }
+.fp-hint { transition:opacity .6s linear; }
+.fp-dial.is-hint-retired .fp-hint { opacity:0; }
+/* THE SOURCE RING: one sector per source, lit while it holds the record open, cold once settled; the heat stays the brightest ring */
 .fp-srcring { fill:none; stroke:rgb(${BONE} / .09); }
 .fp-sector { transition:transform .32s var(--dp-ease-over, ease-out), opacity .24s linear; }
 .fp-sector__band { fill:none; stroke:rgb(${BONE} / .245); stroke-linecap:butt; transition:stroke .2s linear; }
 .fp-sector__edge { fill:none; stroke:rgb(${BONE} / .46); stroke-width:1.5; stroke-linecap:butt; }
-.fp-sector.is-open .fp-sector__band { stroke:rgb(${BONE} / .6); }
+.fp-sector.is-open .fp-sector__band { stroke:rgb(${BONE} / .4); }
 .fp-sector.is-open .fp-sector__edge { stroke:rgb(252 249 240 / .92); stroke-width:2; }
 .fp-sector.is-traced .fp-sector__band { stroke:rgb(248 244 234 / .95); }
 .fp-sector.is-traced:not(.is-open) .fp-sector__band { stroke:rgb(${BONE} / .56); }
 .fp-sector.is-traced .fp-sector__edge { stroke:rgb(255 255 255); stroke-width:2.5; }
 .fp-sector__bloom { fill:none; stroke:rgb(255 240 214 / 0); stroke-linecap:butt; transition:stroke .2s linear; }
 .fp-sector.is-traced .fp-sector__bloom { stroke:rgb(255 240 214 / .15); }
-.fp-sector__label text { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.16em; fill:rgb(${BONE} / .86); }
-.fp-sector.is-open .fp-sector__label text, .fp-sector.is-traced .fp-sector__label text { fill:${DARK}; }
+.fp-sector__label text { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.16em; fill:rgb(252 249 242 / .96); }
+.fp-sector.is-traced .fp-sector__label text { fill:${DARK}; }
 .fp-sector.is-hover:not(.is-traced) .fp-sector__band { stroke:rgb(${BONE} / .38); }
-.fp-sector.is-open.is-hover:not(.is-traced) .fp-sector__band { stroke:rgb(${BONE} / .76); }
+.fp-sector.is-open.is-hover:not(.is-traced) .fp-sector__band { stroke:rgb(${BONE} / .5); }
 /* the cold rest of the ring when nothing is open: the clean record, engraved */
 .fp-clear__band { fill:none; stroke:rgb(${BONE} / .245); stroke-linecap:butt; }
 .fp-clear__edge { fill:none; stroke:rgb(${BONE} / .42); stroke-width:1.5; }
@@ -165,18 +245,26 @@ const CSS = `
 @keyframes fp-settle-march { to { stroke-dashoffset:-24; } }
 .fp-sector.is-settles .fp-sector__label text { fill:rgb(196 226 255); }
 .fp-sector.is-settles .fp-sector__bloom { stroke:rgb(143 203 255 / .14); }
-/* the tokens: each source's produced mark inside the ring (a power's crest, the bounty's seal) */
-.fp-token { position:absolute; left:0; top:0; width:var(--fp-tok, 30px); height:var(--fp-tok, 30px); margin:calc(var(--fp-tok, 30px) / -2) 0 0 calc(var(--fp-tok, 30px) / -2);
-  pointer-events:none; opacity:.58; transition:opacity .2s linear, transform .3s var(--dp-ease-over, ease-out); filter:drop-shadow(0 0 3px rgb(0 0 0 / .9)); }
-.fp-token.is-open { opacity:.84; }
-.fp-token.is-traced { opacity:1; transform:scale(1.3); filter:drop-shadow(0 0 6px rgb(255 244 222 / .35)) drop-shadow(0 0 2px rgb(0 0 0 / .9)); }
-.fp-token.is-settles { opacity:.36; filter:grayscale(1) brightness(.8) drop-shadow(0 0 5px rgb(143 203 255 / .6)); }
+/* a scrub: the sources that outlive the heat keep their light, an edge of phosphor says so */
+.fp-dial.is-scrubbing .fp-sector.is-open .fp-sector__edge { stroke:rgb(${PHOS}); }
+/* the tokens: each source's produced mark seated on a lit pad inside the ring (a power's crest, the bounty's seal) */
+.fp-token { position:absolute; left:0; top:0; box-sizing:border-box; width:var(--fp-tok, 44px); height:var(--fp-tok, 44px); margin:calc(var(--fp-tok, 44px) / -2) 0 0 calc(var(--fp-tok, 44px) / -2);
+  display:grid; place-items:center; border-radius:50%; pointer-events:none; background:rgb(${BONE} / .2); box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .6), 0 0 0 5px rgb(5 7 10 / .55);
+  transition:transform .3s var(--dp-ease-over, ease-out), background-color .2s linear; }
+.fp-token > img { display:block; width:78%; height:78%; object-fit:contain; opacity:.86; filter:drop-shadow(0 0 2px rgb(0 0 0 / .9)); transition:opacity .2s linear; }
+.fp-token.is-open { background:rgb(${BONE} / .24); }
+.fp-token.is-open > img { opacity:.96; }
+.fp-token.is-traced { transform:scale(1.18); background:rgb(${BONE} / .3); box-shadow:inset 0 0 0 2px rgb(252 249 240 / .9), 0 0 0 5px rgb(5 7 10 / .55), 0 0 14px 2px rgb(255 244 222 / .22); }
+.fp-token.is-traced > img { opacity:1; }
+.fp-token.is-settles { background:rgb(5 7 10 / .7); box-shadow:inset 0 0 0 1.5px rgb(143 203 255 / .8), 0 0 0 5px rgb(5 7 10 / .55); }
+.fp-token.is-settles > img { opacity:.5; filter:grayscale(1); }
 /* THE HAND: the only amber on the dial */
 .fp-hand__arm { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:3; stroke-linecap:round; }
 .fp-hand__armbloom { fill:none; stroke:rgb(242 185 80 / .26); stroke-width:11; stroke-linecap:round; }
 .fp-hand__bead { fill:var(--dp-hand-hot, #ffd98c); }
 .fp-hand__beadbloom { fill:rgb(242 185 80 / .3); }
 .fp-hand__ring { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:2; }
+.fp-hand__grip { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-width:2; stroke-linecap:round; }
 .fp-hand__shoe { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:3; stroke-linecap:round; }
 .fp-hand__shoebloom { fill:none; stroke:rgb(242 185 80 / .24); stroke-width:11; stroke-linecap:round; }
 .fp-dial:is(:focus-within, .is-dragging) .fp-hand__arm, .fp-dial:is(:focus-within, .is-dragging) .fp-hand__shoe, .fp-dial:is(:focus-within, .is-dragging) .fp-hand__ring { stroke:var(--dp-hand-hot, #ffd98c); }
@@ -192,31 +280,40 @@ const CSS = `
 .fp-bearing__bloom { fill:none; stroke:rgb(143 203 255 / .18); stroke-width:8; stroke-linecap:round; }
 .fp-bearing__pip { fill:var(--dp-ice, #8fcbff); }
 .fp-bearing text { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.2em; fill:rgb(200 228 255); paint-order:stroke; stroke:rgb(5 7 10 / .9); stroke-width:5px; stroke-linejoin:round; dominant-baseline:auto; }
-/* the hub: your heat as the thin numeral, its tier, the clock, the bounty; a preview line in ice */
+/* the hub: your heat as the thin numeral, its tier, the clock, the bounty; while scrubbing, the heat ahead */
 .fp-hub { position:absolute; left:0; top:0; transform:translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; text-align:center; pointer-events:none; z-index:1;
   width:var(--fp-hub-w, 260px); }
 .fp-hub__k { margin:0 0 4px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; font-size:calc(12px * var(--fp-ts, 1));
   letter-spacing:.3em; text-transform:uppercase; color:rgb(${BONE} / .78); }
 .fp-hub__n { margin:0; font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250; font-weight:250;
-  font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.03em; line-height:.84; color:rgb(223 238 255); font-size:var(--fp-hub-n, 128px); }
+  font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.03em; line-height:.84; color:rgb(${PHOS}); font-size:var(--fp-hub-n, 128px); }
 .fp-hub__tier { margin:10px 0 0; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 700; font-weight:700; font-size:calc(13px * var(--fp-ts, 1));
   letter-spacing:.2em; text-transform:uppercase; color:${INK}; white-space:nowrap; }
 .fp-hub__clears { margin:6px 0 0; display:flex; align-items:baseline; justify-content:center; gap:.45em; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
   font-variation-settings:"wdth" 112, "wght" 600; font-weight:600; font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.18em; text-transform:uppercase; color:rgb(${BONE} / .82); white-space:nowrap; }
-.fp-hub__clears-n { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 400; font-weight:400; font-size:calc(19px * var(--fp-ts, 1)); letter-spacing:0; color:rgb(223 238 255); }
+.fp-hub__clears:has(> .fp-hub__clears-w:empty):has(> .fp-hub__clears-n:empty) { display:none; }
+.fp-hub__clears-n { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 400; font-weight:400; font-size:calc(19px * var(--fp-ts, 1)); letter-spacing:0; color:rgb(${PHOS}); }
 .fp-hub__clears-n:empty, .fp-hub__clears-n:empty + .fp-hub__clears-u { display:none; }
-.fp-hub__clears-u { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.1em; color:rgb(223 238 255 / .86); margin-left:-.2em; }
+.fp-hub__clears-u { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.1em; color:rgb(${PHOS} / .86); margin-left:-.2em; }
 .fp-hub__bounty { margin:8px 0 0; font-family:var(--dp-face-body, "Instrument Sans"), sans-serif; font-size:calc(13px * var(--fp-ts, 1)); letter-spacing:.01em; color:rgb(${BONE} / .86); white-space:nowrap; }
 .fp-hub__bounty:empty { display:none; }
 .fp-hub__bounty b { font-weight:600; color:${INK}; font-variant-numeric:tabular-nums; }
 .fp-hub__bounty i { font-style:normal; font-weight:600; color:rgb(196 226 255); }
-.fp-hub__preview { display:none; margin:8px 0 0; max-width:100%; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650;
-  font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.12em; line-height:1.35; text-transform:uppercase; color:rgb(196 226 255); text-wrap:balance; }
-.fp-hub__preview:empty { display:none; }
+.fp-hub__scrub { display:none; margin:10px 0 0; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 700; font-weight:700;
+  font-size:calc(13px * var(--fp-ts, 1)); letter-spacing:.18em; text-transform:uppercase; color:rgb(196 226 255); white-space:nowrap; }
+.fp-dial.is-scrubbing .fp-hub__scrub { display:block; }
+.fp-dial.is-scrubbing :is(.fp-hub__tier, .fp-hub__clears) { display:none; }
+.fp-hub__preview { display:none; }
 /* the sector keys: one real button per source, on the band (the band itself shows focus) */
 .fp-key { position:absolute; left:0; top:0; width:var(--fp-key, 40px); height:var(--fp-key, 40px); margin:calc(var(--fp-key, 40px) / -2) 0 0 calc(var(--fp-key, 40px) / -2);
   padding:0; border:0; border-radius:50%; background:none; box-shadow:none; color:transparent; font-size:0; cursor:pointer; opacity:1; outline:none; z-index:2; }
 .fp-key:focus-visible { outline:none; }
+/* the needle key: the escape clock's own control, riding the needle */
+.fp-needlekey { position:absolute; left:0; top:0; width:34px; height:34px; margin:-17px 0 0 -17px; padding:0; border:0; border-radius:50%; background:none; box-shadow:none;
+  color:transparent; font-size:0; cursor:grab; outline:none; z-index:3; }
+.fp-needlekey[hidden] { display:none; }
+.fp-dial:has(.fp-needlekey:focus-visible) .fp-needle { stroke:rgb(${PHOS}); stroke-width:4; }
+.fp-dial:has(.fp-needlekey:focus-visible) .fp-needle-bloom { stroke:rgb(${PHOS} / .4); }
 /* arrival: the bezel draws, the sectors swing in, the Hand swings to its source */
 .fp-dial.is-arriving .fp-bezel, .fp-dial.is-arriving .fp-bezel-rim { stroke-dasharray:1 1; stroke-dashoffset:1; animation:fp-draw 620ms var(--dp-ease-out, ease-out) forwards; }
 @keyframes fp-draw { to { stroke-dashoffset:0; } }
@@ -227,7 +324,7 @@ const CSS = `
 html.sf-reduce-motion .fp-dial.is-arriving .fp-bezel, html.sf-reduce-motion .fp-dial.is-arriving .fp-bezel-rim { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }
 html.sf-reduce-motion .fp-dial.is-arriving .fp-dial__sources, html.sf-reduce-motion .fp-dial.is-arriving .fp-hub, html.sf-reduce-motion .fp-dial.is-arriving .fp-token { animation:none; }
 html.sf-reduce-motion .fp-link__pulse { animation:none; display:none; }
-html.sf-reduce-motion .fp-sector, html.sf-reduce-motion .fp-token { transition:none; }
+html.sf-reduce-motion .fp-sector, html.sf-reduce-motion .fp-token, html.sf-reduce-motion .fp-hint { transition:none; }
 html.sf-reduce-motion .fp-sector.is-settles .fp-sector__edge { animation:none; }
 @media (forced-colors: active) { .fp-dial__svg, .fp-dial__pool, .fp-token { display:none; } }
 `;
@@ -251,18 +348,26 @@ export function dialGeometry(w, h) {
   const rB = R - B / 2;
   const rShoe = R - B - gap / 2;
   const rS = R - B - gap - SB / 2;
-  const tok = Math.round(clamp(R * 0.088, 24, 46));
+  const tok = Math.round(clamp(R * 0.116, 32, 56));
   const rTok = rS - SB / 2 - tok / 2 - clamp(R * 0.03, 7, 14);
   const hubR = clamp(R * 0.5, 96, 260);
+  const clockW = clamp(R * 0.03, 9, 14);
   const arm0 = hubR + 4;
   const arm1 = rTok - tok * 0.62 - 3;
   const ts = clamp(R / 380, 1, 1.35);
-  return { S, M, cx: w / 2, cy: h / 2, R, B, gap, SB, rB, rShoe, rS, tok, rTok, hubR, arm0, arm1, ts };
+  return { S, M, cx: w / 2, cy: h / 2, R, B, gap, SB, rB, rShoe, rS, tok, rTok, hubR, clockW, arm0, arm1, ts };
 }
 
 /** Shortest signed turn from a to b, degrees. */
 function turn(a, b) {
   return ((b - a + 540) % 360 + 360) % 360 - 180;
+}
+
+/** The heat a bezel angle points at, 0..1 (the bottom gap snaps to its nearer end). */
+function valueAtAngle(deg) {
+  const d = ((deg - HEAT_FROM) % 360 + 360) % 360;
+  if (d <= HEAT_SWEEP) return d / HEAT_SWEEP;
+  return d - HEAT_SWEEP < (360 - HEAT_SWEEP) / 2 ? 1 : 0;
 }
 
 /**
@@ -305,6 +410,7 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
   injectOrrery(doc);
   injectStyle(doc);
   host.classList.add('fp-dial');
+  host.classList.toggle('is-hint-retired', hintRetired);
 
   const pool = doc.createElement('div');
   pool.className = 'fp-dial__pool';
@@ -323,16 +429,21 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
   const hubClearsN = doc.createElement('span'); hubClearsN.className = 'fp-hub__clears-n';
   const hubClearsU = doc.createElement('span'); hubClearsU.className = 'fp-hub__clears-u'; hubClearsU.textContent = 's';
   hubClears.append(hubClearsW, hubClearsN, hubClearsU);
+  const hubScrub = doc.createElement('p'); hubScrub.className = 'fp-hub__scrub';
+  hubScrub.setAttribute('aria-live', 'polite');
   const hubBounty = doc.createElement('p'); hubBounty.className = 'fp-hub__bounty';
   const hubPreview = doc.createElement('p'); hubPreview.className = 'fp-hub__preview';
-  hubPreview.setAttribute('aria-live', 'polite');
-  hub.append(hubK, hubN, hubTier, hubClears, hubBounty, hubPreview);
+  hub.append(hubK, hubN, hubTier, hubClears, hubScrub, hubBounty, hubPreview);
   const keysHost = doc.createElement('div');
   keysHost.className = 'fp-dial__keys';
   keysHost.setAttribute('role', 'listbox');
   keysHost.setAttribute('aria-label', 'Sources on the heat dial');
   keysHost.setAttribute('aria-orientation', 'horizontal');
-  host.append(pool, layer, tokensHost, hub, keysHost);
+  const needleKey = doc.createElement('button');
+  needleKey.type = 'button';
+  needleKey.className = 'fp-needlekey';
+  needleKey.hidden = true;
+  host.append(pool, layer, tokensHost, hub, keysHost, needleKey);
 
   let geo = null;
   let sources = [];
@@ -351,6 +462,8 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
   let bearingG = null;
   let dragging = false;
   let dragAngle = 0;
+  let scrubT = null;
+  let scrubbing = false;
   let numeralShown = null;
   let clearsShown = null;
   let engraving = { top: '', rule: '', clear: '' };
@@ -363,6 +476,12 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
   }
 
   function sectorOf(id) { return sectors.find((s) => s.id === id) || null; }
+
+  function retireHint() {
+    if (hintRetired) return;
+    hintRetired = true;
+    host.classList.add('is-hint-retired');
+  }
 
   function build() {
     const { w, h } = box();
@@ -396,7 +515,9 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
       segs.appendChild(seg);
       segEls.push({ seg, bloom });
     }
-    bz.append(segBloom, segs);
+    // the part already cooled: ONE continuous arc of ice from the needle to the heat
+    const cool = svg('path', { class: 'fp-cool', 'stroke-width': f(g.B), d: 'M 0 0' });
+    bz.append(segBloom, segs, cool);
     bz.appendChild(svg('path', { d: arcD(g.cx, g.cy, g.R - 0.75, HEAT_FROM, HEAT_FROM + HEAT_SWEEP), class: 'fp-bezel-rim', pathLength: 1 }));
     bz.appendChild(svg('path', { d: arcD(g.cx, g.cy, g.R - g.B + 0.5, HEAT_FROM, HEAT_FROM + HEAT_SWEEP), class: 'fp-bezel-inner' }));
     // the scale cut through the band: every 0.025 a notch on the outer half, the tier stops across it
@@ -423,11 +544,6 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
       stops.push(`M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)}`);
     }
     bz.appendChild(svg('path', { d: stops.join(' '), class: 'fp-stop' }));
-    // WANTED: the one threshold in red, cut through the band and standing proud of it
-    const aw = heatAngle(THRESHOLD);
-    const [wx0, wy0] = polar(g.cx, g.cy, g.R - g.B, aw);
-    const [wx1, wy1] = polar(g.cx, g.cy, g.R + 11, aw);
-    bz.appendChild(svg('path', { d: `M ${f(wx0)} ${f(wy0)} L ${f(wx1)} ${f(wy1)}`, class: 'fp-cut fp-cut--wanted' }));
     // the tier words ride inside the band, between their stops
     const tiers = [];
     const tierDefs = [{ w: 'T0', v: THRESHOLD / 2 }, { w: 'T1', v: (THRESHOLD + 0.2) / 2 }];
@@ -444,29 +560,56 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     const needleBloom = svg('path', { class: 'fp-needle-bloom', d: 'M 0 0' });
     const needle = svg('path', { class: 'fp-needle', d: 'M 0 0' });
     bz.append(needleBloom, needle);
-    // the engravings: what the dial reads along the top, the rule along the bottom gap, WANTED at its cut
+    // the engravings: what the dial reads along the top, the rule along the bottom gap
     const engraveTop = svg('g', { class: 'fp-engrave' });
     const engraveRule = svg('g', { class: 'fp-engrave fp-engrave--rule' });
     const rEng = g.R + g.M * 0.56;
     bz.append(engraveTop, engraveRule);
-    bz.appendChild(circularText(g.cx, g.cy, rEng, 'Wanted', { startDeg: aw + 90, anchor: 'middle', upright: true, size: 12, className: 'fp-engrave fp-engrave--wanted' }));
+    // WANTED: its cut through the band and its word, red only while you are wanted
+    const aw = heatAngle(THRESHOLD);
+    const wanted = svg('g', { class: 'fp-wanted' });
+    const [wx0, wy0] = polar(g.cx, g.cy, g.R - g.B, aw);
+    const [wx1, wy1] = polar(g.cx, g.cy, g.R + 11, aw);
+    wanted.appendChild(svg('path', { d: `M ${f(wx0)} ${f(wy0)} L ${f(wx1)} ${f(wy1)}`, class: 'fp-cut fp-cut--wanted' }));
+    wanted.appendChild(circularText(g.cx, g.cy, rEng, 'Wanted', { startDeg: aw + 90, anchor: 'middle', upright: true, size: 12 }));
+    bz.appendChild(wanted);
     layer.appendChild(bz);
-    bezel = { segEls, tiers, needle, needleBloom, engraveTop, engraveRule, rEng };
+    bezel = { segEls, cool, tiers, needle, needleBloom, engraveTop, engraveRule, rEng, wanted };
 
-    // ---- the hub's rim: an inner ring with its fine scale (the Hand pivots on it) ----
+    // ---- the escape clock on the hub's rim: a band with body, the seconds left lit, a cut at each drop ----
     const rim = svg('g', { class: 'fp-dial__hubrim' });
-    rim.appendChild(svg('circle', { class: 'fp-hubrim-band', cx: f(g.cx), cy: f(g.cy), r: f(g.hubR + 5.5), 'stroke-width': 11 }));
-    rim.appendChild(svg('circle', { class: 'fp-hubrim', cx: f(g.cx), cy: f(g.cy), r: f(g.hubR) }));
+    const rc = g.hubR + g.clockW / 2;
+    rim.appendChild(svg('circle', { class: 'fp-clock-band', cx: f(g.cx), cy: f(g.cy), r: f(rc), 'stroke-width': f(g.clockW) }));
+    const clockBloom = svg('path', { class: 'fp-clock-bloom', 'stroke-width': f(g.clockW + 10), d: 'M 0 0' });
+    const clock = svg('path', { class: 'fp-clock', 'stroke-width': f(g.clockW), d: 'M 0 0' });
+    rim.append(clockBloom, clock);
+    const clockCuts = [];
+    let acc = 0;
+    for (let l = 1; l <= LEVELS; l += 1) {
+      const a = (360 * acc) / CLOCK_FULL;
+      const [x0, y0] = polar(g.cx, g.cy, g.hubR - 1, a);
+      const [x1, y1] = polar(g.cx, g.cy, g.hubR + g.clockW + 1, a);
+      clockCuts.push(`M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)}`);
+      acc += heatClearSecondsForLevel(l);
+    }
+    rim.appendChild(svg('path', { class: 'fp-clock-cut', d: clockCuts.join(' ') }));
     const ticks = [];
     for (let i = 0; i < 120; i += 1) {
       const a = i * 3;
       const len = i % 10 === 0 ? 7 : 3.5;
-      const [x0, y0] = polar(g.cx, g.cy, g.hubR + 2, a);
-      const [x1, y1] = polar(g.cx, g.cy, g.hubR + 2 + len, a);
+      const [x0, y0] = polar(g.cx, g.cy, g.hubR + g.clockW + 2, a);
+      const [x1, y1] = polar(g.cx, g.cy, g.hubR + g.clockW + 2 + len, a);
       ticks.push(`M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)}`);
     }
     rim.appendChild(svg('path', { class: 'fp-hubrim-ticks', d: ticks.join(' ') }));
+    // the at-rest hint, retired by the first trace or scrub of the session
+    const hint = svg('g', { class: 'fp-hint' });
+    hint.appendChild(circularText(g.cx, g.cy, g.hubR + g.clockW + 17, 'Drag or ‹ › to trace', { startDeg: 270, anchor: 'middle', upright: true, size: 12 }));
+    rim.appendChild(hint);
     layer.appendChild(rim);
+    bezel.clock = clock;
+    bezel.clockBloom = clockBloom;
+    bezel.clockR = rc;
 
     // ---- the source ring ----
     const sg = svg('g', { class: 'fp-dial__sources' });
@@ -489,7 +632,16 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     arm.appendChild(svg('path', { class: 'fp-hand__arm', d: armD }));
     arm.appendChild(svg('circle', { class: 'fp-hand__beadbloom', cx: f(g.cx), cy: f(g.cy - g.arm0), r: 8 }));
     arm.appendChild(svg('circle', { class: 'fp-hand__bead', cx: f(g.cx), cy: f(g.cy - g.arm0), r: 4.5 }));
-    arm.appendChild(svg('circle', { class: 'fp-hand__ring', cx: f(g.cx), cy: f(g.cy - g.rTok), r: f(g.tok * 0.62 + 3) }));
+    arm.appendChild(svg('circle', { class: 'fp-hand__ring', cx: f(g.cx), cy: f(g.cy - g.rTok), r: f(g.tok * 0.5 * 1.18 + 4) }));
+    // the grip: two ticks across the shoe, where a thumb would take the Hand
+    const grip = [];
+    for (const d of [-1.3, 1.3]) {
+      const a = d * (180 / Math.PI) * (7 / g.rShoe) / 1.3;
+      const [x0, y0] = polar(g.cx, g.cy, g.rShoe - 6, a);
+      const [x1, y1] = polar(g.cx, g.cy, g.rShoe + 6, a);
+      grip.push(`M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)}`);
+    }
+    arm.appendChild(svg('path', { class: 'fp-hand__grip', d: grip.join(' ') }));
     hg.append(shoeBloom, shoe, arm);
     layer.appendChild(hg);
     hand = { g: hg, shoe, shoeBloom, arm };
@@ -526,10 +678,11 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
       sgEl.appendChild(svg('path', { class: 'fp-sector__bloom', d, 'stroke-width': f(g.SB + 14) }));
       sgEl.appendChild(svg('path', { class: 'fp-sector__band', d, 'stroke-width': f(g.SB) }));
       sgEl.appendChild(svg('path', { class: 'fp-sector__edge', d: arcOf(g.rS + g.SB / 2 - 1, a0, a1) }));
-      // the source's word rides inside its band when the band is long enough to hold it
-      const word = String(src.label || '').toUpperCase();
+      // the source's word rides inside its band: the longest of its words that the band can hold
       const arcLen = (g.rS * Math.PI * Math.max(0, a1 - a0)) / 180;
-      if (word && arcLen >= word.length * 12 * g.ts * 0.86 + 14) sgEl.appendChild(along(g.rS, sec.mid, word, 'fp-sector__label'));
+      const words = (Array.isArray(src.labels) && src.labels.length ? src.labels : [src.label]).map((w) => String(w || '').toUpperCase()).filter(Boolean);
+      const word = words.find((w) => arcLen >= w.length * 12 * g.ts * 0.86 + 14);
+      if (word) sgEl.appendChild(along(g.rS, sec.mid, word, 'fp-sector__label'));
       bezel.sourcesG.appendChild(sgEl);
       sectorEls.set(sec.id, sgEl);
     }
@@ -549,7 +702,7 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
   }
 
   function buildTokens() {
-    // a rebuild (a resize, new sources) keeps each token's image element, so nothing re-decodes or blinks
+    // a rebuild (a resize, new sources) keeps each token's element, so nothing re-decodes or blinks
     const old = tokenEls;
     tokenEls = new Map();
     if (!geo) { tokensHost.textContent = ''; return; }
@@ -558,24 +711,26 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
       const src = sources.find((s) => s.id === sec.id) || {};
       const room = (g.rTok * Math.PI * sec.span) / 180;
       if (!src.token || room < g.tok + 6) continue;
-      let img = old.get(sec.id);
-      if (img && img.getAttribute('src') !== src.token) img = null;
-      if (!img) {
-        img = doc.createElement('img');
+      let pad = old.get(sec.id);
+      if (pad && pad.dataset.token !== src.token) pad = null;
+      if (!pad) {
+        pad = doc.createElement('div');
+        pad.dataset.token = src.token;
+        const img = doc.createElement('img');
         img.alt = '';
-        img.decoding = 'async';
         img.src = src.token;
         img.addEventListener('error', () => { img.hidden = true; });
+        pad.appendChild(img);
       }
       old.delete(sec.id);
-      img.className = `fp-token${src.open ? ' is-open' : ''}`;
+      pad.className = `fp-token${src.open ? ' is-open' : ''}`;
       const [x, y] = polar(g.cx, g.cy, g.rTok, sec.mid);
-      img.style.left = `${f(x)}px`;
-      img.style.top = `${f(y)}px`;
-      if (img.parentNode !== tokensHost) tokensHost.appendChild(img);
-      tokenEls.set(sec.id, img);
+      pad.style.left = `${f(x)}px`;
+      pad.style.top = `${f(y)}px`;
+      if (pad.parentNode !== tokensHost) tokensHost.appendChild(pad);
+      tokenEls.set(sec.id, pad);
     }
-    for (const img of old.values()) img.remove();
+    for (const pad of old.values()) pad.remove();
   }
 
   function buildKeys() {
@@ -600,7 +755,7 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
       key.style.top = `${f(y)}px`;
       key.addEventListener('focus', () => {
         setHover(src.id, true);
-        if (src.id !== tracedId && typeof onTrace === 'function') onTrace(src.id, { focus: true });
+        if (src.id !== tracedId && typeof onTrace === 'function') { retireHint(); onTrace(src.id, { focus: true }); }
       });
       key.addEventListener('blur', () => setHover(src.id, false));
       key.addEventListener('keydown', (event) => onKey(event, src.id));
@@ -626,6 +781,7 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     if (next == null) return;
     event.preventDefault();
     event.stopPropagation();
+    retireHint();
     const target = sources[next];
     if (!target) return;
     const key = keyEls.get(target.id);
@@ -652,7 +808,7 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
         el.style.transform = '';
       }
     }
-    for (const [id, img] of tokenEls) img.classList.toggle('is-traced', id === tracedId);
+    for (const [id, pad] of tokenEls) pad.classList.toggle('is-traced', id === tracedId);
     for (const [id, key] of keyEls) {
       key.tabIndex = id === tracedId ? 0 : -1;
       key.setAttribute('aria-selected', String(id === tracedId));
@@ -705,54 +861,78 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     linkG.appendChild(svg('circle', { class: 'fp-link__node', cx: f(spineX), cy: f(yJoin), r: 4 }));
   }
 
+  /** What the bezel, the clock and the hub show: now, or the heat `scrubT` seconds ahead. */
+  function view() {
+    const rd = reading || { heat: 0, head: 0, level: 0, held: null, clearsIn: null, wanted: false };
+    if (scrubT == null || !reading) return { rd, head: rd.head, heat: rd.heat, level: rd.level, remaining: rd.clearsIn != null ? rd.clearsIn : escapeTotal(rd) };
+    const after = heatAfter(rd, scrubT);
+    return { rd, head: after.head, heat: after.heat, level: after.level, remaining: after.remaining, ahead: scrubT };
+  }
+
   function paintReading() {
     if (!bezel || !geo) return;
     const g = geo;
-    const rd = reading || { heat: 0, head: 0, level: 0, held: null, clearsIn: null, wanted: false };
+    const v = view();
+    const rd = v.rd;
     const cold = !(rd.heat > 0.0005);
     host.classList.toggle('is-cold', cold);
-    // lit segments from the clear point to the head, brighter toward it; ice from the head to the heat
+    host.classList.toggle('is-held', !!rd.held);
+    bezel.wanted.classList.toggle('is-live', !!rd.wanted);
+    // lit segments from the clear point to the head, brighter toward it
     for (let i = 0; i < DIVS; i += 1) {
       const v0 = i / DIVS;
       const v1 = (i + 1) / DIVS;
       const { seg, bloom } = bezel.segEls[i];
       let d = 'M 0 0';
-      let cls = 'fp-seg';
       let alpha = 0;
-      if (rd.head > v0 + 0.0001) {
-        d = arcD(g.cx, g.cy, g.rB, heatAngle(v0), heatAngle(Math.min(v1, rd.head)));
-        const t = Math.min(1, ((v0 + Math.min(v1, rd.head)) / 2) / Math.max(0.05, rd.head));
+      if (v.head > v0 + 0.0001) {
+        d = arcD(g.cx, g.cy, g.rB, heatAngle(v0), heatAngle(Math.min(v1, v.head)));
+        const t = Math.min(1, ((v0 + Math.min(v1, v.head)) / 2) / Math.max(0.05, v.head));
         alpha = 0.52 + 0.46 * t * t;
-      } else if (rd.heat > v0 + 0.0001) {
-        const s0 = Math.max(v0, rd.head);
-        d = arcD(g.cx, g.cy, g.rB, heatAngle(s0), heatAngle(Math.min(v1, rd.heat)));
-        cls = 'fp-seg fp-seg--cool';
-        alpha = 1;
       }
       seg.setAttribute('d', d);
-      seg.setAttribute('class', cls);
-      seg.style.strokeOpacity = cls === 'fp-seg' ? f(alpha) : '';
-      bloom.setAttribute('d', cls === 'fp-seg' && alpha > 0.7 ? d : 'M 0 0');
+      seg.style.strokeOpacity = f(alpha);
+      bloom.setAttribute('d', alpha > 0.7 ? d : 'M 0 0');
     }
-    const aHead = heatAngle(rd.head);
+    // the part already cooled, from the needle up to the heat on record: one arc
+    bezel.cool.setAttribute('d', rd.heat - v.head > 0.0005 ? arcD(g.cx, g.cy, g.rB, heatAngle(v.head), heatAngle(rd.heat)) : 'M 0 0');
+    const aHead = heatAngle(v.head);
     const [nx0, ny0] = polar(g.cx, g.cy, g.R - g.B - 5, aHead);
     const [nx1, ny1] = polar(g.cx, g.cy, g.R + 5, aHead);
     const nd = cold ? 'M 0 0' : `M ${f(nx0)} ${f(ny0)} L ${f(nx1)} ${f(ny1)}`;
     bezel.needle.setAttribute('d', nd);
     bezel.needleBloom.setAttribute('d', nd);
     for (const t of bezel.tiers) {
-      const v = Number(t.getAttribute('data-v'));
-      t.classList.toggle('is-lit', v <= rd.head);
-      t.classList.toggle('is-cool', v > rd.head && v <= rd.heat);
+      const tv = Number(t.getAttribute('data-v'));
+      t.classList.toggle('is-lit', tv <= v.head);
+      t.classList.toggle('is-cool', tv > v.head && tv <= rd.heat);
     }
-    // the numeral rolls when the heat steps; the clock rolls with the countdown
+    // the escape clock: the seconds left to clean, on a face that holds the whole scale
+    const secs = cold || rd.held === 'impound' ? 0 : Math.max(0, v.remaining || 0);
+    const cd = secs > 0.05 ? arcD(g.cx, g.cy, bezel.clockR, 0, Math.min(359.9, (360 * secs) / CLOCK_FULL)) : 'M 0 0';
+    bezel.clock.setAttribute('d', cd);
+    bezel.clockBloom.setAttribute('d', cd);
+    // the needle key rides the needle
+    const canScrub = !cold && rd.held !== 'impound' && escapeTotal(rd) > 0;
+    needleKey.hidden = !canScrub;
+    if (canScrub) {
+      const [kx, ky] = polar(g.cx, g.cy, g.rB, aHead);
+      needleKey.style.left = `${f(kx)}px`;
+      needleKey.style.top = `${f(ky)}px`;
+      needleKey.setAttribute('aria-label', `Escape clock: ${Math.ceil(escapeTotal(rd))} s to clean outside the search zone. Left or down waits longer; right or up comes back.`);
+    }
+    // the numeral rolls when the heat steps (or to the heat ahead while scrubbing); the clock rolls with the countdown
     if (!reading) return;
-    const n = Math.round(rd.heat * 100);
+    const n = Math.round(v.heat * 100);
     if (n !== numeralShown) { numeralShown = n; rollTo(hubN, n); }
-    const secs = rd.clearsIn == null ? null : Math.ceil(rd.clearsIn);
-    if (secs !== clearsShown) {
-      clearsShown = secs;
-      if (secs == null) { hubClearsN.__orrCounter = null; hubClearsN.classList.remove('orr-counter'); hubClearsN.textContent = ''; } else rollTo(hubClearsN, secs);
+    const shown = scrubT != null ? null : (rd.clearsIn == null ? null : Math.ceil(rd.clearsIn));
+    if (shown !== clearsShown) {
+      clearsShown = shown;
+      if (shown == null) { hubClearsN.__orrCounter = null; hubClearsN.classList.remove('orr-counter'); hubClearsN.textContent = ''; } else rollTo(hubClearsN, shown);
+    }
+    if (scrubT != null) {
+      const tier = v.level > 0 ? `T${v.level} · ${String(wantedTierInfo(levelValue(v.level)).label || '').split('/')[0]}` : 'clean';
+      hubScrub.textContent = `in ${Math.round(scrubT)} s → ${tier}`;
     }
   }
 
@@ -768,23 +948,37 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     if (clearMoved && !force) buildSectors();
   }
 
-  /** The rim's rule along the bottom: the heat's rule at rest, the previewed verb's effect in ice. */
+  /** The line the rim's rule carries: a scrub's forecast, a verb's effect, or the heat's rule at rest. */
+  function ruleLine() {
+    if (scrubT != null && reading) {
+      const after = heatAfter(reading, scrubT);
+      const open = sources.filter((s) => s.open).length;
+      const lead = reading.held === 'inside' ? 'Leave the zone, then ' : '';
+      const where = after.level > 0 ? `T${after.level}` : 'clean';
+      const outlive = open ? `${open} source${open === 1 ? '' : 's'} outlive${open === 1 ? 's' : ''} the heat` : 'nothing on the record outlives it';
+      return { text: `${lead}${lead ? 's' : 'S'}tay out ${Math.round(scrubT)} s → ${where} · ${outlive}`, preview: true };
+    }
+    if (preview && preview.line) return { text: preview.line, preview: true };
+    return { text: engraving.rule, preview: false };
+  }
+
+  /** The rim's rule along the bottom: the heat's rule at rest, the forecast or the effect in ice. */
   let ruleShown = null;
   function paintRule(force = false) {
     if (!bezel || !geo) return;
-    const text = preview && preview.line ? preview.line : engraving.rule;
-    const key = (preview && preview.line ? 'p:' : 'r:') + text;
+    const { text, preview: isPreview } = ruleLine();
+    const key = (isPreview ? 'p:' : 'r:') + text;
     if (key === ruleShown && !force) return;
     ruleShown = key;
     const g = geo;
     bezel.engraveRule.textContent = '';
-    bezel.engraveRule.classList.toggle('is-preview', !!(preview && preview.line));
+    bezel.engraveRule.classList.toggle('is-preview', isPreview);
     if (text) bezel.engraveRule.appendChild(circularText(g.cx, g.cy, bezel.rEng, String(text).toUpperCase(), { startDeg: 270, anchor: 'middle', upright: true, size: 12 }));
   }
 
   function paintPreview() {
     for (const [id, el] of sectorEls) el.classList.toggle('is-settles', !!(preview && preview.settles && preview.settles.includes(id)));
-    for (const [id, img] of tokenEls) img.classList.toggle('is-settles', !!(preview && preview.settles && preview.settles.includes(id)));
+    for (const [id, pad] of tokenEls) pad.classList.toggle('is-settles', !!(preview && preview.settles && preview.settles.includes(id)));
     hubPreview.textContent = preview && preview.line ? preview.line : '';
     paintRule();
     if (!bearingG || !geo) return;
@@ -805,6 +999,36 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     bearingG.appendChild(t);
   }
 
+  /** Scrub to `t` seconds ahead (null: back to now). */
+  function setScrub(t) {
+    const total = reading ? escapeTotal(reading) : 0;
+    const next = t == null || !(total > 0) ? null : clamp(t, 0, total);
+    if (next === scrubT) return;
+    scrubT = next;
+    host.classList.toggle('is-scrubbing', scrubT != null);
+    if (scrubT != null) retireHint();
+    paintReading();
+    paintRule();
+  }
+
+  needleKey.addEventListener('keydown', (event) => {
+    const total = reading ? escapeTotal(reading) : 0;
+    if (!(total > 0)) return;
+    const step = event.shiftKey ? 5 : 1;
+    const now = scrubT == null ? 0 : scrubT;
+    let next;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') next = now + step;
+    else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') next = now - step;
+    else if (event.key === 'End') next = total;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'Escape' && scrubT != null) next = null;
+    else return;
+    event.preventDefault();
+    event.stopPropagation();
+    setScrub(next == null || next <= 0 ? null : next);
+  });
+  needleKey.addEventListener('blur', () => { if (!scrubbing) setScrub(null); });
+
   function angleAt(event) {
     if (!geo) return null;
     const r = host.getBoundingClientRect();
@@ -819,15 +1043,34 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     return null;
   }
 
+  function scrubAtAngle(deg) {
+    if (!reading) return;
+    const v = Math.min(valueAtAngle(deg), reading.held ? reading.heat : reading.head);
+    const t = timeToValue(reading, v);
+    setScrub(t > 0.05 ? t : null);
+  }
+
   let dragId = null;
   function onDown(event) {
     if (event.button != null && event.button !== 0) return;
     const at = angleAt(event);
-    if (!at || !geo || !sectors.length) return;
-    if (at.dist < geo.hubR || at.dist > geo.R + geo.M) return;
+    if (!at || !geo) return;
+    // on the bezel: scrub the escape clock (the needle, dragged down the scale)
+    if (at.dist >= geo.R - geo.B - 6 && at.dist <= geo.R + 14 && reading && escapeTotal(reading) > 0) {
+      scrubbing = true;
+      dragId = event.pointerId;
+      host.classList.add('is-dragging');
+      try { host.setPointerCapture(event.pointerId); } catch (_) { /* capture is a courtesy */ }
+      scrubAtAngle(at.deg);
+      event.preventDefault();
+      return;
+    }
+    if (!sectors.length) return;
+    if (at.dist < geo.hubR || at.dist > geo.R - geo.B - 6) return;
     dragging = true;
     dragId = event.pointerId;
     host.classList.add('is-dragging');
+    retireHint();
     try { host.setPointerCapture(event.pointerId); } catch (_) { /* capture is a courtesy */ }
     dragAngle = angle.value + turn(angle.value, at.deg);
     traceAtAngle(at.deg);
@@ -839,6 +1082,11 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     if (id && id !== tracedId && typeof onTrace === 'function') onTrace(id, { drag: true });
   }
   function onMove(event) {
+    if (scrubbing && event.pointerId === dragId) {
+      const at = angleAt(event);
+      if (at) scrubAtAngle(at.deg);
+      return;
+    }
     if (dragging && event.pointerId === dragId) {
       const at = angleAt(event);
       if (!at) return;
@@ -849,11 +1097,21 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     }
     const at = angleAt(event);
     const inRing = at && geo && at.dist >= geo.hubR && at.dist <= geo.rS + geo.SB;
+    const onBezel = at && geo && at.dist >= geo.R - geo.B - 6 && at.dist <= geo.R + 14 && reading && escapeTotal(reading) > 0;
     const id = inRing ? sourceAtAngle(at.deg) : null;
     for (const [sid, el] of sectorEls) if (!(keyEls.get(sid) === doc.activeElement)) el.classList.toggle('is-hover', sid === id);
-    host.style.cursor = id ? 'grab' : '';
+    host.style.cursor = id || onBezel ? 'grab' : '';
   }
   function onUp(event) {
+    if (scrubbing && event.pointerId === dragId) {
+      // the forecast lets go: the dial springs back to now
+      scrubbing = false;
+      dragId = null;
+      host.classList.remove('is-dragging');
+      try { host.releasePointerCapture(event.pointerId); } catch (_) { /* released already */ }
+      setScrub(null);
+      return;
+    }
     if (!dragging || event.pointerId !== dragId) return;
     dragging = false;
     dragId = null;
@@ -870,7 +1128,7 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     if (key) { try { key.focus({ preventScroll: true }); } catch (_) { /* focus is a courtesy */ } }
   }
   function onLeave() {
-    if (dragging) return;
+    if (dragging || scrubbing) return;
     for (const [sid, el] of sectorEls) if (!(keyEls.get(sid) === doc.activeElement)) el.classList.remove('is-hover');
   }
   host.addEventListener('pointerdown', onDown);
@@ -919,6 +1177,7 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     /** The heat as heatReading() returned it, and the words the rim carries for it. */
     setReading(next, { top = '', rule = '', clear = '' } = {}) {
       reading = next || null;
+      if (scrubT != null && !(reading && escapeTotal(reading) > 0)) { scrubT = null; host.classList.remove('is-scrubbing'); }
       paintReading();
       paintEngraving({ top: String(top || ''), rule: String(rule || ''), clear: String(clear || '') });
     },
@@ -927,6 +1186,8 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
       preview = next || null;
       paintPreview();
     },
+    /** Scrub the escape clock `t` seconds ahead (null: now). */
+    setScrub,
     /** The hub's bounty line (HTML the screen escapes), or '' for none. */
     setBountyHtml(html) { hubBounty.innerHTML = html || ''; },
     /** Where the unfolded chain's spine stands, in this dial's own box: { x, y0, y1 } or null. */
@@ -936,6 +1197,7 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     },
     keys: () => [...keyEls.values()],
     keyFor: (id) => keyEls.get(id) || null,
+    needleKey,
     relayout() { build(); },
     /** The arrival choreography (instant under reduced motion). */
     arrive() {
