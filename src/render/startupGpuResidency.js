@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
 import {
   detachPackageTexture,
   isPackageTextureDetached,
@@ -629,7 +630,13 @@ export function yieldToBrowser() {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-/** Resume from a macrotask after rAF so GPU work cannot run inside the protected display callback. */
+/**
+ * Resume from a macrotask after rAF so GPU work cannot run inside the protected display
+ * callback. The resume must also land after that frame's present: a timer-priority task races
+ * the compositor beat, so the default dispatches at background priority like
+ * armCallbackAfterPresent — bounded, so a saturated main thread cannot starve the admission
+ * chain while it waits for an idle slot that never opens.
+ */
 export function yieldToNextPresent(options = {}) {
   return new Promise((resolve) => {
     const requestFrame = typeof options.requestFrame === 'function'
@@ -639,7 +646,7 @@ export function yieldToNextPresent(options = {}) {
         : null);
     const scheduleTask = typeof options.scheduleTask === 'function'
       ? options.scheduleTask
-      : (callback) => setTimeout(callback, 0);
+      : postTaskAtBackgroundPriorityBounded;
     if (requestFrame) {
       let fired = false;
       const fire = () => {

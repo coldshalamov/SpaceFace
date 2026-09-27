@@ -157,22 +157,52 @@ export function yieldAfterPresent() {
   });
 }
 
-/** Arm work after the displayed frame so a 100ms+ job cannot nest inside present. */
-export function armCallbackAfterPresent(callback) {
-  if (typeof callback !== 'function') return;
-  let fired = false;
-  // P2: resume admission at background priority — setTimeout(0) after rAF lands the job in the
-  // compositor beat and was the largest named hitch owner (externalScheduling). postTask keeps
-  // it off the frame's critical path; the timeout remains the headless/legacy fallback.
+/**
+ * Dispatch admission work at background priority. A setTimeout(0) queued from a display
+ * callback lands the job at timer priority on that frame's compositor beat — it raced the
+ * present and was the largest named hitch owner (externalScheduling). postTask keeps it off
+ * the frame's critical path; the timeout remains the headless/legacy fallback.
+ */
+export function postTaskAtBackgroundPriority(callback) {
   const postTask = typeof globalThis.scheduler === 'object' && globalThis.scheduler
     && typeof globalThis.scheduler.postTask === 'function'
     ? globalThis.scheduler.postTask.bind(globalThis.scheduler)
     : null;
+  if (postTask) postTask(callback, { priority: 'background' });
+  else setTimeout(callback, 0);
+}
+
+/**
+ * Background-priority dispatch with a starvation bound. A continuously-busy main thread can
+ * starve best-effort tasks for whole seconds — measured as queued compiles piling up and
+ * contacts never admitting — so if no idle slot opens within boundMs the callback runs as a
+ * timer task instead. The resume is still a separate task after the display callback it armed
+ * in; it can never nest inside a present.
+ */
+export function postTaskAtBackgroundPriorityBounded(callback, boundMs = 48) {
+  let fired = false;
   const fire = () => {
     if (fired) return;
     fired = true;
-    if (postTask) postTask(callback, { priority: 'background' });
-    else setTimeout(callback, 0);
+    callback();
+  };
+  postTaskAtBackgroundPriority(fire);
+  setTimeout(fire, Math.max(0, Number(boundMs) || 0));
+}
+
+/**
+ * Arm work after the displayed frame so a 100ms+ job cannot nest inside present.
+ * `idleBoundMs` > 0 bounds how long the post-present dispatch may wait for an idle slot —
+ * use it for lanes whose starvation would otherwise stall the admission queue.
+ */
+export function armCallbackAfterPresent(callback, { idleBoundMs = 0 } = {}) {
+  if (typeof callback !== 'function') return;
+  let fired = false;
+  const fire = () => {
+    if (fired) return;
+    fired = true;
+    if (idleBoundMs > 0) postTaskAtBackgroundPriorityBounded(callback, idleBoundMs);
+    else postTaskAtBackgroundPriority(callback);
   };
   const raf = typeof globalThis.requestAnimationFrame === 'function'
     ? globalThis.requestAnimationFrame.bind(globalThis)
