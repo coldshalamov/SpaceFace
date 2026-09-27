@@ -57,9 +57,19 @@ const BRAKE_TO_COMPLY_HOLD_S = 1.25;
 const ESCAPE_RADIUS = 1200;
 const MAX_ROBBERY_SECURITY = 0.75;
 const PROFIT_MOTIVES = new Set(['assigned_interdiction', 'cargo_extortion', 'toll_collection']);
+// Bribe beats: each watched dump holds fire a little longer (capped), and the paid crew
+// mills over the goods before leaving.
+const BRIBE_DEADLINE_PUSH_S = 2.0;
+const BRIBE_DEADLINE_PUSH_CAP_S = 6.0;
+const BRIBE_SCOOP_S = 10.0;
+const BRIBE_SCOOP_LEASH = 320;
+const BRIBE_SHORTFALL_TTL_S = 1.5;
 
 const VALUE_BY_COMMODITY = new Map(COMMODITIES.map((c) => [c.id, Number(c.basePrice) || 1]));
 const LABEL_BY_COMMODITY = new Map(COMMODITIES.map((c) => [c.id, String(c.name || c.id).replace(/^Refined /i, '')]));
+const LEGALITY_BY_COMMODITY = new Map(COMMODITIES.map((c) => [c.id, String(c.legality || 'legal')]));
+// Hot goods fence well: restricted/contraband lots bribe above face value.
+const BRIBE_HOT_MULT = 1.5;
 
 export const pirateParley = {
   name: 'pirateParley',
@@ -76,6 +86,8 @@ export const pirateParley = {
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('pirateParley:choose', this._onChoice);
     }
+    // In-kind bribes: a voluntary dump during DEMAND pays the toll without braking.
+    this._listen('cargo:jettisoned', (p) => this._onJettisoned(p || {}));
     this._listen('entity:spawned', (p) => this._onEntitySpawned(p));
     // Boundary wakes: newGame() is not dispatched on the live route (this system is
     // not in FRESH_RUN_SYSTEMS), so save/run/sector transitions arrive only here.
@@ -189,6 +201,8 @@ export const pirateParley = {
           continue;
         }
         if (now >= rec.deadlineAt) this._escalate(rec, 'timeout');
+      } else if (rec.phase === 'scooping') {
+        if (now >= (rec.scoopUntil || 0)) this._finishScoop(rec);
       }
     }
 
@@ -245,7 +259,15 @@ export const pirateParley = {
     const members = membersFor(state, rec);
     const tithe = rec.tithe || chooseTithe(state, rec.squadId);
     const demand = rec.demand || chooseDemand(state, rec.squadId, tithe);
-    const payment = settleDemand(this, state, rec, demand, tithe);
+    // The cargo settlement below dumps the tithe through cargo.jettison, which emits
+    // cargo:jettisoned. That settlement dump is not a player bribe — suppress the listener.
+    this._settling = true;
+    let payment;
+    try {
+      payment = settleDemand(this, state, rec, demand, tithe);
+    } finally {
+      this._settling = false;
+    }
 
     // A broke or already-emptied target is no longer a rational prize. A profit crew leaves rather
     // than converting failed collection into an unexplained execution.
@@ -326,6 +348,150 @@ export const pirateParley = {
       payment: null,
       tithe: null,
     });
+    return true;
+  },
+
+  // Voluntary dumps during DEMAND are in-kind bribes. Whole units, oldest demand first,
+  // overflow to the next gang: the goods are already floating in space, so no brake hold
+  // is needed — dump and keep flying. Each watched dump also holds fire a little longer.
+  _onJettisoned(payload) {
+    if (this._settling) return;
+    const state = this.state;
+    if (!state || state.mode !== 'flight') return;
+    let remaining = Math.floor(Number(payload.amount) || 0);
+    if (remaining <= 0) return;
+    const commodityId = typeof payload.commodityId === 'string' ? payload.commodityId : null;
+    const baseUnit = (commodityId && VALUE_BY_COMMODITY.get(commodityId)) || 1;
+    const hot = commodityId && LEGALITY_BY_COMMODITY.get(commodityId) !== 'legal';
+    const unitValue = hot ? baseUnit * BRIBE_HOT_MULT : baseUnit;
+    if (!(unitValue > 0)) return;
+    const own = state.pirateParley;
+    if (!own || !own.squads) return;
+    const now = state.simTime || 0;
+    const targets = Object.values(own.squads)
+      .filter((rec) => rec && !rec.resolved && rec.phase === 'demand' && membersFor(state, rec).length)
+      .sort((a, b) => (a.deadlineAt || 0) - (b.deadlineAt || 0));
+    if (!targets.length) return;
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const dropAt = player && player.pos
+      ? { x: Number(player.pos.x) || 0, z: Number(player.pos.z) || 0 }
+      : null;
+    for (const rec of targets) {
+      if (remaining <= 0) break;
+      const outstanding = outstandingBribeValue(rec);
+      if (outstanding <= 0) {
+        // Nothing was actually demanded (the hold emptied before the demand landed).
+        // Same as a broke brake-comply: not a prize, the crew leaves.
+        this._unprofitable(rec, membersFor(state, rec), now);
+        continue;
+      }
+      const short = outstanding - (Math.max(0, Number(rec.bribeValue) || 0));
+      if (short <= 0) continue;
+      const take = Math.min(remaining, Math.ceil(short / unitValue));
+      if (take <= 0) continue;
+      remaining -= take;
+      rec.bribeValue = Math.max(0, Number(rec.bribeValue) || 0) + take * unitValue;
+      rec.bribeUnits = Math.max(0, Math.floor(Number(rec.bribeUnits) || 0)) + take;
+      if (!Array.isArray(rec.bribeLots)) rec.bribeLots = [];
+      rec.bribeLots.push({ commodityId, amount: take, value: take * unitValue, at: now });
+      if (dropAt) rec.bribeAt = { ...dropAt };
+      const pushable = BRIBE_DEADLINE_PUSH_CAP_S - (Number(rec.bribeExtension) || 0);
+      if (pushable > 0 && rec.deadlineAt) {
+        const push = Math.min(BRIBE_DEADLINE_PUSH_S, pushable);
+        rec.deadlineAt += push;
+        rec.bribeExtension = (Number(rec.bribeExtension) || 0) + push;
+        holdFire(state, rec, membersFor(state, rec));
+      }
+      if (rec.bribeValue >= outstanding) {
+        this._bribed(rec);
+      } else {
+        this._speakShortfall(rec, outstanding - rec.bribeValue);
+      }
+    }
+  },
+
+  // A short dump answers itself: how much more the crew wants. Bounded (one line per
+  // dump, player-caused) and off the demand strip — the strip is one-shot.
+  _speakShortfall(rec, shortValue) {
+    const demand = rec.demand;
+    let text;
+    if (demand && demand.kind === 'credits') {
+      text = `Still short ${Math.ceil(shortValue)} cr worth.`;
+    } else {
+      const tithe = rec.tithe || {};
+      const unit = (tithe.commodityId && VALUE_BY_COMMODITY.get(tithe.commodityId)) || 1;
+      const label = LABEL_BY_COMMODITY.get(tithe.commodityId) || 'cargo';
+      text = `Still short ${Math.max(1, Math.ceil(shortValue / unit))} ${label}.`;
+    }
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text,
+        kind: 'pirateParley',
+        ttl: BRIBE_SHORTFALL_TTL_S,
+        id: `pirateParley:${rec.squadId}:bribe-short`,
+        factionId: rec.factionId,
+      });
+    } else {
+      this._emit('toast', { text, kind: 'pirateParley', ttl: BRIBE_SHORTFALL_TTL_S });
+    }
+  },
+
+  // The dumped goods covered the demand. Identical receipt shape to brake-comply
+  // (outcome complied, cargo payment) so the prompt receipt renders; choice 'bribe'
+  // records how it was paid. Voice stays off the floor — the resolution receipt owns
+  // the surface, same as the attack path. The deal is done at once, but the crew mills
+  // over the goods before leaving — the receipt emits now, the record closes later.
+  // The pods stay floating (same as brake-comply): re-scooping your own bribe mid-scoop
+  // is allowed. The pirates consider themselves paid; what happens to the pods is physics.
+  _bribed(rec) {
+    const state = this.state;
+    const now = state.simTime || 0;
+    const members = membersFor(state, rec);
+    const payment = {
+      kind: 'cargo',
+      amount: Math.max(0, Math.floor(Number(rec.bribeUnits) || 0)),
+      commodityId: dominantBribeLot(rec),
+    };
+    rec.phase = 'scooping';
+    rec.resolved = false;
+    rec.choice = 'bribe';
+    rec.outcome = 'complied';
+    rec.payment = payment;
+    rec.scoopUntil = now + BRIBE_SCOOP_S;
+    for (const e of members) scoopBribe(e, rec, state);
+    const text = String(rec.factionId || '').includes('vael')
+      ? 'VAEL: Customs accepts your contribution. Move along.'
+      : 'REACH: That covers it. Clear the lane.';
+    rec.said.push({ situation: 'bribe-taken', text });
+    this._emit('pirateParley:voice', {
+      squadId: rec.squadId,
+      doctrineId: rec.doctrineId,
+      situation: 'bribe-taken',
+      text,
+      factionId: rec.factionId,
+    });
+    this._emit('pirateParley:resolved', {
+      ...publicRecord(rec),
+      outcome: 'complied',
+      next: 'break-off',
+      payment: { ...payment },
+      tithe: rec.tithe ? { ...rec.tithe } : null,
+    });
+    return true;
+  },
+
+  // The scoop window elapsed: the paid crew leaves. The receipt already went out at
+  // bribe time, so this closes the record silently.
+  _finishScoop(rec) {
+    const state = this.state;
+    const now = state.simTime || 0;
+    const members = membersFor(state, rec);
+    rec.phase = 'break-off';
+    rec.resolved = true;
+    rec.breakOffUntil = now + BREAK_OFF_S;
+    for (const e of members) breakOff(e, rec, state);
     return true;
   },
 
@@ -447,6 +613,12 @@ function startRecord(state, squadId, entity, now) {
     resolved: false,
     outcome: null,
     choice: null,
+    bribeValue: 0,
+    bribeUnits: 0,
+    bribeLots: [],
+    bribeAt: null,
+    bribeExtension: 0,
+    scoopUntil: 0,
   };
 }
 
@@ -524,6 +696,39 @@ function breakOff(entity, rec, state) {
     squadId: rec.squadId,
     phase: 'break-off',
     breakOffUntil: rec.breakOffUntil,
+  };
+  const intent = data.intent || (data.intent = {});
+  intent.fire = false;
+  const combat = data.combat || (data.combat = {});
+  if (combat.targetId === state.playerId) combat.targetId = null;
+  if (combat.lockTarget === state.playerId) combat.lockTarget = null;
+}
+
+function scoopBribe(entity, rec, state) {
+  const data = entity.data || (entity.data = {});
+  const ai = data.ai || (data.ai = {});
+  const anchor = rec.bribeAt && Number.isFinite(rec.bribeAt.x) && Number.isFinite(rec.bribeAt.z)
+    ? { x: rec.bribeAt.x, z: rec.bribeAt.z }
+    : { x: entity.pos.x, z: entity.pos.z };
+  ai.passive = true;
+  ai.forcePlayerTarget = false;
+  ai.huntPlayer = false;
+  ai.fsm = 'hold';
+  ai.motiveSatisfied = true;
+  ai.engagementTrigger = 'parley_bribed';
+  ai.roe = RulesOfEngagement.HOLD_FIRE;
+  ai.activity = normalizeActivity({
+    kind: ActivityKind.LOITER,
+    reason: 'pirate_parley:scoop_bribe',
+    anchor,
+    leashRadius: BRIBE_SCOOP_LEASH,
+    startedTick: state.tick | 0,
+    encounterId: rec.squadId,
+  });
+  data.pirateParley = {
+    squadId: rec.squadId,
+    phase: 'scooping',
+    scoopUntil: rec.scoopUntil,
   };
   const intent = data.intent || (data.intent = {});
   intent.fire = false;
@@ -681,6 +886,28 @@ function playerCargoValue(state) {
     total += Math.max(0, Math.floor(Number(items[id]) || 0)) * (VALUE_BY_COMMODITY.get(id) || 1);
   }
   return total;
+}
+
+function outstandingBribeValue(rec) {
+  const demand = rec.demand;
+  if (demand && demand.kind === 'credits') return Math.max(0, Math.floor(Number(demand.amount) || 0));
+  const tithe = rec.tithe || {};
+  const qty = Math.max(0, Math.floor(Number(tithe.qty) || 0));
+  const unit = (tithe.commodityId && VALUE_BY_COMMODITY.get(tithe.commodityId)) || 1;
+  return qty * unit;
+}
+
+function dominantBribeLot(rec) {
+  let best = null;
+  let bestValue = -Infinity;
+  for (const lot of Array.isArray(rec.bribeLots) ? rec.bribeLots : []) {
+    const value = Number(lot.value) || 0;
+    if (value > bestValue) {
+      bestValue = value;
+      best = lot.commodityId || null;
+    }
+  }
+  return best;
 }
 
 function publicRecord(rec) {
