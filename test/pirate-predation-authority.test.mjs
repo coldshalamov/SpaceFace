@@ -5,9 +5,11 @@ import assert from 'node:assert/strict';
 
 import {
   authorizeAIEngagement,
+  isAuthorizedAmbientPredationRelation,
   isAuthorizedPredationRelation,
   isHostileForAI,
 } from '../src/ai/engagementAuthority.js';
+import { ambientObjective } from '../src/ai/ambientPredation.js';
 import { createSimulation } from '../src/core/sim.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
@@ -499,4 +501,444 @@ test('Continue rematerialization rebuilds stable role identity without reviving 
 
   activate(harness, resumed);
   assert.equal(isAuthorizedPredationRelation(harness.state, resumedActors.raider, resumedActors.target), true);
+});
+
+// ── Ambient manifest predation — unscripted NPC piracy ──────────────────────────────────────────
+// The director's cadenced evaluator pairs an idle non-lawful pirate with a manifested civilian
+// hauler in low-security, lane-adjacent space — no encounter script, no player involvement.
+// Fixture sector: Pallas Drift (security 0.42 < the 0.55 ceiling) with the authored ambush_lane
+// disc centred at (1420, 760) r=640.
+
+const AMBIENT_SECTOR = 'sector_pallas_drift';
+const AMBIENT_LANE = Object.freeze({ x: 1420, z: 760 });
+const AMBIENT_MANIFEST = 'ambient_test_manifest';
+
+function ambientRaiderSpec(pos) {
+  return {
+    type: 'ship',
+    team: 1,
+    pos: { ...pos },
+    vel: { x: 0, z: 0 },
+    hull: 120,
+    hullMax: 120,
+    shield: 50,
+    radius: 18,
+    data: {
+      intent: {},
+      weapons: [{ id: 'wpn_autocannon_s' }],
+      ai: {
+        archetype: 'pirate',
+        lawful: false,
+        combatDoctrineId: 'interceptor_flyby',
+        motive: 'assigned_interdiction',
+        engagementTrigger: 'authorized_hostile_spawn',
+        zoneId: 'zone_pallas_ambush',
+        approachTelegraph: 'engine_flare',
+        noFireResponseWindowS: 2,
+        activity: {
+          kind: 'attack_run',
+          reason: 'zone_hostile:hunt',
+          anchor: { ...pos },
+          leashRadius: 2600,
+          startedTick: 0,
+          targetId: null,
+        },
+        roe: 'weapons_free',
+      },
+    },
+  };
+}
+
+function ambientHaulerSpec(pos, manifestId = AMBIENT_MANIFEST, qty = 24) {
+  return {
+    type: 'ship',
+    team: 2,
+    pos: { ...pos },
+    vel: { x: 0, z: 0 },
+    hull: 80,
+    hullMax: 80,
+    shield: 0,
+    radius: 14,
+    data: {
+      intent: {},
+      trafficRole: 'hauler',
+      role: 'hauler',
+      cargoManifest: {
+        manifestId,
+        lines: [{ commodityId: 'cmdty_ore_iron', qty }],
+        totalQty: qty,
+      },
+      ai: { passive: true },
+    },
+  };
+}
+
+function ambientPodSpec(pos, ownerId, qty = 6) {
+  return {
+    type: 'payload',
+    pos: { ...pos },
+    vel: { x: 0, z: 0 },
+    hull: 100,
+    hullMax: 100,
+    radius: 8,
+    ownerId,
+    data: {
+      payloadType: 'jettisoned_cargo',
+      ownerId,
+      commodityId: 'cmdty_ore_iron',
+      amount: qty,
+      salvagePool: { cmdty_ore_iron: qty },
+    },
+  };
+}
+
+function bootAmbient(seed = 47060, overrides = {}) {
+  const sim = createSimulation({ seed, systems: [spawnBudget, encounterDirector] });
+  const { state, bus } = sim;
+  state.mode = 'flight';
+  state.world.currentSectorId = overrides.sectorId || AMBIENT_SECTOR;
+  state.story.beatIndex = 7;
+  const player = sim.spawn({
+    type: 'ship', team: 0,
+    pos: { x: AMBIENT_LANE.x + 5000, z: AMBIENT_LANE.z + 5000 },
+    vel: { x: 0, z: 0 }, hull: 200, hullMax: 200, radius: 8,
+    data: { intent: {}, ai: {} },
+  });
+  state.playerId = player.id;
+  const events = { telegraph: [], engaged: [], cleared: [], secured: [] };
+  bus.on('encounter:ambientPredationTelegraph', (p) => events.telegraph.push(p));
+  bus.on('encounter:ambientPredationEngaged', (p) => events.engaged.push(p));
+  bus.on('encounter:ambientPredationCleared', (p) => events.cleared.push(p));
+  bus.on('encounter:ambientCargoSecured', (p) => events.secured.push(p));
+  return { sim, state, bus, player, events, director: sim.registry.get('encounterDirector') };
+}
+
+/** Idle pirate + manifested hauler sharing the authored ambush lane in low-security space. */
+function ambientPair(harness, opts = {}) {
+  const raider = harness.sim.spawn(ambientRaiderSpec(
+    opts.raiderPos || { x: AMBIENT_LANE.x - 200, z: AMBIENT_LANE.z - 100 }));
+  const victim = harness.sim.spawn(ambientHaulerSpec(
+    opts.victimPos || { x: AMBIENT_LANE.x + 150, z: AMBIENT_LANE.z + 60 },
+    opts.manifestId, opts.victimQty));
+  return { raider, victim };
+}
+
+function boundAmbientRaid(harness, ticks = 2 * 60) {
+  harness.sim.runTicks(ticks);
+  assert.ok(harness.events.telegraph.length >= 1, 'evaluator binds an ambient raid');
+  const p = harness.events.telegraph[0];
+  const raider = harness.state.entities.get(p.raiderId);
+  const victim = harness.state.entities.get(p.targetId);
+  assert.ok(raider && victim, 'bound pair entities remain live');
+  return { raidId: p.raidId, raider, victim, payload: p };
+}
+
+test('idle pirate hunts a manifested hauler with no script and no player involvement', () => {
+  const harness = bootAmbient();
+  const { raider, victim } = ambientPair(harness);
+  const { raidId } = boundAmbientRaid(harness, 2 * 60);
+  const telegraph = harness.events.telegraph[0];
+
+  assert.equal(harness.events.telegraph.length, 1);
+  assert.equal(telegraph.raiderId, raider.id);
+  assert.equal(telegraph.targetId, victim.id);
+  assert.ok(raidId.startsWith('ambient:raid:'), 'ambient ids never collide with scripted encounter ids');
+  assert.equal(telegraph.manifestId, AMBIENT_MANIFEST);
+  assert.equal(telegraph.sectorId, AMBIENT_SECTOR);
+  assert.ok(telegraph.telegraphS >= 3, 'bounded stalk before weapons free');
+  assert.ok(telegraph.engageAt > harness.state.simTime, 'still inside the stalk window');
+
+  const ai = raider.data.ai;
+  assert.equal(raider.data.predationRole, 'raider');
+  assert.equal(victim.data.predationRole, 'manifest_carrier');
+  assert.equal(victim.data.predationEncounterId, raidId);
+  assert.equal(ai.predationStatus, 'telegraph');
+  assert.equal(ai.predationTargetId, victim.id);
+  assert.equal(ai.predationObjective.kind, 'ambient_manifest_raid');
+  assert.equal(ai.motive, 'ambient_cargo_raid');
+  assert.equal(ai.engagementTrigger, 'ambient_manifest_predation');
+  assert.equal(ai.roe, 'hold_fire', 'telegraph stalks under hold-fire');
+  assert.equal(ai.activity.targetId, victim.id);
+
+  // The final authority oracle opens the relation exactly and only for the bound victim.
+  assert.equal(isAuthorizedAmbientPredationRelation(harness.state, raider, victim), true);
+  assert.equal(isHostileForAI(harness.state, raider, victim), true);
+  assert.equal(isHostileForAI(harness.state, raider, harness.player), false,
+    'a bound raider never peels onto the player');
+  assert.equal(isHostileForAI(harness.state, victim, raider), false, 'the exception is directional');
+  assert.equal(isAuthorizedPredationRelation(harness.state, raider, victim), false,
+    'ambient raids never satisfy the scripted relation');
+
+  // Telegraph -> weapons-free transition opens fire authority at the authored moment.
+  harness.sim.runTicks(Math.ceil((telegraph.engageAt - harness.state.simTime + 1) * 60));
+  assert.equal(raider.data.ai.predationStatus, 'active');
+  assert.equal(raider.data.ai.roe, 'weapons_free');
+  assert.equal(harness.events.engaged.length, 1);
+  assert.equal(harness.events.engaged[0].raidId, raidId);
+  assert.deepEqual(authorize(harness, raider, victim), { ok: true, reason: 'authorized' });
+});
+
+test('ambient pairing is deterministic on a fixed seed', () => {
+  const first = bootAmbient(47061);
+  const second = bootAmbient(47061);
+  ambientPair(first);
+  ambientPair(second);
+  first.sim.runTicks(8 * 60);
+  second.sim.runTicks(8 * 60);
+  assert.equal(first.events.telegraph.length, 1);
+  assert.equal(second.events.telegraph.length, 1);
+  assert.deepEqual(
+    first.events.telegraph.map((p) => [p.raidId, p.raiderId, p.targetId, p.telegraphS]),
+    second.events.telegraph.map((p) => [p.raidId, p.raiderId, p.targetId, p.telegraphS]),
+    'identical seeds bind the identical pair on the identical tick');
+});
+
+test('ambient evaluator excludes lawful actors, lawful presence, and the Ceres pocket', () => {
+  // Lawful pirate — a lawman hull never raids.
+  {
+    const harness = bootAmbient(47062);
+    const { raider } = ambientPair(harness);
+    raider.data.ai.lawful = true;
+    harness.sim.runTicks(8 * 60);
+    assert.equal(harness.events.telegraph.length, 0, 'lawful actors never raid');
+    assert.equal(raider.data.predationRole, undefined);
+  }
+  // Lawful presence — a patrol hull inside the bubble suppresses the pairing.
+  {
+    const harness = bootAmbient(47063);
+    ambientPair(harness);
+    harness.sim.spawn({
+      type: 'ship', team: 1,
+      pos: { x: AMBIENT_LANE.x + 400, z: AMBIENT_LANE.z },
+      vel: { x: 0, z: 0 }, hull: 100, hullMax: 100, radius: 10,
+      data: { intent: {}, weapons: [{ id: 'wpn_autocannon_s' }],
+        ai: { archetype: 'brawler', lawful: true, combatDoctrineId: 'brawler_commit',
+          motive: 'law_enforcement', engagementTrigger: 'wanted_status',
+          zoneId: 'zone_pallas_ambush', approachTelegraph: 'engine_flare',
+          noFireResponseWindowS: 2 } },
+    });
+    harness.sim.runTicks(8 * 60);
+    assert.equal(harness.events.telegraph.length, 0, 'lawful presence suppresses pairing');
+  }
+  // The authored Ceres cast pocket owns its own choreography.
+  {
+    const harness = bootAmbient(47064, { sectorId: 'sector_ceres_belt' });
+    ambientPair(harness);
+    harness.sim.runTicks(8 * 60);
+    assert.equal(harness.events.telegraph.length, 0, 'ambient predation never runs in the Ceres pocket');
+  }
+  // High-security sectors (Tethys Junction, 0.65) are above the ceiling.
+  {
+    const harness = bootAmbient(47065, { sectorId: SECTOR_ID });
+    ambientPair(harness);
+    harness.sim.runTicks(8 * 60);
+    assert.equal(harness.events.telegraph.length, 0, 'secure sectors never spawn ambient raids');
+  }
+});
+
+test('ambient raid cap binds at most one concurrent raid', () => {
+  const harness = bootAmbient(47066);
+  ambientPair(harness);
+  ambientPair(harness, {
+    raiderPos: { x: AMBIENT_LANE.x + 240, z: AMBIENT_LANE.z - 160 },
+    victimPos: { x: AMBIENT_LANE.x - 100, z: AMBIENT_LANE.z + 180 },
+    manifestId: `${AMBIENT_MANIFEST}:b`,
+  });
+  harness.sim.runTicks(8 * 60);
+  assert.equal(harness.events.telegraph.length, 1, 'the bounded cap keeps one live ambient raid');
+  const boundIds = [...harness.state.entities.values()]
+    .filter((entity) => entity.data && entity.data.predationRole === 'raider')
+    .map((entity) => entity.id);
+  assert.equal(boundIds.length, 1);
+});
+
+test('ambient deadline and stale identity fail closed with one bounded clear', () => {
+  const harness = bootAmbient(47067);
+  ambientPair(harness);
+  const { raidId, raider, victim } = boundAmbientRaid(harness);
+
+  // Deadline expiry releases the pair and restores the raider's pre-raid doctrine.
+  raider.data.ai.predationObjective.deadlineTick = 0;
+  raider.data.ai.predationObjective.deadlineAt = 0;
+  harness.sim.runTicks(61);
+  assert.equal(harness.events.cleared.length, 1);
+  assert.equal(harness.events.cleared[0].raidId, raidId);
+  assert.equal(harness.events.cleared[0].reason, 'objective_timeout');
+  assert.equal(raider.data.ai.predationStatus, 'cleared');
+  assert.equal(raider.data.ai.predationTargetId, undefined);
+  assert.equal(raider.data.predationRole, undefined);
+  assert.equal(victim.data.predationRole, undefined);
+  assert.equal(raider.data.ai.motive, 'assigned_interdiction', 'pre-raid doctrine snapshot restored');
+  assert.equal(isHostileForAI(harness.state, raider, victim), false);
+  assert.equal(Number.isFinite(raider.data.ai.ambientRaidCooldownUntil), true, 'per-raider refractory');
+  assert.equal(Number.isFinite(victim.data.ambientVictimCooldownUntil), true, 'per-victim refractory');
+  harness.sim.runTicks(120);
+  assert.equal(harness.events.cleared.length, 1, 'expiry clears exactly once');
+  // The refractory window keeps the same pair from instantly re-binding.
+  assert.equal(harness.events.telegraph.length, 1);
+});
+
+test('stale victim identity releases the ambient raid fail-closed', () => {
+  const harness = bootAmbient(47068);
+  ambientPair(harness);
+  const { raider, victim } = boundAmbientRaid(harness);
+  victim.data.predationIdentityKey = 'recycled:identity';
+  harness.sim.runTicks(61);
+  assert.equal(harness.events.cleared.length, 1);
+  assert.equal(harness.events.cleared[0].reason, 'target_lost');
+  assert.equal(raider.data.ai.predationStatus, 'cleared');
+});
+
+test('player fire on a bound ambient raider converts it to self-defense retaliation', () => {
+  const harness = bootAmbient(47069);
+  ambientPair(harness);
+  const { raidId, raider, victim } = boundAmbientRaid(harness);
+
+  harness.bus.emit('combat:damage', {
+    attackerId: harness.player.id,
+    targetId: raider.id,
+    applied: 12,
+    pos: { ...raider.pos },
+  });
+
+  const ai = raider.data.ai;
+  assert.equal(raider.data.predationRole, undefined, 'player intervention ends the binding');
+  assert.equal(ai.predationStatus, 'cleared');
+  assert.equal(ai.predationEndReason, 'player_intervention');
+  assert.equal(ai.retaliationTargetId, harness.player.id);
+  assert.equal(ai.motive, 'self_defense');
+  assert.equal(ai.engagementTrigger, 'player_attack');
+  assert.equal(ai.roe, 'weapons_free');
+  assert.equal(ai.activity.targetId, harness.player.id);
+  assert.equal(victim.data.predationRole, undefined, 'the released hauler is free');
+  assert.equal(harness.events.cleared.length, 1);
+  assert.equal(harness.events.cleared[0].reason, 'player_intervention');
+  assert.equal(isHostileForAI(harness.state, raider, harness.player), true,
+    'the released raider can defend itself');
+  assert.equal(isHostileForAI(harness.state, raider, victim), false,
+    'the released raider does not retain victim hostility');
+});
+
+test('player fire releases a scripted raider into self-defense instead of leaving it suppressed', () => {
+  const harness = boot(47071);
+  const live = fire(harness, `${ENCOUNTER_ID}:retaliation`);
+  const { target, raider } = activate(harness, live);
+
+  assert.equal(isHostileForAI(harness.state, raider, target), true, 'scripted raid is live');
+  harness.bus.emit('combat:damage', {
+    attackerId: harness.player.id,
+    targetId: raider.id,
+    applied: 15,
+    pos: { ...raider.pos },
+  });
+
+  const ai = raider.data.ai;
+  assert.equal(ai.retaliationTargetId, harness.player.id);
+  assert.equal(ai.motive, 'self_defense');
+  assert.equal(ai.predationTargetId, undefined);
+  assert.equal(raider.data.predationRole, undefined);
+  assert.equal(isHostileForAI(harness.state, raider, harness.player), true,
+    'a scripted raider can defend itself after the player shoots it');
+  assert.equal(isHostileForAI(harness.state, raider, target), false,
+    'self-defense does not keep the bounded prey relation');
+
+  harness.sim.runTicks(61);
+  assert.equal(live.data.predationStatus, 'cleared');
+  assert.equal(live.data.predationEndReason, 'raider_lost',
+    'the scripted tick reconciles the released raider fail-closed');
+});
+
+test('ambient recovery secures spilled pods physically, then escapes with the loot', () => {
+  const harness = bootAmbient(47072);
+  ambientPair(harness);
+  const { raidId, raider, victim } = boundAmbientRaid(harness);
+
+  // Drive the pair through telegraph into the active phase.
+  const ai = raider.data.ai;
+  harness.sim.runTicks(Math.ceil((ai.predationObjective.engageAt - harness.state.simTime + 1) * 60));
+  assert.equal(ai.predationStatus, 'active');
+
+  // Traffic's violence machinery dumped under fire — one pod leaves the hauler.
+  victim.data.violenceCargoSpilled = true;
+  const pod = harness.sim.spawn(ambientPodSpec(
+    { x: victim.pos.x + 60, z: victim.pos.z }, victim.id, 6));
+  harness.sim.runTicks(2 * 60);
+  assert.equal(ai.predationStatus, 'cargo_recovery');
+  assert.equal(ai.activity.kind, 'transit');
+  assert.equal(ai.roe, 'hold_fire', 'recovery never fires');
+
+  // The raider physically reaches the pod and secures it.
+  raider.pos.x = pod.pos.x;
+  raider.pos.z = pod.pos.z;
+  harness.sim.runTicks(2 * 60);
+  assert.equal(harness.events.secured.length, 1);
+  assert.equal(harness.events.secured[0].raidId, raidId);
+  assert.equal(harness.events.secured[0].qty, 6);
+  assert.equal(ai.predationStatus, 'cargo_escape', 'secured loot triggers the escape leg');
+  assert.equal(ai.activity.kind, 'flee');
+  assert.equal(ai.predationObjective.securedQty, 6);
+  assert.equal(harness.state.entities.has(pod.id), false, 'the pod entity is consumed');
+
+  // Escape completes at the deterministic radius: the raid clears and the raider is a pirate again.
+  const origin = ai.predationObjective.escapeOrigin;
+  raider.pos.x = origin.x + ai.predationObjective.escapeRadius + 50;
+  harness.sim.runTicks(2 * 60);
+  assert.equal(harness.events.cleared.length, 1);
+  assert.equal(harness.events.cleared[0].reason, 'escaped');
+  assert.equal(harness.events.cleared[0].securedQty, 6);
+  assert.equal(ai.predationStatus, 'cleared');
+  assert.equal(ai.motive, 'assigned_interdiction', 'successful raider resumes ordinary piracy');
+});
+
+test('a raider destroyed mid-escape respills its secured cargo as ordinary residue', () => {
+  const harness = bootAmbient(47073);
+  ambientPair(harness);
+  const { raidId, raider, victim } = boundAmbientRaid(harness);
+  const ai = raider.data.ai;
+  ai.predationStatus = 'cargo_escape';
+  ai.predationObjective.secured = [{ commodityId: 'cmdty_ore_iron', qty: 5 }];
+  ai.predationObjective.securedQty = 5;
+
+  harness.bus.emit('entity:killed', {
+    id: raider.id,
+    killerId: victim.id,
+    sectorId: AMBIENT_SECTOR,
+    pos: { ...raider.pos },
+  });
+
+  assert.equal(harness.events.cleared.length, 1);
+  assert.equal(harness.events.cleared[0].raidId, raidId);
+  assert.equal(harness.events.cleared[0].reason, 'raider_destroyed');
+  assert.equal(victim.data.predationRole, undefined);
+  const residue = [...harness.state.entities.values()].filter((entity) => (
+    entity.type === 'payload'
+      && entity.data
+      && entity.data.payloadType === 'jettisoned_cargo'
+      && (entity.ownerId === raider.id || entity.data.ownerId === raider.id)
+  ));
+  assert.equal(residue.length, 1, 'secured cargo respills as a physical pod');
+  assert.equal(residue[0].data.salvagePool.cmdty_ore_iron, 5);
+});
+
+test('a rematerialized stale ambient binding sweeps clear fail-closed', () => {
+  const harness = bootAmbient(47074);
+  ambientPair(harness);
+  const { raider, victim } = boundAmbientRaid(harness);
+
+  // The durable record boundary drops data.predation* but keeps the whole ai bag, and the victim
+  // rematerializes under a fresh runtime id — simulate that exact stale shape.
+  harness.state.entities.delete(victim.id);
+  delete raider.data.predationEncounterId;
+  delete raider.data.predationRole;
+  delete raider.data.predationIdentityKey;
+  assert.equal(ambientObjective(raider) != null, true);
+  harness.sim.runTicks(61);
+  assert.equal(raider.data.ai.predationStatus, 'cleared');
+  assert.equal(raider.data.ai.predationObjective, undefined);
+  assert.equal(raider.data.ai.ambientRestore, undefined);
+  assert.equal(harness.events.cleared.length, 1);
+  assert.equal(harness.events.cleared[0].reason, 'target_lost');
+  assert.equal(raider.data.ai.retaliationTargetId, undefined, 'no retaliation residue');
+  assert.equal(raider.data.ai.predationTargetId, undefined, 'no target residue');
+  assert.equal(raider.data.ai.motive, 'assigned_interdiction', 'pre-raid doctrine restored');
 });
