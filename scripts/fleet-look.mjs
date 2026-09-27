@@ -17,34 +17,9 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 const OUT = ROOT + (args.out || '.devshots/fleet-look') + '/';
 const views = String(args.views || 'chase,close,inspect').split(',');
 
-export const LIVE_FLEET = [
-  ['kestrel', { defId: 'ship_kestrel' }],
-  ['wasp', { file: 'wholeships/wasp_production_v1.glb' }],
-  ['pelican', { file: 'wholeships/pelican_production_v1.glb' }],
-  ['mule', { file: 'wholeships/mule_production_v1.glb' }],
-  ['drifter', { file: 'wholeships/drifter_production_v1.glb' }],
-  ['hornet', { file: 'wholeships/hornet_production_v1.glb' }],
-  ['ranger', { file: 'wholeships/ranger_production_v1.glb' }],
-  ['ironback', { file: 'wholeships/ironback_production_v1.glb' }],
-  ['bastion', { file: 'wholeships/bastion_production_v1.glb' }],
-  ['atlas', { file: 'wholeships/atlas_production_v1.glb' }],
-  ['warden', { file: 'wholeships/warden_production_v1.glb' }],
-  ['colossus', { file: 'wholeships/colossus_production_v1.glb' }],
-  ['leviathan', { file: 'wholeships/leviathan_production_v1.glb' }],
-  ['ashline_dart', { file: 'wholeships/ashline_dart.glb' }],
-  ['ashline_lode', { file: 'wholeships/ashline_lode.glb' }],
-  ['ashline_rig', { file: 'wholeships/ashline_rig.glb' }],
-  ['corsair_blade', { file: 'wholeships/ashline_rig_corsair_blade.glb' }],
-  ['helios_lark', { file: 'wholeships/helios_lark.glb' }],
-  ['helios_cradle', { file: 'wholeships/helios_cradle.glb' }],
-  ['helios_span', { file: 'wholeships/helios_span.glb' }],
-  ['ore_barge', { file: 'wholeships/ore_barge.glb' }],
-  ['repair_tender', { file: 'wholeships/repair_tender.glb' }],
-  ['salvage_cutter', { file: 'wholeships/salvage_cutter.glb' }],
-  ['survey_pin', { file: 'wholeships/survey_pin.glb' }],
-  ['yard_tug', { file: 'wholeships/yard_tug.glb' }],
-  ['massline_liner', { file: 'wholeships/massline_express_liner_v1.glb' }],
-];
+// Every forge body (tools/blender/forge/fleet.json), from its live release file.
+const FORGE_FLEET = JSON.parse((await import('node:fs')).readFileSync(new URL('../tools/blender/forge/fleet.json', import.meta.url), 'utf8')).ships;
+export const LIVE_FLEET = Object.entries(FORGE_FLEET).map(([name, entry]) => [name, { file: `wholeships/${entry.file}.glb` }]);
 
 async function findFreePort(start) {
   for (let port = start; port < start + 80; port++) {
