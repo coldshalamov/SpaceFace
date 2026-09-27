@@ -115,7 +115,7 @@ const CSS = `
 .fp-dial__svg text { font-family:var(--dp-face-label, "Archivo"), sans-serif; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650;
   text-transform:uppercase; letter-spacing:.16em; dominant-baseline:central; }
 /* THE BEZEL: a band with body (lum ~70 on the glass), its scale cut through it, the heat lit in warm white */
-.fp-bezel { fill:none; stroke:rgb(${BONE} / .27); stroke-linecap:butt; }
+.fp-bezel { fill:none; stroke:rgb(${BONE} / .3); stroke-linecap:butt; }
 .fp-bezel-rim { fill:none; stroke:rgb(${BONE} / .6); stroke-width:1.5; }
 .fp-bezel-inner { fill:none; stroke:rgb(${BONE} / .34); stroke-width:1; }
 .fp-seg { fill:none; stroke:rgb(250 246 236); stroke-linecap:butt; }
