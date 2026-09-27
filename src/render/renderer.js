@@ -8,7 +8,7 @@ import { pickNextContactCompileSubject } from './nextContactWarm.js';
 import { pickDecodeRunwayCandidates } from './decodeRunwayPick.js';
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
 import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
-import { CAMERA_NEAR_MARGIN_WU, modelTruthSlideOutside } from '../data/modelTruth.js';
+import { CAMERA_NEAR_MARGIN_WU, modelTruthPlanarRadius, modelTruthSlideOutside } from '../data/modelTruth.js';
 import { createSpaceBackground } from './spaceBackground.js';
 import * as parallaxLayers from './parallaxLayers.js';
 import {
@@ -138,7 +138,7 @@ import {
   resolveWorldPresentationEntity,
 } from '../world/presentationSources.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
-import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
@@ -1842,6 +1842,10 @@ const CAMERA_CLEARANCE_MIN_SPAN_WU = 120;
 // bounds return null so a corrupt subtree can never push the camera off the world.
 const CAMERA_CLEARANCE_MAX_SPAN_WU = 14000;
 const CAMERA_CLEARANCE_KINDS = new Set(['station', 'place', 'asteroid', 'wreck']);
+// How long a latched "no slide" keep-out verdict may live. Membership changes that no serial
+// covers (an authored mesh settling, a collides flag flipping on) resolve within this bound —
+// shorter than the camera's own adopt hold, and the same cadence reconcileMeshResidency polls at.
+const CAMERA_KEEP_OUT_LATCH_TTL_S = 0.25;
 // Whole-boundary AABBs are the right floor for compact structures. Above this span — the
 // authored mega-stations are ~1300 WU across — one box reports the city's tallest tower as
 // the floor for every XZ inside the footprint, pinning the camera at ~380 WU for the entire
@@ -2052,10 +2056,17 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
 /**
  * Slide the chase camera in the plane so its near point stays outside a measured shell.
  * Unsettled meshes are ignored, same as the roof. The ship is not moved.
+ *
+ * The "no slide" outcome is latched like _seamMarkersRelevant: re-deriving it every frame is a
+ * full entity walk plus per-shell skin allocations, and while the near point stays inside its
+ * recorded slack the answer cannot change. The latch breaks on entity-index membership and mesh
+ * bind/unbind, erodes by the near point's own displacement, and expires on a wall-clock bound so
+ * a settling mesh or an accelerating hull cannot hold a stale identity answer.
  */
 export function cameraKeepOutTarget(owner, camX, camZ, focusX, focusZ, camY) {
   const meshes = owner && owner._meshes;
-  const entities = owner && owner.state && owner.state.entities;
+  const state = owner && owner.state;
+  const entities = state && state.entities;
   if (!entities || typeof entities.values !== 'function') return { x: camX, z: camZ };
   const dx = (Number(focusX) || 0) - camX;
   const dy = -(Number(camY) || 0);
@@ -2064,14 +2075,62 @@ export function cameraKeepOutTarget(owner, camX, camZ, focusX, focusZ, camY) {
   const t = Math.min(1, 1 / len);
   const nearX = camX + dx * t;
   const nearZ = camZ + dz * t;
+  const v = entityIndexVersion(state);
+  const meshV = owner._meshesVersion || 0;
+  // Wall clock, not sim time: authored admission commits keep running while the sim is frozen,
+  // and a settle is exactly the version-free membership change the ttl exists to bound.
+  const now = (typeof performance !== 'undefined' && Number.isFinite(performance.now()))
+    ? performance.now() / 1000
+    : Date.now() / 1000;
+  const last = owner._keepOutLatch;
+  if (last && last.v === v && last.meshV === meshV && last.versionMode === (v !== null)) {
+    const mdx = nearX - last.nearX;
+    const mdz = nearZ - last.nearZ;
+    if (mdx * mdx + mdz * mdz <= last.slack * last.slack && now - last.t <= last.ttl) {
+      return { x: camX, z: camZ };
+    }
+  }
   const solids = [];
+  let slack = Infinity;
+  let solidSpeed = 0;
   for (const entity of entities.values()) {
     if (!entity || entity.alive === false || entity.collides === false || !entity.pos) continue;
     const mesh = meshes && typeof meshes.get === 'function' ? meshes.get(entity.id) : null;
     if (!mesh || !mesh.userData || clearanceBoundUnsettled(mesh.userData)) continue;
     solids.push(entity);
+    // Slack in the slide's own metric: only a shell wide enough to swallow the near point
+    // participates (the span gate inside modelTruthSlideOutside), and its planar bound is the
+    // rotation-invariant outer reach — the 1.35 matches the sampled cap in colliderRadiusAt.
+    const planar = modelTruthPlanarRadius(entity);
+    const span = planar * 2;
+    if (span < CAMERA_CLEARANCE_MIN_SPAN_WU || span > CAMERA_CLEARANCE_MAX_SPAN_WU) continue;
+    const ex = Number(entity.pos.x) || 0;
+    const ez = Number(entity.pos.z) || 0;
+    const reach = planar * 1.35;
+    const s = Math.hypot(nearX - ex, nearZ - ez) - reach - CAMERA_NEAR_MARGIN_WU;
+    if (s < slack) slack = s;
+    const vel = entity.vel;
+    const spd = vel
+      ? Math.hypot(Number(vel.x) || 0, Number(vel.z) || 0)
+      : 0;
+    if (spd > solidSpeed) solidSpeed = spd;
   }
   const slid = modelTruthSlideOutside(solids, nearX, nearZ, CAMERA_NEAR_MARGIN_WU);
+  if (slid.x === nearX && slid.z === nearZ && slack > 0) {
+    // Only the identity outcome is reusable — a real slide answer is content-position dependent.
+    owner._keepOutLatch = {
+      v,
+      meshV,
+      nearX,
+      nearZ,
+      slack,
+      t: now,
+      ttl: Math.min(CAMERA_KEEP_OUT_LATCH_TTL_S, slack / Math.max(solidSpeed, 1e-3)),
+      versionMode: v !== null,
+    };
+  } else {
+    owner._keepOutLatch = null;
+  }
   return { x: camX + (slid.x - nearX), z: camZ + (slid.z - nearZ) };
 }
 
