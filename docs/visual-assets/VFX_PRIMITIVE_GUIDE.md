@@ -43,12 +43,15 @@ Large and continuous effects keep their dedicated owners:
 | `forceLanguage/fieldForcePresentation.js` | Well, seed, repulsor, cone, and sheet flow; nearby-body diversion |
 | `forceLanguage/bombFlowSurface.js`, `bombPresentation.js` | Bomb warning and sustained gravity/viscous matter |
 | `vfx/statusMatterVfx.js` | Hull-attached burning seats, viscous residue, signed momentum stress; authoritative status cutoff |
+| `vfx/damagedPortVfx.js` | Measured subsystem rupture ports and finite cooling cascades; reuses existing action and gas pools |
 | `vfx/bombDetonationVfx.js` | Eight payload-specific releases, real hit contacts, collapse and interruption |
 | `combat/explosionRupture.js`, `combat/phasedExplosions.js` | Material-specific rock, armor, fuel, reactor, and capital rupture |
 | `weapons/presenter.js`, `forceLanguage/weaponDischargePool.js` | Muzzle, projectile body/wake, and weapon-specific impact |
 | `weapons/heavyImpactVfx.js` | Siege boring, rail gouges, molten thermal seats, EMP forks, concussion, and explosive contacts |
 | `vfx/combatContactVfx.js` | Collision compression/slip, signed ricochet legs, component failure and restoration |
+| `vfx/stationOperationVfx.js` | Native dock traffic, work drones, cargo handling, sensor operations, and validated NPC job activity |
 | `combat/persistentBeams.js`, `toolConduit.js` | Sustained coherent beams and working conduits |
+| `vfx/masslineReleaseMatter.js` | Open receiver shoulders and short unloading folds attached to the actual released body and its velocity |
 | `thruster/systems/plasmaStream.js`, flight history owners | Actual nozzle flow and recorded path history |
 | `forceLanguage/emergentPrimitivePools.js` | Current, pressure, deposited gel, optical matter |
 
@@ -138,6 +141,12 @@ place, a severed conductor separates along the cut, a pressure front sheds its s
 vent leaves slower parcels downstream. Do not reverse an onset scale curve for dismissal.
 Seeded detail must remain stable during a run, with time supplied by `state.simTime`.
 
+NPC flyby and escape use separately born nozzle packets; weapon preparation draws unequal
+tributaries into its port; formation loss separates short stress fragments; patrol inspection
+sweeps offset strips over the named hull. These actions have different causal constructions.
+A restored component cools its local ribs, while a destroyed component vents from its measured
+subsystem seat. A dependency-disabled child gets a short cooling cascade, not an invented rupture.
+
 Use a substantial translucent body, dark internal separation, and limited HDR crests. The
 silhouette must work without bloom. Filter unresolved detail with screen derivatives. Avoid
 full-bright blocks, periodic visible noise cells, default radial spokes, and camera-facing
@@ -199,3 +208,13 @@ The compact capture manifest and timeline are the review entry points. Keep nati
 inside continuous MP4 chunks by default; retain all PNGs only for a specific temporal defect.
 Future events should extend this vocabulary and catalog, rather than beginning another
 parameter-only redesign of a generic effect.
+
+The catalog currently has **150 native scenarios** across destruction, fields, bombs, weapons,
+tools, Massline, propulsion, ship responses, travel, work, NPCs, stations, jobs, and statuses.
+Use `--all` to discover the live catalog instead of maintaining another manual scenario list.
+The focused action contracts are in `test/action-vfx.test.mjs`; owner tests live alongside
+`test/bomb-detonation-vfx.test.mjs`, `test/tool-conduit-lifecycle.test.mjs`,
+`test/combat-contact-vfx.test.mjs`, and `test/station-operation-vfx.test.mjs`.
+Run the changed owner's tests and its full continuous scenario first. A shader compile error,
+invisible recipient, truncated tail, or effect still alive at the purported aftermath is a
+failed candidate even when the capture command produced an MP4.
