@@ -7,6 +7,7 @@
 import { actionForWreck, actionReadoutForWreck, poolForAction } from '../data/salvageActions.js';
 import { salvagePoolForWreck } from '../data/salvageLegality.js';
 import { entityIndexVersion, indexedTypeScan } from '../world/livingWorldViews.js';
+import { hash32 } from '../core/rng.js';
 
 const TETHER_AWAY_DISTANCE = 260;
 // INF-U7: the unstable reactor is ordnance, not a cutscene. Damage cooks the fuse
@@ -18,6 +19,17 @@ const REACTOR_COOK_S_PER_DMG = 0.15;
 const REACTOR_CRACK_DMG = 40;
 const REACTOR_CHAIN_DELAY_S = 0.5;
 const REACTOR_COOK_TOAST_COOLDOWN_S = 10;
+// INF-U13: venting pays a hot core. The careful approach used to end in silence while
+// tow-away got the bomb — now the vented core ejects as a scoopable pickup. It stays
+// volatile while hot (shooting it pops a small thermal burst that can chain siblings),
+// then cools into an ordinary valuable pod. Cooling is timestamp-gated at damage time
+// so no per-tick pickup sweep is needed.
+const REACTOR_CORE_TTL_S = 60;
+const REACTOR_CORE_HOT_S = 25;
+const REACTOR_CORE_BURST_RADIUS = 60;
+const REACTOR_CORE_BURST_DMG = 8;
+const REACTOR_CORE_EJECT_SPEED = 30;
+const REACTOR_CORE_WARN_S = 8;
 
 /** Bench A/B: production default ON. Quiet latch skips salvage unstable-reactor
  * entities.values() census when no live unstable reactors remain. Soft-GPU fps not
@@ -190,12 +202,53 @@ export const salvageActions = {
     const readout = this._annotate(wreck);
     if (!readout || readout.actionId !== 'vent_reactor') return null;
     const unstable = wreck.data && wreck.data.unstableReactor;
-    if (!unstable || unstable.burst || unstable.towedClear) return null;
+    if (!unstable || unstable.burst || unstable.towedClear || unstable.vented) return null;
     unstable.vented = true;
+    const now = state.simTime || 0;
     if (this._bus && this._bus.emit) {
-      this._bus.emit('salvage:reactorVented', { wreckId, targetId: wreckId, t: state.simTime || 0 });
+      this._bus.emit('salvage:reactorVented', { wreckId, targetId: wreckId, t: now });
+      this._ejectCore(wreck, unstable, state, now);
     }
     return unstable;
+  },
+
+  // INF-U13 v1: the vented core becomes physical — one scoopable pod kicked clear of
+  // the wreck with the wreck's own drift. Eject angle is hashed off the wreck id so
+  // the same wreck vents the same way every visit. No second extractor or cargo
+  // write: the magnet + cargo owners do the rest.
+  _ejectCore(wreck, unstable, state, now) {
+    const wpos = wreck.pos || { x: 0, z: 0 };
+    const wvel = wreck.vel || { x: 0, z: 0 };
+    const ang = ((hash32(wreck.id, 'vent-core') >>> 0) % 360) * Math.PI / 180;
+    const edge = (wreck.radius || 10) + 6;
+    const spec = {
+      type: 'pickup',
+      pos: { x: (wpos.x || 0) + Math.cos(ang) * edge, z: (wpos.z || 0) + Math.sin(ang) * edge },
+      vel: {
+        x: (wvel.x || 0) + Math.cos(ang) * REACTOR_CORE_EJECT_SPEED,
+        z: (wvel.z || 0) + Math.sin(ang) * REACTOR_CORE_EJECT_SPEED,
+      },
+      radius: 3, mass: 0.5, collides: true,
+      data: {
+        kind: 'cargo',
+        commodityId: 'cmdty_salvage_electronics',
+        amount: (unstable.damage || 0) >= 22 ? 3 : 2,
+        despawnAt: now + REACTOR_CORE_TTL_S,
+        ventedCore: true,
+        cooledAt: now + REACTOR_CORE_HOT_S,
+        scanLabel: 'Reactor core',
+      },
+    };
+    this._bus.emit('entity:spawnRequest', { spec });
+    this._bus.emit('salvage:coreEjected', {
+      wreckId: wreck.id, targetId: wreck.id, cooledAt: now + REACTOR_CORE_HOT_S, t: now,
+    });
+    this._bus.emit('toast', {
+      text: `Core ejected — critical in ${REACTOR_CORE_HOT_S}s. Scoop it or clear the blast.`,
+      kind: 'good', ttl: 5,
+    });
+    this._hotCoresLive = true;
+    this.noteUnstableWake();
   },
 
   update(_dt, state) {
@@ -248,9 +301,12 @@ export const salvageActions = {
       if ((state.simTime || 0) >= unstable.dueAt) this._burst(entity, unstable, state);
     }
 
+    // INF-U13 v2: fuse sweep after the wreck census; hot cores hold the latch open.
+    const hotCores = this._sweepCoreFuses(state, state.simTime || 0);
+
     if (SALVAGE_UNSTABLE_QUIET_LATCH !== false) {
       const membership = entityIndexVersion(state);
-      if (membership != null && liveUnstable === 0) {
+      if (membership != null && liveUnstable === 0 && hotCores === 0) {
         this._unstableQuiet = {
           membership,
           wakeSeq: this._unstableWakeSeq | 0,
@@ -279,7 +335,14 @@ export const salvageActions = {
     const state = this._state;
     if (!state || p.targetId == null || !state.entities || !state.entities.get) return;
     const entity = state.entities.get(p.targetId);
-    if (!isWreck(entity) || entity.alive === false) return;
+    if (!entity || entity.alive === false) return;
+    // INF-U13 v2: a hot ejected core is mini-ordnance — gunfire pops it. Cold cores
+    // are inert pods; the magnet owns them.
+    if (entity.type === 'pickup' && entity.data && entity.data.ventedCore === true) {
+      this._onCoreDamaged(entity, p, state);
+      return;
+    }
+    if (!isWreck(entity)) return;
     const unstable = entity.data && entity.data.unstableReactor;
     if (!unstable || unstable.vented || unstable.burst) return;
     const applied = Number(p.applied);
@@ -302,6 +365,112 @@ export const salvageActions = {
         this._bus.emit('toast', { text: "The reactor's cooking off — clear it or use it.", kind: 'warn', ttl: 4 });
       }
     }
+  },
+
+  // INF-U13 v2: any applied damage inside the hot window detonates the core.
+  // (Live today the fuse sweep below is the certain path — weapon routers do not
+  // target pickups — but the seam stays so any future splash/damage honors it.)
+  _onCoreDamaged(entity, p, state) {
+    const now = state.simTime || 0;
+    const cooledAt = entity.data && entity.data.cooledAt;
+    if (!(Number.isFinite(cooledAt) ? now < cooledAt : false)) return;
+    const applied = Number(p.applied);
+    const amount = Number(p.amount);
+    const dmg = (Number.isFinite(applied) && applied > 0 ? applied : 0)
+      || (Number.isFinite(amount) && amount > 0 ? amount : 0);
+    if (!(dmg > 0)) return;
+    this._detonateCore(entity, p.attackerId != null ? p.attackerId : entity.id, state, now);
+  },
+
+  // One shared detonator: small radial thermal pop attributed to the trigger,
+  // able to light sibling reactors. Called by the damage seam, the fuse sweep,
+  // and sibling bursts.
+  _detonateCore(entity, ownerId, state, now) {
+    if (!entity || entity.alive === false) return null;
+    const pos = entity.pos ? { x: entity.pos.x, z: entity.pos.z } : { x: 0, z: 0 };
+    const combat = this._registry && this._registry.get && this._registry.get('combat');
+    const hits = [];
+    const list = state.entityList || [];
+    for (const victim of list) {
+      if (!victim || victim.alive === false || victim.id === entity.id) continue;
+      if (victim.type !== 'ship' && victim.type !== 'drone') continue;
+      if (!victim.pos) continue;
+      const dist = Math.hypot(victim.pos.x - pos.x, victim.pos.z - pos.z)
+        - (victim.radius || 0);
+      const falloff = 1 - dist / REACTOR_CORE_BURST_RADIUS;
+      if (!(falloff > 0)) continue;
+      const payload = {
+        targetId: victim.id,
+        ownerId,
+        damage: Math.max(1, REACTOR_CORE_BURST_DMG * falloff),
+        damageType: 'thermal',
+        pos: { x: pos.x, z: pos.z },
+        origin: { kind: 'salvage_core', id: entity.id },
+      };
+      if (combat && typeof combat.onHit === 'function') combat.onHit(payload);
+      else if (this._bus && this._bus.emit) this._bus.emit('combat:hit', payload);
+      hits.push(victim.id);
+    }
+    let chained = 0;
+    for (const other of list) {
+      if (!isWreck(other) || other.alive === false) continue;
+      const sib = other.data && other.data.unstableReactor;
+      if (!sib || sib.vented || sib.burst || !other.pos) continue;
+      const dist = Math.hypot(other.pos.x - pos.x, other.pos.z - pos.z);
+      if (dist > REACTOR_CORE_BURST_RADIUS + (other.radius || 0)) continue;
+      sib.dueAt = Math.min(Number.isFinite(sib.dueAt) ? sib.dueAt : Infinity, now + REACTOR_CHAIN_DELAY_S);
+      sib.triggeredBy = ownerId;
+      chained++;
+    }
+    entity.alive = false;
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('salvage:coreDetonated', {
+        targetId: entity.id, damage: REACTOR_CORE_BURST_DMG, hits, chained,
+        triggeredBy: ownerId, t: now,
+      });
+      if (chained > 0) {
+        this._bus.emit('toast', { text: 'The hot core lit the row — chain reaction.', kind: 'warn', ttl: 4 });
+      }
+    }
+    return { hits, chained };
+  },
+
+  // INF-U13 v2: the fuse sweep. A hot core nobody scooped cooks off alone at
+  // cooledAt; one warning toast beforehand. Indexed pickups when available, the
+  // entity list only while a core may be live — never a permanent full walk.
+  _sweepCoreFuses(state, now) {
+    let hot = 0;
+    const index = state.entityIndex;
+    const usePickups = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.pickups));
+    const list = usePickups
+      ? indexedTypeScan(state, 'pickups')
+      : (this._hotCoresLive === true && state.entityList) || [];
+    for (const entity of list) {
+      if (!entity || entity.alive === false || entity.type !== 'pickup') continue;
+      const data = entity.data;
+      if (!data || data.ventedCore !== true) continue;
+      const cooledAt = data.cooledAt;
+      if (!Number.isFinite(cooledAt) || now >= cooledAt) {
+        if (Number.isFinite(cooledAt)) {
+          this._detonateCore(entity, entity.id, state, now);
+          continue;
+        }
+        continue;
+      }
+      hot++;
+      if (!data.coreWarned && now >= cooledAt - REACTOR_CORE_WARN_S) {
+        data.coreWarned = true;
+        if (this._bus && this._bus.emit) {
+          this._bus.emit('toast', {
+            text: 'The vented core is going critical — scoop it or clear the blast!',
+            kind: 'warn', ttl: 4,
+          });
+        }
+      }
+    }
+    this._hotCoresLive = hot > 0;
+    return hot;
   },
 
   _burst(entity, unstable, state) {
@@ -347,6 +516,18 @@ export const salvageActions = {
       sib.dueAt = Math.min(Number.isFinite(sib.dueAt) ? sib.dueAt : Infinity, now + REACTOR_CHAIN_DELAY_S);
       sib.triggeredBy = ownerId;
       chained++;
+    }
+    // INF-U13 v3: the fireball also pops hot ejected cores in the blast — venting
+    // next to a cooking row is a way to lose the prize. Depth-1: core pops chain
+    // siblings through dueAt only, never re-enter the core scan.
+    for (const other of list) {
+      if (!other || other.alive === false || other.id === entity.id) continue;
+      if (other.type !== 'pickup' || !other.data || other.data.ventedCore !== true) continue;
+      const cooledAt = other.data.cooledAt;
+      if (!(Number.isFinite(cooledAt) && now < cooledAt) || !other.pos) continue;
+      const dist = Math.hypot(other.pos.x - pos.x, other.pos.z - pos.z);
+      if (dist > REACTOR_BURST_RADIUS + (other.radius || 0)) continue;
+      this._detonateCore(other, ownerId, state, now);
     }
     entity.alive = false;
     if (this._bus && this._bus.emit) {
