@@ -168,6 +168,10 @@ def radial_windows(r, z, count, size, a0=0.0, a1=360.0, skip=None, depth=0.16):
     return out
 
 
+def is_plaza(k):
+    return k % 4 == 1
+
+
 def in_mouth(a):
     a = (a + 180.0) % 360.0 - 180.0
     return abs(a) < MOUTH + 1.0
@@ -205,7 +209,7 @@ def freighter(s, n, cargo=('paint2', 'paint', 'paint2'), lit=False):
         dict(x=4.6, w=2.3, ht=2.0, hb=1.9, n=2.8),
         dict(x=6.9, w=1.8, ht=1.6, hb=1.5, zc=0.1, n=2.5),
         dict(x=8.3, w=0.8, ht=0.7, hb=0.7, zc=0.1, n=2.2),
-    ], material='paint', belly='paint.graphite', back_material='dark', count=28, bevel=0.0)
+    ], material='paint', belly='paint.graphite', back_material='dark', count=24, bevel=0.0)
     F.band(s, n, (-6.2, 0, 0), (1, 0, 0), 0.7, 'paint2', inset=0.04, depth=0.06)
     F.band(s, n, (5.4, 0, 0), (1, 0, 0), 0.5, 'paint2', inset=0.04, depth=0.06)
     F.band(s, n, (7.3, 0, 0.1), (1, 0, 0), 1.1, 'glass', facing=(0.6, 0, 0.8), min_facing=0.35)
@@ -214,12 +218,12 @@ def freighter(s, n, cargo=('paint2', 'paint', 'paint2'), lit=False):
         F.box(s, f'{n}Box{k}', (x, 0, 2.95), (2.8, 3.4, 1.9), material=fin, bevel=0.05)
     F.box(s, f'{n}Spine', (-1.5, 0, 2.05), (10.0, 1.2, 0.5), material='paint.graphite', bevel=0.0)
     for y in (-2.9, 2.9):
-        F.cylinder(s, f'{n}Pod{y:+.0f}', (-7.6, y, -0.2), (-2.2, y, -0.2), 0.95, 0.85, material='paint', segments=16,
+        F.cylinder(s, f'{n}Pod{y:+.0f}', (-7.6, y, -0.2), (-2.2, y, -0.2), 0.95, 0.85, material='paint', segments=12,
                    bevel=0.0)
         F.band(s, f'{n}Pod{y:+.0f}', (-3.4, y, 0), (1, 0, 0), 0.5, 'paint2')
         F.box(s, f'{n}Pylon{y:+.0f}', (-4.9, y * 0.72, -0.2), (2.6, 1.6, 0.5), material='paint.graphite', bevel=0.0)
         F.nozzle(s, f'{n}Drive{y:+.0f}', (-8.1, y, -0.2), 0.75, 0.7, material='gunmetal',
-                 glow='glow_drive' if lit else 'dark', segments=16)
+                 glow='glow_drive' if lit else 'dark', segments=12)
     s.detail = 1
     win = []
     for side in (1, -1):
@@ -246,7 +250,7 @@ def shuttle(s, n, stripe='paint2'):
     F.plate(s, f'{n}Wing', [(-3.8, 1.4), (-1.0, 1.4), (-2.2, 2.9), (-3.9, 2.9)], z0=-0.35, thickness=0.3,
             material='paint', chamfer=0.08, bevel=0.03, mirror=True)
     for y in (-0.7, 0.7):
-        F.nozzle(s, f'{n}Drive{y:+.1f}', (-4.7, y, 0.0), 0.45, 0.5, material='gunmetal', glow='dark', segments=14)
+        F.nozzle(s, f'{n}Drive{y:+.1f}', (-4.7, y, 0.0), 0.45, 0.5, material='gunmetal', glow='dark', segments=10)
     s.detail = 1
     win = [((-2.8 + i * 0.9, side * 1.56, 0.35), (0.45, 0.1, 0.3), 0.0) for i in range(5) for side in (1, -1)]
     cluster(s, f'{n}Win', win, 'glow_warm')
@@ -286,15 +290,22 @@ def build_drum(s):
     # harbour-master's dome: a glazed control drum under an ivory cap, mast and dish
     F.cylinder(s, 'Tower', (CX, 0, ROOF_Z1), (CX, 0, 31.2), 6.2, 5.8, material='paint', segments=40, bevel=0.0)
     F.band(s, 'Tower', (CX, 0, 30.0), (0, 0, 1), 1.3, 'glass', inset=0.04, depth=-0.08)
-    F.loft(s, 'TowerCap', [
-        dict(x=CX - 6.4, w=0.05, ht=0.05, hb=0.02, zc=31.2, n=2.0),
-        dict(x=CX - 5.4, w=3.4, ht=1.2, hb=0.02, zc=31.2, n=2.0),
-        dict(x=CX, w=6.4, ht=2.0, hb=0.02, zc=31.2, n=2.0),
-        dict(x=CX + 5.4, w=3.4, ht=1.2, hb=0.02, zc=31.2, n=2.0),
-        dict(x=CX + 6.4, w=0.05, ht=0.05, hb=0.02, zc=31.2, n=2.0),
-    ], material='paint', count=32, bevel=0.0, smooth_angle=70.0)
-    F.cylinder(s, 'Mast', (CX, 0, 32.8), (CX, 0, 40.0), 0.45, 0.25, material='gunmetal', segments=10, bevel=0.0)
-    F.ring(s, 'MastRing', (CX, 0, 36.0), 1.2, 0.12, axis=(0, 0, 1), material='gunmetal', segments=16, sides=6)
+    F.cylinder(s, 'TowerRoof', (CX, 0, 31.2), (CX, 0, 31.8), 6.6, 6.2, material='paint.graphite', segments=40,
+               bevel=0.0)
+    # the lighthouse: the harbour's landmark, a tapered ivory spire with a lit lantern
+    F.cylinder(s, 'Spire', (CX, 0, 31.8), (CX, 0, 40.2), 3.3, 2.5, material='paint', segments=28, bevel=0.0)
+    for zb in (34.0, 37.4):
+        F.band(s, 'Spire', (CX, 0, zb), (0, 0, 1), 0.8, 'paint2', inset=0.04, depth=0.12)
+    F.cylinder(s, 'Gallery', (CX, 0, 40.2), (CX, 0, 40.8), 3.9, 3.9, material='paint.graphite', segments=28,
+               bevel=0.0)
+    F.ring(s, 'GalleryRail', (CX, 0, 41.5), 3.7, 0.08, axis=(0, 0, 1), material='gunmetal', segments=28, sides=4)
+    F.cylinder(s, 'Lantern', (CX, 0, 40.8), (CX, 0, 43.0), 2.3, material='glow_warm', segments=16, bevel=0.0)
+    lmull = [((CX + 2.35 * math.cos(math.radians(45 * k)), 2.35 * math.sin(math.radians(45 * k)), 41.9),
+              (0.28, 0.28, 2.2), 0.0) for k in range(8)]
+    cluster(s, 'LanternMullion', lmull, 'paint.graphite')
+    F.cylinder(s, 'LanternCap', (CX, 0, 43.0), (CX, 0, 44.6), 2.9, 0.5, material='paint', segments=24, bevel=0.0)
+    F.cylinder(s, 'Mast', (CX, 0, 44.6), (CX, 0, 48.6), 0.3, 0.16, material='gunmetal', segments=8, bevel=0.0)
+    F.ring(s, 'MastRing', (CX, 0, 46.4), 0.8, 0.1, axis=(0, 0, 1), material='gunmetal', segments=12, sides=4)
     F.cylinder(s, 'DishMast', (CX - 8.5, 5.5, ROOF_Z1), (CX - 8.5, 5.5, 31.0), 0.4, material='gunmetal', segments=10,
                bevel=0.0)
     F.dish(s, 'Dish', (CX - 8.5, 5.5, 31.0), 2.6, 0.8, axis=(-0.5, 0.4, 1.0), material='gunmetal', face='paint')
@@ -327,11 +338,11 @@ def build_drum_details(s):
     cluster(s, 'TowerWin', tower, 'glow_warm')
     # a cyan market halo round the crown and cyan tech on the tower
     F.ring(s, 'Halo', (CX, 0, ROOF_Z1 + 0.1), 12.9, 0.16, axis=(0, 0, 1), material='glow_cyan', segments=64, sides=6)
-    F.light(s, 'MastTip', (CX, 0, 40.1), 'glow_red', size=0.5)
-    F.beacon(s, 'TowerBeacon', (CX + 2.5, 2.5, 32.4), 'glow_amber', size=0.7)
+    F.light(s, 'MastTip', (CX, 0, 48.7), 'glow_red', size=0.5)
+    F.beacon(s, 'TowerBeacon', (CX + 4.6, 2.4, 31.8), 'glow_amber', size=0.7)
     for k in range(4):
         x, y, _ = polar(5.9, 45 + 90 * k)
-        F.light(s, f'TowerCyan{k}', (x, y, 31.3), 'glow_cyan', size=0.35)
+        F.light(s, f'TowerCyan{k}', (x, y, 31.9), 'glow_cyan', size=0.35)
     F.antenna(s, 'CrownMastA', polar(10.5, 135, ROOF_Z1), 4.0)
     F.antenna(s, 'CrownMastB', polar(10.5, 315, ROOF_Z1), 3.2, tip='glow_green')
     for k in range(4):
@@ -344,7 +355,7 @@ def build_drum_details(s):
 def build_apron(s):
     # the harbour floor: a charcoal apron annulus with an underframe
     ring_body(s, 'Apron', APRON_R0, APRON_R1, APRON_Z0, APRON_Z1, 0, 360, 96, top='paint.graphite',
-              outer='paint.graphite', inner='paint.graphite', bottom='gunmetal', bevel=0.1)
+              outer='paint.graphite', inner='paint.graphite', bottom='gunmetal', bevel=0.0)
     F.ring(s, 'ApronEdge', (CX, 0, APRON_Z1), APRON_R1 - 0.2, 0.22, axis=(0, 0, 1), material='hazard', segments=96,
            sides=6)
     ribs = []
@@ -457,7 +468,7 @@ def gantry(s, name, a, r0, r1, z_top, trolley_t=0.5, load=None):
     rt = r0 + (r1 - r0) * trolley_t
     F.box(s, f'{name}Trolley', polar(rt, a, z_top + 2.0), (2.4, 2.6, 1.0), material='paint2',
           rot_z=math.radians(a), bevel=0.05)
-    F.box(s, f'{name}Cab', polar(rt, a, z_top - 0.3) if False else tuple(Vector(polar(rt, a, z_top - 0.2)) + tang * 1.9),
+    F.box(s, f'{name}Cab', tuple(Vector(polar(rt, a, z_top - 0.2)) + tang * 1.9),
           (1.6, 1.4, 1.2), material='paint', rot_z=math.radians(a), bevel=0.05)
     zl = z_top - 4.5 if load else z_top - 2.0
     F.cylinder(s, f'{name}Line', polar(rt, a, z_top + 0.1), polar(rt, a, zl + 0.6), 0.1, material='gunmetal',
@@ -496,16 +507,21 @@ def build_yards(s):
 def build_ring(s):
     a0, a1 = MOUTH, 360.0 - MOUTH
     ring_body(s, 'Ring', RING_R0, RING_R1, RING_Z0, RING_Z1, a0, a1, 96, top='paint.graphite', outer='paint',
-              inner='paint', bottom='paint.graphite', cap='paint.graphite', bevel=0.15)
+              inner='paint', bottom='paint.graphite', cap='paint.graphite', bevel=0.0)
     F.band(s, 'Ring', (CX, 0, 21.3), (0, 0, 1), 1.1, 'paint2', inset=0.06, depth=0.18)
     # market hall roofs: ivory sectors with charcoal gaps between them (the ring's rhythm in plan)
     n = 22
     span = (a1 - a0) / n
     for k in range(n):
-        b0 = a0 + k * span + 0.9
-        b1 = a0 + (k + 1) * span - 0.9
+        b0 = a0 + k * span + 1.0
+        b1 = a0 + (k + 1) * span - 1.0
+        if is_plaza(k):
+            # market plaza: an open teal-floored square with ivory kiosks (built in the details pass)
+            sector_plate(s, f'Plaza{k}', RING_R0 + 1.6, RING_R1 - 4.2, b0, b1, RING_Z1, 0.35,
+                         material='paint2', steps=3, chamfer=0.08, bevel=0.0)
+            continue
         sector_plate(s, f'Hall{k}', RING_R0 + 1.2, RING_R1 - 3.6, b0, b1, RING_Z1, ROOF_Z1 - RING_Z1,
-                     material='paint', steps=4, chamfer=0.3, bevel=0.05)
+                     material='paint', steps=3, chamfer=0.3, bevel=0.05)
     # teal inlay walk round the outer edge, amber-edged
     ring_body(s, 'TealWalk', RING_R1 - 3.0, RING_R1 - 1.2, RING_Z1, RING_Z1 + 0.2, a0 + 0.6, a1 - 0.6, 96,
               top='paint2', outer='paint2', inner='paint2', bottom='paint2', cap='paint2', bevel=0.0)
@@ -513,8 +529,8 @@ def build_ring(s):
     fend = []
     for k in range(30):
         a = a0 + 3.0 + k * (a1 - a0 - 6.0) / 29
-        x, y, _ = polar(RING_R1 + 1.3, a)
-        fend.append(((x, y, (RING_Z0 + RING_Z1) / 2 + 0.3), (2.8, 1.0, RING_Z1 - RING_Z0 + 0.4), math.radians(a)))
+        x, y, _ = polar(RING_R1 + 0.7, a)
+        fend.append(((x, y, (RING_Z0 + RING_Z1) / 2 + 0.3), (1.6, 1.8, RING_Z1 - RING_Z0 + 0.4), math.radians(a)))
     cluster(s, 'Fenders', fend, 'paint.graphite')
     # ring supports: 16 columns to the apron with knee braces (the old hub's supported bays)
     cols, braces = [], []
@@ -534,7 +550,7 @@ def build_ring(s):
         a = side * (MOUTH + 3.4)
         c = polar((RING_R0 + RING_R1) / 2 + 1.0, a)
         F.box(s, f'Head{side:+d}', (c[0], c[1], (APRON_Z1 + ROOF_Z1) / 2 - 1.0), (RING_R1 - RING_R0 + 1.5, 7.2,
-              ROOF_Z1 - APRON_Z1 - 1.8), material='paint', rot_z=math.radians(a), bevel=0.3)
+              ROOF_Z1 - APRON_Z1 - 1.8), material='paint', rot_z=math.radians(a), bevel=0.15)
         F.band(s, f'Head{side:+d}', (0, 0, 16.0), (0, 0, 1), 1.6, 'hazard', inset=0.06, depth=0.15)
         F.band(s, f'Head{side:+d}', (0, 0, 12.2), (0, 0, 1), 0.8, 'paint2', inset=0.05, depth=0.12)
         F.box(s, f'HeadCap{side:+d}', (c[0], c[1], ROOF_Z1 - 0.4), (RING_R1 - RING_R0 + 0.5, 6.4, 1.0),
@@ -562,8 +578,8 @@ def build_ring_details(s):
     a0, a1 = MOUTH, 360.0 - MOUTH
     skip_heads = lambda a: in_mouth(a) or abs(((a + 180) % 360) - 180) < MOUTH + 7.5  # noqa: E731
     out = []
-    for z in (20.2, 22.7, 24.4, 25.9):
-        out += radial_windows(RING_R1, z, 170, (0.95, 0.55 if z != 22.7 else 0.4), skip=skip_heads)
+    for z in (19.9, 23.2, 25.3):
+        out += radial_windows(RING_R1, z, 170, (0.95, 0.6), skip=skip_heads)
     # the teal band row stays dark on z 21.3, the 22.7 row is a thin strip
     cluster(s, 'RingWinOut', out, 'glow_warm')
     inn = []
@@ -578,13 +594,28 @@ def build_ring_details(s):
     sky = []
     n = 22
     span = (a1 - a0) / n
+    kiosks, klights = [], []
     for k in range(n):
-        for j in range(3):
-            aa = a0 + (k + 0.25 + 0.25 * j) * span
-            for r in (RING_R0 + 3.5, RING_R0 + 6.8, RING_R0 + 10.1):
+        if is_plaza(k):
+            for j in range(3):
+                aa = a0 + (k + 0.28 + 0.22 * j) * span
+                for r in (RING_R0 + 4.0, RING_R0 + 9.0):
+                    x, y, _ = polar(r, aa)
+                    kiosks.append(((x, y, RING_Z1 + 0.35 + 0.7), (1.6, 1.6, 1.4), math.radians(aa)))
+                    klights.append(((x, y, RING_Z1 + 1.8), (1.2, 1.2, 0.14), math.radians(aa)))
+            for j in range(4):
+                aa = a0 + (k + 0.2 + 0.2 * j) * span
+                x, y, _ = polar(RING_R0 + 6.5, aa)
+                klights.append(((x, y, RING_Z1 + 0.4), (0.5, 0.5, 0.12), 0.0))
+            continue
+        for j in range(2):
+            aa = a0 + (k + 0.33 + 0.34 * j) * span
+            for r in (RING_R0 + 3.6, RING_R0 + 7.0, RING_R0 + 10.2):
                 x, y, _ = polar(r, aa)
-                sky.append(((x, y, ROOF_Z1 + 0.02), (1.6, 0.9, 0.12), math.radians(aa)))
+                sky.append(((x, y, ROOF_Z1 + 0.02), (2.2, 1.4, 0.12), math.radians(aa)))
     cluster(s, 'Skylights', sky, 'glow_warm')
+    cluster(s, 'Kiosks', kiosks, 'paint', bevel=0.05)
+    cluster(s, 'KioskLights', klights, 'glow_warm')
     rim = []
     for k in range(90):
         a = a0 + 1.0 + k * (a1 - a0 - 2.0) / 89
@@ -599,10 +630,8 @@ def build_ring_details(s):
         F.antenna(s, f'RingMast{k}', polar(RING_R0 + 1.6, aa, ROOF_Z1), 3.0,
                   tip='glow_red' if aa < 180 else 'glow_green')
     # work lamps on the inner edge lighting the harbour floor
-    for k in range(8):
-        a = 30 + 45 * k
-        if in_mouth(a) or near_spoke(a, 8.0):
-            a += 12.0
+    for k in range(4):
+        a = 45 + 90 * k + 22.0
         x, y, _ = polar(RING_R0 - 0.3, a)
         dx, dy = -(x - CX), -y
         ln = math.hypot(dx, dy)
@@ -620,7 +649,7 @@ def build_spokes(s):
     for a in SPOKES:
         r0, r1 = 12.0, RING_R0 + 1.0
         c = polar((r0 + r1) / 2, a, 24.8)
-        F.box(s, f'Spoke{a:.0f}', c, (r1 - r0, 8.4, 6.2), material='paint', rot_z=math.radians(a), bevel=0.3)
+        F.box(s, f'Spoke{a:.0f}', c, (r1 - r0, 8.4, 6.2), material='paint', rot_z=math.radians(a), bevel=0.15)
         F.band(s, f'Spoke{a:.0f}', polar(22.0, a, 0), (math.cos(math.radians(a)), math.sin(math.radians(a)), 0), 1.2,
                'paint2', inset=0.05, depth=0.14)
         F.band(s, f'Spoke{a:.0f}', polar(31.0, a, 0), (math.cos(math.radians(a)), math.sin(math.radians(a)), 0), 1.2,

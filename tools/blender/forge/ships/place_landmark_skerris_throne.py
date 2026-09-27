@@ -410,58 +410,81 @@ def build_throne(s, windows, lights):
         beams(s, f'BridgeRail{k}', rails, 0.3, material='paint.graphite')
 
 
+def ccw(poly):
+    area = sum(poly[i][0] * poly[(i + 1) % len(poly)][1] - poly[(i + 1) % len(poly)][0] * poly[i][1]
+               for i in range(len(poly)))
+    return poly if area > 0 else list(reversed(poly))
+
+
 def build_skull(s, lights):
-    """The skull prow at +X: a bone-plated cranium on the jaw of the wall, sodium eye pits, a jaw of
-    captured nose cones, two swept-back horns."""
-    cx, cz = 78.0, DECK_Z + 12.0
+    """The skull prow at +X: a plated cranium, and a face mask tilted up at the sky so the chase camera
+    and the top view both meet its stare — sodium fire in dark eye hollows, a nasal pit, cheekbones, a
+    jaw of captured nose cones. Two captured interceptor hulls sweep back from its temples as horns."""
+    cx, cz = 74.0, DECK_Z + 12.0
     F.loft(s, 'Cranium', [
-        dict(x=cx - 22.0, w=16.0, ht=10.0, hb=6.0, zc=cz, n=2.0),
-        dict(x=cx - 12.0, w=21.0, ht=16.0, hb=8.0, zc=cz, n=2.0),
-        dict(x=cx, w=22.0, ht=17.0, hb=9.0, zc=cz, n=2.0),
-        dict(x=cx + 10.0, w=19.0, ht=13.0, hb=10.0, zc=cz - 1.0, n=2.1),
-        dict(x=cx + 16.0, w=14.0, ht=7.0, hb=10.5, zc=cz - 2.5, n=2.4),
-        dict(x=cx + 19.0, w=9.0, ht=3.0, hb=9.0, zc=cz - 4.0, n=2.6),
-    ], material='paint.bone', belly='paint2', back_material='paint2', front_material='dark', count=24, bevel=0.0)
+        dict(x=cx - 22.0, w=11.0, ht=10.0, hb=8.0, zc=cz, n=2.2),
+        dict(x=cx - 14.0, w=16.5, ht=18.0, hb=10.0, zc=cz, n=2.1),
+        dict(x=cx - 4.0, w=18.0, ht=21.0, hb=10.5, zc=cz, n=2.0),
+        dict(x=cx + 4.0, w=17.0, ht=17.0, hb=10.5, zc=cz, n=2.1),
+        dict(x=cx + 9.0, w=14.0, ht=9.0, hb=10.0, zc=cz, n=2.3),
+    ], material='paint.bone', belly='paint2', back_material='paint2', front_material='paint2', count=28, bevel=0.0)
     # plating courses across the dome: the skull grows a course after every raid
-    for k, x in enumerate((cx - 18.0, cx - 13.0, cx - 8.0, cx - 3.0, cx + 2.0)):
+    for k, x in enumerate((cx - 18.0, cx - 13.0, cx - 8.5, cx - 4.0, cx + 0.5)):
         F.band(s, 'Cranium', (x, 0, 0), (1, 0, 0), 0.8 + 0.3 * (k % 2), 'paint.graphite' if k % 2 else 'paint',
                inset=0.1, depth=0.35)
     F.band(s, 'Cranium', (0, 0, 0), (0, 1, 0), 1.6, 'paint2', facing=(0, 0, 1), inset=0.1, depth=0.4)
     for sgn in (1, -1):
-        F.band(s, 'Cranium', (0, sgn * 13.0, 0), (0, 1, 0), 1.0, 'paint.graphite', inset=0.08, depth=0.3)
-    # eye pits: slanted dark sockets on the brow slope, sodium fire in each, heavy black brows
+        F.band(s, 'Cranium', (0, sgn * 11.0, 0), (0, 1, 0), 1.0, 'paint.graphite', inset=0.08, depth=0.3)
+    # the face mask: built flat (u from jaw to brow along +X, v across), then tilted up 45 degrees
+    parts = []
+    face = [(0, -8), (6, -12.5), (13, -15.5), (22, -15.5), (27, -12), (27, 12), (22, 15.5), (13, 15.5), (6, 12.5),
+            (0, 8)]
+    parts.append(F.plate(s, 'Face', ccw(face), z0=0.0, thickness=3.2, material='paint.bone', chamfer=0.6, bevel=0.1))
+    # brow ridge: a heavy black plate over both eyes, notched in the middle
     for sgn in (1, -1):
-        rot = (0.0, math.radians(24), sgn * math.radians(-14))
-        c = Vector((cx + 8.6, sgn * 7.6, cz + 11.6))
-        n = Matrix.Rotation(rot[2], 3, 'Z') @ Matrix.Rotation(rot[1], 3, 'Y') @ Vector((0, 0, 1))
-        F.box(s, f'Socket{sgn:+d}', tuple(c), (8.0, 5.8, 3.0), material='paint2', rot=rot, bevel=0.15)
-        F.box(s, f'Eye{sgn:+d}', tuple(c + n * 1.56), (6.2, 3.6, 0.2), material='glow_amber', rot=rot, bevel=0.0)
-        F.box(s, f'EyeCore{sgn:+d}', tuple(c + n * 1.68), (3.4, 1.4, 0.12), material='glow_warm', rot=rot, bevel=0.0)
-        F.box(s, f'Brow{sgn:+d}', (cx + 5.6, sgn * 9.0, cz + 14.6), (5.0, 11.0, 2.6), material='paint2',
-              rot=(sgn * math.radians(-10), math.radians(18), sgn * math.radians(24)), bevel=0.2, taper=0.8)
-    # nasal pit
-    F.box(s, 'Nasal', (cx + 15.2, 0.0, cz + 2.6), (3.0, 3.6, 4.0), material='dark', rot=(0, math.radians(35), 0),
-          bevel=0.05)
-    # the jaw: a row of captured nose cones as teeth along the lower front, in every paint
+        brow = [(21.5, sgn * 1.2), (24.5, sgn * 1.8), (26.2, sgn * 14.5), (22.0, sgn * 14.8), (19.5, sgn * 12.0)]
+        parts.append(F.plate(s, f'Brow{sgn:+d}', ccw(brow), z0=2.8, thickness=2.6, material='paint2', chamfer=0.5,
+                             bevel=0.08))
+        # eye hollow: a dark angular socket, sodium fire at its heart
+        eye = [(12.5, sgn * 3.0), (14.5, sgn * 2.2), (20.5, sgn * 3.4), (21.0, sgn * 11.5), (17.5, sgn * 12.4),
+               (13.5, sgn * 9.5)]
+        parts.append(F.plate(s, f'Socket{sgn:+d}', ccw(eye), z0=2.9, thickness=0.5, material='dark', bevel=0.0))
+        core = [(15.2, sgn * 5.0), (18.6, sgn * 5.2), (19.0, sgn * 9.2), (16.2, sgn * 9.6)]
+        parts.append(F.plate(s, f'Eye{sgn:+d}', ccw(core), z0=3.25, thickness=0.2, material='glow_amber', bevel=0.0))
+        spark = [(16.4, sgn * 6.4), (17.8, sgn * 6.5), (17.9, sgn * 8.0), (16.6, sgn * 8.2)]
+        parts.append(F.plate(s, f'EyeCore{sgn:+d}', ccw(spark), z0=3.4, thickness=0.15, material='glow_warm',
+                             bevel=0.0))
+        # cheekbone plates
+        cheek = [(5.0, sgn * 9.0), (9.5, sgn * 8.0), (12.0, sgn * 14.0), (7.0, sgn * 13.5)]
+        parts.append(F.plate(s, f'Cheek{sgn:+d}', ccw(cheek), z0=2.9, thickness=1.6, material='paint', chamfer=0.4,
+                             bevel=0.06))
+    nasal = [(8.0, 0.0), (12.8, -2.8), (13.6, 0.0), (12.8, 2.8)]
+    parts.append(F.plate(s, 'Nasal', ccw(nasal), z0=2.9, thickness=0.5, material='dark', bevel=0.0))
+    # the mouth: a dark gap along the jaw edge, teeth of captured nose cones in every paint
+    parts.append(F.plate(s, 'Mouth', ccw([(0.4, -9.0), (4.0, -10.5), (4.0, 10.5), (0.4, 9.0)]), z0=2.9, thickness=0.4,
+                         material='dark', bevel=0.0))
     paints = ['paint.helios', 'paint.navy', 'paint.work', 'paint.bone', 'paint.teal', 'paint.helios', 'paint.work',
               'paint.navy', 'paint.bone']
     for k in range(9):
-        ty = -12.0 + 3.0 * k
-        base = Vector((cx + 17.0 - 0.03 * ty * ty, ty, cz - 8.0))
-        tip = base + Vector((5.5 + 1.2 * rnd(k), 0.0, -4.0 - 1.5 * rnd(k)))
-        F.cylinder(s, f'Tooth{k}', tuple(base), tuple(tip), 1.25, 0.12, material=paints[k], segments=8, bevel=0.0)
-    F.box(s, 'Jaw', (cx + 12.0, 0.0, cz - 10.0), (14.0, 28.0, 3.0), material='paint2', bevel=0.2, taper=0.9)
+        v = -9.6 + 2.4 * k
+        u = 2.2 + 0.012 * v * v
+        ln = 5.0 + 2.0 * rnd(k)
+        parts.append(F.cylinder(s, f'Tooth{k}', (u, v, 3.1), (u - ln * 0.8, v * 1.02, 3.1 - ln * 0.35), 1.0, 0.1,
+                                material=paints[k], segments=8, bevel=0.0))
+    jaw_pos = (cx + 23.0, 0.0, cz - 7.0)
+    place(parts, jaw_pos, yaw=math.pi, pitch=math.radians(45))
+    # under-jaw: a black block joining the mask to the deck, and the cranium's neck plates
+    F.box(s, 'Jaw', (cx + 14.0, 0.0, cz - 9.2), (20.0, 26.0, 5.0), material='paint2', bevel=0.2, taper=0.85)
     # horns: two captured interceptor hulls swept back and up from the temples
     for sgn, make in ((1, 'ash'), (-1, 'navy')):
-        hull(s, f'Horn{sgn:+d}', make, 30.0, 2.6, 2.4, (cx - 18.0, sgn * 20.0, cz + 16.0),
-             yaw=math.pi + sgn * math.radians(-28), pitch=math.radians(26), nose=True, tail=False, bands=2)
-        F.box(s, f'HornRoot{sgn:+d}', (cx - 6.0, sgn * 14.0, cz + 10.0), (8.0, 5.0, 5.0), material='paint2',
+        hull(s, f'Horn{sgn:+d}', make, 32.0, 2.6, 2.4, (cx - 14.0, sgn * 22.0, cz + 18.0),
+             yaw=math.pi + sgn * math.radians(-30), pitch=math.radians(24), nose=True, tail=False, bands=2)
+        F.box(s, f'HornRoot{sgn:+d}', (cx - 2.0, sgn * 14.0, cz + 12.0), (8.0, 5.0, 5.0), material='paint2',
               rot_z=sgn * math.radians(-20), bevel=0.2)
-    # the skull's neck: the wall hulls either side weld into the cranium's flanks
     for sgn in (1, -1):
-        F.box(s, f'Neck{sgn:+d}', (cx - 8.0, sgn * 20.0, DECK_Z + 4.0), (10.0, 8.0, 9.0), material='paint.graphite',
+        F.box(s, f'Neck{sgn:+d}', (cx - 10.0, sgn * 18.0, DECK_Z + 4.0), (12.0, 8.0, 9.0), material='paint.graphite',
               rot_z=sgn * math.radians(25), bevel=0.2)
-    lights.append(((cx + 18.5, 0.0, cz - 3.0), (0.9, 0.9, 0.6), 0.0))
+    lights.append(((cx + 23.5, 0.0, cz - 7.5), (0.9, 0.9, 0.6), 0.0))
 
 
 def build_spars(s, lights):
