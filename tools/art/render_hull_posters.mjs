@@ -3,6 +3,7 @@
 //
 //   node tools/art/render_hull_posters.mjs                 # every player hull
 //   node tools/art/render_hull_posters.mjs ship_kestrel    # one or more hulls
+//   --write-posters-js also rewrites src/ui/hullPosters.js to list every rendered hull
 //
 // Per hull: Cycles hero / side / top (tools/art/render_hull.py), the refit-jig line drawing
 // (render_jig.py + jig_glyph.py) and the instrument-light glyph (holo_glyph.py), published as WebP,
@@ -88,7 +89,8 @@ async function main() {
     writeFileSync(MANIFEST, `${JSON.stringify(manifest, null, 1)}\n`);
   }
   const published = Object.keys(PLAYER_HULLS).filter((id) => manifest.hulls[id]);
-  writePostersJs(published);
+  // src/ui is the ORRERY lane's (AGENTS.md): only rewrite the poster table when asked to.
+  if (process.argv.includes('--write-posters-js')) writePostersJs(published);
   process.stdout.write(`done: ${ids.length} hull(s); ${published.length} published\n`);
 }
 
