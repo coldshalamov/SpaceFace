@@ -25,7 +25,7 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_landmark_skerris_throne'
 COLORS = {
-    'paint': '#2c180f',            # Ashline rust (the raiders' own plate), authored dark
+    'paint': '#22120b',            # Ashline rust (the raiders' own plate), authored dark
     'paint2': '#161516',           # raider black
     'stripe': '#8a4212',           # sodium-orange livery, authored dark
     'hazard': '#8a6a16',
@@ -287,6 +287,8 @@ def build_deck(s):
             if (gx / 80.0) ** 2 + (gy / 64.0) ** 2 > 0.78:
                 continue
             k += 1
+            if k % 2:
+                continue
             w = 7.0 + 5.0 * rnd(k)
             h = 6.0 + 5.0 * rnd(k + 3)
             patches.append((fins[k % len(fins)], (gx + 3.0 * rnd(k + 5), gy + 3.0 * rnd(k + 7), DECK_Z + 0.12),
@@ -332,9 +334,10 @@ def build_bastions(s, lights):
     for i, (x, y, r, top) in enumerate(NODES):
         # a reactor drum stood on end: rust body, black collar, sodium slit ring
         lathe(s, f'Bastion{i}', (x, y), [
-            (DECK_Z - 8.0, r * 0.7), (DECK_Z - 4.0, r, 'paint2'), (DECK_Z, r), (top - 5.0, r, 'paint.graphite'),
+            (DECK_Z - 8.0, r * 0.7), (DECK_Z - 4.0, r, 'paint.graphite'), (DECK_Z, r), (top - 5.0, r, 'paint.graphite'),
             (top - 3.6, r * 1.08, 'glow_amber'), (top - 3.0, r * 1.08, 'paint2'), (top - 1.4, r * 1.08), (top, r * 0.92),
-        ], 'paint', segs=10, phase=0.3 * i, smooth=25.0)
+            ], 'paint2', segs=10, phase=0.3 * i, smooth=25.0)
+        F.band(s, f'Bastion{i}', (x, y, DECK_Z + 5.0), (0, 0, 1), 2.2, 'paint', inset=0.08, depth=0.2)
         turret(s, f'Turret{i}', (x, y, top), math.atan2(y, x) + 0.4 * (rnd(i) - 0.5), sc=1.0 + 0.3 * rnd(i + 1))
         # spikes: welded blade fins round the drum (Ashline)
         blades = []
@@ -419,8 +422,8 @@ def build_throne_parts(s, windows, lights):
             beams(s, f'ArmPylon{sgn:+d}{x:+.0f}', [((x, sgn * 19.0, DECK_Z), (x, sgn * 19.0, DECK_Z + 15.0))], 3.2,
                   material='paint.graphite', h=2.4)
     # the high back: five standing hulls of different makes, tallest in the middle, leaning back
-    back = [('helios', 0.0, 58.0, 8.0), ('navy', 10.5, 46.0, 6.4), ('work', -10.5, 48.0, 6.4), ('ash', 19.0, 34.0, 5.0),
-            ('teal', -19.0, 36.0, 5.0)]
+    back = [('ash', 0.0, 54.0, 8.0), ('navy', 10.5, 50.0, 6.4), ('work', -10.5, 50.0, 6.4), ('helios', 19.0, 44.0, 5.0),
+            ('teal', -19.0, 46.0, 5.0)]
     for k, (make, y, L, W) in enumerate(back):
         obj, m = hull(s, f'Back{k}', make, L, W, W * 0.8, (-27.0 - 0.1 * abs(y), y, DECK_Z + L / 2 - 1.0),
                       pitch=math.radians(90), roll=math.pi, nose=True, tail=False, bands=3)
@@ -433,7 +436,7 @@ def build_throne_parts(s, windows, lights):
             for dy in (-W * 0.3, W * 0.3):
                 windows.append(((p.x + 0.2, p.y + dy, p.z), (0.14, 1.0, 1.3), 0.0))
     # the headrest: a long Ashline hull laid across the top of the back
-    hull(s, 'Headrest', 'ash', 54.0, 4.2, 4.0, (-26.0, 0.0, DECK_Z + 44.0), yaw=math.pi / 2, nose=True, tail=True,
+    hull(s, 'Headrest', 'ash', 54.0, 4.2, 4.0, (-26.0, 0.0, DECK_Z + 46.0), yaw=math.pi / 2, nose=True, tail=True,
          windows=windows, lights=lights, bands=2, drives=2)
     for y in (-14.0, 14.0):
         beams(s, f'HeadrestPost{y:+.0f}', [((-26.0, y, DECK_Z + 26.0), (-26.0, y, DECK_Z + 41.0))], 2.4,
@@ -447,10 +450,10 @@ def build_throne_parts(s, windows, lights):
     blades = []
     for k in range(7):
         a = math.radians(-60 + 20 * k)
-        base = Vector((-27.5, 3.0 * math.sin(a), DECK_Z + 57.0))
+        base = Vector((-27.5, 3.0 * math.sin(a), DECK_Z + 50.5))
         blades.append((base, base + Vector((-1.5, 9.0 * math.sin(a), 8.0 * math.cos(a) + 2.0))))
     beams(s, 'ThroneCrown', blades, 1.0, material='paint2', h=0.5)
-    F.beacon(s, 'ThroneBeacon', (-27.0, 0.0, DECK_Z + 60.0), 'glow_amber', size=2.2)
+    F.beacon(s, 'ThroneBeacon', (-27.0, 0.0, DECK_Z + 53.2), 'glow_amber', size=2.2)
 
 
 def ccw(poly):

@@ -337,6 +337,10 @@ def build_yard(s):
     F.panel(s, 'Annex', (30.0, -25.0), (12.0, 30.0), 'paint.graphite', inset=0.3, depth=-0.3)
     for k in range(4):
         F.vent(s, f'AnnexVent{k}', (30.0, -38.0 + k * 8.0, 6.05), (6.0, 3.6, 0.6), slats=6)
+    aw = [((38.06, -42.0 + i * 1.9, z), (0.14, 1.0, 1.3), 0.0) for i in range(19) for z in (-4.0, -0.6)
+          if (i + int(z)) % 5]
+    aw += [((24.0 + i * 1.9, -44.06, z), (1.0, 0.14, 1.3), 0.0) for i in range(7) for z in (-4.0, -0.6)]
+    cluster(s, 'AnnexWin', aw, 'glow_warm')
     # open casting floor
     F.plate(s, 'Yard', [(42.0, -2.0), (42.0, 44.0), (HX1, 44.0), (HX1, -2.0)], z0=-9.0, thickness=3.0,
             material='paint.graphite', chamfer=0.3, bevel=0.15)
