@@ -614,7 +614,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
     // Every verb has its own anchor on the ship: a centreline part leans toward the verb's own column,
     // and down each column the anchors run in the same order as the labels, at least a finger apart,
     // so no two leaders cross and no two share a point.
-    const minSep = small ? 10 : 18;
+    const minSep = small ? 16 : 18;
     const anchorAt = new Map();
     for (const side of [-1, 1]) {
       let prevY = -Infinity;
@@ -661,7 +661,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
       gatesG.appendChild(gate);
       leads.set(a.spec.id, { band, core, beam, bloom, gate });
       const g = svg('g', { class: 'orr-hrig__mark' });
-      const r = small ? 4.2 : 5.4;
+      const r = small ? 3.5 : 5.4;
       g.appendChild(svg('circle', { cx: f(px), cy: f(py), r, class: 'orr-hrig__mark-ring' }));
       g.appendChild(svg('circle', { cx: f(px), cy: f(py), r: r * 0.42, class: 'orr-hrig__mark-core' }));
       marksG.appendChild(rise(g, 420));
@@ -716,7 +716,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
     // reverse: the retro thrusters fire forward out of the bow's shoulders
     {
       const g = fxGroup('retro');
-      for (const k of ['bowL', 'bowR']) { const [x, y] = at(P[k]); plume(g, x, y, k === 'bowL' ? -12 : 12, S * 0.12, S * 0.013, { core: false }); }
+      for (const k of ['bowL', 'bowR']) { const [x, y] = at(P[k]); plume(g, x, y, k === 'bowL' ? -12 : 12, Math.max(10, Math.min(S * 0.12, y - (cy - Rin) - 6)), S * 0.013, { core: false }); }
     }
     // steer: the hull's rim of light swings through the turn; an arc ahead of the bow shows it
     for (const [key, sign] of [['steerL', -1], ['steerR', 1]]) {
@@ -742,7 +742,9 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
     {
       const [wx, wy] = at(P.hardpoint);
       const g = fxGroup('fire');
-      const reach = S * 0.11;
+      // the streaks stop short of the berth's inner edge, so BOW stays readable
+      const stop = cy - Rin + 8;
+      const reach = Math.max(8, Math.min(S * 0.11, wy - 8 - stop));
       for (const off of [-S * 0.014, S * 0.014]) {
         const d = `M ${f(wx + off)} ${f(wy - 8)} L ${f(wx + off)} ${f(wy - 8 - reach)}`;
         g.appendChild(svg('path', { d, class: 'orr-hrig__fx-bloom', style: 'stroke-width:6px' }));

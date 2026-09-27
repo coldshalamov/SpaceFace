@@ -69,11 +69,11 @@ html.sf-reduce-motion .orr-hi-svg .orr-hi__pulse, html.sf-reduce-motion .orr-hi-
   background:radial-gradient(closest-side, rgb(5 7 10 / .84), rgb(5 7 10 / .62) 60%, rgb(5 7 10 / 0)); }
 .orr-hloop__body { all:unset; box-sizing:border-box; position:absolute; left:0; top:0; z-index:3; width:var(--chip, 46px); height:var(--chip, 46px);
   margin:calc(var(--chip, 46px) / -2) 0 0 calc(var(--chip, 46px) / -2); border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; color:rgb(${HOT}); }
-.orr-hloop__body::before { content:""; position:absolute; inset:0; border-radius:50%; background:rgb(${BONE} / .12); box-shadow:inset 0 0 0 2px rgb(${BONE} / .72), 0 0 0 5px rgb(5 7 10 / .9);
+.orr-hloop__body::before { content:""; position:absolute; inset:0; border-radius:50%; background:rgb(8 11 16); box-shadow:inset 0 0 0 2px rgb(${BONE} / .78), 0 0 0 5px rgb(5 7 10);
   transition:box-shadow .16s linear, background .16s linear; }
-.orr-hloop__glyph { position:relative; z-index:1; width:70%; height:70%; display:block; }
+.orr-hloop__glyph { position:relative; z-index:1; width:52%; height:52%; display:block; }
 .orr-hloop__glyph svg { width:100%; height:100%; display:block; }
-.orr-hloop__body:hover::before { box-shadow:inset 0 0 0 2px rgb(255 255 255), 0 0 0 5px rgb(5 7 10 / .9); background:rgb(${BONE} / .2); }
+.orr-hloop__body:hover::before { box-shadow:inset 0 0 0 2px rgb(255 255 255), 0 0 0 5px rgb(5 7 10); background:rgb(22 25 30); }
 .orr-hloop__body:focus-visible { outline:none; }
 .orr-hloop__body:focus-visible::before { box-shadow:inset 0 0 0 3px rgb(255 255 255), 0 0 0 5px rgb(5 7 10 / .9), 0 0 14px rgb(255 250 236 / .5); }
 .orr-hloop__body[aria-selected="true"]::before { background:rgb(${HOT}); box-shadow:0 0 0 5px rgb(5 7 10 / .9), 0 0 18px rgb(255 244 222 / .5); }
@@ -122,6 +122,19 @@ html.sf-reduce-motion .orr-hloop__orbit-pulse, html.sf-reduce-motion .orr-hloop_
 .orr-hdial__g-val { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250; font-weight:250; font-size:clamp(30px, 2.1vw, 48px);
   line-height:1; letter-spacing:-.01em; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
 .orr-hdial__g-val small { font-size:.5em; margin-left:4px; ${LABEL} letter-spacing:.14em; color:rgb(${BONE} / .76); }
+.orr-hdial .orr-hdial__gain { fill:none; stroke:rgb(${HOT}); stroke-linecap:butt; }
+.orr-hdial .orr-hdial__loss { fill:none; stroke:rgb(5 7 10 / .86); stroke-linecap:butt; }
+.orr-hdial .orr-hdial__ref { fill:rgb(5 7 10); stroke:rgb(${BONE} / .9); stroke-width:2px; }
+.orr-hdial__g-val.is-long { font-size:clamp(26px, 1.6vw, 36px); }
+.orr-hdial__g-delta { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 420; font-size:clamp(13px, .72vw, 17px); letter-spacing:.02em;
+  color:rgb(${BONE} / .74); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.orr-hdial__g-delta.is-better { color:rgb(255 255 255); }
+.orr-hdial__g-delta.is-worse { color:rgb(${BONE} / .74); }
+.orr-hdial__vs { position:absolute; z-index:2; transform:translate(-50%, -100%); display:flex; align-items:center; gap:10px; white-space:nowrap; pointer-events:none; }
+.orr-hdial__vs-k { ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.24em; color:rgb(${BONE} / .76); }
+.orr-hdial__vs b { ${LABEL} font-size:clamp(12px, .64vw, 16px); letter-spacing:.2em; color:rgb(${HOT}); }
+.orr-hdial__vs-bead { display:block; width:9px; height:9px; border-radius:50%; box-shadow:inset 0 0 0 2px rgb(${BONE} / .9); background:rgb(5 7 10); }
+.orr-hdial__art.is-swing { transition:none; transform:translateX(18px); opacity:0; }
 .orr-hdial.is-off > * { display:none; }
 
 /* ---------------------------------------------------------------- PRICE DIAL */
@@ -141,9 +154,9 @@ html.sf-reduce-motion .orr-hloop__orbit-pulse, html.sf-reduce-motion .orr-hloop_
 .orr-hpdial__name { ${LABEL} font-size:clamp(12px, .64vw, 16px); letter-spacing:.2em; color:rgb(${HOT}); }
 .orr-hpdial__hint { position:absolute; transform:translateX(-50%); ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.24em; color:rgb(${BONE} / .74); white-space:nowrap; pointer-events:none; }
 .orr-hpdial .orr-hi-svg text.orr-hpdial__decade { font-family:var(--dp-face-label, "Archivo"); font-size:12px; font-weight:650; letter-spacing:.12em; fill:rgb(${BONE} / .82); }
-.orr-hpdial .orr-hpdial__good { stroke:rgb(5 7 10 / .92); stroke-width:2px; stroke-linecap:butt; }
-.orr-hpdial .orr-hpdial__good.is-foe { stroke:rgb(255 90 70 / .9); }
-.orr-hpdial .orr-hpdial__good.is-out { stroke:rgb(5 7 10 / .28); }
+.orr-hpdial .orr-hpdial__good { stroke:rgb(${BONE} / .78); stroke-width:2px; stroke-linecap:butt; }
+.orr-hpdial .orr-hpdial__good.is-foe { stroke:rgb(255 110 90 / .95); }
+.orr-hpdial .orr-hpdial__good.is-out { stroke:rgb(${BONE} / .18); }
 .orr-hpdial .orr-hpdial__good.is-chosen { stroke:rgb(255 255 255); stroke-width:3px; }
 .orr-hpdial .orr-hpdial__index { stroke:rgb(${HOT}); stroke-width:2.5px; stroke-linecap:round; }
 .orr-hpdial .orr-hpdial__index-bloom { stroke:rgb(255 244 222 / .22); stroke-width:10px; stroke-linecap:round; }
@@ -182,7 +195,6 @@ html.sf-reduce-motion .orr-hmix__rockart { animation:none; }
 .orr-hmix__lbl.is-chosen .orr-hmix__lbl-name { color:rgb(255 255 255); font-weight:600; }
 .orr-hmix__lbl.is-chosen .orr-hmix__lbl-pc { color:rgb(${HOT}); }
 .orr-hmix.is-small .orr-hmix__centre > b { font-size:14px; white-space:nowrap; }
-.orr-hmix.is-small .orr-hmix__centre > span:last-child { display:none; }
 .orr-hmix.is-off > * { display:none; }
 
 `;
@@ -264,7 +276,7 @@ export function keyGlyph(label, { small = false } = {}) {
 // the trade that crosses it, the rock you mine, the wrench you refit with, the recovery arrow, the
 // reticle you track by.
 export const LOOP_GLYPHS = Object.freeze({
-  dock: '<circle cx="12" cy="8.6" r="5.4"/><path d="M9.4 8.6h5.2M12 14v2"/><path d="M12 17.4 14.8 22 12 21 9.2 22Z"/>',
+  dock: '<path d="M8.4 15.6a6 6 0 1 1 7.2 0"/><path d="M12 21.5V9.8M9.2 12.6 12 9.8l2.8 2.8"/>',
   trade: '<path d="M5 9h13.5l-3.5-3.5"/><path d="M19 15H5.5L9 18.5"/><circle cx="12" cy="12" r="1.4"/>',
   mine: '<path d="m5 15.5 2.6-6.2 6-2.3 5 3.6-.8 6.2-6.3 2.4Z"/><path d="m13.6 7 4.6-4.4M9.5 12.5l3 2"/>',
   refit: '<path d="M14.8 4.4a4.2 4.2 0 0 0-5 5.5L4.2 15.5l4.3 4.3 5.6-5.6a4.2 4.2 0 0 0 5.5-5l-2.8 2.8-3.1-.4-.4-3.1Z"/>',
@@ -453,7 +465,7 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
     const small = W < 900 || H < 480;
     host.classList.toggle('is-small', small);
     const bandW = small ? 12 : 14;
-    const chip = small ? 38 : 46;
+    const chip = small ? 44 : Math.round(Math.max(56, Math.min(72, H * 0.066)));
     // the widest name on the ring decides how much room the ring leaves for its words
     let nameW = 0;
     for (const nm of names) nameW = Math.max(nameW, nm.offsetWidth || 0);
@@ -561,11 +573,12 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
 // HULL DIAL
 
 const GAUGES = Object.freeze([
-  { key: 'hull', name: 'Hull', fmt: (s) => String(s.hull) },
-  { key: 'shield', name: 'Shield', fmt: (s) => String(s.shield) },
-  { key: 'handling', name: 'Handling', fmt: (s) => (s.handling != null ? s.handling.toFixed(2) : '-') },
-  { key: 'cargo', name: 'Cargo', fmt: (s) => String(s.cargo), unit: 'u' },
-  { key: 'price', name: 'Price', fmt: (s) => (s.price ? s.price.toLocaleString('en-US') : '0'), unit: 'cr' },
+  // price is what the hull costs: lower is the better side of this gauge
+  { key: 'price', name: 'Price', fmt: (v) => Math.round(v).toLocaleString('en-US'), unit: 'cr', lowerIsBetter: true },
+  { key: 'handling', name: 'Handling', fmt: (v) => v.toFixed(2) },
+  { key: 'cargo', name: 'Cargo', fmt: (v) => Math.round(v).toLocaleString('en-US'), unit: 'u' },
+  { key: 'hull', name: 'Hull', fmt: (v) => Math.round(v).toLocaleString('en-US') },
+  { key: 'shield', name: 'Shield', fmt: (v) => Math.round(v).toLocaleString('en-US') },
 ]);
 
 /**
@@ -581,7 +594,26 @@ export function gaugeFraction(key, ship, maxima) {
   return Math.max(0, Math.min(1, Math.sqrt(v / m)));
 }
 
-/** @param {HTMLElement} host @param {{ maxima: object }} o */
+/** The signed difference the chosen hull makes against the pinned one, as a player reads it. */
+export function gaugeDelta(gd, chosen, ref) {
+  const a = Number(chosen && chosen[gd.key]) || 0;
+  const b = Number(ref && ref[gd.key]) || 0;
+  const d = a - b;
+  const better = gd.lowerIsBetter ? d < 0 : d > 0;
+  const same = Math.abs(d) < (gd.key === 'handling' ? 0.005 : 0.5);
+  const abs = Math.abs(d);
+  const txt = gd.key === 'handling' ? abs.toFixed(2) : Math.round(abs).toLocaleString('en-US');
+  return { d, better, same, text: same ? 'same' : `${d > 0 ? '+' : '−'}${txt}${gd.unit ? ' ' + gd.unit : ''}` };
+}
+
+/**
+ * The chosen hull stands in a dial of five arc gauges; the player's own hull is PINNED on every gauge
+ * as a dim bead, so each arc reads the difference: the stretch between the pinned bead and the chosen
+ * head lights bone where the chosen hull is better and stays an unlit outline where it is worse (a
+ * lower number is not a threat, so never red), with the signed difference under each figure.
+ * `pinned` re-pins from outside (the screen's Pin verb, key C).
+ * @param {HTMLElement} host @param {{ maxima: object }} o
+ */
 export function createHullDial(host, { maxima = {} } = {}) {
   const doc = canDraw(host);
   const inert = { set() {}, dispose() {} };
@@ -605,34 +637,50 @@ export function createHullDial(host, { maxima = {} } = {}) {
     const num = doc.createElement('span');
     val.appendChild(num);
     if (gd.unit) { const u = doc.createElement('small'); u.textContent = gd.unit; val.appendChild(u); }
-    g.append(name, val);
-    return { g, num };
+    const delta = doc.createElement('span'); delta.className = 'orr-hdial__g-delta';
+    g.append(name, val, delta);
+    return { g, num, delta };
   });
   host.append(pool, under, art, tier, over, ...labels.map((l) => l.g));
 
   let ship = null;
+  let ref = null;
   let geo = null;
   let arrived = false;
   const fills = GAUGES.map(() => null);
+  const refFrac = GAUGES.map(() => 0);
   const springs = GAUGES.map((_, i) => createSpring({ value: 0, preset: 'settle', onUpdate: (v) => paintFill(i, v) }));
 
-  // five gauges round the dial, each 56 degrees, starting at the upper left
+  // five gauges round the dial, each 56 degrees, the first centred on the crown
   const span = 56;
   const gapDeg = 16;
-  const startOf = (i) => -142 + i * (span + gapDeg);
+  const startOf = (i) => -span / 2 + i * (span + gapDeg);
 
   function paintFill(i, v) {
     const fl = fills[i];
     if (!fl || !geo) return;
     const { cx, cy, R } = geo;
     const a0 = startOf(i);
-    const a1 = a0 + span * Math.max(0.001, v);
-    const d = arcD(cx, cy, R, a0, a1);
-    fl.lit.setAttribute('d', d);
-    fl.bloom.setAttribute('d', d);
-    const [bx, by] = polar(cx, cy, R, a1);
+    const at = (t) => a0 + span * Math.max(0.001, Math.min(1, t));
+    const r = refFrac[i];
+    const lo = Math.min(v, r);
+    const hi = Math.max(v, r);
+    const gd = GAUGES[i];
+    // the shared stretch (both hulls reach it) is lit; the difference is the gain or the shortfall
+    const base = arcD(cx, cy, R, a0, at(lo));
+    fl.lit.setAttribute('d', base);
+    fl.bloom.setAttribute('d', base);
+    const diff = hi - lo > 0.004 ? arcD(cx, cy, R, at(lo), at(hi)) : '';
+    const better = gd.lowerIsBetter ? v < r : v > r;
+    fl.gain.setAttribute('d', better ? diff : '');
+    fl.gainBloom.setAttribute('d', better ? diff : '');
+    fl.loss.setAttribute('d', better ? '' : diff);
+    const [bx, by] = polar(cx, cy, R, at(v));
     fl.bead.setAttribute('cx', f(bx));
     fl.bead.setAttribute('cy', f(by));
+    const [rx, ry] = polar(cx, cy, R, at(r));
+    fl.ref.setAttribute('cx', f(rx));
+    fl.ref.setAttribute('cy', f(ry));
   }
 
   function layout() {
@@ -641,10 +689,20 @@ export function createHullDial(host, { maxima = {} } = {}) {
     if (!ship || W < 300 || H < 260) { host.classList.add('is-off'); geo = null; return; }
     host.classList.remove('is-off');
     const small = W < 620 || H < 460;
-    const R = Math.max(100, Math.min(H * 0.36, (W - (small ? 230 : 330)) / 2));
+    host.classList.toggle('is-small', small);
+    const bandW = small ? 12 : 16;
+    // the readings stand outside the ring, so the ring leaves them room on both sides
+    let R = Math.min(H * 0.36, H / 2 - bandW / 2 - 30 - 80);
+    GAUGES.forEach((_, i) => {
+      const mid = startOf(i) + span / 2;
+      const sn = Math.abs(Math.sin((mid * Math.PI) / 180));
+      if (sn < 0.3) return;
+      const w = labels[i].g.offsetWidth || (small ? 90 : 130);
+      R = Math.min(R, (W / 2 - 8 - w) / sn - bandW / 2 - 30);
+    });
+    R = Math.max(96, R);
     const cx = W / 2;
     const cy = H / 2;
-    const bandW = small ? 12 : 16;
     geo = { W, H, R, cx, cy, bandW, small };
     under.setAttribute('viewBox', `0 0 ${W} ${H}`);
     over.setAttribute('viewBox', `0 0 ${W} ${H}`);
@@ -654,39 +712,41 @@ export function createHullDial(host, { maxima = {} } = {}) {
     const pd = R * 2.9;
     Object.assign(pool.style, { left: `${f(cx - pd / 2)}px`, top: `${f(cy - pd / 2)}px`, width: `${f(pd)}px`, height: `${f(pd)}px` });
     const g = svg('g', {});
-    // the gauge tracks: five bands with ticks cut through, a quiet inner ring
     GAUGES.forEach((_, i) => bandRing(g, cx, cy, R, bandW, { a: 0.3, notches: 40, from: startOf(i), to: startOf(i) + span }));
     const drift = svg('g', { class: 'orr-drift orr-drift--rev', style: `transform-origin:${f(cx)}px ${f(cy)}px; --orr-drift-s:720s` });
     drift.appendChild(svg('path', { d: ticksD(cx, cy, R + bandW / 2 + 16, 120, { len: 3, major: 10, majorLen: 8, inward: true }), class: 'orr-hi__tick', style: 'stroke:rgb(236 230 216 / .3)' }));
     g.appendChild(drift);
     under.appendChild(rise(g, 0, arriveNow));
-    // the fills: a lit core over its bloom, a bead at the value
     GAUGES.forEach((_, i) => {
       const grp = svg('g', {});
       const bloom = svg('path', { d: '', class: 'orr-hi__lit-bloom', style: `stroke-width:${bandW + 8}px` });
       const lit = svg('path', { d: '', class: 'orr-hi__lit', style: `stroke-width:${Math.round(bandW * 0.42)}px` });
+      // the gain: a full-width lit band; the shortfall: the band's outline only
+      const gainBloom = svg('path', { d: '', class: 'orr-hi__lit-bloom', style: `stroke-width:${bandW + 14}px; stroke:rgb(255 244 222 / .3)` });
+      const gain = svg('path', { d: '', class: 'orr-hdial__gain', style: `stroke-width:${bandW}px` });
+      const loss = svg('path', { d: '', class: 'orr-hdial__loss', style: `stroke-width:${bandW - 3}px` });
+      const ref = svg('circle', { r: small ? 5 : 6.5, class: 'orr-hdial__ref' });
       const bead = svg('circle', { r: small ? 4 : 5.5, fill: 'rgb(255 253 246)' });
-      grp.append(bloom, lit, bead);
+      grp.append(bloom, lit, gainBloom, gain, loss, ref, bead);
       over.appendChild(grp);
-      fills[i] = { bloom, lit, bead };
-      // the gauge's name and figure stand outside its arc's middle
+      fills[i] = { bloom, lit, gain, gainBloom, loss, ref, bead };
       const mid = startOf(i) + span / 2;
       const [lx, ly] = polar(cx, cy, R + bandW / 2 + 30, mid);
       const lab = labels[i].g;
       const a = ((mid % 360) + 360) % 360;
       const left = a > 180;
-      // the label's corner nearest the ring sits on the anchor, so the words never cross the arc
       const upper = a < 90 || a > 270;
-      const bottom = a > 150 && a < 210;
-      lab.classList.toggle('is-left', left && !bottom);
-      lab.style.alignItems = bottom ? 'center' : '';
-      lab.style.left = left && !bottom ? 'auto' : `${f(lx)}px`;
-      lab.style.right = left && !bottom ? `${f(W - lx)}px` : 'auto';
+      const crown = a < 20 || a > 340;
+      const keel = a > 160 && a < 200;
+      const centred = crown || keel;
+      lab.classList.toggle('is-left', left && !centred);
+      lab.style.alignItems = centred ? 'center' : '';
+      lab.style.left = left && !centred ? 'auto' : `${f(lx)}px`;
+      lab.style.right = left && !centred ? `${f(W - lx)}px` : 'auto';
       lab.style.top = `${f(ly)}px`;
-      lab.style.transform = bottom ? 'translate(-50%, 0)' : upper ? 'translateY(-100%)' : 'none';
+      lab.style.transform = crown ? 'translate(-50%, -100%)' : keel ? 'translate(-50%, 0)' : upper ? 'translateY(-100%)' : 'none';
       rise(lab, 200 + i * 60, arriveNow);
     });
-    // the render: the hero three-quarter where it exists, else the class numeral
     const url = helpHullArt(ship.id);
     if (url) {
       const aw = R * 2.75;
@@ -704,21 +764,36 @@ export function createHullDial(host, { maxima = {} } = {}) {
     springs.forEach((sp, i) => paintFill(i, sp.value));
   }
 
+
   const obs = observe(host, layout);
   return {
-    set({ ship: next = null, swing = false } = {}) {
+    set({ ship: next = null, pinned = null, swing = false } = {}) {
       ship = next;
+      if (pinned) ref = pinned;
       if (!ship) { obs.schedule(); return; }
+      if (!ref) ref = ship;
       const url = helpHullArt(ship.id);
-      if (url && art.getAttribute('src') !== url) { art.classList.remove('is-ready'); art.src = url; }
+      if (url && art.getAttribute('src') !== url) {
+        art.classList.remove('is-ready');
+        art.src = url;
+        if (swing && !reducedMotion()) { art.classList.add('is-swing'); setTimeout(() => art.classList.remove('is-swing'), 30); }
+      }
       tierNum.textContent = `T${ship.tier}`;
       tierRole.textContent = String(ship.role || '').replace(/_/g, ' ');
       GAUGES.forEach((gd, i) => {
+        refFrac[i] = gaugeFraction(gd.key, ref, maxima);
         springs[i].set(gaugeFraction(gd.key, ship, maxima));
+        paintFill(i, springs[i].value);
         const num = labels[i].num;
-        const raw = gd.key === 'handling' ? null : Number(ship[gd.key]) || 0;
-        if (raw == null) num.textContent = gd.fmt(ship);
-        else rollTo(num, raw);
+        const v = Number(ship[gd.key]) || 0;
+        num.parentElement.classList.toggle('is-long', gd.fmt(v).length >= 5);
+        if (gd.key === 'handling') num.textContent = gd.fmt(v);
+        else rollTo(num, v);
+        const dl = gaugeDelta(gd, ship, ref);
+        const el = labels[i].delta;
+        el.textContent = ref.id === ship.id ? 'pinned' : dl.text;
+        el.classList.toggle('is-better', ref.id !== ship.id && !dl.same && dl.better);
+        el.classList.toggle('is-worse', ref.id !== ship.id && !dl.same && !dl.better);
       });
       obs.schedule();
     },
@@ -726,7 +801,7 @@ export function createHullDial(host, { maxima = {} } = {}) {
       obs.stop();
       springs.forEach((s) => s.stop());
       host.textContent = '';
-      host.classList.remove('orr-hdial', 'is-off');
+      host.classList.remove('orr-hdial', 'is-off', 'is-small');
     },
   };
 }
@@ -848,15 +923,15 @@ export function createPriceDial(host, { items = [], glyph = () => '', onPick = (
         const p = dec * k;
         if (p < P_MIN || p > P_MAX) continue;
         const a = priceAngle(p);
-        const [x0, y0] = polar(cx, cy, R + bandW / 2, a);
-        const [x1, y1] = polar(cx, cy, R + bandW / 2 + (k === 1 ? 12 : 6), a);
+        const [x0, y0] = polar(cx, cy, R - bandW / 2, a);
+        const [x1, y1] = polar(cx, cy, R - bandW / 2 - (k === 1 ? 12 : 6), a);
         (k === 1 ? major : minor).push(`M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)}`);
       }
     }
     turnG.appendChild(svg('path', { d: minor.join(' '), class: 'orr-hi__tick' }));
     turnG.appendChild(svg('path', { d: major.join(' '), class: 'orr-hi__tick orr-hi__tick--major' }));
     for (const [p, t] of [[10, '10'], [100, '100'], [1000, '1k'], [10000, '10k']]) {
-      const [x, y] = polar(cx, cy, R + bandW / 2 + 28, priceAngle(p));
+      const [x, y] = polar(cx, cy, R - bandW / 2 - 26, priceAngle(p));
       const tx = svg('text', { x: f(x), y: f(y), 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'orr-hpdial__decade' });
       tx.textContent = t;
       turnG.appendChild(tx);
@@ -866,14 +941,14 @@ export function createPriceDial(host, { items = [], glyph = () => '', onPick = (
     const shown = new Set(visible().map((c) => c.id));
     for (const c of byPrice) {
       const a = priceAngle(c.basePrice);
-      const [x0, y0] = polar(cx, cy, R - bandW / 2, a);
-      const [x1, y1] = polar(cx, cy, R + bandW / 2, a);
+      const [x0, y0] = polar(cx, cy, R + bandW / 2 + 2, a);
+      const [x1, y1] = polar(cx, cy, R + bandW / 2 + 9, a);
       const el = svg('path', { d: `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)}`, class: 'orr-hpdial__good' + (shown.has(c.id) ? '' : ' is-out') + (c.legality === 'contraband' ? ' is-foe' : '') });
       turnG.appendChild(el);
       goodEls.set(c.id, el);
     }
     swingEls = {
-      bloom: svg('path', { d: '', class: 'orr-hi__lit-bloom', style: `stroke-width:${bandW + 12}px` }),
+      bloom: svg('path', { d: '', class: 'orr-hi__lit-bloom', style: 'stroke-width:0' }),
       lit: svg('path', { d: '', class: 'orr-hi__lit', style: `stroke-width:${Math.round(bandW * 0.36)}px` }),
     };
     turnG.append(swingEls.bloom, swingEls.lit);
@@ -884,7 +959,7 @@ export function createPriceDial(host, { items = [], glyph = () => '', onPick = (
     const drift = svg('g', { class: 'orr-drift orr-drift--rev', style: `transform-origin:${f(cx)}px ${f(cy)}px; --orr-drift-s:800s` });
     drift.appendChild(svg('path', { d: ticksD(cx, cy, R * 0.62 - 6, 72, { len: 3, major: 6, majorLen: 7, inward: true }), class: 'orr-hi__tick', style: 'stroke:rgb(236 230 216 / .3)' }));
     under.appendChild(drift);
-    const [ix0, iy0] = polar(cx, cy, R - bandW / 2 - 16, 0);
+    const [ix0, iy0] = polar(cx, cy, R - bandW / 2 - 4, 0);
     const [ix1, iy1] = polar(cx, cy, R + bandW / 2 + 40, 0);
     over.appendChild(svg('path', { d: `M ${f(ix0)} ${f(iy0)} L ${f(ix1)} ${f(iy1)}`, class: 'orr-hpdial__index-bloom' }));
     over.appendChild(svg('path', { d: `M ${f(ix0)} ${f(iy0)} L ${f(ix1)} ${f(iy1)}`, class: 'orr-hpdial__index' }));
@@ -1122,10 +1197,10 @@ export function createOreMix(host, { asteroids = [], ores = [], onPickRock = () 
       rise(b, 120 + i * 50, arriveNow);
     });
     // the open type's rock fills the hub; its words stand under it, inside the ring
-    const rs = R * (small ? 1.5 : 1.72);
-    Object.assign(rockImg.style, { left: `${f(cx - rs / 2)}px`, top: `${f(cy - rs / 2 - R * (small ? 0.16 : 0.1))}px`, width: `${f(rs)}px`, height: `${f(rs)}px` });
+    const rs = R * (small ? 1.3 : 1.72);
+    Object.assign(rockImg.style, { left: `${f(cx - rs / 2)}px`, top: `${f(cy - rs / 2 - R * (small ? 0.2 : 0.1))}px`, width: `${f(rs)}px`, height: `${f(rs)}px` });
     centre.style.left = `${f(cx)}px`;
-    centre.style.top = `${f(cy + R * (small ? 0.5 : 0.58))}px`;
+    centre.style.top = `${f(cy + R * (small ? 0.46 : 0.58))}px`;
     centre.style.maxWidth = `${f(R * 1.3)}px`;
     arrived = true;
     paintMix(false);

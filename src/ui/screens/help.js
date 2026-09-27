@@ -838,12 +838,36 @@ export const helpScreen = {
       if (s.tier !== tier) { tier = s.tier; items.push({ head: 'Tier ' + tier }); }
       items.push({ id: s.id, name: s.name, figure: s.role.replace(/_/g, ' '), search: s.name + ' ' + (s.role || '') });
     }
+    // the dial reads every hull against a pinned one: the player's own until they pin another (C)
+    if (!this._pin || !sorted.some((s) => s.id === this._pin)) this._pin = playerHullId(ctx && ctx.state);
     const pick = (id, { focus = false } = {}) => {
       if (!sorted.some((s) => s.id === id)) return;
       this._ship = id;
       lad.choose(id, { focus });
       paint(true);
     };
+    const pin = () => {
+      if (this._pin === this._ship) return;
+      this._pin = this._ship;
+      cue('confirm');
+      markPin();
+      paint(false);
+    };
+    const markPin = () => {
+      for (const b of lad.buttons) {
+        let tag = b.querySelector('.orr-help-ladder__pin');
+        const on = b.dataset.id === this._pin;
+        if (on && !tag) { tag = el('span', 'orr-help-ladder__pin', 'pinned'); b.querySelector('.orr-help-ladder__name').appendChild(tag); }
+        if (!on && tag) tag.remove();
+      }
+    };
+    const onKey = (ev) => {
+      if (ev.code !== 'KeyC' || ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      const t = ev.target;
+      if (t && typeof t.closest === 'function' && t.closest('input, textarea, select, [contenteditable="true"], [data-text-input]')) return;
+      pin();
+    };
+    document.addEventListener('keydown', onKey);
     const input = this._search(side, 'Search ships…', (qq) => { const n = lad.filter(qq); empty.hidden = n > 0; });
     const lad = ladder({ items, ariaLabel: 'Ships', chosenId: this._ship, onPick: pick, cls: 'orr-help-ladder--ships' });
     const empty = el('p', 'k-empty orr-help-empty', 'No ship matches that search.');
@@ -853,10 +877,15 @@ export const helpScreen = {
     const reading = el('div', 'orr-help-reading');
     stage.append(dialHost, reading);
     const dial = createHullDial(dialHost, { maxima: fleetMaxima(SHIPS) });
+    const pinBtn = el('button', 'orr-help-verb');
+    pinBtn.type = 'button';
+    pinBtn.dataset.action = 'help-pin-hull';
+    pinBtn.addEventListener('click', pin);
     const paint = (swing) => {
       const s = SHIPS.find((x) => x.id === this._ship);
       if (!s) return;
-      dial.set({ ship: s, swing });
+      const pinned = SHIPS.find((x) => x.id === this._pin) || s;
+      dial.set({ ship: s, pinned, swing });
       reading.innerHTML = '';
       const name = el('h2', 'orr-help-reading__name', s.name);
       decorateEntityNode(name, 'hull:' + s.id);
@@ -870,13 +899,24 @@ export const helpScreen = {
         ['Boost', s.boost && s.boost.max ? `${s.boost.max} · dash every ${s.boost.dashCooldown}s` : ''], ['Slots', slots],
         ['Price', s.price ? fmtPrice(s.price) + ' cr' : 'Free (the starter)'],
       ]));
+      // what the dial measures against, and the Pin verb that changes it
+      const isPinned = s.id === this._pin;
+      const vsLine = el('p', 'orr-help-reading__vs');
+      vsLine.append(el('i', 'orr-help-reading__vs-bead'), el('span', '', isPinned ? 'Pinned: every hull reads against ' : 'The dial reads against '), el('b', '', pinned.name));
+      reading.appendChild(vsLine);
+      pinBtn.textContent = '';
+      pinBtn.append(el('span', 'orr-help-verb__word', isPinned ? 'Pinned for comparison' : 'Pin for comparison'), keyGlyph('C', { small: true }));
+      pinBtn.setAttribute('aria-disabled', String(isPinned));
+      pinBtn.setAttribute('aria-label', isPinned ? `${s.name} is pinned: every hull reads against it` : `Pin ${s.name}: read every hull against it (C)`);
+      reading.appendChild(pinBtn);
       if (swing && !reducedMotion()) decrypt(name, s.name, { duration: 240 });
     };
     if (q) { const n = lad.filter(q); empty.hidden = n > 0; }
+    markPin();
     paint(false);
     syncScrollExtent(lad.el);
     void input;
-    return { dispose: () => dial.dispose() };
+    return { dispose: () => { document.removeEventListener('keydown', onKey); dial.dispose(); } };
   },
 
   // ---------------------------------------------------------------- COMMODITIES: the price scale

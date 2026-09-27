@@ -190,6 +190,21 @@ ${H} .orr-help-ladder__item[aria-selected="true"] .orr-help-ladder__fig { color:
 /* the Hand on the chosen rung: a stem off the spine and the notched chevron, amber (the screen's one) */
 ${H} .orr-help-ladder__item[aria-selected="true"]::after { content:""; position:absolute; left:8px; top:50%; width:22px; height:2px; margin-top:-1px; background:var(--dp-hand, #f2b950); }
 ${H} .orr-help-ladder__item[aria-selected="true"]::before { left:29px; width:10px; height:12px; margin-top:-6px; ${HAND} background:var(--dp-hand-hot, #ffd98c); filter:drop-shadow(0 0 6px rgb(255 217 140 / .6)); box-shadow:none; }
+${H} .orr-help-reading__vs { display:flex; align-items:center; gap:10px; margin:18px 0 0; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .76); }
+${H} .orr-help-reading__vs b { font-weight:700; color:rgb(${HOT}); }
+${H} .orr-help-reading__vs-bead { display:block; flex:none; width:10px; height:10px; border-radius:50%; box-shadow:inset 0 0 0 2px rgb(${BONE} / .9); }
+${H} .orr-help-ladder__pin { margin-left:10px; ${LABEL} font-size:12px !important; letter-spacing:.18em; color:rgb(${BONE} / .76); }
+${H} .orr-help-ladder__pin::before { content:""; display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; box-shadow:inset 0 0 0 2px rgb(${BONE} / .9); vertical-align:1px; }
+/* a small verb on a reading: a word with its key, bone at rest, white where the player reaches it */
+${H} .orr-help-verb { all:unset; box-sizing:border-box; display:inline-flex; align-items:center; gap:12px; margin:18px 0 0; padding:6px 0; cursor:pointer; }
+${H} .orr-help-verb__word { ${LABEL} font-size:clamp(12px, .66vw, 16px) !important; letter-spacing:.2em; color:rgb(${HOT}); }
+${H} .orr-help-verb__word::before { content:"›  "; color:rgb(${BONE} / .6); }
+${H} .orr-help-verb:is(:hover, :focus-visible) .orr-help-verb__word { color:rgb(255 255 255); }
+${H} .orr-help-verb:is(:hover, :focus-visible) .orr-hkey::after { background:rgb(255 255 255); left:-5px; right:-5px; }
+html.sf-gamepad-focus ${H} .orr-help-verb:focus .orr-help-verb__word { color:rgb(255 255 255); }
+${H} .orr-help-verb[aria-disabled="true"] { cursor:default; }
+${H} .orr-help-verb[aria-disabled="true"] .orr-help-verb__word { color:rgb(${BONE} / .74); }
+${H} .orr-help-verb[aria-disabled="true"] .orr-hkey { opacity:.6; }
 ${H} .orr-help-empty { margin:10px 0 0 30px !important; font-size:14px !important; color:rgb(${BONE} / .76) !important; }
 ${H} .orr-help-ladder ~ .orr-extent, ${H} .orr-help-ladder > .orr-extent { }
 
