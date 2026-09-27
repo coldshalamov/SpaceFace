@@ -3068,7 +3068,7 @@ const HUNTER_COMBAT_CR_PER_HOUR = Math.max(0, VERB_LADDER_RATES.creditsPerHour -
  *                             contracts and a bigger hold are open
  *   band 2 (h7–10 veteran):   the enforced healthy ceiling — CAREER_BANDS.hi
  * Hunter 62.5→400 cr/min (HUNTER_HEALTHY_CR_PER_MIN → HUNTER_HEALTHY_UPPER_CR_PER_MIN).
- * Trader 112.5→600 cr/min (COURIER_HEALTHY_CR_PER_MIN → CAREER_BANDS.hauler.hi).
+ * Trader 100→600 cr/min (COURIER_HEALTHY_CR_PER_MIN → CAREER_BANDS.hauler.hi).
  * Miner 70→375 cr/min (PROSPECTOR_HEALTHY_CR_PER_MIN → CAREER_BANDS.prospector.hi).
  * `creditsPerHour` keeps the band-0 floor so `rates` pins stay honest.
  */
