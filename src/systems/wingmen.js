@@ -70,6 +70,12 @@ const WINGMAN_ARCHETYPE_BY_ORDER = {
   idle: 'fleeing_trader', // idle = hang back, defensive only
 };
 
+// Asset-guard intercept: a guard answers hostiles closing on its asset (team-1 hulls,
+// or any hull actively targeting the asset), leashed to the asset — never a pursuit.
+export const GUARD_INTERCEPT_WU = 700;
+export const GUARD_INTERCEPT_LEASH_WU = 1000;
+export const GUARD_INTERCEPT_RANGE_WU = 180;
+
 export const wingmen = {
   name: 'wingmen',
 
@@ -301,13 +307,33 @@ export const wingmen = {
     }
 
     const kind = fs.wingOrder.kind;
-    const followsPlayer = kind !== WING_ORDER.HOLD;
+    // Asset guard: SCREEN with a live target rings THAT body (the raid math already
+    // counts guard/escort+targetRef as protection — the hull now shows up for it).
+    // A dead, vanished, or unguardable target falls back to screening the player.
+    const guard = kind === WING_ORDER.SCREEN ? guardAssetFor(this.state, fs, entity.id) : null;
+    const guardAnchor = guard && guard.pos ? { x: guard.pos.x, z: guard.pos.z } : null;
+    const intercept = guardAnchor ? guardThreatFor(this.state, guard, entity.id) : null;
+    const interceptId = intercept ? intercept.id : null;
+    const followsPlayer = kind !== WING_ORDER.HOLD && !guardAnchor;
+    const followsGuard = !!guardAnchor;
     const activityStale = commandChanged || !runtime || ai.activity !== runtime.activity
       || runtime.recipientIndex !== recipientIndex || runtime.recipientCount !== recipientCount
-      || (followsPlayer && (runtime.playerX !== player.pos.x || runtime.playerZ !== player.pos.z));
+      || (followsPlayer && (runtime.playerX !== player.pos.x || runtime.playerZ !== player.pos.z))
+      || (followsGuard && (runtime.guardId !== guard.id || runtime.guardX !== guard.pos.x || runtime.guardZ !== guard.pos.z))
+      || (!followsGuard && runtime && runtime.guardId != null)
+      || (guardAnchor && runtime.interceptId !== interceptId);
     if (activityStale) {
-      const activity = wingOrderActivity(fs.wingOrder, {
+      const activity = intercept ? {
+        kind: 'attack_run',
+        reason: 'wing_order:guard_intercept',
+        anchor: { x: guardAnchor.x, z: guardAnchor.z },
+        leashRadius: GUARD_INTERCEPT_LEASH_WU,
+        preferredRange: GUARD_INTERCEPT_RANGE_WU,
+        targetId: interceptId,
+        startedTick: Number.isInteger(this.state.tick) ? this.state.tick : 0,
+      } : wingOrderActivity(fs.wingOrder, {
         playerPos: player.pos,
+        anchorPos: guardAnchor,
         sectorId: this.state.world && this.state.world.currentSectorId,
         recipientIndex,
         recipientCount,
@@ -324,14 +350,21 @@ export const wingmen = {
         activity: ai.activity,
         playerX: player.pos.x,
         playerZ: player.pos.z,
+        guardId: guard ? guard.id : null,
+        guardX: guardAnchor ? guardAnchor.x : null,
+        guardZ: guardAnchor ? guardAnchor.z : null,
+        interceptId,
         recipientIndex,
         recipientCount,
       };
       this._orderRuntime.set(fs.id, runtime);
     }
     entity.data.wingmanOrder = kind;
+    entity.data.wingmanGuardId = guard ? guard.id : null;
     if (kind === WING_ORDER.ATTACK) {
       combat.targetId = fs.wingOrder.targetId;
+    } else if (intercept) {
+      combat.targetId = interceptId;
     } else {
       combat.targetId = null;
       if (commandChanged || kind === WING_ORDER.HOLD || kind === WING_ORDER.REGROUP) {
@@ -516,4 +549,49 @@ export const wingmen = {
 function validWingOrder(order) {
   return !!order && (order.kind === WING_ORDER.ATTACK || order.kind === WING_ORDER.SCREEN
     || order.kind === WING_ORDER.HOLD || order.kind === WING_ORDER.REGROUP);
+}
+
+// Bodies a guard order can hold: crewed hulls, stations, and rocks (claim protection).
+// Anything else — pickups, projectiles, the player, the wingman itself — is not an asset.
+const GUARDABLE_TYPES = new Set(['ship', 'drone', 'station', 'asteroid']);
+
+function guardAssetFor(state, fs, selfId) {
+  const refId = fs && fs.targetRef && fs.targetRef.refId;
+  if (refId == null) return null;
+  if (!state || !state.entities || typeof state.entities.get !== 'function') return null;
+  const target = state.entities.get(refId);
+  if (!target || target.alive === false || !target.pos) return null;
+  if (target.id === selfId || target.id === state.playerId) return null;
+  if (!GUARDABLE_TYPES.has(target.type)) return null;
+  return target;
+}
+
+// Nearest hostile closing on the guarded asset: team-1 hulls, or any hull actively
+// targeting it. Deterministic (distance, then id) like the mining prospect ring.
+function guardThreatFor(state, asset, selfId) {
+  const list = state && state.entityList;
+  if (!Array.isArray(list) || !asset || !asset.pos) return null;
+  let best = null;
+  let bestD2 = Infinity;
+  let bestId = '';
+  const range2 = GUARD_INTERCEPT_WU * GUARD_INTERCEPT_WU;
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i];
+    if (!e || e.alive === false || (e.type !== 'ship' && e.type !== 'drone')) continue;
+    if (e.id === selfId || e.id === asset.id || e.id === state.playerId) continue;
+    const dx = e.pos.x - asset.pos.x;
+    const dz = e.pos.z - asset.pos.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 > range2) continue;
+    const combat = e.data && e.data.combat;
+    const engaging = combat && combat.targetId === asset.id;
+    if (e.team !== 1 && !engaging) continue;
+    const id = String(e.id);
+    if (d2 < bestD2 || (d2 === bestD2 && id < bestId)) {
+      best = e;
+      bestD2 = d2;
+      bestId = id;
+    }
+  }
+  return best;
 }

@@ -97,6 +97,10 @@ export function normalizePersistedWingOrder(value, currentSectorId = null, legac
 export function wingOrderActivity(orderValue, options = {}) {
   const order = normalizeLiveWingOrder(orderValue, options.sectorId);
   const playerPos = point(options.playerPos) || Object.freeze({ x: 0, z: 0 });
+  // Asset guard: a SCREEN ring may anchor on a guarded body instead of the player.
+  // Absent anchorPos the geometry is exactly today's player screen.
+  const guardPos = order.kind === WING_ORDER.SCREEN ? point(options.anchorPos) : null;
+  const screenCenter = guardPos || playerPos;
   const recipientIndex = Math.max(0, Number.isInteger(options.recipientIndex) ? options.recipientIndex : 0);
   const recipientCount = Math.max(1, Number.isInteger(options.recipientCount) ? options.recipientCount : 1);
   if (order.kind === WING_ORDER.ATTACK) {
@@ -117,12 +121,12 @@ export function wingOrderActivity(orderValue, options = {}) {
     ? WING_ORDER_LIMITS.screenArcWu : WING_ORDER_LIMITS.regroupRadiusWu;
   const angle = -Math.PI / 2 + recipientIndex * Math.PI * 2 / recipientCount;
   const anchor = Object.freeze({
-    x: playerPos.x + Math.cos(angle) * radius,
-    z: playerPos.z + Math.sin(angle) * radius,
+    x: screenCenter.x + Math.cos(angle) * radius,
+    z: screenCenter.z + Math.sin(angle) * radius,
   });
   return Object.freeze({
     kind: order.kind === WING_ORDER.SCREEN ? 'screen' : 'return_to_anchor',
-    reason: `wing_order:${order.kind}`,
+    reason: order.kind === WING_ORDER.SCREEN && guardPos ? 'wing_order:guard' : `wing_order:${order.kind}`,
     anchor,
     leashRadius: radius,
     preferredRange: radius,
