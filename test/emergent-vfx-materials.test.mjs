@@ -121,6 +121,29 @@ test('producer lifetime drives pressure expansion and deposited-matter retiremen
   pools.dispose();pools.dispose();assert.equal(pools.group.children.length,0);
 });
 
+test('persistent matter receives supply and drainage fronts while source extent and reflecting plane stay fixed',()=>{
+  const pools=createEmergentPrimitivePools(),state=fixture();
+  state.emergent.fields[0].life=EMERGENT_TUNING.viscosityLife;
+  state.emergent.prisms[0].life=EMERGENT_TUNING.prismLife;
+  pools.update(state);
+  const matrices=[pools.gels,pools.prisms].map(mesh=>Array.from(mesh.instanceMatrix.array.subarray(0,16)));
+  for(const mesh of [pools.gels,pools.prisms]) assert.equal(response(mesh)[1],0,'new material has not filled its full shape');
+  state.simTime+=0.12;
+  state.emergent.fields[0].life-=0.12;state.emergent.prisms[0].life-=0.12;pools.update(state);
+  for(const mesh of [pools.gels,pools.prisms]) {
+    assert.ok(response(mesh)[1]>0&&response(mesh)[1]<1,'local shader front receives partial supply');
+    assert.equal(response(mesh)[3],0);
+  }
+  state.simTime+=1;
+  state.emergent.fields[0].life=0.08;state.emergent.prisms[0].life=0.06;pools.update(state);
+  for(const [i,mesh] of [pools.gels,pools.prisms].entries()) {
+    assert.equal(response(mesh)[1],1,'retirement does not reverse the supplied-body extent');
+    assert.ok(response(mesh)[3]>0.8,'local drainage/delamination front progresses independently');
+    assert.deepEqual(Array.from(mesh.instanceMatrix.array.subarray(0,16)),matrices[i],'no whole-object scale or yaw animation');
+  }
+  pools.dispose();
+});
+
 test('saturation retains bounded capacities and stable buffers across repeated initialization',()=>{
   for(let run=0;run<2;run++) {
     const pools=createEmergentPrimitivePools(),presentation=[];

@@ -12,9 +12,37 @@ const DEPOSIT_CYCLE = Object.freeze({ attack: 0.24, release: 0.34, code: 0 });
 const PRISM_CYCLE = Object.freeze({ attack: 0.18, release: 0.28, code: 0 });
 const finite = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
 
+// Both geometry and material use these fronts. Birth supplies local material; retirement is a
+// different traversal, so an intact deposit/crystal never just reverses its spawn animation.
+const MATTER_FRONTS = /* glsl */`
+float matterArrival(vec3 surface,vec4 response) {
+#if FAMILY == 2
+  float path=surface.x*(0.62+0.12*sin(surface.y*3.0+response.x));
+  path+=0.06*(1.0+sin(surface.y*5.0+response.x));
+  return smoothstep(path,path+0.16,response.y);
+#else
+  float facet=0.045*sin(surface.x*6.283185+response.x+surface.z);
+  float path=surface.z*0.17+surface.y*0.37+facet;
+  return smoothstep(path,path+0.17,response.y);
+#endif
+}
+float matterDrain(vec3 surface,vec4 response) {
+#if FAMILY == 2
+  float path=0.10+0.34*(0.5+0.5*cos(surface.y-response.x))+0.13*(1.0-surface.x);
+  return smoothstep(path,path+0.34,response.w);
+#else
+  // Different tips delaminate first; the breaking front travels down each reflecting face.
+  float path=surface.z*0.14+(1.0-surface.y)*0.39;
+  path+=0.035*sin(surface.x*12.56637+response.x+surface.z*1.8);
+  return smoothstep(path,path+0.26,response.w);
+#endif
+}
+`;
+
 // Parameters describe constructed surfaces, not noise final art. Variation changes articulated
 // shape and transport timing, never the simulation's RNG or a moving-position texture hash.
 const DEFORM = /* glsl */`
+${MATTER_FRONTS}
 attribute vec3 aSurface;
 attribute vec4 iResponse; // stable seed, build/extent, heat, retirement
 attribute float iBorn;
@@ -90,20 +118,30 @@ vec3 articulate(vec3 p) {
   float foldHeight=shoulder*sin(v*3.14159265)*(0.022+0.052*folded);
   return vec3(cos(angle)*r,foldHeight,sin(angle)*r);
 #elif FAMILY == 2
-  // The opaque deposit rises within its real footprint. Closed underside preserves mass.
+  // Local material arrives from unequal contact sectors, then ridge crests creep across the
+  // deposited mass. During release one side drains first and the other folds into its furrow.
+  // The radial footprint stays fixed; this is redistribution, not a growing/shrinking object.
+  float arrival=matterArrival(aSurface,iResponse);
+  float drain=matterDrain(aSurface,iResponse);
   float edge=pow(clamp(u,0.0,1.0),5.0);
   float creep=(sin(v*5.0-clock*1.8+seed)+0.4*sin(v*9.0+clock*1.1))*0.012;
   p.xz*=1.0-edge*(0.025+creep)*uMotion;
-  p.y*=0.22+0.78*iResponse.y;
-  p.y+=max(0.0,p.y)*edge*0.13*sin(v*6.0-clock*2.1+seed)*uMotion;
-  p.y*=1.0-0.92*iResponse.w;
+  float ridge=sin(u*13.0-v*2.0-clock*2.4+seed)*sin(u*3.14159);
+  p.y=max(0.0,p.y*(0.08+0.92*arrival)*(1.0-drain));
+  p.y+=max(0.0,p.y)*(0.22*ridge+edge*0.13*sin(v*6.0-clock*2.1+seed))*uMotion;
+  p.xz*=1.0-edge*drain*0.035*uMotion;
   return p;
 #else
-  // Keep splinters aligned with the actual reflecting plane. Small shear, no false spin.
-  p.x+=sin(clock*1.9+seed+member*2.1)*0.018*p.y*uMotion;
-  p.z+=sin(clock*1.4-seed+member)*0.012*p.y*uMotion;
-  p.y*=0.22+0.78*iResponse.y;
-  p.y*=1.0-0.90*iResponse.w;
+  // Crystal facets nucleate independently from their bases. Once supplied, each splinter
+  // flexes about its own root; the reflecting plane never spins. Retirement peels its tip
+  // into smaller face-local remnants instead of scaling the whole crystal down.
+  float arrival=matterArrival(aSurface,iResponse);
+  float drain=matterDrain(aSurface,iResponse);
+  float lever=max(0.0,p.y+0.18);
+  float differential=sin(clock*(1.3+member*0.27)+seed+member*2.1);
+  p.x+=(differential*0.025+(1.0-arrival)*(member-1.0)*0.045)*lever*uMotion;
+  p.z+=(sin(clock*(1.1+member*0.18)-seed+member)*0.017+drain*(member-1.0)*0.022)*lever*uMotion;
+  p.y-=drain*lever*0.12*uMotion;
   return p;
 #endif
 }
@@ -299,7 +337,7 @@ function material(family, uniforms) {
     Object.assign(shader.uniforms,uniforms);
     shader.vertexShader=DEFORM+shader.vertexShader;
     shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','vec3 transformed=articulate(position);');
-    shader.fragmentShader=`uniform float uTime; uniform float uMotion; uniform float uFlash;
+    shader.fragmentShader=MATTER_FRONTS+`uniform float uTime; uniform float uMotion; uniform float uFlash;
       varying vec3 vSurface; varying vec4 vResponse; varying float vClock;
       float opticalPulseAA(float phase,float width) {
         float wave=0.5+0.5*sin(phase),pixel=max(fwidth(wave)*0.8,0.002);
@@ -308,6 +346,13 @@ function material(family, uniforms) {
       }\n`+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',/* glsl */`
       #include <emissivemap_fragment>
+      float supplied=matterArrival(vSurface,vResponse);
+      float drained=matterDrain(vSurface,vResponse);
+      // Actual material front, not opacity over a complete primitive. Opaque local fragments
+      // keep scene lighting/depth while fresh edges announce assembly or delamination.
+      if(supplied<0.035||drained>0.97) discard;
+      float formationEdge=4.0*supplied*(1.0-supplied);
+      float breakingEdge=4.0*drained*(1.0-drained);
       float opticalEdge=pow(1.0-abs(dot(normal,normalize(vViewPosition))),3.0);
       float transport=vClock;
       ${family===2?`
@@ -316,15 +361,17 @@ function material(family, uniforms) {
       float boundary=smoothstep(0.65-edgePixel,0.92+edgePixel,vSurface.x)*(1.0-smoothstep(0.94-edgePixel,1.0+edgePixel,vSurface.x));
       diffuseColor.rgb*=0.73+0.27*sin(vSurface.x*24.0+vSurface.y*3.0);
       totalEmissiveRadiance+=vec3(0.08,0.78,0.46)*(boundary*(0.34+seam*0.7)+opticalEdge*0.1)*uFlash*vResponse.z;
+      totalEmissiveRadiance+=vec3(0.04,0.42,0.21)*(formationEdge*0.8+breakingEdge*0.24)*uFlash;
       `:`
       vec3 spectral=0.5+0.5*cos(vec3(0.0,2.1,4.2)+opticalEdge*8.0+vSurface.z*1.7+vResponse.x);
       float travellingFace=opticalPulseAA(vSurface.y*9.0-transport*2.6+vResponse.x,0.10);
       totalEmissiveRadiance+=(spectral*opticalEdge*(0.75+travellingFace*1.6)+vec3(0.025,0.065,0.08))*uFlash*vResponse.z;
+      totalEmissiveRadiance+=spectral*(formationEdge*0.7+breakingEdge*0.38)*uFlash;
       diffuseColor.rgb*=0.70+spectral*opticalEdge*0.8;
       `}
     `);
   };
-  mat.customProgramCacheKey=()=>`emergent-structure-${family}-v2`;
+  mat.customProgramCacheKey=()=>`emergent-structure-${family}-local-fronts-v3`;
   return mat;
 }
 
@@ -467,7 +514,7 @@ export function createEmergentPrimitivePools() {
           if(Number.isFinite(source?.life))age=Math.max(0,life-source.life);
           const releaseAt=Number.isFinite(source?.life)&&age>=life-cycle.release?life-cycle.release:-1;
           sampleFieldLifecycle(age,0,releaseAt,cycle,envelope);
-          response(inst,index,slot.seed,reducedMotion?1:envelope.scale,0.7+0.3*envelope.build,envelope.release);
+          response(inst,index,slot.seed,reducedMotion?1:envelope.build,0.7+0.3*envelope.build,envelope.release);
         }
       }
       for(let family=0;family<4;family++) {
