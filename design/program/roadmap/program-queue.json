@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-26",
+  "updatedAt": "2026-09-27T03:14:39.264Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -3475,7 +3475,7 @@
       "id": "PQ-162",
       "priority": 92,
       "title": "The station as a place: the redesign the flatten was waiting for",
-      "state": "ready",
+      "state": "claimed",
       "canonical": [
         "STATION-REDESIGN"
       ],
@@ -3495,13 +3495,13 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Seven station screens adopt the instrument grammar skeleton and data states for real; the owner review findings close; docking reads as arriving somewhere. Gap: Flatten happened, redesign did not; zero skeleton adoption; review findings unverified (orange doing four jobs, bar transcript void, italic flavour outranking data). See build_map.md section 15 and design/program/roadmap/active/PQ-162.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: Seven station screens adopt the instrument grammar skeleton and data states for real; the owner review findings close; docking reads as arriving somewhere. Gap: Flatten happened, redesign did not; zero skeleton adoption; review findings unverified (orange doing four jobs, bar transcript void, italic flavour outranking data). See build_map.md section 15 and design/program/roadmap/active/PQ-162.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-168",
       "priority": 93,
       "title": "The Chart finished: traffic layer, hierarchy, one answer per question",
-      "state": "ready",
+      "state": "claimed",
       "canonical": [
         "CHART-FINISHED"
       ],
@@ -3522,7 +3522,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. Gap: J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. See build_map.md section 15 and design/program/roadmap/active/PQ-168.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. Gap: J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. See build_map.md section 15 and design/program/roadmap/active/PQ-168.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-173",
@@ -3673,7 +3673,7 @@
       "id": "PQ-180",
       "priority": 100,
       "title": "The frontend definition of done, applied to every surface: the grammar matrix",
-      "state": "ready",
+      "state": "claimed",
       "canonical": [
         "FRONTEND-GRAMMAR-MATRIX"
       ],
@@ -3689,13 +3689,13 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "One generated matrix: every 2D surface × every rule of the instrument grammar and the A-list standards, with a check that fails any surface below the floor; the list of what 'brought into the newest version' means, surface by surface. Gap: The grammar exists and sixteen jobs landed for the four instruments and the HUD, but the station, Crucible screens, Asteroid Works, the meta shell and the legacy modules were never held to it; nothing measures adoption per surface. See build_map.md section 18 and design/program/roadmap/active/PQ-180.md."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: One generated matrix: every 2D surface × every rule of the instrument grammar and the A-list standards, with a check that fails any surface below the floor; the list of what 'brought into the newest version' means, surface by surface. Gap: The grammar exists and sixteen jobs landed for the four instruments and the HUD, but the station, Crucible screens, Asteroid Works, the meta shell and the legacy modules were never held to it; nothing measures adoption per surface. See build_map.md section 18 and design/program/roadmap/active/PQ-180.md."
     },
     {
       "id": "PQ-181",
       "priority": 101,
       "title": "The meta shell: title, new game, load, settings, pause, game over, credits, statistics, photo mode, version",
-      "state": "ready",
+      "state": "claimed",
       "canonical": [
         "META-SHELL"
       ],
@@ -3715,13 +3715,13 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Every shell screen to the grammar with the three missing meta screens added, the save portrait, a returning-player digest, a version string, and keyboard/gamepad parity. Gap: Credits, statistics and photo mode absent; no version string; settings lacks presets, frame cap and pad remap; load is a list. See build_map.md section 18 and design/program/roadmap/active/PQ-181.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: Every shell screen to the grammar with the three missing meta screens added, the save portrait, a returning-player digest, a version string, and keyboard/gamepad parity. Gap: Credits, statistics and photo mode absent; no version string; settings lacks presets, frame cap and pad remap; load is a list. See build_map.md section 18 and design/program/roadmap/active/PQ-181.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-182",
       "priority": 102,
       "title": "Crucible screens to the grammar: door, draft, refit, results, lab",
-      "state": "ready",
+      "state": "claimed",
       "canonical": [
         "CRUCIBLE-SCREENS"
       ],
@@ -3742,13 +3742,13 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The swarm mode's screens become instruments: a door that sells the run in five seconds, drafts readable in one line, a results screen that tells the story, and lab controls that are a toy. Gap: Crucible screens were built during engineering phases and never held to the grammar; results list numbers; the draft explains itself in paragraphs. See build_map.md section 18 and design/program/roadmap/active/PQ-182.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: The swarm mode's screens become instruments: a door that sells the run in five seconds, drafts readable in one line, a results screen that tells the story, and lab controls that are a toy. Gap: Crucible screens were built during engineering phases and never held to the grammar; results list numbers; the draft explains itself in paragraphs. See build_map.md section 18 and design/program/roadmap/active/PQ-182.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-183",
       "priority": 103,
       "title": "Everything is a link, the watch list, global find: the game feels like one system",
-      "state": "ready",
+      "state": "claimed",
       "canonical": [
         "EVERYTHING-IS-A-LINK"
       ],
@@ -3767,13 +3767,13 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Every entity name anywhere opens its dossier in place; a watch list pins prices, rivals, deadlines and factions onto the HUD; global find jumps to anything; the chart takes player notes. Gap: The resolver and drawer exist with seventeen adopters; the station and legacy screens have zero; no watch list, no global find, no notes. See build_map.md section 18 and design/program/roadmap/active/PQ-183.md."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: Every entity name anywhere opens its dossier in place; a watch list pins prices, rivals, deadlines and factions onto the HUD; global find jumps to anything; the chart takes player notes. Gap: The resolver and drawer exist with seventeen adopters; the station and legacy screens have zero; no watch list, no global find, no notes. See build_map.md section 18 and design/program/roadmap/active/PQ-183.md."
     },
     {
       "id": "PQ-184",
       "priority": 104,
       "title": "UI performance and optimisation: frame budget, virtualisation, DOM and layout discipline, the legacy refactor",
-      "state": "ready",
+      "state": "claimed",
       "canonical": [
         "UI-PERFORMANCE"
       ],
@@ -3791,13 +3791,13 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Every surface inside a 2 ms UI frame budget and a DOM node budget; long lists virtualised; layout thrash and per-frame allocations removed; the four-thousand-line legacy station hub lifted out; measured by the matrix. Gap: One breakpoint until recently; no list virtualisation; no UI frame budget enforced per surface; a 4,057-line legacy hub still imported for helpers; the chart carries ~80 sub-12 px nodes. See build_map.md section 18 and design/program/roadmap/active/PQ-184.md."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: Every surface inside a 2 ms UI frame budget and a DOM node budget; long lists virtualised; layout thrash and per-frame allocations removed; the four-thousand-line legacy station hub lifted out; measured by the matrix. Gap: One breakpoint until recently; no list virtualisation; no UI frame budget enforced per surface; a 4,057-line legacy hub still imported for helpers; the chart carries ~80 sub-12 px nodes. See build_map.md section 18 and design/program/roadmap/active/PQ-184.md."
     },
     {
       "id": "PQ-185",
       "priority": 105,
       "title": "Asteroid Works to the grammar and the owner's design law, accepted",
-      "state": "ready",
+      "state": "claimed",
       "canonical": [
         "ASTEROID-WORKS-ACCEPTED"
       ],
@@ -3817,7 +3817,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The one surface with an explicit owner fail is finished under its own design law and the frontend matrix: warm board, perfect grid, authored objects, ≤ 15 visible words, board ≥ 88 % of the glass. Gap: PQ-130 implemented but not accepted; PQ-131 art blocked on its units; the 2026-08-20 playtest remains the defect list. See build_map.md section 18 and design/program/roadmap/active/PQ-185.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: The one surface with an explicit owner fail is finished under its own design law and the frontend matrix: warm board, perfect grid, authored objects, ≤ 15 visible words, board ≥ 88 % of the glass. Gap: PQ-130 implemented but not accepted; PQ-131 art blocked on its units; the 2026-08-20 playtest remains the defect list. See build_map.md section 18 and design/program/roadmap/active/PQ-185.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-186",
@@ -3845,7 +3845,7 @@
       "id": "PQ-187",
       "priority": 107,
       "title": "The direction, decided: the sheet, the kit, the title live, the proof",
-      "state": "ready",
+      "state": "claimed",
       "canonical": [
         "FRONTEND-DIRECTION"
       ],
@@ -3861,13 +3861,13 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "SUPERSEDED 2026-09-10 by PQ-194 (Field Hardware: the UI production program) on aesthetics: the Cinematic Minimal screens landed and the owner judged them generic (\"equally bad each time\"). Do not dispatch .04 or restart the sheet; the frames under design/frontend/direction/approved/ are the authority. Historical brief follows. The owner declined to choose between abstract directions and delegated the decision on 2026-09-06 ('You'll just have to decide'; leaning Cinematic Minimal). Decided: Cinematic Minimal tuned for SpaceFace - the world is the interface. design/frontend/direction/DIRECTION_SHEET.md is the aesthetic authority; a kit is built from it; the title goes live first so the direction is seen in the actual game after one unit and the owner can veto before anything else moves; a blind side-by-side against A-list games proves the result. Receipt: design/program/roadmap/receipts/PQ-187-01-REPORT.md. See design/FRONTEND_DIRECTION.md section 13 and design/program/roadmap/active/PQ-187.md. Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: SUPERSEDED 2026-09-10 by PQ-194 (Field Hardware: the UI production program) on aesthetics: the Cinematic Minimal screens landed and the owner judged them generic (\"equally bad each time\"). Do not dispatch .04 or restart the sheet; the frames under design/frontend/direction/approved/ are the authority. Historical brief follows. The owner declined to choose between abstract directions and delegated the decision on 2026-09-06 ('You'll just have to decide'; leaning Cinematic Minimal). Decided: Cinematic Minimal tuned for SpaceFace - the world is the interface. design/frontend/direction/DIRECTION_SHEET.md is the aesthetic authority; a kit is built from it; the title goes live first so the direction is seen in the actual game after one unit and the owner can veto before anything else moves; a blind side-by-side against A-list games proves the result. Receipt: design/program/roadmap/receipts/PQ-187-01-REPORT.md. See design/FRONTEND_DIRECTION.md section 13 and design/program/roadmap/active/PQ-187.md. Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-188",
       "priority": 108,
       "title": "The flight HUD and the instruments to the direction: HUD arrival, THE SHIP, THE FOOTPRINT, THE RANGE",
-      "state": "ready",
+      "state": "claimed",
       "canonical": [
         "HUD-INSTRUMENTS-DIRECTION"
       ],
@@ -3886,7 +3886,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The HUD and the three instruments marked done under the superseded grammar are rebuilt on the kit with their centerpieces kept; the HUD gains its arrival choreography and its wanted temperature. Gap: no packet could revisit surfaces section 11 marked done. See design/FRONTEND_DIRECTION.md sections 7-8 and design/program/roadmap/active/PQ-188.md. Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: The HUD and the three instruments marked done under the superseded grammar are rebuilt on the kit with their centerpieces kept; the HUD gains its arrival choreography and its wanted temperature. Gap: no packet could revisit surfaces section 11 marked done. See design/FRONTEND_DIRECTION.md sections 7-8 and design/program/roadmap/active/PQ-188.md. Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-189",
@@ -3958,7 +3958,7 @@
       "id": "PQ-192",
       "priority": 112,
       "title": "The reading screens on the kit: missions log, codex, help, tech tree",
-      "state": "ready",
+      "state": "claimed",
       "canonical": [
         "READING-SCREENS-DIRECTION"
       ],
@@ -3976,7 +3976,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The four screens the player reads rather than operates - missions log, codex, help, tech tree - migrate onto the kit to the pictures in design/frontend/direction/DIRECTION_SHEET.md section 2 'The reading screens', keeping what each does and deleting their old style blocks as they move. Gap: reachable on the default route, covered by no frontend packet. See design/program/roadmap/active/PQ-192.md. Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: The four screens the player reads rather than operates - missions log, codex, help, tech tree - migrate onto the kit to the pictures in design/frontend/direction/DIRECTION_SHEET.md section 2 'The reading screens', keeping what each does and deleting their old style blocks as they move. Gap: reachable on the default route, covered by no frontend packet. See design/program/roadmap/active/PQ-192.md. Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-193",
@@ -4009,7 +4009,7 @@
       "id": "PQ-194",
       "priority": 114,
       "title": "Field Hardware: the UI production program (frames, asset kits, stage, kit runtime, title live, surfaces, proof)",
-      "state": "ready",
+      "state": "claimed",
       "canonical": [
         "FRONTEND-FIELD-HARDWARE"
       ],
@@ -4037,7 +4037,7 @@
         "npm run check:bundle"
       ],
       "evidence": [],
-      "brief": "ADMITTED 2026-09-10 on the owner's directive that ten frontend passes were \"equally bad\" and that agent-written style docs were poisoning the work. The interface is rebuilt by PRODUCTION, not styling: rendered style frames first (ChatGPT 6 Pro), produced assets second (transparent-PNG kits, SVG icon family and marks, 3D sets and hull renders), code that assembles the assets to match the frames third, and a picture-comparison review at every step. Direction: Field Hardware (manufactured, backlit, hand-worn equipment over a lit living world; POSTER/BENCH/EDGE registers). The frames under design/frontend/direction/approved/ outrank every prose doc. Supersedes PQ-187 (Cinematic Minimal) and build_map.md section 20.14 on aesthetics; the old units stay recorded as implemented and are not dispatched again. FIVE development sessions with ChatGPT 6 Pro (design/frontend/direction/sessions/ S1-S5: design system, bench register, prototype app, engine port, QA) built from 28 phase specs under packets/; local lanes between sessions (the stage, Blender sets, integration + title veto, sweep + proof). Build a session zip with node scripts/build-ui-packet.mjs S1."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: ADMITTED 2026-09-10 on the owner's directive that ten frontend passes were \"equally bad\" and that agent-written style docs were poisoning the work. The interface is rebuilt by PRODUCTION, not styling: rendered style frames first (ChatGPT 6 Pro), produced assets second (transparent-PNG kits, SVG icon family and marks, 3D sets and hull renders), code that assembles the assets to match the frames third, and a picture-comparison review at every step. Direction: Field Hardware (manufactured, backlit, hand-worn equipment over a lit living world; POSTER/BENCH/EDGE registers). The frames under design/frontend/direction/approved/ outrank every prose doc. Supersedes PQ-187 (Cinematic Minimal) and build_map.md section 20.14 on aesthetics; the old units stay recorded as implemented and are not dispatched again. FIVE development sessions with ChatGPT 6 Pro (design/frontend/direction/sessions/ S1-S5: design system, bench register, prototype app, engine port, QA) built from 28 phase specs under packets/; local lanes between sessions (the stage, Blender sets, integration + title veto, sweep + proof). Build a session zip with node scripts/build-ui-packet.mjs S1."
     },
     {
       "id": "PQ-195",
@@ -6873,7 +6873,7 @@
       "priority": 92,
       "title": "Reference frames for every surface",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "claimed",
       "dependsOn": [],
       "mutexes": [
         "frontend-matrix"
@@ -6893,7 +6893,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-180-03-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-06 (cycle 2): 408/408 reachable frames current on seed 47 over ground neutral-12151a; 72 frames on 6 unreachable surfaces remain OWED; check:visual-regression --coverage-only PASS; Asteroid Works boots once per media mode. Integrator decision held: a reference frame photographs the interface over a neutral ground. Recapture rest-twins with the unflagged check when a quiet machine can spare two hours. Extend the visual-regression matrix from 60 frames to every surface × default/reduced-motion/forced-colours/pseudo-loc × three widths; diff on change. DONE WHEN: `check:visual-regression` covers every surface in the manifest."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: IMPLEMENTED 2026-09-06 (cycle 2): 408/408 reachable frames current on seed 47 over ground neutral-12151a; 72 frames on 6 unreachable surfaces remain OWED; check:visual-regression --coverage-only PASS; Asteroid Works boots once per media mode. Integrator decision held: a reference frame photographs the interface over a neutral ground. Recapture rest-twins with the unflagged check when a quiet machine can spare two hours. Extend the visual-regression matrix from 60 frames to every surface × default/reduced-motion/forced-colours/pseudo-loc × three widths; diff on change. DONE WHEN: `check:visual-regression` covers every surface in the manifest."
     },
     {
       "id": "PQ-144.01",
@@ -16298,7 +16298,7 @@
       "priority": 409,
       "title": "Credits, version, the title's remaining states",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "claimed",
       "dependsOn": [
         "PQ-180.00",
         "PQ-187.03"
@@ -16325,7 +16325,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/FRONTEND-B-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-07: the Credits screen (src/ui/screens/credits.js, data from scripts/write-credits.mjs, third-party notices included) reached from the title fine line \"SpaceFace v0.1.0 · Credits\"; the version is the fine line; credits registered in ui-grammar-surfaces. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. The title itself lands in PQ-187.03; this leaf adds the credits screen with third-party notices (PQ-033.00), the visible version and build hash, and the title's continue/attract states on the kit. DONE WHEN: credits and version visible in a capture that matches DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: IMPLEMENTED 2026-09-07: the Credits screen (src/ui/screens/credits.js, data from scripts/write-credits.mjs, third-party notices included) reached from the title fine line \"SpaceFace v0.1.0 · Credits\"; the version is the fine line; credits registered in ui-grammar-surfaces. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. The title itself lands in PQ-187.03; this leaf adds the credits screen with third-party notices (PQ-033.00), the visible version and build hash, and the title's continue/attract states on the kit. DONE WHEN: credits and version visible in a capture that matches DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-181.01",
@@ -16333,7 +16333,7 @@
       "priority": 410,
       "title": "New Game and Load",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "claimed",
       "dependsOn": [
         "PQ-156.00",
         "PQ-180.00",
@@ -16361,7 +16361,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/FRONTEND-B-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-07: New Game and Load rebuilt on the kit (stageHull.js bounds the 3D hull to the stage; difficulty as words; saves as rows with the focused hull and a portrait), injected style blocks deleted. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. Three starters as three ways to play with a sentence each (PQ-156); Load renders save portraits (hull, scars, titles, rap sheet, grudge). DONE WHEN: Matrix green; save round-trip; capture. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: IMPLEMENTED 2026-09-07: New Game and Load rebuilt on the kit (stageHull.js bounds the 3D hull to the stage; difficulty as words; saves as rows with the focused hull and a portrait), injected style blocks deleted. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. Three starters as three ways to play with a sentence each (PQ-156); Load renders save portraits (hull, scars, titles, rap sheet, grudge). DONE WHEN: Matrix green; save round-trip; capture. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-181.02",
@@ -16369,7 +16369,7 @@
       "priority": 411,
       "title": "Settings depth",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "claimed",
       "dependsOn": [
         "PQ-165.00",
         "PQ-180.00",
@@ -16397,7 +16397,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/FRONTEND-B-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-07: Settings on the kit (sections as words, rows, toggles as words, rebind keys), injected style block deleted, k-stage--scroll added. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. Presets, frame cap, pad remap, language, accessibility statement (PQ-164/165/166 leaves land here). DONE WHEN: Matrix green; every setting round-trips through the profile check. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: IMPLEMENTED 2026-09-07: Settings on the kit (sections as words, rows, toggles as words, rebind keys), injected style block deleted, k-stage--scroll added. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. Presets, frame cap, pad remap, language, accessibility statement (PQ-164/165/166 leaves land here). DONE WHEN: Matrix green; every setting round-trips through the profile check. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-181.03",
@@ -16405,7 +16405,7 @@
       "priority": 412,
       "title": "Pause, Game Over, digest, statistics",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "claimed",
       "dependsOn": [
         "PQ-180.00",
         "PQ-187.03"
@@ -16432,7 +16432,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/FRONTEND-B-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-07: Pause on the kit over the world at 0 % scrim with the HUD at 38 %; Photo mode as a pause sub-state (body.k-photo); Game Over on the kit with the cold scrim and the loss as hero numbers. Digest and statistics not in Task B. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. Pause with photo mode entry; Game Over that names the cause and the telegraph; returning-player digest; lifetime statistics from aggregates. DONE WHEN: Matrix green; digest appears after a day-old save; statistics match telemetry. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: IMPLEMENTED 2026-09-07: Pause on the kit over the world at 0 % scrim with the HUD at 38 %; Photo mode as a pause sub-state (body.k-photo); Game Over on the kit with the cold scrim and the loss as hero numbers. Digest and statistics not in Task B. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. Pause with photo mode entry; Game Over that names the cause and the telegraph; returning-player digest; lifetime statistics from aggregates. DONE WHEN: Matrix green; digest appears after a day-old save; statistics match telemetry. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-182.00",
@@ -16440,7 +16440,7 @@
       "priority": 413,
       "title": "The door",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "claimed",
       "dependsOn": [
         "PQ-180.00",
         "PQ-174.01",
@@ -16465,7 +16465,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-07: the Crucible door is a `k-screen--stage` (crucible.js): Mode and Hull as rows of words with `aria-pressed`, the seed as a numeric kit input with a fine \"New seed\" word, the fixed arena named in fine print, Enter as the mode's verb; style block deleted; temperature `crucible` (white signal, no scrim) with `crucibleRefit` added to the kit's set. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Seed, ruleset, arena and hull as one choice a stranger makes in five seconds; the daily seed (PQ-169.00) is the default. DONE WHEN: Matrix green; a new tester launches a run in ≤ 10 s without reading. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: IMPLEMENTED 2026-09-07: the Crucible door is a `k-screen--stage` (crucible.js): Mode and Hull as rows of words with `aria-pressed`, the seed as a numeric kit input with a fine \"New seed\" word, the fixed arena named in fine print, Enter as the mode's verb; style block deleted; temperature `crucible` (white signal, no scrim) with `crucibleRefit` added to the kit's set. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Seed, ruleset, arena and hull as one choice a stranger makes in five seconds; the daily seed (PQ-169.00) is the default. DONE WHEN: Matrix green; a new tester launches a run in ≤ 10 s without reading. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-182.01",
@@ -16473,7 +16473,7 @@
       "priority": 414,
       "title": "Draft and refit",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "claimed",
       "dependsOn": [
         "PQ-180.00",
         "PQ-174.01",
@@ -16498,7 +16498,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-07: draft offers are three `sf-cru-card` buttons across the stage — verb in caps, name at sub-title size, one sentence, slot and hotkey in fine print — the focused one bright, the others at 62 %; refit is hardpoint rows with a kit select and one primary word (crucibleDraft.js; style block deleted). Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Cards are one line plus one glyph of the verb; refit reuses the ship screen bands. DONE WHEN: Matrix green; a tester describes every card after one use. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: IMPLEMENTED 2026-09-07: draft offers are three `sf-cru-card` buttons across the stage — verb in caps, name at sub-title size, one sentence, slot and hotkey in fine print — the focused one bright, the others at 62 %; refit is hardpoint rows with a kit select and one primary word (crucibleDraft.js; style block deleted). Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Cards are one line plus one glyph of the verb; refit reuses the ship screen bands. DONE WHEN: Matrix green; a tester describes every card after one use. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-182.02",
@@ -16506,7 +16506,7 @@
       "priority": 415,
       "title": "Results as a story",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "claimed",
       "dependsOn": [
         "PQ-146.01",
         "PQ-180.00",
@@ -16532,7 +16532,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-07: results read as a story (crucible.js `crucibleResultsScreen`): the best chain (swarm) or score (gauntlet) at hero size, the ledger as static rows (`k-order-first`: first for the eye, second for a reader), kill chain / last seconds (hit bars) / ledger / build as caps bands of static rows, the build also as one fine-print line; Retry, New run and Main menu as words. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Moments, tricks, best chain, cause of death and its telegraph, build code, one-click retry same seed. DONE WHEN: Matrix green; results capture reviewed; retry ≤ 5 s. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: IMPLEMENTED 2026-09-07: results read as a story (crucible.js `crucibleResultsScreen`): the best chain (swarm) or score (gauntlet) at hero size, the ledger as static rows (`k-order-first`: first for the eye, second for a reader), kill chain / last seconds (hit bars) / ledger / build as caps bands of static rows, the build also as one fine-print line; Retry, New run and Main menu as words. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Moments, tricks, best chain, cause of death and its telegraph, build code, one-click retry same seed. DONE WHEN: Matrix green; results capture reviewed; retry ≤ 5 s. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-182.03",
@@ -16817,7 +16817,7 @@
       "priority": 425,
       "title": "Matrix and acceptance",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "claimed",
       "dependsOn": [
         "PQ-180.00",
         "PQ-187.03"
@@ -16839,7 +16839,7 @@
         "design/program/roadmap/receipts/FRONTEND-D-REPORT.md",
         "design/program/roadmap/receipts/PQ-185.01-REPORT.md"
       ],
-      "brief": "PARTIAL 2026-09-07 (Frontend Task D, motion only): every settle in styles/asteroid-ops.css moved to --k-ease, ≤ 160 ms (the drawer's 200 ms kept); the temperature 'works' verified to derive for the drill screen; the never-list overlap audited (no glow, gradient fill, glass, blur, uppercase or tracked label crept in — the remaining shadow and radii are the Works' own law). The grammar-matrix pass and the PQ-130 acceptance re-run were NOT done. State stays ready. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: The surface passes the grammar matrix; PQ-130 acceptance re-run with the owner after PQ-131 art lands. DONE WHEN: Owner verdict KEEP recorded; matrix green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: PARTIAL 2026-09-07 (Frontend Task D, motion only): every settle in styles/asteroid-ops.css moved to --k-ease, ≤ 160 ms (the drawer's 200 ms kept); the temperature 'works' verified to derive for the drill screen; the never-list overlap audited (no glow, gradient fill, glass, blur, uppercase or tracked label crept in — the remaining shadow and radii are the Works' own law). The grammar-matrix pass and the PQ-130 acceptance re-run were NOT done. State stays ready. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: The surface passes the grammar matrix; PQ-130 acceptance re-run with the owner after PQ-131 art lands. DONE WHEN: Owner verdict KEEP recorded; matrix green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-158.00",
@@ -18003,7 +18003,7 @@
       "priority": 464,
       "title": "The proof",
       "kind": "implementation",
-      "state": "deferred",
+      "state": "claimed",
       "dependsOn": [
         "PQ-181.03",
         "PQ-188.00",
@@ -18031,7 +18031,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
       ],
-      "brief": "DEFERRED 2026-09-07 by owner directive: the thirteen clips, the twenty blind pairs, the reel and its cue sidecar were withdrawn — the owner said they will never look at them; no capture set was produced. The receipt (design/program/roadmap/receipts/FRONTEND-D-REPORT.md) records the sweep and the choices instead. Original: Blind side-by-side against the reference board with a memoryless vision reviewer; the thirteen signature moments each captured as a ten-second clip and reviewed against DIRECTION_SHEET.md by the same reviewer; the regression baseline reshot on the new look; a ninety-second reel the owner watches in place of any sign-off form. DONE WHEN: SpaceFace chosen in >= 50% of pairings and 100% against the genre baselines; thirteen clip reviews on file; matrix and regression green; reel committed. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: DEFERRED 2026-09-07 by owner directive: the thirteen clips, the twenty blind pairs, the reel and its cue sidecar were withdrawn — the owner said they will never look at them; no capture set was produced. The receipt (design/program/roadmap/receipts/FRONTEND-D-REPORT.md) records the sweep and the choices instead. Original: Blind side-by-side against the reference board with a memoryless vision reviewer; the thirteen signature moments each captured as a ten-second clip and reviewed against DIRECTION_SHEET.md by the same reviewer; the regression baseline reshot on the new look; a ninety-second reel the owner watches in place of any sign-off form. DONE WHEN: SpaceFace chosen in >= 50% of pairings and 100% against the genre baselines; thirteen clip reviews on file; matrix and regression green; reel committed. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-188.00",
@@ -18128,7 +18128,7 @@
       "priority": 468,
       "title": "Play-and-fix the 2026-09-06 implementation landing",
       "kind": "acceptance_review",
-      "state": "deferred",
+      "state": "claimed",
       "dependsOn": [],
       "mutexes": [
         "landing-passover-impl-2026-09-06"
@@ -18147,7 +18147,7 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Cold play of the ten implementation-landing surfaces (jobs vs patrol, UI matrix spot-check, ordinary contact, critic verdict shape, live key labels, first-playable audio, reduced-motion reads, four specialists, cargo custody, first mill as claim). Fix real taste and bugs. Sacred: drill cadence 0.18/0.24/0.18, noteSiteCourier never pays, contact-ring clones the field. DONE WHEN: each surface played; adopted defects gone from the camera; receipt in build_map.md section 1.4 words under design/program/roadmap/receipts/PQ-191-00-REPORT.md.",
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: Cold play of the ten implementation-landing surfaces (jobs vs patrol, UI matrix spot-check, ordinary contact, critic verdict shape, live key labels, first-playable audio, reduced-motion reads, four specialists, cargo custody, first mill as claim). Fix real taste and bugs. Sacred: drill cadence 0.18/0.24/0.18, noteSiteCourier never pays, contact-ring clones the field. DONE WHEN: each surface played; adopted defects gone from the camera; receipt in build_map.md section 1.4 words under design/program/roadmap/receipts/PQ-191-00-REPORT.md.",
       "deferredNote": "Standing review/capture ceremony retired 2026-09-10 by owner direction: the doing agent reviews its own work and iterates; no separate review/capture unit."
     },
     {
@@ -18645,7 +18645,7 @@
       "priority": 487,
       "title": "S2 — the bench register, accepted (station, THE SHIP, chart, settings, load as frames + prototypes; keyart; 3D drafts + Blender scripts)",
       "kind": "acceptance_review",
-      "state": "deferred",
+      "state": "claimed",
       "dependsOn": [
         "PQ-194.00"
       ],
@@ -18664,7 +18664,7 @@
         "design/frontend/direction/receipts/",
         "design/program/roadmap/receipts/PQ-194.02-REPORT.md"
       ],
-      "brief": "Build S2 (carries the accepted S1 return), hand off, review: six frames, twelve prototypes on the S1 kit, keyart tiles and backdrop plates, draft GLBs in the preview page, Blender scripts read for completeness. Accept into approved/ and assets/ui/kit/; hand the Blender scripts to L-B.",
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: Build S2 (carries the accepted S1 return), hand off, review: six frames, twelve prototypes on the S1 kit, keyart tiles and backdrop plates, draft GLBs in the preview page, Blender scripts read for completeness. Accept into approved/ and assets/ui/kit/; hand the Blender scripts to L-B.",
       "note": "REJECTED on review 2026-09-11 (receipt design/program/roadmap/receipts/PQ-194.02-REPORT.md): S2 bench-register return never arrived — external ChatGPT hand-off required. Owner/controller must hand .devshots/ui-packets/S2-bench-register.zip to the external session and drop the return into .devshots/ui-packets/returns/ before re-dispatch."
     },
     {
@@ -18673,7 +18673,7 @@
       "priority": 488,
       "title": "L-B — Blender sets and the hull render harness (P16) from the S2 scripts",
       "kind": "implementation",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-194.02"
       ],
@@ -18692,7 +18692,7 @@
       "receiptRefs": [
         "design/frontend/direction/receipts/"
       ],
-      "brief": "Codex with Blender under the material-truth preflight: run and finish S2's build_hangar/build_berth/build_arena scripts to the approved plates from the frames' camera; extend the dev-only turntable into a harness that renders a tile and portrait for every roster hull at one fixed lighting. Named fake: primitive boxes named gantry; screenshots of the live game as renders."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: Codex with Blender under the material-truth preflight: run and finish S2's build_hangar/build_berth/build_arena scripts to the approved plates from the frames' camera; extend the dev-only turntable into a harness that renders a tile and portrait for every roster hull at one fixed lighting. Named fake: primitive boxes named gantry; screenshots of the live game as renders."
     },
     {
       "id": "PQ-194.04",
@@ -18700,7 +18700,7 @@
       "priority": 489,
       "title": "S3 — the prototype app, accepted (every remaining screen; the whole frontend navigable outside the engine; audit suite; engine hand-off inventory)",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-194.02"
       ],
@@ -18717,7 +18717,7 @@
       "receiptRefs": [
         "design/frontend/direction/receipts/"
       ],
-      "brief": "Build S3 (carries S1+S2 returns), hand off, review: play app/index.html end to end by keyboard and by gamepad; reduced motion and forced colours; the audit results; HANDOFF_TO_ENGINE.md complete. Accept frames and assets. After this leaf the entire frontend exists as a runnable prototype."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: Build S3 (carries S1+S2 returns), hand off, review: play app/index.html end to end by keyboard and by gamepad; reduced motion and forced colours; the audit results; HANDOFF_TO_ENGINE.md complete. Accept frames and assets. After this leaf the entire frontend exists as a runnable prototype."
     },
     {
       "id": "PQ-194.05",
@@ -18725,7 +18725,7 @@
       "priority": 490,
       "title": "S4 — the engine port, accepted; L-C integration part one: the kit runtime (P21) and the title live (P22) — the veto point",
       "kind": "implementation",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-194.01",
         "PQ-194.03",
@@ -18755,7 +18755,7 @@
       "receiptRefs": [
         "design/frontend/direction/receipts/"
       ],
-      "brief": "Build S4 with a source snapshot at a pinned commit (S4 lists the paths), hand off, review the patch and port map, then integrate locally: the kit runtime first (fonts, tokens, asset loader, asset-built components, motion, sound, lab page, dead refit deleted, lint lists updated), then the Title on the stage; the 1920 --world capture beside the approved frame passes a memoryless vision rubric; keyboard/pad reach everything; reduced motion is a cut. Then the owner looks. Nothing in .06 starts before this holds. Named fake: restyling the old DOM with a plate background; matching the frame's layout with the old materials."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: Build S4 with a source snapshot at a pinned commit (S4 lists the paths), hand off, review the patch and port map, then integrate locally: the kit runtime first (fonts, tokens, asset loader, asset-built components, motion, sound, lab page, dead refit deleted, lint lists updated), then the Title on the stage; the 1920 --world capture beside the approved frame passes a memoryless vision rubric; keyboard/pad reach everything; reduced motion is a cut. Then the owner looks. Nothing in .06 starts before this holds. Named fake: restyling the old DOM with a plate background; matching the frame's layout with the old materials."
     },
     {
       "id": "PQ-194.06",
@@ -18763,7 +18763,7 @@
       "priority": 491,
       "title": "L-C integration part two — the surfaces (P30–P38) from the S4 port, parallel by mutex",
       "kind": "implementation",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-194.05"
       ],
@@ -18781,7 +18781,7 @@
       "receiptRefs": [
         "design/frontend/direction/receipts/"
       ],
-      "brief": "Land the ported Crucible, HUD instruments, HUD sensors/law/wanted, station arrival/shell/market/ledger, contracts/factions/industry/bar, THE SHIP/Shipworks/Footprint/Range, the chart, the shell screens, the reading screens and Asteroid Works chrome — each on its own mutex, each accepted by its --world capture beside its frame plus its named runtime checks; capture every surface for S5."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: Land the ported Crucible, HUD instruments, HUD sensors/law/wanted, station arrival/shell/market/ledger, contracts/factions/industry/bar, THE SHIP/Shipworks/Footprint/Range, the chart, the shell screens, the reading screens and Asteroid Works chrome — each on its own mutex, each accepted by its --world capture beside its frame plus its named runtime checks; capture every surface for S5."
     },
     {
       "id": "PQ-194.07",
@@ -18789,7 +18789,7 @@
       "priority": 492,
       "title": "S5 — QA and the second pass, accepted; L-D sweep and proof (P40–P42)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-194.06"
       ],
@@ -18809,7 +18809,7 @@
       "receiptRefs": [
         "design/frontend/direction/receipts/"
       ],
-      "brief": "Build S5 with the integration captures and clip strips, hand off, apply the punch list, assets v2 and corrections; then the motion pass (thirteen clips), the sound pass and the mute default decided with the owner, the sweep (dead stylesheets, injected style nodes, old token layers, unused fonts deleted; budgets.json and the visual-regression matrix reshot), the blind tally per S5's protocol, the ninety-second reel."
+      "brief": "CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner-directed 2026-09-25: the whole frontend, every screen a distinct instrument, no generic or thin-wireframe elements). DO NOT TAKE OR EXECUTE THIS UNIT. Its brief below is SUPERSEDED wherever it differs from design/frontend/ORRERY.md and design/frontend/OVERHAUL_PLAN_2026-09-25.md; live per-surface status is design/frontend/ORRERY_HANDOFF.md §2. A frontend defect you find goes to the lane (a row in design/program/DEMO_READINESS_2026-09-20.md §6), not into a parallel implementation. Prior brief: Build S5 with the integration captures and clip strips, hand off, apply the punch list, assets v2 and corrections; then the motion pass (thirteen clips), the sound pass and the mute default decided with the owner, the sweep (dead stylesheets, injected style nodes, old token layers, unused fonts deleted; budgets.json and the visual-regression matrix reshot), the blind tally per S5's protocol, the ninety-second reel."
     },
     {
       "id": "PQ-195.00",
