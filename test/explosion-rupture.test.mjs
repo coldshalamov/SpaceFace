@@ -55,8 +55,13 @@ test('capital pressure uses bounded local parcels while separate internal failur
   owner.emitPhase('internal-secondary', receipt);
   owner.emitPhase('rupture', receipt);
   const parcels = owner.records.filter(r => r.alive);
-  assert.ok(parcels.every(r => r.kind === 2 && r.length < 50 && r.width < 20),
+  assert.ok(parcels.every(r => r.kind === 2 && r.length < 19 && r.width < 7),
     'capital rupture cannot restore giant cyan rims or long armor-flame substitutes');
+  const ordinary = make();
+  ordinary.emitPhase('rupture', entry());
+  assert.ok(parcels.filter(r => r.phase === 'rupture').length > ordinary.activeCount,
+    'capital violence comes from more separate releases, not oversized individual parcels');
+  ordinary.dispose();
   const internal = parcels.filter(r => r.phase === 'internal-secondary');
   assert.ok(internal.some(r => Math.hypot(r.x - receipt.x, r.z - receipt.z) > 15),
     'large hulls fail at real source-scaled seats instead of magnifying each flame');

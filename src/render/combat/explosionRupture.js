@@ -189,9 +189,9 @@ const FRAGMENT = /* glsl */`
       // Broad transported masses have bright INTERIORS and irregular voids between them.
       // A central slit plus rim light made the previous reactor a pair of hollow paisleys.
       float transported=u-motionTime*(0.55+0.16*sin(seed));
-      density=0.55+0.24*sin(transported*9.0+v*3.7+seed)
-        +0.17*sin(transported*18.0-v*6.2-seed*1.3)
-        +0.08*sin(transported*31.0+v*11.0+seed*0.7);
+      density=0.40+0.25*sin(transported*9.0+v*3.7+seed)
+        +0.18*sin(transported*18.0-v*6.2-seed*1.3)
+        +0.10*sin(transported*31.0+v*11.0+seed*0.7);
     } else if(vKind>2.5) {
       // Fuel keeps its longer rolling folds, with connected combustible body between the
       // channels. Uneven depletion opens gaps; a permanent centre cut is not combustion.
@@ -202,7 +202,7 @@ const FRAGMENT = /* glsl */`
       : 0.12+0.58*smoothstep(0.25,0.97,t);
     float densityAA=max(0.045,fwidth(density)*1.3);
     float cells=smoothstep(dissolution-densityAA,dissolution+densityAA,density);
-    float depth=1.0-exp(-density*1.9);
+    float depth=1.0-exp(-max(0.0,density)*1.9);
     if(vKind>0.5) coverage*=cells*depth;
     float root=smoothstep(0.0,0.055,u);
     float tip=1.0-smoothstep(0.89,1.0,u);
@@ -214,12 +214,20 @@ const FRAGMENT = /* glsl */`
     float tearCut=smoothstep(tear-0.035,tear+0.035,slit);
     if(vKind>0.5 && vKind<1.5) coverage*=mix(1.0,tearCut,tearAge*0.88);
     if(vKind<0.5) {
-      // Disjoint diagonal cleavage cuts widen as their edges shed fine matter. The
-      // remaining faces split and disappear at different times instead of fading as leaves.
-      float fracture=abs(sin((u+v*0.17)*12.0+seed*0.6));
-      float fractureAA=max(0.025,fwidth(fracture)*1.2);
-      float loss=0.10+0.75*smoothstep(0.12,0.98,t);
+      // Two unequal intersecting faults replace periodic cuts, which left a row of
+      // identical pale scallops. Each face sheds a different thin cloud of mineral matter.
+      float crackA=abs(u-0.27-0.13*v-0.06*abs(sin(v*7.0+seed)));
+      float crackB=abs(u-0.71+0.22*v-0.08*sin(v*3.0-seed));
+      float fracture=min(crackA,crackB);
+      float fractureAA=max(0.008,fwidth(fracture)*1.2);
+      float loss=0.008+0.13*smoothstep(0.10,0.98,t);
       coverage*=smoothstep(loss-fractureAA,loss+fractureAA,fracture);
+      float mineralDensity=0.51+0.23*sin(u*8.0+v*5.0+seed)
+        +0.15*sin(u*17.0-v*9.0-seed);
+      float depletion=0.08+0.65*smoothstep(0.22,0.96,t);
+      float mineralAA=max(0.025,fwidth(mineralDensity)*1.3);
+      coverage*=smoothstep(depletion-mineralAA,depletion+mineralAA,mineralDensity)
+        *(1.0-exp(-mineralDensity*1.5));
     }
     if(vKind<0.5 || vKind>1.5) {
       float arrival=age/(vKind<0.5?0.075:0.16);
@@ -257,7 +265,9 @@ const FRAGMENT = /* glsl */`
       hot=mix(vec3(1.05,2.7,4.1),vec3(4.7,1.9,0.35),smoothstep(0.62,0.83,vPhase.z));
       float opticalBody=1.0-exp(-max(0.0,density-dissolution)*4.4);
       float interior=opticalBody*(0.55+0.45*carriedHeat)*(1.0-u*0.30);
-      surfaceHeat=heat*(interior*0.88+cellRim*carriedHeat*0.20+front*0.13);
+      // A broad HDR fill clipped the curved parcel into flat blue/cream paper. Shape is
+      // carried by its lit, translucent body; only moving crests and exits reach HDR.
+      surfaceHeat=heat*(interior*(0.16+0.32*light)+cellRim*carriedHeat*0.15+front*0.11);
     } else {
       cold=vec3(0.065,0.018,0.009)*light;
       hot=vec3(4.1,1.5,0.20);
@@ -318,9 +328,9 @@ export class ExplosionRupture {
     const sourceRadius = Math.max(2, finite(entry.radius, 8));
     // Capital scale comes from separated source zones and secondary failures. A single flame
     // tongue or piece of material must not become a hundred-unit sheet covering the camera.
-    const r = Math.min(sourceRadius, 8 + Math.sqrt(sourceRadius) * 2.4);
+    const r = Math.min(sourceRadius, 8 + Math.sqrt(sourceRadius) * 2.4, kind === 2 ? 16 : Infinity);
     if (settings) this.settings = settings;
-    const count = phase === 'rupture' ? (kind === 0 ? 7 : kind === 2 ? 6 : 5)
+    const count = phase === 'rupture' ? (kind === 0 ? 7 : kind === 2 ? (entry.classId === 'capital' ? 10 : 6) : 5)
       : phase === 'ignition' ? (kind === 2 ? 2 : 3)
       : phase === 'residue' ? (kind === 0 ? 2 : 3)
       : phase === 'pressure' ? (kind === 2 ? 2 : 0)
