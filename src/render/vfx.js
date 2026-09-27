@@ -174,6 +174,8 @@ import {
 import { PersistentCombatBeamPool } from './combat/persistentBeams.js';
 import { isComposedMiningCue, isComposedTravelCue } from './vfx/worldCueRecipes.js';
 import {
+  BOLT_VARIANT,
+  FLIGHT_MODE,
   createWeaponVfxPresenter,
   createEnergyBoltPrecompileMesh,
   WeaponDischargePool,
@@ -262,7 +264,7 @@ import {
   writeDockingCradleGeometry,
 } from './dockingCradle.js';
 import { shipPitchCandidates } from './shipPitchPresentation.js';
-import { TargetContour, resolveTargetContour } from './targetContour.js';
+import { SelectionSigil, resolveSelectionSigil } from './selectionSigil.js';
 import {
   MOMENTUM_SINK_VFX_COLORS,
   MOMENTUM_SINK_VFX_HZ,
@@ -1577,8 +1579,8 @@ export const vfx = {
     invokeVfxDisposer(this._masslineReleaseArc?.matter, 'Massline receiver load');
     invokeVfxDisposer(this._apexFlare, 'Massline apex release');
     disposeVfxRoot(this._monofilamentBlade && this._monofilamentBlade.mesh, disposeState);
-    invokeVfxDisposer(this._targetContour, 'target contour');
-    this._targetContour = null;
+    invokeVfxDisposer(this._selectionSigil, 'selection sigil');
+    this._selectionSigil = null;
     disposeVfxRoot(this._seamMarkers && this._seamMarkers.mesh, disposeState);
 
     const planetSkim = this._planetSkim;
@@ -1693,7 +1695,7 @@ export const vfx = {
     this._masslineReleaseArc = null;
     this._apexFlare = null;
     this._monofilamentBlade = null;
-    this._targetContour = null;
+    this._selectionSigil = null;
     this._lights = [];
     this._freeLights = null;
     this._energy = null;
@@ -1741,7 +1743,7 @@ export const vfx = {
     add(this._masslineReleaseArc && this._masslineReleaseArc.mesh);
     add(this._apexFlare && this._apexFlare.mesh);
     add(this._monofilamentBlade && this._monofilamentBlade.mesh);
-    add(this._targetContour && this._targetContour.mesh);
+    add(this._selectionSigil && this._selectionSigil.mesh);
     add(this._seamMarkers && this._seamMarkers.mesh);
     add(this._combatBeams && this._combatBeams.group);
     add(this._fieldGeom && this._fieldGeom.mesh);
@@ -1959,7 +1961,7 @@ export const vfx = {
     this._initMonofilamentBlade();
     this._initDockingCradle();
     this._initApexFlare();
-    this._initTargetContour();
+    this._initSelectionSigil();
     this._initSeamMarkers();
     this._initCombatBeams();
     this._initArcadeStructural();
@@ -2503,7 +2505,7 @@ export const vfx = {
       this._bombDetonationVfx?.reproject(ox, oz);
       this._statusMatterVfx?.reproject(ox, oz);
       this._combatContactVfx?.reproject(ox, oz);
-      this._targetContour?.reproject(ox, oz);
+      this._selectionSigil?.reproject(ox, oz);
     }
     // Prevent double-reproject when both renderer prepareFrame and vfx.update observe the same seq.
     if (this._frameMembrane) this._frameMembrane.reset(this.state);
@@ -5378,8 +5380,10 @@ export const vfx = {
       this.bus.emit('presentation:audioCue', audioPayload);
       this.bus.emit('audio:cue', audioPayload);
     }
-    if (contactKind && this._emitCombatContact(contactKind, payload)) return true;
-    return emitStructure ? this._spawnArcadeStructuralBurst(req) : false;
+    let emitted = false;
+    if (contactKind && this._emitCombatContact(contactKind, payload)) emitted = true;
+    if (emitStructure && this._spawnArcadeStructuralBurst(req)) emitted = true;
+    return emitted;
   },
 
   // First voice per cue id per tick wins; a massacre tick adds at most one causal voice per
@@ -8373,36 +8377,40 @@ export const vfx = {
   // R3B release window: a preallocated, vertex-coloured annulus around the captured world target.
   // The pure planner consumes only the transient releaseTarget + existing predictor/rating truth;
   // this adapter owns Three.js buffers, frame-local projection, fade, and accessibility.
-  // INF-045 — disciplined target contour: one world-space ring on the locked/engaged
-  // target, drawn after the field force surfaces (renderOrder 17 > 16) with depth testing ON.
-  // Force surfaces never write depth, so the contour reads through a Well; hulls and rock do,
-  // so real occluders still win. Tint alone carries faction (red hostile, cyan otherwise).
-  _targetContour: null,
-  _initTargetContour() {
-    if (!this._scene || this._targetContour) return;
-    this._targetContour = new TargetContour(this._scene);
+  // The ORRERY selection sigil: one world-space ground-plane instrument on the locked/engaged
+  // target, drawn after the field force surfaces (renderOrder 18 > 16) with depth testing ON.
+  // Force surfaces never write depth, so the sigil reads through a Well; hulls and rock do,
+  // so real occluders still win. The subject rule lives in targetContour.js; only the art is here.
+  _selectionSigil: null,
+  _initSelectionSigil() {
+    if (!this._scene || this._selectionSigil) return;
+    this._selectionSigil = new SelectionSigil(this._scene);
   },
-  _resetTargetContour() {
-    const contour = this._targetContour;
-    if (!contour) return;
-    contour.clear();
+  _resetSelectionSigil() {
+    const sigil = this._selectionSigil;
+    if (!sigil) return;
+    // A teardown hides outright; it must not leave a half-folded instrument in the scene.
+    sigil.clear(1, null);
+    sigil.clear(1, null);
+    sigil.dispose();
+    this._selectionSigil = null;
   },
-  _updateTargetContour() {
-    const contour = this._targetContour;
-    if (!contour) return false;
+  _updateSelectionSigil(dt) {
+    const sigil = this._selectionSigil;
+    if (!sigil) return false;
     const state = this.state;
+    const settings = (state && state.settings) || null;
     if (!state || state.mode !== 'flight') {
-      contour.clear();
+      sigil.clear(dt, settings);
       return false;
     }
-    const resolved = resolveTargetContour(state);
+    const resolved = resolveSelectionSigil(state);
     if (!resolved) {
-      contour.clear();
+      sigil.clear(dt, settings);
       return false;
     }
     const local = this._toLocalXZ(resolved.x, resolved.z, this._spawnLocalXZ);
-    contour.setTarget(local.x, local.z, resolved.radius, resolved.hostile);
-    return true;
+    return sigil.setSubject(resolved, local.x, local.z, dt, settings);
   },
   _masslineReleaseArc: null,
   _initMasslineReleaseArc() {
@@ -11168,7 +11176,7 @@ export const vfx = {
     this._updateTumbleBodyLanguageVfx(dt);
     this._updateStatusAttachedVfx(dt);
     // INF-045: the lock contour tracks the target every frame it exists.
-    sub.targetContour = this._updateTargetContour() ? 1 : 0;
+    sub.selectionSigil = this._updateSelectionSigil(dt) ? 1 : 0;
     // M1 doctrine telegraphs — sustain FLYBY/TETHER/CHARGE cues across the pre-fire window.
     if (this._doctrineTellActive > 0) this._updateDoctrineTells(dt);
     if (this._arcPreviewActive()) {
@@ -14613,7 +14621,17 @@ export function runProjectileTrailEmissionSelfCheck() {
     if (!ribbons || !ribbons.has(id)) fail(`projectile ${id} must keep a ribbon wake, not TRAIL_STREAK beads`);
   }
   if (!ribbons || !ribbons.has(11)) fail('missile exhaust must be a ribbon wake on the mesh body');
-  if (bolts.byEntity && bolts.byEntity.has(11)) fail('missile must keep its mesh body rather than an energy card');
+  const missileRecipe = resolveWeaponRecipe('wpn_missile_rack_m', { kind: 'missile' });
+  if (missileRecipe.flight.mode !== FLIGHT_MODE.MESH) {
+    fail('missile must keep its mesh body rather than an energy card');
+  }
+  if (bolts.byEntity && bolts.byEntity.has(11)) {
+    const boltIdx = bolts.byEntity.get(11);
+    const variant = bolts.size.getW(boltIdx);
+    if (variant !== BOLT_VARIANT.MOTOR && variant !== BOLT_VARIANT.HEAVY_MOTOR) {
+      fail('missile must keep its mesh body rather than an energy card');
+    }
+  }
 
   const offTableId = 15;
   const offTableX = tableVfxDrawWuFromState({}) + PROJECTILE_DRAW_PAD_WU + 24;

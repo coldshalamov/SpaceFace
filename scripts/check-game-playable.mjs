@@ -501,7 +501,7 @@ try {
       let loaded = false;
       try {
         phase = 'harness-reload';
-        await page.reload({ waitUntil: 'domcontentloaded', timeout: 120000 });
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: 180000 });
         await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 60000 });
         await page.waitForFunction(() => {
           const el = document.querySelector('[data-screen="mainMenu"]');

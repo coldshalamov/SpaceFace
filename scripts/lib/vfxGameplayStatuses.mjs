@@ -15,7 +15,18 @@ export function createGameplayStatuses({state,shipMesh}) {
     if(!GAMEPLAY_STATUS_SCENARIOS[id])return;
     base={pos:{...ship.pos},vel:{...ship.vel},rot:ship.rot};
     oldCombat=state.combat;oldHp=ship.hp;oldMaxHp=ship.maxHp;
-    state.combat={entities:{[ship.id]:{statuses:{}}},statusNextPendingSeq:1};
+    state.combat={
+      entities:{
+        [ship.id]:{
+          statuses:{},
+          subsystems:id==='damage-venting'?{
+            subsystem_drive:{health:45,maxHealth:45,destroyed:false,effectiveDisabled:false},
+            subsystem_weapon:{health:38,maxHealth:38,destroyed:false,effectiveDisabled:false},
+          }:{},
+        }
+      },
+      statusNextPendingSeq:1
+    };
     ship.view={root:shipMesh};ship.hp=80;ship.maxHp=100;
   }
   function update(){
@@ -27,7 +38,18 @@ export function createGameplayStatuses({state,shipMesh}) {
     ship.pos.z=base.pos.z+Math.sin(t*.63)*5;
     ship.rot=base.rot+t*.25;ship.vel.x=7*.85*Math.cos(t*.85);ship.vel.z=5*.63*Math.cos(t*.63);
     shipMesh.position.set(ship.pos.x,0,ship.pos.z);shipMesh.rotation.y=-ship.rot;shipMesh.updateMatrixWorld(true);
-    if(scenario==='damage-venting'){ship.hp=t>=.2&&t<1.7?22:80;return;}
+    if(scenario==='damage-venting'){
+      const subs=state.combat.entities[ship.id]?.subsystems;
+      const rupturing=t>=.2&&t<2.2;
+      ship.hp=rupturing?24:80;
+      if(subs){
+        subs.subsystem_drive.destroyed=rupturing;
+        subs.subsystem_drive.effectiveDisabled=rupturing;
+        subs.subsystem_drive.health=rupturing?0:45;
+        subs.subsystem_weapon.effectiveDisabled=rupturing;
+      }
+      return;
+    }
     const id=scenario==='status-burn'?'status_burning':scenario==='status-goo'?'status_goo':MOMENTUM_SINK_STATUS_ID;
     const bag=state.combat.entities[ship.id].statuses;
     if(t>=.2&&t<2.2&&!bag[id]){
