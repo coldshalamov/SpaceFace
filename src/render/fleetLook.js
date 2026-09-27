@@ -175,8 +175,12 @@ export function installFleetLook(SF) {
     // Link this body's programs up front: the post route's unready-drawable guard hides any mesh
     // whose program is still linking, and a harness frame must never be a guard-hidden blank.
     try { renderer.compile(holder, cam, scene); } catch (_) {}
-    for (let i = 0; i < 4; i++) { renderOnce(renderer, scene, cam); await wait(50); }
+    // The live game loop keeps re-posing the shared camera between our awaits, so pose it again
+    // right before every draw, and keep drawing until the programs have linked.
+    const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0);
+    for (let i = 0; i < 10; i++) { pose(); renderOnce(renderer, scene, cam); await wait(i < 4 ? 50 : 250); }
     // Same task as the draw: without preserveDrawingBuffer the canvas clears after compositing.
+    pose();
     renderOnce(renderer, scene, cam);
     const url = renderer.domElement.toDataURL('image/png');
     cam.position.copy(savedCamPos);

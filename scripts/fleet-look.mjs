@@ -122,8 +122,8 @@ try {
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') logs.push(m.text().slice(0, 300)); });
   page.on('pageerror', (e) => logs.push('PAGEERROR ' + String(e).slice(0, 300)));
   if (args.illustrated === '0') await page.addInitScript(() => { globalThis.__SF_FORGE_ILLUSTRATED__ = false; });
-  await page.goto(server.url + '?dev=fleetlook', { waitUntil: 'load', timeout: 180000 });
-  await page.waitForFunction(() => window.SF_fleetLookReady === true, null, { timeout: 240000 });
+  await page.goto(server.url + '?dev=fleetlook', { waitUntil: 'load', timeout: Number(args.timeout || 600) * 1000 });
+  await page.waitForFunction(() => window.SF_fleetLookReady === true, null, { timeout: Number(args.timeout || 600) * 1000 });
   // let env map bake
   await page.waitForTimeout(3000);
 
