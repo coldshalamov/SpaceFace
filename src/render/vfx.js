@@ -240,11 +240,10 @@ import {
 } from './masslineCableSurface.js';
 import { INACTIVE_TUMBLE_VFX_PLAN, tumbleVfxLooksActive } from './inactiveVfxPlan.js';
 import {
-  MASSLINE_RELEASE_ARC_SEGMENT_CAPACITY,
-  createMasslineReleaseArcScratch,
+  createMasslineReleaseArcPlan,
   resolveMasslineReleaseArcPlan,
-  writeMasslineReleaseArcGeometry,
 } from './masslineReleaseArc.js';
+import { MasslineReleaseMatter } from './vfx/masslineReleaseMatter.js';
 import {
   MASSLINE_SWING_TRACE_CAPACITY,
   MASSLINE_SWING_TRACE_LIFE_S,
@@ -1575,7 +1574,8 @@ export const vfx = {
       disposeVfxRoot(this._tetherCable && this._tetherCable[key], disposeState);
     }
     disposeVfxRoot(this._arcPreview && this._arcPreview.mesh, disposeState);
-    disposeVfxRoot(this._masslineReleaseArc && this._masslineReleaseArc.mesh, disposeState);
+    invokeVfxDisposer(this._masslineReleaseArc?.matter, 'Massline receiver load');
+    invokeVfxDisposer(this._apexFlare, 'Massline apex release');
     disposeVfxRoot(this._monofilamentBlade && this._monofilamentBlade.mesh, disposeState);
     invokeVfxDisposer(this._targetContour, 'target contour');
     this._targetContour = null;
@@ -1691,6 +1691,7 @@ export const vfx = {
     this._tetherCable = null;
     this._arcPreview = null;
     this._masslineReleaseArc = null;
+    this._apexFlare = null;
     this._monofilamentBlade = null;
     this._targetContour = null;
     this._lights = [];
@@ -1738,6 +1739,7 @@ export const vfx = {
     }
     add(this._arcPreview && this._arcPreview.mesh);
     add(this._masslineReleaseArc && this._masslineReleaseArc.mesh);
+    add(this._apexFlare && this._apexFlare.mesh);
     add(this._monofilamentBlade && this._monofilamentBlade.mesh);
     add(this._targetContour && this._targetContour.mesh);
     add(this._seamMarkers && this._seamMarkers.mesh);
@@ -2470,18 +2472,9 @@ export const vfx = {
         conduit.start.value.x += ox; conduit.start.value.z += oz;
         conduit.end.value.x += ox; conduit.end.value.z += oz;
       }
-      // The release annulus writes frame-local vertices directly into one shared mesh.
-      const releaseArc = this._masslineReleaseArc;
-      if (releaseArc && releaseArc.mesh && releaseArc.mesh.visible) {
-        const positions = releaseArc.scratch.geometry.positions;
-        const vertexCount = releaseArc.scratch.geometry.vertexCount;
-        for (let vertex = 0; vertex < vertexCount; vertex += 1) {
-          const offset = vertex * 3;
-          positions[offset] += ox;
-          positions[offset + 2] += oz;
-        }
-        releaseArc.mesh.geometry.attributes.position.needsUpdate = true;
-      }
+      // The two loaded-matter owners retain global anchors and local GPU descriptors.
+      this._masslineReleaseArc?.matter?.reproject(ox, oz);
+      this._apexFlare?.reproject(ox, oz);
       // A frame-origin jump is a discontinuity for a camera-prominent wake. Clear/reseed at the
       // current nozzle on the next update instead of risking one frame that joins two coordinate
       // spaces with a screen-crossing strip.
@@ -8414,37 +8407,12 @@ export const vfx = {
   _masslineReleaseArc: null,
   _initMasslineReleaseArc() {
     if (!this._scene) return;
-    const scratch = createMasslineReleaseArcScratch(MASSLINE_RELEASE_ARC_SEGMENT_CAPACITY);
-    const geo = new THREE.BufferGeometry();
-    const position = new THREE.BufferAttribute(scratch.geometry.positions, 3);
-    const color = new THREE.BufferAttribute(scratch.geometry.colors, 3);
-    position.usage = THREE.DynamicDrawUsage;
-    color.usage = THREE.DynamicDrawUsage;
-    geo.setAttribute('position', position);
-    geo.setAttribute('color', color);
-    geo.setIndex(new THREE.BufferAttribute(scratch.geometry.indices, 1));
-    geo.setDrawRange(0, 0);
-    const mat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(1.35, 1.35, 1.35),
-      vertexColors: true,
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-      depthTest: true,
-      blending: THREE.AdditiveBlending,
-      side: THREE.DoubleSide,
-      forceSinglePass: true,
-      toneMapped: false,
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.name = 'sf-massline-release-annulus';
-    mesh.frustumCulled = false;
-    mesh.renderOrder = 8;
-    mesh.visible = false;
-    this._scene.add(mesh);
+    const matter = new MasslineReleaseMatter(this._scene,
+      (x, z, out) => this._toLocalXZ(x, z, out), 'SF_MasslineReceiverLoad');
     this._masslineReleaseArc = {
-      mesh,
-      scratch,
+      mesh: matter.mesh,
+      matter,
+      scratch: { plan: createMasslineReleaseArcPlan() },
       input: {
         active: false,
         releaseTarget: null,
@@ -8482,9 +8450,7 @@ export const vfx = {
     arc.ratingClassification = null;
     arc.ratingScore = 0;
     clearMasslineReleaseTarget(arc.postTarget);
-    arc.mesh.visible = false;
-    arc.mesh.material.opacity = 0;
-    arc.mesh.geometry.setDrawRange(0, 0);
+    arc.matter.clear();
   },
 
   _resetMasslineReleaseToken() {
@@ -8546,30 +8512,7 @@ export const vfx = {
     arc.fade = plan.visible
       ? Math.min(1, arc.fade + dt * 10)
       : Math.max(0, arc.fade - dt * 8);
-    if (plan.visible) {
-      const geometry = writeMasslineReleaseArcGeometry(arc.scratch.geometry, plan);
-      const positions = geometry.positions;
-      for (let vertex = 0; vertex < geometry.vertexCount; vertex += 1) {
-        const offset = vertex * 3;
-        const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
-        positions[offset] = local.x;
-        positions[offset + 2] = local.z;
-      }
-      arc.mesh.geometry.setDrawRange(0, geometry.indexCount);
-      arc.mesh.geometry.attributes.position.needsUpdate = true;
-      arc.mesh.geometry.attributes.color.needsUpdate = true;
-    }
-
-    if (arc.fade <= 0.01) {
-      arc.mesh.visible = false;
-      arc.mesh.material.opacity = 0;
-      arc.mesh.geometry.setDrawRange(0, 0);
-      return false;
-    }
-    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
-    arc.mesh.material.opacity = arc.fade * accessibility.flashOpacityScale;
-    arc.mesh.visible = true;
-    return true;
+    return arc.matter.receiver(plan, input.liveTarget, this._t, arc.fade);
   },
 
   // -------------------------------------------------------------------------
@@ -8897,96 +8840,31 @@ export const vfx = {
   },
 
   // -------------------------------------------------------------------------
-  // Slingshot apex flare — the "you nailed that" beat. Two concentric chromatic rings
-  // (cyan inner, magenta outer) expand off the ship at slightly different rates, so the edges
-  // separate as they grow: an aberration fringe, not a shockwave. ~1 s, flash/motion-scaled.
+  // Slingshot apex: the actual thrown mass unloads three unequal folded channels.
+  // The success beat follows its velocity and drains locally; it never claims an AOE.
   // -------------------------------------------------------------------------
   _apexFlare: null,
 
   _initApexFlare() {
     if (!this._scene) return;
-    const mkRing = (hex) => {
-      const g = new THREE.RingGeometry(0.9, 1.0, 48, 1);
-      g.rotateX(-Math.PI / 2);
-      const m = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(hex),
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-        depthTest: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-        forceSinglePass: true,
-        toneMapped: false,
-      });
-      const mesh = new THREE.Mesh(g, m);
-      mesh.visible = false;
-      mesh.frustumCulled = false;
-      mesh.renderOrder = 9;
-      this._scene.add(mesh);
-      return mesh;
-    };
-    this._apexFlare = {
-      inner: mkRing('#7ce4ff'),
-      outer: mkRing('#ff7ce4'),
-      active: false,
-      age: 0,
-      life: 1.0,
-      r0: 8,
-    };
+    this._apexFlare = new MasslineReleaseMatter(this._scene,
+      (x, z, out) => this._toLocalXZ(x, z, out), 'SF_MasslineApexRelease');
   },
 
   _resetApexFlare() {
-    const f = this._apexFlare;
-    if (!f) return;
-    f.active = false;
-    f.inner.visible = false;
-    f.outer.visible = false;
-    f.inner.material.opacity = 0;
-    f.outer.material.opacity = 0;
+    this._apexFlare?.clear();
   },
 
-  _triggerApexFlare() {
-    const f = this._apexFlare;
-    if (!f) return;
-    const player = this.helpers && this.helpers.player
-      ? this.helpers.player() : this._ent(this.state && this.state.playerId);
-    if (!player || !player.pos) return;
-    f.r0 = Math.max(6, (Number.isFinite(player.radius) ? player.radius : 6) * 1.35);
-    f.age = 0;
-    f.life = 1.0;
-    f.active = true;
+  _triggerApexFlare(target, score) {
+    return this._apexFlare?.release(target, this._t, score) || false;
   },
 
-  _updateApexFlare(dt) {
+  _updateApexFlare(_dt) {
     const f = this._apexFlare;
-    if (!f || !f.active) return false;
-    f.age += dt;
-    const t = f.age / f.life;
-    if (t >= 1) {
-      f.active = false;
-      f.inner.visible = false;
-      f.outer.visible = false;
-      return false;
-    }
-    const player = this.helpers && this.helpers.player
-      ? this.helpers.player() : this._ent(this.state && this.state.playerId);
-    if (!player || !player.pos) { f.active = false; f.inner.visible = false; f.outer.visible = false; return false; }
-    // The flare rides the hull — the pilot is rocketing away, and the burst belongs to the ship.
-    const local = this._toLocalXZ(player.pos.x, player.pos.z, this._spawnLocalXZ);
-    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
-    const flash = acc.flashOpacityScale;
-    const ease = 1 - (1 - t) * (1 - t);
-    f.inner.scale.set(f.r0 * (1 + ease * 5.2), 1, f.r0 * (1 + ease * 5.2));
-    f.outer.scale.set(f.r0 * (1 + ease * 6.6), 1, f.r0 * (1 + ease * 6.6));
-    f.inner.position.set(local.x, 1.7, local.z);
-    f.outer.position.set(local.x, 1.75, local.z);
-    const a = (1 - t) * (1 - t);
-    f.inner.material.opacity = 0.85 * a * flash;
-    f.outer.material.opacity = 0.5 * a * flash;
-    f.inner.visible = f.inner.material.opacity > 0.01;
-    f.outer.visible = f.outer.material.opacity > 0.01;
-    return true;
+    if (!f?.active) return false;
+    return f.updateRelease(this._t, this._ent(f.targetId),
+      masslineReleaseMotionReduced(this.state?.settings),
+      masslineReleaseFlashReduced(this.state?.settings));
   },
 
   _updateTetherCable(dt) {
@@ -9681,7 +9559,7 @@ export const vfx = {
     // runs for deliberate clean cuts (the token match above), and releasedAtApex additionally
     // demands the omega crest — a break or a lazy let-go never reaches this beat.
     if (p.releasedAtApex === true) {
-      this._triggerApexFlare();
+      this._triggerApexFlare(target, score);
       this.bus.emit('audio:cue', { id: 'massline.slingshotApex' });
     }
 
