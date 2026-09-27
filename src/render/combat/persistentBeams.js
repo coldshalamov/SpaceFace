@@ -9,9 +9,11 @@ import {
 const DEFAULT_MAX_BEAMS = 16;
 const DEFAULT_TIMEOUT_S = 0.14;
 // Birth spool: a latched continuous beam grows out of the aperture instead of snapping to full
-// width and brightness on the first presented frame (B10). Releases stay a hard stop because the
-// simulation has already ended the connection.
+// width and brightness on the first presented frame (B10). The presentation keeps a short drain
+// after the authoritative stop so the loaded conduit can cool at the work face instead of popping
+// out of existence on the same render tick.
 export const BEAM_BIRTH_S = 0.08;
+export const BEAM_COOLING_S = 0.26;
 
 /** Smooth 0..1 birth ramp; 1 once the beam has spooled. */
 export function beamBirthGlow(ageS) {
@@ -50,6 +52,11 @@ function createBeamBatch(THREE, capacity, name) {
   // for the whole pool, and leaving it unregistered keeps the ranged-publication accounting for
   // position and colour exactly as it was.
   const axial = new Float32Array(capacity * 4);
+  // Lifecycle clocks are per-vertex attributes so the shader can show an aperture arrival and a
+  // directional drain without rebuilding geometry or allocating a second mesh for every beam.
+  const born = new Float32Array(capacity * 4);
+  const stopTimes = new Float32Array(capacity * 4);
+  stopTimes.fill(-1);
   const indices = new Uint16Array(capacity * 6);
   for (let slot = 0; slot < capacity; slot++) {
     const vertex = slot * 4;
@@ -81,12 +88,23 @@ function createBeamBatch(THREE, capacity, name) {
   const axialAttribute = new THREE.BufferAttribute(axial, 1);
   axialAttribute.setUsage(THREE.DynamicDrawUsage);
   geometry.setAttribute('aSfAxial', axialAttribute);
-  return { geometry, positions, colors, position, color, axial, axialAttribute };
+  const bornAttribute = new THREE.BufferAttribute(born, 1);
+  const stopAttribute = new THREE.BufferAttribute(stopTimes, 1);
+  bornAttribute.setUsage(THREE.DynamicDrawUsage);
+  stopAttribute.setUsage(THREE.DynamicDrawUsage);
+  geometry.setAttribute('aSfBorn', bornAttribute);
+  geometry.setAttribute('aSfStop', stopAttribute);
+  return {
+    geometry, positions, colors, position, color, axial, axialAttribute,
+    born, stopTimes, bornAttribute, stopAttribute,
+  };
 }
 
 // A sustained beam is an energy conduit, not a colored rectangle. The injected structure gives
-// the quad a cross-section (bright centerline running out to soft edges, M2), packets of energy
-// travelling muzzle -> contact (E3), and hot endpoints where the beam meets muzzle and matter.
+// the quad a loaded cross-section (bright internal strands running through a substantial body,
+// M2), packets of energy travelling muzzle -> contact (E3), and a restrained work face where the
+// authoritative ray meets matter. The endpoint is a broad folded contact response, not a second
+// muzzle flash or a detached impact sprite.
 // The donor stays MeshBasicMaterial so the dynamic-buffer owner contract and blend roles are
 // untouched; uSfPulse lets the accessibility path quiet the travelling term without removing
 // the filament.
@@ -95,37 +113,77 @@ function applyBeamShaderStructure(material, shared, role) {
     shader.uniforms.uSfTime = shared.time;
     shader.uniforms.uSfPulse = shared.pulse;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nattribute float aSfAxial;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfBeam = uv;\nvSfAxial = aSfAxial;');
+      .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nvarying float vSfBorn;\nvarying float vSfStop;\nattribute float aSfAxial;\nattribute float aSfBorn;\nattribute float aSfStop;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfBeam = uv;\nvSfAxial = aSfAxial;\nvSfBorn = aSfBorn;\nvSfStop = aSfStop;');
     if (role === 'core') {
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nuniform float uSfTime;\nuniform float uSfPulse;')
+        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nvarying float vSfBorn;\nvarying float vSfStop;\nuniform float uSfTime;\nuniform float uSfPulse;')
         .replace('#include <color_fragment>', `#include <color_fragment>
 {
   float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
-  // A conduit, not a painted rectangle: a hard filament inside a walled body with a defined
-  // outer edge, so the beam keeps its identity with bloom off and over a bright hull.
-  float sfFilament = pow(max(0.0, 1.0 - sfAcross), 6.0);
-  float sfBody = 1.0 - smoothstep(0.52, 0.86, sfAcross);
-  // Packets phased on WORLD distance at a fixed wavelength and a fixed speed. A target running
-  // toward or away no longer squashes or stretches the energy travelling down the line.
+  // The conduit loads from the aperture toward the authoritative contact. A small ignition floor
+  // keeps the first frame legible, while the moving front prevents a static white bar at spawn.
+  float sfAge = max(0.0, uSfTime - vSfBorn);
+  float sfArrival = 0.20 + 0.80 * smoothstep(0.0, 0.14, sfAge - vSfAxial * 0.0034);
+  float sfReleaseAge = vSfStop < -0.5 ? 0.0 : max(0.0, uSfTime - vSfStop);
+  float sfCooling = vSfStop < -0.5 ? 1.0 : 1.0 - smoothstep(0.0, 0.26, sfReleaseAge);
+  float sfDrainFront = vSfStop < -0.5 ? 1.1 : smoothstep(0.0, 1.0, sfReleaseAge / 0.26);
+  float sfDrain = vSfStop < -0.5
+    ? 1.0
+    : 1.0 - smoothstep(sfDrainFront - 0.16, sfDrainFront + 0.16, vSfBeam.x);
+
+  // A loaded volume has a hot spine, a softer wall, and dark moving separation between the
+  // internal strands. These folds are phased on world distance, so a retarget cannot stretch the
+  // material into a rubber band.
+  float sfSpine = pow(max(0.0, 1.0 - sfAcross), 2.35);
+  float sfWall = 1.0 - smoothstep(0.52, 0.92, sfAcross);
+  float sfRiftA = 0.5 + 0.5 * sin(vSfAxial * 1.65 - uSfTime * 34.0 + vSfBeam.y * 5.0);
+  float sfRiftB = 0.5 + 0.5 * sin(vSfAxial * 0.76 + uSfTime * 23.0 - vSfBeam.y * 3.0);
+  float sfCrest = 0.5 + 0.5 * sin(vSfAxial * 2.35 - uSfTime * 142.0 + vSfBeam.y * 4.0);
   float sfTravel = 0.5 + 0.5 * sin(vSfAxial * 1.95 - uSfTime * 176.0);
-  // APERTURE ONLY. The contact terminal belongs to the impact owner; a second bright end here
-  // would put two competing primary flashes on a single shot.
+  float sfInternal = 0.66 + 0.20 * sfRiftA + 0.14 * sfRiftB;
+  float sfLoadedBody = (sfWall * 0.58 + sfSpine * (0.96 + 0.24 * sfCrest)) * sfInternal;
+
+  // At the far end, the same volume opens into a folded work face. It is tied to uv.x==1 (the
+  // receipt's contact point), broad enough to read at gameplay scale, and lower-radiance than the
+  // spine so it reads as force doing work rather than a second primary flash.
+  float sfContactBand = smoothstep(0.64, 0.96, vSfBeam.x);
+  float sfFaceCenter = 0.50 + 0.18 * sin(uSfTime * 17.0 + vSfAxial * 0.42);
+  float sfFaceRidge = 1.0 - smoothstep(0.08, 0.34, abs(vSfBeam.y - sfFaceCenter));
+  float sfFaceFold = 0.5 + 0.5 * sin(vSfBeam.y * 13.0 - uSfTime * 41.0 + vSfAxial);
+  float sfWorkFace = sfContactBand * (0.28 + 0.72 * sfFaceRidge) * (0.60 + 0.40 * sfFaceFold);
+
+  // The aperture remains a small source lip; it no longer has to carry the whole beam's read.
   float sfMuzzle = smoothstep(0.12, 0.0, vSfBeam.x);
-  diffuseColor.rgb *= (sfFilament * 1.20 + sfBody * 0.42) * (0.82 + 0.26 * sfTravel * uSfPulse)
-    + 0.32 * sfMuzzle;
+  float sfEnergy = sfLoadedBody * (0.72 + 0.28 * sfTravel * uSfPulse)
+    + sfWorkFace * 0.66 + sfMuzzle * 0.32;
+  diffuseColor.rgb *= sfEnergy * sfArrival * sfCooling * (0.18 + 0.82 * sfDrain);
+  diffuseColor.a *= clamp(sfArrival * sfCooling * (0.26 + 0.74 * sfDrain), 0.0, 1.0);
 }`);
     } else {
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nuniform float uSfTime;\nuniform float uSfPulse;')
+        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nvarying float vSfBorn;\nvarying float vSfStop;\nuniform float uSfTime;\nuniform float uSfPulse;')
         .replace('#include <color_fragment>', `#include <color_fragment>
 {
   float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
-  float sfSheath = pow(max(0.0, 1.0 - sfAcross), 2.6);
+  float sfAge = max(0.0, uSfTime - vSfBorn);
+  float sfArrival = 0.16 + 0.84 * smoothstep(0.0, 0.18, sfAge - vSfAxial * 0.0030);
+  float sfReleaseAge = vSfStop < -0.5 ? 0.0 : max(0.0, uSfTime - vSfStop);
+  float sfCooling = vSfStop < -0.5 ? 1.0 : 1.0 - smoothstep(0.0, 0.26, sfReleaseAge);
+  float sfDrainFront = vSfStop < -0.5 ? 1.1 : smoothstep(0.0, 1.0, sfReleaseAge / 0.26);
+  float sfDrain = vSfStop < -0.5
+    ? 1.0
+    : 1.0 - smoothstep(sfDrainFront - 0.18, sfDrainFront + 0.18, vSfBeam.x);
+  float sfSheath = pow(max(0.0, 1.0 - sfAcross), 1.65) + (1.0 - smoothstep(0.58, 0.96, sfAcross)) * 0.28;
   float sfTravel = 0.5 + 0.5 * sin(vSfAxial * 1.12 - uSfTime * 78.0);
+  float sfContactBand = smoothstep(0.62, 0.98, vSfBeam.x);
+  float sfFaceFold = 0.5 + 0.5 * sin(vSfBeam.y * 10.0 - uSfTime * 29.0 + vSfAxial * 0.8);
+  float sfWorkFace = sfContactBand * (0.20 + 0.80 * sfFaceFold);
   float sfMuzzle = smoothstep(0.2, 0.0, vSfBeam.x);
-  diffuseColor.rgb *= sfSheath * (0.3 + 0.85 * sfTravel * uSfPulse) + 0.25 * sfMuzzle * sfSheath;
+  float sfEnergy = sfSheath * (0.26 + 0.74 * sfTravel * uSfPulse) + sfWorkFace * 0.42
+    + 0.25 * sfMuzzle * sfSheath;
+  diffuseColor.rgb *= sfEnergy * sfArrival * sfCooling * (0.16 + 0.84 * sfDrain);
+  diffuseColor.a *= clamp(sfArrival * sfCooling * (0.20 + 0.80 * sfDrain), 0.0, 1.0);
 }`);
     }
   };
@@ -159,6 +217,8 @@ export class PersistentCombatBeamPool {
       widthMul: 1,
       bornAt: -Infinity,
       lastSeen: -Infinity,
+      stopping: false,
+      stopAt: -Infinity,
       coreR: 1,
       coreG: 1,
       coreB: 1,
@@ -254,6 +314,12 @@ export class PersistentCombatBeamPool {
       entry.bornAt = finite(timeS, 0);
       this.startCount++;
     }
+    // A receipt arriving during the short drain re-latches the same loaded volume. It does not
+    // restart the source animation or allocate another slot.
+    if (entry.stopping) {
+      entry.stopping = false;
+      entry.stopAt = -Infinity;
+    }
     entry.fromX = finite(from.x, entry.fromX);
     entry.fromZ = finite(from.z, entry.fromZ);
     entry.toX = finite(to.x, entry.toX);
@@ -263,19 +329,24 @@ export class PersistentCombatBeamPool {
     entry.ownerId = payload.ownerId == null ? entry.ownerId : payload.ownerId;
     entry.weaponId = payload.weaponId == null ? entry.weaponId : payload.weaponId;
     entry.lastSeen = finite(timeS, 0);
+    this._writeSlotLifecycle(this._coreBatch, entry.slot, entry.bornAt, entry.stopAt);
+    this._writeSlotLifecycle(this._haloBatch, entry.slot, entry.bornAt, entry.stopAt);
     const birth = beamBirthGlow(entry.lastSeen - entry.bornAt);
+    // Shader arrival supplies the directional load, but the source lip needs enough authored
+    // material on frame zero to avoid the black first-frame failure in a normal-speed capture.
+    const birthIntensity = 0.24 + 0.76 * birth;
     this._color.set(colorValue(profile && profile.coreColor, 0xffffff));
     entry.coreR = this._color.r;
     entry.coreG = this._color.g;
     entry.coreB = this._color.b;
     this._writeSlotColor(this._coreBatch, entry.slot,
-      entry.coreR * birth, entry.coreG * birth, entry.coreB * birth);
+      entry.coreR * birthIntensity, entry.coreG * birthIntensity, entry.coreB * birthIntensity);
     this._color.set(colorValue(profile && profile.accentColor, 0x66ccff));
     entry.haloR = this._color.r;
     entry.haloG = this._color.g;
     entry.haloB = this._color.b;
     this._writeSlotColor(this._haloBatch, entry.slot,
-      entry.haloR * birth, entry.haloG * birth, entry.haloB * birth);
+      entry.haloR * birthIntensity, entry.haloG * birthIntensity, entry.haloB * birthIntensity);
     this._commitBatch(this._coreBatch);
     this._commitBatch(this._haloBatch);
     this.group.visible = true;
@@ -297,11 +368,11 @@ export class PersistentCombatBeamPool {
     return updated;
   }
 
-  stop(payload) {
+  stop(payload, timeS = null) {
     const key = beamKey(payload);
     const entry = key ? this._byKey.get(key) : null;
     if (!entry) return false;
-    this._release(entry);
+    this._beginRelease(entry, finite(timeS, entry.lastSeen));
     return true;
   }
 
@@ -325,7 +396,12 @@ export class PersistentCombatBeamPool {
     for (let entryIndex = 0; entryIndex < this._entries.length; entryIndex++) {
       const entry = this._entries[entryIndex];
       if (!entry.active) continue;
-      if (now - entry.lastSeen > this.timeoutS) {
+      if (!entry.stopping && now - entry.lastSeen > this.timeoutS) {
+        // A lost receipt is still a release, not an instantaneous delete. This keeps the pool
+        // honest under packet loss while preserving a visible source-to-contact drain.
+        this._beginRelease(entry, entry.lastSeen);
+      }
+      if (entry.stopping && now - entry.stopAt >= BEAM_COOLING_S) {
         this._release(entry);
         matricesChanged = true;
         continue;
@@ -358,8 +434,11 @@ export class PersistentCombatBeamPool {
       // length immediately and opens from a filament to its full cross-section.
       const birth = beamBirthGlow(now - entry.bornAt);
       const birthWidth = 0.22 + 0.78 * (birth * birth * (3 - 2 * birth));
+      const coolWidth = entry.stopping
+        ? 0.84 + 0.16 * (1 - Math.min(1, Math.max(0, (now - entry.stopAt) / BEAM_COOLING_S)))
+        : 1;
       const width = Math.max(
-        (reducedFlash ? 0.36 : 0.52) * entry.widthMul * birthWidth,
+        (reducedFlash ? 0.36 : 0.52) * entry.widthMul * birthWidth * coolWidth,
         cameraFloor || 0,
       );
       this._writeSlotQuad(this._coreBatch, entry.slot, ax, az, bx, bz, entry.y, width, length);
@@ -408,6 +487,8 @@ export class PersistentCombatBeamPool {
     }
     entry.active = true;
     entry.key = key;
+    entry.stopping = false;
+    entry.stopAt = -Infinity;
     this._byKey.set(key, entry);
     this.activeCount++;
     return entry;
@@ -421,12 +502,23 @@ export class PersistentCombatBeamPool {
     entry.ownerId = null;
     entry.weaponId = null;
     entry.lastSeen = -Infinity;
+    entry.bornAt = -Infinity;
+    entry.stopping = false;
+    entry.stopAt = -Infinity;
     this.activeCount = Math.max(0, this.activeCount - 1);
     this._clearSlot(this._coreBatch, entry.slot);
     this._clearSlot(this._haloBatch, entry.slot);
     this._commitBatch(this._coreBatch);
     this._commitBatch(this._haloBatch);
     this.group.visible = this.activeCount > 0;
+  }
+
+  _beginRelease(entry, timeS) {
+    if (!entry || !entry.active || entry.stopping) return;
+    entry.stopping = true;
+    entry.stopAt = finite(timeS, entry.lastSeen);
+    this._writeSlotLifecycle(this._coreBatch, entry.slot, entry.bornAt, entry.stopAt);
+    this._writeSlotLifecycle(this._haloBatch, entry.slot, entry.bornAt, entry.stopAt);
   }
 
   _writeSlotColor(batch, slot, r, g, b) {
@@ -439,6 +531,18 @@ export class PersistentCombatBeamPool {
       batch.colors[offset + 2] = b;
     }
     if (!tracked) batch.color.needsUpdate = true;
+  }
+
+  _writeSlotLifecycle(batch, slot, bornAt, stopAt) {
+    const start = slot * 4;
+    const born = finite(bornAt, 0);
+    const stopped = Number.isFinite(stopAt) ? stopAt : -1;
+    for (let vertex = 0; vertex < 4; vertex++) {
+      batch.born[start + vertex] = born;
+      batch.stopTimes[start + vertex] = stopped;
+    }
+    batch.bornAttribute.needsUpdate = true;
+    batch.stopAttribute.needsUpdate = true;
   }
 
   _writeSlotQuad(batch, slot, ax, az, bx, bz, y, width, length) {
@@ -474,6 +578,10 @@ export class PersistentCombatBeamPool {
       batch.axial.fill(0, slot * 4, slot * 4 + 4);
       batch.axialAttribute.needsUpdate = true;
     }
+    batch.born.fill(0, slot * 4, slot * 4 + 4);
+    batch.stopTimes.fill(-1, slot * 4, slot * 4 + 4);
+    batch.bornAttribute.needsUpdate = true;
+    batch.stopAttribute.needsUpdate = true;
     if (!tracked) batch.position.needsUpdate = true;
   }
 

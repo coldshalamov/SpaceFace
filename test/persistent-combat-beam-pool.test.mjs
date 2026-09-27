@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 
-import { PersistentCombatBeamPool } from '../src/render/combat/persistentBeams.js';
+import { BEAM_COOLING_S, PersistentCombatBeamPool } from '../src/render/combat/persistentBeams.js';
 import { createDynamicBufferCoordinator } from '../src/render/dynamicBufferRanges.js';
 
 const identityLocal = (x, z, out) => {
@@ -43,6 +43,10 @@ test('persistent combat beams update in place with a bounded two-draw pool', () 
   assert.equal(pool.startCount, 1);
   assert.ok(Array.from(pool.geometry.attributes.position.array.slice(0, 12)).some((value) => value !== 0),
     'active beam must write non-degenerate gameplay-plane vertices');
+  assert.ok(Array.from(pool.geometry.attributes.color.array.slice(0, 12)).some((value) => value > 0),
+    'the ignition frame must carry authored material instead of a black first-frame line');
+  assert.equal(pool.geometry.getAttribute('aSfBorn').array[0], 1,
+    'loaded-beam lifecycle must carry its authoritative birth clock');
   const stablePositionBuffer = pool.geometry.attributes.position.array;
   assert.equal(pool.retarget({ attackerId: 'ship', weaponId: 'beam', pos: { x: 8, z: 2 } }, 1.02), 1);
   assert.equal(pool._byKey.get('ship:0').toX, 8);
@@ -57,6 +61,9 @@ test('persistent combat beams update in place with a bounded two-draw pool', () 
     'beam updates must reuse the preallocated geometry buffer');
 
   pool.stop({ beamKey: 'ship:0' });
+  assert.equal(pool.activeCount, 1, 'stop begins a bounded visual drain before retirement');
+  assert.equal(pool.group.visible, true);
+  pool.update(1.05 + BEAM_COOLING_S + 0.01, identityLocal);
   assert.equal(pool.activeCount, 0);
   assert.equal(pool.group.visible, false);
   assert.deepEqual(Array.from(pool.geometry.attributes.position.array.slice(0, 12)), Array(12).fill(0),
@@ -68,6 +75,8 @@ test('persistent combat beams retire on bounded timeout if a stop event is lost'
   const pool = new PersistentCombatBeamPool(THREE, { maxBeams: 2, timeoutS: 0.1 });
   pool.upsert({ beamKey: 'npc:1', from: { x: 0, z: 0 }, to: { x: 5, z: 5 } }, 2);
   pool.update(2.2, identityLocal);
+  assert.equal(pool.activeCount, 1, 'lost receipts enter the same visible drain as explicit stops');
+  pool.update(2 + BEAM_COOLING_S + 0.01, identityLocal);
   assert.equal(pool.activeCount, 0);
   pool.dispose();
 });
@@ -120,7 +129,13 @@ test('persistent beam uploads retain sparse slots and publish only the changed q
   scene.onBeforeRender({}, scene, camera, null);
   acknowledgePublished(attributes);
   coordinator.disarm(epoch);
-  assert.equal(pool.activeCount, 1, 'the highest sparse slot remains the sole live beam');
+  assert.equal(pool.activeCount, 16, 'stopped slots remain drawable while their loaded volumes drain');
+  pool.update(1 + BEAM_COOLING_S + 0.01, identityLocal);
+  assert.equal(pool.activeCount, 1, 'the highest sparse slot remains after bounded drains retire');
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  acknowledgePublished(attributes);
+  coordinator.disarm(epoch);
 
   const requestedBefore = coordinator.getDiagnostics().owners
     .reduce((sum, owner) => sum + owner.requestedUploadBytes, 0);

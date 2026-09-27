@@ -57,7 +57,6 @@ import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion } from '../wor
 import { resolveFractureProgress, resolveVeinFracturePattern } from './asteroidMotionPresentation.js';
 import { resolveFunnelMoteStream, spiralMoteWithinDraw } from './pickupMotionPresentation.js';
 import { notePresentationFrame } from './presentationSimClock.js';
-import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { MOMENTUM_SINK_FRAME_KIND } from '../combat/momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
@@ -170,6 +169,7 @@ import {
   listThrusterRecipePacks,
 } from './thruster/recipes/registry.js';
 import { PersistentCombatBeamPool } from './combat/persistentBeams.js';
+import { isComposedMiningCue, isComposedTravelCue } from './vfx/worldCueRecipes.js';
 import {
   createWeaponVfxPresenter,
   createEnergyBoltPrecompileMesh,
@@ -3317,7 +3317,7 @@ export const vfx = {
   },
 
   _onBeamStop(p) {
-    if (this._combatBeams) this._combatBeams.stop(p);
+    if (this._combatBeams) this._combatBeams.stop(p, this._t);
     if (p && p.ownerId != null) {
       const prefix = `${String(p.ownerId)}:`;
       for (const key of this._beamDamageCueNext.keys()) {
@@ -4357,6 +4357,7 @@ export const vfx = {
   _onDirectMiningPresentationCue(p) {
     const id = p && p.id || '';
     if (!id.startsWith('mining.')) return;
+    if (isComposedMiningCue(id)) return;
     const tags = Array.isArray(p.tags) ? p.tags : [];
     if (id === 'mining.seam.quality') {
       if (tags.includes('on_seam')) {
@@ -4435,6 +4436,7 @@ export const vfx = {
   _onDirectTravelPresentationCue(p) {
     const id = p && p.id || '';
     if (!id.startsWith('travel.') || id.startsWith('travel.cruise.')) return;
+    if (isComposedTravelCue(id)) return;
     if (!this._scene) return;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
     const pos = p.position || this._posFrom(p, p.targetId ?? p.sourceId) || (player && player.pos);
@@ -10944,62 +10946,23 @@ export const vfx = {
     );
   },
 
-  // Salvage plate release: the cut seam lets go — a last puff of weld dust and the freed plate
-  // flashing once as it separates. Hydraulic-release audio rides the cue.
+  // Salvage plate release is owned by the normalized ActionVfx receipt. Keep this legacy adapter
+  // only as the semantic cue bridge, with the real plate position as its anchor.
   _onSalvageCutComplete(p) {
-    if (!this._scene || !p) return;
+    if (!p) return;
     const plate = p.payloadId != null ? this._ent(p.payloadId) : null;
     const target = p.targetId != null ? this._ent(p.targetId) : null;
     const pos = (plate && plate.pos) || (target && target.pos) || p.pos;
     if (!pos) return;
-    // Separation puff at the freed plate + a hard glint where the seam opened.
-    this._spawnSprite(SPR_PUFF, pos.x, 0.4, pos.z, 0.5, 2.4, 6.0, 0.45, 0, '#cbb9a0', 0, 0);
-    this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, 0.14, 1.4, 4.5, 0.85, 0, '#fff6e0', 0, 0);
-    const n = this._isReduced() ? 4 : 8;
-    for (let k = 0; k < n; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 10 + Math.random() * 18;
-      this._spawnProjectileTrailStreak(pos.x, 0.5, pos.z, 0.3, 0.07, 0.5, 0.85,
-        k % 2 ? '#fffaf0' : '#ffc35c', Math.cos(a) * sp, Math.sin(a) * sp, Math.cos(a), Math.sin(a));
-    }
     this._emitJuiceCue('presentation.salvage.plate_release', { pos }, 1);
   },
 
-  // Salvage completion collapse: the drained hulk leaves the sim the same tick this event fires
-  // (alive=false in mining._drainWreck), so the removal needs a mask — one buckle flash, a heavy
-  // dust body, and a few shard streaks at the wreck's last pose instead of a pop while the
-  // player's beam is still on it. No juice cue: cue-count contracts stay frozen.
+  // Salvage completion audio remains a receipt-local cue. The native ActionVfx consumer owns the
+  // visual collapse, so this legacy route must not add a second flash, dust body, or shard burst.
   _onSalvageCompleted(p) {
     if (!this._scene || !p) return;
     const pos = this._posFrom(p, p.wreckId != null ? p.wreckId : null);
     if (!pos) return;
-    const wreck = p.wreckId != null ? this._ent(p.wreckId) : null;
-    const r = Math.max(4, Number.isFinite(p.radius) ? p.radius : ((wreck && wreck.radius) || 8));
-    this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, 0.4, r * 0.5, r * 1.1, 0.9, 0.0, '#ffd9a0', 0, 0);
-    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.9, r * 0.7, r * 1.6, 0.5, 0.0, '#8f8578', 0, 0);
-    const n = this._isReduced() ? 4 : 10;
-    for (let k = 0; k < n; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 8 + Math.random() * 14;
-      this._spawnProjectileTrailStreak(pos.x, 0.5, pos.z, 0.35, 0.07, 0.55, 0.8,
-        k % 2 ? '#d8d2c4' : '#ff9a4d', Math.cos(a) * sp, Math.sin(a) * sp, Math.cos(a), Math.sin(a));
-    }
-    if (this._gas) {
-      this._gas.emitFractureDust({
-        x: pos.x,
-        y: 0.3,
-        z: pos.z,
-        heading: 0,
-        severity: 0.85,
-        scale: r * 1.5,
-        seed: ((((Number(p.wreckId) | 0) || 7) * 2654435761) >>> 16 & 0xffff) / 0xffff,
-        occluderX: pos.x,
-        occluderY: 0,
-        occluderZ: pos.z,
-        occluderRadius: r * 0.7,
-      });
-    }
-    this._flashLight({ x: pos.x, z: pos.z }, '#ffb066', 5.0, 4.0, 160);
     this.bus.emit('audio:cue', {
       id: 'sfx_salvage_plate',
       position: { x: pos.x, z: pos.z },
@@ -11163,38 +11126,10 @@ export const vfx = {
     if (e.id === this.state.playerId) this.helpers.camera && this.helpers.camera.addTrauma(0.28);
   },
 
-  // Collection. The moment a drop lands is the payoff for the whole mining/flyby loop and it used
-  // to be a particle puff. Light now follows the last leg of the real approach and resolves
-  // at the intake. Collection does not invent a surrounding cloud of glitter or an explosion.
+  // Successful pickup receipts are consumed by the native ActionVfx route. Keeping this adapter
+  // as a no-op prevents a second legacy flash/trail from stacking over the receipt composition.
   _onPickup(p) {
-    if (successfulPickupAmount(p) <= 0 || !this._scene || !p.pos) return;
-    const col = (p.kind === 'credits' || p.kind === 'credit_chip') ? '#ffcc44' : oreColor(p.commodityId);
-    const collector = p.collectorId == null
-      ? (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId))
-      : this._ent(p.collectorId);
-    this._spawnSprite(SPR_FLASH, p.pos.x, 1.2, p.pos.z, 0.22, 3.0, 5.6, 0.9, 0.0, col, 0, 0);
-    this._c0.set('#ffffff'); this._c1.set(col);
-
-    if (collector && collector.pos) {
-      const dx = collector.pos.x - p.pos.x, dz = collector.pos.z - p.pos.z;
-      const dist = Math.hypot(dx, dz) || 1;
-      const ux = dx / dist, uz = dz / dist;
-      const roll = Math.atan2(uz, ux);
-      const leg = Math.min(dist, 22);
-
-      // The arrival streak: three overlapping stretched sprites along the final approach, brightest
-      // nearest the hull, so the light visibly resolves INTO the ship rather than fading in place.
-      for (let k = 0; k < 3; k++) {
-        const f = (k + 1) / 4;
-        this._spawnSprite(SPR_FLASH,
-          collector.pos.x - ux * leg * f, 1.3, collector.pos.z - uz * leg * f,
-          0.16 + k * 0.04, leg * (0.34 + 0.12 * k), 0.4,
-          0.75 - k * 0.16, 0.0, k === 0 ? '#ffffff' : col,
-          ux * 90, uz * 90, 3.4, roll);
-      }
-      this._spawnSprite(SPR_FLASH, collector.pos.x, 1.4, collector.pos.z, 0.14, 2.6, 5.2, 0.9, 0.0, '#ffffff', 0, 0);
-      this._flashLight({ x: collector.pos.x, z: collector.pos.z }, col, 3.4, 7.0, 110);
-    }
+    // Native ActionVfx handles successful pickup receipts.
   },
 
   // Aerospace locomotion receipts (shipMicroMotion, render-side only). Deliberately

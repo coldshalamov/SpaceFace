@@ -6,8 +6,9 @@
 // two channels that would let a lane cheat - the per-strip RGB and the bolt tint - are dropped
 // before anything is compared.
 //
-// It also holds the lane's two boundaries: nothing may be drawn at the contact point (that owner
-// is the impacts lane), and a projectile's drawn envelope may never read as its damage radius.
+// It also holds the lane's two boundaries: a sustained beam may open into a restrained work face
+// at its authoritative contact, but it must not invent a detached impact sprite or a projectile's
+// damage radius.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -368,7 +369,7 @@ test('every bolt dialect has its own silhouette, including siege and ordnance mo
   pool.dispose();
 });
 
-test('the weapons lane draws nothing at the contact point', () => {
+test('a sustained beam loads into a restrained work face at its authoritative contact', () => {
   const beams = new PersistentCombatBeamPool(THREE, { maxBeams: 2 });
   const sources = [];
   for (const material of [beams.coreMaterial, beams.haloMaterial]) {
@@ -377,12 +378,14 @@ test('the weapons lane draws nothing at the contact point', () => {
     sources.push(shader.fragmentShader);
   }
   for (const source of sources) {
-    // The far terminal (uv.x -> 1) is the contact. The impacts lane owns it; a bright end here
-    // would put two competing primary flashes on one shot.
-    assert.doesNotMatch(source, /smoothstep\(0\.8+, 1\.0, vSfBeam\.x\)/,
-      'beam must not brighten its contact end');
+    // The far terminal (uv.x -> 1) is the authoritative contact. The beam owns a broad, moving
+    // work face there; a detached primary flash would still compete with the impacts lane.
+    assert.match(source, /sfContactBand = smoothstep\(0\.\d+, 0\.\d+, vSfBeam\.x\)/,
+      'beam must carry a bounded contact band');
+    assert.match(source, /sfWorkFace/, 'beam contact must have animated internal work structure');
     assert.match(source, /sfMuzzle = smoothstep\(0\.\d+, 0\.0, vSfBeam\.x\)/,
-      'only the aperture end is lit by this lane');
+      'the aperture still has a distinct source lip');
+    assert.match(source, /sfCooling/, 'beam must expose a cooling phase after release');
     // Travelling packets ride world distance, so a moving target cannot stretch them.
     assert.match(source, /sin\(vSfAxial \* [\d.]+ - uSfTime \* [\d.]+\)/);
     assert.doesNotMatch(source, /sin\(vSfBeam\.x \*/, 'uv-phased packets squash with beam length');
