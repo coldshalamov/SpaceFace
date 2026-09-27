@@ -190,12 +190,12 @@ def build():
     F.band(s, 'EngineBlock', (-14.3, 0, 0), (1, 0, 0), 0.5, 'stripe', facing=(0, 0, 1), inset=0.03, depth=0.04)
     for i, y in enumerate((2.1, 5.7)):
         F.cylinder(s, f'DriveDrum{i}', (-25.6, y, 0.25), (-17.0, y, 0.25), 1.75, 1.65, material='gunmetal',
-                   segments=40, cap_material='dark', bevel=0.02, mirror=True)
-        F.cylinder(s, f'DriveCoil{i}', (-23.2, y, 0.25), (-22.6, y, 0.25), 1.86, material='stripe', segments=40,
+                   segments=32, cap_material='dark', bevel=0.02, mirror=True)
+        F.cylinder(s, f'DriveCoil{i}', (-23.2, y, 0.25), (-22.6, y, 0.25), 1.86, material='stripe', segments=32,
                    bevel=0.0, mirror=True)
-        F.cylinder(s, f'DriveCoilB{i}', (-20.4, y, 0.25), (-19.9, y, 0.25), 1.8, material='paint2', segments=40,
+        F.cylinder(s, f'DriveCoilB{i}', (-20.4, y, 0.25), (-19.9, y, 0.25), 1.8, material='paint2', segments=32,
                    bevel=0.0, mirror=True)
-        F.nozzle(s, f'Drive{i}', (-26.9, y, 0.25), 1.55, 1.5, material='gunmetal', bell=1.12, segments=40,
+        F.nozzle(s, f'Drive{i}', (-26.9, y, 0.25), 1.55, 1.5, material='gunmetal', bell=1.12, segments=32,
                  mirror=True)
     s.hook('HOOK_DRIVE_CORE', (-26.8, 0.0, 0.25))
     # heat-sink combs between the drums

@@ -32,13 +32,20 @@ const files = entry.layout === 'player'
   ? [entry.file, `${entry.file}_lod1`, `${entry.file}_lod2`]
   : [entry.file];
 const releaseIds = files.map((f) => `wholeship_${f}`);
-const pilotKeys = files.map((f) => f.replace(/_/g, '-'));
+// Pilot keys are found by the release file they package (Wasp's LOD0 pilot is plain 'wasp').
+const pilotsDoc = JSON.parse(readFileSync(join(ROOT, 'assets/ships/render-packages/pilots.json'), 'utf8'));
+const pilotKeys = files.map((f) => {
+  const hit = pilotsDoc.pilots.find((p) => p.sourceUrl === `assets/ships/release/parts/wholeships/${f}.glb`);
+  if (!hit) throw new Error(`no render-package pilot packages wholeships/${f}.glb`);
+  return hit.key;
+});
 
 // 2. manifest row
 const manifestPath = join(ROOT, 'assets/ships/parts/parts_manifest.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-const row = manifest.parts.find((r) => r.id === `wholeship_${entry.file}`);
-if (!row) throw new Error(`no parts_manifest row wholeship_${entry.file}`);
+// Some families (Drifter) are released from build-sg04's WHOLE_SHIP_FILES list, not a manifest row.
+const row = manifest.parts.find((r) => r.id === `wholeship_${entry.file}`) || null;
+if (row) {
 // Tint slots name only materials this body actually carries (a ship without a livery stripe has no
 // Material_Accent).
 const glb = readFileSync(join(ROOT, 'assets/ships/parts/wholeships', `${entry.file}.glb`));
@@ -51,6 +58,7 @@ row.tintable = Object.fromEntries(Object.entries({
 row.hooks = ['HOOK_DRIVE_CORE'];
 if (entry.note) row.note = entry.note;
 writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+}
 run('node', ['scripts/check-parts-manifest.mjs', '--sync'], { quiet: true });
 
 // 3. release

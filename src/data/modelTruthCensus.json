@@ -34645,62 +34645,62 @@
     {
       "bounds": {
         "center": [
-          -0.45501,
-          0.244668,
-          0.000161
+          0.290053,
+          0.742139,
+          -0.035406
         ],
         "max": [
-          7.95,
-          1.660053,
-          3.380209
+          9.60015,
+          2.425327,
+          3.521052
         ],
         "min": [
-          -8.860019,
-          -1.170716,
-          -3.379886
+          -9.020044,
+          -0.941048,
+          -3.591865
         ],
         "size": [
-          16.810019,
-          2.830769,
-          6.760095
+          18.620194,
+          3.366376,
+          7.112918
         ]
       },
-      "bytes": 750668,
+      "bytes": 698456,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:ship_drifter",
         "kind": "proxy",
         "outline": [
-          16.670836,
-          14.973093,
-          10.143987,
-          7.790332,
-          6.628433,
-          6.019033,
-          6.231072,
-          6.533855,
-          7.430939,
-          9.049011,
-          11.084561,
-          14.660702,
-          14.660702,
-          11.084561,
-          9.049011,
-          7.430939,
-          6.533855,
-          6.231642,
-          6.019033,
-          6.628433,
-          7.790332,
-          10.143987,
-          14.973093,
-          16.670836
+          15.512812,
+          15.684635,
+          9.2322,
+          6.974814,
+          6.857366,
+          5.199392,
+          6.073488,
+          6.094792,
+          0.628633,
+          7.410539,
+          9.002747,
+          15.962291,
+          15.962279,
+          7.15518,
+          4.322557,
+          6.09116,
+          6.482363,
+          5.368275,
+          0,
+          2.843979,
+          7.37642,
+          9.362996,
+          15.685018,
+          15.512614
         ],
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 2.0005,
+        "toleranceWu": 2,
         "worstSize": null
       },
       "drawOffset": [
@@ -34708,7 +34708,7 @@
         0,
         0
       ],
-      "drawScale": 1.841759,
+      "drawScale": 1.662711,
       "family": "player-hull",
       "forwardAxis": "+X",
       "frozenMesh": false,
@@ -34731,8 +34731,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 1.146541,
-          "lod2": 2.234814
+          "lod1": 2.843979,
+          "lod2": 2.843979
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -34759,32 +34759,56 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
           "name": "Material_Canopy",
           "role": "glass"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
-          "depthWrite": true,
+          "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_Ceramic",
-          "role": "opaqueHull"
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
-          "depthWrite": true,
+          "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_Course",
-          "role": "opaqueHull"
+          "name": "Material_Emissive_Cyan",
+          "role": "emissive"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
-          "depthWrite": true,
+          "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_Dirt",
-          "role": "opaqueHull"
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
         },
         {
           "additive": false,
@@ -34799,7 +34823,15 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Mark",
+          "name": "Material_Hull_patch",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_primer",
           "role": "opaqueHull"
         },
         {
@@ -34815,14 +34847,14 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Radiator",
+          "name": "Material_MechanicalDark",
           "role": "opaqueHull"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": false,
-          "doubleSided": true,
+          "doubleSided": false,
           "name": "Material_Thruster",
           "role": "emissive"
         },
@@ -34844,33 +34876,33 @@
         }
       ],
       "measuredProportions": {
-        "halfWidth": 0.345846,
-        "height": 0.289644,
+        "halfWidth": 0.32852,
+        "height": 0.310962,
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 15,
-      "nodes": 28,
+      "meshes": 17,
+      "nodes": 30,
       "note": null,
       "opening": null,
       "pivot": [
-        -0.45501,
-        0.244668,
-        0.000161
+        0.290053,
+        0.742139,
+        -0.035406
       ],
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 2.0005,
+        "cellWu": 2,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 24,
+        "primitiveCount": 23,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.907218,
-            "bz": -0.119438,
+            "bx": -0.843434,
+            "bz": -0.11104,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.025
@@ -34878,8 +34910,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.758253,
-            "bz": -0.314079,
+            "bx": -0.794774,
+            "bz": -0.329206,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.025
@@ -34887,8 +34919,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.438283,
-            "bz": -0.336306,
+            "bx": -0.398096,
+            "bz": -0.30547,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.025
@@ -34896,8 +34928,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.256706,
-            "bz": -0.334545,
+            "bx": -0.229125,
+            "bz": -0.298601,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.025
@@ -34905,8 +34937,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.13667,
-            "bz": -0.32995,
+            "bx": -0.141537,
+            "bz": -0.3417,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.025
@@ -34914,8 +34946,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.042196,
-            "bz": -0.320514,
+            "bx": -0.036253,
+            "bz": -0.275368,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.025
@@ -34923,17 +34955,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.043734,
-            "bz": -0.332193,
+            "bx": 0.041519,
+            "bz": -0.315368,
             "id": "arm-6",
             "kind": "capsule",
-            "r": 0.025
+            "r": 0.033216
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.134659,
-            "bz": -0.325096,
+            "bx": 0.125324,
+            "bz": -0.30256,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.025
@@ -34941,8 +34973,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.244551,
-            "bz": -0.318705,
+            "bx": 0.014496,
+            "bz": -0.018892,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.025
@@ -34950,8 +34982,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.390022,
-            "bz": -0.299274,
+            "bx": 0.317806,
+            "bz": -0.243861,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.025
@@ -34959,8 +34991,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.558668,
-            "bz": -0.231408,
+            "bx": 0.451815,
+            "bz": -0.187148,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.025
@@ -34968,8 +35000,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.796499,
-            "bz": -0.104861,
+            "bx": 0.868191,
+            "bz": -0.1143,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.025
@@ -34977,8 +35009,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.796499,
-            "bz": 0.104861,
+            "bx": 0.868191,
+            "bz": 0.114299,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.025
@@ -34986,8 +35018,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.558668,
-            "bz": 0.231408,
+            "bx": 0.356986,
+            "bz": 0.147868,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.025
@@ -34995,8 +35027,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.390022,
-            "bz": 0.299274,
+            "bx": 0.181702,
+            "bz": 0.139425,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.025
@@ -35004,8 +35036,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.244551,
-            "bz": 0.318705,
+            "bx": 0.19924,
+            "bz": 0.259654,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.025
@@ -35013,8 +35045,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.134659,
-            "bz": 0.325096,
+            "bx": 0.133564,
+            "bz": 0.322453,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.025
@@ -35022,8 +35054,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.043738,
-            "bz": 0.332224,
+            "bx": 0.037478,
+            "bz": 0.28467,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.025
@@ -35031,17 +35063,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.042196,
-            "bz": 0.320514,
-            "id": "arm-18",
-            "kind": "capsule",
-            "r": 0.025
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.13667,
-            "bz": 0.32995,
+            "bx": -0.056212,
+            "bz": 0.135707,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.025
@@ -35049,8 +35072,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.256706,
-            "bz": 0.334545,
+            "bx": -0.242707,
+            "bz": 0.316302,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.025
@@ -35058,8 +35081,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.438283,
-            "bz": 0.336306,
+            "bx": -0.403861,
+            "bz": 0.309893,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.025
@@ -35067,8 +35090,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.758253,
-            "bz": 0.314079,
+            "bx": -0.794794,
+            "bz": 0.329214,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.025
@@ -35076,119 +35099,119 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.907218,
-            "bz": 0.119438,
+            "bx": -0.843423,
+            "bz": 0.111039,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.025
           }
         ],
-        "silhouetteRadius": 16.670836,
-        "toleranceWu": 2.0005
+        "silhouetteRadius": 15.962291,
+        "toleranceWu": 2
       },
       "reasons": [
-        "no-embedded-png"
+        "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1599,
-        "inwardFaceFraction": 0.41975,
-        "silhouetteRadius": 16.670836,
+        "boundaryEdges": 1510,
+        "inwardFaceFraction": 0.3205,
+        "silhouetteRadius": 15.962291,
         "sliceY": 0
       },
       "sockets": [
         {
           "name": "SOCKET_Camera_Focus",
           "position": [
-            0.8,
-            0.25,
+            1.7796,
+            0.74225,
             0
           ]
         },
         {
           "name": "SOCKET_Cargo_Ventral",
           "position": [
-            -0.4,
-            -1.1,
+            0.29,
+            -0.89,
             0
           ]
         },
         {
           "name": "SOCKET_Engine_Main",
           "position": [
-            -6.8,
-            0.08,
+            -8.2,
+            0.1,
             0
           ]
         },
         {
           "name": "SOCKET_Mining_Front",
           "position": [
-            7.4,
-            -0.15,
+            9.1,
+            0.59225,
             0
           ]
         },
         {
           "name": "SOCKET_RCS_Port",
           "position": [
-            -1.2,
-            0.15,
-            1.9
+            0.29,
+            0.74225,
+            -2.154
           ]
         },
         {
           "name": "SOCKET_RCS_Starboard",
           "position": [
-            -1.2,
-            0.15,
-            -1.9
+            0.29,
+            0.74225,
+            2.154
           ]
         },
         {
           "name": "SOCKET_Tether_Massline",
           "position": [
-            -4.237264,
-            0.244668,
-            0.000161
+            -3.8064,
+            1.21225,
+            0
           ]
         },
         {
           "name": "SOCKET_Trail_Main",
           "position": [
-            -7.2,
-            0.08,
+            -9.120001,
+            0.1,
             0
           ]
         },
         {
           "name": "SOCKET_Trail_Port",
           "position": [
-            -7,
-            0.08,
-            1.19
+            -9.120001,
+            0.1,
+            -0.8975
           ]
         },
         {
           "name": "SOCKET_Trail_Starboard",
           "position": [
-            -7,
-            0.08,
-            -1.19
+            -9.120001,
+            0.1,
+            0.8975
           ]
         },
         {
           "name": "SOCKET_Utility_Dorsal",
           "position": [
-            0.6,
-            1.5,
+            0.29,
+            2.3745,
             0
           ]
         },
         {
           "name": "SOCKET_Weapon_Front",
           "position": [
-            6.8,
-            0.25,
+            9.200001,
+            0.74225,
             0
           ]
         }
@@ -35196,16 +35219,16 @@
       "solid": true,
       "source": "glb",
       "status": "red",
-      "tasteBudget": "no-embedded-png",
-      "triangles": 28660,
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 32012,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
       "url": "assets/ships/release/parts/wholeships/drifter_production_v1.glb",
       "worldSize": [
         30.96,
-        5.213595,
-        12.450465
+        5.597309,
+        11.826726
       ]
     },
     {
@@ -56719,57 +56742,57 @@
     {
       "bounds": {
         "center": [
-          -0.45501,
-          0.244668,
-          0.000161
+          0.290053,
+          0.742139,
+          -0.035406
         ],
         "max": [
-          7.95,
-          1.660053,
-          3.380209
+          9.60015,
+          2.425327,
+          3.521052
         ],
         "min": [
-          -8.860019,
-          -1.170716,
-          -3.379886
+          -9.020044,
+          -0.941048,
+          -3.591865
         ],
         "size": [
-          16.810019,
-          2.830769,
-          6.760095
+          18.620194,
+          3.366376,
+          7.112918
         ]
       },
-      "bytes": 750668,
+      "bytes": 698456,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:traffic:smuggler",
         "kind": "proxy",
         "outline": [
-          12.966206,
-          11.645739,
-          7.889768,
-          6.059147,
-          5.155448,
-          4.68147,
-          4.846389,
-          5.081888,
-          5.779619,
-          7.03812,
-          8.621325,
-          11.402769,
-          11.402769,
-          8.621325,
-          7.03812,
-          5.779619,
-          5.081888,
-          4.846832,
-          4.68147,
-          5.155448,
-          6.059147,
-          7.889768,
-          11.645739,
-          12.966206
+          12.065521,
+          12.19916,
+          7.1806,
+          5.424855,
+          5.333507,
+          4.043972,
+          4.723824,
+          4.740394,
+          0.489365,
+          5.763753,
+          7.002136,
+          12.415115,
+          12.415106,
+          5.56514,
+          3.361989,
+          4.737569,
+          5.041838,
+          4.175325,
+          0,
+          2.211984,
+          5.737215,
+          7.28233,
+          12.199459,
+          12.065366
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -56782,7 +56805,7 @@
         0,
         0
       ],
-      "drawScale": 1.432479,
+      "drawScale": 1.29322,
       "family": "traffic-hull",
       "forwardAxis": "+X",
       "frozenMesh": false,
@@ -56805,8 +56828,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.891755,
-          "lod2": 1.738189
+          "lod1": 2.211984,
+          "lod2": 2.211984
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -56833,32 +56856,56 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
           "name": "Material_Canopy",
           "role": "glass"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
-          "depthWrite": true,
+          "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_Ceramic",
-          "role": "opaqueHull"
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
-          "depthWrite": true,
+          "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_Course",
-          "role": "opaqueHull"
+          "name": "Material_Emissive_Cyan",
+          "role": "emissive"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
-          "depthWrite": true,
+          "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_Dirt",
-          "role": "opaqueHull"
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
         },
         {
           "additive": false,
@@ -56873,7 +56920,15 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Mark",
+          "name": "Material_Hull_patch",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_primer",
           "role": "opaqueHull"
         },
         {
@@ -56889,14 +56944,14 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Radiator",
+          "name": "Material_MechanicalDark",
           "role": "opaqueHull"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": false,
-          "doubleSided": true,
+          "doubleSided": false,
           "name": "Material_Thruster",
           "role": "emissive"
         },
@@ -56918,19 +56973,19 @@
         }
       ],
       "measuredProportions": {
-        "halfWidth": 0.345846,
-        "height": 0.289644,
+        "halfWidth": 0.32852,
+        "height": 0.310962,
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 15,
-      "nodes": 28,
+      "meshes": 17,
+      "nodes": 30,
       "note": null,
       "opening": null,
       "pivot": [
-        -0.45501,
-        0.244668,
-        0.000161
+        0.290053,
+        0.742139,
+        -0.035406
       ],
       "proposedSkin": {
         "adopted": true,
@@ -56938,13 +56993,13 @@
         "cellWu": 2,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 24,
+        "primitiveCount": 23,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.904071,
-            "bz": -0.119023,
+            "bx": -0.840286,
+            "bz": -0.110626,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.032143
@@ -56952,8 +57007,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.75532,
-            "bz": -0.312864,
+            "bx": -0.791841,
+            "bz": -0.327991,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.032143
@@ -56961,8 +57016,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.435765,
-            "bz": -0.334374,
+            "bx": -0.395577,
+            "bz": -0.303537,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.032143
@@ -56970,8 +57025,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.254773,
-            "bz": -0.332027,
+            "bx": -0.227192,
+            "bz": -0.296083,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.032143
@@ -56979,8 +57034,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.135455,
-            "bz": -0.327017,
+            "bx": -0.140322,
+            "bz": -0.338767,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.032143
@@ -56988,8 +57043,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.041782,
-            "bz": -0.317366,
+            "bx": -0.035839,
+            "bz": -0.27222,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.032143
@@ -56997,17 +57052,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.04332,
-            "bz": -0.329046,
+            "bx": 0.041382,
+            "bz": -0.314331,
             "id": "arm-6",
             "kind": "capsule",
-            "r": 0.032143
+            "r": 0.03823
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.133444,
-            "bz": -0.322163,
+            "bx": 0.12411,
+            "bz": -0.299627,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.032143
@@ -57015,8 +57070,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.242618,
-            "bz": -0.316186,
+            "bx": 0.012582,
+            "bz": -0.016398,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.032143
@@ -57024,8 +57079,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.387503,
-            "bz": -0.297342,
+            "bx": 0.315287,
+            "bz": -0.241928,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.032143
@@ -57033,8 +57088,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.555735,
-            "bz": -0.230193,
+            "bx": 0.448882,
+            "bz": -0.185933,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.032143
@@ -57042,8 +57097,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.793352,
-            "bz": -0.104447,
+            "bx": 0.865044,
+            "bz": -0.113885,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.032143
@@ -57051,8 +57106,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.793352,
-            "bz": 0.104447,
+            "bx": 0.865043,
+            "bz": 0.113885,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.032143
@@ -57060,8 +57115,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.555735,
-            "bz": 0.230193,
+            "bx": 0.354053,
+            "bz": 0.146654,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.032143
@@ -57069,8 +57124,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.387503,
-            "bz": 0.297342,
+            "bx": 0.179184,
+            "bz": 0.137493,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.032143
@@ -57078,8 +57133,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.242618,
-            "bz": 0.316186,
+            "bx": 0.197307,
+            "bz": 0.257135,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.032143
@@ -57087,8 +57142,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.133444,
-            "bz": 0.322163,
+            "bx": 0.132349,
+            "bz": 0.31952,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.032143
@@ -57096,8 +57151,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.043324,
-            "bz": 0.329077,
+            "bx": 0.037063,
+            "bz": 0.281523,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.032143
@@ -57105,17 +57160,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.041782,
-            "bz": 0.317366,
-            "id": "arm-18",
-            "kind": "capsule",
-            "r": 0.032143
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.135455,
-            "bz": 0.327017,
+            "bx": -0.054997,
+            "bz": 0.132774,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.032143
@@ -57123,8 +57169,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.254773,
-            "bz": 0.332027,
+            "bx": -0.240775,
+            "bz": 0.313783,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.032143
@@ -57132,8 +57178,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.435765,
-            "bz": 0.334374,
+            "bx": -0.401342,
+            "bz": 0.307961,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.032143
@@ -57141,8 +57187,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.75532,
-            "bz": 0.312864,
+            "bx": -0.791861,
+            "bz": 0.328,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.032143
@@ -57150,119 +57196,119 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.904071,
-            "bz": 0.119023,
+            "bx": -0.840275,
+            "bz": 0.110624,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.032143
           }
         ],
-        "silhouetteRadius": 12.966206,
+        "silhouetteRadius": 12.415115,
         "toleranceWu": 2
       },
       "reasons": [
-        "no-embedded-png"
+        "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1599,
-        "inwardFaceFraction": 0.41975,
-        "silhouetteRadius": 12.966206,
+        "boundaryEdges": 1510,
+        "inwardFaceFraction": 0.3205,
+        "silhouetteRadius": 12.415115,
         "sliceY": 0
       },
       "sockets": [
         {
           "name": "SOCKET_Camera_Focus",
           "position": [
-            0.8,
-            0.25,
+            1.7796,
+            0.74225,
             0
           ]
         },
         {
           "name": "SOCKET_Cargo_Ventral",
           "position": [
-            -0.4,
-            -1.1,
+            0.29,
+            -0.89,
             0
           ]
         },
         {
           "name": "SOCKET_Engine_Main",
           "position": [
-            -6.8,
-            0.08,
+            -8.2,
+            0.1,
             0
           ]
         },
         {
           "name": "SOCKET_Mining_Front",
           "position": [
-            7.4,
-            -0.15,
+            9.1,
+            0.59225,
             0
           ]
         },
         {
           "name": "SOCKET_RCS_Port",
           "position": [
-            -1.2,
-            0.15,
-            1.9
+            0.29,
+            0.74225,
+            -2.154
           ]
         },
         {
           "name": "SOCKET_RCS_Starboard",
           "position": [
-            -1.2,
-            0.15,
-            -1.9
+            0.29,
+            0.74225,
+            2.154
           ]
         },
         {
           "name": "SOCKET_Tether_Massline",
           "position": [
-            -4.237264,
-            0.244668,
-            0.000161
+            -3.8064,
+            1.21225,
+            0
           ]
         },
         {
           "name": "SOCKET_Trail_Main",
           "position": [
-            -7.2,
-            0.08,
+            -9.120001,
+            0.1,
             0
           ]
         },
         {
           "name": "SOCKET_Trail_Port",
           "position": [
-            -7,
-            0.08,
-            1.19
+            -9.120001,
+            0.1,
+            -0.8975
           ]
         },
         {
           "name": "SOCKET_Trail_Starboard",
           "position": [
-            -7,
-            0.08,
-            -1.19
+            -9.120001,
+            0.1,
+            0.8975
           ]
         },
         {
           "name": "SOCKET_Utility_Dorsal",
           "position": [
-            0.6,
-            1.5,
+            0.29,
+            2.3745,
             0
           ]
         },
         {
           "name": "SOCKET_Weapon_Front",
           "position": [
-            6.8,
-            0.25,
+            9.200001,
+            0.74225,
             0
           ]
         }
@@ -57270,16 +57316,16 @@
       "solid": true,
       "source": "glb",
       "status": "red",
-      "tasteBudget": "no-embedded-png",
-      "triangles": 28660,
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 32012,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
       "url": "assets/ships/release/parts/wholeships/drifter_production_v1.glb",
       "worldSize": [
         24.08,
-        4.055018,
-        9.683695
+        4.353463,
+        9.198564
       ]
     },
     {

@@ -7125,19 +7125,20 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_mule",
-      "tris": 34372,
-      "bytes": 2172800,
+      "tris": 23604,
+      "bytes": 1430636,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent",
-        "warning": "Material_Warning",
         "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -7155,19 +7156,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.825000286102295,
-          -1.2299998998641968,
-          -3.2949999570846558
+          -8.12002182006836,
+          -1.0499999523162842,
+          -3.4626388549804688
         ],
         "max": [
-          6.400000095367432,
-          3.129999876022339,
-          3.2699999809265137
+          8.029999732971191,
+          2.2760696411132812,
+          3.4626212120056152
         ],
         "dimensionsM": [
-          15.225000381469727,
-          4.359999775886536,
-          6.564999938011169
+          16.15002155303955,
+          3.3260695934295654,
+          6.925260066986084
         ]
       },
       "note": "Fleet remaster production Mule. Live player freighter. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -7246,19 +7247,20 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_pelican",
-      "tris": 30974,
-      "bytes": 1645388,
+      "tris": 25410,
+      "bytes": 1485476,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent",
-        "warning": "Material_Warning",
         "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -7277,19 +7279,19 @@
       "note": "Fleet remaster production Pelican. Distinct prospector wholeship so Pelican no longer shares the Ironback barge silhouette. Chamfered plate hull, twin axial ion drives, cutter arms, starboard filter drums. Not self-accepted. Provenance: assets/ships/pelican_production_v1/.",
       "bounds": {
         "min": [
-          -6.811999797821045,
-          -1.4199999570846558,
-          -2.8899998664855957
+          -7.320041656494141,
+          -2.1100051403045654,
+          -3.1316373348236084
         ],
         "max": [
-          7.815442085266113,
-          2.336752414703369,
-          2.690000057220459
+          7.389999866485596,
+          2.5244998931884766,
+          3.1316373348236084
         ],
         "dimensionsM": [
-          14.627441883087158,
-          3.756752371788025,
-          5.579999923706055
+          14.710041522979736,
+          4.634505033493042,
+          6.263274669647217
         ]
       }
     },
@@ -7802,19 +7804,19 @@
       },
       "status": "accepted",
       "wiringStatus": "live_player_wasp",
-      "tris": 15410,
-      "bytes": 13199676,
+      "tris": 39784,
+      "bytes": 2132980,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
-        "accent": "Material_Accent",
-        "warning": "Material_Warning",
         "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -7833,19 +7835,19 @@
       "note": "Accepted production Wasp. New SpaceFace-authored fighter body with seven semantic material draws, authored 11.5k/7.7k/5.4k LODs, compact dark canopy, bounded tone-mapped twin drive apertures, no embedded plume, and exact first-party provenance at assets/ships/wasp_production_v1/PROVENANCE.json. Canonical public Shipyard -> Undock -> save -> Continue visual acceptance passed 2026-07-14; receipt: .devshots/alpha/m5-role-public-route-v2/evidence.json.",
       "bounds": {
         "min": [
-          -10,
-          -1.3799999952316284,
-          -8.081830024719238
+          -10.72028636932373,
+          -0.8999999761581421,
+          -8.079795837402344
         ],
         "max": [
-          12,
-          2.3194658756256104,
-          8.081830024719238
+          10.90018367767334,
+          1.75,
+          8.079795837402344
         ],
         "dimensionsM": [
-          22,
-          3.6994658708572388,
-          16.163660049438477
+          21.62047004699707,
+          2.649999976158142,
+          16.159591674804688
         ]
       }
     },
