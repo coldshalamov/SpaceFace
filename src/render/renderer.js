@@ -276,6 +276,7 @@ import {
   yieldToBrowser,
   yieldToNextPresent,
 } from './startupGpuResidency.js';
+import { rehydrateDetachedPackages } from './packageCpuDetach.js';
 import {
   collectOpeningSubmissionLeaves,
   combineOpeningProducerCensuses,
@@ -5331,6 +5332,17 @@ export const render = {
             this._invalidatePostOptionsCache();
             this._syncPostOptions(true);
             if (this._assetResidency) this._assetResidency.handleContextRestored();
+            // Refill detached render-package CPU payloads BEFORE any restored-context render
+            // (env bake, link-force warm pass, residency re-upload) can re-upload them empty.
+            // Re-fetch is a force-cache disk hit on the content-hash-immutable render.glb; the
+            // serial per-package decode is deliberately sequential, not a decode storm.
+            try {
+              await rehydrateDetachedPackages({ yieldToMain: yieldToBrowser });
+            } catch (rehydrateError) {
+              if (typeof console !== 'undefined') {
+                console.warn('[render] context-restore package rehydrate failed', rehydrateError);
+              }
+            }
             const restoredPostRoute = this._selectPostRoute({ allowContextRecovery: true });
             // Dummy catalog precompile is illegal mid-flight, including restore.
             // Compile the live scene that already owns the table, then yield so
