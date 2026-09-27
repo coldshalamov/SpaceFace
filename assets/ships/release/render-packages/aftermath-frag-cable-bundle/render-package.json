@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "4c7441abfc26c06acb5efc8c5f37f980f2513d8f8e73b486429f19496703025e",
-=======
-  "contentHash": "91078c90c0a05a0dcad838b696325c907b6f63b0062c11b97a8811bffc8ae3e1",
->>>>>>> origin/master
+  "contentHash": "bca6d3dac72067b9aae379f4067ef0650d3192ff70202b04607853c15044939a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -685,13 +681,8 @@
       "uri": "place_aftermath_frag_cable_bundle.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -995,11 +986,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_cable_bundle.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "0f04d1ad7bd5f023439e8331586391c4c12f553cf203836496aa2d3dfcc28ea0",
-=======
-  "runtimeHash": "54aea3afa3d052ffcddb6a04021b185f3e4c7d4dc699795eac560698c5a4bbbc",
->>>>>>> origin/master
+  "runtimeHash": "11151ce22c8b7987819d561f84537b272c74e643bef4a5c7f9b9fdc63a0673e8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

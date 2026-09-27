@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "96bcb9ed964229945cba16a5800cca899e75a9d1a0f59046c5413ef72f0085e7",
-=======
-  "contentHash": "5919fd06c702bc73436e5341d5b7f618b03152fc741590630d090a50a30789a7",
->>>>>>> origin/master
+  "contentHash": "f6c37ba143629217beb44d360bddaa52346b4e4c8d5f98109bdefa44921eb82d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -413,13 +409,8 @@
       "uri": "place_works_conduit_power_t.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -631,11 +622,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_power_t.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "552aa4cb86a50e64f03f87b601621638c4d9c08df469a862cacf1b16ef52ab89",
-=======
-  "runtimeHash": "a81015b31c4951ad25cc3a3c63fe974dee7eb6cf1707d3a137dcac2987d5e600",
->>>>>>> origin/master
+  "runtimeHash": "bb47782bc1b8c4a89a722bf5af580486103148714b862e9179ae25ed4147dbb5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

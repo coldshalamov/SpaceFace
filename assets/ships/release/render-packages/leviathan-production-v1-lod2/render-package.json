@@ -519,11 +519,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "5caaf3dfefa7a3a494b62973afed4c0e26d6ccb09a126ec66f34c14d33f10117",
-=======
-  "contentHash": "009053f82c971e662da2b00367231b187766181cd7e927cbf18d093d4ef10186",
->>>>>>> origin/master
+  "contentHash": "a7f49ac16131e85938d8c1eff20a87f2ec580ed51bddd5b0e02d7f2c92683d48",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1395,13 +1391,8 @@
       "uri": "leviathan_production_v1_lod2.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -2153,11 +2144,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/leviathan_production_v1_lod2.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "cc8166d3ae7d86ff0a196474aabda85e17659cbed82796b8f13d727779031581",
-=======
-  "runtimeHash": "1fe9308b07b5fd808afefbb69801b3ef48c260fa7a507acf52e8f53066aab387",
->>>>>>> origin/master
+  "runtimeHash": "b5efaff76c17dfdc01344479fc7205f801ce569443600b91186f13eeabed9767",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

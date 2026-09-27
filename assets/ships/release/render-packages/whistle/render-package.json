@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "b008c51ac039d838200af8922b33a2b8d525a80149ebf3e5e45ee6564e71232b",
-=======
-  "contentHash": "33205c52cfa97a1751316bb9ea0bf2393e33f01dc5d0d391d240184418ca3f88",
->>>>>>> origin/master
+  "contentHash": "d8e2ea9dd464cf36e34cb7c9111a70d00a3d219f3d316df57aeb4117e9c135bd",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -4587,13 +4583,8 @@
       "uri": "place_whistle.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -6446,11 +6437,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_whistle.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "96503a93194d37732fe5d191ce2fe43d24f61fa674d87960ee8b27e712b5b695",
-=======
-  "runtimeHash": "89a68f9ecc02112926d2329880c7921d42209abad17cae0f21b8be5ec07debf8",
->>>>>>> origin/master
+  "runtimeHash": "a151dbb04365f76383c3754db73b77362901975a8219e38583c4ebcc5c7c5403",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

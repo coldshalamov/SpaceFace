@@ -191,11 +191,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "765d9e9b3ae3869bd01915679a3cf661c2577bbc7b566f67ebf00a5670841ffc",
-=======
-  "contentHash": "94675424875248f12228733fcb20520178b6f157e0fed955e7ce6944b4be1d82",
->>>>>>> origin/master
+  "contentHash": "cf4bcea76d8fe904acf7c605f95f7731c359c49677342c7a94d572b931e378e1",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -13446,13 +13442,8 @@
       "uri": "place_aftermath_wreck_ore_freighter_bow__stripped.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -19315,11 +19306,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow__stripped.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "4b074f7fecbf37ee83d3000c6f7ede70204736665fe7efbdb9120a78d50715a7",
-=======
-  "runtimeHash": "d7f0795bf83c931695e2c2b82f527dc5d7b7252f3bbef5f2b8825a6c23152ba3",
->>>>>>> origin/master
+  "runtimeHash": "136f133065ff4e1ee4a0bca6862356265f83b2241804fd701d030498ee51a7e3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

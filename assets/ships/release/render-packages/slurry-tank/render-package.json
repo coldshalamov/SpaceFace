@@ -53,11 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "5bcf3858f12af269fe25b5b1703433061f31028c304ffbb3a90a99b45a05f4a6",
-=======
-  "contentHash": "3b179bf9a9e6745a02ab4f94c1fa93c5d90cb70422aa07c95c716d7d81aaf3ce",
->>>>>>> origin/master
+  "contentHash": "c6ef076ab55529a934381ed1cea20a5f992e22fcd24f869d5f72241f800eeabd",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2190,13 +2186,8 @@
       "uri": "place_slurry_tank.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -3079,11 +3070,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_slurry_tank.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "1728cf34e8e934da7a4db9adf10f9f1242f413dbc80502748ec6af0dd7f2fb7d",
-=======
-  "runtimeHash": "087a90fe2072d0ee7cbf0504beedee36f360ee68433592fd77dea15fdc9007ec",
->>>>>>> origin/master
+  "runtimeHash": "7b309b9718ad23669b6d87fa344b1c2dca2e33c6106345e057dc96b16418d108",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

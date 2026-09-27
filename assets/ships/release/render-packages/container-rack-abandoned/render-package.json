@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "d0f071ede137923f359aaec65063b17df0ff7d6c77bb5887c336b0685519256b",
-=======
-  "contentHash": "f4b5243cd9c217b6082e2702199e1f8ad90fd4e4182dd543becab30ee5aafad0",
->>>>>>> origin/master
+  "contentHash": "a0be7fec20ee6be89d05caf183fe76f6776150faa710cb6fc934eec9e472e375",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1136,13 +1132,8 @@
       "uri": "place_container_rack_abandoned.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -1638,11 +1629,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_container_rack_abandoned.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "923bb203ecfd45ad8814f3f28c9f12d784616321d0487e31d15e6344f3465cbe",
-=======
-  "runtimeHash": "cd0c0ed0bf365fb96e12faee99c6561833a8175e78f82ed82e59388267c764f2",
->>>>>>> origin/master
+  "runtimeHash": "5240805dc251bd8fb9eb0b7accdfb97f37d7de77703365607b4fe89724e7820a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

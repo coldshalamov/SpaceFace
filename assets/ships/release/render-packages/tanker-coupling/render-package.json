@@ -99,11 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "f7a05aedc09186b2893a114762192ab6a955796b56fe62a4ef0ca0e36037f761",
-=======
-  "contentHash": "077af4757c5149bbbb74bafaca4a507627de6d2eb3cb97d758ea20beed3ca383",
->>>>>>> origin/master
+  "contentHash": "3caccd152ed8bd3180ba142930e450038def4ce1c86aa798bbc0ba552c42d70e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1863,13 +1859,8 @@
       "uri": "place_tanker_coupling.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -2697,11 +2688,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tanker_coupling.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "7f8c0cbeba13edf5edb5b6a0d93dc2a9b99c5d0099ba0f5266f655700a496688",
-=======
-  "runtimeHash": "90111daee19c4edcda3c396b1285165573a83854a99ec2a0075f4801551e096d",
->>>>>>> origin/master
+  "runtimeHash": "9b6d4ddd763352da304c30ac1e32aa3deceb0d920301395b4d9b22cdd02d0e8b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -53,11 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "51c0be30b20f78877eaef5fc572b743c7940cbaf6372f1aedfc7a2b27a077beb",
-=======
-  "contentHash": "99e36e81da9f4d75f22c462969c53bb9d24513fd72d15534031af638a84a07c4",
->>>>>>> origin/master
+  "contentHash": "3bcc860a6ef95ab0d47042685d68fc3441b164d25390835d01587b431daa6afa",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1352,13 +1348,8 @@
       "uri": "place_ore_bulk_container.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -1956,11 +1947,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ore_bulk_container.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "32ef2704cc56dadb71d5ec1289baaf6fa07f278a366d7a0726ec9b20461287e5",
-=======
-  "runtimeHash": "56b0b3dd9bd18af8928ce15d2564dd250c004ecca91e54ee6360ea9474b80c8b",
->>>>>>> origin/master
+  "runtimeHash": "b982c16e071bf110c65fbc119cd6ec82059cf29ee0fbd747546a5d209b441613",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

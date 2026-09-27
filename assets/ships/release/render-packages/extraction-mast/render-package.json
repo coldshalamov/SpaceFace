@@ -53,11 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "b157a99297c50a6047da63283df813715b35c4fc8f2654a51800bb5a6dcc6a55",
-=======
-  "contentHash": "dc0e195b4dfbb98a1a1148bf5796248c8a4c2b5db1060c3b9dbcf76b87ddeb1d",
->>>>>>> origin/master
+  "contentHash": "55060aa0904a31fc4be3171f0a245de7229e7ffb009d4dceabacad89a4d3648f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1682,13 +1678,8 @@
       "uri": "place_extraction_mast.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -2374,11 +2365,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_extraction_mast.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "d4ee3de6b672681d79a46d008c2e42cd97eac2b089450f87a295a62b415cba05",
-=======
-  "runtimeHash": "9feb2b7bc65080520b4f90ac62dd0fb1c70084610e054e853705b3df9d7c976e",
->>>>>>> origin/master
+  "runtimeHash": "d1d4d1611b44480581d462427ffefebed3dc57872b9d70e06927c9ca482e8411",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

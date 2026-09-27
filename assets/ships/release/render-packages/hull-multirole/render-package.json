@@ -99,11 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "c89f4767a35ecc52ddb740106b161e0e16ffb333c9d69c18018c867387b7341f",
-=======
-  "contentHash": "e5fe5a9c5921594565976f3b686e237c861b1182c6cac6930023271554bae968",
->>>>>>> origin/master
+  "contentHash": "8ba84a6a62225d30b07ebd3a985f905ea93f505b53a3923fd347960145d52aef",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1082,13 +1078,8 @@
       "uri": "hull_multirole.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -1743,11 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_multirole.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "fabac24a41ffbada859dcdd1d71c80a7faa9cabbaea76b5d582b7dc9adaa9584",
-=======
-  "runtimeHash": "b0200616f0f0ff4d02413a63513155dafd88332c7d3227f63dfac28949d30cb2",
->>>>>>> origin/master
+  "runtimeHash": "4f3064ac0e13d7d1adbcba2cd0b1ee7ac1a0ef3ad4765b55fadbbd7e0d366f75",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

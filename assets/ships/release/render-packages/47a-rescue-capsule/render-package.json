@@ -59,11 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "9f26d2ac1c1bb8d8016583434fdef855c55f5a8eea9e8310a1ce23acad18c8d0",
-=======
-  "contentHash": "cee289b51bf0fe47b62caf007590add1d5087d1f5cec0c0fd4d7693540486d9d",
->>>>>>> origin/master
+  "contentHash": "090c64159be7c456b63c5e601e6a1c1e7ddb2bf9d5b46f6bd8fb2c6ca5230525",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1100,13 +1096,8 @@
       "uri": "place_47a_rescue_capsule.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -1500,11 +1491,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_47a_rescue_capsule.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "89cb4bda2d454e3663e14924b2db7dc00961fc6c935ef37fe8daceda36586345",
-=======
-  "runtimeHash": "a622c322e22a3265bc5c614d36620899e8f39e9c3ede6ee6dadba9355551f89f",
->>>>>>> origin/master
+  "runtimeHash": "a4d80fb206a75c2f30d3fcb19597c3f581fd00ceecb34735888a9634efd750f7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -564,11 +564,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "d4f3ea00eb55df4c71177eb8d77dbe3c7fb0c631b30a90ca98afd0f2e8049da9",
-=======
-  "contentHash": "4d2f0bbcc9b4b731a06231cc81a2da08195a98ec6c5a2a9c04f85fd9df0d3905",
->>>>>>> origin/master
+  "contentHash": "6884919b2058f3c55b91e0cfcbdc21fff8d102c2c8acb82b97e76d4c5b9d5e20",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2267,13 +2263,8 @@
       "uri": "warden_production_v1.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -3173,11 +3164,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/warden_production_v1.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "a609d13ffa13cf59acac5f44c7b78f7c867e514f44c9378f48d160b468984021",
-=======
-  "runtimeHash": "5cf706ccde8a42bcb862bebe823193e55c72c9a857f5f0902732a11b25ba7f19",
->>>>>>> origin/master
+  "runtimeHash": "1cd29ea440a2c656c244557461cab53eb202b252552249e128f9b71cdbfba11c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -519,11 +519,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "40a5d7cd684ba1b35f2e77a12a044ed1c19414d906f931636fa7a1c461fdb0ea",
-=======
-  "contentHash": "4a5036e03416225e78b0c2be376f20e8550ee0b9fc40e62f50c2fa6ca1851b0b",
->>>>>>> origin/master
+  "contentHash": "ec7fe147abb9a26848cd5cb32da6157aa6e019155f5f7d19f3b6dace484c9dba",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2094,13 +2090,8 @@
       "uri": "mule_production_v1_lod1.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 193703,
-      "sha256": "71131c53ff091affc2be5bc7032bb662b9829efeb6129ea9ae848a25e10f40e3",
-=======
       "bytes": 189651,
-      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
->>>>>>> origin/master
+      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
       "uri": "pilots.json"
     }
   },
@@ -2927,11 +2918,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mule_production_v1_lod1.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "9bcabe10350df34274067f7c2649d98d2cfd03be13d9714490e29b10cd3dec1f",
-=======
-  "runtimeHash": "1d1d3b3e7f62a65d9d552c165d2446609f479133fdcc48e23414481a1f491c10",
->>>>>>> origin/master
+  "runtimeHash": "bcc1dfc67fb123106c16a60295da420edc7ae7cf16450bfe17f6b2081e65ffc7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
