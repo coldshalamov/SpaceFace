@@ -224,6 +224,8 @@ html.sf-reduce-motion .con-lens { transition:none; }
 .con-label.is-n, .con-label.is-s { text-align:center; }
 .con-label.is-dropped { display:none; }
 .con-sky.is-fontwait .con-label { visibility:hidden; }
+.orr-svg .con-leader { fill:none; stroke:rgb(${BONE} / .62); stroke-width:1.3; stroke-linecap:round; }
+.con-sky.is-fontwait .con-leaders { visibility:hidden; }
 .con-label.is-covered { opacity:.3; transition:opacity .2s linear; }
 .con-label.is-covered { opacity:0; }
 .con-star-btn:is(:hover, :focus-visible) > .con-label.is-under-hand { opacity:1; }
@@ -476,7 +478,14 @@ function segHits(rect, s) {
 function gapTo(rect, c) {
   const nx = Math.max(rect.x, Math.min(c.x, rect.x + rect.w));
   const ny = Math.max(rect.y, Math.min(c.y, rect.y + rect.h));
-  return Math.max(0, Math.hypot(nx - c.x, ny - c.y) - (c.r || 0));
+  let g = Math.max(0, Math.hypot(nx - c.x, ny - c.y) - (c.r || 0));
+  if (c.spike) {
+    // a produced star's spikes (a plus, L each way) count as the star
+    const L = c.spike;
+    const seg = (x0, y0, x1, y1) => Math.hypot(Math.max(rect.x - x1, 0, x0 - (rect.x + rect.w)), Math.max(rect.y - y1, 0, y0 - (rect.y + rect.h)));
+    g = Math.min(g, seg(c.x, c.y - L, c.x, c.y + L), seg(c.x - L, c.y, c.x + L, c.y));
+  }
+  return g;
 }
 
 /** How many places round its star a label could take before any other label is placed. */
@@ -514,8 +523,13 @@ export function solveLabels(items, { discs = [], segs = [], rects = [], points =
     let best = null;
     let peek = null;
     it.boxes.forEach((box, bi) => {
-      for (const [gi, gap] of [it.gap, it.gap + 9, it.gap + 18].entries()) for (const dir of dirs) {
+      for (const [gi, gap] of [it.gap, it.gap + 9, it.gap + 18].entries()) for (const dir of dirs) for (const sl of [0, 0.15, -0.15, 0.35, -0.35, 0.6, -0.6]) {
+        const side = Math.abs(dir.y) < 0.3;
+        const end = Math.abs(dir.x) < 0.3;
+        if (sl && !side && !end) continue;
         const rect = rectFor(s, dir, box, gap);
+        if (sl && side) rect.y += sl * box.nameH * 0.6;
+        if (sl && end) rect.x += sl * box.w * 0.25;
         if (!inBounds(rect)) continue;
         if (it.dirMin != null && (dir.x * ox + dir.y * oy) / len < it.dirMin) continue;
         if (discs.some((d) => d.id !== it.id && discHits(rect, d))) continue;
@@ -524,15 +538,28 @@ export function solveLabels(items, { discs = [], segs = [], rects = [], points =
         // a lit link (w > 1) counts heavily, and its bloom with it: the rect grown by 4 px
         const grown = { x: rect.x - 4, y: rect.y - 4, w: rect.w + 8, h: rect.h + 8 };
         const crossings = segs.reduce((n, sg) => n + ((sg.w || 1) > 1 ? (segHits(grown, sg) ? sg.w : 0) : (segHits(rect, sg) ? 1 : 0)), 0);
-        const score = crossings * 12 + dir.rank * 2 + bi * 3 + gi * 2.5;
-        if (!peek || score < peek.score) peek = { rect, dir, box, score };
-        // at rest a name must read as its own medal's: 20 px nearer its halo than any other
+        const score = crossings * 12 + dir.rank * 2 + bi * 3 + gi * 2.5 + Math.abs(sl) * 1.5;
+        // at rest a name must read as its own: 20 px nearer its own body than any other
+        let lead = false;
+        let belongs = true;
+        let m = Infinity;
         if (it.assoc) {
           const own = gapTo(rect, it.assoc.own);
-          if (it.assoc.others.some((o) => gapTo(rect, o) < own + (it.assoc.margin || 20))) continue;
+          let other = Infinity;
+          for (const o of it.assoc.others) other = Math.min(other, gapTo(rect, o));
+          m = other - own;
+          if (m < (it.assoc.margin || 20)) {
+            belongs = false;
+            lead = it.assoc.soft != null && m >= it.assoc.soft;
+          }
         }
+        const pscore = score + (belongs ? 0 : 60);
+        if (!peek || pscore < peek.score) peek = { rect, dir, box, score: pscore };
+        if (!belongs && !lead) continue;
         if (placed.some((p) => hit(rect, p, 8))) continue;
-        if (!best || score < best.score) best = { rect, dir, box, score };
+        // of the places that belong only by less than the rule, the one that belongs most
+        const bscore = score + (lead ? 40 + Math.max(0, (it.assoc.margin || 20) - m) * 3 : 0);
+        if (!best || bscore < best.score) best = { rect, dir, box, score: bscore, leader: lead };
       }
     });
     if (it.rest === false) out[it.id] = best ? { ...best, dropped: true } : peek ? { ...peek, dropped: true } : null;
@@ -1302,7 +1329,11 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       if (two.length === 2) boxes.push(mk(two));
       // a locked star's name leaves the sky: it reads through the Lens, and when the star is hovered, focused or chosen
       const rest = stateOf(n.id) !== 'locked';
-      return { id: n.id, star: { x: s.x, y: s.y, ox: s.x - cx, oy: s.y - cy }, boxes, gap: bodyR + 12, rank: rankOf(n.id), depth: s.depth, rest };
+      const body = (id, t) => (stateOf(id) === 'researched' ? { x: t.x, y: t.y, r: bodyR + 1, spike: bodyR * 1.6 } : { x: t.x, y: t.y, r: bodyR + 1 });
+      const others = [];
+      for (const [oid, t] of Object.entries(stars)) if (oid !== n.id) others.push(body(oid, t));
+      const assoc = { own: body(n.id, s), others, margin: 20, soft: 4 };
+      return { id: n.id, star: { x: s.x, y: s.y, ox: s.x - cx, oy: s.y - cy }, boxes, gap: bodyR + 12, rank: rankOf(n.id), depth: s.depth, rest, assoc };
     });
     const bounds = { x: 2, y: 2, w: geo.W - 4, h: geo.H - 4 };
     // within a rank, the label with the fewest free places goes first
@@ -1316,6 +1347,21 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     for (const [id, sol] of Object.entries(solved)) if (sol && !sol.dropped) labelRects.set(id, sol.rect);
     allLabelRects = new Map();
     for (const [id, sol] of Object.entries(solved)) if (sol) allLabelRects.set(id, sol.rect);
+    const leaders = svg('g', { class: 'con-leaders' });
+    for (const [id, sol] of Object.entries(solved)) {
+      if (!sol || sol.dropped || !sol.leader) continue;
+      const s = stars[id];
+      const r = sol.rect;
+      const nx = Math.max(r.x, Math.min(s.x, r.x + r.w));
+      const ny = Math.max(r.y, Math.min(s.y, r.y + r.h));
+      const d = Math.hypot(nx - s.x, ny - s.y) || 1;
+      const a0 = bodyR + 4;
+      const a1 = Math.max(a0 + 4, d - 3);
+      const ux = (nx - s.x) / d;
+      const uy = (ny - s.y) / d;
+      leaders.appendChild(svg('path', { class: 'con-leader', d: `M ${f(s.x + ux * a0)} ${f(s.y + uy * a0)} L ${f(s.x + ux * a1)} ${f(s.y + uy * a1)}` }));
+    }
+    layer.insertBefore(leaders, starG);
     covers = new Map();
     for (const [id, sol] of Object.entries(solved)) {
       if (!sol || !sol.dropped) continue;

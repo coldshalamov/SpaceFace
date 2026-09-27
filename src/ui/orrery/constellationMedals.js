@@ -77,6 +77,7 @@ const CSS = `
 .orr-svg text.con-morr__ringname tspan { fill:rgb(${WARM}); letter-spacing:.1em; }
 .orr-svg text.con-morr__ringname { opacity:0; transition:opacity .2s linear; }
 .orr-svg .con-morr__cutg { animation:con-morr-cut .35s linear var(--mo-ld, 460ms) both; }
+.orr-svg .con-morr__leader { fill:none; stroke:rgb(${WARM} / .72); stroke-width:1.4; stroke-linecap:round; animation:con-morr-cut .35s linear var(--mo-ld, 460ms) both; }
 @keyframes con-morr-cut { from { opacity:0; } to { opacity:1; } }
 .orr-svg text.con-morr__ringname.is-on { opacity:1; transition:opacity .35s linear var(--mo-ld, 420ms); }
 .orr-svg .con-morr__ring.is-front text.con-morr__ringname { fill:rgb(${WARM}); }
@@ -310,6 +311,7 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
     } catch (_) { return t.length * px * 0.84; }
   };
   let labelCuts = null;
+  let leaderG = null;
   let maskId = '';
 
   const rowOf = (id) => rows.find((r) => r.id === id) || null;
@@ -400,7 +402,7 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
       const own = halos.find((h) => h.id === id);
       return {
         id, star: { x, y, ox: x - geo.cx, oy: y - geo.cy }, boxes: [{ w: el.__w, h: el.__h, nameH: el.__nh, lines: [] }], gap: front.size * 0.46 + 12, rank: 0, depth: 0,
-        dirMin: -0.3, assoc: { own, others: halos.filter((h) => h.id !== id), margin: 20 },
+        dirMin: -0.3, assoc: { own, others: halos.filter((h) => h.id !== id), margin: 20, soft: 6 },
       };
     });
     const points = [];
@@ -411,8 +413,10 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
         for (const rr of [r - ring.namePx * 0.9, r - ring.namePx * 0.2, r + ring.namePx * 0.4]) { const [x, y] = polar(geo.cx, geo.cy, rr, a); points.push({ x, y }); }
       }
     }
-    const solved = solveLabels(items, { discs, segs, rects: geo.avoid || [], points, bounds: { x: 4, y: 4, w: geo.W - 8, h: geo.H - 8 } });
+    const wordRects = points.map((pt) => ({ x: pt.x - 12, y: pt.y - 12, w: 24, h: 24 }));
+    const solved = solveLabels(items, { discs, segs, rects: [...(geo.avoid || []), ...wordRects], points, bounds: { x: 4, y: 4, w: geo.W - 8, h: geo.H - 8 } });
     if (labelCuts) labelCuts.textContent = '';
+    if (leaderG) leaderG.textContent = '';
     const shown = [];
     for (const [id, sol] of Object.entries(solved)) {
       const el = labels.get(id);
@@ -429,6 +433,20 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
       if (sol.dropped) continue;
       el.classList.add('is-on');
       shown.push(...el.querySelectorAll('.con-morr__lname, .con-morr__lsub'));
+      if (sol.leader && leaderG) {
+        // the tick runs from the medal's halo out to its name
+        const [mx, my] = posOf.get(id);
+        const hr = front.size * 0.46 + 3;
+        const r = sol.rect;
+        const nx = Math.max(r.x, Math.min(mx, r.x + r.w));
+        const ny = Math.max(r.y, Math.min(my, r.y + r.h));
+        const d = Math.hypot(nx - mx, ny - my) || 1;
+        const ux = (nx - mx) / d;
+        const uy = (ny - my) / d;
+        const t = svg('path', { class: 'con-morr__leader', d: `M ${f(mx + ux * hr)} ${f(my + uy * hr)} L ${f(mx + ux * Math.max(hr + 4, d - 3))} ${f(my + uy * Math.max(hr + 4, d - 3))}` });
+        t.style.setProperty('--mo-ld', instant ? '0ms' : '460ms');
+        leaderG.appendChild(t);
+      }
     }
     // the orbits fade out round each name, in the words' own shape
     if (labelCuts && shown.length) {
@@ -677,6 +695,8 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
         layer.appendChild(g);
       });
       // the Hand: its pivot on the gauge, its arm out to the chosen medal
+      leaderG = svg('g', { class: 'con-morr__leaders' });
+      layer.appendChild(leaderG);
       armG = svg('g', { class: 'con-morr__hand' });
       armBloom = svg('path', { class: 'con-morr__armbloom', d: 'M 0 0' });
       arm = svg('path', { class: 'con-morr__arm', d: 'M 0 0' });
