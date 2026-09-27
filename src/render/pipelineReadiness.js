@@ -1,4 +1,5 @@
 import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
+import { armCallbackAfterPresent } from './compilePresentSlice.js';
 import { cookLiveSceneGpu } from './liveSceneCook.js';
 
 function gpuContextIsLost(state) {
@@ -147,18 +148,14 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   const scheduleResume = typeof options.scheduleResume === 'function'
     ? options.scheduleResume
     : (callback) => {
-        // rAF starvation (occluded or minimized headed window) would otherwise park the bounded
-        // resume lane forever — queued compiles would never flush and the authored-readiness gate
-        // would wait out its full timeout. The timer fires the same callback without presenting.
-        if (typeof requestAnimationFrame !== 'function') return setTimeout(callback, 16);
-        let fired = false;
-        const fire = () => {
-          if (fired) return;
-          fired = true;
-          callback();
-        };
-        requestAnimationFrame(fire);
-        return setTimeout(fire, 48);
+        // The bounded resume lane is ambient admission work — firing it inside the next rAF
+        // callback stacked the compile batch on that frame's pre-present budget. Arm it after
+        // the present at background priority with an idle bound: a saturated main thread
+        // starves best-effort tasks for whole seconds, and an unbounded wait showed up as
+        // held roots piling ~48 deep and contacts never admitting. armCallbackAfterPresent
+        // also carries the 48 ms unstick so a starved rAF (occluded or minimized headed
+        // window) cannot park the lane while the authored-readiness gate waits on it.
+        armCallbackAfterPresent(callback, { idleBoundMs: 48 });
       };
   const deferAutoFlush = typeof options.deferAutoFlush === 'function'
     ? options.deferAutoFlush

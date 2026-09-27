@@ -239,6 +239,7 @@ import {
 import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
 import { shouldRefreshRealtimeShadowMap } from './shadowPresentCadence.js';
 import {
+  armCallbackAfterPresent,
   collectCompileSubjects,
   compileSubjectsAcrossPresents,
   revealSubjectForCompile,
@@ -4114,8 +4115,10 @@ export function createSectorBoundaryGenerationManager(options = {}) {
 }
 
 function scheduleSectorBoundaryBuildTurn(callback) {
-  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(callback);
-  else setTimeout(callback, 0);
+  // Boundary builds are ambient admission work: each turn runs budgeted mount/prepare steps and
+  // mounts land hidden until the publisher reveals them. Inside the rAF callback they ran on the
+  // frame's pre-present budget; after the present at background priority they cannot delay it.
+  armCallbackAfterPresent(callback);
 }
 
 /** Transactionally attach one prepared hidden boundary to render/presentation ownership. Binding
