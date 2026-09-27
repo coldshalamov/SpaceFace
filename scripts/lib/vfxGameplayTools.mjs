@@ -7,10 +7,23 @@ import { resolveVfxAccessibilityProfile } from '../../src/render/vfxAccessibilit
 
 export const GAMEPLAY_TOOL_SCENARIOS = Object.freeze({
   'tool-extract': 4.2, 'tool-cut': 4.2, 'tool-repair': 4.2, 'tool-transfer': 4.2,
-  'massline-loaded': 4.8, 'massline-snap': 4.8, 'massline-release': 4.8, propulsion: 6.2,
+  'massline-loaded': 4.8, 'massline-snap': 4.8, 'massline-release': 4.8,
+  'massline-release-arc': 4.8, 'massline-swing': 4.8, 'massline-monofilament': 4.8,
+  'massline-apex': 4.8, 'massline-snarl': 4.8,
+  propulsion: 6.2, 'propulsion-reverse': 4.4, 'propulsion-lateral': 4.4,
+  'propulsion-yaw-brake': 4.4, 'propulsion-dash': 3.6,
 });
 const NOOP = () => {};
 const STEP = 1 / 60;
+const MASSLINE_TETHER_SCENARIOS = new Set([
+  'massline-loaded', 'massline-snap', 'massline-release', 'massline-release-arc',
+  'massline-swing', 'massline-monofilament', 'massline-apex',
+]);
+const MASSLINE_RELEASE_ARC_SCENARIOS = new Set(['massline-release-arc', 'massline-apex']);
+const MASSLINE_SWING_SCENARIOS = new Set(['massline-swing', 'massline-monofilament', 'massline-apex']);
+const NATIVE_PROPULSION_SCENARIOS = new Set([
+  'propulsion-reverse', 'propulsion-lateral', 'propulsion-yaw-brake', 'propulsion-dash',
+]);
 
 /** Mount once; reset({scenario,seed,time,targetId}) after placing the authored context meshes.
  * Advance the caller's state.simTime, then update(dt). Inputs live in private entity copies.
@@ -26,15 +39,24 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
   const privateState = { ...state, mode: 'flight', simTime: 0, entities,
     settings: state.settings || { video: {}, accessibility: {} },
     player: { ...(state.player || {}), tether: { active: false }, remoteMassline: null },
+    combat: { ...(state.combat || {}), attachments: { ...(state.combat?.attachments || {}), byId: {} } },
+    massline2: { ...(state.massline2 || {}), throw: { ...(state.massline2?.throw || {}) } },
+    runtime: { ...(state.runtime || {}), features: {
+      ...(state.runtime?.features || {}),
+      massline2: {
+        ...(state.runtime?.features?.massline2 || {}),
+        enabled: true,
+        masslineHeadMonofilamentSweep: true,
+      },
+    } },
     render: { ...state.render, scene: root, camera, renderer, interpolationAlpha: 1,
       viewport: { height: viewportHeight } },
   };
   const owner = Object.create(vfx);
   // Keep real tool/cable and common transient pools. Unrelated live game systems are not mounted.
   for (const name of ['_ensureOverflowJets', '_initRibbonTrails', '_initArcPreview',
-    '_initMasslineReleaseArc', '_initMasslineSwingTrace', '_initMonofilamentBlade',
-    '_initDockingCradle', '_initApexFlare', '_initTargetContour', '_initSeamMarkers',
-    '_initCombatBeams', '_initArcadeStructural', '_initFieldGeometry']) owner[name] = NOOP;
+    '_initDockingCradle', '_initTargetContour', '_initSeamMarkers',
+    '_initCombatBeams', '_initFieldGeometry']) owner[name] = NOOP;
   const quarks = new QuarksVfxSystem(); quarks.attach(root);
   owner._initWeaponPresenter = function initToolDebris() {
     this._weaponPresenter = { quarks, dispose: () => quarks.dispose() };
@@ -48,8 +70,8 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
   const drive = { drive: 0, throttle: 0, boost: 0, speed: 0, speedDrive: 0 };
   const a11y = { reducedMotion: false, reducedFlash: false };
   const shipBase = new THREE.Vector3(), targetBase = new THREE.Vector3();
-  let ship, target, markers = [], scenario = 'idle', seed = 17, randomState = seed;
-  let born = 0, clock = 0, accumulated = 0, contactAt = 0, released = false, disposed = false;
+  let ship, target, snarlLink = null, markers = [], scenario = 'idle', seed = 17, randomState = seed;
+  let born = 0, clock = 0, accumulated = 0, contactAt = 0, released = false, dashFired = false, disposed = false;
   let stage = 'idle';
   const random = () => { randomState = (Math.imul(randomState, 1664525) + 1013904223) >>> 0; return randomState / 4294967296; };
   function seeded(call) {
@@ -67,7 +89,20 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
   }
   function publish(dt) {
     owner._integrateParticles(dt); owner._integrateSprites(dt); owner._integrateTrailStreaks(dt);
-    owner._decayEventLights(dt); owner._gas.update(clock, camera); quarks.update(dt, sync());
+    owner._decayEventLights(dt); owner._gas.update(clock, camera);
+    // These presentation owners normally run from vfx.update(). The lab advances the
+    // production mining/rope paths directly so it can keep its deterministic fixture small;
+    // explicitly step the companion owners here as well so each scenario exercises the same
+    // native lifecycle and mesh publication as shipping gameplay.
+    if (scenario.startsWith('massline-')) {
+      owner._updateMasslineSwingTrace?.(dt);
+      owner._updateMonofilamentBlade?.();
+      owner._updateApexFlare?.(dt);
+      if (owner._masslineReleaseArcActive?.()) owner._updateMasslineReleaseArc?.(dt);
+      owner._tetherWebFx?.update(privateState);
+    }
+    if (NATIVE_PROPULSION_SCENARIOS.has(scenario)) owner._updateEnergy?.(dt);
+    quarks.update(dt, sync());
   }
   function copyEntity(entity, fallbackId, mesh, type) {
     return { ...(entity || {}), id: entity?.id ?? fallbackId, type: entity?.type || type, alive: true,
@@ -87,6 +122,8 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
     if (scenario !== 'idle' && !GAMEPLAY_TOOL_SCENARIOS[scenario]) throw new Error(`Unknown tool scenario ${scenario}`);
     seed = Number.isFinite(options.seed) ? options.seed >>> 0 : seed; randomState = seed;
     born = clock = Number.isFinite(options.time) ? options.time : 0; accumulated = 0;
+    dashFired = false;
+    privateState.input = { moveZ: 0, moveX: 0, turnIntent: 0 };
     privateState.simTime = clock; privateState.tick = 0; owner._t = clock;
     released = false; contactAt = 0.18; stage = scenario === 'idle' ? 'idle' : 'build';
     owner._admissionSerial = seed; quarks._flowSequence = seed;
@@ -95,6 +132,8 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
     owner._clearTrailStreaks(); for (const light of owner._lights) owner._retireEventLightSlot(light);
     owner._gas.clear(); quarks.reset(); propulsion.reset();
     propulsion._time = 0; propulsion._boostBlend = 0; propulsion._lastDrive = 0; propulsion._lastBoost = 0;
+    owner._hideEnergyPlumes?.();
+    owner._plumeDashPending = false;
     // Shipping reset keeps a monotonic history clock. A laboratory replay starts a new clock;
     // otherwise float birth-time rounding can retire one different sample on the second replay.
     for (const trail of propulsion._trails) { trail._now = 0; trail.material.uniforms.uNow.value = 0; }
@@ -106,13 +145,26 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
       stressFlashAt: -1, stressFlashEnd: false });
     for (const key of ['mesh', 'glow', 'band', 'anchorCore']) if (cable[key]) cable[key].visible = false;
     owner._resetMasslineReleaseToken();
+    owner._resetMasslineReleaseArc?.();
+    owner._resetMasslineSwingTrace?.();
+    owner._resetMonofilamentBlade?.();
+    owner._resetApexFlare?.();
     Object.assign(owner._lastMasslineReleaseVfx, { stage: 'idle', targetId: null, endpointCount: 0,
       classification: null, releaseScore: 0, velocityAxisX: 0, velocityAxisZ: 0, cameraTargetRequested: false });
+    privateState.combat.attachments.byId = {};
+    snarlLink = null;
+    owner._tetherWebFx?.update(privateState);
+    const throwState = privateState.massline2.throw;
+    Object.assign(throwState, {
+      armed: false, releaseTarget: null,
+      solution: { valid: false, onSolution: false, predicted: null, timeToSolution: 0 },
+    });
     const shipId = state.playerId ?? 1, targetId = options.targetId ?? 2;
     ship = copyEntity(state.entities?.get(shipId), shipId, shipMesh, 'ship');
     target = copyEntity(state.entities?.get(targetId), targetId, targetMesh, 'asteroid');
     if (ship.id === target.id) throw new Error('Tool demonstration needs distinct source and target entities');
     privateState.playerId = ship.id; entities.clear(); entities.set(ship.id, ship); entities.set(target.id, target);
+    privateState.entityList = [ship, target];
     shipBase.set(ship.pos.x, shipMesh.position.y, ship.pos.z);
     targetBase.set(target.pos.x, targetMesh.position.y, target.pos.z);
     place(shipMesh, ship, shipBase.y); place(targetMesh, target, targetBase.y);
@@ -123,13 +175,35 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
     sync();
     seeded(() => {
       if (scenario.startsWith('tool-')) owner._onMiningStart({ targetId: target.id, verb: scenario.slice(5) });
-      privateState.player.tether = { active: scenario.startsWith('massline-'), targetId: target.id,
+      const tetherScenario = MASSLINE_TETHER_SCENARIOS.has(scenario);
+      const releaseArcScenario = MASSLINE_RELEASE_ARC_SCENARIOS.has(scenario);
+      privateState.player.tether = { active: tetherScenario, targetId: target.id,
         attachmentId: `lab-line-${seed}`, restLength: Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z) + 6,
-        load: 0.12, strain: 0, phase: 'slack', reeling: false };
-      if (scenario.startsWith('massline-')) {
+        load: 0.12, strain: 0, phase: 'slack', reeling: false,
+        headId: scenario === 'massline-monofilament' ? 'monofilament_sweep' : null };
+      if (releaseArcScenario) {
+        throwState.armed = true;
+        throwState.releaseTarget = {
+          kind: 'entity', source: 'lab-release-predictor', targetId: target.id,
+          pos: { ...target.pos }, radius: target.radius,
+        };
+        throwState.solution = {
+          valid: true, onSolution: true, predicted: { x: target.pos.x + 3, z: target.pos.z - 2 },
+          timeToSolution: 0.42, proximity: 0.82,
+        };
+      }
+      if (tetherScenario) {
         owner._updateTetherCable(0); owner._onTetherLatch({ targetId: target.id });
       }
-      if (scenario === 'propulsion') { ship.pos.z += 18; place(shipMesh, ship, shipBase.y); }
+      if (scenario.startsWith('propulsion')) { ship.pos.z += 18; place(shipMesh, ship, shipBase.y); }
+      if (scenario === 'massline-snarl') {
+        snarlLink = {
+          id: `lab-snarl-${seed}`, defId: 'attachment_snarl', state: 'active',
+          ownerId: ship.id, targetId: target.id, restLength: Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z) + 4,
+          createdTick: 0,
+        };
+        privateState.combat.attachments.byId[snarlLink.id] = snarlLink;
+      }
       publish(0);
     });
   }
@@ -146,12 +220,37 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
     stage = released ? (owner._miningBeam.mesh.visible ? 'release' : 'dead') : age < 0.15 ? 'build' : 'working';
   }
   function stepMassline(dt, age) {
+    if (scenario === 'massline-snarl') {
+      if (snarlLink) {
+        snarlLink.createdTick = Math.max(0, privateState.tick - 18);
+        snarlLink.restLength = Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z)
+          + 4 + Math.sin(age * 2.4) * 2;
+      }
+      stage = age < 0.5 ? 'formation' : age < 3.8 ? 'tension' : 'cooldown';
+      return;
+    }
     const tether = privateState.player.tether;
     if (!released) {
       tether.load = Math.min(0.86, 0.12 + age * 0.54);
       tether.phase = age < 0.3 ? 'capture' : 'loaded';
+      if (MASSLINE_SWING_SCENARIOS.has(scenario)) {
+        const previousX = target.pos.x, previousZ = target.pos.z;
+        const orbitRadius = Math.max(30, Math.hypot(targetBase.x - shipBase.x, targetBase.z - shipBase.z) * 0.72);
+        const angularSpeed = 1.65;
+        const angle = 0.2 + age * angularSpeed;
+        target.pos.x = ship.pos.x + Math.cos(angle) * orbitRadius;
+        target.pos.z = ship.pos.z + Math.sin(angle) * orbitRadius;
+        target.vel.x = (target.pos.x - previousX) / Math.max(dt, STEP);
+        target.vel.z = (target.pos.z - previousZ) / Math.max(dt, STEP);
+        target.prevPos = { x: previousX, z: previousZ };
+        place(targetMesh, target, targetBase.y);
+      } else {
+        target.vel.x = 0;
+        target.vel.z = 0;
+      }
       tether.restLength = Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z) + Math.max(0, 6 - age * 7);
-      const releaseAt = scenario === 'massline-loaded' ? 3.6 : 2.2;
+      const releaseAt = (scenario === 'massline-loaded' || scenario === 'massline-swing'
+        || scenario === 'massline-monofilament') ? 3.6 : 2.2;
       if (age >= releaseAt) {
         const receipt = { sourceId: ship.id, targetId: target.id, attachmentId: tether.attachmentId };
         tether.active = false; released = true;
@@ -159,7 +258,8 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
         else {
           target.vel.x = 24; target.vel.z = -9;
           owner._onTetherRelease(receipt);
-          owner._onTetherReleaseRated({ ...receipt, classification: 'clean', releaseScore: 0.8 });
+          owner._onTetherReleaseRated({ ...receipt, classification: 'clean', releaseScore: 0.8,
+            releasedAtApex: scenario === 'massline-apex' });
         }
       }
     }
@@ -184,6 +284,33 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
     drive.drive = drive.throttle = age < 2.2 ? 1 : 0; drive.boost = age > 0.3 && age < 1.9 ? 1 : 0;
     drive.speedDrive = drive.speed / 40;
     ship.vel.x = Math.cos(angle) * drive.speed; ship.vel.z = Math.sin(angle) * drive.speed;
+    const native = NATIVE_PROPULSION_SCENARIOS.has(scenario);
+    if (native) {
+      const reverse = scenario === 'propulsion-reverse' ? 18 : 0;
+      const lateral = scenario === 'propulsion-lateral'
+        ? 14 * Math.sin(Math.min(1, age * 1.4) * Math.PI * 0.5) : 0;
+      const yaw = scenario === 'propulsion-yaw-brake'
+        ? (age < 1.8 ? 9.5 : age < 3.2 ? -13.5 : 0) : 0;
+      const main = scenario === 'propulsion-dash' ? (age > 0.18 && age < 2.2 ? 34 : 0) : 0;
+      const pilotBrake = scenario === 'propulsion-reverse'
+        || (scenario === 'propulsion-yaw-brake' && age >= 1.8);
+      ship._flightFrame = {
+        ...(ship._flightFrame || {}), driveId: 'drive_reaction_m', maxSpeed: 120,
+        forwardSpeed: drive.speed, throttle: main > 0 ? 0.86 : 0,
+        acceleration: { x: 0, z: 0 }, angularAcceleration: yaw,
+        actuators: { main, reverse, lateral, yaw, pilotBrake },
+      };
+      privateState.input.moveZ = scenario === 'propulsion-dash' && age < 2.2 ? 1 : 0;
+      privateState.input.turnIntent = Math.abs(yaw) > 0 ? 0.72 : 0;
+      ship.flags = { ...(ship.flags || {}), boosting: scenario === 'propulsion-dash' && age > 0.28 && age < 1.9 };
+      if (scenario === 'propulsion-dash' && age >= 0.28 && !dashFired) {
+        owner._onDash({ shipId: ship.id });
+        dashFired = true;
+      }
+      stage = age < 0.28 ? 'charge' : scenario === 'propulsion-yaw-brake' && age >= 1.8
+        ? 'yaw-brake' : age < 2.2 ? 'active' : 'cooldown';
+      return;
+    }
     liveSockets.length = 0;
     const count = markers.length || 1;
     for (let i = 0; i < count; i++) {
@@ -208,7 +335,7 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
         owner._t = clock; const age = clock - born;
         if (scenario.startsWith('tool-')) stepTool(STEP, age);
         else if (scenario.startsWith('massline-')) stepMassline(STEP, age);
-        else if (scenario === 'propulsion') stepPropulsion(STEP, age);
+        else if (scenario.startsWith('propulsion')) stepPropulsion(STEP, age);
         publish(STEP);
       }
     });
@@ -220,7 +347,39 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
       massline: { visible: owner._tetherCable.mesh.visible, load: owner._tetherCable.loadSmooth,
         fade: owner._tetherCable.fade, snapAge: owner._tetherCable.snapAge,
         release: { ...owner._lastMasslineReleaseVfx } },
-      propulsion: propulsion.inspect(), nozzleSource: markers.length ? 'authored engine markers' : 'shipping radius fallback',
+      masslineCompanions: {
+        releaseArc: {
+          visible: !!owner._masslineReleaseArc?.mesh?.visible,
+          fade: owner._masslineReleaseArc?.fade || 0,
+          ratingAge: owner._masslineReleaseArc?.ratingAge ?? null,
+        },
+        swingTrace: {
+          visible: !!owner._masslineSwingTrace?.mesh?.visible,
+          samples: owner._masslineSwingTrace?.trace?.count || 0,
+        },
+        monofilament: {
+          visible: !!owner._monofilamentBlade?.mesh?.visible,
+          present: !!owner._monofilamentBlade?.present,
+        },
+        apex: {
+          active: !!owner._apexFlare?.active,
+          age: owner._apexFlare?.age || 0,
+        },
+        snarl: {
+          visible: !!owner._tetherWebFx?.mesh?.visible,
+          instances: owner._tetherWebFx?.mesh?.count || 0,
+        },
+      },
+      propulsion: propulsion.inspect(),
+      nativePropulsion: NATIVE_PROPULSION_SCENARIOS.has(scenario) ? {
+        energyInitialized: !!owner._energy,
+        plumeDrive: owner._energy?.plumeDrive || 0,
+        retroLiveCount: owner._energy?.retroVolume?._liveCount || 0,
+        rcsImpulseCount: owner._energy?.rcsSystem?.pool?.activeImpulseCount || 0,
+        rcsSlotCount: owner._energy?.rcsSystem?.pool?.activeSlotCount || 0,
+        dashFired,
+      } : null,
+      nozzleSource: markers.length ? 'authored engine markers' : 'shipping radius fallback',
       sprites: owner._liveSpriteCount, particles: owner._liveCount, streaks: owner._liveTrailStreakCount,
     };
   }
