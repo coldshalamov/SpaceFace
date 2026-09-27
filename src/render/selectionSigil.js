@@ -1,4 +1,4 @@
-﻿// src/render/selectionSigil.js — the ORRERY selection sigil.
+// src/render/selectionSigil.js — the ORRERY selection sigil.
 //
 // The action-RPG "this one" marker, as a SpaceFace instrument. INF-045's flat ring said *where* the
 // lock is, never what the game thought of it, and a thin torus at 1.18x hull radius reads as debug
@@ -234,8 +234,12 @@ float frontOf(float delay, float dur) {
   float depart = 1.0 - smoothstep(0.0, 0.42, (1.0 - uRetract) * 1.35 - delay * 1.90);
   return min(arrive, depart) * 1.30;
 }
-float gate(float r, float f) { return smoothstep(f + 0.045, f - 0.045, r); }
-float lead(float r, float f) { float d = (r - f) / 0.020; return exp(-d * d) * uFlash; }
+// Presence gate for a layer front, plus the hot leading edge the front paints while it travels.
+// Written as 1 - smoothstep(lo, hi, r) with lo < hi: smoothstep is UNDEFINED when edge0 >= edge1,
+// and the natural-looking 'smoothstep(f + w, f - w, r)' is exactly that reversed form. On ANGLE it
+// returned a value that leaked the emblem's penumbra across the whole plane as a flat plate.
+float gate(float r, float f) { return 1.0 - smoothstep(f - 0.045, f + 0.045, r); }
+float lead(float r, float f) { float d = (r - f) / 0.020; return exp(-sq(d)) * uFlash; }
 
 
 void main() {
@@ -354,6 +358,19 @@ void main() {
   // Outside the inscribed circle the plane is empty space. Cut it so the quad's corners cost
   // nothing and the instrument can never show a square edge at any zoom.
   if (r > 0.995) discard;
+  // Diagnostic taps (uMask > 90): show one intermediate as greyscale so a composed picture that
+  // disagrees with the arithmetic can be attributed instead of argued about.
+  if (uMask > 90.5) {
+    float v = 0.0;
+    if (uMask < 91.5) v = gpx * 60.0;                 // 91: pixel footprint in plane units
+    else if (uMask < 92.5) v = emblem;                 // 92: the class figure
+    else if (uMask < 93.5) v = ge;                    // 93: the emblem's presence gate
+    else if (uMask < 94.5) v = polyEdge(p, a, 0.415, 3.0, 0.0) * 4.0;   // 94: raw polygon edge distance
+    else if (uMask < 95.5) v = spokes(r, a, 12.0, 0.345, 0.400, 0.0055); // 95: the burst spokes
+    else v = stroke(abs(r - 0.860), 0.0050) * 2.0;     // 96: one rail stroke, as a control
+    gl_FragColor = vec4(vec3(v), 1.0);
+    return;
+  }
   gl_FragColor = vec4(L * uGain, 1.0);
 }
 `;

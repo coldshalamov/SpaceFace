@@ -6554,6 +6554,17 @@ export const vfx = {
     return 0;
   },
 
+  _spawnStationSideEventStreak(
+    x, y, z, life, width, length, opacity, color, vx, vz, axisX, axisZ,
+  ) {
+    // Restored: ce36f6f5f deleted this forwarder with the station-operation
+    // migration but the NPC-job-signature call sites still use it (TypeError
+    // every frame). Same forward as before, 1/0 emitted convention.
+    return this._spawnProjectileTrailStreak(
+      x, y, z, life, width, length, opacity, color, vx, vz, axisX, axisZ,
+    ) ? 1 : 0;
+  },
+
   // -------------------------------------------------------------------------
   // R6B authored Ceres action punctuation. Traffic validates and applies the action; this event
   // consumer revalidates the exact receipt against still-live authority, snapshots global points,
