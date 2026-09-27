@@ -789,8 +789,8 @@ function intentsForOperation(manifest, operation, receiptId) {
         domain: intent.domain,
         type: intent.type,
         payload: {
-          ...clonePlain(intent.payload || {}),
           siteId: manifest.id,
+          ...clonePlain(intent.payload || {}),
           worldObjectId: manifest.worldObjectId,
           operationId: operation.id,
           receiptId,
