@@ -166,26 +166,26 @@ const VERTEX_SHADER = /* glsl */`
     } else if (aBoltSize.w > 7.5) {
       // A motor is fed at t=1 (the real rear nozzle). Two open, rolled exhaust banks
       // spread into unequal afterburn reaches; torpedo carries a third loaded bank.
-      float patch=aBoltTopology.y,heavy=step(8.5,aBoltSize.w);
-      if(patch>1.5&&heavy<.5){vBoltWorld=vec3(0.0);gl_Position=vec4(2.0,2.0,2.0,1.0);return;}
-      float aft=1.0-t,turn=patch*(heavy>.5?2.0943951:3.14159265);
-      float section=side*2.3+.25*sin(aft*9.0-evolution*3.8+patch);
+      float bankId=aBoltTopology.y,heavy=step(8.5,aBoltSize.w);
+      if(bankId>1.5&&heavy<.5){vBoltWorld=vec3(0.0);gl_Position=vec4(2.0,2.0,2.0,1.0);return;}
+      float aft=1.0-t,turn=bankId*(heavy>.5?2.0943951:3.14159265);
+      float section=side*2.3+.25*sin(aft*9.0-evolution*3.8+bankId);
       float spread=(.09+.36*pow(aft,.7))*(.8+.2*sin(t*3.14159265));
       float radial=sin(section)*spread,deep=(.52-cos(section))*spread;
       shaped.x=t-.5;
       shaped.y=cos(turn)*radial-sin(turn)*deep;
       shaped.z=sin(turn)*radial+cos(turn)*deep;
-      shaped.yz+=vec2(sin(aft*8.0-evolution*4.2+patch),cos(aft*7.0-evolution*3.0+patch))*.06*aft;
+      shaped.yz+=vec2(sin(aft*8.0-evolution*4.2+bankId),cos(aft*7.0-evolution*3.0+bankId))*.06*aft;
     } else if (aBoltSize.w > 6.5) {
       // Siege carries a loaded three-lobed bore chamber, with a dark axial lumen and
       // a blunt compressed leading shoulder. This is separate volume topology, not a rail tint.
-      float patch=aBoltTopology.y,turn=patch*2.0943951;
+      float bankId=aBoltTopology.y,turn=bankId*2.0943951;
       float envelope=pow(max(bow,0.0),.42);
-      float roll=side*2.35+.12*sin(t*7.0-evolution*2.4+patch);
+      float roll=side*2.35+.12*sin(t*7.0-evolution*2.4+bankId);
       float radius=(.28+.11*smoothstep(.38,.76,t))*envelope;
       float radial=radius+sin(roll)*.17*envelope;
       float cross=(.62-cos(roll))*.17*envelope;
-      shaped.x=t-.5+envelope*.045*sin(side*2.0+patch);
+      shaped.x=t-.5+envelope*.045*sin(side*2.0+bankId);
       shaped.y=cos(turn)*radial-sin(turn)*cross;
       shaped.z=sin(turn)*radial+cos(turn)*cross;
     } else if (aBoltSize.w >= 5.5) {
