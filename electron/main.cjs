@@ -208,6 +208,17 @@ app.commandLine.appendSwitch('enable-zero-copy');
 // Hybrid-GPU systems may hand a browser-style app the power-saving adapter; the game
 // always wants the high-performance GPU. No-op where only one adapter exists.
 app.commandLine.appendSwitch('force_high_performance_gpu');
+// ANGLE backend pin: Windows Chromium already selects d3d11 through its own heuristics, so
+// the pin only stops per-machine drift (field trials, driver changes) between hardware
+// runs. SPACEFACE_ANGLE_BACKEND overrides it on probe boxes ('default' leaves Chromium
+// unpinned); other platforms keep their platform backend untouched.
+const ANGLE_BACKEND_CHOICES = new Set(['d3d9', 'd3d11', 'd3d11on12', 'vulkan', 'gl', 'gles']);
+if (process.platform === 'win32') {
+  const requestedAngle = String(process.env.SPACEFACE_ANGLE_BACKEND || '').trim().toLowerCase();
+  if (requestedAngle !== 'default') {
+    app.commandLine.appendSwitch('use-angle', ANGLE_BACKEND_CHOICES.has(requestedAngle) ? requestedAngle : 'd3d11');
+  }
+}
 // Browser-chrome subsystems a localhost game shell never uses — keeps their periodic
 // discovery/sync work out of the process.
 app.commandLine.appendSwitch('disable-features',
