@@ -40,13 +40,14 @@ wrong still starts at the fun loop (§1.7), then returns here.
 
 1. Glance at `git status --short` and [`design/program/NOW.md`](./design/program/NOW.md) so you do
    not collide with another agent's live, exact paths. A dirty foreign hunk is protected.
-   **The frontend is claimed (owner, 2026-09-26).** Every 2D surface — title, menus, station tabs,
-   chart, meta screens, Crucible screens, Help, Footprint, THE SHIP, Range, Automation, replay, Asteroid
-   Works UI, the flight HUD, and the frontend library (`src/ui/**`, `styles/**`, `design/frontend/**`,
-   `tools/ui-bench*`) — belongs to the ORRERY overhaul lane until it closes: §11, §18, §20, §22.5
-   C1–C4, the §22.9 HUD rows, §25 Phase 4 and §27 THE INSTRUMENT are marked CLAIMED. Do not take
-   frontend work from any queue, lane or catalog; route a frontend defect to the lane (§7 of
-   `AGENTS.md`). Authority: [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md).
+   **The frontend redesign is owned by the ORRERY lane (owner, 2026-09-26; nuanced 2026-09-27).**
+   The lane owns the redesign sessions and the superseded briefs stay dead (§11, §18, §20, §22.5
+   C1–C4, the §22.9 HUD rows, §25 Phase 4, §27 THE INSTRUMENT) — but **frontend files are not a
+   no-go zone**: when your task needs a file under `src/ui/**` or `styles/**`, edit it — minimal,
+   consistent with the ORRERY direction, verified, landed by pathspec; the lane reads the diff and
+   works it in when it returns. A cosmetic frontend impulse your task does not need is one ledger
+   row (§7 of `AGENTS.md`), never a second designer. Authority:
+   [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md).
 2. If this sitting is a finishing or A-list pass with no named packet — "make it better", "finish
    the game", "polish", a long build session — take a lane from
    [§27](#27-the-finish-in-lanes--admitted-2026-09-24) / [`FINISH_LANES.md`](./design/program/FINISH_LANES.md):
