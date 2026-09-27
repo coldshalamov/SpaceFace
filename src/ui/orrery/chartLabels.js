@@ -81,6 +81,52 @@ function segmentHitsRect(x1, y1, x2, y2, r) {
   return true;
 }
 
+/** Does the segment pass within the disc (radius + pad)? */
+function segmentHitsDisc(x1, y1, x2, y2, d, pad = 0) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const L2 = dx * dx + dy * dy;
+  const t = L2 > 0 ? Math.max(0, Math.min(1, ((d.x - x1) * dx + (d.y - y1) * dy) / L2)) : 0;
+  const px = x1 + dx * t;
+  const py = y1 + dy * t;
+  const r = d.r + pad;
+  return (d.x - px) ** 2 + (d.y - py) ** 2 < r * r;
+}
+
+function segmentsCross(a, b) {
+  const o = (px, py, qx, qy, rx, ry) => Math.sign((qx - px) * (ry - py) - (qy - py) * (rx - px));
+  const o1 = o(a.x1, a.y1, a.x2, a.y2, b.x1, b.y1);
+  const o2 = o(a.x1, a.y1, a.x2, a.y2, b.x2, b.y2);
+  const o3 = o(b.x1, b.y1, b.x2, b.y2, a.x1, a.y1);
+  const o4 = o(b.x1, b.y1, b.x2, b.y2, a.x2, a.y2);
+  return o1 !== o2 && o3 !== o4 && o1 !== 0 && o3 !== 0;
+}
+
+/** Distance from a segment to another (0 when they cross): two leaders may not run on one line. */
+function segmentsNear(a, b, gap) {
+  if (segmentsCross(a, b)) return true;
+  const pd = (px, py, s) => {
+    const dx = s.x2 - s.x1;
+    const dy = s.y2 - s.y1;
+    const L2 = dx * dx + dy * dy;
+    const t = L2 > 0 ? Math.max(0, Math.min(1, ((px - s.x1) * dx + (py - s.y1) * dy) / L2)) : 0;
+    return Math.hypot(px - (s.x1 + dx * t), py - (s.y1 + dy * t));
+  };
+  return Math.min(pd(a.x1, a.y1, b), pd(a.x2, a.y2, b), pd(b.x1, b.y1, a), pd(b.x2, b.y2, a)) < gap;
+}
+
+function rectDiscGap(rect, disc) {
+  const cx = Math.max(rect.x, Math.min(disc.x, rect.x + rect.width));
+  const cy = Math.max(rect.y, Math.min(disc.y, rect.y + rect.height));
+  return Math.max(0, Math.hypot(disc.x - cx, disc.y - cy) - disc.r);
+}
+
+function leaderSegments(L) {
+  const out = [{ x1: L.sx, y1: L.sy, x2: L.ex, y2: L.ey }];
+  if (Math.hypot(L.lx - L.ex, L.ly - L.ey) > 0.5) out.push({ x1: L.ex, y1: L.ey, x2: L.lx, y2: L.ly });
+  return out;
+}
+
 const DIAG = Math.SQRT1_2;
 
 /**
@@ -96,11 +142,16 @@ function seatsFor(c, w, h, { maxLeader }) {
   if (c.inside && c.inside.r > 0) {
     // A region's name reads inside its own region, clear of its rim, near its crown.
     const d = c.inside;
-    for (const k of [0.34, 0.5, 0.2, 0.66, 0.08]) {
-      const top = d.y - d.r + 10 + (d.r * 2 - h - 20) * k;
-      seats.push({ x: d.x - w / 2, y: top, cost: k * 10, side: 'inside' });
+    if (!c.rimOnly) {
+      // down the pool's middle first, then either side of it (a big pool has room off its centre)
+      [0, -0.36, 0.36, -0.58, 0.58].forEach((u, j) => {
+        for (const k of [0.34, 0.5, 0.2, 0.66, 0.08, 0.82, 0.42, 0.58, 0.74]) {
+          const top = d.y - d.r + 10 + (d.r * 2 - h - 20) * k;
+          seats.push({ x: d.x + u * d.r - w / 2, y: top, cost: k * 10 + j * 4, side: 'inside' });
+        }
+      });
     }
-    return seats;
+    if (!c.rimLeader) return seats;
   }
   const near = [
     { x: ax + e, y: ay - h / 2, cost: 0, side: 'right' },
@@ -112,7 +163,10 @@ function seatsFor(c, w, h, { maxLeader }) {
     { x: ax - e * DIAG - w, y: ay - e * DIAG - h, cost: 6, side: 'upper-left' },
     { x: ax - e * DIAG - w, y: ay + e * DIAG, cost: 7, side: 'lower-left' },
   ];
-  if (!c.leaderOnly) seats.push(...near);
+  if (!c.leaderOnly && !c.inside) seats.push(...near);
+  // a pool too small for its name hangs it off its rim (never from inside the pool)
+  const RL = c.inside && c.rimLeader ? Math.max(R, c.inside.r) : R;
+  const rimCost = c.inside && c.rimLeader ? 24 : 0;
   // Leaders: out of the mark on a diagonal (or level east/west), elbow, then 10 px flat into the words.
   const dirs = [[1, -1], [1, 1], [-1, -1], [-1, 1], [1, 0], [-1, 0]];
   const lengths = (c.leaderOnly ? [24, 44, 64, 88, 116, 148, 184, 220] : [24, 40, 58, 80, 104]).filter((L) => L <= maxLeader);
@@ -120,18 +174,27 @@ function seatsFor(c, w, h, { maxLeader }) {
     dirs.forEach(([dx, dy], i) => {
       const ux = dy ? dx * DIAG : dx;
       const uy = dy ? dy * DIAG : 0;
-      const sx = ax + ux * (R + 2);
-      const sy = ay + uy * (R + 2);
-      const ex = ax + ux * (R + 2 + L);
-      const ey = ay + uy * (R + 2 + L);
+      const sx = ax + ux * (RL + 2);
+      const sy = ay + uy * (RL + 2);
+      const ex = ax + ux * (RL + 2 + L);
+      const ey = ay + uy * (RL + 2 + L);
       const lx = ex + dx * 10;
       const x = dx > 0 ? lx + 3 : lx - 3 - w;
       const y = ey - h / 2;
       seats.push({
-        x, y, cost: 12 + L * 0.35 + i * 0.6, side: 'leader',
+        x, y, cost: 12 + rimCost + L * 0.35 + i * 0.6, side: 'leader',
         leader: { sx, sy, ex, ey, lx, ly: ey },
       });
     });
+    // straight up or down out of the mark, the words hung level off the leader's end
+    for (const dy of [1, -1]) {
+      const sy = ay + dy * (RL + 2);
+      const ey = ay + dy * (RL + 2 + L);
+      const y = dy > 0 ? ey + 3 : ey - 3 - h;
+      [[ax - w / 2, 0], [ax - 8, 1], [ax - w + 8, 2]].forEach(([x, k]) => {
+        seats.push({ x, y, cost: 16 + rimCost + L * 0.35 + k * 0.6, side: 'leader', leader: { sx: ax, sy, ex: ax, ey, lx: ax, ly: ey } });
+      });
+    }
   }
   // A reading too big to seat beside its mark docks in a corner of the clear field, on a leader
   // that leaves the mark at 45 degrees and runs flat into the words.
@@ -190,6 +253,8 @@ export function placeChartLabels(candidates, env = {}) {
   const discs = (env.discs || []).filter((d) => d && Number.isFinite(d.x) && Number.isFinite(d.y) && d.r > 0);
   const rings = (env.rings || []).filter((r) => r && r.r > 0);
   const segments = env.segments || [];
+  // names a block may cover at a price (they give way on the next frame) rather than never
+  const soft = (env.soft || []).filter(Boolean);
   const priorityOf = typeof env.priorityOf === 'function' ? env.priorityOf : (c) => Number(c.priority) || 0;
   const eligible = typeof env.eligible === 'function' ? env.eligible : () => true;
   const maxLeader = Number.isFinite(env.maxLeader) ? env.maxLeader : 60;
@@ -205,13 +270,19 @@ export function placeChartLabels(candidates, env = {}) {
 
   // Every candidate's own mark is an obstacle for every label (its own included: words beside a
   // mark, never over it).
-  const anchorDiscs = list.map((c) => ({ id: c.id, x: c.x, y: c.y, r: Math.max(2, Number(c.anchorRadius) || 2) - 1 }));
+  const anchorDiscs = list.map((c) => ({ id: c.id, x: c.x, y: c.y, r: Math.max(2, Number(c.anchorRadius) || 2) - 1, area: !!c.area }));
   const occupied = reserved.slice();
+  const placedLeaders = [];
   const out = [];
   for (const c of list) {
     const { _i, ...pub } = c;
     if (!eligible(c) || !Number.isFinite(c.x) || !Number.isFinite(c.y)) {
       out.push({ ...pub, visible: false, reason: 'suppressed' });
+      continue;
+    }
+    // a second way to name a mark (a pool's name off its rim) stands down when the first one seated
+    if (c.unlessPlaced && out.some((o) => o.visible && o.id === c.unlessPlaced)) {
+      out.push({ ...pub, visible: false, reason: 'named' });
       continue;
     }
     let best = null;
@@ -228,14 +299,22 @@ export function placeChartLabels(candidates, env = {}) {
       let bad = 0;
       let cost = seat.cost;
       if (!rectInside(rect, bounds, 4)) bad += 4;
-      if (c.inside && !rectInsideDisc(rect, c.inside, 8)) bad += 4;
+      if (seat.side === 'inside' && !rectInsideDisc(rect, c.inside, 8)) bad += 4;
+      // a leader off a pool's rim leaves where that rim is drawn (a merged rim is not drawn inside
+      // its neighbours)
+      if (c.rimOnly && seat.leader && Array.isArray(c.rimHidden)
+        && c.rimHidden.some((o) => Math.hypot(seat.leader.sx - o.x, seat.leader.sy - o.y) < o.r - 1)) bad += 4;
+      if (c.rimOnly && seat.leader && c.rimClip && c.rimClip.r > 0
+        && Math.hypot(seat.leader.sx - c.rimClip.x, seat.leader.sy - c.rimClip.y) > c.rimClip.r) bad += 4;
+      // a name that belongs inside a ring (a region of the sector) stays inside it
+      if (c.within && c.within.r > 0 && !rectInsideDisc(rect, c.within, Number(c.within.clear) || 12)) bad += 4;
       for (const o of occupied) if (rectsOverlap(rect, o, gap)) { bad += 3; break; }
       for (const d of anchorDiscs) {
         if (rectDiscOverlap(rect, d, 1)) { bad += 3; break; }
       }
       for (const d of discs) if (rectDiscOverlap(rect, d, 2)) { bad += 2; break; }
       for (const ring of rings) {
-        if (c.inside && ring.x === c.inside.x && ring.y === c.inside.y && ring.r === c.inside.r) continue;
+        if (seat.side === 'inside' && ring.x === c.inside.x && ring.y === c.inside.y && ring.r === c.inside.r) continue;
         if (!rectCrossesRing(rect, ring)) continue;
         // a hard ring (the sector's gate ring) is never crossed; a soft one (a pool's rim) only when
         // nothing near the mark keeps clear of it
@@ -243,21 +322,65 @@ export function placeChartLabels(candidates, env = {}) {
         cost += 30;
       }
       for (const s of segments) if (segmentHitsRect(s.x1, s.y1, s.x2, s.y2, rect)) cost += 5;
-      // a mark that stands on a ring (a gate on the sector's gate ring) names itself on the outside
-      if (c.outsideOf && Math.hypot(rect.x + w / 2 - c.outsideOf.x, rect.y + h / 2 - c.outsideOf.y) < c.outsideOf.r) cost += 20;
-      if (seat.leader) {
-        // a leader may not run through another label
-        for (const o of occupied) {
-          if (segmentHitsRect(seat.leader.sx, seat.leader.sy, seat.leader.ex, seat.leader.ey, o)) { cost += 8; break; }
-        }
+      for (const o of soft) {
+        if (rectsOverlap(rect, o, 6)) cost += 40;
+        if (seat.leader && leaderSegments(seat.leader).some((sg) => segmentHitsRect(sg.x1, sg.y1, sg.x2, sg.y2, o))) cost += 20;
       }
+      // a mark that stands on a ring (a gate on the sector's gate ring) names itself on the outside
+      if (c.outsideOf && Math.hypot(rect.x + w / 2 - c.outsideOf.x, rect.y + h / 2 - c.outsideOf.y) < c.outsideOf.r) cost += 60;
+      // words may not lie across a leader already laid
+      for (const ls of placedLeaders) if (segmentHitsRect(ls.x1, ls.y1, ls.x2, ls.y2, { x: rect.x - 2, y: rect.y - 2, width: rect.width + 4, height: rect.height + 4 })) { bad += 2; break; }
+      if (seat.leader) {
+        const segs = leaderSegments(seat.leader);
+        // a leader ends on its own mark: it may not run through another label, over another mark's
+        // disc, or on (or across) another leader's line
+        let hit = false;
+        for (const sg of segs) {
+          for (const o of occupied) if (segmentHitsRect(sg.x1, sg.y1, sg.x2, sg.y2, o)) { hit = true; break; }
+          if (hit) break;
+          for (const d of anchorDiscs) {
+            if (d.id === c.id) continue;
+            if (d.area) {
+              // an area (a field) may be crossed where nothing else serves, never started in
+              if (segmentHitsDisc(sg.x1, sg.y1, sg.x2, sg.y2, d, 2)) cost += 16;
+              if (Math.hypot(seat.leader.sx - d.x, seat.leader.sy - d.y) < d.r + 4) { hit = true; break; }
+              continue;
+            }
+            if (segmentHitsDisc(sg.x1, sg.y1, sg.x2, sg.y2, d, 6)) { hit = true; break; }
+          }
+          if (hit) break;
+          for (const d of discs) {
+            if (Math.hypot(d.x - c.x, d.y - c.y) < 1.5) continue;
+            if (segmentHitsDisc(sg.x1, sg.y1, sg.x2, sg.y2, d, 5)) { hit = true; break; }
+          }
+          if (hit) break;
+          for (const ls of placedLeaders) if (segmentsNear(sg, ls, 6)) { hit = true; break; }
+          if (hit) break;
+        }
+        if (hit) bad += 2;
+      } else if (seat.side !== 'inside' && !c.leaderOnly) {
+        // words set against a mark must sit nearer their own mark than any other, or they take a leader
+        const own = rectDiscGap(rect, { x: c.x, y: c.y, r: Math.max(2, Number(c.anchorRadius) || 2) });
+        let rival = false;
+        for (const d of anchorDiscs) {
+          if (d.id === c.id || Math.hypot(d.x - c.x, d.y - c.y) < 1.5) continue;
+          if (rectDiscGap(rect, d) < own + 8) { rival = true; break; }
+        }
+        if (!rival) {
+          for (const d of discs) {
+            if (Math.hypot(d.x - c.x, d.y - c.y) < 1.5) continue;
+            if (rectDiscGap(rect, d) < own + 8) { rival = true; break; }
+          }
+        }
+        if (rival) bad += 1;
+      }
+      if (env.prefer && Math.abs(rect.x - env.prefer.x) < 2 && Math.abs(rect.y - env.prefer.y) < 2) cost -= 30;
       if (!bad) {
         if (!best || cost < best.cost) best = { ...seat, rect, cost };
       } else if (!fallback || bad * 100 + cost < fallback.score) {
         fallback = { ...seat, rect, cost, score: bad * 100 + cost };
       }
     }
-    if (best) break;
     }
     const pick = best || ((c.objective || c.selected || c.force) ? fallback : null);
     if (!pick) {
@@ -267,7 +390,10 @@ export function placeChartLabels(candidates, env = {}) {
     const placement = { ...pub, ...pick.rect, side: pick.side, visible: true };
     if (Array.isArray(pick.lines)) placement.lines = pick.lines;
     if (pick.nameLines) placement.nameLines = pick.nameLines;
-    if (pick.leader) placement.leader = pick.leader;
+    if (pick.leader) {
+      placement.leader = pick.leader;
+      placedLeaders.push(...leaderSegments(pick.leader));
+    }
     out.push(placement);
     occupied.push(pick.rect);
   }
