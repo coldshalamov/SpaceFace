@@ -81,7 +81,7 @@ def build():
     s = F.Ship(SHIP_ID, COLORS)
     step = 2 * math.pi / N_SEG
     win, strips, glow_tips = [], [], []
-    coil_glow, coil_clamp, ribs = [], [], []
+    coil_glow, coil_clamp, ribs, hatches = [], [], [], []
 
     for i in range(N_SEG):
         gc = i * step                      # gap centre (coil housing); 0 = port platform, 90 = tower
@@ -105,6 +105,13 @@ def build():
             for t in (0.33, 0.66):
                 a = a0 + (a1 - a0) * t
                 ribs.append((polar(37.8, a, sx * (HX + 0.1)), (0.3, 0.5, 4.6), (a - math.pi / 2, 0.0, 0.0)))
+            # access hatches between the ribs, a row of portholes along the outer rim of the face
+            for tt in (0.165, 0.5, 0.835):
+                a = a0 + (a1 - a0) * tt
+                hatches.append((polar(37.6, a, sx * (HX + 0.02)), (0.12, 2.3, 2.0), (a - math.pi / 2, 0.0, 0.0)))
+            for k in range(9):
+                a = a0 + 0.02 + (a1 - a0 - 0.04) * (k + 0.5) / 9
+                win.append((polar(39.6, a, sx * (HX + 0.02)), (0.12, 0.7, 0.34), (a - math.pi / 2, 0.0, 0.0)))
         # crew corridor: two rows of lit windows round the outer cap
         n = 7
         for k in range(n):
@@ -146,6 +153,7 @@ def build():
     boxes(s, 'FieldCoils', coil_glow, 'glow_cyan')
     boxes(s, 'CoilClamps', coil_clamp, 'paint2', bevel=0.0)
     boxes(s, 'FaceRibs', ribs, 'paint2', bevel=0.0)
+    boxes(s, 'FaceHatches', hatches, 'dark', bevel=0.0)
     # aperture rims: two thin light lines on the inner edge of the ring
     for sx in (1, -1):
         F.ring(s, f'ApertureRim{sx}', (sx * (HX - 0.5), 0, 0), R_IN - 0.45, 0.18, axis=(1, 0, 0),

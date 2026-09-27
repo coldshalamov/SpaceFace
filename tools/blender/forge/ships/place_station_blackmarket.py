@@ -282,10 +282,14 @@ def tube(s, name, a, b, r=1.6, lit=True):
 
 
 def sign(s, name, pos, w, h, finish, yaw=0.0, glyph=True):
-    """Neon billboard on a post: dark frame, lit border bars and abstract glyph bars (no text)."""
-    x, y, z = pos
+    """Neon billboard on two posts: dark frame, lit border bars and abstract glyph bars (no text).
+    pos = (x, y, base): the posts stand on the terrace at `base`."""
+    x, y, base = pos
+    z = base + 2.6 + h / 2
     c, sn = math.cos(yaw), math.sin(yaw)
-    F.cylinder(s, name + '_Post', (x, y, z - 3.5), (x, y, z - h / 2), 0.2, material='gunmetal', segments=8)
+    for e in (-1, 1):
+        px, py = x + e * (w / 2 - 0.6) * c, y + e * (w / 2 - 0.6) * sn
+        F.cylinder(s, f'{name}_Post{e}', (px, py, base - 0.6), (px, py, z), 0.22, material='gunmetal', segments=8)
     F.box(s, name + '_Board', (x, y, z), (w, 0.35, h), material='dark', rot_z=yaw, bevel=0.03)
     bars = [((x + (w / 2 - 0.1) * c * e, y + (w / 2 - 0.1) * sn * e, z), (0.18, 0.45, h - 0.2), yaw) for e in (-1, 1)]
     bars += [((x, y, z + e * (h / 2 - 0.1)), (w - 0.2, 0.45, 0.18), yaw) for e in (-1, 1)]
@@ -298,6 +302,22 @@ def sign(s, name, pos, w, h, finish, yaw=0.0, glyph=True):
             hh = h * (0.35 if k % 3 == 1 else 0.6)
             g.append(((x + dx * c, y + dx * sn, z - (h * 0.6 - hh) / 2 + 0.05), (0.2, 0.45, hh), yaw))
         boxes(s, name + '_Glyph', g, 'glow_warm' if finish != 'glow_warm' else 'glow_amber')
+
+
+def surf(name, d, k=0.95):
+    """A point on a rock's surface in direction d (pulled in by k so fittings bite into the stone)."""
+    for n, c, r, sq, flat, seed in ROCKS:
+        if n == name:
+            dv = Vector(d).normalized()
+            kx, kz = STRETCH.get(n, (1.0, 1.0))
+            rr = r * rock_radius(dv, seed) * k
+            p = Vector((c[0] + dv.x * rr * kx, c[1] + dv.y * rr * sq, c[2] + dv.z * rr * kz))
+            if flat > c[2]:
+                p.z = min(p.z, flat)
+            else:
+                p.z = max(p.z, flat)
+            return tuple(p)
+    raise KeyError(name)
 
 
 def sag(a, b, drop, n=10):
@@ -364,31 +384,42 @@ def build():
     braces += [((16.0, -4.0, 11.0), (21.0, -4.0, 20.0)), ((14.0, 5.0, -12.0), (19.0, 5.0, -24.0))]
     braces += [((-40.0, 5.0, -10.0), (-44.0, 5.0, -21.0))]
     beams(s, 'Braces', braces, 0.55, material='paint2', sides=6)
-    cables = []
-    for a, b, drop in (((-10.0, 9.0, 40.0), (-44.0, 9.0, 14.0), 4.0), ((-5.0, -9.0, 40.0), (20.0, -6.0, 30.0), 3.0),
-                       ((10.0, 12.0, 14.0), (26.0, 6.0, 30.0), 2.5), ((-40.0, -10.0, 12.0), (-10.0, -12.0, 14.0), 5.0),
-                       ((15.0, 11.0, -12.0), (24.0, 8.0, -24.0), 2.0), ((-44.0, -9.0, -24.0), (-18.0, -10.0, -40.0), 4.0)):
+    cables, anchors = [], []
+    for ra, da, rb, db, drop in (('Crown', (-0.3, 0.6, 0.5), 'Stern', (0.2, 0.6, 0.6), 4.0),
+                                 ('Crown', (0.5, -0.6, 0.4), 'Beak', (-0.5, -0.6, 0.3), 3.0),
+                                 ('Core', (0.5, 0.7, 0.5), 'Beak', (-0.4, 0.7, 0.4), 2.5),
+                                 ('Stern', (0.5, -0.7, 0.4), 'Core', (-0.5, -0.7, 0.5), 5.0),
+                                 ('Core', (0.5, 0.7, -0.5), 'Chin', (-0.4, 0.7, 0.5), 2.0),
+                                 ('SternLow', (0.4, -0.7, -0.3), 'Keel', (-0.5, -0.7, 0.3), 4.0)):
+        a, b = surf(ra, da, 0.97), surf(rb, db, 0.97)
         cables += sag(a, b, drop)
+        anchors += [a, b]
     beams(s, 'Cables', cables, 0.12, material='dark', sides=5)
-    # cable anchor posts where cables meet rock
-    for p in ((-10.0, 9.0, 40.0), (-44.0, 9.0, 14.0), (-5.0, -9.0, 40.0), (20.0, -6.0, 30.0), (26.0, 6.0, 30.0),
-              (10.0, 12.0, 14.0), (-40.0, -10.0, 12.0), (-10.0, -12.0, 14.0)):
-        F.box(s, f'Anchor{p}', (p[0], p[1], p[2] + 0.2), (0.8, 0.8, 1.6), material='gunmetal', bevel=0.04)
+    # cable anchor blocks, half-buried where the cables meet rock
+    boxes(s, 'Anchors', [(p, (1.0, 1.0, 1.0)) for p in anchors], 'gunmetal', bevel=0.04)
 
     # --- neon signs: the warren's advertising, facing the flight lanes ----------------------------
-    sign(s, 'SignBeak', (25.0, 0.0, 38.5), 11.0, 4.0, 'glow_red', yaw=0.0)
-    sign(s, 'SignCrown', (-15.0, 3.5, 49.0), 10.0, 3.6, 'glow_cyan', yaw=0.2)
-    sign(s, 'SignStern', (-47.0, -3.0, 20.0), 9.0, 3.2, 'glow_amber', yaw=-0.25)
-    sign(s, 'SignCore', (6.0, -6.0, 21.5), 7.0, 2.6, 'glow_red', yaw=math.pi / 2 - 0.3)
+    sign(s, 'SignBeak', (25.0, 0.0, 32.0), 11.0, 4.0, 'glow_red', yaw=0.0)
+    sign(s, 'SignCrown', (-15.0, 3.5, 42.0), 10.0, 3.6, 'glow_cyan', yaw=0.2)
+    sign(s, 'SignStern', (-47.0, -3.0, 13.0), 9.0, 3.2, 'glow_amber', yaw=-0.25)
+    sign(s, 'SignCore', (6.0, -6.0, 15.0), 7.0, 2.6, 'glow_red', yaw=math.pi / 2 - 0.3)
 
     # --- patched plates on the rock faces: stolen ivory hull panels bolted over breaches ----------
-    patches = []
-    for (x, y, z, rz) in ((10.0, 15.0, 2.0, 0.2), (-14.0, 14.5, -6.0, -0.3), (-40.0, 12.0, 0.0, 0.1),
-                          (-6.0, 13.5, 30.0, 0.0), (8.0, -15.0, -4.0, 0.25), (-44.0, -12.0, -2.0, -0.2)):
-        patches.append(((x, y, z), (5.0, 1.2, 3.4), rz))
+    patches, bolts = [], []
+    for rn, d in (('Core', (0.5, 0.8, 0.1)), ('Core', (-0.5, 0.8, -0.3)), ('Stern', (0.2, 0.9, -0.1)),
+                  ('Crown', (0.4, 0.8, -0.2)), ('Core', (0.3, -0.9, -0.2)), ('Stern', (-0.2, -0.9, -0.1)),
+                  ('Keel', (0.4, 0.8, 0.2)), ('Keel', (-0.3, -0.85, 0.1))):
+        p = surf(rn, d, 0.99)
+        nrm = Vector((d[0], d[1], 0.0)).normalized()
+        yaw = math.atan2(nrm.y, nrm.x)
+        patches.append((p, (0.8, 5.0, 3.6), yaw))
+        side = Vector((-nrm.y, nrm.x, 0.0))
+        for e in (-2.2, 2.2):
+            for dz in (-1.5, 1.5):
+                q = Vector(p) + nrm * 0.4 + side * e
+                bolts.append(((q.x, q.y, q.z + dz), (0.3, 0.35, 0.35), yaw))
     boxes(s, 'Patches', patches, 'paint.ivory', bevel=0.1)
-    boxes(s, 'PatchBolts', [((p[0][0] + dx, p[0][1] * 1.04, p[0][2] + dz), (0.3, 0.4, 0.3), p[2])
-                            for p in patches for dx in (-2.1, 2.1) for dz in (-1.4, 1.4)], 'gunmetal')
+    boxes(s, 'PatchBolts', bolts, 'gunmetal')
 
     # --- lights: nav, beacons, work lamps over the terraces ----------------------------------------
     F.light(s, 'NavPort', (-47.0, 12.5, 3.0), 'glow_red', size=0.7)
@@ -396,11 +427,12 @@ def build():
     F.beacon(s, 'Beacon', (-18.0, -4.0, 42.0), size=0.8)
     F.beacon(s, 'BeaconStern', (-52.0, 5.0, 13.0), finish='glow_red', size=0.6)
     s.detail = 1
-    for p in ((2.0, 10.0, 15.0), (-20.0, -8.0, 42.0), (-40.0, 9.0, 13.0)):
+    for p in ((2.0, 6.0, 15.45), (-20.0, -4.0, 42.45), (-42.0, 6.0, 13.45)):
         F.work_lamp(s, f'Lamp{p}', p, aim=(0.3, -0.3, 0.9), size=0.8)
-    for p in ((-8.0, 6.0, 15.0), (-16.0, -6.0, 42.0), (28.0, 3.0, 32.0)):
+    for p in ((-8.0, 5.0, 15.0), (-16.0, -4.0, 42.0), (28.0, 3.0, 32.0)):
         F.antenna(s, f'Whip{p}', p, 5.0)
-    F.dish(s, 'StolenDish', (-50.0, -4.0, 14.5), 2.6, 0.9, axis=(0.3, -0.4, 0.86))
+    F.cylinder(s, 'StolenDishPost', (-50.0, -4.0, 12.5), (-50.0, -4.0, 15.6), 0.3, material='gunmetal', segments=10)
+    F.dish(s, 'StolenDish', (-50.0, -4.0, 15.5), 2.6, 0.9, axis=(0.3, -0.4, 0.86))
     s.detail = 0
     return s
 

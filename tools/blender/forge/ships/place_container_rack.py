@@ -64,7 +64,7 @@ def container(s, name, cx, cz, finish):
         for sz in (-1, 1):
             F.box(s, f'{name}End{sy}{sz}', (cx, sy * (CL / 2 - 0.12), cz + sz * (CH / 2 - 0.12)), (CW, 0.22, 0.22),
                   material='paint2', bevel=0.0)
-        F.box(s, f'{name}Door{sy}', (cx, sy * (CL / 2 - 0.06), cz), (CW - 0.6, 0.08, CH - 0.6), material='paint2',
+        F.box(s, f'{name}Door{sy}', (cx, sy * (CL / 2 - 0.06), cz), (CW - 0.6, 0.08, CH - 0.6), material=finish,
               bevel=0.0)
         s.detail = 2
         for x in (-0.7, -0.25, 0.25, 0.7):

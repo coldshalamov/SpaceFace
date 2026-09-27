@@ -171,12 +171,12 @@ def boulder(s, name, center, radius, seed, finish='ceramic'):
     return s.add(F._new_object(name, bm, s.slots([finish]), bevel=0.0, smooth_angle=16.0))
 
 
-def rock_point(theta, phi, sink=0.35):
-    """A point on the rock surface at spherical angles (degrees), pulled `sink` of the way in."""
+def rock_point(theta, phi, sink=0.0):
+    """A point on the rock surface at spherical angles (degrees), pulled `sink` metres inward."""
     t, p = math.radians(theta), math.radians(phi)
     d = Vector((math.cos(p) * math.cos(t), math.cos(p) * math.sin(t), math.sin(p)))
     r = rock_radius(d.x, d.y, d.z)
-    return RC + d * r * (1.0 - sink * 0.08)
+    return RC + d * (r - sink)
 
 
 # --- build ------------------------------------------------------------------------------------
@@ -186,7 +186,7 @@ def build_cradle(s):
     for k, (th, ph, r) in enumerate(((150, 30, 3.2), (200, 45, 2.6), (110, 55, 2.4), (250, 20, 3.0),
                                      (175, 70, 2.2), (90, 15, 2.8), (270, 50, 2.4), (210, -10, 3.0),
                                      (130, -20, 2.6), (60, 40, 2.0), (300, 30, 2.2))):
-        boulder(s, f'Boulder{k}', tuple(rock_point(th, ph)), r, seed=k + 3,
+        boulder(s, f'Boulder{k}', tuple(rock_point(th, ph, sink=r * 0.7)), r, seed=k + 3,
                 finish='ceramic.ore' if k % 4 == 1 else 'ceramic')
     # rails and cross members of the cradle frame
     F.box(s, 'Rail', (-24.5, RAIL_Y, RAIL_Z), (53.0, 2.6, 3.2), material='paint2', bevel=0.15, mirror=True)
@@ -194,6 +194,7 @@ def build_cradle(s):
         F.band(s, 'Rail', (x, RAIL_Y, 0), (1, 0, 0), 1.6, 'hazard', mirror=True)
     F.band(s, 'Rail', (0, RAIL_Y, RAIL_Z - 0.6), (0, 0, 1), 0.7, 'paint.graphite', facing=(0, 1, 0), min_facing=0.7,
            inset=0.03, depth=-0.08, mirror=True)
+    F.box(s, 'Track', (-24.5, RAIL_Y, RAIL_Z + 1.72), (52.0, 1.0, 0.25), material='gunmetal', bevel=0.0, mirror=True)
     F.box(s, 'AftBeam', (-50.0, 0, RAIL_Z), (3.0, 2 * RAIL_Y + 2.6, 3.2), material='paint.graphite', bevel=0.15)
     F.band(s, 'AftBeam', (0, 0, 0), (0, 1, 0), 3.0, 'paint2', facing=(0, 0, 1))
     truss(s, 'UnderTruss', (-50.0, 0, -15.5), (-2.0, 0, -15.5), 3.0, 2.4, 12)
@@ -275,7 +276,7 @@ def build_cradle_details(s):
             holes.append(((XCUT + 0.05, y, z), (0.2, 0.9, 0.9), 0.0))
     cluster(s, 'BoreHoles', holes, 'dark')
     for k, (th, ph) in enumerate(((160, 60), (220, 35), (125, 40), (190, 15), (240, 60))):
-        p = rock_point(th, ph, sink=0.6)
+        p = rock_point(th, ph, sink=0.5)
         F.cylinder(s, f'Survey{k}', tuple(p), tuple(p + Vector((0, 0, 2.4))), 0.12, material='gunmetal', segments=6,
                    bevel=0.0)
         F.light(s, f'SurveyLamp{k}', tuple(p + Vector((0, 0, 2.5))), 'glow_amber' if k % 2 else 'glow_cyan', size=0.4)
