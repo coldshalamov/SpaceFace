@@ -32,16 +32,28 @@ never square noise cells. Randomness selects stable per-deployment character; di
 radius, speed, contact and lifecycle select the composition. Repeated shots can vary in curl,
 reach and timing while preserving the readable verb. Simulation RNG is never consumed.
 
-**Optical and particle refinement (2026-09-25).** Energy is optically thin: leave open space
-between transported filaments, concentrate light at folds and junctions, and reserve opaque
-coverage for actual matter and source hardware. Filter narrow ridges and periodic detail using
-screen derivatives, attenuating unresolved frequencies instead of turning them into sparkling
-pixels. Combustion absorbs as well as emits so overlapping lobes retain their dark cavities.
-Quarks carries bounded, seeded parcels through ten force-specific trajectories; these particles
-launch, accelerate or curl, shear and cool. Power-off removes the active boundary while residue
-keeps moving on a decelerating clock. Never freeze the whole effect and merely shrink it away.
-Bomb fields share one capped particle batch: singularities shear matter inward, while viscous
-parcels creep, lift, stretch and rejoin the goo. Their footprint and timing follow the bomb owner.
+**Body and rupture rebuild (owner correction, 2026-09-27).** The September 25 pass was
+rejected: thin filaments, flat powers and interchangeable ball-puff explosions miss the bar.
+Translucent does not mean wire-thin. Special energy must occupy a substantial, evolving volume:
+broad luminous material, darker moving channels, hot folded crests and enough depth to survive
+an oblique view. Gaps belong to purposeful breaks in the form. A few threads spread around a
+large empty radius do not make a powerful effect. Read without bloom; gain radiance with bloom
+without becoming an opaque neon object.
+
+Distinguish construction and timing, not only palette. Gravity feeds unequal rolled intake
+channels into a throat; pressure bends a broad front then peels it apart; directed energy carries
+mass through a cross-section; viscous matter stretches connected membranes. Rock fractures into
+mineral fans, armor tears directionally, reactors rupture a cavity with asymmetric plasma tongues,
+and volatile fuel rolls through burning sheets. These are different causal silhouettes with
+anticipation, release, secondary transport, cooling and termination. Spherical combustion pockets
+are not a default foundation for all destruction.
+
+Filter continuous edges and unresolved frequencies instead of sparkling pixels. Stable event
+seeds choose curl, rupture openings and timing; source size, velocity, direction and material
+choose the composition. Simulation RNG is never consumed. Quarks carries bounded supporting
+parcels and solid debris; it complements the large form rather than substituting generic glitter.
+Power-off removes the active boundary while residue continues on a decelerating clock. Pause and
+reduced-motion/flash remain authoritative.
 
 Seven further action responses cover boost preparation, reactor venting, cargo caught in a net,
 rich-core extraction, a failed rich-core charge, mine arming and mine detonation. They use the existing production event bus
