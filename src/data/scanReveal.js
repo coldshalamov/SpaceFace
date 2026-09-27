@@ -5,6 +5,7 @@
 import { SHIPS } from './ships.js';
 import { WEAPONS } from './weapons.js';
 import { weakPointForEntity } from './weakPoints.js';
+import { hash32 } from '../core/rng.js';
 
 export const SCAN_REVEAL_FULL_RADIUS = 1200;
 export const SCAN_REVEAL_CLASS_RADIUS = 2200;
@@ -279,4 +280,80 @@ export function scanRevealFingerprint(reveal) {
 
 export function sameScanReveal(a, b) {
   return !!a && !!b && scanRevealFingerprint(a) === scanRevealFingerprint(b);
+}
+
+// INF-U18: sealed survivor caches in generic debris. Loss-less hulls never borrow
+// a story — but a seeded share holds a physical cache: cargo the crew sealed
+// before the end. Fresh hulls cache more often than picked-clean ones, and a cold
+// hull's cache is a single missed lot. Deterministic per wreck id + seed so the
+// scan path and the beam path agree on what is inside.
+export const DEBRIS_CACHE_FRESH_CHANCE = 40;
+export const DEBRIS_CACHE_COLD_CHANCE = 20;
+export const DEBRIS_CACHE_TTL_S = 150;
+
+const DEBRIS_CACHE_LOTS_BY_KIND = Object.freeze({
+  cargo: Object.freeze([
+    Object.freeze({ commodityId: 'cmdty_salvage_electronics', amount: 2 }),
+    Object.freeze({ commodityId: 'cmdty_scrap_metal', amount: 2 }),
+  ]),
+  valuables: Object.freeze([
+    Object.freeze({ commodityId: 'cmdty_luxury_goods', amount: 1 }),
+    Object.freeze({ commodityId: 'cmdty_salvage_electronics', amount: 1 }),
+  ]),
+  munitions: Object.freeze([
+    Object.freeze({ commodityId: 'cmdty_munitions', amount: 2 }),
+    Object.freeze({ commodityId: 'cmdty_scrap_metal', amount: 1 }),
+  ]),
+});
+const DEBRIS_CACHE_KINDS = Object.freeze(['cargo', 'valuables', 'munitions']);
+
+/**
+ * The sealed cache inside a generic wreck, or null when the hull holds none.
+ * Pure: same wreck id + seed + pool always answers the same way.
+ */
+export function debrisCacheFor(wreck, seed) {
+  if (!wreck || wreck.type !== 'wreck') return null;
+  const cold = wreckPoolLots(wreck).length === 0;
+  const h = hash32((seed >>> 0) || 1, wreck.id, 'debris-cache') >>> 0;
+  const chance = cold ? DEBRIS_CACHE_COLD_CHANCE : DEBRIS_CACHE_FRESH_CHANCE;
+  if ((h % 100) >= chance) return null;
+  const kind = DEBRIS_CACHE_KINDS[(h >>> 7) % DEBRIS_CACHE_KINDS.length];
+  const lots = (DEBRIS_CACHE_LOTS_BY_KIND[kind] || []).map((lot) => ({ ...lot }));
+  return { kind, cold, lots: cold ? lots.slice(0, 1) : lots };
+}
+
+/**
+ * Expose the cache as physical pods around the wreck. Bus-only: each lot goes
+ * out as an entity:spawnRequest with the wreck's own drift, so the magnet and
+ * cargo owners do the rest. Returns the pod specs for tests/telemetry.
+ */
+export function spawnDebrisCachePods(bus, wreck, cache, now) {
+  if (!bus || typeof bus.emit !== 'function' || !wreck || !cache || !Array.isArray(cache.lots)) return [];
+  const wpos = wreck.pos || { x: 0, z: 0 };
+  const wvel = wreck.vel || { x: 0, z: 0 };
+  const edge = (wreck.radius || 8) + 5;
+  const base = ((hash32(wreck.id, 'cache-scatter') >>> 0) % 360) * Math.PI / 180;
+  const specs = [];
+  cache.lots.forEach((lot, i) => {
+    if (!lot || !lot.commodityId || !(lot.amount > 0)) return;
+    const ang = base + (i / Math.max(1, cache.lots.length)) * Math.PI * 2;
+    const kick = 12 + i * 5;
+    specs.push({
+      type: 'pickup',
+      pos: { x: (wpos.x || 0) + Math.cos(ang) * edge, z: (wpos.z || 0) + Math.sin(ang) * edge },
+      vel: {
+        x: (wvel.x || 0) + Math.cos(ang) * kick,
+        z: (wvel.z || 0) + Math.sin(ang) * kick,
+      },
+      radius: 3, mass: 0.5, collides: true,
+      data: {
+        kind: 'cargo', commodityId: lot.commodityId, amount: lot.amount,
+        despawnAt: now + DEBRIS_CACHE_TTL_S,
+        debrisCache: true,
+        scanLabel: 'Sealed cache',
+      },
+    });
+  });
+  for (const spec of specs) bus.emit('entity:spawnRequest', { spec });
+  return specs;
 }

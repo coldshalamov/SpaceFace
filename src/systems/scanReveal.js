@@ -8,7 +8,10 @@
 //
 // Writes only entity.data.scanRevealed plus a small durable investigated-loss memory
 // (state.scanReveal) so a surveyed field stays surveyed. UI reads; AI/combat never do.
-import { buildShipScanReveal, buildWreckScanReveal, sameScanReveal } from '../data/scanReveal.js';
+import {
+  buildShipScanReveal, buildWreckScanReveal, debrisCacheFor, sameScanReveal,
+  spawnDebrisCachePods,
+} from '../data/scanReveal.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 
 const INVESTIGATED_CAP = 64;
@@ -93,6 +96,10 @@ export const scanReveal = {
             at: now,
           });
           this._surveyMilestone(state, loss, now);
+        } else if (reveal.quality === 'deep' && !reveal.lossId && data.debrisCache == null) {
+          // INF-U18 v1: generic debris never borrows a story — but a deep read
+          // can expose a sealed survivor cache. Once per hull either way.
+          this._resolveDebrisCache(state, entity, now, 'scan');
         }
       }
     }
@@ -152,6 +159,39 @@ export const scanReveal = {
         kind: 'good', ttl: 4,
       });
     }
+  },
+
+  // INF-U18 v1+v3: roll the sealed cache once, expose it as physical pods,
+  // and stamp the hull so neither the scan nor the beam path pays twice.
+  _resolveDebrisCache(state, entity, now, via) {
+    const data = entity.data || (entity.data = {});
+    if (data.debrisCache != null) return null;
+    const seed = (state.meta && state.meta.seed) || 1;
+    const cache = debrisCacheFor(entity, seed);
+    if (!cache) {
+      data.debrisCache = 'empty';
+      return null;
+    }
+    data.debrisCache = 'claimed';
+    const specs = spawnDebrisCachePods(this.bus, entity, cache, now);
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('toast', {
+        text: via === 'beam'
+          ? 'The beam cracked a sealed cache in the debris!'
+          : `Sealed cache in the debris — ${specs.length} pods exposed!`,
+        kind: 'good', ttl: 4,
+      });
+      this.bus.emit('scan:debrisCache', {
+        entityId: entity.id,
+        wreckId: entity.id,
+        via,
+        kind: cache.kind,
+        cold: cache.cold,
+        lots: cache.lots.map((lot) => ({ ...lot })),
+        at: now,
+      });
+    }
+    return cache;
   },
 
   destroy() {
