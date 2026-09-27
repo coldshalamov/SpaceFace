@@ -483,3 +483,9 @@ non-hash-moving (verified per-lane: sim goldens bit-identical on this box).
 Residual lane notes (canopy test-locked probes, deeper prefetch lookahead,
 cross-decoder pool budget, whole-ship-LOD deadline flag) are recorded in the
 per-lane entries above.
+
+## Round 10 — wave-2 lane adjudication (rolling)
+
+| Lane | Verdict | Evidence |
+|---|---|---|
+| prefetch | **KEPT** `9efca8bd8` — depth-2 lookahead + deadline flag on LOD demotion + **fixed wave-1 deadline splice predicate (was inverted — flagged entries never spliced)** | merged `10097c85c`; probe 371/237/0.705 inside historical noise band (74–452 across runs); splice fix proven by lane's gated-lane harness (A,B,C → A,C,B order) |
