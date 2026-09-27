@@ -26,7 +26,7 @@ export const FACT_EVENTS = Object.freeze([
   'aftermath:causeRecorded', 'aftermath:remedied',
   'loot:manifestPayload', 'salvage:completed',
   'salvage:reactorVented', 'salvage:reactorTowedClear', 'salvage:reactorBurst',
-  'aceMemory:transition', 'aceMemory:returnSpawned',
+  'aceMemory:transition', 'aceMemory:returnSpawned', 'aceMemory:pilotPromoted',
   'distress:rescued', 'heat:changed', 'contraband:scanned',
   'economy:tradeCompleted',
   // An opt-in producer contract, NOT an assertion that stock cargo/economy already emit it.

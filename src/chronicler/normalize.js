@@ -158,9 +158,14 @@ export function normalizeFact(event, p, state) {
       break;
     }
     case 'aceMemory:transition':
-    case 'aceMemory:returnSpawned': {
+    case 'aceMemory:returnSpawned':
+    case 'aceMemory:pilotPromoted': {
       const aceId = id(p.aceId);
-      const transition = event === 'aceMemory:returnSpawned' ? 'returned' : p.transition;
+      // Promotion is the moment the world learns a fleeing pirate's name — recorded as the
+      // first-contact beat of that pilot's ledger arc (encountered → fled → returned).
+      const transition = event === 'aceMemory:returnSpawned' ? 'returned'
+        : event === 'aceMemory:pilotPromoted' ? 'encountered'
+        : p.transition;
       if (!aceId || !ACE_TRANSITIONS.has(transition)) return null;
       f.stage = 'ace';
       f.actor = identity(state, state.playerId);
