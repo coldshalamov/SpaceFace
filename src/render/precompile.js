@@ -21,6 +21,7 @@ import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { createWormholePipelineMesh } from './spaceBackground.js';
 import { createVfxPrecompileSalvo, visiblePointLightBudget } from './vfx.js';
 import { createBombPresentationPrecompileMesh } from './bombPresentation.js';
+import { createActionPrimitivePrecompileMesh } from './vfx/actionPrimitives.js';
 export { visiblePointLightBudget };
 import { waitForRockSurfaceLibraryReady } from './rockSurfaceLibrary.js';
 import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
@@ -923,6 +924,9 @@ function addBombPresentationWarmup(root) {
   const mesh = createBombPresentationPrecompileMesh();
   mesh.position.set(14, 36, 0);
   root.add(mesh);
+  const action = createActionPrimitivePrecompileMesh();
+  action.position.set(24, 36, 0);
+  root.add(action);
   return mesh;
 }
 
