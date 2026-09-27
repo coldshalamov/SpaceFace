@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-26",
+  "updated": "2026-09-27",
   "runs": [
     {
       "date": "2026-08-12",
@@ -73,149 +73,6 @@
     }
   ],
   "units": [
-    {
-      "id": "refinery-outbound-capsule-launch",
-      "date": "2026-09-05",
-      "wf": "WF-01",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Ceres refinery now answers the delivered ore with one outbound refined-metals capsule the player can chase and catch \u0393\u00c7\u00f6 ev_cargo_capsule_launch wired as the causal chain's eighth link (8/58 catalog events live)",
-      "fingerprint": "verb=chase,subject=cargo_capsule,sector=ceres,layer=midground,tempo=ambient,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "8a4730b1",
-      "verification": "focused_green"
-    },
-    {
-      "id": "wanted-heat-audio-family",
-      "date": "2026-09-06",
-      "wf": "WF-13",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "WANTED heat escalation gains a live audio identity: rising per-band alarm on flip/climb, clear sting on dropping clean",
-      "fingerprint": "verb=hear,subject=wanted-heat,sector=any,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "e5f29f35",
-      "verification": "focused_green"
-    },
-    {
-      "id": "fighter-pressure-break",
-      "date": "2026-09-06",
-      "wf": "WF-02",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "hurt or heat-soaked fighters break to their authored egress phase instead of grinding one relentless attack_run; engagements now press, break, and re-press",
-      "fingerprint": "verb=flee,subject=enemy_fighter,sector=any,layer=midground,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "a1bfbc0f",
-      "verification": "focused_green"
-    },
-    {
-      "id": "wf13-cargo-jettison-cue",
-      "date": "2026-09-06",
-      "wf": "WF-13",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Cargo jettison (HUD JETTISON -> cargo.dumpCargo) was silent; now plays the authored massline jettison kick with an empty-receipt guard and a routing test",
-      "fingerprint": "verb=hear,subject=cargo jettison,sector=any,layer=audio-system,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "3edb0c2d",
-      "verification": "focused_green"
-    },
-    {
-      "id": "resonance-obelisk-band-bleed",
-      "date": "2026-09-06",
-      "wf": "WF-10",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "the hidden Resonance Obelisk anomaly now has an audible payoff: a third live landmark carrier pulses its ident and authored lines on the band when the player flies its falloff",
-      "fingerprint": "verb=hear,subject=resonance_obelisk,sector=veil_nebula,layer=foreground,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "60f7cc2b",
-      "verification": "focused_green"
-    },
-    {
-      "id": "wf03-ambient-civilian-frontier-zones",
-      "date": "2026-09-06",
-      "wf": "WF-03",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "salvage_signal/anomaly_whisper now anchor in outlaw_zone/nebula_fog/radiation_field so zero-civilian-life frontier sectors (nyx_march, kepler_scar, eris_margin) get varied ambient world-life",
-      "fingerprint": "verb=widen,subject=ambient-civilian-deck,sector=nyx_march,kepler_scar,eris_margin,domain=wf-03",
-      "references": [],
-      "integration": "live",
-      "commit": "489dce40",
-      "verification": "focused_green"
-    },
-    {
-      "id": "metronome-eris-margin-poi",
-      "date": "2026-09-06",
-      "wf": "WF-04",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "the Metronome landmark now charts in Eris Margin: anomaly POI with archive scanner signal and discovery plate, giving the authored lore a reachable world anchor",
-      "fingerprint": "verb=scan,subject=metronome,sector=eris_margin,layer=foreground,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "440c5f52",
-      "verification": "focused_green"
-    },
-    {
-      "id": "autopilot-obstacle-scratch",
-      "date": "2026-09-06",
-      "wf": "WF-19",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "autopilot obstacle scan no longer allocates a fresh 400-entry array every steering tick; check:sim:v3 golden confirms behavior unchanged",
-      "fingerprint": "verb=scale,subject=autopilot_scan,sector=any,domain=wf-19",
-      "references": [],
-      "integration": "live",
-      "commit": "faefacf3",
-      "verification": "focused_green"
-    },
-    {
-      "id": "tide-locked-watcher-poi",
-      "date": "2026-09-06",
-      "wf": "WF-04",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "the Tide-Locked Watcher landmark now charts in Triton Wake: anomaly POI with archive scanner signal and discovery plate, anchoring the authored lore to a reachable world site",
-      "fingerprint": "verb=scan,subject=tide_locked_watcher,sector=triton_wake,layer=foreground,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "add191c3",
-      "verification": "focused_green"
-    },
-    {
-      "id": "ringworld-arc-poi",
-      "date": "2026-09-06",
-      "wf": "WF-04",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "the Ringworld Arc landmark now charts in Sedna Dark: anomaly POI with archive scanner signal and discovery plate, anchoring the authored lore to a reachable world site",
-      "fingerprint": "verb=scan,subject=ringworld_arc,sector=sedna_dark,layer=foreground,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "3042a867",
-      "verification": "focused_green"
-    },
-    {
-      "id": "vault-maw-poi",
-      "date": "2026-09-06",
-      "wf": "WF-04",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "the Vault Maw landmark now charts in Ashfall Reach: anomaly POI with archive scanner signal and discovery plate, anchoring the authored lore to a reachable world site",
-      "fingerprint": "verb=scan,subject=vault_maw,sector=ashfall_reach,layer=foreground,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "752da2f6",
-      "verification": "focused_green"
-    },
     {
       "id": "leftover-contact-roster-title",
       "date": "2026-09-12",
@@ -1552,7 +1409,7 @@
       "wf": "WF-01",
       "mode": "opportunity",
       "verdict": "implemented",
-      "reason": "Sker Haven had traffic (9/min) and a repGated bazaar but no named lane identity \u2014 the levy market's lanes were anonymous. Vey Senna, TITHE-RUN, now deterministic pick via ensureNamedLaneContact with a gimmick label; loc catalog regenerated.",
+      "reason": "Sker Haven had traffic (9/min) and a repGated bazaar but no named lane identity — the levy market's lanes were anonymous. Vey Senna, TITHE-RUN, now deterministic pick via ensureNamedLaneContact with a gimmick label; loc catalog regenerated.",
       "fingerprint": "verb=name,subject=lane-identity,sector=sker-haven,domain=world",
       "references": [],
       "integration": "live",
@@ -1630,7 +1487,7 @@
       "wf": "WF-03",
       "mode": "starved",
       "verdict": "implemented",
-      "reason": "blackmarket was the only station type with no ambient-business side events, so every den's apron read commercially dead; the live side-event planner now schedules den business \u2014 an unmanifested lights-out runner (quiet_dock, new slip-run trajectory + dim accent) and the fence's cargo tractor.",
+      "reason": "blackmarket was the only station type with no ambient-business side events, so every den's apron read commercially dead; the live side-event planner now schedules den business — an unmanifested lights-out runner (quiet_dock, new slip-run trajectory + dim accent) and the fence's cargo tractor.",
       "fingerprint": "verb=watch,subject=station-apron,sector=blackmarket,layer=ambient,tempo=station-day,domain=wf-03",
       "references": [],
       "integration": "live",
@@ -1643,7 +1500,7 @@
       "wf": "WF-18",
       "mode": "starved",
       "verdict": "implemented",
-      "reason": "Ghost on the Bearing carried authored bark/telegraph/primaryLine fields the ambush runtime never read \u2014 a choiceless stalk that sprang or timed out. It now opens a priced Quiet contract hail (12 s window): buy out for a flat 420 cr, hold the bearing and fight, or burn off and flee; broke pockets collapse to refusal through the shared assassination spring.",
+      "reason": "Ghost on the Bearing carried authored bark/telegraph/primaryLine fields the ambush runtime never read — a choiceless stalk that sprang or timed out. It now opens a priced Quiet contract hail (12 s window): buy out for a flat 420 cr, hold the bearing and fight, or burn off and flee; broke pockets collapse to refusal through the shared assassination spring.",
       "fingerprint": "verb=choose,subject=ghost-contract,sector=encounter-327,layer=ambush-demand,tempo=hail,domain=wf-18",
       "references": [],
       "integration": "live",
@@ -1669,7 +1526,7 @@
       "wf": "WF-05",
       "mode": "starved",
       "verdict": "implemented",
-      "reason": "Ruined Cache Station \u2014 the tier-4 salvage sector's only berth \u2014 was the only blackmarket-type station missing the 'black_market' service token, so the Pitborn 'Yards and Fences' presence node derived an empty record and salvage-rights redemption refused with 'pitborn yard only' at the sector whose stunt loop mints them. One token revives the fence: presence derives 'fence', the Redeem verb pays out through the economy single-writer, and map labels agree with the station's own type.",
+      "reason": "Ruined Cache Station — the tier-4 salvage sector's only berth — was the only blackmarket-type station missing the 'black_market' service token, so the Pitborn 'Yards and Fences' presence node derived an empty record and salvage-rights redemption refused with 'pitborn yard only' at the sector whose stunt loop mints them. One token revives the fence: presence derives 'fence', the Redeem verb pays out through the economy single-writer, and map labels agree with the station's own type.",
       "fingerprint": "verb=redeem,subject=salvage-fence,sector=ashfall-reach,layer=station-services,tempo=dock,domain=wf-05",
       "references": [],
       "integration": "live",
@@ -1682,7 +1539,7 @@
       "wf": "WF-15",
       "mode": "starved",
       "verdict": "implemented",
-      "reason": "The Mass Seed's lock-ring drew a ring but latched nothing: FIELD_DEFS.seed.lockStrength and the kernel's hitch-lock branch existed with no producer. A live seed now mirrors into an external kernel RING field tracking the hull, ring-entry edges latch hitches (rope-delivered bodies and drifting loose mass), re-roping a held body cuts the hitch, and the ring dies with the seed. Ships are never auto-caught \u2014 the ring is a parking tool, not a passive trap.",
+      "reason": "The Mass Seed's lock-ring drew a ring but latched nothing: FIELD_DEFS.seed.lockStrength and the kernel's hitch-lock branch existed with no producer. A live seed now mirrors into an external kernel RING field tracking the hull, ring-entry edges latch hitches (rope-delivered bodies and drifting loose mass), re-roping a held body cuts the hitch, and the ring dies with the seed. Ships are never auto-caught — the ring is a parking tool, not a passive trap.",
       "fingerprint": "verb=park,subject=seed-lock-ring,sector=any,layer=mechanic,tempo=deploy,domain=wf-15",
       "references": [],
       "integration": "live",
@@ -1695,7 +1552,7 @@
       "wf": "WF-10",
       "mode": "starved",
       "verdict": "implemented",
-      "reason": "The Eris Margin Metronome was a charted:false scan label describing an 'area-denial emitter' that denied nothing \u2014 every operable machine lived in charted space. A rotating denial cone now registers in the field kernel on the saved 8 s sim clock, shoves mass mouth-first (NPCs take the shove \u2014 bait the patrol), burns the player through the combat kernel's hazard_radiation origin, and speaks hazard boundaries; a debris_current warning circle marks the approach.",
+      "reason": "The Eris Margin Metronome was a charted:false scan label describing an 'area-denial emitter' that denied nothing — every operable machine lived in charted space. A rotating denial cone now registers in the field kernel on the saved 8 s sim clock, shoves mass mouth-first (NPCs take the shove — bait the patrol), burns the player through the combat kernel's hazard_radiation origin, and speaks hazard boundaries; a debris_current warning circle marks the approach.",
       "fingerprint": "verb=cross,subject=metronome-beam,sector=eris-margin,layer=machine,tempo=sweep,domain=wf-10",
       "references": [],
       "integration": "live",
@@ -1708,7 +1565,7 @@
       "wf": "WF-18",
       "mode": "starved",
       "verdict": "implemented",
-      "reason": "The bounty board sold a hunt but delivered a slot machine: 'a wanted target' that materialized on an anonymous ring around the player \u2014 the one contract type whose fiction is a specific person never produced one. Generated single-mark bounties now roll a deterministic storyTarget (hash32 on seed+offerId, zero rng draws) naming a wanted-poster person at a named place (POI, lurk-able zone, or gate); the title, brief, and nav reason read like a warrant; the spawn table shares markArchetypePoolFor so the implied hull is honest; Continue-adopted marks get their person identity re-stamped; and the mark hails once on comms when the player closes inside scanner range.",
+      "reason": "The bounty board sold a hunt but delivered a slot machine: 'a wanted target' that materialized on an anonymous ring around the player — the one contract type whose fiction is a specific person never produced one. Generated single-mark bounties now roll a deterministic storyTarget (hash32 on seed+offerId, zero rng draws) naming a wanted-poster person at a named place (POI, lurk-able zone, or gate); the title, brief, and nav reason read like a warrant; the spawn table shares markArchetypePoolFor so the implied hull is honest; Continue-adopted marks get their person identity re-stamped; and the mark hails once on comms when the player closes inside scanner range.",
       "fingerprint": "verb=collect,subject=board-writ-mark,sector=any-bounty-board,layer=contract-identity,tempo=stalk,domain=wf-18",
       "references": [],
       "integration": "live",
@@ -1721,7 +1578,7 @@
       "wf": "WF-04",
       "mode": "starved",
       "verdict": "implemented",
-      "reason": "Customs posts were checkpoint costumes: Customs Gate and Dione Customs advertise 'scan'/'toll' services with working-checkpoint chart fiction, but docking ran zero customs machinery \u2014 no hold read, no plate collected. The berth now runs the shipped runScan sweep on every dock (clean manifests get a line; exposed contraband resolves through the existing confiscate/fine/rep authority) and collects a security-scaled toll (50 + 200\u00b7sec) on the service:* receipt rail.",
+      "reason": "Customs posts were checkpoint costumes: Customs Gate and Dione Customs advertise 'scan'/'toll' services with working-checkpoint chart fiction, but docking ran zero customs machinery — no hold read, no plate collected. The berth now runs the shipped runScan sweep on every dock (clean manifests get a line; exposed contraband resolves through the existing confiscate/fine/rep authority) and collects a security-scaled toll (50 + 200·sec) on the service:* receipt rail.",
       "fingerprint": "verb=dock,subject=customs-checkpoint,sector=tethys-dione,layer=service-truth,tempo=berth,domain=wf-04",
       "references": [],
       "integration": "live",
@@ -1768,97 +1625,17 @@
       "verification": "focused_green"
     },
     {
-      "unit": "INFERENCE-25",
-      "title": "The uplink stops lying",
-      "lane": "WF-06",
-      "fingerprint": "verb=stream,subject=market-uplink,sector=any,layer=simulation,tempo=ambient,domain=wf-06",
-      "summary": "mod_market_data_s shipped fitted on smuggler/hauler starter kits and billed continuous power while its catalog admitted it changed nothing; a fitted uplink now streams live exchange quotes for every station in the current sector on the docked-feed cadence, tagged provenance uplink so intel surfaces read market uplink instead of pretending a berth — dock keeps dock provenance, survey cannot downgrade a live row, unfitting stops the feed and retained rows age honestly.",
-      "files": [
-        "src/systems/economy.js",
-        "src/ui/marketIntelligence.js",
-        "src/data/modules.js",
-        "src/ui/station/outfittingGuidance.js",
-        "scripts/check-progression-verb-audit.mjs",
-        "test/economy-market-uplink.test.mjs"
-      ],
-      "commit": "d869c5e75",
-      "status": "integrated",
-      "verification": "focused 6/6 green; regression set 42/42; verb-audit + localization-readiness PASS"
-    },
-    {
-      "unit": "INFERENCE-26",
-      "title": "A planet is a signal environment",
-      "lane": "WF-10",
-      "fingerprint": "verb=scan,subject=planet_state_signal,sector=charon_expanse,layer=horizon,tempo=ambient,domain=wf-10",
-      "summary": "Six W1 planet-state assignments carried authored scannerSignal records the scanner never emitted — Shatterstone's pulsing DMC distress signature read silent. Each assignment now emits a far non-trackable return from a deterministic hash anchor outside the playable rim; stage progression reads generic kind grammar until full classification lets the world name itself. Zero rng draws; rides signalInvestigation serialization.",
-      "files": [
-        "src/data/planetStates.js",
-        "src/systems/scanner.js",
-        "test/planet-state-scanner-signals.test.mjs"
-      ],
-      "commit": "3a4700307",
-      "status": "integrated",
-      "verification": "focused 7/7 green; regression set 50/53 (3 fails attributed to live PQ-153.02 landmark lane — dressingTable spawn machinery + sector semantic hash, see D63)"
-    },
-    {
-      "unit": "INFERENCE-27",
-      "title": "HOLD READS — the hold’s moral color, finally drawn",
-      "lane": "cargo/HUD",
-      "fingerprint": "verb=read,subject=cargo_conscience,sector=any,layer=hud_panel,tempo=ambient,domain=ui",
-      "summary": "BP-12 Cargo Conscience refreshed state.ui.cargoConscience on every cargo change and dock with zero readers. The cargo panel header now renders one lean chip per faction moral read — Quiet favor / Concord risk for narcotics, Frontier goodwill for medicine — while an untagged hold renders nothing. A lean is a read, never a rep delta; additive gauge-row readout, no sim writes.",
-      "files": [
-        "src/ui/cargoConscience.js",
-        "src/ui/hud.js",
-        "test/cargo-conscience-surface.test.mjs"
-      ],
-      "commit": "b17b41678",
-      "status": "integrated",
-      "verification": "focused 7/7 green; check:cargo-conscience, player-facing-labels, ui-screen-imports (56/56) all pass"
-    },
-    {
-      "unit": "INFERENCE-28",
-      "title": "Contract fine print — a third of board offers carry a named term",
-      "lane": "missions",
-      "fingerprint": "verb=sign,subject=contract_clause,sector=any,layer=board_offer,tempo=per_offer,domain=missions",
-      "summary": "CONTRACT_CLAUSES shipped five authored clauses with observer, breach-to-collateral, honor premium, dossier chips and preflight disclosure all live — and attachClauses was never called, so only authored set pieces could carry terms. Board offers now roll the seeded clause first in the term chain. Guards: story/helios/set-piece offers untouched, rescue_priority escort-only (breach unfireable on passenger_transport), no_scan never destinations a scan-post berth (uncompletable, not strict).",
-      "files": [
-        "src/systems/missions.js",
-        "src/systems/contractClauses.js",
-        "test/inference-contract-fine-print.test.mjs"
-      ],
-      "commit": "c39da074c",
-      "status": "integrated",
-      "verification": "focused 7/7 green; sp1-clauses 10/10, docked-customs-post 13/13, check:contract-clauses + check:mission-conditions pass, board neighbors green"
-    },
-    {
-      "unit": "INFERENCE-29",
-      "title": "The career tally counts — a kill is a fact even when it is not a crime",
-      "lane": "progression/meta",
-      "fingerprint": "verb=count,subject=player_kills,sector=any,layer=career_stat,tempo=per_kill,domain=combat",
-      "summary": "player.stats.kills shipped three authored readers (death-screen recap, Life Ledger basis, finale combat-tally line gated f.kills>0) and no writer — the finale sentence was unreachable in a real playthrough. combat.kill() tallies under the telemetry sink's adjudication: killerId===playerId only, Survival bodies stay run-scoped, mission-owned kills still count.",
-      "files": [
-        "src/systems/combat.js",
-        "test/player-stats-kills.test.mjs"
-      ],
-      "commit": "d1318a8f8",
-      "status": "integrated",
-      "verification": "focused 7/7 green; combat neighbors 28/28; no rng, no schema change"
-    },
-    {
-      "unit": "INFERENCE-30",
-      "title": "The no-fire zone speaks — traffic control logs your registry",
-      "lane": "audio/voice",
-      "fingerprint": "verb=warn,subject=no_fire_ring,sector=any_station,layer=comms,tempo=per_entry,domain=law",
-      "summary": "BP-11 packet A2 shipped authored NO_FIRE_BARK + CI-pinned createNoFireWatch (one warn per ring entry, exit re-arms) with a wiring contract naming a render-lane owner that was never built — firing inside a station no-fire core stayed silent. noFireAdvisory owns the watch as a registered system (hazardHints precedent): player combat:fire inside a ring speaks the authored line once per entry, faction-attributed; manifest lists it init+update.",
-      "files": [
-        "src/data/stationBubbles.js",
-        "src/core/registry.js",
-        "src/runtime/authoritativeSystemManifest.js",
-        "test/no-fire-advisory.test.mjs"
-      ],
-      "commit": "6ce2d8eaf",
-      "status": "integrated",
-      "verification": "focused 7/7 green; check-station-bubbles + check-station-mood + sg06 registry-init/live-registry all green"
+      "id": "wf06-honest-market-events",
+      "date": "2026-09-27",
+      "wf": "WF-06",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Spontaneous market events now name a good the station actually trades — shortages and blockades hit its real inputs, surpluses its real outputs — and blockades cluster on faction war fronts while quiet high-security core berths stop crying piracy.",
+      "fingerprint": "verb=trade,subject=market-events,sector=helios-prime,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "3c477fca1",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
