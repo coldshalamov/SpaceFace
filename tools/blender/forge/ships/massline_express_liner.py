@@ -5,7 +5,7 @@ boarding-and-operations wedge whose windshield is structure (panes between mulli
 nose), then one stepped, faceted pressure drum with bulkhead seams, a dorsal spine, a boarding dock,
 and a keel fairlead that answers the Massline tether. Rebuilt in Forge: Helios ivory ceramic paint,
 Massline deep-teal livery with a gold pinstripe, two decks of lit passenger windows.
-All thirteen gameplay sockets stay exactly where the live game expects them.
+All fifteen gameplay sockets stay exactly where the live game expects them.
 """
 import os
 import sys
@@ -31,6 +31,8 @@ _GLTF = {
     'SOCKET_Trail_Main': (-20.85, 0.38, 0.00), 'SOCKET_Trail_Port': (-20.85, 0.38, 4.55),
     'SOCKET_Trail_Starboard': (-20.85, 0.38, -4.55), 'SOCKET_Utility_Dorsal': (4.40, 5.55, 0.00),
     'SOCKET_Weapon_Front': (17.85, 0.55, 0.00),
+    # Gameplay mounts (master 4f9f96b2): the mining beam origin ahead of the bow, the Massline tether.
+    'SOCKET_Mining_Front': (19.80, 0.10, 0.00), 'SOCKET_Tether_Massline': (-9.78, 0.10, 0.00),
 }
 SOCKETS = {k: (x, -z, y) for k, (x, y, z) in _GLTF.items()}
 

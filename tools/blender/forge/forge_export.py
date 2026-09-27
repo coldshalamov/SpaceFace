@@ -373,6 +373,7 @@ def export_place(ship, spec, preview=False):
     if new_place:
         identity.update({'contractVersion': 2, 'liveId': spec['file'], 'category': 'places'})
     identity.update({'assetId': spec['asset_id'], 'partId': spec.get('part_id', spec['file']), 'slot': 'place',
+                     'category': 'places',
                      'forge': {'version': 1, 'ship': ship.id}})
     _stamp(path, identity, 'lod0')
     tris = sum(sum(len(p.vertices) - 2 for p in m.data.polygons) for m in meshes_all if m.name.startswith('LOD0_'))
