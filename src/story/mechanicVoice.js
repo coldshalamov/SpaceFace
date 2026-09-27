@@ -26,7 +26,7 @@ export const MECHANIC_SPEAKER = LEDGER_SPEAKER;
 const HULL_HISTORY_TYPES = new Set(['scar', 'patch']);
 
 // The hull name prefixes the first scar clause only — repeating it mid-card read as
-// clause-stitching to a cold reader (D78).
+// clause-stitching to a cold reader.
 const SCAR_CLASS_LINE = Object.freeze({
   graze: (facing, name) => `${name ? `${name}: ` : ''}Graze on the ${facing}. Soft enough the paint still argues.`,
   hard: (facing, name) => `${name ? `${name}: ` : ''}Hard scar on the ${facing}. That is a real hit.`,
@@ -92,7 +92,7 @@ function leftoverRapLine(state, hull) {
 function leftoverCleanPlateLine(hull, name, rapFollows) {
   if (livingHullScars(hull).length) return null;
   // With a rap clause on the card, "nothing to file" reads as self-contradiction
-  // to a cold reader — scope the verdict to the hull itself (D78).
+  // to a cold reader — scope the verdict to the hull itself.
   return leftoverLine(rapFollows
     ? `${name || 'This hull'}. Clean plate — the hull itself is clear.`
     : `${name || 'This hull'}. Clean plate. Nothing on this hull to file.`);

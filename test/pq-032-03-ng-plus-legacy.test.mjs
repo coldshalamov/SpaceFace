@@ -406,7 +406,9 @@ test('the legacy line keeps only what is still live, and never claims a hull tha
   lines = leftoverMechanicLines(state);
   const boughtLegacy = `You came over from ${ENDING_TITLE}. Yara No-Cut is still out there.`;
   assert.ok(lines.includes(boughtLegacy), 'a hull without the carried scar is not "this hull"');
-  assert.ok(lines.indexOf(boughtLegacy) > lines.indexOf('Clean plate. Nothing on this hull to file.'),
+  const cleanIdx = lines.findIndex((line) => /Clean plate\./.test(line));
+  assert.ok(cleanIdx >= 0, 'the clean-plate line still speaks');
+  assert.ok(lines.indexOf(boughtLegacy) > cleanIdx,
     'the legacy line still trails the hull lines');
 
   // An older record has no ace id: the grudge clause is simply omitted.

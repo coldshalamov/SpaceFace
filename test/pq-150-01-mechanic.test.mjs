@@ -383,4 +383,19 @@ test('leftover mechanic names only leftover scar classes the hull carries', () =
   assert.match(line, /Crushing/);
   assert.doesNotMatch(line, /\bhard\b/i);
   assert.doesNotMatch(line, /\bheavy\b/i);
+
+  // The hull name leads the worst scar clause and does not repeat mid-card —
+  // a second 'Tessera:' reads as stitched clauses to a cold reader.
+  assert.match(line, /Tessera: Crushing scar on the port beam\./);
+  assert.equal(line.match(/Tessera:/g).length, 1, 'the name prefixes one clause only');
+  assert.match(line, /(?<!Tessera: )Graze on the stern\./);
+
+  // Wanted heat on a scarless hull: the clean plate scopes its verdict to the hull
+  // itself instead of claiming nothing is on file next to the rap clause.
+  const hotClean = leftoverEmptyHull();
+  hotClean.player.heat = 0.5;
+  const hotLine = leftoverMechanicLine(hotClean);
+  assert.match(hotLine, /Clean plate — the hull itself is clear\./);
+  assert.doesNotMatch(hotLine, /Nothing on this hull to file/);
+  assert.match(hotLine, /The law already filed the rap\./);
 });

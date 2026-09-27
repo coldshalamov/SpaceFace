@@ -11,7 +11,8 @@ const SEED = 4242;
 const STATION_ID = 'station_helios';
 const FOOD = 'cmdty_food';
 const SPILL_SENTENCE = 'Provisions spilled on the way in, 2 units.';
-const SCAR_SENTENCE = 'Heavy scar on the bow. Do not call it weather.';
+// The starter Kestrel is Tessera — the mechanic names the hull on the first scar clause.
+const SCAR_SENTENCE = 'Tessera: Heavy scar on the bow. Do not call it weather.';
 
 function makeHarness(vel) {
   const state = createGameState(SEED);
