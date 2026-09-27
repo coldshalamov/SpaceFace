@@ -17,6 +17,7 @@ import {physics} from '../src/core/physics.js';
 import {tumbleStates} from '../src/systems/tumbleStates.js';
 import {impulseCharges} from '../src/systems/impulseCharges.js';
 import {IMPULSE_CHARGES} from '../src/data/impulseCharges.js';
+import {resolveGovernedCombatSpeed} from '../src/core/flight/propulsionCatalog.js';
 import {contractCompletionsFor,contractBook,contractLedgerRows,setActiveContract,isCivilianEntity,LINE_CONTRACT_IDS,awardContractCompletion} from '../src/combat/stuntContracts.js';
 
 function body(id,type,x,z,{mass=16,radius=6,hull=100,team=1,vx=0,vz=0,collides=true}={}){
@@ -85,8 +86,14 @@ async function escapeScene({cargoLot=null}={}){
   const bus=createBus();let nextId=0;
   const spawn=spec=>{const e=makeEntity({id:nextId++,data:{},...spec});state.entities.set(e.id,e);state.entityList.push(e);bus.emit('entity:spawned',{id:e.id,entity:e});return e;};
   const ship=(team,pos,vel,extra={})=>spawn({type:'ship',team,pos,vel,radius:6,mass:16,hull:100,hullMax:100,physicsBody:{schemaVersion:1,dynamic:true,radius:6,mass:16,inertiaY:48,ccd:true},data:{encounter:{id:'escape'},...extra}});
-  const player=ship(0,{x:0,z:0},{x:100,z:0});
-  ship(1,{x:-50,z:0},{x:150,z:0},{ai:{huntPlayer:true,activity:{targetId:0}}});
+  // Restored fast ceilings (e8d10fed7e): the launch_retained gate needs exitSpeed >= 1.25x the
+  // governed cruise the journal resolves for the hull (~262.5 at the kestrel's 210). The authored
+  // trap still lands ~+121 wu/s at this standoff, so the runner enters at ~0.75x cruise — the
+  // same derivation D49 applied in pq146-escape-routes — and the pursuer keeps its +50 closure.
+  const player=ship(0,{x:0,z:0},{x:0,z:0});
+  const cruise=resolveGovernedCombatSpeed(player,state);
+  player.vel.x=Math.ceil(1.25*cruise - IMPULSE_CHARGES.charge_repulsion_trap.impulse/player.mass*(1-20/IMPULSE_CHARGES.charge_repulsion_trap.radius) + 20);
+  ship(1,{x:-50,z:0},{x:player.vel.x+50,z:0},{ai:{huntPlayer:true,activity:{targetId:0}}});
   const civilian=ship(1,{x:600,z:600},{x:0,z:0},{role:'hauler'});
   const helpers={hash32,mulberry32,getEntity:id=>state.entities.get(id),spawnEntity:spawn};
   const flag=COMBAT_FLAGS.weaponImpulseConsequences;COMBAT_FLAGS.weaponImpulseConsequences=true;
