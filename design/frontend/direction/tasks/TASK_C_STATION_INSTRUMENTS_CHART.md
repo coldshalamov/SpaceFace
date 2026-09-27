@@ -5,6 +5,9 @@
 
 # Task C — The station, the instruments and the chart (queue: `PQ-162.00`–`.02`, `PQ-188.01`, `PQ-188.02`, `PQ-168.00`–`.01`)
 
+> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](../../ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](../../OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](../../ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
+
+
 **Read first:** [`../DIRECTION_SHEET.md`](../DIRECTION_SHEET.md) (all of it; your screens are under
 "The station" and "The instruments" in §2, and §6 — the dense register — is your hardest rule),
 then [`../KIT_SPEC.md`](../KIT_SPEC.md) (all of it). Task A must be accepted before you start. You

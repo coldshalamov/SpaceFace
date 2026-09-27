@@ -1,6 +1,9 @@
 <!-- LIFETIME: UNTIL ALL TEN ARE DONE OR RETIRED -->
 # Ten centerpieces
 
+> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
+
+
 The unification pass ([`UNIFICATION_LEDGER.md`](UNIFICATION_LEDGER.md)) made the interface
 *consistent*. Consistent is not the ask. The ask is **gratuitously sleek** — an interface a player
 would believe came from a studio.

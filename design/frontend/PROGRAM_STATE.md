@@ -1,5 +1,8 @@
 # Frontend program — live checkpoint
 
+> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
+
+
 **This file is the handoff. Update it at the end of every working session, before you run out of
 context.** It exists because the program is 7 packets / 16 jobs and no single thread has the context
 budget to finish them. Work is resumed across threads, so the state has to live on disk.

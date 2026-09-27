@@ -1,5 +1,8 @@
 # UI production packets — the phase specs
 
+> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](../../ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](../../OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](../../ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
+
+
 > **These 28 briefs are phase specs, bundled into the five development sessions under
 > [`../sessions/`](../sessions/README.md). They are never handed out alone.** A session zip carries the
 > specs it needs under `phases/`; the local lanes read the code packets directly. Build a session with

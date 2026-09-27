@@ -1,6 +1,9 @@
 <!-- LIFETIME: STABLE -->
 # The bar
 
+> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
+
+
 What "indistinguishable from a 2026 A-list game" means for this tree, written down so a pass can be
 judged instead of argued about. Read with [`../../docs/UI_VISUAL_ITERATION.md`](../../docs/UI_VISUAL_ITERATION.md),
 which is how you look at a screen. This file is what you are looking *for*.
