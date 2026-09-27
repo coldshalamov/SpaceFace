@@ -179,7 +179,8 @@ void main(){
           relative+=tangent*uMotion*iShape.y*mature*sin(t*PI)*sin(motionTime*2.3+t*7.0+localPhase)*.74;
           height+=uMotion*iShape.y*mature*sin(t*PI)*cos(motionTime*1.7+t*5.0+localPhase);
         }
-        relative+=outward*uMotion*iShape.y*((1.0-activation)*2.6+stroke*flex*.72);
+        relative+=outward*uMotion*iShape.y*((1.0-activation)*2.6+stroke*flex*1.8);
+        relative+=tangent*uMotion*iShape.y*mature*sin(t*PI)*sin(motionTime*1.3+localPhase)*.65;
         relative+=tangent*uMotion*iShape.y*detach*(1.8+fract(iBehavior.z)*2.2);
         height+=uMotion*iShape.y*(mature*.38*sin(motionTime*2.2+localPhase)+detach*(.8+t));
       }else if(kind<2.5){
@@ -356,8 +357,12 @@ vec4 fieldVolume(){
     hot=(shoulder*(0.45+1.35*bulk)+0.24*secondary)*(0.24+0.76*chargePatch);
   }else if(kind<1.5){
     // Mechanical mass keeps a restrained body and charge that traverses its raised edges.
-    body*=0.36;hot=shoulder*(0.24+0.85*bulk);
-    absorbed=max(absorbed,0.42);
+    // A dark load-bearing frame with moving charged sections, not a luminous
+    // reticle whose whole loop stays equally bright. Independent packets reveal
+    // its changing strain; late bridges retain their separate material arrival.
+    float load=pow(bulk,3.0)*(0.35+0.65*secondary);
+    body*=0.27;hot=shoulder*(0.05+2.4*load)+ignition*.38;
+    absorbed=max(absorbed*.66,0.11+load*.30);
   }
   if(accretion){
     hot=(shoulder*(.16+2.25*ignition)+.26*ignition)*(.06+.94*chargePatch);

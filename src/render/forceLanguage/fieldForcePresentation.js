@@ -45,6 +45,7 @@ export class FieldForcePresentation {
       field:{engaged:false,halfAngleRad:0.56,halfWidth:52},
       seed:{phase:'active',lockAt:0,activeAt:0,warnAt:0,expireAt:0},
     }));
+    this.seedTint=new THREE.Color();
     this.material=SURFACE_MATERIALS.plain;
     this.presence=1;
     this.time=0;this.frame=0;this.disposed=false;
@@ -335,7 +336,7 @@ export class FieldForcePresentation {
     const open=phase==='travel'?1:phase==='locking'?(motion?0:1-progress):0;
     const warning=phase==='warning';
     const remaining=warning?clamp01((finite(seed?.expireAt,now)-now)/Math.max(.001,finite(seed?.expireAt,now)-finite(seed?.warnAt,now))):1;
-    if(warning)this.tint=COLORS.get(0xffc36c);
+    if(warning)this.tint=this.seedTint.copy(COLORS.get(0x54e5ed)).lerp(COLORS.get(0xffc36c),1-remaining);
     // A lock is a strained construction, not four solid blocks or an orbiting ring.
     // Opposed forks take up load at different rates. Bridging charge only exists
     // once the forks have seated; released members shear apart in the shared shader.
