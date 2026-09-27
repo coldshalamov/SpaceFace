@@ -36,10 +36,13 @@ const EXPECTED_PLACEMENTS = Object.freeze([
 
 const SCANNER_KINDS = new Set(['distress', 'anomaly', 'salvage', 'ambush', 'ship', 'ore']);
 const ASSIGNED_SECTOR_SEMANTIC_HASHES = Object.freeze({
-  sector_charon_expanse: 2499995255,
-  sector_vesta_forge: 3339003051,
-  sector_sker_haven: 2828418493,
-  sector_ashfall_reach: 675846230,
+  // Re-pinned 2026-09-27: landmark POI records grew authored draw fields across the
+  // landmark lane (PQ-153.02 review data, D54 placeTargetRadius) — POI content moved,
+  // topology/neighbors/hazards/faction ownership did not.
+  sector_charon_expanse: 4287834606,
+  sector_vesta_forge: 158446882,
+  sector_sker_haven: 3318080732,
+  sector_ashfall_reach: 4151033349,
 });
 
 function assertDeepFrozen(value, path = 'value', seen = new Set()) {

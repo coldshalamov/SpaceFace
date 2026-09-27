@@ -95,6 +95,10 @@ test('quiet Ceres refinery pocket keeps the combat list in the tens', async () =
   samples.sort((a, b) => a - b);
 
   const after = (state.entityList || []).filter((e) => e && e.alive !== false);
+  // Optic-structure lattice cells are authored set-piece colliders, not combat-list members —
+  // the "tens" gameplay census counts around them and reports them separately.
+  const gameplay = after.filter((e) => !(e.data && e.data.opticStructureId));
+  const opticCells = after.length - gameplay.length;
   const byType = countByType(after);
   const field = state.world && state.world.asteroidField;
   const far = state.world && state.world.farActors;
@@ -102,9 +106,10 @@ test('quiet Ceres refinery pocket keeps the combat list in the tens', async () =
   const fieldRocks = field && field.rocks ? field.rocks.length : 0;
   const farRows = far && far.rows ? far.rows.length : 0;
   const dressingRows = dressing && dressing.rows ? dressing.rows.length : 0;
-  const liveWrecks = byType.wreck || 0;
-  const liveFx = byType.fx || 0;
-  const liveRocks = byType.asteroid || 0;
+  const gameplayByType = countByType(gameplay);
+  const liveWrecks = gameplayByType.wreck || 0;
+  const liveFx = gameplayByType.fx || 0;
+  const liveRocks = gameplayByType.asteroid || 0;
   const p50 = percentile(samples, 0.5);
   const p95 = percentile(samples, 0.95);
 
@@ -113,6 +118,8 @@ test('quiet Ceres refinery pocket keeps the combat list in the tens', async () =
     sector: PROOF_SECTOR_ID,
     pocket: PROOF_REFINERY_POCKET_ID,
     entityList: after.length,
+    gameplayList: gameplay.length,
+    opticCells,
     byType,
     asteroidFieldRocks: fieldRocks,
     farActorRows: farRows,
@@ -121,7 +128,7 @@ test('quiet Ceres refinery pocket keeps the combat list in the tens', async () =
   };
   console.log(JSON.stringify(report, null, 2));
 
-  assert.ok(after.length < 70, `quiet Ceres entityList should be tens, got ${after.length}`);
+  assert.ok(gameplay.length < 70, `quiet Ceres entityList should be tens, got ${gameplay.length}`);
   assert.ok(after.length <= live.length + 8, 'warm list should not balloon during the sample');
   assert.ok(fieldRocks > 200, `rocks belong in asteroidField, got ${fieldRocks}`);
   assert.ok(liveRocks < 20, `live rocks should be the pinned geology/activity set, got ${liveRocks}`);
