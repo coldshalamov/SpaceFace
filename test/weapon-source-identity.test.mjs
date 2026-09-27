@@ -206,7 +206,7 @@ test('maximum-rate fire keeps a beat and never accumulates a second source', () 
   assert.ok(rapidOpacity < soloOpacity, `rapid ${rapidOpacity} must sit under solo ${soloOpacity}`);
 });
 
-test('weapon wakes are world-anchored sheets, not a camera-facing cross-frame', () => {
+test('weapon wakes occupy depth in a world-anchored cross-section', () => {
   const build = (camera) => {
     const pool = new WeaponRibbonPool(null, { capacity: 4, segments: 8 });
     pool.spawn({ entityId: 1, x: 0, y: 0.3, z: 0, width: 0.6, colorHead: '#fff', colorTail: '#08f', linger: 0.2 });
@@ -229,11 +229,25 @@ test('weapon wakes are world-anchored sheets, not a camera-facing cross-frame', 
   assert.ok(a.n.dot(b.n) > 0.97, 'moving only the camera must not re-roll the sheet');
   assert.ok(a.p0.distanceTo(b.p0) < 0.25, 'nor rebuild its vertices around the new view');
 
-  // The one case where it MAY roll: a camera down in the flight plane would otherwise see the
-  // sheet perfectly edge-on. That guard is deliberate and must still fire.
+  // Closed sections remain visible in the flight plane without rolling toward the camera.
   const grazing = build({ x: 0, y: 0.5, z: -144 });
-  assert.ok(Math.abs(grazing.n.dot(up)) < 0.3,
-    'an in-plane camera must still get a readable sheet, not a zero-width line');
+  assert.ok(Math.abs(grazing.n.dot(up)) > 0.9, 'the world frame survives a grazing view');
+  const volume = new WeaponRibbonPool(null, { capacity: 1, segments: 8 });
+  volume.spawn({ entityId: 1, x: 0, y: 0, z: 0, width: 1, profile: RIBBON_PROFILE.BRAID });
+  volume.pushHead(1, 5, 0, 0);
+  volume.update(0.016, { x: 0, y: 55, z: -144 });
+  const first = Array.from(volume.position.slice(0, volume.sectionVertices * 3));
+  const ys = first.filter((_, i) => i % 3 === 1);
+  const zs = first.filter((_, i) => i % 3 === 2);
+  assert.ok(Math.max(...ys) - Math.min(...ys) > 1, 'plasma has actual vertical thickness');
+  assert.ok(Math.max(...zs) - Math.min(...zs) > 2, 'plasma has a substantial broad body');
+  volume.update(0.05, { x: 0, y: 55, z: -144 });
+  assert.notDeepEqual(Array.from(volume.position.slice(0, volume.sectionVertices * 3)), first,
+    'cross-section transports while its recorded centreline remains fixed');
+  const paused = Array.from(volume.position);
+  volume.update(0, { x: 0, y: 55, z: -144 });
+  assert.deepEqual(Array.from(volume.position), paused, 'pause freezes material transport');
+  volume.dispose();
 });
 
 test('wake cross-sections are authored per family and phased on distance, not on a clock', () => {
@@ -253,7 +267,7 @@ test('wake cross-sections are authored per family and phased on distance, not on
   const pool = new WeaponRibbonPool(null, { capacity: 2, segments: 4 });
   // No clock in the wake at all: its internal structure rides world arc length, so a positive
   // display dt cannot advance it while the simulation clock is paused.
-  assert.deepEqual(Object.keys(pool.material.uniforms).sort(), ['uGrazeGain', 'uIntensity']);
+  assert.deepEqual(Object.keys(pool.material.uniforms).sort(), ['uGrazeGain', 'uIntensity', 'uModulation']);
   assert.doesNotMatch(pool.material.fragmentShader, /uTime|uSfTime|uBoltTime/);
   // Each profile owns a different lateral density expression, not a different tint.
   for (const marker of [/CORD/, /BRAID/, /FORK/, /SHEET/, /FILAMENT/]) {
@@ -279,20 +293,20 @@ test('a released wake unravels from the head, and idle slots stop re-uploading',
 
   // Two live wakes in a 64-slot pool publish two slots, not the whole buffer.
   const liveBytes = pool.uploadedBytesLastFrame;
-  assert.deepEqual(pool.geometry.attributes.position.updateRanges, [{ start: 0, count: 2 * 8 * 2 * 3 }]);
+  assert.deepEqual(pool.geometry.attributes.position.updateRanges, [{ start: 0, count: 2 * 8 * pool.sectionVertices * 3 }]);
   assert.ok(liveBytes / pool.fullUploadBytes < 0.05,
     `two of 64 wakes must not cost a full buffer: ${liveBytes}/${pool.fullUploadBytes}`);
   publish();
 
   // While the round is still feeding it, the wake is brightest at the head.
-  assert.ok(pool.alpha[0] > pool.alpha[5 * 2], 'a live wake is densest at the round');
+  assert.ok(pool.alpha[0] > pool.alpha[5 * pool.sectionVertices], 'a live wake is densest at the round');
 
   // Termination: the head goes first, because the round feeding it is gone.
   pool.release(1);
   pool.release(2);
   pool.update(0.1, { x: 0, y: 55, z: -144 });
   const head = pool.alpha[0];
-  const body = pool.alpha[5 * 2];
+  const body = pool.alpha[5 * pool.sectionVertices];
   assert.ok(body > 0, 'the far wake is still hanging in space');
   assert.ok(head < body, `head ${head} must unravel before the body ${body}`);
   publish();
