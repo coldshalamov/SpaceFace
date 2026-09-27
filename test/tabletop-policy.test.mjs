@@ -192,7 +192,7 @@ test('far current-sector landmarks are map facts until they can enter the table'
     id: 'station_helios',
     type: 'station',
     data: { stationId: 'station_helios', sectorId: 'sector_helios_prime' },
-    pos: { x: 9000, z: 0 },
+    pos: { x: 1347, z: 0 },
   };
 
   assert.equal(tableTravelSpeed(state), 160);
@@ -209,22 +209,40 @@ test('far current-sector landmarks are map facts until they can enter the table'
   assert.equal(shouldKeepPersistentLandmarkResident(helios, { mode: 'flight' }), false);
   assert.equal(shouldKeepPersistentLandmarkResident(helios, { mode: 'loading' }), true);
 
-  // An admitted landmark is a different question from a far one. The opening hub finishes authored
-  // admission behind the loading screen while the player is 1347 WU away; the first flight reconcile
-  // used to apply the distance rule alone and throw that decode away at tick 16, leaving a dock
-  // prompt over empty space. Keep what was already paid for, in this sector only.
+  // An admitted landmark is a different question from a far one — but only inside the decode
+  // runway (TABLE_DECODE_RUNWAY_SECONDS × tableTravelSpeed = 2160 WU at the 160 WU/s floor).
+  // The opening hub finishes authored admission behind the loading screen while the player is
+  // 1347 WU away; the first flight reconcile used to apply the distance rule alone and throw
+  // that decode away at tick 16, leaving a dock prompt over empty space. Keep what was already
+  // paid for, in this sector only, inside the runway.
   assert.equal(shouldKeepPersistentLandmarkResident(helios, {
     mode: 'flight', currentSectorId: 'sector_helios_prime', authoredResident: true,
-  }), true, 'an authored landmark in the live sector is not re-decoded on approach');
+    distanceWu: 1347, travelSpeedWu: 160,
+  }), true, 'an authored landmark inside the decode runway is not re-decoded on approach');
   assert.equal(shouldKeepPersistentLandmarkResident(helios, {
     mode: 'flight', currentSectorId: 'sector_ceres_belt', authoredResident: true,
+    distanceWu: 1347, travelSpeedWu: 160,
   }), false, 'leaving the sector still drops the landmark');
   assert.equal(shouldKeepPersistentLandmarkResident(currentFar, {
     mode: 'flight', currentSectorId: 'sector_helios_prime', authoredResident: true,
-  }), true, 'an authored station standing in the sector is kept even without the landmark flag');
+    distanceWu: 1347, travelSpeedWu: 160,
+  }), true, 'an authored station standing inside the bound is kept without the landmark flag');
+  assert.equal(shouldKeepPersistentLandmarkResident(currentFar, {
+    mode: 'flight', currentSectorId: 'sector_helios_prime', authoredResident: true,
+    distanceWu: 2673, travelSpeedWu: 160,
+  }), false, 'past the decode runway an authored place demotes to a map fact');
   assert.equal(shouldKeepPersistentLandmarkResident(helios, {
     mode: 'flight', currentSectorId: 'sector_helios_prime',
+    distanceWu: 1347, travelSpeedWu: 160,
   }), false, 'a landmark that never finished authored admission earns no residency');
+  assert.equal(shouldKeepPersistentLandmarkResident(currentFar, {
+    mode: 'flight', currentSectorId: 'sector_helios_prime', authoredPending: true,
+    distanceWu: 1347, travelSpeedWu: 160,
+  }), true, 'a root mid-admission inside the runway counts as resident — no decode restart');
+  assert.equal(shouldKeepPersistentLandmarkResident(currentFar, {
+    mode: 'flight', currentSectorId: 'sector_helios_prime', authoredPending: true,
+    distanceWu: 2673, travelSpeedWu: 160,
+  }), false, 'a pending root outside the runway still demotes');
   assert.equal(isPersistentLandmark({
     type: 'station', data: { landmark: true, sectorId: 'sector_tethys_junction' },
   }), true, 'the authored landmark flag the sector table already carries is the signal');
@@ -254,21 +272,39 @@ test('an authored-resident station survives a complete activity frame that omits
     type: 'station',
     alive: true,
     homeSectorId: 'sector_helios_prime',
-    pos: { x: 9000, z: 0 },
+    pos: { x: 1347, z: 0 },
     radius: 42,
     mesh: { userData: { authoredAssetState: 'authored' } },
   };
   assert.equal(isEntityRenderRelevant(authoredStation, state), true,
     'an authored station body already standing in the live sector is kept even when a complete'
-    + ' activity frame omits it and it sits far off the glass');
+    + ' activity frame omits it and it sits inside the decode runway');
 
   const stillLoading = {
     ...authoredStation,
     id: 21,
     mesh: { userData: { authoredAssetState: 'loading' } },
   };
-  assert.equal(isEntityRenderRelevant(stillLoading, state), false,
-    'a station that never finished authored admission earns no residency');
+  assert.equal(isEntityRenderRelevant(stillLoading, state), true,
+    'a paid decode mid-compose inside the runway counts as resident — evicting it would'
+    + ' restart the decode');
+
+  const pendingPastRunway = {
+    ...authoredStation,
+    id: 23,
+    pos: { x: 2673, z: 0 },
+    mesh: { userData: { authoredAssetState: 'loading' } },
+  };
+  assert.equal(isEntityRenderRelevant(pendingPastRunway, state), false,
+    'a pending root outside the runway still demotes');
+
+  const authoredPastRunway = {
+    ...authoredStation,
+    id: 24,
+    pos: { x: 2673, z: 0 },
+  };
+  assert.equal(isEntityRenderRelevant(authoredPastRunway, state), false,
+    'past the decode runway even a finished authored body demotes to a map fact');
 
   const otherSector = {
     ...authoredStation,

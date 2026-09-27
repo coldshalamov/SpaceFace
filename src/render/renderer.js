@@ -926,6 +926,24 @@ function entityHasAuthoredResidentRoot(entity) {
   return typeof authoredState === 'string' && authoredState.startsWith('authored');
 }
 
+/** True while an entity's visual root is mid-admission — a decode already paid for.
+ * Inside the landmark keep runway it counts as resident so an evict poll cannot
+ * restart the paid decode by dropping the root it is streaming into. */
+function entityHasAuthoredPendingRoot(entity) {
+  const root = entity && (entity.mesh || (entity.view && entity.view.root)) || null;
+  const authoredState = root && root.userData ? root.userData.authoredAssetState : null;
+  return isAuthoredPendingStatus(authoredState);
+}
+
+/** Keep-distance for the landmark residency bound, measured from the live look-at
+ * like the rest of the keep/evict radii; Infinity without a player or position. */
+function landmarkKeepDistanceWu(entity, state) {
+  const player = playerEntityForRenderState(state);
+  if (!player || !player.pos || !entity || !entity.pos) return Infinity;
+  const delta = tableLookAtDelta(state, player.pos, entity.pos, _residencyLookDelta);
+  return Math.hypot(delta.x, delta.z);
+}
+
 function inboundDecodeRadius(state, radius = null) {
   const numeric = Number(radius);
   if (radius != null && Number.isFinite(numeric)) return numeric;
@@ -1001,7 +1019,9 @@ function playerPlanarDistance(entity, state) {
 function isInboundDecodeHull(entity, state, radius = null) {
   if (!entity || entity.alive === false) return false;
   if (entity.isPlayer === true || (state && entity.id === state.playerId)) return false;
-  if (entity.type !== 'ship' && entity.type !== 'wreck' && entity.type !== 'drone') return false;
+  const stationBoundary = entity.type === 'station';
+  if (!stationBoundary
+      && entity.type !== 'ship' && entity.type !== 'wreck' && entity.type !== 'drone') return false;
   // Promote and catch-up are player-centered. tableLookAtDelta follows the
   // leftover chase focus, so a relocate leaves the hull "beyond the table"
   // until the camera crawls 10k+ WU. Cook from the player, not the look-at.
@@ -1011,11 +1031,16 @@ function isInboundDecodeHull(entity, state, radius = null) {
   }
   // An explicit radius is a hysteresis caller's bound (evict/admit edge). Keep it
   // a pure disc test; prediction only extends the default admission radius.
-  if (radius != null) return false;
+  // Stations are exempt: a boundary evicted on the disc alone mid-compose would
+  // restart a paid decode, so the station evict edge runs the approach clause.
+  if (radius != null && !stationBoundary) return false;
   // Approach-aware admission: a hull closing on the glass inside the promote
   // horizon gets its decode+build chain started while it is still outside the
   // static circle. entityTimeToGlassSeconds extrapolates shelved far rows from
   // lastExactT first — their stored pos is stale for anything that kept moving.
+  // Stations approach on the full authored decode runway — the same horizon
+  // kickDecodeRunwayAssets decodes them on — while hulls keep the promote horizon.
+  const horizon = stationBoundary ? TABLE_DECODE_RUNWAY_SECONDS : TABLE_PROMOTE_HORIZON_SECONDS;
   const player = playerEntityForRenderState(state);
   if (!player || !player.pos) return false;
   const env = renderAdmissionEnv(state);
@@ -1024,9 +1049,9 @@ function isInboundDecodeHull(entity, state, radius = null) {
     entity,
     env,
     state,
-    TABLE_PROMOTE_HORIZON_SECONDS,
+    horizon,
     pad,
-  ) <= TABLE_PROMOTE_HORIZON_SECONDS;
+  ) <= horizon;
 }
 
 /** Hold the cooked GPU working set so first-flight travel cannot evict+rebuild it. */
@@ -1173,6 +1198,9 @@ export function isEntityRenderRelevant(entity, state, radius = null, options = n
     mode: state && state.mode,
     currentSectorId: state && state.world && state.world.currentSectorId,
     authoredResident: entityHasAuthoredResidentRoot(entity),
+    authoredPending: entityHasAuthoredPendingRoot(entity),
+    distanceWu: landmarkKeepDistanceWu(entity, state),
+    travelSpeedWu: tableTravelSpeed(state),
   })) return true;
   const tier = entity.activity && entity.activity.presentationTier;
   const activityFrame = state && state.render && state.render.activityFrame;
