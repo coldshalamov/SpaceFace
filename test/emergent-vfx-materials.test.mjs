@@ -54,6 +54,32 @@ test('deposited matter and prism shards are opaque scene-lit bodies with four bo
   pools.dispose();
 });
 
+test('current sheath and wet folds remain bounded while crystal optical lanes cross no wrapped face',()=>{
+  const pools=createEmergentPrimitivePools();
+  const arcSurface=pools.arcs.geometry.attributes.aSurface;
+  const members=new Set();
+  for(let i=0;i<arcSurface.count;i++)members.add(arcSurface.getZ(i));
+  assert.equal(members.size,6,'a full-span outer conductor is distinct from the core and four contact forks');
+  for(const mesh of primaryMeshes(pools)) {
+    assert.ok(mesh.geometry.attributes.position.count<4096,'static detail stays within a small pooled geometry budget');
+    if(mesh.geometry.index)assert.ok(mesh.geometry.index.array instanceof Uint16Array);
+  }
+  const prism=pools.prisms.geometry,uv=prism.attributes.aSurface,pos=prism.attributes.position;
+  for(let i=0;i<pos.count;i++)assert.ok(Math.hypot(pos.getX(i),pos.getZ(i))<=1,
+    'crystal optical detail fits the native normalized gameplay footprint');
+  for(let i=0;i<uv.count;i+=3) {
+    if(uv.getY(i)===uv.getY(i+1)&&uv.getY(i)===uv.getY(i+2))continue;
+    const u=[uv.getX(i),uv.getX(i+1),uv.getX(i+2)];
+    assert.ok(Math.max(...u)-Math.min(...u)<=0.126,'each side carries one continuous optical face');
+  }
+  const shader={uniforms:{},vertexShader:THREE.ShaderLib.physical.vertexShader,fragmentShader:THREE.ShaderLib.physical.fragmentShader};
+  pools.gels.material.onBeforeCompile(shader);
+  assert.ok(shader.fragmentShader.indexOf('clearcoatNormal=normal')>
+    shader.fragmentShader.indexOf('#include <clearcoat_normal_fragment_begin>'),
+  'dynamic wet normal is assigned after the physical material declares its clearcoat normal');
+  pools.dispose();
+});
+
 test('simulation pause sleeps uploads, live animation uses retained uniforms, and snapshot/RNG stay untouched',()=>{
   const pools=createEmergentPrimitivePools(),state=fixture();
   state.rng=()=>{throw new Error('presentation consumed simulation RNG');};
