@@ -1418,6 +1418,247 @@
      ]
     }
    }
+  },
+  "ship_ironback": {
+   "sourceGlb": "assets/ships/parts/wholeships/ironback_production_v1.glb",
+   "sourceGlbSha256": "6C7F0C8354AF1C3250B0D0B94D659B54D31C41E412ABA38DD6C48A988DF8B1FA",
+   "hero": {
+    "file": "ship_ironback.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 100500,
+    "hullSize": [
+     19.916,
+     6.78,
+     3.824
+    ],
+    "longAxis": 0,
+    "marks": {
+     "IRONBACK_LOD0_ROOT": [
+      0.4997,
+      0.5525,
+      52.124
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      50.59
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6119,
+      52.54
+     ],
+     "SOCKET_Engine_Main": [
+      0.6821,
+      0.3525,
+      59.342
+     ],
+     "SOCKET_Mining_Front": [
+      0.2644,
+      0.7539,
+      44.765
+     ],
+     "SOCKET_RCS_Port": [
+      0.5639,
+      0.5323,
+      50.716
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4387,
+      0.469,
+      52.848
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5891,
+      0.3778,
+      54.847
+     ],
+     "SOCKET_Trail_Main": [
+      0.6882,
+      0.3461,
+      59.619
+     ],
+     "SOCKET_Trail_Port": [
+      0.7124,
+      0.3565,
+      59.175
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6643,
+      0.3358,
+      60.063
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3847,
+      51.025
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2611,
+      0.7467,
+      44.629
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_ironback.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 43024,
+    "hullSize": [
+     19.916,
+     6.78,
+     3.824
+    ],
+    "longAxis": 0,
+    "marks": {
+     "IRONBACK_LOD0_ROOT": [
+      0.5005,
+      0.5801,
+      59.749
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      59.749
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6729,
+      59.749
+     ],
+     "SOCKET_Engine_Main": [
+      0.0878,
+      0.5708,
+      59.749
+     ],
+     "SOCKET_Mining_Front": [
+      0.9025,
+      0.5139,
+      59.749
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      61.783
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      57.715
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4513,
+      59.749
+     ],
+     "SOCKET_Trail_Main": [
+      0.072,
+      0.5708,
+      59.749
+     ],
+     "SOCKET_Trail_Port": [
+      0.072,
+      0.5708,
+      60.596
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.072,
+      0.5708,
+      58.901
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3271,
+      59.749
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9067,
+      0.5,
+      59.749
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_ironback.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 38026,
+    "hullSize": [
+     19.916,
+     6.78,
+     3.824
+    ],
+    "longAxis": 0,
+    "marks": {
+     "IRONBACK_LOD0_ROOT": [
+      0.5,
+      0.4995,
+      60.611
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      59.749
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      61.611
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9122,
+      60.511
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0975,
+      59.899
+     ],
+     "SOCKET_RCS_Port": [
+      0.4135,
+      0.5,
+      59.749
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5865,
+      0.5,
+      59.749
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      59.224
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.928,
+      60.511
+     ],
+     "SOCKET_Trail_Port": [
+      0.4639,
+      0.928,
+      60.511
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5361,
+      0.928,
+      60.511
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      57.886
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0933,
+      59.749
+     ]
+    }
+   }
   }
  }
 }
