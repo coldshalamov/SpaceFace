@@ -55,6 +55,14 @@ parcels and solid debris; it complements the large form rather than substituting
 Power-off removes the active boundary while residue continues on a decelerating clock. Pause and
 reduced-motion/flash remain authoritative.
 
+**Choreography correction (2026-09-27).** Reject the obvious grow–spin–shrink loop, including
+a brief geometric build followed by a motionless form with scrolling detail. Parts need unequal
+arrival times, differential motion, and interactions that emerge after contributing streams meet.
+Release stops supply; surviving material travels, separates, cools and dissipates instead of
+replaying birth backward. Nearby hulls and asteroids should locally divert flow and receive contact
+reactions where appropriate. Keep those decorative deformations separate from the true force range.
+The [lifecycle standard](./VFX_LIFECYCLE_STANDARD.md) records this replacement contract.
+
 Seven further action responses cover boost preparation, reactor venting, cargo caught in a net,
 rich-core extraction, a failed rich-core charge, mine arming and mine detonation. They use the existing production event bus
 and real body/contact anchors, with the same pause, rebasing, cleanup and accessibility rules.

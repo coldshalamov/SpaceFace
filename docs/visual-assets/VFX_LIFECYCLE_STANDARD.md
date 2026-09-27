@@ -1,4 +1,4 @@
-# VFX lifecycle standard — v2
+# VFX lifecycle standard — v3
 
 **Authority:** mandatory companion to `VFX_FORCE_LANGUAGE_STANDARD_2026-09-16.md`.
 **Owner:** presentation only. Physics, damage, cooldowns, lock times, and tool ownership remain
@@ -18,8 +18,11 @@ brightness, or local response. It must not be the only animation clock.
 
 ## One lifecycle, distinct choreography
 
-Use `effectLifecycle.js` for timings/envelopes. Do not implement another private lifetime scheme
-for each weapon. A persistent effect has five presentation stages:
+**Owner correction, 2026-09-27:** a uniformly growing object, constant-speed spin, and reversed
+shrink on shutdown fail this standard. The player must see interacting material, not a lifecycle
+state machine. This supersedes the earlier v2 scale envelope and frozen-transport prescription.
+
+Use `effectLifecycle.js` for shared timing vocabulary. A persistent effect has five logical states:
 
 `ignition → build → sustain → release → dead`
 
@@ -30,37 +33,41 @@ object, not a second source of damage or force.
 
 | Tool | Build | Sustain, including no targets | Release |
 |---|---:|---|---:|
-| Seed | 0.50 s; compact plates unfold from the source | Four phased jaw strokes and luminous ratchet passes; travel opens the frame, locking closes it, warning drains the inner teeth. No vortex. | 0.64 s; close, cool, and fracture the plates |
-| Well | 0.70 s; curled folds unfurl from the throat | Inward-moving highlights on a continuously rotating, flexing silhouette; the throat counterturns | 0.86 s; wind down and contract into the throat |
-| Repulsor | 0.42 s; pressure structure opens outward | Three offset broken fronts propagate, with a broad pressure skirt | 0.68 s; stop live fronts, lift and erode cooling shell fragments; do not turn it into a Well |
-| Cone | 0.46 s; transport curtains extend from the emitter | Advancing bowed fronts with lateral flex inside the sector | 0.56 s; peel the curtain from source to tip |
-| Skim (`sheet`) | 0.58 s; intake banks extend | Scoops advance laterally toward the axis; the long banks remain parallel | 0.72 s; fold the banks inward and erode the remaining strokes |
+| Seed | 0.50 s; staggered latch and jaw engagement | Independent jaw strokes and travelling ratchet passes; travel, locking and warning articulate the mechanism | 0.64 s; unload and separate individual elements; no global shrink |
+| Well | 0.70 s; material propagates from outer intake toward the throat | Differential shear, unequal feeder cadence, mature recirculation where streams meet | 0.86 s; stop supply, drain remaining channels, detach cooling reaches |
+| Repulsor | 0.42 s; separately arriving bowed pressure fronts | Crests advance independently, deform and interact with nearby surfaces | 0.68 s; stop generating fronts; existing fronts peel and dissipate outward |
+| Cone | 0.46 s; source-to-tip transport establishes separate paths | Advancing material with unequal lateral flex inside the sector | 0.56 s; source cutoff travels toward the tip; remaining parcels continue |
+| Skim (`sheet`) | 0.58 s; staggered intake strokes | Different lateral travel rates toward the axis; secondary motion develops as the intake establishes | 0.72 s; detach and erode remaining strokes without reversing onset |
+| Singularity bomb | Unequal intake arrival, followed by throat closure | Accelerating inner shear and later recirculation; bodies divert the channels | Stop feeding outside; trailing matter drains inward while the lip tears in sectors |
+| Goo bomb | Separate local nucleation sites spread and coalesce | Connected wet folds, travelling reaction contours, local surface displacement | Pores open at unrelated sites, folds lose height and residue breaks down in place |
 
 These are presentation durations, not delays before the tool works. There is no hold timeout:
 a sustained field may remain alive indefinitely while its authoritative record exists.
 
-### Shared envelope formula
+### Transport and retirement
 
-Let `S(x) = clamp(x,0,1)^2 * (3 - 2*clamp(x,0,1))`. For birth time `b`, current
-simulation time `t`, and release time `r` (negative until release):
+The logical state does not scale the whole construction. Give material a path coordinate,
+arrival time and flow speed. Offset those values between related elements using stable deployment
+identity. Full-stride interactions begin only after their contributing flows have arrived.
+Internal advection, differential deformation and source variation continue throughout a sustained
+action; perpetual rigid rotation alone fails.
 
-```
-poweredTime = r >= 0 ? min(t, r) : t
-age         = max(0, poweredTime - b)
-build       = S(age / buildSeconds)
-release     = r >= 0 ? S((t - r) / releaseSeconds) : 0
-baseGrowth  = 0.055 + 0.945 * build
-opacity     = S(age / min(0.10, buildSeconds)) * (1 - release)
-```
+On release, stop the source. Existing material continues along its trajectory while a cutoff,
+tear or cooling front overtakes it. Remove active gameplay boundaries immediately. Do not freeze
+the material clock, reverse the startup geometry, synchronize every element's fade, or create new
+powered parcels after release. An interrupted onset only retires matter already present.
 
-Stopping during build releases from the **current**, partially built shape. It must not jump
-up to full scale before shrinking. On release, directional transport time freezes at `r`;
-retirement motion takes over. This is why a stopped Repulsor does not continue advertising a
-live expanding force front. GPU formulas and the CPU diagnostic envelope share these curves.
-Family-specific rotation, folding, and erosion live in `sweptSurfaceBatch.js`.
+Use smooth, independently phased transitions; no abrupt change in speed at a global "full size"
+threshold. A fade complements deformation and supply transport rather than replacing them.
 
-Birth envelope does not replace the authored sustained shape motion. Merely making a spiral
-fade in and out still fails the standard.
+### Environment response
+
+`FlowEnvironment` reads the existing spatial neighborhood and retains at most three nearby solid
+bodies. It uses the drawn/interpolated anchors, material and velocity, with bounded query cadence.
+Fields and bomb bodies bend near those surfaces, shear with local motion, and expose a local hot
+contact seam. Empty space remains alive without inventing contacts. The actual force boundary is
+never displaced, and presentation never moves an entity or changes damage. These are approximate
+surface reactions, not a fluid simulation or mesh-accurate collision solver.
 
 ### Mechanical/energy weapon sources
 
@@ -79,7 +86,7 @@ its own physical material vocabulary, not reuse a Well because a shared renderer
 ## Truth boundary versus expressive body
 
 A tool has an authoritative footprint and a decorative body. During deployment, the quiet
-footprint can indicate the real full extent while the body grows. It is not an expanding damage
+footprint indicates the real full extent while material arrives. It is not an expanding damage
 range unless the simulation says so. Footprint strips are tagged `FIELD_ROLE.BOUNDARY`.
 
 When the authoritative tool disappears, remove those boundary strips immediately. Preserve
@@ -126,6 +133,12 @@ The earlier checkpoint's accidental increase to 16 weapon point lights is revers
 upstream's two-weapon plus six-event budget. Do not alter a performance budget to satisfy an
 obsolete hardcoded test.
 
+Singularity bombs add one bounded instanced channel draw (72 channels for 24 bombs).
+Each channel has a fixed 96-by-10 grid, with curvature, contact response and smooth normals
+calculated in the vertex shader. The CPU uploads retained descriptors rather than rebuilding
+those channel vertices. Basins and tar surfaces share the existing bounded mesh; transported
+parcels share one lazy batch. The loading cook warms the exact channel material variant.
+
 Reduced motion freezes ongoing geometry/flow but retains phase and lifecycle fades. Reduced
 flash lowers hot-fold intensity without deleting silhouettes or suppressing ongoing movement.
 
@@ -160,8 +173,10 @@ objects. Only WebGL canvas pixels are compared; the HTML timestamp cannot make a
 pass. It tests each of the five tools at 2.00 and 2.35 seconds with no targets, with contact,
 and under reduced flash. A same-time negative control must have zero changed pixels. Reduced
 motion must have zero sustained-motion change, while lifecycle transition remains readable.
-Birth must start with no body, grow into a fuller effect, and release must visibly diminish
-before all instances are gone. It also asserts steady descriptor versions are unchanged.
+Birth must start with locally arriving matter, establish a fuller interaction, and release must
+visibly diminish before all instances are gone. Growing/shrinking the whole object is not an
+acceptable way to satisfy pixel-change checks. Also compare near-body and empty-space views.
+Steady descriptor versions remain unchanged when neither source pose nor contact data changes.
 
 Ship `temporal-results.json`, the source hashes, and the full-cycle movie. Pixel change establishes
 motion and guards this regression; it does **not** establish aesthetic quality, force correctness,
@@ -176,11 +191,11 @@ Before coding, complete this concise brief:
 ```
 Name / force family / simulation record owner:
 What is the verb? What can it NOT imply?
-Birth: source position, onset cue, growth trajectory, seconds:
+Arrival: source position, separate paths/fronts, interaction onset, seconds:
 Sustain: deformation + transport direction + rhythm, including zero targets:
 Contact: what changes, without becoming the only source of motion?
 Warning: read from which authoritative phase/time?
-Release: what freezes immediately; how does the body cool/fold/fracture?
+Release: when supply stops; how existing material travels, tears, cools and retires:
 Identity reset: stable id plus generation key:
 Footprint: radius/sector/width; separate truthful boundary:
 Motion/flash-reduced behavior:

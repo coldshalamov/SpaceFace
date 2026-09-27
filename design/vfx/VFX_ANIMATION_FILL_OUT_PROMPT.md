@@ -42,6 +42,14 @@ exist. The owner rejected the previous thin-filament and ball-puff approach.
 >    follows receipts. An empty field still has active internal flow. Adding an affected body must
 >    change the composition meaningfully. Do not add screen shake, flash, or camera movement to
 >    disguise a weak source effect. Any camera response must remain subordinate and accessible.
+>    Extend the existing `FlowEnvironment` surface reactions with authored contact detail; do not
+>    create a second neighborhood scan or claim that sphere-radius deflection is mesh collision.
+>
+> All accompaniment must have staggered local arrival, independently moving parts, interactions
+> that develop in full stride, and a release that stops supply while existing matter continues.
+> Reject whole-object inflation, rigid constant-speed spin, frozen shutdown clocks and reversed
+> startup animation. The runtime fields and bombs now provide transport and surface-response seams;
+> the assignment is to add physical mechanisms, authored matter and richer contact consequences.
 >
 > Judge each packet at the normal gameplay camera beside the real ship and asteroids, with a
 > normal-speed continuous clip plus onset, peak, release and aftermath frames. Compare two seeds
