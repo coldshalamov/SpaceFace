@@ -936,6 +936,247 @@
      ]
     }
    }
+  },
+  "ship_mule": {
+   "sourceGlb": "assets/ships/parts/wholeships/mule_production_v1.glb",
+   "sourceGlbSha256": "6BDCCDD7E911AAD8EB8AE91330CB7C543A10254D58FAEEEEFC609208955A4CB9",
+   "hero": {
+    "file": "ship_mule.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 104968,
+    "hullSize": [
+     16.15,
+     6.925,
+     3.324
+    ],
+    "longAxis": 0,
+    "marks": {
+     "MULE_PRODUCTION_V1_LOD0_ROOT": [
+      0.4988,
+      0.547,
+      42.205
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      41.023
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6194,
+      42.646
+     ],
+     "SOCKET_Engine_Main": [
+      0.6843,
+      0.3433,
+      48.151
+     ],
+     "SOCKET_Mining_Front": [
+      0.2678,
+      0.7528,
+      36.382
+     ],
+     "SOCKET_RCS_Port": [
+      0.5809,
+      0.541,
+      40.901
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4232,
+      0.4611,
+      43.079
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5892,
+      0.3706,
+      44.435
+     ],
+     "SOCKET_Trail_Main": [
+      0.6887,
+      0.3386,
+      48.316
+     ],
+     "SOCKET_Trail_Port": [
+      0.7193,
+      0.3517,
+      47.862
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6587,
+      0.3258,
+      48.77
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3768,
+      41.334
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2638,
+      0.7439,
+      36.247
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_mule.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 44972,
+    "hullSize": [
+     16.15,
+     6.925,
+     3.324
+    ],
+    "longAxis": 0,
+    "marks": {
+     "MULE_PRODUCTION_V1_LOD0_ROOT": [
+      0.5024,
+      0.5701,
+      48.45
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      48.45
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6846,
+      48.45
+     ],
+     "SOCKET_Engine_Main": [
+      0.0826,
+      0.5586,
+      48.45
+     ],
+     "SOCKET_Mining_Front": [
+      0.8975,
+      0.5172,
+      48.45
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      50.528
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      46.372
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4399,
+      48.45
+     ],
+     "SOCKET_Trail_Main": [
+      0.071,
+      0.5586,
+      48.45
+     ],
+     "SOCKET_Trail_Port": [
+      0.071,
+      0.5586,
+      49.316
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.071,
+      0.5586,
+      47.584
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3154,
+      48.45
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9027,
+      0.5,
+      48.45
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_mule.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 40110,
+    "hullSize": [
+     16.15,
+     6.925,
+     3.324
+    ],
+    "longAxis": 0,
+    "marks": {
+     "MULE_PRODUCTION_V1_LOD0_ROOT": [
+      0.5,
+      0.4976,
+      49.062
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      48.45
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      50.062
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9174,
+      48.962
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.1025,
+      48.6
+     ],
+     "SOCKET_RCS_Port": [
+      0.391,
+      0.5,
+      48.45
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.609,
+      0.5,
+      48.45
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      47.925
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.929,
+      48.962
+     ],
+     "SOCKET_Trail_Port": [
+      0.4546,
+      0.929,
+      48.962
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5454,
+      0.929,
+      48.962
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      46.838
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0973,
+      48.45
+     ]
+    }
+   }
   }
  }
 }
