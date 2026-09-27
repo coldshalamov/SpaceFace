@@ -325,7 +325,12 @@ test('continuous exit+enter preserves encounterDirector live/pending/pressure (n
   assert.equal(dir.pending.length, 1, 'exit+enter continuous keeps pending (no replan wipe)');
   assert.equal(Object.keys(dir.active).length, 1, 'exit+enter continuous keeps active ledger');
   assert.equal(dir.plannedKey, `${HELIOS}#0`, 'continuous enter must not replan');
-  assert.deepEqual(dir.pressure, pressureBefore, 'continuous enter must not reseed pressure grace');
+  // ensureDirectorState legitimately backfills decks the fixture never set (mystery/patrol) —
+  // the no-reseed contract is that every authored bank survives the handoff.
+  for (const key of Object.keys(pressureBefore)) {
+    assert.equal(dir.pressure[key], pressureBefore[key],
+      `continuous enter must not reseed ${key} pressure grace`);
+  }
   assert.deepEqual(dir.window, windowBefore, 'continuous enter must not clear pacing window');
   assert.equal(dir.lastMeaningfulAt, 40, 'continuous enter must not reset meaningful spacing clock');
   assert.equal(dir.lastAmbientAt, 70, 'continuous enter must not reset ambient spacing clock');

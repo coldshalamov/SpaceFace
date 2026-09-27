@@ -54,17 +54,17 @@ html.sf-reduce-motion .orr-svg .orr-ltape__settle { animation:none; }
 .orr-svg .orr-ltape__axis-line { stroke:rgb(${BONE} / .5); }
 .orr-svg .orr-ltape__axis-band { --orr-w-band:7px; --orr-band-a:.27; stroke-linecap:butt; }
 .orr-svg .orr-ltape__axis-minor { stroke:rgb(${BONE} / .34); }
-.orr-ltape text.orr-ltape__key.orr-ltape__axis-n { fill:rgb(${BONE} / .72); font-size:11px; }
+.orr-ltape text.orr-ltape__key.orr-ltape__axis-n { fill:rgb(${BONE} / .72); font-size: 12px; }
 .orr-svg .orr-ltape__ghost-stem { stroke:rgb(${BONE} / .4); }
 .orr-svg .orr-ltape__ghost-bead { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1.5; }
 .orr-svg .orr-ltape__arc-headbloom { fill:rgb(248 244 234); opacity:.22; }
 .orr-svg .orr-ltape__arc-headbloom--out { fill:rgb(${BONE}); opacity:.14; }
 .orr-svg .orr-ltape__arc-bloom--out { opacity:.1; }
 .orr-ltape text.orr-ltape__figure.orr-ltape__foot-n, .orr-ltape__purse text.orr-ltape__figure.orr-ltape__foot-n { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-size:22px !important; font-weight:250; letter-spacing:-.01em; fill:rgb(248 244 234); }
-.orr-ltape text.orr-ltape__key.orr-ltape__foot-k, .orr-ltape__purse text.orr-ltape__key.orr-ltape__foot-k { font-size:11px; fill:rgb(${BONE} / .6); }
-.orr-ltape__purse text.orr-ltape__key { fill:rgb(${BONE} / .55); font-size:9px; }
+.orr-ltape text.orr-ltape__key.orr-ltape__foot-k, .orr-ltape__purse text.orr-ltape__key.orr-ltape__foot-k { font-size: 12px; fill:rgb(${BONE} / .6); }
+.orr-ltape__purse text.orr-ltape__key { fill:rgb(${BONE} / .55); font-size: 12px; }
 .orr-svg .orr-ltape__hand-drop { stroke:var(--dp-hand, #f2b950); }
-.orr-ltape text.orr-ltape__net-key, .orr-ltape__purse text.orr-ltape__net-key { font-size:9.5px; fill:rgb(${BONE} / .6); }
+.orr-ltape text.orr-ltape__net-key, .orr-ltape__purse text.orr-ltape__net-key { font-size: 12px; fill:rgb(${BONE} / .6); }
 .orr-ltape__purse text.orr-ltape__figure.orr-ltape__foot-n { fill:rgb(${BONE} / .76); }
 .orr-svg .orr-ltape__break { stroke:rgb(6 8 11); }
 .orr-ltape__pursehost { position:relative; display:block; }
@@ -74,13 +74,13 @@ html.sf-reduce-motion .orr-svg .orr-ltape__settle { animation:none; }
 .orr-ltape text.orr-ltape__ref-n { fill:rgb(${BONE} / .5); }
 .orr-svg .orr-ltape__cursor { stroke:rgb(248 244 234); }
 .orr-svg .orr-ltape__cursor-bloom { stroke:rgb(248 244 234); opacity:.22; }
-.orr-ltape text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; fill:rgb(${BONE} / .6); paint-order:stroke; stroke:rgb(6 8 11 / .92); stroke-width:3px; stroke-linejoin:round; }
+.orr-ltape text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.14em; text-transform:uppercase; fill:rgb(${BONE} / .6); paint-order:stroke; stroke:rgb(6 8 11 / .92); stroke-width:3px; stroke-linejoin:round; }
 .orr-ltape text.orr-ltape__figure { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:500; font-size:12px; letter-spacing:.02em; text-transform:none; fill:rgb(248 244 234); font-variant-numeric:tabular-nums; }
 .orr-ltape text.orr-ltape__figure--out { fill:rgb(${BONE}); }
 .orr-ltape text.orr-ltape__cycle--now { fill:rgb(248 244 234 / .8); }
 .orr-ltape text.orr-ltape__net, .orr-ltape__purse text.orr-ltape__net { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250; font-size:22px; letter-spacing:-.01em; text-transform:none; fill:rgb(248 244 234); font-variant-numeric:tabular-nums; }
-.orr-ltape text.orr-ltape__key { fill:rgb(${BONE} / .55); font-size:8.5px; }
-.orr-ltape text.orr-ltape__cycle { fill:rgb(${BONE} / .66); font-size:10.5px; }
+.orr-ltape text.orr-ltape__key { fill:rgb(${BONE} / .55); font-size: 12px; }
+.orr-ltape text.orr-ltape__cycle { fill:rgb(${BONE} / .66); font-size: 12px; }
 /* the purse gauge: a band track under an edge, the sums as lit values with beads */
 .orr-svg .orr-ltape__arc-track { --orr-w-band:8px; --orr-band-a:.28; --orr-edge-a:.6; }
 .orr-svg .orr-ltape__arc-zero { stroke:rgb(${BONE} / .6); }

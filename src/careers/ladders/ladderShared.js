@@ -55,6 +55,7 @@ export const LADDER_REWARD_EVENTS = Object.freeze({
   GRANT_CREDITS: 'economy:grantCredits',
   CHARGE_CREDITS: 'economy:chargeCredits',
   REP_DELTA: 'faction:repDelta',
+  GRANT_MODULE: 'ships:grantModule',
 });
 
 /** Intent-shaped reward object keys only (never direct owner writes). */

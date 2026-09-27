@@ -177,12 +177,19 @@ function sourcePointId(payload, wreck) {
 
 function entityForSalvagePoint(state, salvagePointId) {
   if (!salvagePointId) return null;
-  const list = indexedTypeScan(state, 'wrecks');
-  for (let i = 0; i < list.length; i++) {
-    const entity = list[i];
-    if (entity && entity.alive !== false
-      && entity.data && String(entity.data.salvagePointId || '') === String(salvagePointId)) {
-      return entity;
+  // POI wreck markers (e.g. poi_charon_tether_wreck) are spawned as type 'fx', not 'wreck',
+  // so the rebind domain is the wrecks bucket plus fx markers carrying salvagePointId.
+  const index = state && state.entityIndex;
+  const indexed = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Array.isArray(index.wrecks) && Array.isArray(index.fx));
+  const lists = indexed ? [index.wrecks, index.fx] : [indexedTypeScan(state, 'wrecks')];
+  for (const list of lists) {
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (entity && entity.alive !== false
+        && entity.data && String(entity.data.salvagePointId || '') === String(salvagePointId)) {
+        return entity;
+      }
     }
   }
   return null;

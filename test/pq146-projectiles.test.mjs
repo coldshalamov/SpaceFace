@@ -13,6 +13,7 @@ import { stuntGrammar } from '../src/systems/stuntGrammar.js';
 import { compileAttackSpec } from '../src/combat/attackSpec.js';
 import { createLineage } from '../src/combat/attackLineage.js';
 import { WEAPONS } from '../src/data/weapons.js';
+import { modelTruthBoltRadius } from '../src/data/modelTruth.js';
 import { bodyLife,journalFor } from '../src/combat/stuntEvidence.js';
 import { sampleProjectileEvidence,serializeProjectileEvidence,restoreProjectileEvidence } from '../src/combat/stuntProjectileEvidence.js';
 const DT=1/60;
@@ -21,7 +22,7 @@ const spawn=spec=>{const e=makeEntity({id:nextId++,data:{},...spec});state.entit
 const helpers={hash32,mulberry32,getEntity:id=>state.entities.get(id),spawnEntity:spawn};const gun=Object.create(weapons);gun.init({state,bus,helpers});const kernel=createCombatKernel({state,bus,helpers});const fighting=Object.create(combat);Object.assign(fighting,{state,bus,helpers,kernel});bus.on('projectile:hit',p=>fighting.onHit(p));const grammar=Object.create(stuntGrammar);grammar.init({state,bus});const sim=Object.create(physics);sim.init({state,bus,helpers});sim._sg02=await createSg02DynamicBodyOwner({mode:'rapier-dynamic',fixedDt:DT});
 return {state,bus,events,spawn,player,gun,kernel,sim,grammar,step(n=1){for(let i=0;i<n;i++){state.tick++;state.simTime=state.tick/60;for(const e of state.entityList)e.prevPos.copy(e.pos);sampleProjectileEvidence(state,bus);sim.update(DT,state);}},fire(owner,dir,{bank=false,weapon='wpn_siege_lance_l'}={}){const def=WEAPONS.find(w=>w.id===weapon),w={defId:def.id};const result=compileAttackSpec({weaponId:def.id,modifiers:bank?[['mod_bank_shot',1]]:[]});assert.equal(result.ok,true,JSON.stringify(result.issues));const spec=result.spec,lineage=createLineage({spec,createdTick:state.tick,sourceEntityId:owner.id});gun._spawnProjectile(owner,w,def,dir,null,false,state,{spec,liveRuntime:lineage});return state.entityList.at(-1);},close(){gun.destroy();grammar.destroy();kernel.destroy?.();sim._sg02.dispose();}};}
 async function bankScene({fly=true,cover=true}={}){const s=await scene();s.player.vel.x=60;s.step(20);if(fly){s.sim._sg02.applyImpulse({entityId:0,impulse:{x:-960,z:960},provenance:{actorId:0},tick:s.state.tick,reason:'flight'});s.step(20);}else{s.step(20);}
-const px=s.player.pos.x,pz=s.player.pos.z,combined=10.7,off=7.071067811865475,hit=100-Math.sqrt(combined**2-off**2),nx=(hit-100)/combined,nz=-off/combined,ox=1-2*nx*nx,oz=-2*nx*nz;
+const px=s.player.pos.x,pz=s.player.pos.z,combined=10+modelTruthBoltRadius(s.player),off=7.071067811865475,hit=100-Math.sqrt(combined**2-off**2),nx=(hit-100)/combined,nz=-off/combined,ox=1-2*nx*nx,oz=-2*nx*nz;
 s.plate=s.spawn({type:'station',team:2,pos:{x:px+100,z:pz+off},radius:10,mass:1000,hull:10000,hullMax:10000,surfaceMaterial:'reflective',data:{}});
 s.target=s.spawn({type:'ship',team:1,pos:{x:px+hit+ox*60,z:pz+oz*60},radius:5,mass:16,hull:100,hullMax:100,data:{encounter:{id:'projectile-proof'}}});
 if(cover)s.spawn({type:'asteroid',pos:{x:px+50,z:pz+oz*30},radius:13,mass:1000,data:{}});

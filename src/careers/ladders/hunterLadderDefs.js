@@ -216,6 +216,16 @@ export const HUNTER_LADDER_DEF = Object.freeze({
       }),
       rewards: Object.freeze({
         credits: 180,
+        intents: Object.freeze([
+          // PQ-133.11 — the step teaches Twin Mount; it must also hand the Rig over.
+          Object.freeze({
+            event: LADDER_REWARD_EVENTS.GRANT_MODULE,
+            payload: Object.freeze({
+              defId: 'mod_twin_mount',
+              reason: 'career:ladder:hunter:doctrine_pursuit',
+            }),
+          }),
+        ]),
       }),
       params: Object.freeze({
         pursuitContactTicks: HUNTER_LADDER_PURSUIT_CONTACT_TICKS,

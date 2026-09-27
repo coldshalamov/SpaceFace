@@ -224,7 +224,7 @@ export const core = {
     state.meta.playtimeS += dt;
     const index = ensureEntityIndex(state);
     reconcileEntityIndexSource(index, state.entityList);
-    refreshVolatileEntityIndex(index);
+    refreshVolatileEntityIndex(index, state.tick);
     beginDirtyTick(state, state.tick);
     const movables = index.movables;
     for (const e of movables) {
@@ -285,6 +285,10 @@ export const core = {
       pos: { x: e.pos.x, z: e.pos.z },
       radius: e.radius,
       factionId: e.factionId,
+      // The entity object itself: ids recycle, and a queued receipt can flush after a different
+      // occupant took the id. Subscribers that key on identity (spawnBudget's slot release)
+      // compare this ref, not the id alone.
+      entity: e,
     };
     if (opts && opts.reason) destroyed.reason = opts.reason;
     this.bus.queue('entity:destroyed', destroyed);
@@ -463,8 +467,10 @@ function repairEntityIndex(index) {
   }
   if (!Array.isArray(index.statics)) index.statics = [];
   if (!Array.isArray(index.damageables)) index.damageables = [];
-  if (!Array.isArray(index.aiShips)) index.aiShips = [];
-  if (!Array.isArray(index.weaponShips)) index.weaponShips = [];
+  // Repairing a volatile lane leaves it valid-but-empty; force the next refresh
+  // to rebuild rather than wait out the cadence on a corrupt index.
+  if (!Array.isArray(index.aiShips)) { index.aiShips = []; index._volatileReady = false; }
+  if (!Array.isArray(index.weaponShips)) { index.weaponShips = []; index._volatileReady = false; }
   if (!Array.isArray(index.collidables)) index.collidables = [];
   if (!Array.isArray(index.spatialStatics)) index.spatialStatics = [];
   if (!Array.isArray(index.spatialDynamics)) index.spatialDynamics = [];
@@ -521,6 +527,7 @@ function clearEntityIndex(index) {
   index.radarAsteroids.length = 0;
   index.byStationId.clear();
   index._indexedIds.clear();
+  index._volatileReady = false;
 }
 
 function appendEntityIndex(index, e) {
@@ -716,14 +723,30 @@ function markEntityIndexSourceSynced(index, list) {
   index._sourceLength = list.length;
 }
 
-function refreshVolatileEntityIndex(index) {
+// Mid-life ai/weapons attach without a spawn/despawn is rare. append/remove already keep
+// aiShips/weaponShips correct for membership. Rebuilding every preStep was O(ships) on the
+// quiet registry pole; catch up on a fixed cadence so a hot attach still lands within a few
+// ticks without paying the walk 60 Hz.
+const VOLATILE_INDEX_PERIOD_TICKS = 8;
+
+function refreshVolatileEntityIndex(index, tick = 0) {
+  if (!index || !index.__spacefaceEntityIndexV1) return false;
+  if (index._volatileReady === true) {
+    const period = VOLATILE_INDEX_PERIOD_TICKS;
+    const t = Number.isInteger(tick) ? tick : Math.floor(Number(tick) || 0);
+    if (((t % period) + period) % period !== 0) return false;
+  }
   index.aiShips.length = 0;
   index.weaponShips.length = 0;
-  for (const e of index.ships) {
+  const ships = index.ships;
+  for (let i = 0; i < ships.length; i++) {
+    const e = ships[i];
     if (!e || !e.alive || e.type !== 'ship') continue;
     if (e.data && e.data.ai) index.aiShips.push(e);
     if (e.data && e.data.weapons && e.data.weapons.length) index.weaponShips.push(e);
   }
+  index._volatileReady = true;
+  return true;
 }
 
 function isMovableEntity(e) {

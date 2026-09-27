@@ -32,6 +32,47 @@ never square noise cells. Randomness selects stable per-deployment character; di
 radius, speed, contact and lifecycle select the composition. Repeated shots can vary in curl,
 reach and timing while preserving the readable verb. Simulation RNG is never consumed.
 
+**Body and rupture rebuild (owner correction, 2026-09-27).** The September 25 pass was
+rejected: thin filaments, flat powers and interchangeable ball-puff explosions miss the bar.
+Translucent does not mean wire-thin. Special energy must occupy a substantial, evolving volume:
+broad luminous material, darker moving channels, hot folded crests and enough depth to survive
+an oblique view. Gaps belong to purposeful breaks in the form. A few threads spread around a
+large empty radius do not make a powerful effect. Read without bloom; gain radiance with bloom
+without becoming an opaque neon object.
+
+Distinguish construction and timing, not only palette. Gravity feeds unequal rolled intake
+channels into a throat; pressure bends a broad front then peels it apart; directed energy carries
+mass through a cross-section; viscous matter stretches connected membranes. Rock fractures into
+mineral fans, armor tears directionally, reactors rupture a cavity with asymmetric plasma tongues,
+and volatile fuel rolls through burning sheets. These are different causal silhouettes with
+anticipation, release, secondary transport, cooling and termination. Spherical combustion pockets
+are not a default foundation for all destruction.
+
+Filter continuous edges and unresolved frequencies instead of sparkling pixels. Stable event
+seeds choose curl, rupture openings and timing; source size, velocity, direction and material
+choose the composition. Simulation RNG is never consumed. Quarks carries bounded supporting
+parcels and solid debris; it complements the large form rather than substituting generic glitter.
+Power-off removes the active boundary while residue continues on a decelerating clock. Pause and
+reduced-motion/flash remain authoritative.
+
+**Choreography correction (2026-09-27).** Reject the obvious grow–spin–shrink loop, including
+a brief geometric build followed by a motionless form with scrolling detail. Parts need unequal
+arrival times, differential motion, and interactions that emerge after contributing streams meet.
+Release stops supply; surviving material travels, separates, cools and dissipates instead of
+replaying birth backward. Nearby hulls and asteroids should locally divert flow and receive contact
+reactions where appropriate. Keep those decorative deformations separate from the true force range.
+The [lifecycle standard](./VFX_LIFECYCLE_STANDARD.md) records this replacement contract.
+
+Seven further action responses cover boost preparation, reactor venting, cargo caught in a net,
+rich-core extraction, a failed rich-core charge, mine arming and mine detonation. They use the existing production event bus
+and real body/contact anchors, with the same pause, rebasing, cleanup and accessibility rules.
+
+Use the [primitive composition guide](./VFX_PRIMITIVE_GUIDE.md) for the shared material vocabulary,
+receipt/port attachment rules, and adding a new effect without another renderer.
+
+Use the [ship-context lab workflow](./VFX_LAB_WORKFLOW.md) for repeatable multi-frame review
+beside released ship and asteroid assets. Its scenario code imports the production effect owners.
+
 The September renewal adds twelve reaction routes in `src/render/actionVfx.js`: capture, fling,
 grind, hitch latch/cut, specialist disruption, chain priming/end, charge combo, repair, transfer,
 and bomb command. This is +24.5% against the audited 49 directly subscribed visible-event

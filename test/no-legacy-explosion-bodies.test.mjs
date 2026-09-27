@@ -68,7 +68,8 @@ test('explosion residue uses the irregular smoke role instead of the circular ad
     'puff events must enter the bounded far-to-near smoke order');
   assert.match(source, /writeInstancedSpriteFields\(\s*this\._spriteBatches,\s*'smoke'/,
     'ordered puffs must route through the allocation-free irregular smoke bucket writer');
-  assert.match(source, /function makeSmokeTexture\(\)/);
+  assert.match(source, /if \(!this\._explosionRupture\) this\._emitGasAftermath\(/,
+    'legacy smoke remains a fallback, not a second envelope over the new material body');
 });
 
 test('primary rupture and pressure remain non-ring while bright cores stay directional', () => {

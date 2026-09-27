@@ -44,11 +44,11 @@ export const FORCE_FAMILIES = freeze({
 });
 
 export const FIELD_SIGNATURES = freeze({
-  seed: { lifecycle: FIELD_LIFECYCLES.seed, family: 'metric', name: 'Seed / frame lock', shape: 'articulated lock crown', motion: 'cast open → close opposing jaws → reciprocating lock strokes → fold and erode', mode: 'constraint', color: 0x54e5ed, accent: 0xffc36c, surfaces: 16 },
-  well: { lifecycle: FIELD_LIFECYCLES.well, family: 'metric', name: 'Well', shape: 'five unequal inward scythes around an empty throat', motion: 'unfurl from the source → continuously turning inward folds → wind down into the throat', mode: 'inward', color: 0x58bdff, accent: 0xb9a2ff, surfaces: 19 },
-  repulsor: { lifecycle: FIELD_LIFECYCLES.repulsor, family: 'metric', name: 'Repulsor', shape: 'nested broken pressure shells and splayed ribs', motion: 'open pressure bowls → repeated outward crests → shells crack, lift and cool; never implosion', mode: 'outward', color: 0xffb766, accent: 0xffe1a4, surfaces: 23 },
-  cone: { lifecycle: FIELD_LIFECYCLES.cone, family: 'metric', name: 'Cone', shape: 'diverging banks with bowed transverse fronts', motion: 'grow from the aperture → forward transport within the real sector → source-to-tip peel', mode: 'forward', color: 0x54e5ed, accent: 0xb7f5ff, surfaces: 14 },
-  sheet: { lifecycle: FIELD_LIFECYCLES.sheet, family: 'metric', name: 'Skim', shape: 'parallel intake banks and inward-facing scoops', motion: 'extend parallel banks → repeated intake strokes toward the centerline → banks fold and dissolve', mode: 'collect', color: 0x79f0c8, accent: 0xd9ffe0, surfaces: 18 },
+  seed: { lifecycle: FIELD_LIFECYCLES.seed, family: 'metric', name: 'Seed / frame lock', shape: 'unequal open anchor roots with late cross-load bridges', motion: 'staggered jaw engagement → independent ratchets → separate, unload and cool', mode: 'constraint', color: 0x54e5ed, accent: 0xffc36c, surfaces: 12 },
+  well: { lifecycle: FIELD_LIFECYCLES.well, family: 'metric', name: 'Well', shape: 'unequal inward channels around an empty throat', motion: 'outer intake arrives → differential shear and mature counterflow → supply stops and remaining material drains', mode: 'inward', color: 0x58bdff, accent: 0xb9a2ff, surfaces: 19 },
+  repulsor: { lifecycle: FIELD_LIFECYCLES.repulsor, family: 'metric', name: 'Repulsor', shape: 'separated bowed pressure crests and splayed ribs', motion: 'fronts arrive independently → outward crests buckle at contacts → coast, peel and cool', mode: 'outward', color: 0xffb766, accent: 0xffe1a4, surfaces: 23 },
+  cone: { lifecycle: FIELD_LIFECYCLES.cone, family: 'metric', name: 'Cone', shape: 'diverging banks with bowed transverse fronts', motion: 'source-to-tip arrival → unequal forward transport and countercurrents → cutoff overtakes remaining material', mode: 'forward', color: 0x54e5ed, accent: 0xb7f5ff, surfaces: 14 },
+  sheet: { lifecycle: FIELD_LIFECYCLES.sheet, family: 'metric', name: 'Skim', shape: 'parallel intake banks and inward-facing scoops', motion: 'staggered intake → unequal strokes and delayed return eddies → shed downstream and dissipate', mode: 'collect', color: 0x79f0c8, accent: 0xd9ffe0, surfaces: 18 },
 });
 
 export function fieldSignature(kind) {

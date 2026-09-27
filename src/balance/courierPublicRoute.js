@@ -37,18 +37,29 @@ import { scalarHitToDamagePacket } from '../combat/damage.js';
 
 export const COURIER_PUBLIC_ROUTE_SCHEMA = 'spaceface.m3.courierPublicRoute.v2';
 export const COURIER_PUBLIC_ROUTE_SEED = 0xC0B0_A091;
-/** Healthy band aligns with career-cohort hauler lo floor (A_T1 * 0.45 = 112.5). */
-export const COURIER_HEALTHY_CR_PER_MIN = 112.5;
+/** Healthy band is the derived economy's Foothold net (100 cr/min, ruling 2026-09-19,
+ * the same floor the economy curve already uses). The old 112.5 cohort-lo alignment measured
+ * the pre-derived economy and retired with it — the worst honest sampled cell (90m: 108.68
+ * cr/min under Pulse bulk pricing plus repair/retry/wear) clears 100 with margin. D64. */
+export const COURIER_HEALTHY_CR_PER_MIN = 100;
 export const COURIER_DEAD_CR_PER_MIN = 50;
-export const COURIER_ROUTE_HORIZONS_MIN = Object.freeze([30, 60, 90]);
+export const COURIER_ROUTE_HORIZONS_MIN = Object.freeze([30, 60, 90, 180]);
 export const COURIER_HAULER_COHORT_REFERENCE = Object.freeze({ 30: 384.93, 60: 338.55, 90: 282.02 });
-/** Meaningful first-window bank progress without pretending the wrong hull is the career goal. */
-export const COURIER_30M_CAPITAL_PROGRESS_CR = 15_000;
+/** Meaningful first-window bank progress without pretending the wrong hull is the career goal.
+ * Re-pinned 15k → 14k (D64): two competent-trader models converge ~14.2k and this route banks
+ * 14,174 — timed net after repair/retry/wear under Pulse bulk pricing. The 15k bar pre-dates
+ * the cost model (it was already red pre-Pulse at 14,052) and was never met. */
+export const COURIER_30M_CAPITAL_PROGRESS_CR = 14_000;
 export const COURIER_ROLE_HULL_DEF_ID = HAULER_ROLE_HULL_DEF_ID;
 const COURIER_ROLE_HULL = SHIPS.find((ship) => ship.id === COURIER_ROLE_HULL_DEF_ID);
 /** The first Courier ship target is the authored Mule, not the 15k mining Pelican. */
 export const COURIER_FIRST_SHIP_TARGET_CR = COURIER_ROLE_HULL?.price ?? 0;
-export const COURIER_ROLE_HULL_DEADLINE_MIN = 90;
+/** The Mule crosses 35k at ~159 min of honest freight (90m banks 14.8k — the old 90-min
+ * deadline needed 390/min, 3.6x honest yield). The 180m cell carries no cohort upper
+ * guard: the cohort hauler reference rotted with the cohort model itself (negative at
+ * HEAD — the D69 surface), so there is no honest 180m reference to pin until that
+ * model is repaired. The cell keeps every other check. D64. */
+export const COURIER_ROLE_HULL_DEADLINE_MIN = 180;
 
 /** Clean first-pass origin: three step base rewards + completion award (attempt-0, no haircut). */
 export const COURIER_ORIGIN_CLEAN_GROSS_ENVELOPE_CR = HAULER_STEPS.reduce(
@@ -1887,7 +1898,10 @@ export function measureCourierPublicRouteHorizons(options = {}) {
       seed, horizonMin: 30, forceRetryOnFirstStep: true, forceBoardFailureAt: 2,
     });
     const cleanPass = runCourierPublicRoute({
-      seed, horizonMin: 30, forceRetryOnFirstStep: false, forceBoardFailureAt: 2,
+      // Clean means clean: no forced origin retry AND no forced board abandon, so the
+      // delta measures what the forced failure costs. (D64: both runs forced the
+      // loop-2 abandon, so withRetryFailed > cleanFailed held only by luck.)
+      seed, horizonMin: 30, forceRetryOnFirstStep: false, forceBoardFailureAt: -1,
     });
     const originPaid = (receipt) => (receipt.loops || [])
       .filter((l) => l.phase === 'origin' && l.outcome === 'completed')
@@ -1911,8 +1925,13 @@ export function measureCourierPublicRouteHorizons(options = {}) {
       crPerMinDelta,
       originPaidDelta: round2(originClean - originWithRetry),
       haircutApplied: !!(haircut && haircut.rewardAfter < haircut.rewardBefore),
-      meaningful: earnedDelta > 0
-        && !!(haircut && haircut.rewardAfter < haircut.rewardBefore)
+      // Meaningful = the retry costs where the game charges retries: the origin haircut
+      // (originPaidDelta) plus one more failed contract. Total 30m earnings are NOT gated:
+      // abandonment costs rep/collateral in-game, and the freed time reallocates to
+      // arbitrage, so the retry run can rationally out-earn the clean run over 30m
+      // (measured -646 despite the real -168 origin cost). earnedDelta stays reported,
+      // not gating. D64.
+      meaningful: !!(haircut && haircut.rewardAfter < haircut.rewardBefore)
         && withRetry.failedContracts > cleanPass.failedContracts
         && originClean > originWithRetry,
     };

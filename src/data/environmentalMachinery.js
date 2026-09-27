@@ -5,6 +5,7 @@
 // the saved simulation clock. No timer, random source, or visit-local state can reset the cycle.
 
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
+import { hash32, mulberry32 } from '../core/rng.js';
 
 export const CINDER_SLUICE_SITE_ID = 'world_site_ceres_cinder_sluice';
 export const CINDER_SLUICE_SECTOR_ID = 'sector_ceres_belt';
@@ -157,14 +158,21 @@ function freezeVec(x, z) {
   return Object.freeze({ x, z });
 }
 
+const MACHINE_FIELD_REGION_BY_SECTOR = Object.freeze({
+  sector_ceres_belt: 'ceres',
+  sector_helios_prime: 'helios',
+  sector_sker_haven: 'sker',
+});
+
 function buildKillMachine({
   id, hazardType, placeId, localPos, rot, phaseOffsetS, anvil, fields, hazardRadius,
+  mouth = null,
   sectorId = KILL_MACHINE_SECTOR_ID,
 }) {
   const dir = freezeVec(Math.cos(rot), Math.sin(rot));
   const perp = freezeVec(-dir.z, dir.x);
   const globalPos = Object.freeze(sectorLocalToGlobalForSector(localPos, sectorId));
-  const fieldRegion = sectorId === 'sector_helios_prime' ? 'helios' : 'ceres';
+  const fieldRegion = MACHINE_FIELD_REGION_BY_SECTOR[sectorId] || 'ceres';
   const anvilAlong = finite(anvil.along);
   const anvilAcross = finite(anvil.across);
   return Object.freeze({
@@ -202,6 +210,13 @@ function buildKillMachine({
       across: finite(field.across),
       dirAlong: field.dirAlong == null ? 1 : field.dirAlong,
     }))),
+    // A machine that names a `mouth` asks the adapter to spawn its placeId shell once per
+    // visit (sectors without authored dressing rows); Ceres mouths stay null — their bodies
+    // come from occupationalYardDressing.js.
+    mouth: mouth ? Object.freeze({
+      name: String(mouth.name),
+      radius: positive(mouth.radius, 18),
+    }) : null,
   });
 }
 
@@ -292,6 +307,7 @@ export const STARTER_FIELD_MACHINE = buildKillMachine({
   phaseOffsetS: 0,
   hazardRadius: 96,
   anvil: { radius: 22, mass: 11000, along: 64, across: 0 },
+  mouth: { name: 'Claim Cracker', radius: 18 },
   fields: [{
     idSuffix: 'intake',
     kind: 'cone',
@@ -306,9 +322,49 @@ export const STARTER_FIELD_MACHINE = buildKillMachine({
   }],
 });
 
+// CR-FEED — one scrap baler in Sker Haven's open water, south-west of the Bazaar, outside every
+// authored zone and clear of the gate-camp, the Press-Gang seams, and the Skerris Throne.
+// Where the Ceres and Helios mouths drive a directional cone or sheet down a lane, the baler is
+// a compactor: its intake is a WELL centred
+// on the anvil itself, so it gathers loose mass from every bearing and slams it into the press.
+// Warning still registers the volume at strength 0 and calm is still the safe window; the surge
+// is the same short bite, and a hull that boosts out across the rim escapes the gather.
+export const SKER_SCRAP_BALER_SECTOR_ID = 'sector_sker_haven';
+export const SKER_SCRAP_BALER = buildKillMachine({
+  id: 'sker_scrap_baler',
+  hazardType: 'debris',
+  placeId: 'place_crusher_module',
+  sectorId: SKER_SCRAP_BALER_SECTOR_ID,
+  localPos: { x: -200, z: -1400 },
+  rot: 0.95,
+  phaseOffsetS: 6,
+  hazardRadius: 130,
+  anvil: { radius: 22, mass: 11000, along: 0, across: 0 },
+  mouth: { name: 'Scrap Baler', radius: 18 },
+  fields: [{
+    idSuffix: 'intake',
+    kind: 'well',
+    strength: 560,
+    radius: 120,
+    falloff: 0.5,
+    along: 0,
+    across: 0,
+  }],
+});
+
+// Every machine the adapter owns, in one list: Ceres mouths, the Helios starter cracker, and
+// the Sker baler. Per-sector slices come from killMachinesForSector; this is the census the
+// runtime uses to retire fields and anvils when a sector deactivates or a machine is absent.
+export const ALL_KILL_MACHINES = Object.freeze([
+  ...KILL_MACHINES,
+  STARTER_FIELD_MACHINE,
+  SKER_SCRAP_BALER,
+]);
+
 export function killMachinesForSector(sectorId) {
   if (sectorId === KILL_MACHINE_SECTOR_ID) return KILL_MACHINES;
   if (sectorId === STARTER_FIELD_SECTOR_ID) return Object.freeze([STARTER_FIELD_MACHINE]);
+  if (sectorId === SKER_SCRAP_BALER_SECTOR_ID) return Object.freeze([SKER_SCRAP_BALER]);
   return Object.freeze([]);
 }
 
@@ -1037,4 +1093,110 @@ export function metronomeHazardZone() {
     radius: METRONOME_FIELD.radius + 60,
     intensity: 0.6,
   });
+}
+
+// H1f / C12 companion — the Ashfall Roaming Burn. sectors.js charts hazard_ashfall_burn as
+// `moving: true` and the ISC Lighthouse (D3) builds its whole approach on a "moving radiation
+// window", but the burn itself never moved: the flag was stamped onto the live hazard row and
+// the center stayed static, while the Lighthouse survey gate ran on a clock with no physical
+// cause. This table IS the burn, in the same law language as every machine above: pure off
+// saved simTime, no RNG draw at tick time, no visit-local state.
+//
+// ONE clock heart. The flare's vent/roar beat is phase-locked to the Lighthouse survey gate
+// (uniqueWreckComplications.movingRadiationGate) by mirroring that gate's deterministic phase
+// derivation exactly — same hash32 inputs, same mulberry32 draw — and by authoring the same
+// period/window into the wreck's hazardContext (src/data/uniqueWrecks.js). The focused test
+// pins gate.allowed === burn.venting across seeds and sim time, so the survey window and the
+// sky can never drift apart silently.
+export const ASHFALL_BURN_SECTOR_ID = 'sector_ashfall_reach';
+export const ASHFALL_BURN_HAZARD_ID = 'hazard_ashfall_burn';
+// The charted 2000 WU radius on the sector hazard row is this storm's ROAM ENVELOPE, not the
+// burn itself: the live burn is an 840 WU core that circles the envelope on the law below, so
+// the burn arrives, bites, and leaves instead of being a stationary pond.
+export const ASHFALL_BURN_ENVELOPE_RADIUS = 2000;
+export const ASHFALL_BURN_CORE_RADIUS = 840;
+export const ASHFALL_BURN_ORBIT_RADIUS = 950;
+export const ASHFALL_BURN_ROAM_PERIOD_S = 36;
+// The vent/roar beat: the survey gate reads the vent as its open window (venting), the roar is
+// when the burn bites at full authored intensity and the survey cannot read through it.
+export const ASHFALL_BURN_SURGE_PERIOD_S = 18;
+export const ASHFALL_BURN_VENT_WINDOW_S = 7;
+export const ASHFALL_BURN_EBB_INTENSITY_SCALE = 0.15;
+
+export const ASHFALL_BURN_CENTER_GLOBAL = Object.freeze(
+  sectorLocalToGlobalForSector({ x: 0, z: 0 }, ASHFALL_BURN_SECTOR_ID),
+);
+
+/** Same seed resolution as the survey gate: authored program seed, else the save seed. */
+export function ashfallBurnProgramSeed(state) {
+  return (Number(state && state.player && state.player.uniqueWrecks
+    && state.player.uniqueWrecks.programSeed) >>> 0)
+    || (Number(state && state.meta && state.meta.seed) >>> 0) || 1;
+}
+
+/**
+ * Mirror of uniqueWreckComplications.deterministicTimer's exact phase draw for the gate
+ * (`deterministicTimer(seed, 'wreck_isc_lighthouse', 'moving-radiation:phase',
+ * { minS: 0, maxS: SURGE_PERIOD_S, seedSalt: 'wreck_isc_lighthouse' })`). Keep the wreck id,
+ * label, and salt strings byte-identical to movingRadiationGate's call.
+ */
+export function ashfallBurnPhaseOffsetS(programSeed) {
+  const seed = hash32(
+    (Number(programSeed) >>> 0) || 1,
+    'wreck_isc_lighthouse',
+    'moving-radiation:phase',
+    'wreck_isc_lighthouse',
+  ) || 1;
+  const rng = mulberry32(seed);
+  return Math.round(rng() * ASHFALL_BURN_SURGE_PERIOD_S * 1000) / 1000;
+}
+
+const _ashfallCoreScratch = { x: 0, z: 0 };
+const _ashfallSurgeScratch = {};
+
+/** The burn core's exact position at simTime: one slow lap of the roam envelope. */
+export function ashfallBurnCoreAt(simTime, programSeed, out = null) {
+  const result = out || { x: 0, z: 0 };
+  const u = Math.PI * 2 * positiveModulo(
+    finite(simTime) + ashfallBurnPhaseOffsetS(programSeed),
+    ASHFALL_BURN_ROAM_PERIOD_S,
+  ) / ASHFALL_BURN_ROAM_PERIOD_S;
+  result.x = ASHFALL_BURN_CENTER_GLOBAL.x + Math.cos(u) * ASHFALL_BURN_ORBIT_RADIUS;
+  result.z = ASHFALL_BURN_CENTER_GLOBAL.z + Math.sin(u) * ASHFALL_BURN_ORBIT_RADIUS;
+  return result;
+}
+
+/** Vent/roar state at simTime — `venting` is the survey gate's open window, word for word. */
+export function ashfallBurnSurgeAt(simTime, programSeed, out = null) {
+  const result = out || {};
+  const phaseS = positiveModulo(
+    finite(simTime) + ashfallBurnPhaseOffsetS(programSeed),
+    ASHFALL_BURN_SURGE_PERIOD_S,
+  );
+  const venting = phaseS < ASHFALL_BURN_VENT_WINDOW_S;
+  result.venting = venting;
+  result.intensityScale = venting ? ASHFALL_BURN_EBB_INTENSITY_SCALE : 1;
+  result.phaseS = phaseS;
+  result.remainingS = venting
+    ? ASHFALL_BURN_VENT_WINDOW_S - phaseS
+    : ASHFALL_BURN_SURGE_PERIOD_S - phaseS;
+  result.periodS = ASHFALL_BURN_SURGE_PERIOD_S;
+  return result;
+}
+
+/**
+ * world.js tick adapter: resolve a live moving-hazard row from the law. Writes the row's
+ * center (the roaming core), its live body radius, and the vent/roar intensity scale the
+ * radiation tick multiplies in. Returns the row's venting state, or false for unknown ids
+ * so static hazards pay one flag check and nothing else.
+ */
+export function movingHazardTick(row, simTime, programSeed) {
+  if (!row || row.moving !== true || row.id !== ASHFALL_BURN_HAZARD_ID) return false;
+  ashfallBurnCoreAt(simTime, programSeed, _ashfallCoreScratch);
+  row.center.x = _ashfallCoreScratch.x;
+  row.center.z = _ashfallCoreScratch.z;
+  row.radius = ASHFALL_BURN_CORE_RADIUS;
+  const surge = ashfallBurnSurgeAt(simTime, programSeed, _ashfallSurgeScratch);
+  row.intensityScale = surge.intensityScale;
+  return surge.venting;
 }

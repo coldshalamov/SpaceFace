@@ -234,6 +234,8 @@ const CORE_SECTORS = [
         pos: { x: -330, z: 1060 },
         landmarkGlb: 'place_maintenance_gantry',
         visualRadius: 30,
+        // D54 hero-landmark scale: twin spires read ~110 WU, not a ship-sized prop.
+        placeTargetRadius: 110,
         factionId: 'faction_choir',
         scannerSignalKind: 'archive',
         flavorTargetRef: 'landmark_c13e_resonant_cathedral',
@@ -401,6 +403,8 @@ const CORE_SECTORS = [
         pos: { x: 300, z: -550 },
         landmarkGlb: 'place_dead_hulk',
         visualRadius: 34,
+        // D54 hero-landmark scale: the welded-hull fortress reads ~150 WU.
+        placeTargetRadius: 150,
         factionId: 'faction_reach',
         scannerSignalKind: 'archive',
         flavorTargetRef: 'landmark_c13d_skerris_throne',
@@ -455,6 +459,12 @@ const CORE_SECTORS = [
     ],
     hazards: [
       {
+        // The charted Roaming Burn. `radius` is the storm's ROAM ENVELOPE, not the burn body:
+        // the live burn is an 840 WU core that circles this envelope on the deterministic law
+        // in environmentalMachinery.js (ASHFALL_BURN_*), venting on the same clock heart as
+        // the ISC Lighthouse's survey window. world.js _resolveMovingHazards stamps the live
+        // center/radius/intensity scale every tick; `afterBossDefeat` still owns the base
+        // intensity (world.js _applyBossHazardAftermath).
         id: 'hazard_ashfall_burn', type: 'radiation', center: { x: 0, z: 0 }, radius: 2000,
         intensity: 0.8, moving: true,
         afterBossDefeat: { poiId: 'poi_boss', intensity: 0.35 },

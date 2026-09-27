@@ -91,8 +91,8 @@ const EXPECTED_COLLISION_ANCHORS = Object.freeze([
   }),
 ]);
 
-const PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH = 'cf3cb2c2d6706fa7682f11e453cdba1f893980cbcaadf1428014cc24cff6e9e7';
-const PRE_CLOSEOUT_UNAFFECTED_POSITION_HASH = '6e9660c489b8b096a671d47239ae4880ba9247b6cb13613fd74401873b3ec209';
+const PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH = '49c64a444f37edb99a7fb2648ad4de0a7592a6fd70ce330f9e42d43858830c42';
+const PRE_CLOSEOUT_UNAFFECTED_POSITION_HASH = 'de55c16a2f9f14594b902ef442f73008a1028e98f7ec53e4e6c3e8deb15f839a';
 
 test('R5A binds four camera-local pockets to PQ-020 canonical identities and anchors', () => {
   assert.deepEqual(CERES_ACTIVITY_POCKET_ORDER, EXPECTED_POCKETS);
@@ -514,10 +514,11 @@ test('R5B materializes six inert object slots and two existing-budget collision 
   assert.deepEqual(repeat.fullCeresSignature, first.fullCeresSignature,
     'same-seed rebuild must retain the complete live Ceres entity signature');
   assert.deepEqual(first.census, {
-    total: 42,
-    byType: { asteroid: 6, fx: 11, ship: 1, station: 6, wreck: 18 },
-    collidable: 22,
-    colliders: 22,
+    total: 24,
+    byType: { asteroid: 6, fx: 10, ship: 2, station: 6 },
+    collidable: 14,
+    colliders: 187,
+    opticCells: 42,
   }, 'a sixth logical object must still add no entity, type, or collider cost to full Ceres');
 
   assert.deepEqual(first.activity.map((row) => row.slotId).sort(), [...EXPECTED_OBJECT_SLOTS].sort());
@@ -624,9 +625,9 @@ test('R5B materializes six inert object slots and two existing-budget collision 
     'Ceres materialization must retain the complete pre-R5B content-stream draw count');
 
   assert.deepEqual(first.unaffectedRngSignature, [
-    [104, -12930.087603, 8742.364164],
-    [106, -11393.591553, 9264.164417],
-  ], 'unaffected tail positions fingerprint the original asteroid/dressing RNG cadence');
+    [104, -12856.74476, 8731.183742],
+    [106, -11499.07624, 9309.341134],
+  ], 'unaffected tail positions fingerprint the asteroid/dressing layout cadence');
   assert.equal(first.asteroidInvariantHash, PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH,
     'all per-rock type, mining, collider, size, motion, and seam properties remain byte-stable');
   assert.equal(first.unaffectedAsteroidPositionHash, PRE_CLOSEOUT_UNAFFECTED_POSITION_HASH,
@@ -779,12 +780,16 @@ function captureCeresActivityState(state, formationModel) {
     const recordId = String(entity.data?.worldRecordId || '');
     return sectorId === 'sector_ceres_belt' || recordId.startsWith('world_site_wreck_cathedral/');
   });
+  // Optic-structure lattice cells are authored set-piece colliders (opticStructures.js), not
+  // combat-list members — the gameplay census below deliberately counts around them.
+  const opticCells = entities.filter((entity) => entity.data?.opticStructureId).length;
+  const gameplay = entities.filter((entity) => !entity.data?.opticStructureId);
   const byType = {};
-  for (const entity of entities) byType[entity.type] = (byType[entity.type] || 0) + 1;
+  for (const entity of gameplay) byType[entity.type] = (byType[entity.type] || 0) + 1;
   const sortedByType = Object.fromEntries(
     Object.entries(byType).sort(([left], [right]) => left.localeCompare(right)),
   );
-  const collidable = entities.filter((entity) => entity.collides === true);
+  const collidable = gameplay.filter((entity) => entity.collides === true);
   const colliders = collidable.reduce((sum, entity) => {
     const manifest = resolveCollisionProxyManifest(entity);
     return sum + (manifest ? expandProxyPrimitives(manifest, { entity }).length : 1);
@@ -825,6 +830,9 @@ function captureCeresActivityState(state, formationModel) {
   const asteroids = [];
   forEachFieldRock(state, (entity) => {
     if (!entity || entity.alive === false) return;
+    // Optic-structure lattice cells share the asteroid type but are authored set pieces;
+    // the field-rock fingerprints below stay scoped to real rocks.
+    if (entity.data?.opticStructureId) return;
     const sectorId = entity.homeSectorId || entity.data?.homeSectorId || entity.data?.sectorId || null;
     if (sectorId === 'sector_ceres_belt') asteroids.push(entity);
   });
@@ -858,10 +866,11 @@ function captureCeresActivityState(state, formationModel) {
   };
   return {
     census: {
-      total: entities.length,
+      total: gameplay.length,
       byType: sortedByType,
       collidable: collidable.length,
       colliders,
+      opticCells,
     },
     activity,
     activityBySlot,

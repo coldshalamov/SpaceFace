@@ -26,16 +26,16 @@ const CSS = `
 .orr-deathdial__svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; }
 .orr-deathdial .orr-threat-fill { fill:var(--dp-danger, #ff5038); }
 .orr-deathdial__caption { position:absolute; box-sizing:border-box; text-align:center; }
-.orr-deathdial__k { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11px; letter-spacing:.28em;
+.orr-deathdial__k { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:12px; letter-spacing:.28em;
   text-transform:uppercase; color:rgb(255 120 96 / .92); margin:0 0 6px; }
 .orr-deathdial__name { font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 760, "wdth" 120; font-size:22px; line-height:1.1;
   color:rgb(246 241 230); margin:0; text-wrap:balance; text-shadow:0 1px 0 rgb(0 0 0 / .6), 0 0 16px rgb(0 0 0 / .8); }
 .orr-deathdial__detail { font-size:13px; line-height:1.4; color:rgb(236 230 216 / .8); margin:6px 0 0; text-shadow:0 0 10px rgb(0 0 0 / .8); }
 .orr-deathdial__warn { font-size:12.5px; line-height:1.35; color:rgb(236 230 216 / .7); margin:4px 0 0; }
 .orr-deathdial__strip { display:block; margin:14px auto 0; overflow:visible; }
-.orr-deathdial__strip text { font-family:var(--dp-face-label, "Archivo"); font-size:10.5px; font-weight:650; fill:rgb(255 150 128 / .92); }
-.orr-deathdial__strip text.orr-deathdial__strip-word { font-size:10px; letter-spacing:.24em; fill:rgb(236 230 216 / .6); }
-.orr-deathdial__strip text.orr-deathdial__strip-who { font-size:9.5px; letter-spacing:.08em; fill:rgb(236 230 216 / .66); }
+.orr-deathdial__strip text { font-family:var(--dp-face-label, "Archivo"); font-size:12px; font-weight:650; fill:rgb(255 150 128 / .92); }
+.orr-deathdial__strip text.orr-deathdial__strip-word { font-size:12px; letter-spacing:.24em; fill:rgb(236 230 216 / .6); }
+.orr-deathdial__strip text.orr-deathdial__strip-who { font-size:12px; letter-spacing:.08em; fill:rgb(236 230 216 / .66); }
 .orr-deathdial__groups { font-size:12px; line-height:1.4; color:rgb(255 150 128 / .86); margin:6px 0 0; }
 /* a short plate gives the dial the room: the legend's initials already sit under the ticks */
 @media (max-height:820px) {
@@ -46,8 +46,8 @@ const CSS = `
 .orr-deathdial__vitals[hidden] { display:none; }
 .orr-deathdial .orr-deathdial__gauge text { font-weight:650; letter-spacing:.14em; fill:rgb(236 230 216 / .78); }
 .orr-deathdial .orr-deathdial__gauge.is-empty text { fill:rgb(255 140 118 / .92); }
-.orr-deathdial .orr-deathdial__card text { font-size:10px; font-weight:650; letter-spacing:.3em; fill:rgb(236 230 216 / .52); }
-.orr-deathdial .orr-deathdial__engrave text { font-size:10px; font-weight:650; letter-spacing:.3em; fill:rgb(236 230 216 / .5); }
+.orr-deathdial .orr-deathdial__card text { font-size:12px; font-weight:650; letter-spacing:.3em; fill:rgb(236 230 216 / .52); }
+.orr-deathdial .orr-deathdial__engrave text { font-size:12px; font-weight:650; letter-spacing:.3em; fill:rgb(236 230 216 / .5); }
 .orr-deathdial__rise { opacity:0; animation:orr-dd-rise .6s var(--dp-ease-out, ease-out) forwards; animation-delay:var(--orr-delay, 0ms); }
 @keyframes orr-dd-rise { to { opacity:1; } }
 .orr-deathdial__blade { animation:orr-dd-strike .7s cubic-bezier(.2, .9, .2, 1) .5s both; transform-box:view-box; }
@@ -208,7 +208,7 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
     // (circularText centres its words a quarter-turn on from where its path starts)
     const ringWord = (r, deg, text, className) => {
       const upright = deg > 90 && deg < 270;
-      return circularText(cx, cy, r, text, { startDeg: upright ? deg + 90 : deg - 90, size: 10, anchor: 'middle', upright, className });
+      return circularText(cx, cy, r, text, { startDeg: upright ? deg + 90 : deg - 90, size: 12, anchor: 'middle', upright, className });
     };
 
     // the danger wedge first, under everything: 20 degrees from the centre to the rim
@@ -248,7 +248,7 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
       // the label runs along the gauge's first stretch; the track and the reading start after it
       // the name and reading run along the outside of the gauge's first stretch, between it and the
       // next gauge out; the track runs the whole way under them
-      const fs = 10;
+      const fs = 12;
       const rl = r + (Rc < 170 ? 9 : 12);
       const labelSpan = Math.min(140, (((String(vital.word).length + 5) * fs * 0.8) / rl) * (180 / Math.PI));
       const t0 = a0;

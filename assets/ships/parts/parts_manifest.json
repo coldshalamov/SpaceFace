@@ -2822,7 +2822,7 @@
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
       "tris": 30518,
-      "bytes": 5456424,
+      "bytes": 5456528,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull"
@@ -2929,8 +2929,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_dock_interior.glb",
-      "tris": 22452,
-      "bytes": 23024444,
+      "tris": 21912,
+      "bytes": 22969332,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

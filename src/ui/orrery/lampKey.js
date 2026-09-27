@@ -75,9 +75,9 @@ const CSS = `
 .orr-lampkey.is-holding .orr-lampkey__bead { opacity:1; }
 /* the word under the key's left edge */
 .orr-lampkey .orr-lampkey__note { position:absolute; left:100%; right:auto; top:50%; transform:translateY(-50%); margin:0 0 0 18px; width:auto; text-align:left; pointer-events:none;
-  font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .62); white-space:nowrap; }
+  font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .62); white-space:nowrap; }
 .orr-lampkey.orr-lampkey--small { min-height:38px !important; font-size:13.5px !important; }
-.orr-lampkey.orr-lampkey--small .orr-lampkey__note { margin-left:14px; font-size:10px; }
+.orr-lampkey.orr-lampkey--small .orr-lampkey__note { margin-left:14px; font-size: 12px; }
 html.sf-reduce-motion .orr-lampkey::after { animation:none; }
 `;
 

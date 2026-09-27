@@ -161,8 +161,8 @@ test('synthetic shader precompile creates zero authored asset residency demand',
     'the production precompile teardown must not dispose retained VFX program owners');
   assert.deepEqual(lateWorldOwners.sort(), ['SF_Precompile_L5b_Wormhole', 'Spindle_Locked_Core_Glow']);
   assert.deepEqual(retainedPipelineOwners.sort(), [
-    'authored-opaque-clearcoat', 'authored-opaque-clearcoat-transmission',
-    'authored-opaque-standard', 'bomb-telegraph', 'common-rock-instanced-pbr', 'hitch-main-plume',
+    'action-primitives', 'authored-opaque-clearcoat', 'authored-opaque-clearcoat-transmission',
+    'authored-opaque-standard', 'bomb-accretion', 'bomb-telegraph', 'common-rock-instanced-pbr', 'hitch-main-plume',
     'ship-shield-bubble', 'vfx-salvo',
   ]);
   assert.deepEqual(retainedAuthoredOpaquePipelines.sort((a, b) => a.id.localeCompare(b.id)), [
@@ -193,8 +193,8 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   assert.deepEqual(
     getPrecompileKeepAliveDiagnostics(renderer).retainedPipelines.sort(),
     [
-      'authored-opaque-clearcoat', 'authored-opaque-clearcoat-transmission',
-      'authored-opaque-standard', 'bomb-telegraph', 'common-rock-instanced-pbr', 'hitch-main-plume',
+      'action-primitives', 'authored-opaque-clearcoat', 'authored-opaque-clearcoat-transmission',
+      'authored-opaque-standard', 'bomb-accretion', 'bomb-telegraph', 'common-rock-instanced-pbr', 'hitch-main-plume',
       'ship-shield-bubble', 'vfx-salvo',
     ],
   );

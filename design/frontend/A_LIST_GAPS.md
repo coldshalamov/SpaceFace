@@ -1,6 +1,9 @@
 <!-- LIFETIME: DURABLE -->
 # A-List Gaps
 
+> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
+
+
 **Status:** the things a top-tier game's frontend needs that **neither the game nor the rest of these
 documents currently accounts for.** Companion to [`ADDITIONS.md`](./ADDITIONS.md) — that file lists
 *features to add*; this one lists *standards to meet*.

@@ -857,6 +857,8 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform sampler2D tScene;
   uniform sampler2D tBloom0;  // half-res bright extract (always present when bloom is on)
   uniform sampler2D tBloom1;  // quarter-res (or same as tBloom0 when levels==1)
+  uniform sampler2D tDistortion;
+  uniform float uDistortion;
   uniform float uBloomW0;
   uniform float uBloomW1;
   uniform float uStrength;
@@ -872,7 +874,15 @@ const COMPOSITE_FRAG = /* glsl */`
   ${SPACE_POST_PRESENTATION_GLSL}
 
   void main() {
-    vec3 scene = sampleSpaceIllustratedScene(tScene, vUv);
+    vec2 sceneUv = vUv;
+    if (uDistortion > 0.5) {
+      // Native DistortionField encodes signed displacement in RG and coverage in B.
+      // The neutral clear is (0.5, 0.5, 0); empty texels never bend the scene.
+      vec3 distortion = texture2D(tDistortion, vUv).rgb;
+      sceneUv = clamp(vUv + (distortion.xy * 2.0 - 1.0)
+        * step(1e-5, distortion.z), vec2(0.0), vec2(1.0));
+    }
+    vec3 scene = sampleSpaceIllustratedScene(tScene, sceneUv);
     // Multi-scale bloom: fine local brights + hardware-bilinear coarse halo (no upsample RT).
     vec3 bloom = texture2D(tBloom0, vUv).rgb * uBloomW0
                + texture2D(tBloom1, vUv).rgb * uBloomW1;
@@ -1159,7 +1169,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // ---- render targets ----
   // rtScene is full-res (needs a depth buffer for the scene render). The pyramid targets halve each
   // level (½→¼). There is no separate upsample RT: the composite samples the pyramid multi-scale.
-  // All targets are allocated at init/resize/context-restore only — never inside render().
+  // Targets allocate at init/resize/context-restore or producer attachment, never inside render().
   // All HalfFloat + linear colorSpace (default) so brights exceed 1.0.
   // Reuse one options object so we do not allocate a fresh descriptor on every RT create/resize.
   const pyramidRtOpts = {
@@ -1237,6 +1247,72 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
   let { rtScene, halfW, halfH, levels, down } = createRenderTargets();
 
+  // Producers own bounded effect geometry; this compositor owns only their shared vector target.
+  // Allocate on attachment so prepareResources admits it before combat, never on the first shot.
+  // No producer means no extra target; attached idle producers pay no draw or texture sample.
+  let distortionProducers = null;
+  let rtDistortion = null;
+  let distortionLiveCount = 0;
+  const singleDistortionProducer = [null];
+  const distortionClear = new THREE.Color(0.5, 0.5, 0);
+  const priorDistortionClear = new THREE.Color();
+  const distortionRtOpts = {
+    type: THREE.UnsignedByteType,
+    magFilter: THREE.LinearFilter,
+    minFilter: THREE.LinearFilter,
+    depthBuffer: false,
+    stencilBuffer: false,
+  };
+
+  function attachDistortionProducers(producers) {
+    const next = Array.isArray(producers) && producers.length ? producers : null;
+    if (next === distortionProducers) return;
+    distortionProducers = next;
+    distortionLiveCount = 0;
+    if (next && !rtDistortion) {
+      rtDistortion = allocRenderTarget(halfW, halfH, distortionRtOpts, 'distortion-attach');
+      rtDistortion.texture.name = 'Bloom:Distortion';
+    } else if (!next && rtDistortion) {
+      rtDistortion.dispose();
+      rtDistortion = null;
+    }
+  }
+
+  function attachDistortionField(field) {
+    singleDistortionProducer[0] = field || null;
+    attachDistortionProducers(field ? singleDistortionProducer : null);
+  }
+
+  function countLiveDistortion() {
+    distortionLiveCount = 0;
+    if (!distortionProducers || !rtDistortion) return 0;
+    for (let i = 0; i < distortionProducers.length; i++) {
+      const producer = distortionProducers[i];
+      if (producer && producer.hasLive && producer.scene) distortionLiveCount++;
+    }
+    return distortionLiveCount;
+  }
+
+  function renderDistortionPass(camera, tier1) {
+    const priorAlpha = renderer.getClearAlpha();
+    renderer.getClearColor(priorDistortionClear);
+    const priorAutoClear = renderer.autoClear;
+    renderer.autoClear = false;
+    try {
+      renderer.setClearColor(distortionClear, 0);
+      renderer.setRenderTarget(rtDistortion);
+      renderer.clear(true, false, false);
+      for (let i = 0; i < distortionProducers.length; i++) {
+        const producer = distortionProducers[i];
+        if (producer && producer.hasLive && producer.scene) renderer.render(producer.scene, camera);
+      }
+      if (tier1) tier1.countRenderPassPixels(halfW * halfH, 'weapon-distortion');
+    } finally {
+      renderer.autoClear = priorAutoClear;
+      renderer.setClearColor(priorDistortionClear, priorAlpha);
+    }
+  }
+
   // ---- fullscreen quad (shared immutable geometry; private scene/mesh; material swapped per pass) ----
   const quadGeo = retainSharedQuadGeometry();
   const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -1267,6 +1343,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     tScene:     { value: null },
     tBloom0:    { value: null },
     tBloom1:    { value: null },
+    tDistortion: { value: null },
+    uDistortion: { value: 0 },
     uBloomW0:   { value: 1.0 },
     uBloomW1:   { value: 0.0 },
     uStrength:  { value: strength },
@@ -1314,6 +1392,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compositeMat.uniforms.tScene.value = null;
     compositeMat.uniforms.tBloom0.value = null;
     compositeMat.uniforms.tBloom1.value = null;
+    compositeMat.uniforms.tDistortion.value = null;
     casMat.uniforms.tSrc.value = null;
     const glState = renderer && renderer.state;
     if (!glState || typeof glState.unbindTexture !== 'function') return;
@@ -1645,6 +1724,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compositeMat.uniforms.tScene.value = rtScene.texture;
     compositeMat.uniforms.tBloom0.value = fine;
     compositeMat.uniforms.tBloom1.value = coarse;
+    compositeMat.uniforms.tDistortion.value = distortionLiveCount > 0 ? rtDistortion.texture : rtScene.texture;
+    compositeMat.uniforms.uDistortion.value = distortionLiveCount > 0 ? 1 : 0;
     compositeMat.uniforms.uBloomW0.value = bloomActive ? 1.0 : 0.0;
     compositeMat.uniforms.uBloomW1.value = bloomActive && levels > 1 ? BLOOM_COARSE_WEIGHT : 0.0;
     compositeMat.uniforms.uStrength.value = bloomActive ? strength : 0.0;
@@ -1691,6 +1772,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // level 0 reads the full-res scene with the bright-pass; deeper levels pass through.
     if (bloomActive) timePassGroup('bloomDownsample', renderDownsamplePass, tier1);
 
+    if (countLiveDistortion() > 0 && camera) {
+      timePassGroup('weaponDistortion', renderDistortionPass, camera, tier1);
+    } else {
+      distortionLiveCount = 0;
+    }
+
     // Multi-scale composite — no upsample RT or pass. Fine + coarse pyramid levels are sampled
     // directly; coarser levels contribute the wide halo via hardware bilinear (weight matches the
     // retired upsample chain so perceptual strength stays in family).
@@ -1721,7 +1808,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (typeof renderer.initRenderTarget !== 'function') {
       return { skipped: true, reason: 'initRenderTarget unavailable', targets: 0 };
     }
-    const targets = [rtScene, rtPost, ...down].filter(Boolean);
+    const targets = [rtScene, rtPost, rtDistortion, ...down].filter(Boolean);
     const allocations = [];
     for (const target of targets) {
       await yieldToMain();
@@ -1782,10 +1869,16 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     levels = next.levels;
     down = next.down;
     if (casActive) rtPost = allocRenderTarget(W, H, postRtOpts, 'contextRestore');
+    if (rtDistortion) {
+      rtDistortion.dispose();
+      rtDistortion = allocRenderTarget(halfW, halfH, distortionRtOpts, 'contextRestore');
+      rtDistortion.texture.name = 'Bloom:Distortion';
+    }
+    distortionLiveCount = 0;
   }
 
   function contextLossResources() {
-    return [rtScene, rtPost, ...down].filter(Boolean);
+    return [rtScene, rtPost, rtDistortion, ...down].filter(Boolean);
   }
 
   function openingProgramMaterials() {
@@ -1816,6 +1909,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         resizeRenderTarget(down[i], Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), 'resize');
       }
       if (rtPost) resizeRenderTarget(rtPost, W, H, 'resize');
+      resizeRenderTarget(rtDistortion, halfW, halfH, 'resize');
     }
     // RTs are only created at init/resize/context-restore — rtPost joins that rule here,
     // lazily on the first below-res sizing, never inside render().
@@ -1891,8 +1985,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       presentationParity: 'canonical-base-ao-off-bloom-neutral',
       upsampleTargets: 0,
       sharedQuadGeometry: true,
-      targets: 1 + down.length + (rtPost ? 1 : 0),
-      renderTargetCount: 1 + down.length + (rtPost ? 1 : 0),
+      targets: 1 + down.length + (rtPost ? 1 : 0) + (rtDistortion ? 1 : 0),
+      renderTargetCount: 1 + down.length + (rtPost ? 1 : 0) + (rtDistortion ? 1 : 0),
+      distortionAttached: !!distortionProducers,
+      distortionTarget: rtDistortion ? { width: rtDistortion.width, height: rtDistortion.height } : null,
       drawingBufferWidth: W,
       drawingBufferHeight: H,
       sceneTargetWidth: rtScene.width,
@@ -1908,6 +2004,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         normal: 0,
         ao: 0,
         bloom: enabled && strength > 0.0001 ? down.length : 0,
+        distortion: distortionLiveCount > 0 ? 1 : 0,
+        distortionProducers: distortionLiveCount,
         composite: 1,
         cas: casActive && rtPost ? 1 : 0,
       },
@@ -1915,6 +2013,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   function dispose() {
+    attachDistortionProducers(null);
+    singleDistortionProducer[0] = null;
     rtScene.dispose();
     if (rtPost) { rtPost.dispose(); rtPost = null; }
     for (const rt of down) rt.dispose();
@@ -1926,6 +2026,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
   return {
     render,
+    attachDistortionProducers,
+    attachDistortionField,
     compileScenePipelines,
     warmScenePipelines,
     touchScenePipelines,

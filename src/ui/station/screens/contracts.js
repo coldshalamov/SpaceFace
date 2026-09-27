@@ -632,8 +632,10 @@ export function createContractsScreen(ctx) {
           `<li><button type="button" ${stationControlAttrs('mission-row')} class="sx-ct-row${rowClasses}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
             ` aria-label="${escapeHtml(rowAria)}${needs ? ', needs attention' : ''}">` +
             `<span class="sx-ct-row__crest" aria-hidden="true">${crestHtml(m.factionId)}</span>` +
+            // The badge sits in the row's top pad zone, above the title — emitted as a row child,
+            // not inside the title: the title's overflow:hidden would clip it entirely.
+            (badge ? `<span class="k-t-fine k-signal sx-ct-row__badge" aria-hidden="true">${escapeHtml(badge)}</span>` : '') +
             `<span class="k-row__name sx-ct-row__title">` +
-              (badge ? `<span class="k-t-fine k-signal sx-ct-row__badge">${escapeHtml(badge)}</span> ` : '') +
               `${escapeHtml(m.title || typeLabel(m.type))}` +
             `</span>` +
             `<span class="k-row__num sx-ct-row__rew">${filing ? 'Review' : reward(m).toLocaleString('en-US')}</span>` +

@@ -52,7 +52,13 @@ export const spawnBudget = {
         api.reset();
       }));
       this._unsubs.push(this.bus.on('save:restoring', () => api.reset()));
-      this._unsubs.push(this.bus.on('entity:destroyed', (p) => api.releaseEntity(p && p.id)));
+      this._unsubs.push(this.bus.on('entity:destroyed', (p) => {
+        // Queued receipts are id-keyed but ids recycle: a destroy queued for an id's previous
+        // occupant can flush after a different entity took the id — even a live one — and must
+        // not release the new occupant's binding. The receipt carries the destroyed entity ref;
+        // releaseEntity compares it against the binding's recorded owner generation (D70).
+        api.releaseEntity(p && p.id, p && p.entity);
+      }));
     }
   },
 
@@ -80,12 +86,15 @@ export function ensureBudgetState(state) {
   if (!Number.isFinite(b.max)) b.max = DEFAULT_MAX;
   b.max = clampInt(b.max, MIN_MAX, HARD_MAX);
   // Both maps are transient. Entity binding lets lifecycle events release one exact slot without
-  // guessing which system-owned count it belonged to.
+  // guessing which system-owned count it belonged to. entityRefs records WHICH entity object a
+  // binding belongs to so a stale destroy receipt from a recycled id cannot release the new
+  // occupant's slot.
   if (!(b.reservations instanceof Map)) b.reservations = new Map();
   for (const rec of b.reservations.values()) {
     if (!(rec.ids instanceof Set)) rec.ids = new Set();
   }
   if (!(b.entityOwners instanceof Map)) b.entityOwners = new Map();
+  if (!(b.entityRefs instanceof Map)) b.entityRefs = new Map();
   if (!Number.isFinite(b.used) || b.used < 0) b.used = recomputeUsed(b);
   if (!Number.isInteger(b._seq) || b._seq < 1) b._seq = 1;
   return b;
@@ -121,20 +130,52 @@ export function makeBudgetApi(state) {
     const entityKey = String(entityId);
     const key = requesterId == null ? '_anon' : String(requesterId);
     const existingOwner = b.entityOwners.get(entityKey);
-    if (existingOwner != null) return existingOwner === key;
+    if (existingOwner != null) {
+      const rebound = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(entityId)
+        : null;
+      // A binding whose recorded entity is no longer the id's occupant is stale: its release is
+      // still queued on the bus. Reclaim it for the entity actually holding the id now instead
+      // of leaving the fresh occupant unbound (D70).
+      const staleRef = b.entityRefs.get(entityKey);
+      if (staleRef != null && rebound != null && staleRef !== rebound) {
+        const staleRec = b.reservations.get(existingOwner);
+        if (staleRec && staleRec.ids.delete(entityKey)) {
+          staleRec.count = Math.max(0, staleRec.count - 1);
+          b.used = Math.max(0, b.used - 1);
+          if (staleRec.count <= 0) b.reservations.delete(existingOwner);
+        }
+        b.entityOwners.delete(entityKey);
+        b.entityRefs.delete(entityKey);
+      } else {
+        if (existingOwner !== key) return false;
+        if (rebound) b.entityRefs.set(entityKey, rebound);
+        return true;
+      }
+    }
     const rec = b.reservations.get(key);
     if (!rec || rec.ids.size >= rec.count) return false;
     rec.ids.add(entityKey);
     b.entityOwners.set(entityKey, key);
+    const bound = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(entityId)
+      : null;
+    if (bound) b.entityRefs.set(entityKey, bound);
     return true;
   }
 
-  function releaseEntity(entityId) {
+  function releaseEntity(entityId, entity) {
     if (entityId == null) return 0;
     const entityKey = String(entityId);
     const key = b.entityOwners.get(entityKey);
     if (key == null) return 0;
+    // Generation check: when the destroyed receipt names an entity ref, the binding it may
+    // release is only the one recorded for that same object. A recycled id's new binding —
+    // recorded for a different live entity — is not this receipt's to free.
+    const boundRef = b.entityRefs.get(entityKey);
+    if (entity != null && boundRef != null && boundRef !== entity) return 0;
     b.entityOwners.delete(entityKey);
+    b.entityRefs.delete(entityKey);
     const rec = b.reservations.get(key);
     if (!rec || !rec.ids.delete(entityKey)) return 0;
     rec.count = Math.max(0, rec.count - 1);
@@ -155,7 +196,10 @@ export function makeBudgetApi(state) {
     const rec = b.reservations.get(key);
     if (!rec) return 0;
     const freed = rec.count;
-    for (const entityKey of rec.ids) b.entityOwners.delete(entityKey);
+    for (const entityKey of rec.ids) {
+      b.entityOwners.delete(entityKey);
+      b.entityRefs.delete(entityKey);
+    }
     b.reservations.delete(key);
     b.used = Math.max(0, b.used - freed);
     return freed;
@@ -175,6 +219,7 @@ export function makeBudgetApi(state) {
       for (const entityKey of rec.ids) {
         rec.ids.delete(entityKey);
         b.entityOwners.delete(entityKey);
+        b.entityRefs.delete(entityKey);
         if (++detached >= boundToDetach) break;
       }
     }
@@ -187,6 +232,7 @@ export function makeBudgetApi(state) {
   function reset() {
     b.reservations.clear();
     b.entityOwners.clear();
+    b.entityRefs.clear();
     b.used = 0;
   }
 

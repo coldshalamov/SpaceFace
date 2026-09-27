@@ -38,6 +38,22 @@ export function achievementSummaryText(rows) {
   return `${unlocked} of ${list.length} unlocked.`;
 }
 
+/**
+ * The next deed to chase: the unearned, unhidden medal furthest along (a counted goal's share of its
+ * target), else the first unearned one; its figure when it is counted.
+ */
+export function nextGoalText(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.length) return 'No achievements yet.';
+  const open = list.filter((r) => !r.unlocked && !r.masked);
+  if (!open.length) return list.every((r) => r.unlocked) ? `All ${list.length} unlocked.` : achievementSummaryText(list);
+  const share = (r) => (Number(r.target) > 1 ? Math.max(0, Math.min(1, (Number(r.current) || 0) / Number(r.target))) : 0);
+  let best = open[0];
+  for (const r of open) if (share(r) > share(best)) best = r;
+  const n = (v) => Math.round(Number(v) || 0).toLocaleString('en-US');
+  return Number(best.target) > 1 ? `Next: ${best.name}, ${n(best.current)} of ${n(best.target)}` : `Next: ${best.name}`;
+}
+
 export function rowsForSection(rows, sectionId) {
   const list = Array.isArray(rows) ? rows : [];
   return sectionId === 'all' ? list : list.filter((row) => row.category === sectionId);
@@ -98,6 +114,21 @@ function rimHtml(text) {
   return '<svg class="con-medal-read__rim" viewBox="-66 -66 132 132" aria-hidden="true" focusable="false">'
     + '<path id="con-read-rim" d="M -60 0 A 60 60 0 0 0 60 0" fill="none" stroke="none"></path>'
     + `<text text-anchor="middle"><textPath href="#con-read-rim" startOffset="50%">${esc}</textPath></text></svg>`;
+}
+
+/** The box the words of an element take (a block's rect is as wide as its column). */
+function inkRect(node) {
+  if (!node || typeof node.getBoundingClientRect !== 'function') return null;
+  try {
+    const doc = node.ownerDocument;
+    if (doc && typeof doc.createRange === 'function' && node.textContent) {
+      const range = doc.createRange();
+      range.selectNodeContents(node);
+      const r = range.getBoundingClientRect();
+      if (r && r.width > 0 && r.height > 0) return r;
+    }
+  } catch (_) { /* the element's own box */ }
+  return node.getBoundingClientRect();
 }
 
 function categoryLabel(id) {
@@ -187,7 +218,7 @@ export const achievementsScreen = {
       art: medalArt,
       label: (id) => categoryLabel(id),
       // the orrery stands clear of the title and the categories tucked into its corner
-      avoid: () => [title.querySelector('h1'), summary].map((n) => (n && typeof n.getBoundingClientRect === 'function' ? n.getBoundingClientRect() : null)),
+      avoid: () => [title.querySelector('h1'), summary].map((n) => inkRect(n)),
       onPick: (id, how) => this._choose(id, { how }),
       onEdge: () => {
         if (!refs) return;
@@ -295,7 +326,7 @@ export const achievementsScreen = {
     try { rows = readAchievementRows(); } catch (e) { rows = []; }
     const before = new Set((refs.rows || []).filter((r) => r.unlocked).map((r) => r.id));
     refs.rows = rows;
-    refs.summary.textContent = achievementSummaryText(rows);
+    refs.summary.textContent = nextGoalText(rows);
     const section = ACHIEVEMENT_SECTIONS.find((s) => s.id === this._section) || ACHIEVEMENT_SECTIONS[0];
     // nothing the orrery shows changed (a store sync, the push's own refresh): leave it, and the
     // player's focus in it, alone

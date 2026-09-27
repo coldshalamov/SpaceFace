@@ -39,6 +39,9 @@
   align-items: stretch;
 }
 .sf-crucible-door .sf-crd-hulls > li { min-width: 0; }
+/* A legend word wider than one column is clipped by the tile's cut shape, not wrapped — the wide
+   mark lets that kit take two columns so the full name reads. */
+.sf-crucible-door .sf-crd-hulls > li:has(> .sf-crd-hull--wide) { grid-column: span 2; }
 html body #screens .sf-crucible-door .sf-crd-hulls .fh-tile {
   border-width: 12px;
 }

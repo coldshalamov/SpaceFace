@@ -38,8 +38,9 @@ const CSS = `
 .orr-film__rail .orr-film__hand-bloom { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:12; stroke-linecap:round; opacity:.24; }
 .orr-film__rail .orr-film__hand-needle { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-width:2; stroke-linecap:round; }
 /* the beam from the chosen frame to the berth: bone light at rest, an ice pulse up it on a new choice */
-.orr-film__rail .orr-film__beam { fill:none; stroke:rgb(${BONE} / .46); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
-.orr-film__rail .orr-film__beam-bloom { fill:none; stroke:rgb(${BONE} / .1); stroke-width:7; stroke-linecap:round; stroke-linejoin:round; }
+.orr-film__rail .orr-film__beam { fill:none; stroke:rgb(${BONE} / .8); stroke-width:2.4; stroke-linecap:round; }
+.orr-film__rail .orr-film__beam-band { fill:none; stroke:rgb(${BONE} / .24); stroke-width:6; stroke-linecap:round; }
+.orr-film__rail .orr-film__beam-bloom { fill:none; stroke:rgb(${BONE} / .08); stroke-width:16; stroke-linecap:round; }
 .orr-film__rail .orr-film__beam-end { fill:rgb(${BONE} / .9); }
 .orr-film__rail .orr-film__pulse { fill:none; stroke:var(--dp-ice, #8fcbff); stroke-width:2.6; stroke-linecap:round; stroke-dasharray:.14 1.2; stroke-dashoffset:.14;
   opacity:0; filter:drop-shadow(0 0 4px rgb(143 203 255 / .8)); }
@@ -49,7 +50,7 @@ const CSS = `
 @keyframes orr-film-beam-in { from { opacity:0; } to { opacity:1; } }
 /* the light under the pointer: a soft pool that rides the strip while the pointer is on it */
 .orr-film__spot { position:absolute; left:0; top:0; width:360px; height:100%; margin-left:-180px; pointer-events:none; z-index:0; opacity:0;
-  background:radial-gradient(closest-side, rgb(255 244 222 / .09), rgb(255 244 222 / .035) 55%, transparent); transform:translateX(var(--spot-x, 0px));
+  background:radial-gradient(closest-side, rgb(255 244 222 / .16), rgb(255 244 222 / .06) 55%, transparent); transform:translateX(var(--spot-x, 0px));
   transition:opacity .25s linear; }
 .orr-film.is-lit > .orr-film__spot { opacity:1; }
 .orr-film.is-scrubbing { cursor:grabbing; }
@@ -87,12 +88,13 @@ let gradSeq = 0;
  * @param {object} o
  * @param {HTMLElement} o.host   the box the strip fills (position:relative; its height is the sheet's)
  * @param {string} [o.frameSel] the element inside each row whose foot the rail passes under
+ * @param {string} [o.berthSel] the berth inside a frame that the beam lands on (its rim, not the air above a hull)
  * @param {(row: HTMLElement) => boolean} [o.isEmpty] a station with nothing filed (an open ring)
  * @param {(id: string) => void} [o.onScrub] the Hand passed a new station while the strip was scrubbed
  * @param {() => ({x:number, y:number}|null)} [o.beamTarget] where the chosen save's hull stands, in page px
  * @returns {{ attach(list: HTMLElement, o?: {chosen?: string, arrive?: boolean}): void, choose(id: string, o?: {instant?: boolean}): void, layout(): void, dispose(): void }}
  */
-export function createSaveFilmstrip({ host, frameSel = '.sf-slot-frame', isEmpty = (row) => row.classList.contains('empty'), onScrub = null, beamTarget = null } = {}) {
+export function createSaveFilmstrip({ host, frameSel = '.sf-slot-frame', berthSel = '.sf-slot-berth', isEmpty = (row) => row.classList.contains('empty'), onScrub = null, beamTarget = null } = {}) {
   const doc = (host && host.ownerDocument) || globalThis.document;
   if (!host || !doc || typeof doc.createElementNS !== 'function' || typeof host.getBoundingClientRect !== 'function') return INERT;
   injectOrrery(doc);
@@ -183,7 +185,7 @@ export function createSaveFilmstrip({ host, frameSel = '.sf-slot-frame', isEmpty
     const [bx0, by0] = at(0);
     handG.appendChild(svg('path', { d: seg, class: 'orr-film__hand-bloom' }));
     handG.appendChild(svg('path', { d: seg, class: 'orr-film__hand-seg' }));
-    handG.appendChild(svg('path', { d: radial(0, R - 15, R - 4), class: 'orr-film__hand-needle' }));
+    handG.appendChild(svg('path', { d: radial(0, R - 30, R - 4), class: 'orr-film__hand-needle' }));
     handG.appendChild(svg('circle', { cx: f(bx0), cy: f(by0), r: 11, class: 'orr-film__hand-glow' }));
     handG.appendChild(svg('path', { d: `M ${f(bx0)} ${f(by0 - 6)} L ${f(bx0 + 6)} ${f(by0)} L ${f(bx0)} ${f(by0 + 6)} L ${f(bx0 - 6)} ${f(by0)} Z`, class: 'orr-film__hand-bead' }));
   }
@@ -200,29 +202,31 @@ export function createSaveFilmstrip({ host, frameSel = '.sf-slot-frame', isEmpty
     const hb = host.getBoundingClientRect();
     const row = rows[idx];
     const frame = row && row.querySelector ? row.querySelector(frameSel) : null;
-    const sx = geo.stations[idx].x;
-    const sy = (parseFloat(row.style.top) || 0) + (frame ? frame.offsetTop : 0) - 4;
     const tx = to.x - hb.left;
     const ty = to.y - hb.top;
+    // the beam leaves the chosen slot's own berth: from the rim's side that faces the hero berth, or,
+    // for an open berth right under it, from the top of its rim
+    const berth = frame && frame.querySelector ? frame.querySelector(berthSel) : null;
+    const br = berth && typeof berth.getBoundingClientRect === 'function' ? berth.getBoundingClientRect() : null;
+    let sx = geo.stations[idx].x;
+    let sy = (parseFloat(row.style.top) || 0) + (frame ? frame.offsetTop : 0) - 4;
+    let vertical = true;
+    if (br && br.width > 0) {
+      const bcx = br.left - hb.left + br.width / 2;
+      const hasHull = !!(frame.querySelector && frame.querySelector('img'));
+      if (!hasHull && Math.abs(tx - bcx) < br.width) { sx = bcx; sy = br.top - hb.top + 2; }
+      else { vertical = false; sx = tx >= bcx ? br.right - hb.left - 2 : br.left - hb.left + 2; sy = br.top - hb.top + br.height / 2; }
+    }
     if (!(sy - ty > 24)) return;
-    // a leader, not a swoop: up off the frame, along just over the strip's frames (so it never runs
-    // through the words above them), a 45-degree elbow, and up onto the berth's near rim
-    const lo = Math.min(sx, tx);
-    const hi = Math.max(sx, tx);
-    let runY = sy;
-    rows.forEach((r, i) => {
-      const left = parseFloat(r.style.left) || 0;
-      if (left > hi || left + geo.frameW < lo) return;
-      const fr = r.querySelector ? r.querySelector(frameSel) : null;
-      runY = Math.min(runY, (parseFloat(r.style.top) || 0) + (fr ? fr.offsetTop : 0) - 4);
-    });
-    runY -= 8;
+    const dy = sy - ty;
+    // one curve: off the berth's rim, rising at once over the neighbouring slots' ships, across under the
+    // reading's keys, and up into the hero berth's near rim from below
     const dir = tx >= sx ? 1 : -1;
-    const elbow = Math.max(0, Math.min(Math.abs(tx - sx) * 0.5, runY - ty, 44));
-    const d = Math.abs(tx - sx) < 2
-      ? `M ${f(sx)} ${f(sy)} L ${f(tx)} ${f(ty)}`
-      : `M ${f(sx)} ${f(sy)} L ${f(sx)} ${f(runY)} L ${f(tx - dir * elbow)} ${f(runY)} L ${f(tx)} ${f(runY - elbow)} L ${f(tx)} ${f(ty)}`;
+    const d = vertical
+      ? `M ${f(sx)} ${f(sy)} C ${f(sx)} ${f(sy - dy * 0.5)} ${f(tx)} ${f(ty + dy * 0.5)} ${f(tx)} ${f(ty)}`
+      : `M ${f(sx)} ${f(sy)} C ${f(sx + dir * 50)} ${f(sy - dy * 0.7)} ${f(tx)} ${f(ty + dy * 0.5)} ${f(tx)} ${f(ty)}`;
     beamG.appendChild(svg('path', { d, class: 'orr-film__beam-bloom' }));
+    beamG.appendChild(svg('path', { d, class: 'orr-film__beam-band' }));
     beamG.appendChild(svg('path', { d, class: 'orr-film__beam' }));
     beamG.appendChild(svg('circle', { cx: f(tx), cy: f(ty), r: 3.2, class: 'orr-film__beam-end' }));
     beamG.appendChild(svg('circle', { cx: f(sx), cy: f(sy), r: 2.2, class: 'orr-film__beam-end' }));

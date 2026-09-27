@@ -45,7 +45,7 @@ ${T} ${sel}:not(:disabled):is(:hover, :focus-visible) { color:var(--dp-hand-hot,
 ${T} ${sel}:disabled { color:rgb(${BONE} / .45) !important; }`;
 /** A small verb: a word with its notch. */
 const word = (sel) => `
-${T} ${sel} { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 0 !important; font-size:10.5px !important;
+${T} ${sel} { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important;
   letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
 ${T} ${sel}::after { display:none !important; }
 ${T} ${sel}::before { all:unset !important; content:"›  " !important; color:rgb(${BONE} / .55) !important; }
@@ -58,8 +58,8 @@ const CSS = `
 ${T} .sx-ct__hang { position:relative; padding-left:0 !important;
   background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat,
     repeating-linear-gradient(180deg, rgb(${BONE} / .22) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
-${T} .sx-ct__hang > .k-caps, ${T} .sx-ct__yours { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; padding-left:26px !important; }
-${T} .sx-ct-dispatch__label { ${LABEL} font-size:9.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .5) !important; padding-left:26px !important; }
+${T} .sx-ct__hang > .k-caps, ${T} .sx-ct__yours { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; padding-left:26px !important; }
+${T} .sx-ct-dispatch__label { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .5) !important; padding-left:26px !important; }
 ${T} .sx-ct__board { display:flex !important; flex-direction:column; align-items:stretch; }
 ${T} .sx-ct__board > .sx-ct__rows { order:1; flex:none; background:none !important; }
 ${T} .sx-ct__rows > li { display:block !important; }
@@ -67,8 +67,8 @@ ${T} .sx-ct__rows > li { display:block !important; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub { display:flex !important; flex-direction:row; flex-wrap:wrap; align-items:baseline; gap:2px 10px; padding:0 0 8px 26px !important;
   margin-top:-3px; min-height:0 !important; height:auto !important; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub::before { display:none !important; }
-${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name { ${LABEL} font-size:9.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .86) !important; }
-${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size:11px !important; line-height:1.4; color:rgb(${BONE} / .6) !important; white-space:normal; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .86) !important; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px !important; line-height:1.4; color:rgb(${BONE} / .6) !important; white-space:normal; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:is(:hover, :focus-visible) .k-row__name { color:var(--dp-hand, #f2b950) !important; }
 ${T} .sx-ct__active { padding-left:26px !important; }
 /* the dispatch's choice: a sentence and its offers as verbs, after the ladder */
@@ -78,8 +78,8 @@ ${T} .sx-ct-row.sx-decision__opt { ${PLAIN} position:relative !important; displa
   padding:5px 0 5px 18px !important; min-height:0 !important; height:auto !important; width:100% !important; text-align:left; }
 ${T} .sx-ct-row.sx-decision__opt::after { display:none !important; }
 ${T} .sx-ct-row.sx-decision__opt::before { all:unset !important; content:"›" !important; position:absolute !important; left:2px; top:4px; color:rgb(${BONE} / .55) !important; }
-${T} .sx-ct-row.sx-decision__opt .k-row__name { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(248 244 234) !important; }
-${T} .sx-ct-row.sx-decision__opt .k-row__sub { font-size:11px !important; color:rgb(${BONE} / .58) !important; }
+${T} .sx-ct-row.sx-decision__opt .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(248 244 234) !important; }
+${T} .sx-ct-row.sx-decision__opt .k-row__sub { font-size: 12px !important; color:rgb(${BONE} / .58) !important; }
 ${T} .sx-ct-row.sx-decision__opt:is(:hover, :focus-visible) .k-row__name { color:var(--dp-hand, #f2b950) !important; }
 ${T} .sx-ct-row.sx-decision__opt:focus-visible { outline:none !important; }
 /* the posted jobs on the rail */
@@ -96,7 +96,7 @@ ${T} .sx-ct__rows .sx-ct-row:is(:hover, :focus-visible) .sx-ct-row__title { colo
 ${T} .sx-ct__rows .sx-ct-row:focus-visible:not(.is-active, .is-selected, [aria-selected="true"])::before { height:2px !important; background:rgb(248 244 234) !important; width:11px !important; left:2px !important; }
 ${T} .sx-ct__rows .sx-ct-row:focus-visible .sx-ct-row__title { color:rgb(255 255 255) !important; text-shadow:0 0 10px rgb(255 250 236 / .35); }
 ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { font-size:13.5px !important; font-weight:620; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
-${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { ${LABEL} display:block; margin-bottom:2px; font-size:9px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .8) !important; background:none !important; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { ${LABEL} display:block; margin-bottom:2px; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .8) !important; background:none !important; }
 /* the Hand's bloom: a soft disc of its own light behind the chevron (a clip-path clips a filter, so it is geometry) */
 ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { content:"" !important; display:block !important; position:absolute !important; left:-6px !important;
   top:50% !important; width:28px !important; height:28px !important; margin-top:-14px !important; border-radius:50% !important; pointer-events:none;
@@ -107,11 +107,11 @@ ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]
 ${T} .sx-ct__active, ${T} .sx-ct__jobs, ${T} .sx-job { ${PLAIN} }
 ${T} .sx-job { padding:6px 0 !important; min-height:0 !important; }
 ${T} .sx-job__title { font-size:13px !important; color:rgb(248 244 234) !important; }
-${T} .sx-job__meta { font-size:11.5px !important; color:rgb(${BONE} / .6) !important; }
-${T} .sx-job__track { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:3px 0 !important; font-size:9.5px !important; letter-spacing:.2em !important;
+${T} .sx-job__meta { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-job__track { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important; letter-spacing:.2em !important;
   color:rgb(${BONE} / .8) !important; }
 ${T} .sx-job__track::after { display:none !important; }
-${T} .sx-job__track::before { all:unset !important; content:"●  " !important; font-size:7px; vertical-align:2px; color:rgb(248 244 234) !important; }
+${T} .sx-job__track::before { all:unset !important; content:"●  " !important; font-size: 12px; vertical-align:2px; color:rgb(248 244 234) !important; }
 ${T} .sx-job__track:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
 ${T} .sx-ct__none { color:rgb(${BONE} / .6) !important; font-size:12.5px !important; }
 /* the dossier: no panel; the reading in the left column, the route orrery standing beside it */
@@ -121,7 +121,7 @@ ${T} .sx-dossier > * { grid-column:1; min-width:0; }
 ${T} .sx-dossier > .orr-ct-route { grid-column:2; grid-row:1 / span 18; align-self:start; width:100%; height:clamp(320px, 42vh, 460px); margin:6px 0 0 !important; }
 ${T} .sx-dossier::before { content:""; position:absolute; z-index:-1; inset:-40px -60px; pointer-events:none;
   background:radial-gradient(closest-side, rgb(7 8 10 / .8), rgb(7 8 10 / .6) 60%, rgb(7 8 10 / 0)); }
-${T} .sx-dossier > .k-caps { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-dossier > .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
 ${T} .sx-dossier__title, ${T} .sx-dossier__title .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; }
 ${T} .sx-dossier__title .sf-entity-link:is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .45) !important; text-underline-offset:6px; outline:none !important; }
 ${T} .sx-dossier :is(.sx-dossier__client, .sx-dossier__route) .sf-entity-link { text-decoration:none !important; background-image:none !important;
@@ -133,13 +133,13 @@ ${T} .sx-dossier__reward .k-hero__n { color:rgb(248 244 234) !important; text-sh
   font-variation-settings:"wdth" 100, "wght" 250 !important; font-stretch:100% !important; font-weight:250 !important; letter-spacing:-.02em !important; font-size:clamp(64px, 8.6vh, 96px) !important; }
 ${T} .sx-dossier__reward .k-hero__n.orr-counter { height:1em; line-height:1; overflow:hidden; }
 ${T} .sx-dossier__reward .k-hero__n.orr-counter .orr-counter__digit { width:.58em; }
-${T} .sx-dossier__reward .k-hero__w { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .66) !important; }
+${T} .sx-dossier__reward .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .66) !important; }
 ${T} :is(.sx-dossier__summary, .sx-dossier__briefing) { color:rgb(${BONE} / .8) !important; font-size:13px !important; line-height:1.5; }
 ${T} :is(.sx-dossier__route, .sx-dossier__risk) { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip:rect(0 0 0 0); white-space:nowrap; margin:0 !important; }
 /* the consequences as scales: risk on five stops, standing as a gain and a loss round zero */
 ${T} .orr-ct-scales { width:100%; max-width:520px; height:66px; margin:14px 0 4px !important; }
 ${T} .orr-ct-scales > svg { width:100%; height:100%; overflow:visible; }
-${T} .orr-ct-scales text.orr-ct-scale__key { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:9.5px; letter-spacing:.14em; fill:rgb(${BONE} / .6); }
+${T} .orr-ct-scales text.orr-ct-scale__key { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.14em; fill:rgb(${BONE} / .6); }
 ${T} .orr-ct-scales .orr-ct-scale__rule { stroke:rgb(${BONE} / .32); }
 ${T} .orr-ct-scales .orr-ct-scale__tick { stroke:rgb(${BONE} / .5); }
 ${T} .orr-ct-scales .orr-ct-scale__fill { stroke:rgb(248 244 234); }
@@ -147,16 +147,16 @@ ${T} .orr-ct-scales .orr-ct-scale__fill.is-high { stroke:var(--dp-danger, #ff503
 ${T} .orr-ct-scales .orr-ct-scale__loss { stroke:var(--dp-danger, #ff5038); }
 ${T} .orr-ct-scales path.orr-ct-scale__cursor { stroke:rgb(248 244 234); }
 ${T} .orr-ct-scales .orr-bloom.orr-ct-scale__cursor { stroke:rgb(248 244 234); opacity:.25; }
-${T} .orr-ct-scales text.orr-ct-scale__word { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10px; letter-spacing:.12em; fill:rgb(248 244 234); }
+${T} .orr-ct-scales text.orr-ct-scale__word { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.12em; fill:rgb(248 244 234); }
 ${T} .orr-ct-scales .orr-ct-scale__lossword { fill:var(--dp-danger, #ff5038); }
 ${T} .orr-ct-scales .orr-ct-scale__sep { fill:rgb(${BONE} / .4); }
-${T} .orr-ct-scales text.orr-ct-scale__end { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:7.5px; letter-spacing:.14em; fill:rgb(${BONE} / .45); }
+${T} .orr-ct-scales text.orr-ct-scale__end { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.14em; fill:rgb(${BONE} / .45); }
 ${T} .sx-dossier__briefing .sx-dossier__approach { color:rgb(${BONE} / .62); }
 ${T} .sx-dossier__gate { color:rgb(${BONE} / .85) !important; font-size:12.5px !important; }
 ${T} .sx-dossier__gate.k-bad { color:var(--dp-danger, #ff5038) !important; }
 ${T} .sx-dossier__terms { ${PLAIN} max-width:560px; }
 ${T} .sx-dossier__terms > li { ${PLAIN} display:grid !important; grid-template-columns:120px minmax(0, 1fr); align-items:baseline; column-gap:18px; padding:7px 0 !important; min-height:0 !important; }
-${T} .sx-dossier__terms > li > .k-62 { ${LABEL} font-size:10px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-dossier__terms > li > .k-62 { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
 /* a forfeit is a loss: the threat channel's red tick on that one term */
 ${T} .sx-dossier__terms > li.sx-term--threat { position:relative; }
 ${T} .sx-dossier__terms > li.sx-term--threat .sx-term__v { color:var(--dp-danger, #ff5038) !important; }
@@ -164,9 +164,9 @@ ${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { content:""; posit
   background:var(--dp-danger, #ff5038); box-shadow:0 0 6px rgb(255 80 56 / .7); }
 ${T} .sx-dossier__terms .sx-term__v { display:flex !important; flex-direction:column; align-items:flex-start !important; gap:2px; font-size:13.5px !important; color:rgb(248 244 234) !important;
   text-align:left !important; justify-self:start !important; margin:0 !important; text-transform:none !important; letter-spacing:0 !important; }
-${T} .sx-dossier__terms .sx-term__sub { justify-self:start !important; text-align:left !important; margin:0 !important; font-size:11.5px !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-dossier__terms .sx-term__sub { justify-self:start !important; text-align:left !important; margin:0 !important; font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
 ${T} .sx-dossier__clauses { ${PLAIN} }
-${T} .sx-dossier__clauses .sx-tag { ${PLAIN} ${LABEL} font-size:9.5px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .8) !important; padding:0 !important; }
+${T} .sx-dossier__clauses .sx-tag { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .8) !important; padding:0 !important; }
 ${T} .sx-dossier__clauses .sx-tag::before { content:"› "; color:rgb(${BONE} / .5); }
 ${T} .sx-dossier__foot { margin-top:26px !important; }
 ${commit('.sx-ct-commit:not(.orr-lampkey)')}
@@ -177,7 +177,7 @@ ${T} .sx-ct-commit.orr-lampkey:is(:hover, :focus-visible, :active) { color:#1c14
 ${T} .sx-ct-commit.orr-lampkey:disabled { color:rgb(${BONE} / .55) !important; }
 ${T} .sx-dossier__foot { padding-left:0 !important; }
 ${T} .sx-dossier__foot > li { display:flex; align-items:center; gap:16px; }
-${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size:11.5px !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
 @media (max-height:800px) {
   ${T} .sx-ct__hang > * + * { margin-top:8px !important; }
   ${T} .sx-ct__hang > .sx-ct__yours { margin-top:14px !important; }
@@ -197,12 +197,12 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size:1
   ${T} .sx-dossier__reward { margin:6px 0 4px !important; }
   ${T} .sx-dossier__reward .k-hero__n { font-size:36px !important; }
   ${T} :is(.sx-dossier__summary, .sx-dossier__briefing) { display:none !important; }
-  ${T} :is(.sx-dossier__route, .sx-dossier__risk) { font-size:11.5px !important; line-height:1.4; margin:3px 0 !important; }
+  ${T} :is(.sx-dossier__route, .sx-dossier__risk) { font-size: 12px !important; line-height:1.4; margin:3px 0 !important; }
   ${T} .sx-dossier__terms { margin:4px 0 0 !important; }
   ${T} .sx-dossier__terms > li { grid-template-columns:96px minmax(0, 1fr); column-gap:12px; padding:2px 0 !important; }
-  ${T} .sx-dossier__terms > li > .k-62 { font-size:9.5px !important; }
+  ${T} .sx-dossier__terms > li > .k-62 { font-size: 12px !important; }
   ${T} .sx-dossier__terms .sx-term__v { font-size:12.5px !important; flex-direction:row !important; align-items:baseline !important; gap:8px; flex-wrap:wrap; }
-  ${T} .sx-dossier__terms .sx-term__sub { font-size:10.5px !important; }
+  ${T} .sx-dossier__terms .sx-term__sub { font-size: 12px !important; }
   ${T} .sx-dossier__foot { margin-top:8px !important; }
   ${T} .sx-ct-commit:not(.orr-lampkey) { padding:4px 2px 8px !important; font-size:20px !important; }
   ${T} .sx-ct-commit.orr-lampkey { min-height:38px !important; font-size:13.5px !important; }
@@ -223,7 +223,7 @@ ${T} :is(.sx-fac-heroes, .sx-fab-heroes, .sx-ledger__read-hero) .k-hero__n { fon
 /* ================================ FACTIONS ================================================== */
 /* the powers on the ladder: a name and its standing; the crests live on the orbit */
 ${T} .sx-fac__rail { position:relative; }
-${T} .sx-fac__rail > .k-caps { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; padding-left:26px !important; }
+${T} .sx-fac__rail > .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; padding-left:26px !important; }
 ${rail('.sx-fac__rows', '.sx-fac__rows .sx-fac-row', '.is-active, [aria-selected="true"]')}
 ${T} .sx-fac__rows > li { display:block !important; }
 ${T} .sx-fac__rows .sx-fac-row { display:grid !important; grid-template-columns:minmax(0, 1fr) 56px; align-items:baseline; column-gap:10px;
@@ -232,7 +232,7 @@ ${T} .sx-fac-row__body { display:contents !important; }
 ${T} .sx-fac-row__crest, ${T} .sx-fac-row__bar { display:none !important; }
 ${T} .sx-fac-row__name { font-family:var(--dp-face-body, "Instrument Sans") !important; font-size:13px !important; font-weight:560; letter-spacing:.02em !important;
   text-transform:none !important; color:rgb(${BONE} / .86) !important; }
-${T} .sx-fac-row__name > .k-62 { ${LABEL} font-size:9px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; display:block; margin-bottom:2px; }
+${T} .sx-fac-row__name > .k-62 { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; display:block; margin-bottom:2px; }
 ${T} .sx-fac-row:is(.is-active, [aria-selected="true"]) .sx-fac-row__name { color:rgb(250 247 238) !important; }
 ${T} .sx-fac-row__tier { text-align:right; font-variant-numeric:tabular-nums; font-size:13px !important; color:rgb(248 244 234) !important; }
 ${T} .sx-fac-row__tier.k-bad { color:var(--dp-danger, #ff5038) !important; }
@@ -245,7 +245,7 @@ ${T} .sx-fac-reading::before { content:""; position:absolute; z-index:-1; inset:
 ${T} .sx-fac-overview { padding-right:0 !important; }
 ${T} .sx-fac-overview > * + * { margin-top:10px !important; }
 ${T} .sx-fac-crest { display:none !important; }
-${T} .sx-fac-overview > .k-caps, ${T} .sx-fac__detail .k-caps { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-fac-overview > .k-caps, ${T} .sx-fac__detail .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
 ${T} .sx-fac-ident__name { max-width:none !important; margin-top:6px !important; }
 ${T} .sx-fac-ident__name .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; color:inherit !important; }
 ${T} .sx-fac-ident__name .sf-entity-link:is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .45) !important; text-underline-offset:6px; outline:none !important; }
@@ -256,24 +256,24 @@ ${T} .sx-fac-heroes .k-hero__n { font-family:var(--dp-face-numeral, "Archivo") !
   font-size:clamp(28px, 3.6vh, 40px) !important; line-height:1 !important; letter-spacing:-.01em !important; color:rgb(248 244 234) !important; text-shadow:none !important; }
 ${T} .sx-fac-heroes .k-hero__n.k-bad { color:var(--dp-danger, #ff5038) !important; }
 ${T} .sx-fac-heroes .k-hero__n.k-good { color:rgb(248 244 234) !important; }
-${T} .sx-fac-heroes .k-hero__w { ${LABEL} font-size:9.5px !important; letter-spacing:.12em !important; color:rgb(${BONE} / .62) !important; max-width:30ch !important; line-height:1.45; margin-top:5px; }
+${T} .sx-fac-heroes .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.12em !important; color:rgb(${BONE} / .62) !important; max-width:30ch !important; line-height:1.45; margin-top:5px; }
 ${T} .sx-fac__detail { display:grid !important; grid-template-columns:1fr !important; gap:14px !important; margin-top:16px !important; }
 ${T} .sx-fac-ladder:not(.sx-fac-contracts) .sx-ladder { display:none !important; }
 ${T} .orr-standing { margin-top:10px; max-width:600px; }
 ${T} .sx-fac-contracts .sx-ladder, ${T} .sx-fac-network__rows { ${PLAIN} }
 ${T} .sx-fac-contracts .sx-ladder__step { ${PLAIN} display:grid !important; grid-template-columns:56px minmax(0, 1fr); column-gap:14px; align-items:baseline; padding:5px 0 !important; min-height:0 !important; }
-${T} .sx-fac-contracts .sx-ladder__min { order:-1; ${LABEL} font-size:10px !important; letter-spacing:.08em !important; text-align:left !important; color:rgb(${BONE} / .55) !important; font-variant-numeric:tabular-nums; }
+${T} .sx-fac-contracts .sx-ladder__min { order:-1; ${LABEL} font-size: 12px !important; letter-spacing:.08em !important; text-align:left !important; color:rgb(${BONE} / .55) !important; font-variant-numeric:tabular-nums; }
 ${T} .sx-fac-contracts .sx-ladder__step.is-reached .sx-ladder__min { color:rgb(248 244 234) !important; }
 ${T} .sx-fac-contracts .sx-ladder__name { font-size:12.5px !important; color:rgb(${BONE} / .8) !important; }
 ${T} .sx-fac-contracts .sx-ladder__step.is-reached .sx-ladder__name { color:rgb(248 244 234) !important; }
-${T} .sx-fac-contracts .k-row__sub { ${LABEL} font-size:9px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .5) !important; }
+${T} .sx-fac-contracts .k-row__sub { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .5) !important; }
 ${T} .sx-fac-intent .k-sentence { font-size:13px !important; color:rgb(${BONE} / .8) !important; }
 ${T} .sx-fac-network__rows > li { display:block !important; }
 ${T} .sx-fac-node { ${PLAIN} display:grid !important; grid-template-columns:minmax(0, 1fr) 56px 80px; column-gap:12px; align-items:baseline; padding:5px 0 !important; min-height:0 !important;
   width:100% !important; text-align:left; font-size:12.5px !important; color:rgb(${BONE} / .86) !important; }
 ${T} .sx-fac-node::after { display:none !important; }
 ${T} .sx-fac-node .k-row__name { font-size:12.5px !important; color:rgb(248 244 234) !important; }
-${T} .sx-fac-node__kind { ${LABEL} font-size:9.5px !important; letter-spacing:.14em !important; }
+${T} .sx-fac-node__kind { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; }
 ${T} .sx-fac-node__kind.k-good { color:rgb(248 244 234) !important; }
 ${T} .sx-fac-node__kind.k-bad { color:rgb(${BONE} / .6) !important; }
 ${T} .sx-fac-node .k-row__num { text-align:right; font-variant-numeric:tabular-nums; color:rgb(${BONE} / .8) !important; }
@@ -288,7 +288,7 @@ ${T} .sx-fac-network__empty { font-size:12.5px !important; color:rgb(${BONE} / .
   ${T} .sx-fac-ident__name { font-size:26px !important; }
   ${T} .sx-fac-heroes { gap:8px 24px !important; margin-top:8px !important; }
   ${T} .sx-fac-heroes .k-hero__n { font-size:26px !important; }
-  ${T} .sx-fac-heroes .k-hero__w { font-size:9px !important; margin-top:3px; }
+  ${T} .sx-fac-heroes .k-hero__w { font-size: 12px !important; margin-top:3px; }
   ${T} .sx-fac__detail { gap:12px !important; margin-top:12px !important; }
   ${T} .sx-fac-contracts .sx-ladder__step { padding:3px 0 !important; }
   ${T} .sx-fac__rows .sx-fac-row { padding-top:5px !important; padding-bottom:5px !important; }
@@ -296,7 +296,7 @@ ${T} .sx-fac-network__empty { font-size:12.5px !important; color:rgb(${BONE} / .
 
 /* ================================ INDUSTRY ================================================== */
 ${T} .sx-ind__list { position:relative; }
-${T} .sx-ind-process__head { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; padding-left:26px !important; margin:0 0 6px !important; }
+${T} .sx-ind-process__head { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; padding-left:26px !important; margin:0 0 6px !important; }
 ${T} .sx-ind-process + .sx-ind-process { margin-top:18px !important; }
 ${rail('.sx-ind-process__items', '.sx-ind-process__items .sx-ind-row', '.is-active, [aria-selected="true"]')}
 ${T} .sx-ind-process__items > li { display:block !important; }
@@ -306,11 +306,11 @@ ${T} .sx-ind-row__body { gap:1px !important; }
 ${T} .sx-ind-row__name, ${T} .sx-ind-row__name:is(.k-good, .k-signal, .k-bad) { font-family:var(--dp-face-body, "Instrument Sans") !important; font-size:13px !important; font-weight:560;
   letter-spacing:.02em !important; text-transform:none !important; color:rgb(${BONE} / .86) !important; }
 ${T} .sx-ind-row:is(.is-active, [aria-selected="true"]) .sx-ind-row__name { color:rgb(250 247 238) !important; }
-${T} .sx-ind-row__tier { ${LABEL} font-size:9.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
+${T} .sx-ind-row__tier { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
 /* the reading: the chain is the instrument; the inputs a ledger under it; Fabricate the Lamp Key */
 ${T} .sx-fab { padding-right:0 !important; max-width:780px; }
 ${T} .sx-fab > * + * { margin-top:10px !important; }
-${T} .sx-fab-head__cat, ${T} .sx-fab-col-k { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-fab-head__cat, ${T} .sx-fab-col-k { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
 ${T} .sx-fab-head__name { margin-top:6px !important; }
 ${T} .sx-fab-head__name .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; color:inherit !important; }
 ${T} .sx-fab-head__name .sf-entity-link:is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .45) !important; text-underline-offset:6px; outline:none !important; }
@@ -331,7 +331,7 @@ ${T} .sx-fab-in__q { display:none !important; }
 ${T} .sx-fab-in { grid-template-columns:minmax(0, 1fr) auto; }
 ${word('.sx-fab-in__source')}
 ${T} .sx-fab-notes { ${PLAIN} gap:4px 18px !important; margin-top:8px !important; }
-${T} .sx-fab-note, ${T} .sx-fab-note.k-bad { ${LABEL} font-size:9.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
+${T} .sx-fab-note, ${T} .sx-fab-note.k-bad { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
 ${T} .sx-fab-status, ${T} .sx-fab-status:is(.k-good, .k-signal, .k-bad) { font-size:12.5px !important; color:rgb(${BONE} / .72) !important; }
 ${T} .sx-fab-foot { ${PLAIN} margin-top:16px !important; }
 ${T} .sx-fab-build.orr-lampkey { padding:0 26px 0 20px !important; min-height:44px !important; font-size:15px !important; letter-spacing:.14em !important; color:#1c1406 !important;
@@ -350,7 +350,7 @@ ${T} .sx-fab-build.orr-lampkey:disabled { color:rgb(${BONE} / .55) !important; }
 
 /* ================================ BAR ======================================================= */
 /* who is here, on the ladder */
-${T} .sx-bar__rail > .k-caps, ${T} .sx-bar__leads > .k-caps { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; padding-left:26px !important; }
+${T} .sx-bar__rail > .k-caps, ${T} .sx-bar__leads > .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; padding-left:26px !important; }
 ${rail('.sx-bar__rows', '.sx-bar__rows .sx-bar-row', '.is-active, [aria-selected="true"], [aria-current="true"]')}
 ${T} .sx-bar__rows { border:0 !important; box-shadow:none !important; clip-path:none !important; }
 ${T} .sx-bar__rows > li { display:block !important; }
@@ -360,7 +360,7 @@ ${T} .sx-bar__rows .sx-bar-row { ${PLAIN} display:flex !important; flex-directio
 ${T} .sx-bar__rows .sx-bar-row::after { display:none !important; }
 ${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"]) { color:rgb(250 247 238) !important; }
 ${T} .sx-bar__rows .sx-bar-row:is(:hover, :focus-visible) { color:rgb(255 250 240) !important; outline:none !important; }
-${T} .sx-bar-row__role { ${LABEL} font-size:9.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
+${T} .sx-bar-row__role { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
 /* leads and intel: ledgers, and words that go */
 ${T} .sx-bar__leads > .k-caps { margin-top:18px !important; }
 ${T} .sx-lead__rows, ${T} .sx-intel__rows, ${T} .sx-bar__foot { ${PLAIN} }
@@ -370,12 +370,12 @@ ${T} .sx-lead__t { display:block !important; font-size:12.5px !important; line-h
   text-overflow:clip !important; max-width:none !important; }
 ${T} .sx-lead__t .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; color:inherit !important; }
 ${T} .sx-lead__t .sf-entity-link:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
-${T} .sx-lead__s { ${LABEL} font-size:9.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
+${T} .sx-lead__s { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
 ${word('.sx-lead__go')}
 ${word('.sx-bar__log')}
 ${T} .sx-bar__foot { padding-left:26px !important; margin-top:6px !important; }
 ${T} .sx-intel { ${PLAIN} display:grid !important; grid-template-columns:76px minmax(0, 1fr); column-gap:12px; align-items:baseline; padding:5px 0 5px 26px !important; min-height:0 !important; }
-${T} .sx-intel .k-row__name { ${LABEL} font-size:9.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
+${T} .sx-intel .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
 ${T} .sx-intel .k-row__sub { font-size:12px !important; color:rgb(${BONE} / .82) !important; }
 ${T} .sx-bar__leads .sx-muted { font-size:12.5px !important; color:rgb(${BONE} / .6) !important; padding-left:26px; }
 /* the talk: the portrait is the cinema behind the words; the waveform breathes under the name */
@@ -385,7 +385,7 @@ ${T} .sx-bar__stage .sx-talk > * + * { margin-top:14px !important; }
 ${T} .sx-talk__head { display:block !important; }
 ${T} .sx-talk__id { position:relative; z-index:2; max-width:min(52%, 620px); }
 ${T} .sx-talk__id > * + * { margin-top:10px !important; }
-${T} .sx-talk__role { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-talk__role { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
 ${T} .sx-talk__name { font-size:clamp(34px, 4.6vh, 52px) !important; line-height:.95 !important; margin-top:6px !important; }
 ${T} .orr-bar-wave { width:210px; margin:12px 0 0 !important; }
 ${T} .sx-talk__memory { font-size:12.5px !important; color:rgb(${BONE} / .62) !important; max-width:44ch; }
@@ -429,7 +429,7 @@ ${T} .sx-ledger .st-sub-h { font-family:var(--dp-face-display, "Archivo") !impor
   font-size:clamp(28px, 3.4vh, 40px) !important; letter-spacing:.005em !important; line-height:1 !important; color:rgb(248 244 234) !important; text-transform:none; text-shadow:none !important; }
 ${T} .sx-ledger .st-ledger-intro { font-size:13px !important; color:rgb(${BONE} / .7) !important; font-family:var(--dp-face-body, "Instrument Sans") !important; letter-spacing:0 !important;
   text-transform:none !important; font-weight:400 !important; margin-top:8px !important; }
-${T} .sx-ledger .st-ledger-status { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; margin-top:14px !important; }
+${T} .sx-ledger .st-ledger-status { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; margin-top:14px !important; }
 ${T} .sx-ledger .st-ledger-empty:not([hidden]) { ${PLAIN} display:block !important; flex:none !important; align-self:flex-start !important; min-height:0 !important; height:auto !important; padding:0 !important;
   font-family:var(--dp-face-body, "Instrument Sans") !important; font-size:13px !important; font-weight:400 !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(${BONE} / .66) !important; margin-top:10px !important; max-width:44ch; }
@@ -439,22 +439,22 @@ ${T} .sx-ledger .st-ledger-empty { grid-row:4; align-self:start; }
 ${T} .sx-ledger .st-ledger-list[hidden] { display:none !important; }
 ${T} .sx-ledger .st-ledger-entry { ${PLAIN} display:block !important; padding:8px 0 8px 26px !important; min-height:0 !important; height:auto !important; }
 ${T} .sx-ledger .st-ledger-entry-body { grid-template-columns:auto minmax(0, 1fr) auto !important; column-gap:14px !important; }
-${T} .sx-ledger .st-ledger-cycle { ${LABEL} font-family:var(--dp-face-label, "Archivo") !important; font-size:9.5px !important; letter-spacing:.12em !important; color:rgb(${BONE} / .55) !important; font-variant-numeric:tabular-nums; }
-${T} .sx-ledger .st-ledger-type { ${PLAIN} ${LABEL} font-family:var(--dp-face-label, "Archivo") !important; font-size:9px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; padding:0 !important; }
+${T} .sx-ledger .st-ledger-cycle { ${LABEL} font-family:var(--dp-face-label, "Archivo") !important; font-size: 12px !important; letter-spacing:.12em !important; color:rgb(${BONE} / .55) !important; font-variant-numeric:tabular-nums; }
+${T} .sx-ledger .st-ledger-type { ${PLAIN} ${LABEL} font-family:var(--dp-face-label, "Archivo") !important; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; padding:0 !important; }
 ${T} .sx-ledger .st-ledger-type.k-signal { color:rgb(${BONE} / .8) !important; }
 ${T} .sx-ledger .st-ledger-line { font-size:13px !important; color:rgb(248 244 234) !important; }
-${T} .sx-ledger .st-ledger-annotation { font-size:11.5px !important; color:rgb(${BONE} / .66) !important; }
+${T} .sx-ledger .st-ledger-annotation { font-size: 12px !important; color:rgb(${BONE} / .66) !important; }
 ${T} .sx-ledger .st-ledger-nav { ${PLAIN} gap:0 18px !important; margin-top:10px !important; padding-left:26px; }
 ${word('.st-ledger-nav [data-ledger-page]')}
 ${word('.st-ledger-evidence-btn')}
 ${T} .sx-ledger__read { ${PLAIN} padding-right:0 !important; position:relative; isolation:isolate; }
 ${T} .sx-ledger__read::before { content:""; position:absolute; z-index:-1; inset:-40px -60px; pointer-events:none;
   background:radial-gradient(closest-side, rgb(7 8 10 / .8), rgb(7 8 10 / .6) 60%, rgb(7 8 10 / 0)); }
-${T} .sx-ledger__read-kicker { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-ledger__read-kicker { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
 ${T} .sx-ledger__read-hero { ${PLAIN} padding:0 !important; }
 ${T} .sx-ledger__read-num { font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important;
   font-size:clamp(56px, 8vh, 96px) !important; line-height:1 !important; letter-spacing:-.02em !important; color:rgb(248 244 234) !important; text-shadow:none !important; }
-${T} .sx-ledger__read-unit { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; }
+${T} .sx-ledger__read-unit { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; }
 ${T} .sx-ledger__read-title { font-size:clamp(22px, 2.6vh, 30px) !important; }
 ${T} .sx-ledger__read-line { font-size:15px !important; line-height:1.5; color:rgb(248 244 234) !important; max-width:52ch; }
 ${T} .sx-ledger__read-hand { font-size:13px !important; color:rgb(${BONE} / .72) !important; max-width:52ch; }
@@ -469,7 +469,7 @@ ${T} .sx-fac-row__name > .k-62 { display:block; margin-bottom:1px; }
 /* the standing figure: its tier as the label above the number; the two readings smaller; captions one line */
 ${T} .sx-fac-heroes { align-items:flex-start !important; gap:16px 44px !important; }
 ${T} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:clamp(48px, 7vh, 80px) !important; }
-${T} .sx-fac-heroes .k-hero__n .sx-fac-tier { ${LABEL} display:block; font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; margin-bottom:6px; }
+${T} .sx-fac-heroes .k-hero__n .sx-fac-tier { ${LABEL} display:block; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; margin-bottom:6px; }
 ${T} .sx-fac-heroes .k-hero__n.k-bad .sx-fac-tier { color:var(--dp-danger, #ff5038) !important; }
 ${T} .sx-fac-heroes .k-hero__w { font-family:var(--dp-face-body, "Instrument Sans") !important; font-stretch:100%; font-variation-settings:normal !important; font-weight:400 !important;
   font-size:12.5px !important; letter-spacing:0 !important; text-transform:none !important; max-width:30ch !important; color:rgb(${BONE} / .66) !important; }
@@ -479,7 +479,7 @@ ${T} .sx-fac-contracts .sx-ladder__step.is-next { position:relative; margin-top:
 ${T} .sx-fac-contracts .sx-ladder__step.is-next::before { content:"" !important; display:block !important; position:absolute !important; left:0 !important; right:0 !important; top:-5px !important;
   width:auto !important; height:1px !important; margin:0 !important; background:linear-gradient(90deg, rgb(248 244 234 / .7), rgb(248 244 234 / 0)) !important; clip-path:none !important; }
 ${T} .sx-fac-contracts .sx-ladder__step.is-next::after { content:"you are here" !important; display:block !important; position:absolute !important; left:0; top:-13px; width:auto !important; height:auto !important;
-  ${LABEL} font-size:7.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; background:none !important; }
+  ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; background:none !important; }
 /* a short screen: the index folds into the ring (every crest is a button); the ring takes the width */
 @media (max-height:800px) {
   ${T} .sx-fac { grid-template-columns:minmax(0, 1fr) !important; }
@@ -489,13 +489,13 @@ ${T} .sx-fac-contracts .sx-ladder__step.is-next::after { content:"you are here" 
   ${T} .sx-fac-heroes { flex-wrap:nowrap !important; gap:10px 26px !important; }
   ${T} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:44px !important; }
   ${T} .sx-fac-heroes .k-hero__n { font-size:30px !important; }
-  ${T} .sx-fac-heroes .k-hero__w { font-size:11px !important; max-width:20ch !important; }
+  ${T} .sx-fac-heroes .k-hero__w { font-size: 12px !important; max-width:20ch !important; }
   ${T} .sx-fac-ident__name { font-size:24px !important; }
   ${T} .sx-fac-ident__flag { font-size:12px !important; }
   ${T} .sx-fac__detail { gap:10px !important; margin-top:10px !important; }
   ${T} .orr-standing { max-width:520px; }
   ${T} .sx-fac-contracts .sx-ladder__step { padding:2px 0 !important; }
-  ${T} .sx-fac-contracts .sx-ladder__name { font-size:11.5px !important; }
+  ${T} .sx-fac-contracts .sx-ladder__name { font-size: 12px !important; }
 }
 
 /* ================================ ROUND 2: INDUSTRY ========================================= */
@@ -528,7 +528,7 @@ ${T} .sx-fab-status { margin-top:8px !important; }
 ${T} .sx-fab-foot { margin-top:12px !important; align-self:end; }
 /* the ladder: the reason only on the chosen row; the tier alone on the rest */
 ${T} .sx-ind-row:not(.is-active, [aria-selected="true"]) .sx-ind-row__why { display:none !important; }
-${T} .sx-ind-row__tier { font-size:9px !important; color:rgb(${BONE} / .45) !important; }
+${T} .sx-ind-row__tier { font-size: 12px !important; color:rgb(${BONE} / .45) !important; }
 ${T} .sx-ind-row:is(.is-active, [aria-selected="true"]) .sx-ind-row__tier { color:rgb(${BONE} / .6) !important; }
 ${T} .sx-ind-process__items .sx-ind-row { padding-top:5px !important; padding-bottom:5px !important; }
 @media (max-height:800px) {
@@ -536,7 +536,7 @@ ${T} .sx-ind-process__items .sx-ind-row { padding-top:5px !important; padding-bo
   ${T} .orr-ind-chain { min-height:100px; margin:4px 0 2px !important; }
   ${T} .sx-fab-head__desc { display:none !important; }
   ${T} .sx-fab-notes { display:none !important; }
-  ${T} .sx-fab-status { margin-top:4px !important; font-size:11.5px !important; }
+  ${T} .sx-fab-status { margin-top:4px !important; font-size: 12px !important; }
   ${T} .sx-fab-foot { margin-top:6px !important; }
   ${T} .sx-ind-process__items .sx-ind-row { padding-top:3px !important; padding-bottom:3px !important; }
 }
@@ -653,8 +653,8 @@ ${T} .sx-ct__board { flex:0 1 auto !important; }
 ${T} .sx-ct__board > .sx-ct__rows { background:none !important; }
 /* the scales: readable end words on a longer rule */
 ${T} .orr-ct-scales { height:84px; margin:16px 0 6px !important; }
-${T} .orr-ct-scales text.orr-ct-scale__end { font-size:11px; letter-spacing:.12em; fill:rgb(${BONE} / .62); }
-${T} .orr-ct-scales text.orr-ct-scale__key { font-size:10.5px; }
+${T} .orr-ct-scales text.orr-ct-scale__end { font-size: 12px; letter-spacing:.12em; fill:rgb(${BONE} / .62); }
+${T} .orr-ct-scales text.orr-ct-scale__key { font-size: 12px; }
 ${T} .orr-ct-scales path.orr-ct-scale__cursor.is-high { stroke:var(--dp-danger, #ff5038); }
 ${T} .orr-ct-scales .orr-bloom.orr-ct-scale__cursor.is-high { stroke:var(--dp-danger, #ff5038); opacity:.3; }
 /* the terms keep their floor, so the key stands in one place from mission to mission */
@@ -717,7 +717,7 @@ ${T} .sx-fac-row__nil { color:rgb(${BONE} / .35) !important; }
 /* ================================ ROUND 3: INDUSTRY ========================================= */
 /* the chain is the reading: the needs ledger under it says nothing the drawing does not, so it yields while the chain stands */
 ${T} .sx-fab:has(.orr-chain:not(.is-off)) .sx-fab-inputs, ${T} .sx-fab:has(.orr-chain:not(.is-off)) .sx-fab-col-k { display:none !important; }
-${T} .sx-ind-row__tier { font-size:10px !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-ind-row__tier { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
 ${T} .sx-ind-row__qty { color:rgb(${BONE} / .45); font-variant-numeric:tabular-nums; margin-left:6px; font-weight:500; }
 /* a disabled Lamp Key keeps its void (a kit rule on fh-key had hidden the pseudo, leaving a slab) */
 ${T} .orr-lampkey:disabled::after { display:block !important; }
@@ -752,9 +752,9 @@ ${T} .sx-ledger__read-num { font-size:clamp(64px, 8.6vh, 96px) !important; }
 /* the entries: the cycle and the type on one line, the sentence full width beneath — no third column, no widows */
 ${T} .sx-ledger .st-ledger-entry-body { grid-template-columns:auto auto minmax(0, 1fr) !important; grid-template-areas:"time type ." "line line line" "note note note" !important; column-gap:12px !important; row-gap:2px !important; }
 ${T} .sx-ledger .st-ledger-type { text-align:left !important; }
-${T} .sx-ledger .st-ledger-cycle, ${T} .sx-ledger .st-ledger-type { font-size:10.5px !important; }
+${T} .sx-ledger .st-ledger-cycle, ${T} .sx-ledger .st-ledger-type { font-size: 12px !important; }
 ${T} .sx-ledger .st-ledger-line { font-size:13.5px !important; line-height:1.4; }
-${T} .sx-ledger .st-ledger-status { font-size:10.5px !important; }
+${T} .sx-ledger .st-ledger-status { font-size: 12px !important; }
 /* a short list never squeezes its rows: they keep their two lines and the list scrolls */
 ${T} .sx-ledger .st-ledger-list > li, ${T} .sx-ledger .st-ledger-entry { flex:none !important; min-height:0 !important; }
 ${T} .sx-ledger .st-ledger-list { overflow:hidden auto !important; min-height:0 !important; }
@@ -773,7 +773,7 @@ ${T} .sx-fab-status { margin-top:8px !important; }
 /* a per-run yield is a reading: it clears the gate */
 ${T} .sx-ind-row__qty { color:rgb(${BONE} / .54) !important; }
 /* the ladder's band word and the stage's eyebrow share a size and a line */
-${T} .sx-ind-process__head, ${T} .sx-fab-head__cat { font-size:10.5px !important; line-height:1.2 !important; }
+${T} .sx-ind-process__head, ${T} .sx-fab-head__cat { font-size: 12px !important; line-height:1.2 !important; }
 ${T} .sx-fab-head__cat { margin-top:0 !important; }
 @media (max-height:800px) {
   ${T} .sx-fab-foot { left:auto !important; right:0 !important; top:auto !important; bottom:0 !important; }
@@ -790,13 +790,13 @@ ${T} .sx-ct__rows .sx-ct-row::before { width:8px !important; background:rgb(${BO
 ${T} .sx-ct__hang > * + * { padding-top:22px !important; }
 ${T} .sx-ct__hang > .sx-ct__yours { padding-top:30px !important; }
 /* FEATURED: a major tick and a word beside it, at the standard pitch; no rule */
-${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { background:none !important; padding-top:0 !important; top:8px !important; font-size:11px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { background:none !important; padding-top:0 !important; top:8px !important; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; }
 ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:24px !important; }
 ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after { content:"" !important; display:block !important; position:absolute !important; left:2px !important; top:14px !important; width:11px !important; height:2px !important;
   margin:0 !important; border-radius:0 !important; background:rgb(248 244 234 / .8) !important; }
 ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:14px !important; margin:0 !important; width:11px !important; height:2px !important; border-radius:0 !important; background:rgb(248 244 234 / .8) !important; }
 /* DISPATCH is a verb on its own rung: a chevron word in the light, the terms after it */
-${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name { color:rgb(248 244 234) !important; font-size:10.5px !important; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name { color:rgb(248 244 234) !important; font-size: 12px !important; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name::before { content:"› "; color:rgb(${BONE} / .5); }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:is(:hover, :focus-visible) .k-row__name { color:rgb(255 250 240) !important; }
 /* the terms are rungs on one ladder with the two scales: a rail down the label column, a tick per term */
@@ -846,8 +846,8 @@ ${T} .sx-fac-overview:has(.sx-fac-crest.is-authority) { padding-right:0 !importa
 ${T} .sx-fac-heroes { align-items:last baseline !important; }
 ${T} .sx-fac__rows .sx-fac-row { grid-template-columns:minmax(0, 1fr) 52px !important; justify-content:stretch !important; }
 ${T} .sx-fac-row__tier { justify-self:end; }
-${T} .orr-standing text.orr-standing__name { font-size:11px !important; letter-spacing:.12em; }
-${T} .orr-standing text.orr-standing__rung { font-size:10.5px !important; }
+${T} .orr-standing text.orr-standing__name { font-size: 12px !important; letter-spacing:.12em; }
+${T} .orr-standing text.orr-standing__rung { font-size: 12px !important; }
 ${T} .sx-fac-rung-next { max-width:64ch; }
 @media (min-width:1500px) {
   ${T} .sx-fac-overview { padding-right:0 !important; }
@@ -884,7 +884,7 @@ ${T} .orr-crest__name, ${T} .orr-crest__rep { white-space:nowrap !important; hyp
   ${T} .orr-fac-orbit .orr-crest__words { display:flex !important; }
   ${T} .orr-fac-orbit .orr-crest .orr-crest__name { display:none !important; }
   ${T} .orr-fac-orbit .orr-crest:is(.is-chosen, :hover, :focus-visible) .orr-crest__name { display:block !important; }
-  ${T} .orr-standing text.orr-standing__name { font-size:10px !important; letter-spacing:.1em !important; }
+  ${T} .orr-standing text.orr-standing__name { font-size: 12px !important; letter-spacing:.1em !important; }
   ${T} .sx-fac__detail { gap:6px !important; margin-top:6px !important; }
   ${T} .sx-fac-rung-next { margin-top:2px !important; }
   ${T} .sx-fac-network { margin-top:6px !important; }
@@ -917,7 +917,7 @@ ${T} .sx-talk__choices > li { counter-increment:sx-reply; }
 ${T} .sx-choice { display:block !important; width:min(100%, 52ch) !important; text-align:left !important; padding:9px 22px 9px 44px !important; color:rgb(${BONE} / .9) !important;
   background:linear-gradient(90deg, rgb(6 8 11 / .58), rgb(6 8 11 / .42) 55%, rgb(6 8 11 / 0)) !important; }
 ${T} .sx-choice::after { content:counter(sx-reply) !important; display:block !important; position:absolute !important; left:12px !important; top:50% !important; bottom:auto !important; transform:translateY(-50%) !important;
-  width:12px !important; height:auto !important; text-align:center !important; ${LABEL} font-size:10.5px !important; letter-spacing:0 !important; color:rgb(${BONE} / .55) !important; background:none !important; box-shadow:none !important; }
+  width:12px !important; height:auto !important; text-align:center !important; ${LABEL} font-size: 12px !important; letter-spacing:0 !important; color:rgb(${BONE} / .55) !important; background:none !important; box-shadow:none !important; }
 ${T} .sx-choice::before { left:30px !important; }
 ${T} .sx-talk__choices > li:first-child .sx-choice::before { left:30px !important; }
 ${T} .sx-choice:is(:hover, :focus-visible) { background:linear-gradient(90deg, rgb(12 15 20 / .78), rgb(12 15 20 / .55) 55%, rgb(12 15 20 / 0)) !important; }
@@ -925,9 +925,9 @@ ${T} .sx-choice:is(:hover, :focus-visible)::after { color:rgb(248 244 234) !impo
 ${T} .sx-talk__choices > li .sx-choice:is(:hover, :focus-visible)::before { left:28px !important; }
 /* the folded facts: the board's count rides the verb */
 ${T} .sx-bar__intel { display:none !important; }
-${T} .sx-bar__log-n { font-family:var(--dp-face-numeral, "Archivo") !important; font-size:11px !important; letter-spacing:.04em !important; color:rgb(${BONE} / .72) !important; font-variant-numeric:tabular-nums; }
+${T} .sx-bar__log-n { font-family:var(--dp-face-numeral, "Archivo") !important; font-size: 12px !important; letter-spacing:.04em !important; color:rgb(${BONE} / .72) !important; font-variant-numeric:tabular-nums; }
 /* the small caps clear the legibility gate */
-${T} .sx-bar-row__role { font-size:10.5px !important; color:rgb(${BONE} / .68) !important; }
+${T} .sx-bar-row__role { font-size: 12px !important; color:rgb(${BONE} / .68) !important; }
 ${T} .sx-talk__reply.is-idle { font-size:13px !important; color:rgb(${BONE} / .74) !important; }
 ${T} .orr-bar-wave { height:24px !important; }
 @media (max-height:800px) {
@@ -956,7 +956,7 @@ ${T} .sx-ledger .st-ledger-line { color:rgb(${BONE} / .74) !important; }
 ${T} .sx-ledger .st-ledger-entry[aria-selected="true"] .st-ledger-line { color:rgb(248 244 234) !important; }
 ${T} .sx-ledger .st-ledger-entry[aria-selected="true"] :is(.st-ledger-cycle, .st-ledger-type) { color:rgb(${BONE} / .85) !important; }
 /* the keys at the ladder's foot */
-${T} .sx-ledger__keys { ${LABEL} font-size:9.5px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important; margin-top:8px !important; padding-left:26px; }
+${T} .sx-ledger__keys { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important; margin-top:8px !important; padding-left:26px; }
 ${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) .sx-ledger__keys { display:none !important; }
 /* the empty sentence stands where the count stands when the book is filled: right under the intro */
 ${T} .sx-ledger .st-ledger-empty:not([hidden]) { margin-top:14px !important; margin-bottom:0 !important; order:0; position:static !important; }
@@ -1020,8 +1020,8 @@ ${T} .sx-choice.is-current { color:rgb(255 250 240) !important; }
 ${T} .sx-choice.is-current::after { color:rgb(248 244 234) !important; }
 /* the verb never vanishes: INSPECT stays a word at 720 */
 @media (max-height:800px) {
-  ${T} .sx-lead__go { font-size:9.5px !important; letter-spacing:.14em !important; }
-  ${T} .sx-lead__go::before { font-size:9.5px !important; }
+  ${T} .sx-lead__go { font-size: 12px !important; letter-spacing:.14em !important; }
+  ${T} .sx-lead__go::before { font-size: 12px !important; }
 }
 /* glass under the words: the crate wall behind the ladder dissolves into tone */
 ${T} .sx-bar__hang { position:relative; isolation:isolate; }
@@ -1078,12 +1078,12 @@ ${T} .orr-ct-scales { margin-bottom:0 !important; }
 ${T} .sx-dossier__terms { margin-top:0 !important; padding-top:2px !important; }
 ${T} .sx-dossier__terms > li { grid-template-columns:92px minmax(0, 1fr) !important; column-gap:12px !important; padding:9px 0 !important; }
 ${T} .sx-dossier__terms .sx-term__v { flex-direction:row !important; align-items:baseline !important; gap:10px !important; flex-wrap:wrap; }
-${T} .sx-dossier__terms .sx-term__sub { font-size:11.5px !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-dossier__terms .sx-term__sub { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
 ${T} .sx-dossier__terms > li::before { top:50% !important; margin-top:-.5px; }
 /* the jump reading hangs under the ring's foot with its own room */
 ${T} .sx-dossier > .orr-ct-route .orr-route__caption { bottom:-14px !important; }
 /* the dispatch facts at a size the decision needs */
-${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size:11px !important; color:rgb(${BONE} / .66) !important; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px !important; color:rgb(${BONE} / .66) !important; }
 /* a short screen: the key stays above the fold; the scale captions fold; names hold one line with a dissolved edge */
 @media (max-height:800px) {
   ${T} .sx-dossier .k-hero--hero .k-hero__n { font-size:44px !important; }
@@ -1128,7 +1128,7 @@ ${T} .sx-talk__choices > li .sx-choice.is-current::before, ${T} .sx-talk__choice
   background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .55) !important; }
 /* the keys read as keys */
 ${T} .sx-choice::after { font-size:12px !important; color:rgb(${BONE} / .7) !important; }
-${T} .sx-talk__keys, ${T} .sx-bar__keys { ${LABEL} font-size:9.5px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important; margin:8px 0 0 !important; }
+${T} .sx-talk__keys, ${T} .sx-bar__keys { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important; margin:8px 0 0 !important; }
 ${T} .sx-talk__keys { padding-left:44px; }
 ${T} .sx-bar__keys { padding-left:44px !important; }
 /* one target per lead: the title at full width with its price as a reading; the verb answers the current row */
@@ -1149,8 +1149,8 @@ ${T} .sx-fac-overview > :not(.sx-fac-crest) { position:relative; z-index:1; }
 @media (min-width:1500px) { ${T} .sx-fac-overview > .sx-fac__detail { margin-right:0 !important; } }
 @media (max-height:800px) { ${T} .sx-fac-crest { width:200px; height:200px; top:-10px; } }
 /* rim words at the label floor; a dim zero is a zero */
-${T} .orr-crest__name { font-size:10.5px !important; }
-${T} .orr-crest__rep { font-size:11px !important; }
+${T} .orr-crest__name { font-size: 12px !important; }
+${T} .orr-crest__rep { font-size: 12px !important; }
 ${T} .sx-fac__rows .sx-fac-row__tier.is-zero { color:rgb(${BONE} / .32) !important; }
 
 /* every ladder row keeps the arm's room whatever its own sheet said */
@@ -1172,7 +1172,7 @@ ${T} .sx-dossier__terms > li.sx-term--threat::before { background:var(--dp-dange
   ${T} .orr-ct-scales::after { top:44px !important; }
   ${T} .sx-ct__rows .sx-ct-row { display:block !important; }
   ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; white-space:nowrap !important; display:block !important; }
-  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { display:block !important; text-align:left !important; font-size:10.5px !important; margin-top:1px; color:rgb(${BONE} / .7) !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { display:block !important; text-align:left !important; font-size: 12px !important; margin-top:1px; color:rgb(${BONE} / .7) !important; }
   ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__rew { color:rgb(248 244 234) !important; }
   ${T} .sx-ct__rows .sx-ct-row { padding-top:3px !important; padding-bottom:3px !important; }
   ${T} .sx-dossier > .orr-ct-route .orr-route__caption { top:auto !important; bottom:-26px !important; left:0 !important; right:0 !important; justify-content:center !important; }
@@ -1204,7 +1204,7 @@ ${T} .sx-ledger__read.fh-plate, ${T} .sx-ledger__row > .sx-ledger__read { paddin
 ${T} .sx-talk__choices { background:${SPINE(30, .55, '0 8px / 100% calc(100% - 16px)')}, ${BAND(30, '0 8px / 100% calc(100% - 16px)')} !important; }
 ${T} .sx-choice::before, ${T} .sx-talk__choices > li:first-child .sx-choice::before { background:rgb(${BONE} / .55) !important; }
 /* the reply keys are keys, not list numbers: dim unless current */
-${T} .sx-choice::after { font-size:11px !important; font-weight:600 !important; color:rgb(${BONE} / .55) !important; }
+${T} .sx-choice::after { font-size: 12px !important; font-weight:600 !important; color:rgb(${BONE} / .55) !important; }
 ${T} .sx-choice.is-current::after { color:rgb(248 244 234) !important; }
 /* the stage direction says nothing the keys do not */
 ${T} .sx-talk__reply.is-idle { display:none !important; }
@@ -1223,7 +1223,7 @@ ${T} .sx-bar__leadkeys { margin-top:6px !important; }
 /* the chain has the height of a hero instrument at 1920 (ring r≈130) and drops toward the stage's centre */
 ${T} .orr-ind-chain { height:clamp(240px, 42vh, 420px) !important; margin-top:clamp(0px, 3vh, 36px); }
 /* the block note under the reason; the disabled key's outline is enough */
-${T} .orr-chain__blocknote { ${LABEL} font-size:9.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
+${T} .orr-chain__blocknote { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
 ${T} .orr-chain__verb > .orr-chain__blocknote::before { content:"" !important; }
 ${T} .sx-fab-foot .orr-lampkey:disabled { color:rgb(${BONE} / .45) !important; }
 ${T} .sx-fab-foot .orr-lampkey:disabled::after { display:none !important; }
@@ -1255,8 +1255,8 @@ ${T} .sx-dossier > .k-words:last-of-type { margin-top:10px !important; }
 @media (max-height:800px) {
   ${T} .sx-ct__board[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important; overflow:hidden auto !important; }
   ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { font-size:12.5px !important; }
-  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { font-size:10px !important; }
-  ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size:10px !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { font-size: 12px !important; }
+  ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px !important; }
 }
 
 /* ================================ ROUND 8: BAR ============================================== */
@@ -1282,7 +1282,7 @@ ${T} .sx-talk__avatar::before { inset:-10% -10% -10% -44%; background:radial-gra
 /* one spine through the break: the contacts' foot hint sits beside the spine */
 ${T} .sx-bar__hang { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .16) 7px, rgb(${BONE} / .16) 8.5px, transparent 8.5px) 0 0 / 100% 100% no-repeat; }
 /* three sizes of one voice: hints, section labels, the verb */
-${T} .sx-bar__keys, ${T} .sx-talk__keys { font-size:9.5px !important; font-weight:500 !important; color:rgb(${BONE} / .45) !important; }
+${T} .sx-bar__keys, ${T} .sx-talk__keys { font-size: 12px !important; font-weight:500 !important; color:rgb(${BONE} / .45) !important; }
 ${T} .sx-bar__log { color:rgb(248 244 234) !important; }
 /* a lead's title clamps with a dissolved edge before its price at 720 */
 @media (max-height:800px) {
@@ -1346,7 +1346,7 @@ ${T} .sx-dossier > .orr-ct-route::before { background:radial-gradient(circle, rg
   ${T} .orr-ct-scales { margin-top:10px !important; }
   /* the ladder window dissolves inside the inter-row gap only (the height is snapped to a row boundary by the screen) */
   ${T} .sx-ct__board[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 12px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 12px), transparent) !important; }
-  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { font-size:11px !important; margin-left:8px !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { font-size: 12px !important; margin-left:8px !important; }
 }
 
 /* ================================ ROUND 9b: MISSIONS — the tether ============================= */
@@ -1360,10 +1360,10 @@ ${T} .sx-ct-tether__pulse-dot { fill:rgb(223 238 255); }
 html.sf-reduce-motion ${T} .sx-ct-tether__pulse { display:none; }
 ${T} .sx-dossier > .sx-ct-tether__caption { position:absolute; margin:0; padding:0; display:flex; align-items:baseline; gap:10px; pointer-events:none; z-index:2; white-space:nowrap; grid-area:auto; }
 ${T} .sx-ct-tether__caption > .orr-route__jumps { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:300; font-size:26px; line-height:1; letter-spacing:0; color:rgb(248 244 234); }
-${T} .sx-ct-tether__caption > .orr-route__via { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:10px; font-weight:650; letter-spacing:.16em; color:rgb(${BONE} / .66); }
+${T} .sx-ct-tether__caption > .orr-route__via { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size: 12px; font-weight:650; letter-spacing:.16em; color:rgb(${BONE} / .66); }
 @media (max-height:800px) {
   ${T} .sx-ct-tether__caption > .orr-route__jumps { font-size:20px; }
-  ${T} .sx-ct-tether__caption > .orr-route__via { font-size:9px; }
+  ${T} .sx-ct-tether__caption > .orr-route__via { font-size: 12px; }
 }
 
 /* ================================ ROUND 7: INDUSTRY ========================================= */
@@ -1387,8 +1387,8 @@ ${T} .sx-fac-overview > .sx-fac-crest .dp-mark, ${T} .sx-fac-overview > .sx-fac-
 
 /* a short screen's tier names at 9px: nine bands of ~63px hold ACCEPTED only at this size */
 @media (max-height:800px) {
-  ${T} .orr-standing text.orr-standing__name, ${T} svg.orr-svg.is-compact text.orr-standing__name { font-size:9px !important; letter-spacing:.08em !important; }
-  ${T} .orr-standing text.orr-standing__val { font-size:8.5px !important; }
+  ${T} .orr-standing text.orr-standing__name, ${T} svg.orr-svg.is-compact text.orr-standing__name { font-size: 12px !important; letter-spacing:.08em !important; }
+  ${T} .orr-standing text.orr-standing__val { font-size: 12px !important; }
 }
 
 /* ================================ ROUND 8: INDUSTRY ========================================= */
@@ -1422,7 +1422,7 @@ ${T} .sx-bar__hang { background:linear-gradient(90deg, transparent 7px, rgb(${BO
   -webkit-mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent) !important; mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent) !important; }
 ${T} .sx-bar__rows, ${T} .sx-lead__rows { background:repeating-linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat !important; }
 /* B4: three hints, one voice */
-${T} .sx-talk__keys, ${T} .sx-bar__keys, ${T} .sx-bar__leadkeys { font-size:10px !important; letter-spacing:.14em !important; color:rgb(119 112 104) !important; opacity:1 !important; }
+${T} .sx-talk__keys, ${T} .sx-bar__keys, ${T} .sx-bar__leadkeys { font-size: 12px !important; letter-spacing:.14em !important; color:rgb(119 112 104) !important; opacity:1 !important; }
 ${T} .sx-bar__leads:focus-within .sx-bar__leadkeys { color:rgb(${BONE} / .6) !important; }
 /* the ladder's prices stop short of the dialogue column */
 @media (min-width:1500px) { ${T} .sx-bar__rows .sx-bar-row, ${T} .sx-lead__rows .sx-lead { max-width:528px !important; } }
@@ -1435,12 +1435,12 @@ ${T} .sx-fac-crest { left:0 !important; top:6px !important; width:320px !importa
   -webkit-mask-image:linear-gradient(180deg, #000 0, #000 58%, transparent 80%) !important; mask-image:linear-gradient(180deg, #000 0, #000 58%, transparent 80%) !important; }
 @media (max-height:800px) { ${T} .sx-fac-crest { width:200px !important; height:200px !important; } }
 /* the legend: who the chosen power stands with and against, one line, rivals red */
-${T} .sx-fac-legend { margin:0 0 6px !important; font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; }
+${T} .sx-fac-legend { margin:0 0 6px !important; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; }
 ${T} .sx-fac-legend__k { color:rgb(248 244 234); }
 ${T} .sx-fac-legend .is-hostile { color:rgb(255 80 56 / .85) !important; }
 /* a short screen carries the rim names outside the ring at 8px */
 @media (max-height:800px) {
-  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { display:block !important; font-size:8px !important; letter-spacing:.08em !important; }
+  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { display:block !important; font-size: 12px !important; letter-spacing:.08em !important; }
   ${T} .orr-fac-orbit .orr-crest__words { display:flex !important; }
 }
 
@@ -1473,7 +1473,7 @@ ${T} .orr-lampkey .orr-lampkey__commit-bloom { display:none !important; }
 ${T} .orr-crestorbit.has-relations .orr-crest:not(.is-related):not(.is-chosen) .orr-crest__name { opacity:.85 !important; }
 ${T} .orr-crestorbit.has-relations .orr-crest.is-related .orr-crest__name { color:rgb(${BONE} / .86) !important; }
 @media (max-height:800px) {
-  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { font-size:9px !important; }
+  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { font-size: 12px !important; }
 }
 
 /* the tape (and the leader's run into the reading) stands above the reading's glass */
@@ -1499,7 +1499,7 @@ ${T} .sx-bar__hang { background:none !important; -webkit-mask-image:none !import
 ${T} .sx-bar__hang::after { content:""; position:absolute; left:7px; top:0; bottom:0; width:1.5px; background:rgb(${BONE} / .36); pointer-events:none; z-index:0;
   -webkit-mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
 /* C4: three hints, one voice; the leads' hint lifts only with the same condition that lights the leads' marker */
-${T} .sx-bar__hang .sx-bar__keys, ${T} .sx-bar__hang .sx-bar__leadkeys, ${T} .sx-talk .sx-talk__keys { font-size:9.5px !important; letter-spacing:.16em !important; color:rgb(119 112 104) !important; opacity:1 !important; }
+${T} .sx-bar__hang .sx-bar__keys, ${T} .sx-bar__hang .sx-bar__leadkeys, ${T} .sx-talk .sx-talk__keys { font-size: 12px !important; letter-spacing:.16em !important; color:rgb(119 112 104) !important; opacity:1 !important; }
 ${T} .sx-bar__leads:focus-within .sx-bar__leadkeys { color:rgb(119 112 104) !important; }
 ${T} .sx-bar__leads:has(.sx-lead__rows:focus-within) .sx-bar__leadkeys { color:rgb(${BONE} / .6) !important; }
 /* C5: a short screen fits its column: the TAB LEAD hint folds (the key carries the verb) and the contacts close up */
@@ -1620,7 +1620,7 @@ ${T} .sx-bar__rows { background:linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5
 ${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::after { top:var(--bar-arm-y, round(down, 50%, 1px)) !important; margin-top:0 !important; height:2px !important; }
 ${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::before { top:calc(var(--bar-arm-y, round(down, 50%, 1px)) - 2px) !important; margin-top:0 !important; width:6px !important; height:6px !important; }
 /* N2: the key hints at the label size: 11px caps about 5:1 */
-${T} .sx-bar__hang .sx-bar__keys, ${T} .sx-bar__hang .sx-bar__leadkeys, ${T} .sx-talk .sx-talk__keys { font-size:11px !important; letter-spacing:.12em !important; color:rgb(138 132 122) !important; }
+${T} .sx-bar__hang .sx-bar__keys, ${T} .sx-bar__hang .sx-bar__leadkeys, ${T} .sx-talk .sx-talk__keys { font-size: 12px !important; letter-spacing:.12em !important; color:rgb(138 132 122) !important; }
 /* N3: at 720 the leads keep room under the key so the spine's fade ends inside the box */
 /* N4: one rhythm on a tall screen: the section break closes to about 60px */
 @media (min-width:1500px) and (min-height:900px) { ${T} .sx-bar__leads { margin-top:28px !important; } }
@@ -1634,7 +1634,7 @@ ${T} .sx-ind-process__head .sx-ind-process__tier + .sx-ind-process__count::befor
 ${T} .sx-ind-process__items .sx-ind-row::before, ${T} .sx-ind-process__items .sx-ind-row::after { top:var(--ind-name-y, 14.5px) !important; }
 /* an augment rung says what it consumes, in the sub-line's voice, after its name */
 ${T} .sx-ind-row__name .sx-ind-row__from { margin-left:12px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wght" 600, "wdth" 112;
-  font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .52) !important; }
+  font-size: 12px; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .52) !important; }
 @media (max-height:800px) { ${T} .sx-ind-row__name .sx-ind-row__from { display:block; margin-left:0; margin-top:2px; } ${T} .sx-ind-process__items .sx-ind-row { --ind-name-y:12.5px; } }
 
 /* ================================ WEIGHT: THE BAND LIFTS WHERE THE PLAYER IS ========================== */

@@ -43,7 +43,7 @@ ${scope} ${list} { ${PLAIN} position:relative !important; display:flex !importan
   margin:0 !important; padding:4px 0 !important; counter-reset:orrlad; background:${RAIL_BG} !important; }
 ${scope} ${list} > li { position:relative !important; counter-increment:orrlad; width:100% !important; list-style:none !important; margin:0 !important; }
 ${scope} ${list} > li::before { content:counter(orrlad, decimal-leading-zero); position:absolute; left:44px; top:50%; transform:translateY(-50%); pointer-events:none;
-  ${LABEL} font-size:10px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
+  ${LABEL} font-size: 12px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
 ${scope} ${list} > li:has(> ${item}:is(${chosen}))::before { color:rgb(${BONE} / .86); }
 ${scope} ${list} ${item} { all:unset !important; box-sizing:border-box !important; position:relative !important; display:flex !important; align-items:center !important;
   width:100% !important; min-height:46px !important; padding:0 8px 0 74px !important; cursor:pointer !important; ${LABEL} font-size:13px !important;
@@ -73,7 +73,7 @@ ${S} { grid-template-columns:minmax(168px, 212px) minmax(600px, 660px) minmax(0,
   column-gap:clamp(28px, 3.4vw, 72px) !important; row-gap:clamp(18px, 3.6vh, 44px) !important; }
 ${S}::before { background:radial-gradient(120% 95% at 18% 36%, rgb(5 7 10 / .9), rgb(5 7 10 / .72) 55%, rgb(5 7 10 / .5)) !important; }
 ${S} > .k-title { align-self:end; }
-${S} > .k-title > p { ${LABEL} margin:14px 0 0 !important; font-size:10.5px !important; letter-spacing:.26em !important; color:rgb(${BONE} / .6) !important;
+${S} > .k-title > p { ${LABEL} margin:14px 0 0 !important; font-size: 12px !important; letter-spacing:.26em !important; color:rgb(${BONE} / .6) !important;
   display:flex; align-items:center; gap:14px; }
 ${S} > .k-title > p::after { content:""; width:72px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / 0)); }
 ${S} > .orr-set-preview { grid-area:preview; align-self:stretch; justify-self:stretch; min-height:0; }
@@ -88,6 +88,18 @@ ${S} #sf-settings-pane { ${PLAIN} backdrop-filter:none !important; -webkit-backd
   justify-self:stretch !important; align-self:stretch !important; max-height:100% !important; min-height:0 !important; overflow:hidden auto !important;
   padding:0 20px 34px 0 !important; margin:0 !important; scrollbar-width:none; position:relative; --sf-fade-edge:0px !important; }
 ${S} #sf-settings-pane::-webkit-scrollbar { display:none; }
+${S} #sf-settings-pane.is-scrolled { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 46px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important;
+  mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 46px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important; }
+${S} #sf-settings-pane .k-row { scroll-margin:40px 0 80px; }
+${S} #sf-settings-pane > p.k-sentence.orr-set-check { display:grid !important; grid-template-columns:var(--orr-label-w, 206px) minmax(0, 1fr); column-gap:22px; align-items:center;
+  min-height:34px; margin:0 0 0 30px !important; max-width:none !important; }
+${S} #sf-settings-pane .orr-set-check__label { ${LABEL} font-size:12px; letter-spacing:.13em; color:rgb(${BONE} / .8); }
+${S} #sf-settings-pane .orr-set-check__sep { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+${S} #sf-settings-pane .orr-set-check__state { position:relative; padding-left:14px; ${LABEL} font-size:12px; letter-spacing:.2em; color:rgb(${BONE} / .62); font-weight:650; }
+${S} #sf-settings-pane .orr-set-check__state::before { content:""; position:absolute; left:1px; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%; background:rgb(${BONE} / .3); }
+${S} #sf-settings-pane .orr-set-check__state[data-state="ready"], ${S} #sf-settings-pane .orr-set-check__state[data-state="on"] { color:rgb(${HOT}); }
+${S} #sf-settings-pane .orr-set-check__state[data-state="ready"]::before, ${S} #sf-settings-pane .orr-set-check__state[data-state="on"]::before { width:6px; height:6px; margin-top:-3px;
+  background:rgb(${HOT}); box-shadow:0 0 7px rgb(255 250 236 / .6); }
 ${S} #sf-settings-pane::before, ${S} #sf-settings-pane::after { content:none !important; display:none !important; }
 ${S} #sf-settings-pane .k-rows { ${PLAIN} position:relative; margin:0 !important; padding:2px 0 !important; max-width:none !important; background:${RAIL_BG} !important; }
 ${S} #sf-settings-pane .k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:var(--orr-label-w, 206px) minmax(0, 1fr) !important;
@@ -103,8 +115,8 @@ ${S} #sf-settings-pane .k-row:focus-within::before { left:6.5px !important; widt
 ${S} #sf-settings-pane .k-row:has(.sf-bind-btn--capture)::before { left:6px !important; width:3px !important; height:24px !important; margin-top:-12px !important;
   background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 10px rgb(255 217 140 / .7) !important; }
 /* a short category spreads its rows over the column: the scales carry it, not a hole under them */
-@media (min-height:900px) { ${S} #sf-settings-pane.is-roomy .k-row { min-height:62px !important; } }
-${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { ${LABEL} font-size:11.5px !important; letter-spacing:.13em !important; line-height:1.3 !important;
+@media (min-height:900px) { ${S} #sf-settings-pane.is-roomy .k-row { min-height:62px !important; } ${S} #sf-settings-pane.is-roomy.is-sparse .k-row { min-height:76px !important; } }
+${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { ${LABEL} font-size: 12px !important; letter-spacing:.13em !important; line-height:1.3 !important;
   color:rgb(${BONE} / .8) !important; white-space:normal; overflow-wrap:break-word; text-shadow:none !important; }
 ${S} #sf-settings-pane .k-row:is(:focus-within, :hover) > :is(label, span.k-t-body) { color:rgb(${HOT}) !important; }
 
@@ -145,7 +157,7 @@ ${S} #sf-settings-pane .k-row .k-words--row:has(> li) { ${PLAIN} display:flex !i
   gap:4px 20px !important; width:auto !important; height:auto !important; min-width:0 !important; padding:0 !important; justify-self:start !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) > li { list-style:none !important; margin:0 !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { all:unset !important; box-sizing:border-box !important; position:relative !important; display:inline-block !important;
-  cursor:pointer !important; padding:8px 0 8px 14px !important; ${LABEL} font-size:11.5px !important; letter-spacing:.2em !important; line-height:1 !important;
+  cursor:pointer !important; padding:8px 0 8px 14px !important; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; line-height:1 !important;
   color:rgb(${BONE} / .62) !important; transition:color .16s linear; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word::after { content:none !important; display:none !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word::before { content:"" !important; display:block !important; position:absolute !important; left:1px !important; top:50% !important;
@@ -179,13 +191,14 @@ ${S} #sf-settings-pane .k-row:has(select:focus) .orr-set-stops > b.is-on { backg
    down its edge, the chosen option lit; the native control stays the control (keys, pad, probes) */
 ${S} #sf-settings-pane select.k-select, ${S} #sf-settings-pane select.k-select::picker(select) { appearance:base-select !important; }
 ${S} #sf-settings-pane select.k-select::picker-icon { display:none; }
-${S} #sf-settings-pane select.k-select::picker(select) { border:0; border-radius:0; padding:14px 0; margin-top:6px; width:max-content; min-width:240px; max-width:440px; right:auto;
+${S} #sf-settings-pane select.k-select::picker(select) { border:0; border-radius:0; padding:14px 0; margin-top:6px; margin-left:-12px; width:max-content; min-width:240px; max-width:440px; right:auto;
   background:linear-gradient(90deg, transparent 13px, rgb(${BONE} / .34) 13px 15px, transparent 15px), rgb(6 8 12);
-  -webkit-mask-image:linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent), linear-gradient(180deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
-  -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent), linear-gradient(180deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
-  mask-composite:intersect; box-shadow:none; color:rgb(${HOT}); }
+  /* opaque glass; only its top and bottom breathe out (inside its own padding), so nothing beneath reads through */
+  -webkit-mask-image:linear-gradient(180deg, transparent, #000 10px, #000 calc(100% - 10px), transparent); mask-image:linear-gradient(180deg, transparent, #000 10px, #000 calc(100% - 10px), transparent);
+  box-shadow:0 18px 40px rgb(0 0 0 / .7); color:rgb(${HOT}); }
 ${S} #sf-settings-pane select.k-select option { position:relative; display:flex; align-items:center; min-height:36px; padding:0 30px 0 34px;
-  background:none; border:0; outline:none !important; box-shadow:none; color:rgb(${BONE} / .78); font-family:var(--dp-face-read, "Instrument Sans"); font-size:14px; font-weight:500; cursor:pointer; }
+  background:none; border:0; outline:none !important; box-shadow:none; color:rgb(${BONE} / .78); font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:14px; font-weight:500; cursor:pointer;
+  text-transform:none !important; letter-spacing:0 !important; font-variation-settings:normal !important; font-stretch:100% !important; }
 ${S} #sf-settings-pane select.k-select option::checkmark { display:none; }
 ${S} #sf-settings-pane select.k-select option::before { content:""; position:absolute; left:10px; top:50%; width:8px; height:1.5px; background:rgb(${BONE} / .5); }
 ${S} #sf-settings-pane select.k-select option:is(:hover, :focus, :focus-visible) { color:rgb(255 253 248); background:linear-gradient(90deg, rgb(${BONE} / .1), rgb(${BONE} / 0)); outline:none !important; }
@@ -210,27 +223,27 @@ ${S} #sf-settings-pane .sf-bind-btn:is(.sf-bind-btn--capture, [aria-pressed="tru
 @keyframes orr-set-listen-seg { 50% { opacity:.35; } }
 /* a fixed shortcut shares the row grammar: its name in label caps over its note, the key in the bind column */
 ${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] { grid-template-columns:var(--orr-label-w, 206px) minmax(0, 1fr) !important; align-items:start !important; padding-top:9px !important; }
-${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] .k-row__name { ${LABEL} font-size:11.5px !important; letter-spacing:.13em !important; line-height:1.3 !important; color:rgb(${BONE} / .84) !important; }
-${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] .k-row__sub { display:block; margin-top:4px; font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:11.5px !important;
+${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.13em !important; line-height:1.3 !important; color:rgb(${BONE} / .84) !important; }
+${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] .k-row__sub { display:block; margin-top:4px; font-family:var(--dp-face-read, "Instrument Sans") !important; font-size: 12px !important;
   line-height:1.4 !important; color:rgb(${BONE} / .64) !important; white-space:normal !important; text-transform:none !important; letter-spacing:0 !important; }
 ${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] > .k-t-emph { ${LABEL} justify-self:start !important; padding-left:14px !important; font-size:12.5px !important; letter-spacing:.16em !important;
   color:rgb(${HOT}) !important; text-align:left !important; margin-top:1px; }
 /* a section head in the rows, and a quiet sentence between lists */
 ${S} #sf-settings-pane .k-row[data-orr-kind="head"] { min-height:0 !important; padding:22px 0 6px 30px !important; grid-template-columns:minmax(0, 1fr) !important; }
 ${S} #sf-settings-pane .k-row[data-orr-kind="head"]::before { top:auto !important; bottom:12px !important; width:12px !important; background:rgb(${BONE} / .7) !important; }
-${S} #sf-settings-pane .k-row .k-caps { ${PLAIN} ${LABEL} display:flex !important; align-items:center; gap:14px; padding:0 !important; font-size:10.5px !important;
+${S} #sf-settings-pane .k-row .k-caps { ${PLAIN} ${LABEL} display:flex !important; align-items:center; gap:14px; padding:0 !important; font-size: 12px !important;
   letter-spacing:.26em !important; color:rgb(${BONE} / .66) !important; }
 ${S} #sf-settings-pane .k-row .k-caps::after { content:""; flex:1 1 auto; max-width:120px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .3), rgb(${BONE} / 0)); }
 ${S} #sf-settings-pane > p.k-sentence { ${PLAIN} font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important; line-height:1.5 !important;
   color:rgb(${BONE} / .66) !important; max-width:58ch !important; margin:8px 0 12px 30px !important; padding:0 !important; text-transform:none !important; letter-spacing:0 !important; }
 ${S} #sf-settings-pane > .k-words { ${PLAIN} display:flex !important; flex-wrap:wrap; align-items:baseline; gap:6px 16px !important; margin:10px 0 12px 30px !important; padding:0 !important; }
-${S} #sf-settings-pane > .k-words > .k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; padding:5px 0 !important; ${LABEL} font-size:11px !important;
+${S} #sf-settings-pane > .k-words > .k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; padding:5px 0 !important; ${LABEL} font-size: 12px !important;
   letter-spacing:.18em !important; color:rgb(${HOT}) !important; }
 ${S} #sf-settings-pane > .k-words > .k-word::before { content:"›  " !important; color:rgb(${BONE} / .6); }
 ${S} #sf-settings-pane > .k-words > .k-word::after { content:none !important; display:none !important; }
 ${S} #sf-settings-pane > .k-words > .k-word:hover { color:rgb(255 253 248) !important; }
 ${S} #sf-settings-pane > .k-words > .k-word:focus-visible { color:var(--dp-hand-hot, #ffd98c) !important; }
-${S} #sf-settings-pane > .k-words > .k-t-fine { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:11.5px !important; color:rgb(${BONE} / .6) !important; }
+${S} #sf-settings-pane > .k-words > .k-t-fine { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
 ${S} #sf-settings-pane > .orr-extent::before { left:7px; }
 /* a category arrives row by row */
 ${S} #sf-settings-pane .orr-set-rise { animation:orr-rise 460ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
@@ -244,7 +257,7 @@ ${S} > .k-foot { align-items:center !important; }
 ${S} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
   padding:8px 0 !important; ${LABEL} font-size:13px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; }
 ${S} > .k-foot .sf-back::before { content:"‹" !important; margin-right:12px; font-size:15px; color:rgb(${BONE} / .6); }
-${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; margin-left:16px !important; ${LABEL} font-size:10px !important; letter-spacing:.2em !important;
+${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; margin-left:16px !important; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important;
   color:rgb(${BONE} / .58) !important; }
 ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }
 
@@ -252,9 +265,9 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
 @media (max-width:1500px) {
   ${S} { --orr-scale-w:174px; --orr-label-w:150px; grid-template-columns:minmax(150px, 176px) minmax(456px, 480px) minmax(0, 1fr) !important; }
   ${S} #sf-settings-pane .k-row { column-gap:16px !important; }
-  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:10.5px !important; letter-spacing:.12em !important; }
+  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size: 12px !important; letter-spacing:.12em !important; }
   ${S} #sf-settings-pane .k-row .k-words--row:has(> li) { gap:4px 14px !important; }
-  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:10.5px !important; letter-spacing:.12em !important; }
+  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size: 12px !important; letter-spacing:.12em !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 174px) 56px !important; column-gap:10px !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:19px !important; }
   ${S} .sf-tabbar .sf-tab { min-height:40px !important; }
@@ -287,14 +300,14 @@ ${C} { grid-template-columns:minmax(200px, 268px) minmax(0, 1fr) !important; gri
 ${C}::before { background:linear-gradient(90deg, rgb(5 7 10 / .92) 0%, rgb(5 7 10 / .84) 42%, rgb(5 7 10 / .6) 72%, rgb(5 7 10 / .5)) !important; z-index:0 !important; }
 ${C} > :is(.k-title, .k-hang, .k-stage, .k-foot) { position:relative; z-index:2; }
 ${C} > .k-title { max-width:none !important; align-self:end; }
-${C} > .k-title > p { ${LABEL} margin:14px 0 0 !important; max-width:none !important; font-size:10.5px !important; letter-spacing:.26em !important; line-height:1.4 !important;
+${C} > .k-title > p { ${LABEL} margin:14px 0 0 !important; max-width:none !important; font-size: 12px !important; letter-spacing:.26em !important; line-height:1.4 !important;
   color:rgb(${BONE} / .6) !important; display:flex; align-items:center; gap:14px; }
 ${C} > .k-title > p::after { content:""; width:72px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / 0)); }
 /* the drift field and the emblem stand behind everything */
 ${C} > .orr-cr-drift { position:absolute; left:0; top:0; width:100%; height:100%; z-index:1; pointer-events:none; overflow:hidden; }
 /* the orrery: the emblem (produced art) the reel turns; the sections ride its orbit as bodies and the amber
    Hand catches the one being read. The art sits at rest light; a second, lit copy shows only round the Hand. */
-${C} > .orr-cr-orrery { position:absolute; z-index:1; right:max(-8vw, -140px); top:50%; width:min(86vh, 980px); height:min(86vh, 980px); margin-top:calc(min(86vh, 980px) / -2);
+${C} > .orr-cr-orrery { position:absolute; z-index:1; right:max(-4vw, -80px); top:50%; width:min(80vh, 880px); height:min(80vh, 880px); margin-top:calc(min(80vh, 880px) / -2);
   pointer-events:none; }
 ${C} .orr-cr-orrery > * { position:absolute; inset:0; width:100%; height:100%; }
 ${C} .orr-cr-orrery__art { display:block; background:url("${EMBLEM}") center / contain no-repeat; opacity:.3; transform:rotate(var(--orr-cr-turn, 0deg)); will-change:transform; }
@@ -327,7 +340,7 @@ ${C} .orr-cr-progress { display:grid; grid-template-columns:84px auto; align-ite
 ${C} .orr-cr-progress svg { width:84px; height:84px; overflow:visible; }${C} .orr-cr-progress__n { font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 280 !important; font-weight:280 !important; font-size:32px;
   line-height:.9; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
 ${C} .orr-cr-progress__n small { font-size:.46em; margin-left:2px; color:rgb(${BONE} / .7); }
-${C} .orr-cr-progress__l { ${LABEL} display:block; margin-top:6px; font-size:10px; letter-spacing:.24em; color:rgb(${BONE} / .74); }
+${C} .orr-cr-progress__l { ${LABEL} display:block; margin-top:6px; font-size: 12px; letter-spacing:.24em; color:rgb(${BONE} / .74); }
 
 /* ------------------------------------------------ credits: the reel ---------------------------- */
 ${C} > .k-stage { ${PLAIN} backdrop-filter:none !important; -webkit-backdrop-filter:none !important; max-width:none !important; width:100% !important; min-height:0 !important;
@@ -341,14 +354,14 @@ ${C} .orr-cr-reel { position:relative; max-width:min(660px, 100%); padding:9vh 0
 ${C} .orr-cr-sec { position:relative; scroll-margin-top:9vh; }
 ${C} .orr-cr-sec + .orr-cr-sec { margin-top:86px; }
 ${C} .orr-cr-head { ${LABEL} display:flex; align-items:center; gap:16px; margin:0 0 24px !important; font-size:12px !important; letter-spacing:.28em !important; color:rgb(${HOT}) !important; }
-${C} .orr-cr-head > i { font-style:normal; font-size:10px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
+${C} .orr-cr-head > i { display:none !important; font-style:normal; font-size: 12px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
 ${C} .orr-cr-head::after { content:""; flex:0 1 180px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / 0)); }
 /* the maker: the name at display size, the build and the trade in labels, one sentence */
 ${C} .of-credits-made { margin:0 0 20px !important; }
 ${C} .of-credits-kicker { display:none !important; }
 ${C} .of-credits-name { margin:0 !important; font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 230 !important;
   font-weight:230 !important; font-size:clamp(58px, 8.8vh, 100px) !important; line-height:.9 !important; white-space:nowrap; letter-spacing:.02em !important; text-transform:uppercase !important;
-  color:rgb(${HOT}) !important; text-shadow:none !important; }${C} .of-credits-ver, ${C} .of-credits-made .k-row__sub { ${LABEL} display:inline-block; margin:18px 22px 0 0 !important; font-size:11px !important; letter-spacing:.24em !important;
+  color:rgb(${HOT}) !important; text-shadow:none !important; }${C} .of-credits-ver, ${C} .of-credits-made .k-row__sub { ${LABEL} display:inline-block; margin:18px 22px 0 0 !important; font-size: 12px !important; letter-spacing:.24em !important;
   color:rgb(${BONE} / .72) !important; }
 ${C} .of-credits-ver { color:var(--dp-phos, #dfeeff) !important; }
 ${C} .orr-cr-sec > .k-sentence { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:16px !important; line-height:1.55 !important; max-width:44ch !important;
@@ -366,20 +379,20 @@ ${C} .of-credits-rows .k-row__name { font-family:var(--dp-face-read, "Instrument
 /* the line under a name reads as text (versions, makers, addresses keep their case) */
 ${C} .of-credits-rows .k-row__sub { display:block; margin-top:5px !important; font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important;
   font-weight:400 !important; letter-spacing:.01em !important; text-transform:none !important; line-height:1.45 !important; color:rgb(${BONE} / .66) !important; white-space:normal !important; overflow-wrap:anywhere; }
-${C} .of-credits-rows .k-row__num { ${LABEL} font-size:11px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .84) !important; text-align:right; white-space:nowrap; }
+${C} .of-credits-rows .k-row__num { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .84) !important; text-align:right; white-space:nowrap; }
 /* a licence: its name, its terms in labels, its text as quiet reading */
 ${C} .of-credits-notice { ${PLAIN} padding:0 0 0 30px !important; margin:0 0 40px !important; position:relative; max-width:none !important; }
 ${C} .of-credits-notice::before { content:"" !important; position:absolute; left:4px; top:10px; width:8px; height:1.5px; background:rgb(${BONE} / .55); }
 ${C} .of-credits-notice::after { content:none !important; display:none !important; }
 ${C} .of-credits-notice > h2 { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:16px !important; font-weight:600 !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(${HOT}) !important; margin:0 !important; }
-${C} .of-credits-notice > .k-caps { ${LABEL} margin:6px 0 12px !important; font-size:10px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .64) !important;
+${C} .of-credits-notice > .k-caps { ${LABEL} margin:6px 0 12px !important; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .64) !important;
   background:none !important; padding:0 !important; }
 ${C} .of-credits-notice > .k-sentence { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important; line-height:1.6 !important; max-width:66ch !important;
   color:rgb(${BONE} / .68) !important; margin:0 0 10px !important; text-transform:none !important; letter-spacing:0 !important; }
 ${C} .of-credits-notice .orr-cr-copy { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:13px !important; line-height:1.5 !important; color:rgb(${BONE} / .8) !important;
   margin:0 0 8px !important; max-width:66ch; }
-${C} .of-credits-notice .orr-cr-unfold { all:unset; box-sizing:border-box; position:relative; cursor:pointer; padding:5px 0 5px 14px; ${LABEL} font-size:10.5px; letter-spacing:.2em; color:rgb(${HOT}); }
+${C} .of-credits-notice .orr-cr-unfold { all:unset; box-sizing:border-box; position:relative; cursor:pointer; padding:5px 0 5px 14px; ${LABEL} font-size: 12px; letter-spacing:.2em; color:rgb(${HOT}); }
 ${C} .of-credits-notice .orr-cr-unfold::before { content:""; position:absolute; left:1px; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%; background:rgb(${BONE} / .55); }
 ${C} .of-credits-notice .orr-cr-unfold:hover { color:rgb(255 253 248); }
 ${C} .of-credits-notice .orr-cr-unfold:focus-visible { color:rgb(255 253 248); outline:none !important; box-shadow:none !important; }
@@ -388,7 +401,7 @@ ${C} .of-credits-notice .orr-cr-unfold:focus { outline:none !important; }
 ${C} .of-credits-notice .orr-cr-unfold:focus-visible::before { width:3px; height:16px; margin-top:-8px; left:2px; border-radius:0; background:rgb(255 253 248); box-shadow:0 0 8px rgb(255 250 236 / .6); }
 ${C} .of-credits-notice .orr-cr-full { margin-top:10px; }
 ${C} .of-credits-notice .orr-cr-full[hidden] { display:none !important; }
-${C} .orr-cr-end { ${LABEL} display:flex; align-items:center; gap:16px; margin:96px 0 0 30px; font-size:10.5px; letter-spacing:.3em; color:rgb(${BONE} / .68); }
+${C} .orr-cr-end { ${LABEL} display:flex; align-items:center; gap:16px; margin:96px 0 0 30px; font-size: 12px; letter-spacing:.3em; color:rgb(${BONE} / .68); }
 ${C} .orr-cr-end::before { content:""; width:28px; height:1px; background:rgb(${BONE} / .4); }
 /* Scroll Reveal: each line rises out of the dark as the reel brings it up */
 ${C} .orr-cr-line { opacity:0; transform:translateY(16px); transition:opacity 640ms var(--dp-ease-out, ease-out), transform 760ms var(--dp-ease-out, ease-out); }
@@ -403,7 +416,7 @@ ${C} > .k-foot { align-items:center !important; }
 ${C} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important;
   padding:8px 0 !important; ${LABEL} font-size:13px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; }
 ${C} > .k-foot .sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
-${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; margin-left:16px !important; ${LABEL} font-size:10px !important; letter-spacing:.2em !important;
+${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; margin-left:16px !important; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important;
   color:rgb(${BONE} / .58) !important; }
 ${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:rgb(255 253 248) !important; text-shadow:0 0 14px rgb(255 250 236 / .45); }
 
@@ -417,8 +430,14 @@ ${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:rgb(255 253 248) !imp
   ${C} > .k-stage { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 5%, #000 90%, transparent 100%) !important;
     mask-image:linear-gradient(180deg, transparent 0, #000 5%, #000 90%, transparent 100%) !important; }
   ${C} .orr-cr-sec { scroll-margin-top:4vh; }
-  ${C} .orr-cr-sec + .orr-cr-sec { margin-top:64px; }
+  ${C} .orr-cr-sec + .orr-cr-sec { margin-top:44px; }
   ${C} .of-credits-rows .k-row__name { font-size:15.5px !important; }
+  ${C} .of-credits-name { font-size:clamp(44px, 7.4vh, 64px) !important; }
+  ${C} .of-credits-ver, ${C} .of-credits-made .k-row__sub { margin-top:10px !important; }
+  ${C} .orr-cr-sec > .k-sentence { font-size:14.5px !important; }
+  ${C} .orr-cr-head { margin-bottom:14px !important; }
+  ${C} .of-credits-rows .k-row { padding-top:8px !important; padding-bottom:8px !important; }
+  ${C} .of-credits-rows .k-row::before { top:18px !important; }
 }
 @media (max-width:900px) {
   ${C} { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"title" "hang" "stage" "foot" !important; }
@@ -440,10 +459,18 @@ export function createDriftField(host, { count = 90 } = {}) {
   if (!ctx) return null;
   canvas.className = 'orr-cr-drift';
   canvas.setAttribute('aria-hidden', 'true');
-  // cosmetic randomness only (the sim's rng is never touched by presentation)
+  // the field's own seeded generator (mulberry32): the same drift every time, and never Math.random, so the
+  // sim's determinism contract has nothing to classify here
+  let seed = 0x5f3759df;
+  const rand = () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
   const motes = Array.from({ length: count }, () => {
-    const z = 0.25 + Math.random() * 0.75;
-    return { x: Math.random(), y: Math.random(), z, r: 0.6 + z * 1.2, a: 0.14 + z * 0.42, vx: (Math.random() - 0.5) * 3 * z, vy: -(4 + Math.random() * 10) * z };
+    const z = 0.25 + rand() * 0.75;
+    return { x: rand(), y: rand(), z, r: 0.6 + z * 1.2, a: 0.14 + z * 0.42, vx: (rand() - 0.5) * 3 * z, vy: -(4 + rand() * 10) * z };
   });
   // Budget: the motes are slow (a few pixels a second), so the field draws at 20 Hz into a backing store
   // at half the layout size; the drawing is cheap enough to leave the menu its frame rate on an iGPU.
@@ -540,6 +567,12 @@ export function createCreditsOrrery(doc = globalThis.document, sections = []) {
   });
   s.appendChild(rotor);
   // the Hand: fixed, from the hub back toward the reel, holding the current body at its tip
+  // the stretch of orbit under the Hand is lit (fixed while the plate turns under it)
+  const catchArc = svg('g', { class: 'orr-cr-orrery__catch' });
+  catchArc.appendChild(svg('path', { d: arcD(C0, C0, ORBIT, HAND - 20, HAND + 20), stroke: 'rgb(248 244 234 / .44)', 'stroke-width': 16, fill: 'none', 'stroke-linecap': 'butt' }));
+  catchArc.appendChild(svg('path', { d: arcD(C0, C0, ORBIT + 8, HAND - 20, HAND + 20), stroke: 'rgb(255 253 248 / .95)', 'stroke-width': 3, fill: 'none', 'stroke-linecap': 'round' }));
+  catchArc.appendChild(svg('path', { d: arcD(C0, C0, ORBIT, HAND - 20, HAND + 20), stroke: 'rgb(255 250 236 / .16)', 'stroke-width': 34, fill: 'none', 'stroke-linecap': 'butt' }));
+  s.insertBefore(catchArc, rotor);
   const hand = svg('g', { class: 'orr-cr-orrery__hand' });
   const [h0x, h0y] = polar(C0, C0, 34, HAND);
   const [h1x, h1y] = polar(C0, C0, ORBIT - 24, HAND);
@@ -725,6 +758,39 @@ export function dressSettingsPane(pane, { arrive = false } = {}) {
   }
   const controls = pane.querySelectorAll('.k-row:not([data-orr-kind="head"])').length;
   pane.classList.toggle('is-roomy', controls > 0 && controls <= 10);
+  pane.classList.toggle('is-sparse', controls > 0 && controls <= 8);
+  // the accessibility checklist reads as rows: its item in label caps, its state a word with a bead
+  // (the sentence's text stays exactly what it was: "Contrast: ready")
+  for (const p of pane.querySelectorAll(':scope > p.k-sentence:not(.orr-set-check)')) {
+    const m = /^(.{2,40}):\s*(ready|off|on)$/i.exec(String(p.textContent || '').trim());
+    if (!m || !doc || p.children.length) continue;
+    const label = doc.createElement('span');
+    label.className = 'orr-set-check__label';
+    label.textContent = m[1];
+    const sep = doc.createElement('span');
+    sep.className = 'orr-set-check__sep';
+    sep.textContent = ': ';
+    const state = doc.createElement('b');
+    state.className = 'orr-set-check__state';
+    state.dataset.state = m[2].toLowerCase();
+    state.textContent = m[2];
+    p.textContent = '';
+    p.append(label, sep, state);
+    p.classList.add('orr-set-check');
+  }
+  // the top edge fades once the list has scrolled; a focused row is brought clear of both fades
+  if (!pane.dataset.orrScroll) {
+    pane.dataset.orrScroll = '1';
+    const edge = () => pane.classList.toggle('is-scrolled', (pane.scrollTop || 0) > 4);
+    pane.addEventListener('scroll', edge, { passive: true });
+    pane.addEventListener('focusin', (ev) => {
+      const row = ev.target && typeof ev.target.closest === 'function' ? ev.target.closest('.k-row') : null;
+      if (row && typeof row.scrollIntoView === 'function') {
+        try { row.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' }); } catch (e) { /* layout-less */ }
+      }
+    });
+    edge();
+  }
   try { syncScrollExtent(pane); } catch (e) { /* a shim document has no layout */ }
   if (arrive && !reducedMotion()) {
     let i = 0;

@@ -56,12 +56,14 @@ export function ensureCombatState(state) {
 export function ensureCombatant(state, entity, catalog) {
   if (!entity || entity.id == null) return null;
   const combat = ensureCombatState(state);
-  const key = entityKey(entity.id);
-  let runtime = combat.entities[key];
+  // Property access with the raw id is the identical key to entityKey(entity.id) — object
+  // property keys are strings, so `entities[5]` and `entities['5']` are the same slot; this
+  // skips one String() allocation per combatant per pass.
+  let runtime = combat.entities[entity.id];
   const profile = resolveCombatProfile(entity, catalog);
   if (!runtime || runtime.profileId !== (profile && profile.id)) {
     runtime = createCombatantRuntime(entity, profile, catalog, runtime);
-    combat.entities[key] = runtime;
+    combat.entities[entity.id] = runtime;
   }
   syncCombatantBounds(entity, runtime, profile);
   return runtime;
@@ -74,11 +76,24 @@ export function removeCombatantRuntime(state, entityId) {
   delete combat.actions.cooldownReadyTickByActor[entityKey(entityId)];
 }
 
+// Perf memo: resolveCombatProfile runs for every combatant several times per tick (prePhysics,
+// postPhysics, ensureCombatant) and was a Map lookup behind a property-chain read each time.
+// The answer is pure in (catalog identity, explicit profile id, entity type) — all three are
+// memo keys, so any change recomputes and the answer never goes stale.
+const COMBAT_PROFILE_MEMO = new WeakMap();
+
 export function resolveCombatProfile(entity, catalog) {
   if (!entity) return null;
   const explicit = entity.data && entity.data.combatProfileId;
-  const profileId = explicit || DEFAULT_COMBAT_PROFILE_BY_TYPE[entity.type];
-  return profileId ? catalog.profiles.get(profileId) || null : null;
+  const type = entity.type;
+  const memo = COMBAT_PROFILE_MEMO.get(entity);
+  if (memo && memo.catalog === catalog && memo.explicit === explicit && memo.type === type) {
+    return memo.profile;
+  }
+  const profileId = explicit || DEFAULT_COMBAT_PROFILE_BY_TYPE[type];
+  const profile = profileId ? catalog.profiles.get(profileId) || null : null;
+  COMBAT_PROFILE_MEMO.set(entity, { catalog, explicit, type, profile });
+  return profile;
 }
 
 export function syncCombatantBounds(entity, runtime, profile = null) {
@@ -141,6 +156,7 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
     subsystems: {},
     statuses: {},
     pendingStatuses: [],
+    pendingSubsystemTransitionCount: 0,
     sockets: {},
     revision: previous && Number.isInteger(previous.revision) ? previous.revision + 1 : 1,
   };
@@ -151,13 +167,15 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
     const old = previous && previous.subsystems && previous.subsystems[subsystemId];
     const maxHealth = Math.max(0, Number(def.health) || 0);
     const oldFraction = old && old.maxHealth > 0 ? clamp(old.health / old.maxHealth, 0, 1) : 1;
+    const pendingTransition = old && old.pendingTransition ? cloneData(old.pendingTransition) : null;
+    if (pendingTransition) runtime.pendingSubsystemTransitionCount += 1;
     runtime.subsystems[subsystemId] = {
       id: subsystemId,
       health: maxHealth * oldFraction,
       maxHealth,
       destroyed: old ? !!old.destroyed : false,
       effectiveDisabled: old ? !!old.effectiveDisabled : false,
-      pendingTransition: old && old.pendingTransition ? cloneData(old.pendingTransition) : null,
+      pendingTransition,
       lastDamageTick: old && Number.isInteger(old.lastDamageTick) ? old.lastDamageTick : -1,
     };
   }

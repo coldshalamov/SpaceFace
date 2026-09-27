@@ -81,11 +81,18 @@ export function archivePlateSvg({ entries = [], current = -1, starts = [], top =
   const { C, ENTRY_R, RIM_R } = ARCHIVE_DIAL;
   const parts = [];
   // the outer scale: a major every 15 degrees, turning slowly
-  parts.push(`<g class="orr-arc-drift"><path class="orr-arc-major" d="${ticksD(C, C, 199, 24, { len: 4 })}"/></g>`);
+  parts.push(`<g class="orr-arc-drift"><path class="orr-arc-major" d="${ticksD(C, C, 200, 24, { len: 6 })}"/></g>`);
   // the entry ring: a soft band under every arc, the arcs themselves as bands of light
   parts.push(`<path class="orr-arc-band orr-arc-draw" pathLength="1" stroke-width="22" d="${arcD(C, C, ENTRY_R, 0, 360)}"/>`);
   const n = Math.max(0, entries.length | 0);
-  if (n) {
+  if (n === 1) {
+    const d = arcD(C, C, ENTRY_R, 0, 360);
+    parts.push(`<path class="orr-arc-seg-glow orr-arc-seg-glow--${entries[0] === 'locked' ? 'locked' : 'read'}" d="${d}"/><path class="orr-arc-seg orr-arc-seg--${entries[0] === 'locked' ? 'locked' : 'read'}" d="${d}"/>`);
+    if (current === 0) {
+      const now = arcD(C, C, ENTRY_R, 150, 210);
+      parts.push(`<g class="orr-arc-now${locked ? ' is-locked' : ''}"><path class="orr-arc-seg-bloom" d="${now}"/><path class="orr-arc-seg orr-arc-seg--now" d="${now}"/></g>`);
+    }
+  } else if (n) {
     const span = 360 / n;
     const gap = n > 48 ? 0.8 : n > 20 ? 1.5 : n > 8 ? 2.6 : 4;
     const groups = { read: [], open: [], locked: [] };
@@ -200,12 +207,62 @@ export function missionDialSvg({ progress = 0, time = null, urgent = false } = {
   return `<svg class="orr-svg orr-mdial__svg" viewBox="0 0 240 240" aria-hidden="true" focusable="false">${parts.join('')}</svg>`;
 }
 
+/**
+ * The traced contract on the contract dial: a ghost ring just inside the chosen contract's progress,
+ * lit as far as the traced one has come, so the two read side by side.
+ */
+export function missionDialGhostSvg({ progress = 0 } = {}) {
+  const C = 120;
+  const R = 74;
+  const p = clamp01(progress);
+  const ring = arcD(C, C, R, 0, 360);
+  const parts = [`<path class="orr-mdial__ghost-track" d="${ring}"/>`];
+  if (p > 0.004) {
+    const d = p >= 0.999 ? ring : arcD(C, C, R, 0, 360 * p);
+    const [hx, hy] = polar(C, C, R, 360 * p);
+    parts.push(`<path class="orr-mdial__ghost-prog" d="${d}"/><circle class="orr-mdial__ghost-bead" cx="${q(hx)}" cy="${q(hy)}" r="2.6"/>`);
+  }
+  return `<svg class="orr-svg orr-mdial__ghost-svg" viewBox="0 0 240 240" aria-hidden="true" focusable="false">${parts.join('')}</svg>`;
+}
+
 /** The scale between an element's screen pixels and its own CSS pixels (CSS zoom on an ancestor). */
 export function archiveZoom(node, rect = null) {
   if (!node || typeof node.getBoundingClientRect !== 'function') return 1;
   const r = rect || node.getBoundingClientRect();
   const w = Number(node.offsetWidth) || 0;
   return w > 0 && r.width > 0 ? r.width / w : 1;
+}
+
+/**
+ * The ring under the pointer: the hovered entry's arc lit, and a leader (a short radial run and a
+ * 45-degree elbow, section 3.2) from its middle in over the aperture to where its name hangs.
+ * Returns the drawing and the name's anchor as fractions of the dial (x, y) and which way it reads.
+ */
+export function archiveHoverSvg(i, n) {
+  if (!(n > 0) || i < 0 || i >= n) return { svg: '', x: 0, y: 0, side: 'left' };
+  const { C, ENTRY_R } = ARCHIVE_DIAL;
+  const span = 360 / n;
+  const gap = n > 48 ? 0.8 : n > 20 ? 1.5 : n > 8 ? 2.6 : 4;
+  const a0 = n === 1 ? 150 : i * span + gap / 2;
+  const a1 = n === 1 ? 210 : (i + 1) * span - gap / 2;
+  const mid = (a0 + a1) / 2;
+  const arc = arcD(C, C, ENTRY_R, a0, a1);
+  // the leader: out of the arc's inner edge, radially in past the rim, then a 45-degree elbow to a
+  // short run that points back toward the plate's vertical centre line
+  const [x0, y0] = polar(C, C, ENTRY_R - 8, mid);
+  const [x1, y1] = polar(C, C, 126, mid);
+  const toLeft = Math.sin((mid * Math.PI) / 180) > 0.02 || Math.abs(Math.sin((mid * Math.PI) / 180)) <= 0.02;
+  const dir = toLeft ? -1 : 1;
+  const dy = y1 > C ? -12 : 12;
+  const x2 = x1 + dir * 12;
+  const y2 = y1 + dy;
+  const x3 = x2 + dir * 22;
+  const path = `M ${q(x0)} ${q(y0)} L ${q(x1)} ${q(y1)} L ${q(x2)} ${q(y2)} L ${q(x3)} ${q(y2)}`;
+  const svg = `<svg class="orr-svg cx-hover" viewBox="0 0 400 400" aria-hidden="true" focusable="false">`
+    + `<path class="cx-hover__bloom" d="${arc}"/><path class="cx-hover__arc" d="${arc}"/>`
+    + `<path class="cx-hover__leader-bloom" d="${path}"/><path class="cx-hover__leader" d="${path}"/>`
+    + `<circle class="cx-hover__pip" cx="${q(x3)}" cy="${q(y2)}" r="2.6"/></svg>`;
+  return { svg, x: x3 / 400, y: y2 / 400, side: toLeft ? 'left' : 'right' };
 }
 
 /**
@@ -222,7 +279,7 @@ export function archiveWedgeSvg({ w, h, x0, y0, x1, top, bottom }) {
   const g = uid('cx-wedge-g');
   return `<svg class="cx-wedge__svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true" focusable="false">`
     + `<defs><linearGradient id="${g}" gradientUnits="userSpaceOnUse" x1="${q(x0)}" y1="0" x2="${q(x1)}" y2="0">`
-    + `<stop offset="0" stop-color="rgb(236,230,216)" stop-opacity=".16"/><stop offset="1" stop-color="rgb(236,230,216)" stop-opacity=".04"/></linearGradient></defs>`
+    + `<stop offset="0" stop-color="rgb(236,230,216)" stop-opacity=".2"/><stop offset="1" stop-color="rgb(236,230,216)" stop-opacity=".06"/></linearGradient></defs>`
     + `<path class="cx-wedge__fan" fill="url(#${g})" d="${fan}"/><path class="cx-wedge__bloom" d="${edges}"/><path class="cx-wedge__edge" d="${edges}"/>`
     + `<circle class="cx-wedge__pip" cx="${q(x0)}" cy="${q(y0)}" r="3.4"/></svg>`;
 }

@@ -1249,10 +1249,14 @@ export const presentationOrchestrator = {
   },
 
   _onDrillCargoFull(payload) {
-    this._emitCue('mining.cargo.full', payload, {
+    const targetId = this.state.drill && this.state.drill.asteroidId;
+    const target = this.state.entities && targetId != null ? this.state.entities.get(targetId) : null;
+    // Drill receipts carry tile coordinates in pos. World presentation needs the live rock's
+    // position, as the yield/gas siblings do; never validate a col/row as a world-space point.
+    this._emitCue('mining.cargo.full', { ...payload, pos: null, position: target && target.pos || null }, {
       sourceEvent: 'drill:cargoFull',
       sourceId: this.state.playerId,
-      targetId: this.state.drill && this.state.drill.asteroidId,
+      targetId,
       material: 'cargo',
       sequence: payload.commodityId || 'hold',
       tags: ['drill', payload.commodityId, 'full'].filter(Boolean),

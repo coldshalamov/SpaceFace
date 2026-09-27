@@ -71,13 +71,13 @@ function nodeGlyphName(node) {
   if ((u.modules || []).some((m) => /^wpn_/.test(m))) return 'weapon';
   return 'module';
 }
-/** An unlock's picture on its ledger line: the hull's jig drawing when one was rendered, else its kind's glyph. */
+/** An unlock's picture on its ledger line: the hull's lit silhouette when one was rendered, else its kind's glyph. */
 const HULL_JIG = new Set(['ship_wasp', 'ship_hornet', 'ship_kestrel', 'ship_pelican']);
 function unlockArtHtml(ref) {
   const [kind, id] = String(ref).split(':');
   if (kind === 'hull' && HULL_JIG.has(id)) {
-    let url = `/assets/ui/renders/hulls/${id}.jig.webp`;
-    try { url = new URL(`../../../assets/ui/renders/hulls/${id}.jig.webp`, import.meta.url).href; } catch (_) { /* the root path */ }
+    let url = `/assets/ui/renders/hulls/${id}.holo.webp`;
+    try { url = new URL(`../../../assets/ui/renders/hulls/${id}.holo.webp`, import.meta.url).href; } catch (_) { /* the root path */ }
     return `<img class="con-row__img" src="${url}" alt="" draggable="false" decoding="async">`;
   }
   let icon = 'module';

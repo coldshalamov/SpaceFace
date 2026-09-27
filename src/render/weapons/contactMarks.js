@@ -7,6 +7,7 @@ import {
 } from '../dynamicBufferRanges.js';
 
 import { resolveWeaponPresentationFamily } from '../vfxProfiles.js';
+import { weaponEffectSeed } from './energyBoltPool.js';
 
 export const HULL_SCORCH_CAPACITY = 32;
 
@@ -78,7 +79,7 @@ const VERTEX_SHADER = /* glsl */`
   attribute vec3 aNormal;
   attribute vec4 aSize; // width, height, opacity, heat (0 cold .. 1 white-hot)
   attribute vec3 aColor;
-  attribute vec2 aMark; // x: mark kind (0 scorch, 1 gouge, 2 frost, 3 craze), y: fracture 0..1
+  attribute vec3 aMark; // kind, fracture, retained contact seed (never derived from moving pose)
   varying vec2 vUv;
   varying vec3 vColor;
   varying float vOpacity;
@@ -93,7 +94,7 @@ const VERTEX_SHADER = /* glsl */`
     vHeat = aSize.w;
     vKind = aMark.x;
     vFracture = aMark.y;
-    vSeed = fract(sin(dot(aPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    vSeed = aMark.z;
     vec3 n = normalize(aNormal);
     vec3 tangent = abs(n.y) > 0.9 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
     vec3 bitangent = normalize(cross(n, tangent));
@@ -134,8 +135,10 @@ const FRAGMENT_SHADER = /* glsl */`
     float spokes = 3.0 + floor(fracture * 5.0);
     float a = atan(d.y, d.x) + seed * 6.2831;
     float ridge = abs(fract(a * spokes / 6.2831 + 0.5) - 0.5) * 2.0;
-    float line = 1.0 - smoothstep(0.0, 0.16 + 0.10 * fracture, ridge);
-    return line * smoothstep(1.05, 0.2, r) * smoothstep(0.03, 0.30, r);
+    float width = 0.16 + 0.10 * fracture;
+    float filtered = max(width, fwidth(ridge));
+    float line = (1.0 - smoothstep(0.0, filtered, ridge)) * width / filtered;
+    return line * (1.0 - smoothstep(0.2, 1.05, r)) * smoothstep(0.03, 0.30, r);
   }
 
   void main() {
@@ -143,13 +146,13 @@ const FRAGMENT_SHADER = /* glsl */`
     // Irregular gouge edge: a carved wound, not a printed disc.
     float wob = sin(vUv.x * 17.0 + vSeed * 12.9) * sin(vUv.y * 13.0 - vSeed * 7.7);
     float r = length(d) + wob * 0.07;
-    float scorch = smoothstep(1.0, 0.15, r);
+    float scorch = 1.0 - smoothstep(0.15, 1.0, r);
     // The core stays molten longest; the rim cools first.
-    float core = smoothstep(0.62, 0.05, r);
+    float core = 1.0 - smoothstep(0.05, 0.62, r);
     float heat = clamp(vHeat * (0.45 + 0.55 * core), 0.0, 1.0);
     vec3 molten = scorchBlackbody(heat);
     // Weapon tint survives only as a faint rim stain over the charcoal.
-    float rim = smoothstep(0.9, 0.45, r) * (1.0 - smoothstep(0.5, 0.05, r));
+    float rim = (1.0 - smoothstep(0.45, 0.9, r)) * smoothstep(0.05, 0.5, r);
     vec3 col = mix(molten, vColor * 0.35, rim * 0.4 * (1.0 - heat));
     float alpha = (scorch * 0.85 + rim * 0.3) * vOpacity;
 
@@ -218,6 +221,7 @@ export class HullScorchPool {
       heat0: 0.8,
       markKind: 0,
       fracture: 0,
+      seed: 0,
       r: 0.2,
       g: 0.55,
       b: 0.85,
@@ -227,7 +231,7 @@ export class HullScorchPool {
     this.normal = dynamicAttribute(this.capacity * 3, 3);
     this.size = dynamicAttribute(this.capacity * 4, 4);
     this.color = dynamicAttribute(this.capacity * 3, 3);
-    this.mark = dynamicAttribute(this.capacity * 2, 2);
+    this.mark = dynamicAttribute(this.capacity * 3, 3);
     this.geometry.setAttribute('aPos', this.pos);
     this.geometry.setAttribute('aNormal', this.normal);
     this.geometry.setAttribute('aSize', this.size);
@@ -252,6 +256,7 @@ export class HullScorchPool {
     const identity = new THREE.Matrix4();
     for (let i = 0; i < this.capacity; i++) this.mesh.setMatrixAt(i, identity);
     this._cursor = 0;
+    this._spawnSerial = 0;
     this.live = 0;
     this.dynamicBufferOwner = scene ? registerDynamicBufferOwner(scene, {
       id: 'weapon-hull-scorch',
@@ -296,6 +301,7 @@ export class HullScorchPool {
     // Default 0 (scorch) and 0 (fresh) keep every existing caller's mark exactly as it was.
     s.markKind = Math.max(0, Math.min(3, Math.round(finiteOr(spec.markKind, 0))));
     s.fracture = Math.min(1, Math.max(0, finiteOr(spec.fracture, 0)));
+    s.seed = Number.isFinite(spec.seed) ? spec.seed : weaponEffectSeed(`${s.targetId}:${++this._spawnSerial}`);
     s.r = finiteOr(spec.r, 0.2);
     s.g = finiteOr(spec.g, 0.55);
     s.b = finiteOr(spec.b, 0.85);
@@ -307,7 +313,7 @@ export class HullScorchPool {
     for (let i = 0; i < this.capacity; i++) {
       const s = this.slots[i];
       if (!s.alive) continue;
-      s.age += dt;
+      s.age += Math.max(0, finiteOr(dt, 0));
       if (s.age >= s.life) {
         s.alive = 0;
         continue;
@@ -331,7 +337,7 @@ export class HullScorchPool {
       this.normal.setXYZ(live, nx, ny, nz);
       this.size.setXYZW(live, s.width, s.height, fade, heat);
       this.color.setXYZ(live, s.r, s.g, s.b);
-      this.mark.setXY(live, s.markKind, s.fracture);
+      this.mark.setXYZ(live, s.markKind, s.fracture, s.seed);
       if (this.dynamicBufferOwner) {
         markDynamicBufferItems(this.dynamicBufferOwner, 0, live);
         markDynamicBufferItems(this.dynamicBufferOwner, 1, live);

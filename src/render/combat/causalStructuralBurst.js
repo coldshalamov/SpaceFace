@@ -49,6 +49,11 @@ export function spawnCausalStructuralBurst({
   const intensity = presentation.intensity ?? 1;
   const colour = presentation.colour ?? presentation.color;
   const endColour = presentation.endColour ?? presentation.endColor;
+  // Semantic colour belongs to the force cue. These opaque fragments are material torn
+  // from a surface, so a player's kill must not turn its hull into giant turquoise glass.
+  const mineral = presentation.family === 'terrain';
+  const shardColour = presentation.forcedColors ? 0xb8b8b8 : mineral ? 0x8d7b60 : 0x94897b;
+  const shardEndColour = presentation.forcedColors ? 0x555555 : mineral ? 0x383126 : 0x30353d;
   const layout = presentation.layout;
   let spawned = 0;
 
@@ -132,7 +137,7 @@ export function spawnCausalStructuralBurst({
       pose.size * 0.55, pose.size * 0.55,
       0, 0,
       1 * intensity,
-      colour, endColour,
+      shardColour, shardEndColour,
     );
     spec.delay = pose.delay || 0;
     if (spawnShard(spec)) spawned++;
@@ -255,7 +260,12 @@ function shardPose(layout, k, n, ctx) {
     baseAngle, mixed, phase, radius, radial, tvx, tvy, tvz, reduced,
     pattern01, patternSigned,
   } = ctx;
-  const size = radius * (0.18 + pattern01(mixed, phase, k, 11) * 0.14);
+  const piece = pattern01(mixed, phase, k, 11);
+  // Hull radius chooses the violence and seating of the event, not sheet-stock dimensions.
+  // Retain a range of substantial pieces while a capital cannot turn each cosmetic shard
+  // into a large fraction of its hull. This owner creates no simulation debris.
+  const materialScale = Math.min(6.5, 1.0 + Math.sqrt(Math.max(0, radius)) * 0.32);
+  const size = Math.min(radius * (0.18 + piece * 0.14), materialScale * (0.58 + piece * 0.42));
   const side = (k & 1) ? 1 : -1;
   let a = baseAngle + patternSigned(mixed, phase, k, 9) * 1.8;
   if (layout === 'opposed') {

@@ -747,11 +747,8 @@ export const saveLoadScreen = {
         if (!st || typeof st.getBoundingClientRect !== 'function') return null;
         const r = st.getBoundingClientRect();
         if (!(r.width > 0) || !(r.height > 0)) return null;
-        if (st.classList.contains('is-vacant')) {
-          const ring = Math.min(r.width * 0.46, (globalThis.innerHeight || 1080) * 0.52);
-          return { x: r.left + r.width / 2, y: r.top + r.height / 2 + ring / 2 };
-        }
-        return { x: r.left + r.width / 2, y: r.top + r.height * 0.88 };
+        // the front of the berth's near rim (the sheet sets the berth at 66% + 22% of the stage)
+        return { x: r.left + r.width / 2, y: r.top + r.height * 0.871 };
       },
     }) : null;
 
@@ -790,7 +787,8 @@ export const saveLoadScreen = {
     vacant.setAttribute('aria-hidden', 'true');
     vacant.innerHTML = dpMark('mark-save', { size: 'hero' });
     // ORRERY: the unlit mark gives way to an empty berth ring, named in words.
-    if (orr) vacant.appendChild(el('span', 'sf-save-vacant__word', 'No hull on file'));
+    const vacantWord = orr ? el('span', 'sf-save-vacant__word', 'No hull on file') : null;
+    if (vacantWord) vacant.appendChild(vacantWord);
     stage.appendChild(vacant);
     // ORRERY: the reading is its own column beside the hull (not a caption hung off the stage's foot),
     // and the hull stands alone on its berth: no dock interior behind it, no photograph. The produced
@@ -854,7 +852,7 @@ export const saveLoadScreen = {
     back.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
 
     refs = {
-      root: rootEl, title, sub, hang, stage, foot, list: null, orr, factCells: null, arrive: false,
+      root: rootEl, title, heading, vacantWord, sub, hang, stage, foot, list: null, orr, factCells: null, arrive: false,
       caption, shipName, portrait, scars, titles, rapSheet, grudge,
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
@@ -925,6 +923,7 @@ export const saveLoadScreen = {
         // hull with no render stands as a quiet ring; an empty station is its corners alone.
         const frame = el('span', 'sf-slot-frame');
         frame.setAttribute('aria-hidden', 'true');
+        frame.appendChild(el('span', 'sf-slot-berth'));
         const art = item.occupied ? hullPosterUrl(slotShipId(slots[item.id], null), 'side') : null;
         if (art) {
           const img = el('img', 'sf-slot-thumb');
@@ -1021,9 +1020,10 @@ export const saveLoadScreen = {
     // The ship on the stage: the save's own; on an empty slot mid-run, the ship Save here would
     // file; on an empty slot at the title, none (the page stands beside the unlit save mark).
     const livePlayer = ctx && ctx.state && ctx.state.player;
+    // ORRERY: an empty slot shows its empty berth (the strip's scrub passes through the open ones too)
     const defId = occupied
       ? (portrait && portrait.hull && portrait.hull.id) || slotShipId(meta, saveData && saveData.player)
-      : (saveAllowed ? slotShipId(null, livePlayer) : null);
+      : (saveAllowed && !refs.orr ? slotShipId(null, livePlayer) : null);
     const liveShip = !occupied && saveAllowed ? activeOwnedShip(livePlayer) : null;
     const fittings = occupied
       ? (portrait && portrait.hull && portrait.hull.fittings) || (defId === NEW_GAME.shipId ? NEW_GAME.fittedModules : null)
@@ -1031,6 +1031,12 @@ export const saveLoadScreen = {
     refs.stage.classList.toggle('is-vacant', !defId);
     refs.stage.dataset.slotState = occupied ? 'filed' : (saveAllowed ? 'open' : 'empty');
     refs.root.dataset.slotState = refs.stage.dataset.slotState;
+    if (refs.vacantWord) refs.vacantWord.textContent = saveAllowed ? 'Open berth' : 'No hull on file';
+    // the title follows the verb: an empty slot in a live run is where you save
+    if (refs.orr && refs.heading) {
+      const word = !occupied && saveAllowed ? 'Save' : 'Load';
+      if (refs.heading.textContent !== word) refs.heading.textContent = word;
+    }
     if (this._film) this._film.relayBeam();
 
     // Which slot, and when: the etched line at the top of the page.
@@ -1072,7 +1078,7 @@ export const saveLoadScreen = {
       : saveAllowed
         ? [
           ['Credits', fmtCredits(livePlayer && livePlayer.credits) || '—', 'figure'],
-          ['Ship', shipDisplayName(ctx, defId) || '—'],
+          ['Ship', shipDisplayName(ctx, slotShipId(null, livePlayer)) || '—'],
           ['Sector', liveSectorName(liveState) || '—'],
           ['Played', fmtPlaytime(liveState && liveState.meta && liveState.meta.playtimeS).replace(/ played$/, '') || '—'],
         ]
@@ -1091,10 +1097,19 @@ export const saveLoadScreen = {
     }
 
     // The hull as it is in that save (def id + fittings from the envelope when the index has them).
+    // the open berth between two hulls: the next hull shown lands on it
+    if (refs.orr && !defId && refs.shownShipId != null) refs.shownShipId = 'vacant';
     const showKey = defId ? defId + ':' + (Array.isArray(fittings) ? fittings.join(',') : '') : null;
     if (defId && this.hull && (this.hull.hasMount() || refs.orr) && refs.shownShipId !== showKey) {
+      const landing = refs.orr && refs.shownShipId != null;
       refs.shownShipId = showKey;
       this.hull.show(defId, { fittings: Array.isArray(fittings) ? fittings : null });
+      // a new hull lands on the berth (drop and settle), not a cut
+      if (landing && refs.stage.classList) {
+        refs.stage.classList.remove('is-landing');
+        void refs.stage.offsetWidth;
+        refs.stage.classList.add('is-landing');
+      }
     }
 
     // The save's words: Load, Save here, Delete — or New game on an empty slot at the title.

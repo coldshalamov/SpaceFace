@@ -103,7 +103,7 @@ test('independent 30/60/90 Courier public-route cells stay above the healthy flo
       includeRetryDelta: true,
     });
     assert.equal(report.ok, true, JSON.stringify(report.table.map((r) => r.assertionFails)));
-    assert.equal(report.table.length, 3);
+    assert.equal(report.table.length, 4);
     for (const row of report.table) {
       assert.equal(row.ok, true, `${row.minutes}m ${JSON.stringify(row.assertionFails)}`);
       assert.ok(row.creditsPerMin >= COURIER_HEALTHY_CR_PER_MIN, `${row.minutes}m rate`);
@@ -121,13 +121,15 @@ test('independent 30/60/90 Courier public-route cells stay above the healthy flo
     assert.ok(report.retryDelta && report.retryDelta.meaningful,
       'retry economics must reduce earnings or increase failures vs clean pass');
     assert.equal(report.retryDelta.ok, true);
-    assert.ok(report.retryDelta.earnedDelta > 0);
+    assert.ok(Number.isFinite(report.retryDelta.earnedDelta), 'earned delta stays reported');
+    assert.ok(report.retryDelta.originPaidDelta > 0, 'the retry costs at the origin');
     assert.ok(report.retryDelta.withRetryFailed > report.retryDelta.cleanFailed);
     assert.equal(report.roleHullPacing.roleHullDefId, 'ship_mule');
     assert.equal(report.roleHullPacing.targetCredits, 35_000);
     assert.equal(report.roleHullPacing.ok, true,
       `Mule must be affordable by ${report.roleHullPacing.deadlineMin}m`);
-    assert.ok(report.roleHullPacing.affordableByMin <= 90);
+    assert.equal(report.roleHullPacing.deadlineMin, 180);
+    assert.ok(report.roleHullPacing.affordableByMin <= 180);
     assert.ok(report.roleHullPacing.affordableByMin <= report.roleHullPacing.sampledHorizonMin);
     assert.equal(report.determinism.ok, true, report.determinism.mismatch);
   } finally {

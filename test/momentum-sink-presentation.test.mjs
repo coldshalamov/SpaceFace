@@ -206,21 +206,24 @@ function makeHarness({
   return { bus, player, state, system, targets };
 }
 
-function liveStreaks(system) {
-  const result = [];
-  for (let cursor = 0; cursor < system._liveTrailStreakCount; cursor++) {
-    result.push(system._ts[system._activeTrailStreaks[cursor]]);
-  }
-  return result;
-}
-
 function spawnResident(system, priority) {
   return system._spawnProjectileTrailStreak(
     0, 0, 0, 10, 0.2, 3, 0.5, '#ffffff', 0, 0, 1, 0, priority,
   );
 }
 
-test('production pull uses the retained frame after attacker disappearance and localizes once', () => {
+// Sink residue renders as attached matter on the dedicated status-matter batch,
+// not as free streaks in the shared structural pool.
+function sinkSlots(system) {
+  const matter = system._statusMatterVfx;
+  return matter ? matter.slots.filter((slot) => slot.alive && slot.kind === 'sink') : [];
+}
+
+function sinkSlotFor(system, entity) {
+  return sinkSlots(system).find((slot) => slot.entity === entity) || null;
+}
+
+test('production pull uses the retained frame after attacker disappearance and anchors once', () => {
   const origin = { x: 1000, z: -500 };
   const harness = makeHarness({ origin });
   const { state, system, targets } = harness;
@@ -237,16 +240,17 @@ test('production pull uses the retained frame after attacker disappearance and l
   }));
 
   assert.equal(system._updateMomentumSinkPresentation(), 1);
-  assert.equal(system._liveTrailStreakCount, 3);
-  const main = liveStreaks(system)[0];
-  const expectedGlobalX = target.pos.x - expected.axisX * expected.centerOffset;
-  const expectedGlobalZ = target.pos.z - expected.axisZ * expected.centerOffset;
-  assert.ok(Math.abs(main.x - (expectedGlobalX - origin.x)) < 1e-9);
-  assert.ok(Math.abs(main.z - (expectedGlobalZ - origin.z)) < 1e-9,
-    'the planner stays global and the existing spawner performs exactly one localization');
-  assert.ok(Math.abs(main.ax - expected.axisX) < 1e-12);
-  assert.ok(Math.abs(main.az - expected.axisZ) < 1e-12);
-  assert.equal(main.admissionPriority, 0.98);
+  assert.equal(system._liveTrailStreakCount, 0,
+    'attached sink matter does not spend the shared structural streak pool');
+  const slot = sinkSlotFor(system, target);
+  assert.ok(slot, 'the admitted target holds a live sink slot');
+  const expectedAxis = Math.atan2(expected.axisZ, expected.axisX);
+  assert.ok(Math.abs(slot.axis - expectedAxis) < 1e-12,
+    'the attached matter axis carries the planner convergence direction');
+  assert.ok(Math.abs(slot.speed - expected.relativeSpeed) < 1e-12);
+  assert.ok(Math.abs(slot.x - target.pos.x) < 1e-9);
+  assert.ok(Math.abs(slot.z - target.pos.z) < 1e-9,
+    'the slot anchors to the presented hull, not a pre-localized ghost position');
   assert.deepEqual(state.combat, combatBefore, 'presentation cannot update stored combat truth');
   assert.deepEqual({ pos: target.pos, vel: target.vel }, targetBefore, 'presentation cannot write motion');
   assert.equal(system._momentumSinkInputScratch.targetPosition, null,
@@ -254,16 +258,14 @@ test('production pull uses the retained frame after attacker disappearance and l
 
   const attacker = makeShip(status.attackerId, { vel: { x: 900, z: -900 } });
   state.entities.set(attacker.id, attacker);
-  system._clearTrailStreaks();
   system._updateMomentumSinkPresentation();
-  const withContradictoryAttacker = liveStreaks(system)[0];
-  assert.ok(Math.abs(withContradictoryAttacker.ax - expected.axisX) < 1e-12,
+  const withContradictoryAttacker = sinkSlotFor(system, target);
+  assert.ok(Math.abs(withContradictoryAttacker.axis - expectedAxis) < 1e-12,
     'a live attacker with contradictory velocity cannot replace the stored frame');
   state.entities.delete(attacker.id);
-  system._clearTrailStreaks();
   system._updateMomentumSinkPresentation();
-  const afterAttackerDisappears = liveStreaks(system)[0];
-  assert.ok(Math.abs(afterAttackerDisappears.ax - expected.axisX) < 1e-12,
+  const afterAttackerDisappears = sinkSlotFor(system, target);
+  assert.ok(Math.abs(afterAttackerDisappears.axis - expectedAxis) < 1e-12,
     'attacker disappearance preserves the retained frame used by Continue');
 });
 
@@ -292,80 +294,104 @@ test('pull validation fails closed without mutating shared pools', () => {
     assert.equal(harness.system._updateMomentumSinkPresentation(), 0, label);
     assert.equal(harness.system._liveCount, particlesBefore, `${label}: particle pool`);
     assert.equal(harness.system._liveTrailStreakCount, streaksBefore, `${label}: streak pool`);
+    assert.equal(sinkSlotFor(harness.system, target), null,
+      `${label}: no attached matter slot for a rejected pull`);
   }
 });
 
-test('reduced settings retain one static pooled direction cue and bound full emissions', () => {
+test('reduced settings retain a static attached direction cue and bound full emissions', () => {
   const full = makeHarness();
   assert.equal(full.system._updateMomentumSinkPresentation(), 1);
-  assert.equal(full.system._liveTrailStreakCount, 3);
-  assert.equal(full.system._liveCount, 2);
+  assert.equal(sinkSlots(full.system).length, 1);
+  assert.equal(full.system._liveTrailStreakCount, 0);
+  assert.equal(full.system._liveCount, 0,
+    'attached sink ribs emit no free particles in the shared pool');
 
   const reduced = makeHarness({ motionReduce: true });
   assert.equal(reduced.system._updateMomentumSinkPresentation(), 1);
-  assert.equal(reduced.system._liveTrailStreakCount, 1);
-  assert.equal(reduced.system._liveCount, 0);
-  const reducedStreak = liveStreaks(reduced.system)[0];
-  assert.ok(Math.hypot(reducedStreak.ax, reducedStreak.az) > 0.999);
-  assert.equal(reducedStreak.vx, reduced.targets[0].vel.x,
-    'static compression carries with the target but adds no animated convergence travel');
-  assert.equal(reducedStreak.vz, reduced.targets[0].vel.z);
-  assert.ok(reducedStreak.life <= 1 / MOMENTUM_SINK_VFX_HZ);
+  const reducedSlot = sinkSlotFor(reduced.system, reduced.targets[0]);
+  assert.ok(reducedSlot, 'reduced motion retains the directional compression read');
+  assert.ok(Number.isFinite(reducedSlot.axis) && Math.abs(Math.sin(reducedSlot.axis)) + Math.abs(Math.cos(reducedSlot.axis)) > 0.999,
+    'the static cue still carries the sink axis');
+  reduced.system.update(1 / 120);
+  assert.equal(reduced.system._statusMatterVfx.options.reducedMotion, true,
+    'the attached batch follows the reduced-motion flag');
 
   const flash = makeHarness({ flashReduce: true });
   flash.system._updateMomentumSinkPresentation();
-  assert.equal(flash.system._liveTrailStreakCount, 3);
-  assert.equal(flash.system._liveCount, 0);
-  assert.ok(liveStreaks(flash.system)[0].op0 < liveStreaks(full.system)[0].op0);
+  flash.system.update(1 / 120);
+  assert.equal(flash.system._statusMatterVfx.options.reducedFlash, true,
+    'the attached batch follows the reduced-flash flag');
+  assert.equal(sinkSlots(flash.system).length, 1, 'flash reduction keeps the structural ribs');
 
   const timeline = makeHarness({ motionReduce: true });
-  for (let frame = 0; frame < 10; frame++) timeline.system.update(1 / 120);
-  assert.ok(timeline.system._liveTrailStreakCount > 0, 'the reduced cue wakes at its bounded cadence');
-  for (let frame = 0; frame < 30; frame++) {
+  for (let frame = 0; frame < 10; frame++) {
+    timeline.state.simTime += 1 / 120;
+    timeline.state.tick += 1;
     timeline.system.update(1 / 120);
-    assert.ok(timeline.system._liveTrailStreakCount > 0,
-      `the static reduced marker has no between-cadence blackout at frame ${frame}`);
+  }
+  assert.ok(sinkSlots(timeline.system).length > 0, 'the reduced cue wakes at its bounded cadence');
+  for (let frame = 0; frame < 30; frame++) {
+    timeline.state.simTime += 1 / 120;
+    timeline.state.tick += 1;
+    timeline.system.update(1 / 120);
+    assert.ok(sinkSlots(timeline.system).length > 0,
+      `the attached marker has no between-cadence blackout at frame ${frame}`);
+    assert.ok(timeline.system._statusMatterVfx.batch.count > 0,
+      `the attached marker keeps drawing its ribs at frame ${frame}`);
   }
 });
 
-test('hard target cap and existing priority pool protect causal work without a new tier', () => {
+test('hard target cap and candidate priority still protect causal work in the dedicated pool', () => {
   const capped = makeHarness({ targetCount: 8, playerTargetId: 9 });
   assert.equal(capped.system._updateMomentumSinkPresentation(), MOMENTUM_SINK_VFX_TARGET_CAPACITY);
-  assert.equal(capped.system._liveTrailStreakCount, MOMENTUM_SINK_VFX_TARGET_CAPACITY * 3);
-  assert.equal(capped.system._liveCount, MOMENTUM_SINK_VFX_TARGET_CAPACITY * 2);
-  assert.equal(capped.system._ts.length, 96, 'Momentum Sink reuses the fixed structural streak pool');
-  assert.equal(liveStreaks(capped.system).filter((slot) => slot.admissionPriority === 0.98).length, 3,
-    'the late current target displaces the lower-priority tail from the retained top six');
+  const slots = sinkSlots(capped.system);
+  assert.equal(slots.length, MOMENTUM_SINK_VFX_TARGET_CAPACITY,
+    'six admitted targets map to six attached-matter slots');
+  assert.equal(capped.system._liveTrailStreakCount, 0,
+    'sinks never spend the shared structural streak pool');
+  assert.ok(slots.some((slot) => slot.entity.id === 9),
+    'the late current target (0.98) displaces the lower-priority tail at the top-six gate');
+  assert.equal(slots.some((slot) => slot.entity.id === 7 || slot.entity.id === 8), false,
+    'the two weakest equal-priority candidates lose the retained capacity race');
 
   const admitted = makeHarness();
   for (let index = 0; index < admitted.system._ts.length; index++) spawnResident(admitted.system, 0.1);
   admitted.system._updateMomentumSinkPresentation();
-  assert.equal(admitted.system._liveTrailStreakCount, 96);
-  assert.ok(admitted.system._ts.some((slot) => slot.alive && slot.admissionPriority === 0.98));
+  assert.equal(admitted.system._liveTrailStreakCount, 96,
+    'attached sink matter cannot evict residents of the shared streak pool');
+  assert.equal(admitted.system._ts.every((slot) => !slot.alive || slot.admissionPriority === 0.1), true);
+  assert.ok(sinkSlotFor(admitted.system, admitted.targets[0]),
+    'a saturated shared pool can never starve the dedicated sink pool');
 
-  const strict = makeHarness({ playerTargetId: 99, attackerId: '1' });
-  for (let index = 0; index < strict.system._ts.length; index++) spawnResident(strict.system, 0.99);
-  strict.system._updateMomentumSinkPresentation();
-  assert.equal(strict.system._ts.some((slot) => slot.alive && slot.admissionPriority === 0.92), false,
-    'string attacker identity cannot become numeric player causality');
-  assert.equal(strict.system._ts.some((slot) => slot.alive && slot.admissionPriority === 0.5), false,
-    'ambient work loses to stronger residents under saturation');
+  const strict = makeHarness({ targetCount: 7, playerTargetId: 99 });
+  // First six keep player-causal attackerId 1 (0.92); the seventh attacker is the
+  // string '1', which cannot equal numeric playerId — ambient 0.5 loses the top-six gate.
+  strict.state.combat.entities[String(strict.targets[6].id)]
+    .statuses[MOMENTUM_SINK_STATUS_ID].attackerId = '1';
+  assert.equal(strict.system._updateMomentumSinkPresentation(), MOMENTUM_SINK_VFX_TARGET_CAPACITY);
+  assert.equal(sinkSlotFor(strict.system, strict.targets[6]), null,
+    'string attacker identity cannot become numeric player causality and loses the gate');
+  assert.equal(sinkSlots(strict.system).length, MOMENTUM_SINK_VFX_TARGET_CAPACITY);
 });
 
-test('post-integration emission survives a clamped hitch and status clear drains within one cadence', () => {
+test('post-integration emission survives a clamped hitch and status clear drains on the bounded residue clock', () => {
   const { bus, state, system, targets } = makeHarness();
   const target = targets[0];
   const runtime = state.combat.entities[String(target.id)];
+  const step = (dt) => { state.simTime += dt; state.tick += Math.max(1, Math.round(dt * 60)); system.update(dt); };
 
-  system.update(0.1);
-  assert.ok(system._liveTrailStreakCount > 0,
-    'new <=cadence residue is emitted after integration and survives the 100 ms clamped frame');
+  step(0.1);
+  assert.ok(sinkSlotFor(system, target),
+    'new residue attaches after integration and survives the 100 ms clamped frame');
   assert.equal(system.inspect().subsystems.lastFrame.momentumSink, 1);
   delete runtime.statuses[MOMENTUM_SINK_STATUS_ID];
-  assert.ok(system._liveTrailStreakCount > 0,
-    'status clear does not destructively clear a shared VFX pool');
-  system.update(0.1);
-  assert.equal(system._liveTrailStreakCount, 0, 'clear stops new work and prior residue drains by one cadence');
+  step(0.1);
+  assert.ok(sinkSlotFor(system, target),
+    'status clear drains attached matter instead of destructively clearing it');
+  for (let frame = 0; frame < 6; frame++) step(0.1);
+  assert.equal(sinkSlotFor(system, target), null,
+    'drained matter retires inside its bounded residue life');
   assert.equal(system.inspect().subsystems.lastFrame.momentumSink, 0);
 
   runtime.statuses[MOMENTUM_SINK_STATUS_ID] = makeStatus();
@@ -376,18 +402,21 @@ test('post-integration emission survives a clamped hitch and status clear drains
   bus.emit('player:death', { pos: target.pos });
   assert.equal(system._cadenceMomentumSink, 0);
 
+  step(0.1);
+  assert.ok(sinkSlotFor(system, target), 'the restored status re-seats an attached slot');
   for (const event of ['sector:enter', 'game:newGame', 'save:loaded']) {
     system._cadenceMomentumSink = 0.05;
     spawnResident(system, 0.2);
     bus.emit(event);
     assert.equal(system._cadenceMomentumSink, 0, `${event}: cadence reset`);
     assert.equal(system._liveTrailStreakCount, 0, `${event}: existing boundary pool reset remains authoritative`);
+    assert.equal(sinkSlots(system).length, 0, `${event}: boundary clears attached matter too`);
+    step(0.1);
   }
   const planScratch = system._momentumSinkPlanScratch;
   const inputScratch = system._momentumSinkInputScratch;
   const candidateScratch = system._momentumSinkCandidates;
-  system.update(0.1);
-  assert.ok(system._liveTrailStreakCount > 0,
+  assert.ok(sinkSlotFor(system, target),
     'a restored stored frame resumes through the normal post-Continue pull');
   assert.strictEqual(system._momentumSinkPlanScratch, planScratch);
   assert.strictEqual(system._momentumSinkInputScratch, inputScratch);
@@ -396,14 +425,13 @@ test('post-integration emission survives a clamped hitch and status clear drains
 
   system._onKilled = () => {};
   system._onDestroyed = () => {};
-  system._clearTrailStreaks();
   system._cadenceMomentumSink = 0;
   for (let frame = 0; frame < 8; frame++) {
     bus.emit('entity:killed', { id: 900 + frame, type: 'ship' });
     bus.emit('entity:destroyed', { id: 1900 + frame, type: 'ship' });
-    system.update(1 / 60);
+    step(1 / 60);
   }
-  assert.ok(system._liveTrailStreakCount > 0,
+  assert.ok(sinkSlotFor(system, target),
     'repeated unrelated combat removals cannot starve the live current-target cadence');
 
   system._momentumSinkCandidates[0] = target;

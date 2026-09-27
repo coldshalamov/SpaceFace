@@ -116,3 +116,6 @@ any regression tips it over.
 
 `.02` (texture one-offs) is already done and is not re-litigated here. `.00` (sector identity) still
 owes its blind-naming record and is untouched by this leaf.
+
+## Prior queue notes
+- verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file.

@@ -271,6 +271,30 @@ test('same seed and events spawn the same inspect counters', () => {
   b.dispose();
 });
 
+test('native capital kill keeps semantic light but ejects bounded cooling metal, not turquoise sheets', () => {
+  const { system } = makeVfxHarness();
+  system._spawnArcadeStructuralBurst({
+    cause: 'kill', hero: 1, classId: 'capital', victimId: TARGET_ID,
+    x: 8, z: 3, radius: 160, hasDir: 1, dirX: 1, dirZ: 0,
+    velX: 4, velY: 0, velZ: -2, priority: 0.98,
+  });
+  const fx = system._arcadeStructural;
+  const pieces = fx.shards.slots.filter(s => s.alive);
+  const blades = fx.blades.slots.filter(s => s.alive);
+  assert.ok(pieces.length > 0 && blades.length > 0);
+  assert.ok(blades.every(s => s.g0 > s.r0), 'the player force cue keeps its semantic teal');
+  assert.ok(pieces.every(s => s.r0 > s.g0 && s.g0 > s.b0), 'separated metal begins as restrained warm stock');
+  assert.ok(pieces.every(s => s.b1 > s.r1), 'metal cools toward shadowed steel');
+  assert.ok(pieces.every(s => s.length0 <= 6.5), 'a cosmetic piece never approaches capital hull scale');
+  assert.ok(Math.max(...pieces.map(s => s.length0)) > 2, 'material remains substantial at the flight camera');
+  assert.ok(Math.max(...pieces.map(s => s.length0)) > Math.min(...pieces.map(s => s.length0)) * 1.1,
+    'fragment sizes retain a meaningful hierarchy');
+  for (let i = 0; i < 6; i++) fx.update(1 / 60, null, 900);
+  const drawn = fx.shards.mesh.instanceColor;
+  assert.ok(drawn.getX(0) > drawn.getY(0), 'the native instance upload carries material colour');
+  system.destroy();
+});
+
 test('hero kill obtains a blade slot after the pool is full without growing capacity', () => {
   const fx = new ArcadeStructuralFx(null);
   const cap = ARCADE_STRUCTURAL_FX_CAPACITY.blades;

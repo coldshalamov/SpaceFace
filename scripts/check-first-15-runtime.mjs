@@ -143,8 +143,18 @@ try {
     if (!state || state.mode !== 'flight' || !ob || !ob.active || ob.finished) return false;
     const splash = document.querySelector('.sf-firstrun-splash');
     return !splash && ob.currentBeat === 0 && (state.simTime || 0) >= minSimS;
-  }, B0_SAMPLE_WAIT_MS / 1000, { timeout: 60000 }).catch((err) => {
-    throw new Error('Timed out waiting for B0 thrust sample: ' + err.message);
+  }, B0_SAMPLE_WAIT_MS / 1000, { timeout: 60000 }).catch(async (err) => {
+    const diag = await page.evaluate(() => {
+      const state = window.SF && window.SF.state;
+      const ob = state && state.onboarding;
+      return {
+        mode: state && state.mode,
+        simTime: state && state.simTime,
+        onboarding: ob ? { active: ob.active, finished: ob.finished, currentBeat: ob.currentBeat } : null,
+        splash: !!document.querySelector('.sf-firstrun-splash'),
+      };
+    }).catch(() => null);
+    throw new Error(`Timed out waiting for B0 thrust sample: ${err.message}\ndiag=${JSON.stringify(diag)}`);
   });
 
   // ── B0 one-verb exclusivity sample (before opening Mission Log) ─────────────

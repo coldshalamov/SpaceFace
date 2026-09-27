@@ -33,7 +33,9 @@ test('fresh Crucible starts with a readable gun, bank-shot rig and escape tool',
   assert.ok(kit);
   assert.ok(kit.loadout.some(slot => slot.defId === 'mod_bank_shot'));
   assert.ok(kit.loadout.some(slot => slot.defId === 'mod_repulsion_trap_s'));
-  assert.ok(kit.loadout.some(slot => slot.defId === 'wpn_autocannon_m'));
+  // d4b059f5b re-armed the runner around the bank stream — the readable ricochet gun its blurb
+  // promises — where the pin once read the plain autocannon.
+  assert.ok(kit.loadout.some(slot => slot.defId === 'wpn_bank_stream_m'));
   assert.ok(!kit.loadout.some((slot) => slot.defId === 'wpn_railgun_m'));
   const pulse = WEAPONS.find((w) => w.id === 'wpn_pulse_laser_s');
   assert.ok(pulse.dmg > 0 && pulse.rof > 0, 'Pulse stays a readable starter gun');

@@ -72,7 +72,7 @@ ${S} .sxb-next__t { color:rgb(248 244 234) !important; }
 ${S} .sxb-next__w { color:rgb(${BONE} / .78) !important; }
 ${S} .sxb-event__badge { color:rgb(248 244 234) !important; background:none !important; border:0 !important; }
 ${S} :is(.sxb-event__badge, .sxb-event__title, .sxb-next__t) { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important;
-  font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; font-size:10.5px !important; letter-spacing:.2em !important; text-transform:uppercase; }
+  font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; font-size: 12px !important; letter-spacing:.2em !important; text-transform:uppercase; }
 ${S} .sxb-next__bead { background:rgb(${BONE} / .85) !important; box-shadow:none !important; }
 ${S} :is(.sxb-next__n, .sxb-next__x) { color:rgb(${BONE} / .7) !important; }
 ${S} .sxb-next__x:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
@@ -80,12 +80,12 @@ ${S} .so-command-trigger > .so-icon { display:none !important; }
 ${S} .dp-title__rule { background:linear-gradient(90deg, rgb(${BONE} / .6), rgb(${BONE} / 0)) !important; height:2px !important; box-shadow:none !important; }
 ${S} .so-command-trigger { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;
   min-height:0 !important; height:auto !important; padding:4px 0 !important; gap:9px !important; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
-  font-weight:650; font-size:11px !important; letter-spacing:.22em; text-transform:uppercase; color:rgb(${BONE} / .72) !important; }
+  font-weight:650; font-size: 12px !important; letter-spacing:.22em; text-transform:uppercase; color:rgb(${BONE} / .72) !important; }
 ${S} .so-command-trigger::before, ${S} .so-command-trigger::after { display:none !important; }
 ${S} .so-command-trigger .so-icon { width:14px; height:14px; }
 /* the key hint is a word after a dot, never a drawn key cap */
 ${S} .so-command-trigger .dp-kbd { background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
-  padding:0 !important; font:inherit !important; font-size:10px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important; }
+  padding:0 !important; font:inherit !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important; }
 ${S} .so-command-trigger .dp-kbd::before { content:"· "; color:rgb(${BONE} / .4); }
 ${S} .so-command-trigger:is(:hover, :focus-visible) { color:rgb(246 241 230) !important; outline:none !important; }
 ${S} .so-command-trigger:focus-visible { color:var(--dp-hand, #f2b950) !important; }
@@ -133,12 +133,12 @@ ${S} .sxb-vital__value { position:absolute !important; left:0; right:0; top:21px
   display:flex; flex-direction:column; align-items:center; line-height:1 !important; background:none !important; color:rgb(246 241 230) !important; }
 ${S} .sxb-vital__value .orr-vnum { font-family:var(--dp-face-display, "Archivo"); font-stretch:100%; font-weight:600; font-size:18px; letter-spacing:0;
   font-variant-numeric:tabular-nums; }
-${S} .sxb-vital__value .orr-vnum.is-word { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:700; font-size:10.5px; letter-spacing:.18em;
+${S} .sxb-vital__value .orr-vnum.is-word { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:700; font-size: 12px; letter-spacing:.18em;
   text-transform:uppercase; margin-top:5px; }
-${S} .sxb-vital__value .orr-vden { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:600; font-size:9px; letter-spacing:.1em;
-  margin-top:2px; font-size:10px !important; color:rgb(${BONE} / .7); white-space:nowrap; }
+${S} .sxb-vital__value .orr-vden { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:600; font-size: 12px; letter-spacing:.1em;
+  margin-top:2px; font-size: 12px !important; color:rgb(${BONE} / .7); white-space:nowrap; }
 ${S} .sxb-vital[data-tone='bad'] .sxb-vital__value { color:var(--dp-danger, #ff5038) !important; }
-${S} .sxb-vital__label { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size:10.5px !important;
+${S} .sxb-vital__label { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size: 12px !important;
   letter-spacing:.22em !important; text-transform:uppercase; color:rgb(${BONE} / .72) !important; margin-top:0; }
 ${S} button.sxb-vital__head:is(:hover, :focus-visible) .sxb-vital__label { color:rgb(246 241 230) !important; }
 ${S} button.sxb-vital__head:focus-visible { outline:none !important; }
@@ -148,7 +148,7 @@ ${S} .sxb-vital__acts:empty { display:none !important; }
 ${S} .sxb-vital [data-vital-act] { display:inline-flex !important; align-items:baseline; gap:6px; white-space:nowrap;
   background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;
   min-height:0 !important; min-width:0 !important; height:auto !important; padding:2px 0 !important; margin:0 !important;
-  font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size:11px !important; letter-spacing:.12em !important;
+  font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size: 12px !important; letter-spacing:.12em !important;
   text-transform:uppercase; color:rgb(${BONE} / .88) !important; }
 ${S} .sxb-vital [data-vital-act]::after { display:none !important; }
 /* the verb's notch: a small chevron in bone; it lights with the verb */
@@ -198,7 +198,7 @@ ${S} .sxb-ops .sx-dock__group--nav { gap:0 clamp(28px, 2.2vw, 44px) !important; 
 @media (max-width:1500px) {
   ${S} .sxb-ops .sx-receipt { top:auto !important; bottom:calc(100% + 10px) !important; left:0 !important; max-width:min(560px, 70vw) !important; }
   ${S} .sxb-vital { width:112px !important; }
-  ${S} .sxb-vital [data-vital-act] { font-size:10.5px !important; letter-spacing:.08em !important; }
+  ${S} .sxb-vital [data-vital-act] { font-size: 12px !important; letter-spacing:.08em !important; }
   ${S} .sxb-ops .sx-dock__group--nav { gap:0 16px !important; }
   ${S} .sxb-ops .sx-tile__label { letter-spacing:.16em !important; }
   ${S} .sxb-ops .of-facility-rail { max-width:64vw !important; }
@@ -210,7 +210,7 @@ ${S} .sxb-ops .sx-tile::before, ${S} .sxb-ops .sx-tile::after { display:none !im
 ${S} .sxb-ops .sx-tile, ${S} .sxb-ops .sx-tile:is(:hover, :focus, :focus-visible, .is-active) { font-variation-settings:"wdth" 100, "wght" 560 !important; }
 ${S} .sxb-ops .sx-tile .sx-tile__label, ${S} .sxb-ops .sx-tile:is(:hover, :focus, :focus-visible, .is-active) .sx-tile__label {
   font-variation-settings:"wdth" 112, "wght" 650 !important; }
-${S} .sxb-ops .sx-tile__label { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size:11px !important;
+${S} .sxb-ops .sx-tile__label { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size: 12px !important;
   letter-spacing:.22em !important; text-transform:uppercase; color:inherit !important; }
 ${S} .sxb-ops .sx-tile__seat { color:inherit !important; background:none !important; border:0 !important; box-shadow:none !important; }
 ${S} .sxb-ops .sx-tile__seat::before, ${S} .sxb-ops .sx-tile__seat::after { display:none !important; }
@@ -219,14 +219,14 @@ ${S} .sxb-ops .sx-tile:is(:hover, :focus-visible) { color:rgb(${BONE} / .9) !imp
 ${S} .sxb-ops .sx-tile.is-active { color:rgb(248 244 234) !important; }
 ${S} .sxb-ops .sx-tile.is-active .sx-tile__label { text-shadow:0 0 14px rgb(0 0 0 / .7); }
 ${S} .sxb-ops .sx-tile__badge { background:none !important; border:0 !important; color:rgb(248 244 234) !important; font-weight:700 !important;
-  font-size:10.5px !important; letter-spacing:.06em !important; margin-right:6px; }
+  font-size: 12px !important; letter-spacing:.06em !important; margin-right:6px; }
 ${S} .sxb-ops .sx-tile.is-attention .sx-tile__seat::before { display:none !important; }
-${S} .sxb-ops .so-berth-status { color:rgb(${BONE} / .7) !important; font-size:11.5px !important; letter-spacing:.24em !important; font-weight:650;
+${S} .sxb-ops .so-berth-status { color:rgb(${BONE} / .7) !important; font-size: 12px !important; letter-spacing:.24em !important; font-weight:650;
   background:none !important; border:0 !important; }
 ${S} .sxb-ops .so-berth-status .so-icon { color:rgb(${BONE} / .5); }
 ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
   clip-path:none !important; min-height:0 !important; min-width:0 !important; height:auto !important; padding:6px 2px !important; gap:8px !important;
-  font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size:11.5px !important;
+  font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size: 12px !important;
   letter-spacing:.22em !important; text-transform:uppercase; color:rgb(${BONE} / .75) !important; }
 ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help)::before, ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help)::after { display:none !important; }
 ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help) .so-icon { width:14px; height:14px; }
@@ -240,7 +240,7 @@ ${S} .sxb-ops .sx-receipt { background:none !important; border:0 !important; bor
 ${S} .sxb-ops .sx-receipt::before { content:""; position:absolute; z-index:-1; left:-60px; right:-60px; top:-26px; bottom:-26px; pointer-events:none;
   background:radial-gradient(closest-side, rgb(7 8 10 / .85), rgb(7 8 10 / 0)); }
 ${S} .sxb-ops .sx-receipt .so-transfer { width:40px; color:rgb(${BONE} / .7); }
-${S} .sxb-ops .sx-receipt__kind { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650; font-size:10px !important;
+${S} .sxb-ops .sx-receipt__kind { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650; font-size: 12px !important;
   letter-spacing:.22em !important; color:rgb(${BONE} / .7) !important; }
 ${S} .sxb-ops .sx-receipt__title { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size:12px !important;
   letter-spacing:.12em; text-transform:uppercase; color:rgb(248 244 234) !important; }
@@ -259,7 +259,7 @@ ${S} .sxb-launch__light { display:none !important; }
 ${S} .sxb-launch__copy { display:flex !important; flex-direction:column; align-items:flex-start; gap:4px; }
 ${S} .sxb-launch__label { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125%; font-variation-settings:"wght" 800, "wdth" 125;
   font-size:20px !important; letter-spacing:.12em !important; text-transform:uppercase; line-height:1 !important; color:inherit !important; }
-${S} .sxb-launch__state { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size:10px !important;
+${S} .sxb-launch__state { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size: 12px !important;
   letter-spacing:.24em !important; text-transform:uppercase; line-height:1 !important; color:rgb(${BONE} / .72) !important; }
 ${S} .sxb-launch > .so-icon { width:22px; height:22px; color:rgb(${BONE} / .7); }
 ${S} .sxb-launch:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-shadow:0 0 24px rgb(255 217 140 / .45);
@@ -277,7 +277,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${S} :is(.sxb-vital__track, .sxb-vital > .orr-vdial-bare, .orr-vdial) { width:72px !important; height:47px !important; }
   ${S} .sxb-vital__value { top:15px; }
   ${S} .sxb-vital__value .orr-vnum { font-size:16px; }
-  ${S} .sxb-vital__value .orr-vden { font-size:10px !important; }
+  ${S} .sxb-vital__value .orr-vden { font-size: 12px !important; }
   ${S} .sxb-vital__acts { margin-top:2px !important; gap:0 !important; }
 }
 /* a short screen: the trade receipt stands over the comms words, never across UNDOCK */

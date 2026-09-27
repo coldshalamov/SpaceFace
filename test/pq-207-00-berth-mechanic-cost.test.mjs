@@ -87,7 +87,7 @@ test('a scarred hull with a ledger fact still gets the rap line, on the berth ro
 
   const card = leftoverMechanicCard(state);
   assert.equal(card.title, 'Mechanic');
-  assert.equal(card.body, 'Hard scar on the bow. That is a real hit. The ship ledger already has a fact on this hull.');
+  assert.equal(card.body, 'Tessera: Hard scar on the bow. That is a real hit. The ship ledger already has a fact on this hull.');
 
   const arrival = buildDockArrival(state, STATION);
   assert.equal(arrival.mechanicLine, card.body, 'the berth arrival carries the same line');
@@ -97,7 +97,7 @@ test('a scarred hull with a ledger fact still gets the rap line, on the berth ro
 test('a scarred hull with no ledger fact gets no rap line', () => {
   const state = berthState();
   assert.equal(shipLedgerHasFactOutside(state, HULL_TYPES), false);
-  assert.equal(leftoverMechanicCard(state).body, 'Hard scar on the bow. That is a real hit.');
+  assert.equal(leftoverMechanicCard(state).body, 'Tessera: Hard scar on the bow. That is a real hit.');
   assert.doesNotMatch(leftoverMechanicLine(state), RAP);
 });
 

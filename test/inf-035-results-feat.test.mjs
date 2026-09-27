@@ -62,7 +62,7 @@ test('INF-035: a gun-only run gets an honest alternative, never a fake stunt', (
 test('INF-035: a chain without banks celebrates the chain', () => {
   const feat = featDiagram({ seed: 7, score: 800, kills: 9, bestChain: 12 });
   assert.equal(feat.kind, 'chain');
-  assert.match(feat.text, /best chain 12/);
+  assert.match(feat.text, /best kill chain 12/);
 });
 
 test('INF-035: one kill reads singular; nothing reads as nothing', () => {

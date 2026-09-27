@@ -295,3 +295,49 @@ test('Twin Mount can be taught on the hunter ladder, and lab shortcuts stay off 
   assert.equal(migration.includes("from './survivalDraft.js'"), false);
   assert.equal(migration.includes("from './survivalRewards.js'"), false);
 });
+
+test('the ladder step that teaches Twin Mount also grants the Rig', async () => {
+  const { HUNTER_LADDER_DEF } = await import('../src/careers/ladders/hunterLadderDefs.js');
+  const { buildRewardIntents, LADDER_REWARD_EVENTS } = await import('../src/careers/ladders/ladderShared.js');
+  const step = HUNTER_LADDER_DEF.steps.find((row) => row.id === 'doctrine_pursuit');
+  assert.ok(step, 'doctrine_pursuit must exist on the hunter ladder');
+  const intents = buildRewardIntents('hunter', step.id, step.rewards);
+  const grant = intents.find((intent) => intent.event === LADDER_REWARD_EVENTS.GRANT_MODULE);
+  assert.ok(grant, 'step rewards must emit the canonical module-grant intent');
+  assert.equal(grant.payload.defId, 'mod_twin_mount');
+  // The ships authority must actually listen on the intent event — pin the wiring,
+  // then prove the grant lands through the same authority every other caller uses.
+  const shipsSource = readFileSync(join(ROOT, 'src/systems/ships.js'), 'utf8');
+  assert.ok(shipsSource.includes("bus.on('ships:grantModule'"), 'ships must subscribe the grant intent');
+  const { ships } = await import('../src/systems/ships.js');
+  const bus = createBus();
+  const state = createGameState();
+  const before = (state.player.moduleInventory || []).length;
+  ships.init({ state, bus, helpers: {} });
+  bus.emit('ships:grantModule', { defId: 'mod_twin_mount', reason: 'test:adventure-migration' });
+  const inventory = state.player.moduleInventory || [];
+  assert.equal(inventory.length, before + 1, 'grant intent must add the Rig to inventory');
+  assert.equal(inventory[inventory.length - 1].defId, 'mod_twin_mount');
+});
+
+test('the Foundry pulse joins the reserved-unique manifest with a frozen count', async () => {
+  const pulse = WEAPON_BY_ID.get('unique_mirrorjaw_pulse');
+  assert.ok(pulse, 'unique_mirrorjaw_pulse must exist in the weapon catalog');
+  assert.deepEqual(
+    { price: pulse.price, unique: pulse.unique, salvageOnly: pulse.salvageOnly, purchasable: pulse.purchasable },
+    { price: 0, unique: true, salvageOnly: true, purchasable: false },
+    'the Foundry reservation carries the same flags as every wreck unique',
+  );
+  const { UNIQUE_WRECKS } = await import('../src/data/uniqueWrecks.js');
+  const wreckDropIds = new Set(UNIQUE_WRECKS.flatMap((wreck) => (wreck.uniqueDrops || []).map((drop) => drop.id)));
+  const reservedOutsideWrecks = [...WEAPONS, ...MODULES]
+    .filter((entry) => entry.unique === true && !wreckDropIds.has(entry.id))
+    .map((entry) => entry.id)
+    .sort();
+  assert.deepEqual(reservedOutsideWrecks, [
+    'unique_broken_ring_whip',
+    'unique_mirrorjaw_pulse',
+    'unique_no_cut_filament',
+    'unique_toll_saint_bridle',
+  ], 'the reserved manifest outside the twelve wrecks is the three ace trophy heads plus the Foundry pulse');
+});

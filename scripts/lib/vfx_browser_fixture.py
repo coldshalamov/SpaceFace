@@ -24,6 +24,11 @@ def collect():
         if name in modules:return name
         modules[name]=''
         text=path.read_text(encoding='utf-8')
+        # Typed JSON imports must remain JSON, including strings that happen to contain
+        # import-like text. Their import attributes and browser MIME check stay intact.
+        if path.suffix.lower()=='.json':
+            modules[name]=text
+            return name
         def replace(m):
             ref=m.group(2); target=resolve(ref,path)
             if target and target.exists() and target.is_file():
@@ -54,7 +59,10 @@ def mount(page, root=None):
     html,modules=collect()
     page.set_content(html)
     page.evaluate('''async (modules)=>{
-      const imports={};for(const [name,source] of Object.entries(modules))imports[name]=URL.createObjectURL(new Blob([source],{type:'text/javascript'}));
+      const imports={};for(const [name,source] of Object.entries(modules)){
+        const type=name.endsWith('.json')?'application/json':'text/javascript';
+        imports[name]=URL.createObjectURL(new Blob([source],{type}));
+      }
       const map=document.createElement('script');map.type='importmap';map.textContent=JSON.stringify({imports});document.head.append(map);
       await import('sf:entry');
     }''',modules)

@@ -21,6 +21,26 @@ export const WAVE_20_SYSTEM_EVENT = Object.freeze({
   wave: 20,
 });
 
+/**
+ * PQ-133.07 (CRU-043) — the wave-thirty FINALE, the second authored system event of the arc.
+ *
+ * Wave 30 does not replay the wave-ten Foreman: the composed elite is the Forge Regent
+ * (`forge_regent`, the Mirrorjaw core under a wider crown, see src/data/enemies.js), and the room's
+ * own system is named exactly once so the run machine and the results read the finale as an event
+ * rather than one more boss wave. Only the arenas whose authored wave-ten elite is the Mirrorjaw
+ * core are crowned; the others keep their own dreadnought boss.
+ */
+export const WAVE_30_SYSTEM_EVENT = Object.freeze({
+  id: 'forge_regent_crown',
+  wave: 30,
+});
+
+/** The composed finale hull for the thirty-wave Foundry arc. */
+export const WAVE_30_FINALE_ENEMY_ID = 'forge_regent';
+
+/** Wave-ten elite ids the finale regent grows from — the Mirrorjaw core, never the dreadnought. */
+const WAVE_30_CORE_ENEMY_IDS = Object.freeze(['mirrorjaw_foreman']);
+
 export function templateWaveOf(wave) {
   return ((wave - 1) % SURVIVAL_TEMPLATE_BLOCK) + 1;
 }
@@ -151,6 +171,21 @@ function applyWave20Overlay(packages) {
 }
 
 /**
+ * Wave-thirty crown. The authored elite package is rewritten in place to the Forge Regent — same
+ * slot, same bearing, same schedule — so body count and arrival timing are untouched and only the
+ * hull the player must solve changes. Arenas with no Mirrorjaw core keep their own boss.
+ */
+function crownFinaleBoss(packages) {
+  const next = packages.map(clonePackage);
+  for (const pkg of next) {
+    if (pkg.role === 'elite' && WAVE_30_CORE_ENEMY_IDS.includes(pkg.enemyId)) {
+      pkg.enemyId = WAVE_30_FINALE_ENEMY_ID;
+    }
+  }
+  return next;
+}
+
+/**
  * Act composition for one planned wave. Identity for Act I except the wave-20 overlay.
  * Never changes the sum of package counts.
  */
@@ -174,6 +209,15 @@ export function composeArcWave({ packages, blockingRoles, arenaPhase, objective,
     nextRoles = rebuildBlockingRoles(nextRoles, nextPackages);
     nextObjective = { kind: 'system_event' };
     systemEvent = { id: WAVE_20_SYSTEM_EVENT.id, wave: 20 };
+  }
+
+  // PQ-133.07 — wave thirty is the arc's finale. The objective stays the boss kind (the finale is
+  // still won by clearing the elite), but the elite itself is crowned and the system is named, so
+  // the run machine can surface the second (and last) authored system event of the arc.
+  if (wave === 30) {
+    nextPackages = crownFinaleBoss(nextPackages);
+    nextRoles = rebuildBlockingRoles(nextRoles, nextPackages);
+    systemEvent = { id: WAVE_30_SYSTEM_EVENT.id, wave: 30 };
   }
 
   return {

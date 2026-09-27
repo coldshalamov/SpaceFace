@@ -459,7 +459,7 @@ test('save v11 mid-step serialize/deserialize preserves all three leaves + origi
     const { factory } = await loadCompositeFactory();
     compositeFactory = factory;
   }
-  assert.equal(CURRENT_VERSION, 11, 'live save version remains v11 (no v12 claim)');
+  assert.ok(CURRENT_VERSION >= 11, 'v11-era mid-step restore is the contract under test; later schema bumps are expected');
 
   const h = makeHarness(4242);
   const composite = compositeFactory();

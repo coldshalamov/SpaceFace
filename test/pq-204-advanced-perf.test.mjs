@@ -97,6 +97,61 @@ test('combat SoA reuses last packed columns when pose and membership stay still'
   assert.equal(packed.x[0], 12);
 });
 
+test('roster drift after the journal wipes still rebuilds the table', () => {
+  // Production order: beginDirtyTick wipes last tick's marks before pack runs,
+  // so MEMBERSHIP is never observed at pack time — entityIndex.version (bumped
+  // synchronously on every append/remove) is the rebuild signal.
+  const newcomer = { id: 7, alive: true, pos: { x: 9, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 3, team: 1 };
+  const state = {
+    tick: 20,
+    playerId: 1,
+    entities: new Map(),
+    entityIndex: {
+      version: 0,
+      shipLike: [
+        { id: 1, alive: true, isPlayer: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 6, team: 0 },
+      ],
+      projectiles: [],
+      wrecks: [],
+    },
+  };
+  state.entities.set(1, state.entityIndex.shipLike[0]);
+  beginDirtyTick(state, 20);
+  const first = packCombatTable(state);
+  assert.equal(first.count, 1);
+  // A spawn landed mid-tick; by the next pack the MEMBERSHIP mark is wiped.
+  state.entityIndex.shipLike.push(newcomer);
+  state.entities.set(7, newcomer);
+  state.entityIndex.version++;
+  state.tick = 21;
+  beginDirtyTick(state, 21);
+  markDirty(state, 1, DIRTY.POSE);
+  const packed = packCombatTable(state);
+  assert.equal(packed.count, 2);
+  assert.ok(packed.rowById.get(7) != null, 'new entity got a row');
+  // Removal with no marks at all still rebuilds on the version bump alone.
+  state.entityIndex.shipLike.pop();
+  state.entities.delete(7);
+  state.entityIndex.version++;
+  state.tick = 22;
+  beginDirtyTick(state, 22);
+  const shrunk = packCombatTable(state);
+  assert.equal(shrunk.count, 1);
+  // A swapped index object at the SAME version is still drift (save restore).
+  const ghost = { id: 8, alive: true, pos: { x: 3, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 2, team: 1 };
+  state.entityIndex = {
+    version: 2,
+    shipLike: [state.entities.get(1), ghost],
+    projectiles: [],
+    wrecks: [],
+  };
+  state.tick = 23;
+  beginDirtyTick(state, 23);
+  const rebuilt = packCombatTable(state);
+  assert.equal(rebuilt.count, 2);
+  assert.ok(rebuilt.rowById.get(8) != null, 'swapped index member got a row');
+});
+
 test('dirty journal clears per tick and unions bits', () => {
   const state = {};
   beginDirtyTick(state, 10);

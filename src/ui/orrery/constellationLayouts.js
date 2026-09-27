@@ -58,7 +58,7 @@ ${T} .con-dossier { display:flex; flex-direction:column; gap:clamp(6px, 1.1vh, 1
 ${T} .con-dossier > * { margin:0; }
 ${T} .con-dossier__kicker { ${LABEL} font-size:clamp(10.5px, .62vw, 13px); letter-spacing:.24em; color:rgb(${BONE} / .68); }
 ${T} .con-dossier__kicker span { margin:0 .3em; }
-${T} .con-dossier__name { ${DISPLAY} font-size:clamp(22px, min(1.75vw, 3.3vh), 44px); line-height:1.02; letter-spacing:.02em; color:rgb(${WARM}); text-wrap:balance; ${HALO} }
+${T} .con-dossier__name { ${DISPLAY} font-size:clamp(22px, min(1.75vw, 3.3vh), 36px); line-height:1.02; letter-spacing:.02em; color:rgb(${WARM}); text-wrap:balance; ${HALO} }
 ${T} .con-dossier__state { ${READ} font-size:clamp(14px, .85vw, 18px); line-height:1.35; color:rgb(${BONE} / .8); }
 ${T} .con-dossier__state:is([data-state="available"], [data-state="researched"]) { color:rgb(${WARM}); }
 /* the cost: each figure thin and large inside an arc of how much of it you hold */
@@ -92,7 +92,9 @@ ${T} .con-row.has-art { grid-template-columns:clamp(34px, 2.3vw, 44px) minmax(0,
 ${T} .con-row__art { display:grid; place-items:center; width:clamp(34px, 2.3vw, 44px); height:clamp(28px, 1.9vw, 36px); color:rgb(${WARM} / .9); }
 ${T} .con-row__art svg { width:70%; height:70%; }
 ${T} .con-row__art svg .accent { fill:currentColor; }
-${T} .con-row__art .con-row__img { width:100%; height:100%; object-fit:contain; transform:rotate(90deg) scale(1.2); opacity:.95; }
+${T} .con-rows:has(.con-row__img) .con-row.has-art { grid-template-columns:68px minmax(0, 1fr) auto; }
+${T} .con-rows:has(.con-row__img) .con-row__art { width:68px; height:50px; }
+${T} .con-row__art .con-row__img { width:46px; height:64px; flex:none; object-fit:cover; transform:rotate(90deg); filter:grayscale(1) sepia(.16) brightness(1.2); opacity:.9; }
 ${T} .con-reqs .con-row[data-met="1"]::before { background:rgb(${WARM}); }
 ${T} .con-row__name { ${READ} font-size:clamp(14px, .82vw, 17px); line-height:1.3; color:rgb(${WARM}); min-width:0; }
 ${T} .con-row__sub { ${LABEL} font-size:clamp(9.5px, .54vw, 11px); letter-spacing:.16em; color:rgb(${BONE} / .62); white-space:nowrap; }
@@ -186,7 +188,7 @@ ${A} .con-medal-read__dial[data-state="locked"] .con-medal__glyph:has(.con-medal
 ${A} .con-medal-read__dial .orr-svg .con-medal__arc { stroke-width:3.5; }
 ${A} .con-medal-read__dial .orr-svg .con-medal__bloom { stroke-width:10; }
 ${A} .con-medal-read__rim { position:absolute; left:-30px; top:-30px; width:calc(100% + 60px); height:calc(100% + 60px); overflow:visible; }
-${A} .con-medal-read__rim text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.3em; text-transform:uppercase; fill:rgb(${WARM} / .82); }
+${A} .con-medal-read__rim text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.3em; text-transform:uppercase; fill:rgb(${WARM} / .82); }
 ${A} .con-medal-read__dial > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
 ${A} .con-medal-read__dial > .con-medal__art { opacity:.34; }
 ${A} .con-medal-read__dial[data-state="going"] > .con-medal__art { opacity:.66; }
@@ -203,7 +205,7 @@ ${A} .con-medal-read__dial[data-state="going"] .orr-svg .con-medal__ghost { stro
 ${A} .con-medal-read__dial .orr-svg .con-medal__ticks { stroke:rgb(${BONE} / .34); }
 ${A} .con-medal-read__kicker { ${LABEL} font-size:clamp(10.5px, .62vw, 13px); letter-spacing:.24em; color:rgb(${BONE} / .68); }
 ${A} .con-medal-read__kicker span { margin:0 .3em; }
-${A} .con-medal-read__name { ${DISPLAY} font-size:clamp(22px, min(1.75vw, 3.3vh), 44px); line-height:1.02; letter-spacing:.02em; color:rgb(${WARM}); text-wrap:balance; ${HALO} }
+${A} .con-medal-read__name { ${DISPLAY} font-size:clamp(22px, min(1.75vw, 3.3vh), 36px); line-height:1.02; letter-spacing:.02em; color:rgb(${WARM}); text-wrap:balance; ${HALO} }
 ${A} .con-medal-read__line { ${READ} font-size:clamp(15px, .9vw, 19px); line-height:1.45; color:rgb(${BONE} / .86); max-width:34ch; }
 ${A} .con-medal-read__figure { display:flex; align-items:baseline; gap:12px; margin-top:clamp(4px, 1vh, 12px) !important; }
 ${A} .con-medal-read__n { ${NUMERAL} font-size:clamp(44px, min(3.4vw, 6vh), 88px); line-height:.9; color:var(--dp-phos, #dfeeff); }
@@ -239,6 +241,20 @@ export function injectConstellationScreens(doc = globalThis.document) {
 
 /** The legend's glyph: the star a node of that state is, drawn the way the dial draws it. */
 export function legendStarSvg(kind, art = '') {
+  const box = '<svg viewBox="-14 -14 28 28" aria-hidden="true" focusable="false">';
+  const mark = 'M0 -3.4 L3.4 0 L0 3.4 L-3.4 0 Z';
+  if (kind === 'available') {
+    // open: the produced star's spikes behind a lit ring, its glyph lit
+    return box + (art ? `<image href="${art}" x="-10.4" y="-10.4" width="20.8" height="20.8" opacity=".9"></image>` : '')
+      + `<circle r="11" fill="rgb(${WARM})" opacity=".1"></circle><circle r="6.6" fill="rgb(5 7 10)" stroke="rgb(${WARM})" stroke-width="1.8"></circle>`
+      + `<path d="${mark}" fill="none" stroke="rgb(${WARM})" stroke-width="1.3" stroke-linejoin="round"></path></svg>`;
+  }
+  if (kind === 'locked') {
+    // locked: a dark body, its ring over a band of light, its glyph plain on it
+    return box + `<circle r="6.8" fill="none" stroke="rgb(${BONE} / .31)" stroke-width="5"></circle>`
+      + `<circle r="6.6" fill="rgb(44 43 40)" stroke="rgb(${BONE} / .56)" stroke-width="1.6"></circle>`
+      + `<path d="${mark}" fill="none" stroke="rgb(${BONE} / .66)" stroke-width="1.3" stroke-linejoin="round"></path></svg>`;
+  }
   if (art) {
     // the produced star itself, lit the way the dial lights it
     const k = kind === 'researched' ? 1 : kind === 'available' ? 0.74 : 0.5;

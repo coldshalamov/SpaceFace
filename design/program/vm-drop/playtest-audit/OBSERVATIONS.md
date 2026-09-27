@@ -278,6 +278,15 @@ loop→l04 / edge→x08 / screens→i08, all three fixed beats green:
 | 4 | loop+edge | 3+6 | 0 defects (1 designed full-hold) | x06/x03 harness fixes |
 | 5 | loop+edge | 5+6 | 0 defects (travel budget only) | 2 upstream CI checks fixed |
 
+**D63 — UPSTREAM (not ours): static(2) shard red at master `314cfaaa8`.** bar-faction-greetings
+test, check-title-attract, check-countermeasures, check-sg05-runtime, check-sg08-render-vfx,
+check-phase0-slice-contract, check-authored-place-runtime, check-perf-packets — verified identical
+on detached clean master; the vm branch diff touches none of these files. Owners: whoever landed
+the last ~80 commits on master (build-map lanes). Same row now also covers the pq-160-01 auto-clip
+detector reds (bolas-kill mark, replayed-window hash, export writes) — identical at detached master
+`314cfaaa8`, unrelated to the clips presentation edits on this branch (asserted by the readout/readout
+contract lines the tests still pass against).
+
 ## Next runs
 
 - loop route now covers: rock→mine→dock→SELL held ore→shipworks→undock (full money loop).
@@ -320,3 +329,158 @@ tests — verified byte-identical on detached master).
 
 - Adventure real-death → recovery-berth path (c04b covers crucible death only).
 - Achievements content depth, crucible share codes, gameOver-vs-berth distinction.
+
+## Run 11 — coverage gaps closed + two real defects @ 19e68ce23..a562abfc5
+
+Screens route re-run with widened beats (35 steps, 0 defects, 0 console/shader errors, ~7.6 min wall).
+
+New coverage landed this run:
+- `k01-flight-keys`: F3 → footprint screen renders (chains / chain record / ship ledger / five
+  context verbs) — previously never exercised.
+- `e05-pause-verbs` now walks all 10 pause verbs with deterministic return-to-pause driving:
+  Settings, Load, Mission Log, My Ship, Operations(automation), Local Map, Help, Codex,
+  Achievements, Replay — every verb lands on its screen, none dead.
+- `s04-ship-range`: shipworks "Take it to the range" verb.
+
+**D61 — FIXED: shipworks verb rack dead clicks.** renderApron() reparents `.sx-sw-verbs` onto
+`statsEl.parentElement` (pinned footer row under the stats scroll), but the only `[data-verb]`
+click delegation lived on `statsEl` — every verb in the rack (range/record/fit/activate) painted
+but did nothing. Probe evidence: s04 clicked "Take the Hitch to the range" and the screen never
+left `station`. Fix `cf5cc3cc3`: shared `onVerbClick` bound on the rack's real parent; statsEl
+path stopPropagations after handling so a mid-refresh rack can't double-fire. check:baseline
+16/16.
+
+**D62 — FIXED: Replay empty state rendered its hint twice.** `replaySummary().detail` was painted
+as the header fine line AND again as the `replay-readout` paragraph — "Fly for a while, then
+pause and open Replay." duplicated bottom-left. `a562abfc5` hides the readout until a recording
+exists (it only reports Ready/End during playback). Test `pq-160-00-replay` 4/4.
+
+Probe-hardening commits (not game defects): e01 drives Esc until pause mounts (prior beat could
+leave a mid-pop layer eating the first Esc); e05 exits to flight through in-screen layers (Replay
+mounts inside pause — a single Esc left pause open and s01's "autopilot stall" was a frozen sim);
+s03 picks the visible `data-nav="bar"`; s01 clears leftover modals before travelling.
+
+## Run 12 — fix verification run
+
+Screens route re-run on the fix: 35 beats, 0 defects, 0 console/shader errors, 5.7 min wall.
+s04 now lands `Take the Hitch to the range` -> screen=range and the range lesson screen renders
+full (HEAVY HULLS TURN WIDE gate-course card, AGAIN/TRY IT EMPTY/NEXT RULE/RETURN verbs, 9-rule
+tab strip). e05 walks all 10 pause verbs green; e01 pause + resume green; F3 footprint green.
+
+## Run 13 — drill screen + remaining-seam coverage
+
+New beat s05 opens the drill screen through the real handoff: `drill:approachStarted` (sets
+`activeDrillApproach`, blocks input, dock fade) then `drill:approachCompleted` with the live
+asteroid entity id — uiRoot matches the approach and pushes the `drill` screen. Result: 36
+beats, 0 defects, 0 console/shader errors; screen=drill, AST-4 ore strip + heat/charge gauges
+render (35-s05-drill.png). Recovery-berth path reviewed in code — gameOver receipt fields
+(station berth, cost vs quote, hardship fund, coverage line, per-outcome refresh) already
+render all cases; the "No recovery route" copy seen at l08 is the genuine no-insurance branch.
+
+## Run ledger
+
+| run | routes | beats | obs | game fixes landed |
+|-----|--------|-------|-----|-------------------|
+| 10 | screens+edge+combat+loop | 35+8+7+10 | D60 fixed | find palette in-flight `163d0321a` |
+| 11 | screens | 35 | D61, D62 found | shipworks dead verbs `cf5cc3cc3`, replay hint `a562abfc5` |
+| 12 | screens | 35 | clean | verifies D61/D62 in a fresh boot |
+| 13 | screens | 36 | clean | drill screen reached via real approachCompleted handoff |
+| 14 | edge+combat+loop | 8+7+10 | clean | regression pass on the D60–D62 fixes HEAD — full sweep green |
+| 14.5 | demo-path | 11 steps | clean + D64 found in c04b frame | lab rack off the HUD instruments `ad67e039b` |
+| 16 | screens | 36 | D65 found+fixed | clips readout dedupe + sibling-overlay close `577612803`; e05 walk 12/12 verbs |
+
+## Run 14.5 — canonical demo path on the fixes HEAD (probe-demo-path.mjs)
+
+Full route CLEAN PASS on the audit HEAD: title → crucible launch → flight → rounds to real
+death (448 s of arena combat) → results → belt → job → physical problem leg → dock → paid →
+upgrade → demoEnd. All 11 steps OK, no console errors. End card verified live: reads as a
+designed minimal closer (DEMO COMPLETE / emph sentence / credit + fitted-fact register / ORRERY
+dial aimed at KEEP PLAYING) — deliberately left as-is; the only absent row was Best Crucible
+chain, correctly skipped when no crucible meta persists in the isolated store.
+
+Perf info for the perf agent (SwiftShader-relative, consistent with prior census): the heavy
+legs are crucible-rounds (2497/3775 frames >100 ms) and adv-upgrade (519/2399) — one-time
+program-compile amplification, not steady state. adv-job/adv-paid/title legs run clean.
+
+**D65 — FIXED: Clips empty state doubled its hint, and media overlays could stack.** `buildContent`
+wrote `summary.detail` into the header AND the `clips-readout` paragraph — the same duplicate-hint
+defect as D62 (replay). `577612803` hides the readout until clips exist (then it reports Ready /
+Exported …). Pause now also closes the sibling media overlay before opening Replay or Clips —
+previously a stacked pair could leave replay's header/words bleeding through clips' empty state.
+
+**D64 — FIXED: physics-lab flight rack painted over the HUD instruments.** `showFlightToy`
+pinned the controls host `left:16px; bottom:16px` — dead on top of the speed readout, hull
+ring, and hull/shield/armor/heat stack, while HULL CRITICAL flashes (c04b frame). `ad67e039b`
+pins it bottom-center over the empty strip between the two dial clusters.
+
+## Run 16 — e05 verb-walk completion (12/12 verbs)
+
+Screens re-run after uncapping the e05 walk: all 12 pause verbs now exercised — Load clicks
+through the "Open load screen?" confirm onto the real saveLoad screen, Clips opens its overlay
+inside pause, Sandbox (dev build) mounts. The run surfaced D65 (clips readout double-hint +
+overlay stacking), fixed same-run at `577612803`. 36 beats, 0 residual defects.
+
+## Run 17 — post-D65 verification @ 46dbf8a41
+
+Screens route re-run on the fix HEAD: 36 beats, 18 observations, 0 console errors, 0 shader errors.
+e05 walked all 12 pause verbs again (Load→confirm→saveLoad, Clips→clean overlay frame post-dedupe,
+Sandbox→dev screen). D65 confirmed fixed in the captured frame: single hint line, readout "Ready"
+only when clips exist.
+
+## Probe defect found + fixed — combat route never reached the real crucible
+
+Reviewing c02's frame showed pause-over-practice-lab, not crucible flight: c01b's "Practice room"
+verb launches into live sandbox flight, whose only exit is Esc→pause→Main Menu (a real-player path,
+not a probe defect). The probe's single-Esc "back out" left the run paused in the lab; every combat
+beat after c01b (fight, deathwatch, death) ran against the Training Derelict instead of a real
+crucible wave. Fixed in `46dbf8a41` — c01b now settles back to the door through the real exit chain
+and rough-edges if it can't. r18 re-run verifies the real crucible is reached again.
+
+## Run 18/19 — combat route repaired, real crucible + D64 verified @ 73d39e742
+
+r18 caught a residual race in the first fix: backToDoor accepted `screen=crucible` while
+`mode=loading`, so the practice launch still dropped the run into the lab after the settle
+returned (c02 verb=null again). `73d39e742` waits for the launch to resolve post-click and
+requires `screen=crucible && mode=menu` before returning.
+
+r19: 7 beats, 0 observations. The route now plays the real crucible loop end-to-end —
+door → Quick play → RICOCHET FOUNDRY round 1 (15 hostiles) → real death → `crucibleResults`
+("RUN OVER" + kill narrative + hit-side hull diagram + share/ghost codes + same-seed
+emphasized retry) → Main menu. The c01b practice-room frame also verifies the D64 fix live:
+the lab rack sits bottom-center, clear of the hull/speed cluster.
+
+## Run 20 — demo-path re-run on fix HEAD (harness timeout, not a game defect)
+
+All played steps OK — title → crucible launch → round 1 (real fight, died at sim≈105s,
+hull 68→0 under swarm fire) → results → belt → job accept → travel → paid. The run died at
+`adv-upgrade` when the probe's own `timeout 1200` killed the browser mid-step — crucible
+survival took 666.7 s this run (longer fight than r15), pushing the total past the cap.
+Every game step that ran was clean. Re-run as r21 with the cap raised to 2400 s.
+
+## Run 21 — demo-path: `adv-upgrade` timed out → probe defect found + fixed
+
+r21 cleared title → crucible → results → belt → job → problem-leg → paid, then failed at
+`adv-upgrade`: `never reached station_helios` after 362 s. Reading `travelTo` showed the
+cause was harness-side: it engages autopilot once at leg start and never re-engages on a
+drop (manual input, lost target, shelter undock) — unlike `playtest.mjs travelToStation`,
+which re-engages each poll. A dropped autopilot mid-leg coasts to a stop and burns the
+whole deadline. Fixed `c525cd2c0` (re-engage guard + last-distance/encounter counters in
+the timeout error, `81fe334bc`). r22 verifies.
+
+## Run 22 — demo-path CLEAN PASS on the fix HEAD @ c525cd2c0
+
+11/11 steps clean end-to-end: title → crucible → round 1 (real fight, died sim≈141s) →
+results → belt → job → problem leg → paid → **return to Helios + buy-and-fit in 115 s**
+(r21's timeout leg, now with the autopilot re-engage guard) → undock → demoEnd card.
+The guard confirms the r21 failure was probe-side; whether the game's autopilot can drop
+on its own mid-leg without manual input stays an open ledger question — the probe now
+records the encounter counters if it recurs.
+
+## Next runs
+
+- Adventure real-death → recovery-berth (insurance-carrying save) if a fixtured state lands.
+- crucibleDraft / crucibleRefit / motionAsk audited via ui-bench stills (r18/19 section) —
+  all composed and clean; no live probe path exists (a probe cannot legitimately win a
+  crucible round, and motionAsk only mounts on a true first boot).
+- Every route is green on the fix HEAD: screens 36/36 (r17), combat 7/7 real-crucible
+  (r19), demo-path 11/11 (r22). Full surface census is in the PR body.

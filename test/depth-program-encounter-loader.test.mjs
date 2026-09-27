@@ -57,6 +57,10 @@ function migrationBaselineCatalog() {
   catalog.ambush_snare.squad.archetypes = ['reaver_pirate', 'wasp_swarmer', 'corsair_raider'];
   delete catalog.ambush_snare.squad.anchorArchetype;
   catalog.ambush_snare.squad.size = [2, 4];
+  // The WF-02 terrain-lee pass later let an authored squad declare `terrain: 'lee'` so its wing
+  // spawns behind cover at spawn time. Strip it for the migration baseline like the other
+  // post-migration live-evolution fields above.
+  delete catalog.ambush_snare.squad.terrain;
   catalog.claim_threat.squad.archetypes = ['wasp_swarmer', 'reaver_pirate'];
   delete catalog.claim_threat.squad.anchorArchetype;
   catalog.claim_threat.squad.size = [2, 2];
@@ -198,6 +202,9 @@ function migrationBaselinePlan(plan) {
   return plan.map((item) => {
     const copy = { ...item };
     delete copy.predation;
+    // WF-02 terrain-lee stamp: a post-migration spawn-time field, never a schedule identity
+    // (it moves no shape, zone, delay, archetype or position) — strip it like predation.
+    delete copy.terrain;
     copy.ships = item.ships.map((ship) => {
       const next = { ...ship };
       const doctrine = MIGRATION_ERA_SHIP_DOCTRINE[ship.archetype];

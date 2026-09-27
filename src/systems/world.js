@@ -100,12 +100,15 @@ import {
   CERES_ACTIVITY_SECTOR_ID,
 } from '../data/sectorActivityPockets.js';
 import {
+  ASHFALL_BURN_SURGE_PERIOD_S,
   KILL_MACHINE_SECTOR_ID,
   METRONOME_SECTOR_ID,
   PALLAS_REEF_SECTOR_ID,
   apertureHazardZones,
+  ashfallBurnProgramSeed,
   killMachineHazardZones,
   metronomeHazardZone,
+  movingHazardTick,
   pallasReefHazardZone,
   weatherHazardZones,
   weatherScanScale,
@@ -465,6 +468,7 @@ export const world = {
     this._pallasDecisionNeedsRebind = false;
     this._hazardSet = new Set();      // hazard zone indices the player is currently inside
     this._hazardNextSet = new Set();  // scratch set reused while computing the next frame
+    this._burnVentToastAtS = -Infinity; // scanBlocked vent-toast throttle (one per surge beat)
     // Floating-origin scratch (allocation-free no-shift path).
     this._frameOriginScratch = { x: 0, z: 0 };
     // Ensure coordinate membrane defaults exist even if state was hand-built.
@@ -524,6 +528,7 @@ export const world = {
     bus.on('poi:discovered', (p) => this._onFrontierRumorPoi(p || {}));
     bus.on('poi:identified', (p) => this._onFrontierRumorPoi(p || {}));
     bus.on('encounter:telegraph', (p) => this._onFrontierRumorEncounter(p || {}));
+    bus.on('uniqueWreck:scanBlocked', (p) => this._onUniqueWreckScanBlocked(p || {}));
     // Mark the boss POI defeated when the dreadnought dies, so it does not respawn on sector
     // re-entry or save reload. (The entity carries data.isBoss + data.bossSectorId/bossPoiId.)
     bus.on('entity:killed', (p) => {
@@ -2338,6 +2343,10 @@ export const world = {
         placeId,
         visualRadius,
         placeRadius: visualRadius,
+        ...(finitePositive(poi.placeScale) ? { placeScale: Number(poi.placeScale) } : {}),
+        ...(finitePositive(poi.placeTargetRadius)
+          ? { placeTargetRadius: Number(poi.placeTargetRadius) }
+          : {}),
         homeSectorId: sector.id,
         ...(poi.flavorTargetRef ? { flavorTargetRef: String(poi.flavorTargetRef) } : {}),
         ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),
@@ -4820,6 +4829,7 @@ export const world = {
     const player = state.entities.get(state.playerId);
     if (!player || player.alive === false) return;
     const zones = state.world.activeSector.hazards || [];
+    this._resolveMovingHazards(zones, state);
     const inside = this._hazardSet || (this._hazardSet = new Set());
     let nowInside = this._hazardNextSet;
     if (!nowInside || nowInside === inside) nowInside = this._hazardNextSet = new Set();
@@ -4829,14 +4839,14 @@ export const world = {
       const dx = player.pos.x - z.center.x, dz = player.pos.z - z.center.z;
       if (dx * dx + dz * dz <= z.radius * z.radius) {
         nowInside.add(i);
-        if (!inside.has(i)) this.bus.emit('hazard:enter', { entityId: player.id, zoneType: z.type, intensity: z.intensity });
+        if (!inside.has(i)) this.bus.emit('hazard:enter', { entityId: player.id, zoneType: z.type, intensity: this._hazardEffectiveIntensity(z) });
         if (z.type === 'radiation') this._applyRadiationTick(player, z, dt, state);
       }
     }
     for (const i of inside) {
       if (!nowInside.has(i)) {
         const z = zones[i];
-        if (z) this.bus.emit('hazard:exit', { entityId: player.id, zoneType: z.type, intensity: z.intensity });
+        if (z) this.bus.emit('hazard:exit', { entityId: player.id, zoneType: z.type, intensity: this._hazardEffectiveIntensity(z) });
       }
     }
     inside.clear();
@@ -4844,8 +4854,45 @@ export const world = {
     this._hazardNextSet = inside;
   },
 
+  // Authored intensity × the vent/roar scale the moving-hazard law stamps each tick (1 for
+  // static zones), so the enter/exit language reports the burn the player actually feels.
+  _hazardEffectiveIntensity(zone) {
+    return (Number(zone && zone.intensity) || 0) * (Number(zone && zone.intensityScale) || 1);
+  },
+
+  // The Ashfall roaming burn vents on the same clock as the Lighthouse survey gate. When that
+  // gate blocks a bearing fix, the burn is roaring — speak the vent, once per surge beat, so
+  // the survey window is something the player can time instead of a ping that silently dies.
+  _onUniqueWreckScanBlocked(payload) {
+    if (!payload || payload.reason !== 'moving_radiation_window') return;
+    const state = this.state;
+    if (!state || !state.world || payload.sectorId !== state.world.currentSectorId) return;
+    const now = Number(state.simTime) || 0;
+    if (now - Number(this._burnVentToastAtS) < ASHFALL_BURN_SURGE_PERIOD_S) return;
+    const waitS = Math.max(0, Math.ceil((Number(payload.nextOpenAt) || now) - now));
+    this._burnVentToastAtS = now;
+    this.bus.emit('toast', {
+      text: `The burn is roaring over the wreck — it vents in ~${waitS}s. Time the ping.`,
+      kind: 'info',
+      ttl: 6,
+    });
+  },
+
+  // The Ashfall roaming burn (and any future moving hazard) resolves its live center, body
+  // radius, and vent/roar scale from the environmental-machinery law every tick. Static zones
+  // pay one flag check and nothing else.
+  _resolveMovingHazards(zones, state) {
+    let programSeed = null;
+    for (let i = 0; i < zones.length; i++) {
+      const z = zones[i];
+      if (!z || z.moving !== true) continue;
+      if (programSeed === null) programSeed = ashfallBurnProgramSeed(state);
+      movingHazardTick(z, state.simTime, programSeed);
+    }
+  },
+
   _applyRadiationTick(player, zone, dt, state) {
-    const damage = (Number(zone && zone.intensity) || 0) * 6 * dt;
+    const damage = this._hazardEffectiveIntensity(zone) * 6 * dt;
     if (!(damage > 0) || !player || player.alive === false) return;
     const packet = scalarHitToDamagePacket({
       damage,

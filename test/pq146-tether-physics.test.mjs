@@ -14,7 +14,7 @@ function body(id,x,z,vx=0,vz=0){return {id,name:`Pilot ${id}`,type:'ship',team:i
  data:{defId:'ship_kestrel',encounterId:'tether-proof',ai:id===0?{}:{huntPlayer:true}},
  physicsBody:{schemaVersion:1,dynamic:true,mass:16,radius:6,inertiaY:48,ccd:true}};}
 async function bolas({slack=false,armedWitness=true,attached=false,tow=false}={}){
- const player=body(0,0,0),payload=body(1,35,0,0,110),target=body(2,-35,86),witness=body(3,-10,30);
+ const player=body(0,0,0),payload=body(1,35,0,0,200),target=body(2,-35,91.7),witness=body(3,-10,30);
  // A wounded opponent is a legitimate terminal. This fixture leaves production collision damage unchanged.
  target.hull=10;
  if(attached||tow){target.pos={x:10,z:49};}
@@ -31,9 +31,9 @@ async function bolas({slack=false,armedWitness=true,attached=false,tow=false}={}
  const titles=createTitlesSystem();titles.init({state,bus});const arbiter=Object.create(voiceArbiter);arbiter.init({state,bus,helpers});const barks=Object.create(barkDirector);barks.init({state,bus,helpers});
  try{
   owner.createAttachment({attachmentId:'rope',defId:'tether_standard',ownerId:0,targetId:1,sourceWorld:player.pos,targetWorld:payload.pos,restLength:slack?1000:30,tick:0});
-  for(let tick=1;tick<=210;tick++){
+  for(let tick=1;tick<=260;tick++){
    state.tick=tick;state.simTime=tick/60;
-   if(tick===31&&!attached&&!tow)owner.cutAttachment({attachmentId:'rope',reason:'tether_cut',tick});
+   if(tick===18&&!attached&&!tow)owner.cutAttachment({attachmentId:'rope',reason:'tether_cut',tick});
    owner.step(1/60);
    for(const impact of owner.drainContactImpacts())bus.emit('physics:impact',{...impact,tick,consequenceKernelVersion:1});
    grammar.update(1/60,state);titles.update(1/60,state);barks.update(1/60,state);arbiter.update(1/60,state);bus.flush();

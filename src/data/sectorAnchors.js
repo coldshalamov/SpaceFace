@@ -42,6 +42,9 @@ const CORE_SECTOR_ANCHORS = {
         landmarkGlb: 'place_memorial_array',
         landmark: true,
         visualRadius: 28,
+        // D54 hero-landmark scale: the Candle Fleet reads ~100 WU against the
+        // 26.5 WU player hull, not a same-sized prop.
+        placeTargetRadius: 100,
       },
       { id: 'poi_helios_yard', pos: { x: -1760, z: -1260 }, landmarkGlb: 'place_debris_chunk' },
       // Lane furniture, placed along the spawn -> tutorial beacon -> starter seam corridor. These

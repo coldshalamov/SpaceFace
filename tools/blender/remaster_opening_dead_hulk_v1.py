@@ -1413,6 +1413,147 @@ def stamp_and_validate_glb_contract(target: Path, contract: dict) -> None:
     if gltf is None or json_chunk_index is None:
         raise RuntimeError(f"missing GLB JSON chunk: {target}")
 
+    binary = b""
+    for chunk_type, payload in chunks:
+        if chunk_type == 0x004E4942:
+            binary = payload
+            break
+
+    # triangleCount and boundsDimensionsM are measured from the shipped bytes, not
+    # Blender's in-scene statistics — the parts manifest measures the exported GLB
+    # (check-parts-manifest.mjs --sync), and export triangulates n-gons, drops
+    # degenerates, and resnaps vertices to float32 differently than the scene.
+    accessors = gltf.get("accessors", [])
+    exported_triangles = 0
+    for mesh in gltf.get("meshes", []):
+        for primitive in mesh.get("primitives", []):
+            if primitive.get("mode", 4) != 4:
+                continue
+            indices = primitive.get("indices")
+            accessor = accessors[indices] if indices is not None else accessors[primitive["attributes"]["POSITION"]]
+            exported_triangles += int(accessor.get("count", 0)) // 3
+    contract["triangleCount"] = exported_triangles
+
+    def mat_mul(a, b):
+        return [
+            [sum(a[row][k] * b[k][col] for k in range(4)) for col in range(4)]
+            for row in range(4)
+        ]
+
+    def node_local_matrix(node):
+        if isinstance(node.get("matrix"), list) and len(node["matrix"]) == 16:
+            m = [float(v) for v in node["matrix"]]
+            return [
+                [m[0], m[4], m[8], m[12]],
+                [m[1], m[5], m[9], m[13]],
+                [m[2], m[6], m[10], m[14]],
+                [m[3], m[7], m[11], m[15]],
+            ]
+        t = node.get("translation", [0.0, 0.0, 0.0])
+        q = node.get("rotation", [0.0, 0.0, 0.0, 1.0])
+        s = node.get("scale", [1.0, 1.0, 1.0])
+        x, y, z, w = (float(v) for v in q)
+        x2, y2, z2 = x + x, y + y, z + z
+        xx, xy, xz = x * x2, x * y2, x * z2
+        yy, yz, zz = y * y2, y * z2, z * z2
+        wx, wy, wz = w * x2, w * y2, w * z2
+        sx, sy, sz = (float(v) for v in s)
+        return [
+            [(1.0 - (yy + zz)) * sx, (xy - wz) * sy, (xz + wy) * sz, float(t[0])],
+            [(xy + wz) * sx, (1.0 - (xx + zz)) * sy, (yz - wx) * sz, float(t[1])],
+            [(xz - wy) * sx, (yz + wx) * sy, (1.0 - (xx + yy)) * sz, float(t[2])],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+
+    def mat_point(m, p):
+        return [
+            m[0][0] * p[0] + m[0][1] * p[1] + m[0][2] * p[2] + m[0][3],
+            m[1][0] * p[0] + m[1][1] * p[1] + m[1][2] * p[2] + m[1][3],
+            m[2][0] * p[0] + m[2][1] * p[1] + m[2][2] * p[2] + m[2][3],
+        ]
+
+    def track(point, lo, hi):
+        for axis in range(3):
+            if point[axis] < lo[axis]:
+                lo[axis] = point[axis]
+            if point[axis] > hi[axis]:
+                hi[axis] = point[axis]
+
+    def expand_accessor_vertices(accessor_index, world, lo, hi):
+        accessor = accessors[accessor_index]
+        view_index = accessor.get("bufferView")
+        views = gltf.get("bufferViews", [])
+        if view_index is None or view_index >= len(views):
+            return False
+        view = views[view_index]
+        if (
+            accessor.get("type") != "VEC3"
+            or accessor.get("componentType") != 5126
+            or accessor.get("sparse")
+            or (view.get("extensions") or {}).get("EXT_meshopt_compression")
+        ):
+            return False
+        stride = int(view.get("byteStride") or 12)
+        start = int(view.get("byteOffset") or 0) + int(accessor.get("byteOffset") or 0)
+        count = int(accessor.get("count") or 0)
+        if start < 0 or start + max(0, count - 1) * stride + 12 > len(binary):
+            return False
+        for index in range(count):
+            offset = start + index * stride
+            point = struct.unpack_from("<fff", binary, offset)
+            track(mat_point(world, point), lo, hi)
+        return True
+
+    def expand_accessor_bounds(accessor, world, lo, hi):
+        low, high = accessor.get("min"), accessor.get("max")
+        finite3 = lambda v: (
+            isinstance(v, list)
+            and len(v) == 3
+            and all(math.isfinite(float(c)) for c in v)
+        )
+        if not (finite3(low) and finite3(high)):
+            return
+        for cx in (low[0], high[0]):
+            for cy in (low[1], high[1]):
+                for cz in (low[2], high[2]):
+                    track(mat_point(world, (cx, cy, cz)), lo, hi)
+
+    identity = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    bound_min = [math.inf, math.inf, math.inf]
+    bound_max = [-math.inf, -math.inf, -math.inf]
+
+    def visit_node(node_index, parent_world):
+        node = nodes[node_index]
+        world = mat_mul(parent_world, node_local_matrix(node))
+        if node.get("mesh") is not None:
+            mesh = gltf.get("meshes", [])[node["mesh"]]
+            for primitive in mesh.get("primitives", []):
+                accessor_index = primitive.get("attributes", {}).get("POSITION")
+                if accessor_index is None:
+                    continue
+                accessor = accessors[accessor_index]
+                low, high = accessor.get("min"), accessor.get("max")
+                if not (
+                    isinstance(low, list) and isinstance(high, list)
+                    and len(low) == 3 and len(high) == 3
+                    and all(math.isfinite(float(c)) for c in low + high)
+                ):
+                    continue
+                if not expand_accessor_vertices(accessor_index, world, bound_min, bound_max):
+                    expand_accessor_bounds(accessor, world, bound_min, bound_max)
+        for child in node.get("children", []):
+            visit_node(child, world)
+
+    nodes = gltf.get("nodes", [])
+    scenes = gltf.get("scenes", [])
+    for scene_root in scenes[gltf.get("scene", 0)].get("nodes", []):
+        visit_node(scene_root, identity)
+    if not all(math.isfinite(v) for v in bound_min + bound_max):
+        raise RuntimeError(f"export produced no measurable POSITION bounds: {target}")
+    contract["boundsDimensionsM"] = [
+        bound_max[axis] - bound_min[axis] for axis in range(3)
+    ]
+
     nodes = gltf.get("nodes", [])
     root_node = next((node for node in nodes if node.get("name") == ROOT_NAME), None)
     if root_node is None:

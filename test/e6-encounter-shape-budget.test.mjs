@@ -13,7 +13,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { planEncounters } from '../src/systems/encounterDirector.js';
+import { planEncounters, planEncountersDay } from '../src/systems/encounterDirector.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import {
@@ -94,4 +94,46 @@ test('E6: the planner walk is deterministic for identical seed and sector', () =
     const b = walkOffers(4242, sectorId).map((i) => [i.t, i.shapeId, i.deck]);
     assert.deepEqual(a, b);
   }
+});
+
+test('E6: bucket variety rotates a dominant shape aside for unseen shapes', async () => {
+  // Mechanism pin for the fix: inside one hour bucket (SHAPE_BUCKET_DAYS planner days), a
+  // catalog of three same-zone minor shapes must schedule all three even when one shape
+  // carries a dominating weight — the variety floor, not luck, supplies the rotation.
+  const zone = { type: 'trade_lane', center: { x: 0, z: 0 }, radius: 400 };
+  const catalog = {};
+  ['shape_a', 'shape_b', 'shape_c'].forEach((id, n) => {
+    catalog[id] = {
+      id, tier: 'minor', deck: 'combat', weight: 1,
+      zoneTypes: ['trade_lane'], script: 'distressCall', gates: {},
+      // Distinct grammar blocks so the shared-key budget does not cap the bucket's
+      // placements and make the variety floor indistinguishable from the cap.
+      shape: { situation: `sit_${n}`, place: ['trade_lane'], twist: 'none', actor: `actor_${n}` },
+    };
+  });
+  catalog.shape_a.weight = 8; // dominant shape — without the floor it owns the window
+  for (const seed of [4242, 8008, 47]) {
+    const seen = new Set();
+    for (let day = 0; day < 6; day++) {
+      for (const i of planEncounters(seed, 'sector_probe', day, [zone], null, catalog)) {
+        seen.add(i.shapeId);
+      }
+    }
+    assert.equal(seen.size, 3,
+      `seed ${seed}: one bucket with three eligible shapes must schedule all three, got ${[...seen].join(',')}`);
+  }
+  // Contrast leg: the same catalog walked through planEncountersDay with no carryover (the
+  // F2 parity path — shapeCounts/seenShapes null) must starve at least one seed, or the
+  // floor above is proving nothing.
+  const starved = [4242, 8008, 47].filter((seed) => {
+    const seen = new Set();
+    for (let day = 0; day < 6; day++) {
+      for (const i of planEncountersDay(seed, 'sector_probe', day, [zone], null, catalog)) {
+        seen.add(i.shapeId);
+      }
+    }
+    return seen.size < 3;
+  });
+  assert.ok(starved.length >= 1,
+    `contrast failed: dominant shape_a did not starve any seed without the variety floor`);
 });

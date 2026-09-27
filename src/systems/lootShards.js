@@ -982,8 +982,36 @@ export const lootShards = {
       }
       : { x: 0, z: 0 };
 
+    // D65 / cc93d8461: spawn beside the wreck's line, never on it. The SG-02 coincident-spawn
+    // guard now seats near-co-centered bodies as an ordinary contact pair, so a payload dropped
+    // at victim.pos plows into the victim-speed wreck and bleeds ~30% of its momentum
+    // (PQ-138.03). wreckR replicates boundedVictimRadius() in aftermathWrecks.js (finite>0
+    // else the 9 WU fallback) so the clearance matches the wreck that is actually spawned.
+    const victimR = Number(victim.radius);
+    const wreckR = Number.isFinite(victimR) && victimR > 0 ? victimR : 9;
+    const clearance = wreckR + radius + 4;
+    const vvX = victim.vel && Number.isFinite(victim.vel.x) ? victim.vel.x : 0;
+    const vvZ = victim.vel && Number.isFinite(victim.vel.z) ? victim.vel.z : 0;
+    const vLen = Math.hypot(vvX, vvZ);
+    let perpX;
+    let perpZ;
+    if (vLen > 1e-3) {
+      perpX = -vvZ / vLen;
+      perpZ = vvX / vLen;
+    } else {
+      // No drift to side off: use right of the authored heading (forward = cos/sin in XZ).
+      const rot = Number.isFinite(Number(victim.rot)) ? Number(victim.rot) : 0;
+      perpX = -Math.sin(rot);
+      perpZ = Math.cos(rot);
+    }
+    const side = Number(victim.id) % 2 ? 1 : -1;
+    const spawnPos = {
+      x: pos.x + side * perpX * clearance,
+      z: pos.z + side * perpZ * clearance,
+    };
+
     const entity = spawnPayloadEntity(this.state, {
-      pos: { x: pos.x, z: pos.z },
+      pos: { x: spawnPos.x, z: spawnPos.z },
       vel,
       radius,
       mass,

@@ -11,6 +11,7 @@ export function createSpindleGeometry(planes = 3) {
   const positions = [];
   const uvs = [];
   const indices = [];
+  const topology = [];
 
   for (let p = 0; p < planes; p++) {
     const base = positions.length / 3;
@@ -30,6 +31,7 @@ export function createSpindleGeometry(planes = 3) {
         const fold = (1 - side * side) * width * 0.24;
         positions.push(t - 0.5, side * width * cy - fold * cz, side * width * cz + fold * cy);
         uvs.push(t, k / (acrossCount - 1));
+        topology.push(0, p);
       }
       if (s < stations.length - 1) for (let k = 0; k < acrossCount - 1; k++) {
         const a = base + s * acrossCount + k;
@@ -38,10 +40,29 @@ export function createSpindleGeometry(planes = 3) {
     }
   }
 
+  // Preserve the starter/ballistic vertices above byte-for-byte. Special energy
+  // has independent, immutable parametric patches: deep curved channels and shells,
+  // not the original intersecting fins enlarged by a different variant multiplier.
+  // Only the matching topology is projected by the shader; instance packing and
+  // sorting remain shared. No geometry is allocated or rebuilt while firing.
+  const volumeStations=17,volumeAcross=9;
+  for(let patch=0;patch<3;patch++){
+    const base=positions.length/3;
+    for(let j=0;j<volumeStations;j++)for(let k=0;k<volumeAcross;k++){
+      const t=j/(volumeStations-1),v=k/(volumeAcross-1);
+      positions.push(t-.5,0,0);uvs.push(t,v);topology.push(1,patch);
+      if(j<volumeStations-1&&k<volumeAcross-1){
+        const a=base+j*volumeAcross+k;
+        indices.push(a,a+1,a+volumeAcross,a+1,a+volumeAcross+1,a+volumeAcross);
+      }
+    }
+  }
+
   const geo = new THREE.BufferGeometry();
   geo.name = 'FoldedEnergyLancet';
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setAttribute('aBoltTopology', new THREE.Float32BufferAttribute(topology, 2));
   geo.setIndex(indices);
   return geo;
 }

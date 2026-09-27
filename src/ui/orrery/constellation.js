@@ -41,8 +41,8 @@ const CSS = `
 .con-sky { position:absolute; inset:0; isolation:isolate; overflow:hidden; cursor:grab; touch-action:none; }
 .con-sky.is-dragging { cursor:grabbing; }
 /* a moved sky is a map under glass: it fades out under the screen's heading and at the frame's edges */
-.con-sky.is-moved { -webkit-mask-image:linear-gradient(180deg, transparent 0, transparent var(--con-mask-top, 0px), #000 calc(var(--con-mask-top, 0px) + 56px), #000 calc(100% - 40px), transparent 100%), linear-gradient(90deg, #000 calc(100% - 40px), transparent 100%);
-  -webkit-mask-composite:source-in; mask-image:linear-gradient(180deg, transparent 0, transparent var(--con-mask-top, 0px), #000 calc(var(--con-mask-top, 0px) + 56px), #000 calc(100% - 40px), transparent 100%), linear-gradient(90deg, #000 calc(100% - 40px), transparent 100%); mask-composite:intersect; }
+.con-sky.is-moved { -webkit-mask-image:linear-gradient(180deg, transparent 0, transparent var(--con-mask-top, 0px), #000 calc(var(--con-mask-top, 0px) + 56px), #000 calc(100% - 40px), transparent 100%), linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
+  -webkit-mask-composite:source-in; mask-image:linear-gradient(180deg, transparent 0, transparent var(--con-mask-top, 0px), #000 calc(var(--con-mask-top, 0px) + 56px), #000 calc(100% - 40px), transparent 100%), linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%); mask-composite:intersect; }
 .con-sky.is-dragging .con-star-btn, .con-sky.is-dragging .con-label { cursor:grabbing; }
 .con-sky__world { position:absolute; inset:0; transform-origin:0 0; will-change:transform; }
 .con-sky__pool { position:absolute; z-index:-1; left:var(--con-cx, 50%); top:var(--con-cy, 50%); width:var(--con-pool, 900px); height:var(--con-pool, 900px);
@@ -74,12 +74,15 @@ html.sf-reduce-motion .con-lens__read { transition:none; }
 .orr-svg .con-lens__ring { fill:none; stroke:rgb(${WARM}); stroke-width:1.8; }
 .orr-svg .con-lens__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:8; opacity:.14; }
 .orr-svg .con-lens__ticks { fill:none; stroke:rgb(${BONE} / .55); stroke-width:1.2; }
-.orr-svg text.con-lens__mag { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.16em; fill:rgb(${WARM}); text-anchor:middle; }
+.orr-svg text.con-lens__mag { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.16em; fill:rgb(${WARM}); text-anchor:middle; }
 html.sf-reduce-motion .con-lens { transition:none; }
 
 /* the dial: orbits, the rim scale, the branch sectors, the tier spoke */
-.orr-svg .con-orbit { fill:none; stroke:rgb(${BONE} / .2); stroke-width:1.5; }
-.orr-svg .con-orbit.is-outer { stroke:rgb(${BONE} / .36); stroke-width:1.8; }
+.orr-svg .con-orbit { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1.5; }
+.orr-svg .con-orbit.is-outer { stroke:rgb(${BONE} / .64); stroke-width:1.8; }
+/* each tier orbit's body: a band of light the core rides on */
+.orr-svg .con-orbit__band { fill:none; stroke:rgb(${BONE} / .3); stroke-width:6; }
+.orr-svg .con-orbit__band.is-outer { stroke:rgb(${BONE} / .33); }
 .orr-svg .con-band { fill:none; stroke:rgb(${BONE} / .032); }
 .orr-svg .con-band.is-inner { stroke:rgb(${BONE} / .05); }
 .orr-svg .con-rim { fill:none; stroke:rgb(${BONE} / .2); stroke-width:1; }
@@ -100,7 +103,7 @@ html.sf-reduce-motion .con-lens { transition:none; }
 .orr-svg .con-drift { fill:none; stroke:rgb(${BONE} / .14); stroke-width:1; }
 
 /* beams: a prerequisite as a line of light, with weight even while dark */
-.orr-svg .con-beam__core { fill:none; stroke:rgb(${BONE} / .3); stroke-width:1.4; stroke-linecap:round; }
+.orr-svg .con-beam__core { fill:none; stroke:rgb(${BONE} / .44); stroke-width:1.4; stroke-linecap:round; }
 .orr-svg .con-beam__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:4; opacity:.12; stroke-linecap:round; }
 .orr-svg .con-beam__need { fill:none; stroke:rgb(${BONE} / .7); stroke-width:1.6; stroke-dasharray:5 5; stroke-linecap:butt; opacity:0; }
 .orr-svg .con-beam[data-state="open"] .con-beam__core { stroke:rgb(${BONE} / .58); stroke-width:2; }
@@ -130,6 +133,9 @@ html.sf-reduce-motion .con-lens { transition:none; }
 .orr-svg .con-beam.is-sweep .con-beam__tail2 { animation:con-tail2 var(--con-sd, 600ms) cubic-bezier(.35, 0, .45, 1) both; animation-delay:var(--con-d, 0ms); }
 /* a link that leads on to an open star keeps the open look once the sweep has passed */
 .orr-svg .con-beam.is-sweep.is-onward .con-beam__fill { animation-name:con-fill-onward; }
+.orr-svg .con-beam.is-sweep.is-trace .con-beam__fill, .orr-svg .con-beam.is-sweep.is-trace .con-beam__fillbloom { animation:none; opacity:0; }
+.orr-svg .con-beam.is-sweep.is-trace .con-beam__need { opacity:1; }
+.orr-svg .con-beam.is-sweep.is-trace .con-beam__bloom { opacity:.12; }
 @keyframes con-fill { 0% { opacity:1; stroke-dashoffset:1; } 100% { opacity:1; stroke-dashoffset:0; } }
 @keyframes con-fill-onward { 0% { opacity:1; stroke-dashoffset:1; } 80% { opacity:1; stroke-dashoffset:.2; } 100% { opacity:.35; stroke-dashoffset:0; } }
 @keyframes con-fillbloom { 0% { opacity:.3; stroke-dashoffset:1; } 100% { opacity:.3; stroke-dashoffset:0; } }
@@ -142,14 +148,16 @@ html.sf-reduce-motion .con-lens { transition:none; }
 
 /* stars: every star a body -- a dark disc with its unlock's glyph -- and the light says the state */
 .orr-svg .con-star__halo { opacity:0; transform-box:fill-box; transform-origin:center; }
-.orr-svg .con-star__disc { fill:rgb(5 7 10 / .94); stroke:rgb(${BONE} / .3); stroke-width:1.5; transform-box:fill-box; transform-origin:center; }
-.orr-svg .con-star__glyph { color:rgb(${BONE} / .34); }
+.orr-svg .con-star__disc { fill:rgb(44 43 40); stroke:rgb(${BONE} / .56); stroke-width:2; transform-box:fill-box; transform-origin:center; }
+.orr-svg .con-star__rim { fill:none; stroke:rgb(${BONE} / .31); stroke-width:10; }
+.orr-svg .con-star:not([data-state="locked"]) .con-star__rim { opacity:0; }
+.orr-svg .con-star__glyph { color:rgb(${BONE} / .66); }
 .orr-svg .con-star__glyph .accent { fill:currentColor; }
 .orr-svg .con-star__need { fill:none; stroke:rgb(${BONE} / .85); stroke-width:1.5; opacity:0; }
 .orr-svg .con-star.is-need .con-star__need { opacity:1; }
 .orr-svg .con-star__art { transform-box:fill-box; transform-origin:center; opacity:0; transform:scale(.5); }
 .orr-svg .con-star[data-state="available"] .con-star__art { opacity:.95; transform:scale(.78); }
-.orr-svg .con-star[data-state="available"] .con-star__disc { stroke:rgb(${WARM}); stroke-width:2; }
+.orr-svg .con-star[data-state="available"] .con-star__disc { fill:rgb(5 7 10 / .94); stroke:rgb(${WARM}); stroke-width:2; }
 .orr-svg .con-star[data-state="available"] .con-star__glyph { color:rgb(${WARM}); }
 .orr-svg .con-star[data-state="available"] .con-star__halo { opacity:.26; }
 .orr-svg .con-star[data-state="available"].is-ready .con-star__halo { opacity:.34; animation:con-breathe 3.4s ease-in-out infinite; }
@@ -167,14 +175,16 @@ html.sf-reduce-motion .con-lens { transition:none; }
 .orr-svg .con-star.is-igniting .con-star__glyph { animation:con-ignite-glyph 420ms ease-in both; animation-delay:var(--con-ig, 0ms); }
 @keyframes con-ignite-art { 0% { opacity:.95; transform:scale(.78); } 45% { opacity:1; transform:scale(1.35); } 100% { opacity:1; transform:none; } }
 @keyframes con-ignite-halo { 0% { opacity:.3; transform:scale(.6); } 30% { opacity:1; transform:scale(1.6); } 100% { opacity:.55; transform:none; } }
-@keyframes con-ignite-disc { 0% { opacity:1; transform:scale(1); stroke:rgb(${WARM}); stroke-width:2; } 100% { opacity:0; transform:scale(1.35); stroke:rgb(${WARM}); stroke-width:2; } }
+@keyframes con-ignite-disc { 0% { opacity:1; transform:scale(1); fill:rgb(5 7 10 / .94); stroke:rgb(${WARM}); stroke-width:2; } 100% { opacity:0; transform:scale(1.35); stroke:rgb(${WARM}); stroke-width:2; } }
 @keyframes con-ignite-glyph { 0% { opacity:1; color:rgb(${WARM}); } 100% { opacity:0; color:rgb(${WARM}); } }
 .orr-svg .con-star.is-waking .con-star__art { animation:con-wake-art 520ms cubic-bezier(.3, 1.3, .5, 1) both; animation-delay:var(--con-wk, 0ms); }
 .orr-svg .con-star.is-waking .con-star__disc { animation:con-wake-disc 520ms ease-out both; animation-delay:var(--con-wk, 0ms); }
 .orr-svg .con-star.is-waking .con-star__glyph { animation:con-wake-glyph 520ms ease-out both; animation-delay:var(--con-wk, 0ms); }
 @keyframes con-wake-art { 0% { opacity:0; transform:scale(.4); } 60% { opacity:1; transform:scale(.95); } 100% { opacity:.95; transform:scale(.78); } }
-@keyframes con-wake-disc { 0% { stroke:rgb(${BONE} / .3); stroke-width:1.5; } 100% { stroke:rgb(${WARM}); stroke-width:2; } }
-@keyframes con-wake-glyph { 0% { color:rgb(${BONE} / .34); } 100% { color:rgb(${WARM}); } }
+@keyframes con-wake-disc { 0% { fill:rgb(44 43 40); stroke:rgb(${BONE} / .56); stroke-width:2; } 100% { fill:rgb(5 7 10 / .94); stroke:rgb(${WARM}); stroke-width:2; } }
+@keyframes con-wake-glyph { 0% { color:rgb(${BONE} / .66); } 100% { color:rgb(${WARM}); } }
+.orr-svg .con-star.is-waking .con-star__rim { animation:con-wake-rim 520ms ease-out both; animation-delay:var(--con-wk, 0ms); }
+@keyframes con-wake-rim { 0% { opacity:1; } 100% { opacity:0; } }
 .orr-svg .con-star.is-flare .con-star__halo { animation:con-ignite-halo 900ms ease-out both; }
 
 /* the chosen star: a bone reticle; the Hand is the only amber */
@@ -193,7 +203,7 @@ html.sf-reduce-motion .con-lens { transition:none; }
 .orr-svg .con-hand__pin { fill:rgb(255 244 214); }
 
 /* arrival: the orbits draw from the rim inward, the stars light, the beams draw after them */
-.con-sky.is-arriving .con-orbit, .con-sky.is-arriving .con-sector__track { stroke-dasharray:1 1; stroke-dashoffset:1; animation:con-draw 620ms var(--dp-ease-out, ease-out) forwards; animation-delay:var(--con-d, 0ms); }
+.con-sky.is-arriving .con-orbit, .con-sky.is-arriving .con-orbit__band, .con-sky.is-arriving .con-sector__track { stroke-dasharray:1 1; stroke-dashoffset:1; animation:con-draw 620ms var(--dp-ease-out, ease-out) forwards; animation-delay:var(--con-d, 0ms); }
 .con-sky.is-arriving .con-beam__core { stroke-dasharray:1 1; stroke-dashoffset:1; animation:con-draw 520ms var(--dp-ease-out, ease-out) forwards; animation-delay:var(--con-d, 0ms); }
 .con-sky.is-arriving .con-star, .con-sky.is-arriving .con-label-in { opacity:0; animation:con-in 380ms var(--dp-ease-out, ease-out) forwards; animation-delay:var(--con-d, 0ms); }
 .con-sky.is-arriving .con-rimwords { opacity:0; animation:con-in 420ms var(--dp-ease-out, ease-out) 420ms forwards; }
@@ -496,13 +506,15 @@ export function solveLabels(items, { discs = [], segs = [], rects = [], points =
     let best = null;
     let peek = null;
     it.boxes.forEach((box, bi) => {
-      for (const [gi, gap] of [it.gap, it.gap + 9].entries()) for (const dir of dirs) {
+      for (const [gi, gap] of [it.gap, it.gap + 9, it.gap + 18].entries()) for (const dir of dirs) {
         const rect = rectFor(s, dir, box, gap);
         if (!inBounds(rect)) continue;
         if (discs.some((d) => d.id !== it.id && discHits(rect, d))) continue;
         if (rects.some((q) => hit(rect, q, 1))) continue;
         if (pointHit(rect)) continue;
-        const crossings = segs.reduce((n, sg) => n + (segHits(rect, sg) ? 1 : 0), 0);
+        // a lit link (w > 1) counts heavily, and its bloom with it: the rect grown by 4 px
+        const grown = { x: rect.x - 4, y: rect.y - 4, w: rect.w + 8, h: rect.h + 8 };
+        const crossings = segs.reduce((n, sg) => n + ((sg.w || 1) > 1 ? (segHits(grown, sg) ? sg.w : 0) : (segHits(rect, sg) ? 1 : 0)), 0);
         const score = crossings * 12 + dir.rank * 2 + bi * 3 + gi * 2.5;
         if (!peek || score < peek.score) peek = { rect, dir, box, score };
         if (placed.some((p) => hit(rect, p, 8))) continue;
@@ -581,6 +593,19 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
   let handPulse = null;
   let drawnKey = '';
   let measureSig = '';
+  let avoidSig = '';
+  let cutSeq = 0;
+  /** What the sky must stand clear of, in host px (the screen's title and its line). */
+  function avoidNow() {
+    const out = [];
+    if (typeof avoid !== 'function') return out;
+    const hostBox = host.getBoundingClientRect();
+    for (const r of avoid() || []) {
+      if (r && r.width > 0 && r.height > 0) out.push({ x: r.left - hostBox.left - 12, y: r.top - hostBox.top - 10, w: r.width + 24, h: r.height + 20 });
+    }
+    return out;
+  }
+  const sigOf = (rects) => rects.map((r) => [r.x, r.y, r.w, r.h].map((v) => Math.round(v / 4)).join(',')).join(';');
   let restoring = false;
   /** What the names measure now: a font landing only lays the dial out again if it changed them. */
   const measureNow = () => (data && data.nodes ? data.nodes.map((n) => Math.round(measureText(n.name, 13, 'read'))).join(',') : '');
@@ -654,6 +679,8 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     view.x = mx - w.x * view.z;
     view.y = my - w.y * view.z;
     applyView();
+    // the chosen star stays at least 60 px inside the frame (and clear of the heading's fade)
+    if (chosen) keepInView(chosen);
   }
   function stopGlide() { if (glideOff) { glideOff(); glideOff = null; } }
   function glide(vx, vy) {
@@ -814,10 +841,11 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     const x = s.x * view.z + view.x;
     const y = s.y * view.z + view.y;
     const pad = 60;
+    const top = Math.max(pad, (parseFloat(host.style.getPropertyValue('--con-mask-top')) || 0) + 44);
     let dx = 0;
     let dy = 0;
     if (x < pad) dx = pad - x; else if (x > geo.W - pad) dx = geo.W - pad - x;
-    if (y < pad) dy = pad - y; else if (y > geo.H - pad) dy = geo.H - pad - y;
+    if (y < top) dy = top - y; else if (y > geo.H - pad) dy = geo.H - pad - y;
     if (dx || dy) { view.x += dx; view.y += dy; applyView(); }
   }
 
@@ -886,16 +914,11 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     measureSig = measureNow();
     const widest = Math.max(...data.nodes.map((n) => measureText(n.name, px, 'read')));
     const labelOut = Math.min(200, Math.max(110, widest + 26));
-    const key = `${W}x${H}|${px}|${data.nodes.map((n) => n.id + ':' + stateOf(n.id) + ':' + (data.costs && data.costs[n.id] || '')).join(',')}`;
+    const avoidRects = avoidNow();
+    avoidSig = sigOf(avoidRects);
+    const key = `${W}x${H}|${px}|${avoidSig}|${data.nodes.map((n) => n.id + ':' + stateOf(n.id) + ':' + (data.costs && data.costs[n.id] || '')).join(',')}`;
     if (key === drawnKey) return;
     drawnKey = key;
-    const hostBox = host.getBoundingClientRect();
-    const avoidRects = [];
-    if (typeof avoid === 'function') {
-      for (const r of avoid() || []) {
-        if (r && r.width > 0 && r.height > 0) avoidRects.push({ x: r.left - hostBox.left - 12, y: r.top - hostBox.top - 10, w: r.width + 24, h: r.height + 20 });
-      }
-    }
     geo = layoutConstellation(data.nodes, data.branches, { width: W, height: H, labelOut, avoid: avoidRects });
     host.style.setProperty('--con-mask-top', `${Math.round(Math.max(0, ...avoidRects.map((r) => r.y + r.h - 6)))}px`);
     if (geo) geo.avoid = avoidRects;
@@ -940,7 +963,9 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     // the orbits: each broken at the top where its tier numeral stands
     radii.forEach((r, d) => {
       const gapDeg = Math.min(20, (13 / r) * (180 / Math.PI));
-      dial.appendChild(delayed(svg('path', { d: arcD(cx, cy, r, gapDeg, 360 - gapDeg), class: `con-orbit${d === 0 ? ' is-outer' : ''}`, pathLength: 1 }), 60 + d * 55));
+      const orbitD = arcD(cx, cy, r, gapDeg, 360 - gapDeg);
+      dial.appendChild(delayed(svg('path', { d: orbitD, class: `con-orbit__band${d === 0 ? ' is-outer' : ''}`, pathLength: 1 }), 60 + d * 55));
+      dial.appendChild(delayed(svg('path', { d: orbitD, class: `con-orbit${d === 0 ? ' is-outer' : ''}`, pathLength: 1 }), 60 + d * 55));
       const t = svg('text', { class: 'con-tier', x: f(cx), y: f(cy - r) });
       t.textContent = ROMAN[d] || String(d + 1);
       dial.appendChild(t);
@@ -1050,12 +1075,14 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
         const from = stars[p];
         if (!from) continue;
         const pts = transferPoints(cx, cy, from, to, bodyR + 3);
+        const bst = beamState(p, n.id);
+        const litLink = bst === 'lit' || bst === 'open';
         if (pts.length < 2) continue;
         const d = 'M ' + pts.map(([x, y]) => `${f(x)} ${f(y)}`).join(' L ');
         let len = 0;
         for (let i = 1; i < pts.length; i += 1) {
           len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-          segs.push({ x1: pts[i - 1][0], y1: pts[i - 1][1], x2: pts[i][0], y2: pts[i][1], from: p, to: n.id });
+          segs.push({ x1: pts[i - 1][0], y1: pts[i - 1][1], x2: pts[i][0], y2: pts[i][1], from: p, to: n.id, w: litLink ? 8 : 1 });
         }
         const g = svg('g', { class: 'con-beam', 'data-from': p, 'data-to': n.id });
         // the sweep's tail is 70 px of the link, whatever its length
@@ -1087,6 +1114,7 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       g.appendChild(svg('circle', { r: f(bodyR * 2.4), class: 'con-star__halo', fill: 'url(#con-glow)' }));
       if (art) g.appendChild(svg('image', { class: 'con-star__art', href: art, x: f(-A / 2), y: f(-A / 2), width: f(A), height: f(A), preserveAspectRatio: 'xMidYMid meet' }));
       g.appendChild(svg('circle', { r: f(bodyR + 5), class: 'con-star__need' }));
+      g.appendChild(svg('circle', { r: f(bodyR), class: 'con-star__rim' }));
       g.appendChild(svg('circle', { r: f(bodyR), class: 'con-star__disc' }));
       const glyph = data.glyphs && data.glyphs[n.id];
       if (glyph) {
@@ -1130,7 +1158,8 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     // ---- labels: solve, then build the star buttons ----------------------------------------------------------
     const tierRects = radii.map((r) => ({ x: cx - 12, y: cy - r - 9, w: 24, h: 18 }));
     const discs = [];
-    for (const [id, s] of Object.entries(stars)) discs.push({ id, x: s.x, y: s.y, r: bodyR + 5 });
+    // every star keeps its reticle's room (bodyR + 11.5), so a name never runs into a chosen star's ring
+    for (const [id, s] of Object.entries(stars)) discs.push({ id, x: s.x, y: s.y, r: bodyR + 12 });
     discs.push({ id: '__core', x: cx, y: cy, r: coreR + 8 });
     const chosenId = chosen;
     const neighbours = new Set();
@@ -1148,11 +1177,21 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       if (neighbours.has(id)) return 3;
       return 4;
     };
+    // a price is set upper case, wide and spaced: it is measured as it is set, in the document
+    const costProbe = doc.createElement('span');
+    costProbe.className = 'con-label__cost';
+    costProbe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:nowrap;margin:0';
+    starLayer.appendChild(costProbe);
+    const costWidth = (text) => {
+      costProbe.textContent = text;
+      const w = costProbe.offsetWidth;
+      return w > 0 ? w : measureText(String(text).toUpperCase(), costPx, 'label') * 1.24;
+    };
     const items = data.nodes.filter((n) => stars[n.id]).map((n) => {
       const s = stars[n.id];
       // a price is carried by what you can research now; the dark stars are names (the reading has any price)
       const cost = showCost && stateOf(n.id) === 'available' ? String((data.costs && data.costs[n.id]) || '') : '';
-      const costW = cost ? measureText(cost, costPx, 'label') * 1.06 : 0;
+      const costW = cost ? costWidth(cost) + 2 : 0;
       const one = measureText(n.name, px, 'read');
       const boxes = [];
       const mk = (lines) => {
@@ -1168,12 +1207,22 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     });
     const bounds = { x: 2, y: 2, w: geo.W - 4, h: geo.H - 4 };
     // within a rank, the label with the fewest free places goes first
-    const statics = { discs, rects: [...tierRects, ...(geo.avoid || [])], points: rimPoints, bounds };
+    // a name beside the screen's title would read as part of its line: it keeps a wide berth to the right
+    const titleRects = (geo.avoid || []).map((r) => ({ x: r.x, y: r.y, w: r.w + 120, h: r.h + 6 }));
+    const statics = { discs, rects: [...tierRects, ...titleRects], points: rimPoints, bounds };
     for (const it of items) it.room = freePlaces(it, statics);
     items.sort((a, b) => (a.rank - b.rank) || (a.room - b.room) || (a.depth - b.depth));
     const solved = solveLabels(items, { discs, segs, rects: statics.rects, points: rimPoints, bounds });
     labelRects = new Map();
     for (const [id, sol] of Object.entries(solved)) if (sol && !sol.dropped) labelRects.set(id, sol.rect);
+    const cutId = `con-beam-cut-${++cutSeq}`;
+    const cut = svg('mask', { id: cutId, maskUnits: 'userSpaceOnUse', x: -geo.W, y: -geo.H, width: geo.W * 3, height: geo.H * 3 });
+    cut.appendChild(svg('rect', { x: -geo.W, y: -geo.H, width: geo.W * 3, height: geo.H * 3, fill: '#fff' }));
+    for (const r of labelRects.values()) cut.appendChild(svg('rect', { x: f(r.x - 3), y: f(r.y - 3), width: f(r.w + 6), height: f(r.h + 6), rx: 2, fill: '#000' }));
+    defs.appendChild(cut);
+    beams.setAttribute('mask', `url(#${cutId})`);
+    // the dial's orbits break for the names too: a band never runs through a star's words
+    dial.setAttribute('mask', `url(#${cutId})`);
     covers = new Map();
     for (const [id, sol] of Object.entries(solved)) {
       if (!sol || !sol.dropped) continue;
@@ -1379,26 +1428,28 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
   }
 
   /** Light runs down `beams`: a hot head, an ice tail, the link lit behind it. `at(bm)` is each one's start (ms). */
-  function runSweep(beamsToRun, at, { onward = false } = {}) {
+  function runSweep(beamsToRun, at, { onward = false, trace = false } = {}) {
     if (reducedMotion() || !beamsToRun.length) return;
     for (const bm of beamsToRun) {
       bm.g.classList.remove('is-sweep');
       bm.g.style.setProperty('--con-d', `${Math.round(at(bm))}ms`);
       bm.g.classList.toggle('is-onward', onward || bm.g.getAttribute('data-state') !== 'lit');
+      // a link you do not own never reads as owned: it stays dashed and only the head runs down it
+      bm.g.classList.toggle('is-trace', trace && bm.g.getAttribute('data-state') !== 'lit');
     }
     void layer.getBoundingClientRect();
     for (const bm of beamsToRun) {
       bm.g.classList.add('is-sweep');
       const sd = parseFloat(bm.g.style.getPropertyValue('--con-sd')) || 600;
       const g = bm.g;
-      setTimeout(() => g.classList.remove('is-sweep', 'is-onward'), at(bm) + sd + 120);
+      setTimeout(() => g.classList.remove('is-sweep', 'is-onward', 'is-trace'), at(bm) + sd + 120);
     }
   }
   /** A choice: light runs down the chosen star's path from its roots, tier by tier. */
   function sweep(beamsToRun) {
     if (!beamsToRun.length) return;
     const minDepth = Math.min(...beamsToRun.map((b) => b.depth));
-    runSweep(beamsToRun, (bm) => (bm.depth - minDepth) * 200);
+    runSweep(beamsToRun, (bm) => (bm.depth - minDepth) * 200, { trace: true });
   }
   const sweepMs = (bm) => parseFloat(bm.g.style.getPropertyValue('--con-sd')) || 600;
   /** Restart a class-driven animation on `node` and clear it after `ms`. */
@@ -1491,7 +1542,7 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     button: (id) => buttons.get(id) || null,
     relayout({ fonts = false } = {}) {
       // a font that changed no name's width changes nothing: a rebuild would only cut the motion under way
-      if (fonts && geo && measureNow() === measureSig) return;
+      if (fonts && geo && measureNow() === measureSig && sigOf(avoidNow()) === avoidSig) return;
       drawnKey = '';
       schedule();
     },

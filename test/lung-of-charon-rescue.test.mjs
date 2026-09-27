@@ -83,6 +83,8 @@ test('the default Charon POI materializes with durable distress-recovery identit
 
   const spawned = [];
   const system = Object.create(world);
+  // Non-live-actor POIs now persist as dressing rows, which requires the world state contract.
+  system.state = { world: {}, entities: new Map(), nextEntityId: 1 };
   system.helpers = {
     spawnEntity(spec) {
       const entity = { id: spawned.length + 1, alive: true, ...spec };

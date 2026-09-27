@@ -244,3 +244,6 @@ directive); it is not among this run's six smoke failures.
 assertions and acceptance re-run "stay their own work"; Task D did the motion reconciliation only.
 `PQ-187.04` → `deferred` by owner directive (the clips, pairs, reel and sidecar were withdrawn).
 All four `PQ-184` leaves were already `done` before this task; nothing to mark.
+
+## Prior queue notes
+- verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file.

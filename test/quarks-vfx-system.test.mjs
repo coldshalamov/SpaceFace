@@ -10,7 +10,10 @@ test('createSpindleGeometry produces 3D multi-planar vertices and indices', () =
   const positions = geo.attributes.position;
   assert.equal(geo.type, 'BufferGeometry');
   assert.equal(geo.attributes.uv.count, positions.count);
-  assert.ok(geo.index.count / 3 <= 240, 'shared folded body stays within its volley geometry budget');
+  assert.ok(geo.index.count / 3 <= 1024, 'shared legacy plus curved-volume topology stays within its immutable volley geometry budget');
+  assert.equal(geo.attributes.aBoltTopology.count, positions.count);
+  assert.equal(Array.from(geo.attributes.aBoltTopology.array).filter((v,i)=>i%2===0&&v===0).length,135,
+    'starter and ballistic families retain all original folded-fin vertices');
   assert.ok(positions.array.every(Number.isFinite));
   assert.ok(geo.index.array.every((index) => index < positions.count));
   geo.computeBoundingBox();

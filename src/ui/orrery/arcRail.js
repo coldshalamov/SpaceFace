@@ -51,7 +51,7 @@ const CSS = `
 .orr-arcrail-host .dp-lit__item--danger[data-awake] { color:var(--dp-danger-hot, #ff7a5c) !important;
   text-shadow:0 0 22px rgb(255 80 56 / .36), 0 1px 0 rgb(0 0 0 / .6) !important; }
 /* a grouped dial: the group's name is a legend on its stop's line, quiet caps ahead of its verbs */
-.orr-svg text.orr-arcrail__legend { font-family:var(--dp-face-display, "Archivo"), sans-serif; font-size:10.5px; font-variation-settings:"wght" 600, "wdth" 112;
+.orr-svg text.orr-arcrail__legend { font-family:var(--dp-face-display, "Archivo"), sans-serif; font-size: 12px; font-variation-settings:"wght" 600, "wdth" 112;
   letter-spacing:.22em; fill:rgb(232 226 212 / .56); dominant-baseline:auto; }
 /* the emblem's lettering: its name round the rim, quiet wide capitals */
 .orr-svg .orr-arcrail__lettering, .orr-svg .orr-arcrail__lettering text { font-family:var(--dp-face-display, "Archivo"), sans-serif; font-variation-settings:"wght" 600, "wdth" 112;
@@ -74,13 +74,13 @@ const CSS = `
   color:rgb(232 226 212 / .62) !important; }
 .orr-arcrail-host--dense li[data-tier="low"] .dp-lit__item[data-awake] { color:rgb(246 241 230) !important; }
 .orr-arcrail-host .dp-kbd { display:none !important; }
-.orr-svg text.orr-arcrail__cluster { font-size:9px; letter-spacing:.3em; fill:rgb(232 226 212 / .5); text-anchor:start; }
+.orr-svg text.orr-arcrail__cluster { font-size: 12px; letter-spacing:.3em; fill:rgb(232 226 212 / .5); text-anchor:start; }
 .orr-svg .orr-arcrail__sector text { letter-spacing:.3em; fill:rgb(232 226 212 / .72); font-weight:700; }
 /* notes stay for the accessibility tree; the dial shows the fact elsewhere (the eyebrow) */
 .orr-arcrail-host .dp-lit__note { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important;
   clip-path:inset(50%) !important; white-space:nowrap !important; margin:0 !important; }
 /* minor stations: fine words lettered like the rim engraving */
-.orr-arcrail-host .dp-lit--fine .dp-lit__item { font-size:10px !important; letter-spacing:.32em !important; font-variation-settings:"wght" 600, "wdth" 100 !important;
+.orr-arcrail-host .dp-lit--fine .dp-lit__item { font-size: 12px !important; letter-spacing:.32em !important; font-variation-settings:"wght" 600, "wdth" 100 !important;
   color:rgb(232 226 212 / .64) !important; }
 .orr-arcrail-host .dp-lit--fine .dp-lit__item[data-awake] { color:var(--dp-ink, #e8e2d4) !important; transform:none; }
 .orr-arcrail-host .dp-kbd { background:none !important; border:0 !important; box-shadow:none !important; color:rgb(232 226 212 / .5) !important;

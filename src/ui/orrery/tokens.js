@@ -43,7 +43,7 @@ export const ORRERY_CSS = `
   color:var(--dp-phos, #dfeeff);
 }
 .orr-label {
-  font-style:normal; font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size:11px;
+  font-style:normal; font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size: 12px;
   letter-spacing:.12em; text-transform:uppercase; line-height:1; color:var(--dp-ink-dim, #b7b4a6);
 }
 .orr-value {

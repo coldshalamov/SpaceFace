@@ -7,6 +7,7 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 import * as THREE from 'three';
 
+import { modelTruthPlaceDrawScale } from '../src/data/modelTruth.js';
 import {
   buildAuthoredPlaceProp,
   buildAuthoredStationArchetype,
@@ -104,9 +105,22 @@ for (const fixture of CASES) {
   const expectedTargetRadius = entity.type === 'station'
     ? Math.max(40, Number(entity.data.placeTargetRadius || entity.data.visualRadius || entity.data.dockRadius || entity.radius))
     : null;
-  const expectedScale = expectedTargetRadius
-    ? (expectedTargetRadius * 2) / sourceEnvelope
-    : (Number(entity.data.placeScale) || 1);
+  // Live scale authority mirrors buildPlacePropRoot: a POI's declared draw size wins over the
+  // measured model-truth census; every other entity keeps census-first ordering, then the
+  // declared target radius, then the raw authored place scale.
+  const censusScale = modelTruthPlaceDrawScale(entity);
+  const censusValue = Number.isFinite(censusScale) && censusScale > 0 ? censusScale : null;
+  const declaredTargetRadius = Number(entity.data && entity.data.placeTargetRadius);
+  const declaredTargetScale = Number.isFinite(declaredTargetRadius) && declaredTargetRadius > 0
+    ? (declaredTargetRadius * 2) / sourceEnvelope
+    : null;
+  const authoredScaleRaw = Number(entity.data.placeScale);
+  const authoredScale = Number.isFinite(authoredScaleRaw) && authoredScaleRaw > 0 ? authoredScaleRaw : null;
+  const expectedScale = entity.data && entity.data.poi === true
+    ? (declaredTargetScale ?? authoredScale ?? censusValue ?? 1)
+    : (censusValue ?? declaredTargetScale
+      ?? (expectedTargetRadius ? (expectedTargetRadius * 2) / sourceEnvelope : null)
+      ?? authoredScale ?? 1);
   const expectedAuthoredSize = new THREE.Vector3(...records.get(fixture.id).bounds.size).multiplyScalar(expectedScale);
   const expectedVisibleSize = new THREE.Vector3(...records.get(fixture.id).visibleBounds.size).multiplyScalar(expectedScale);
   const publishedVisualSize = new THREE.Vector3(...authoredRoot.userData.visualBounds.size);

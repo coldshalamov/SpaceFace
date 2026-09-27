@@ -21,7 +21,9 @@ import {
   COLLISION_PROXY_MANIFESTS,
   computeCaptureAssist,
   corridorStateFor,
+  effectiveCorridorBearingDeg,
   resolveBerthWorld,
+  resolveCollisionProxyManifest,
   resolveCorridorAxisWorld,
 } from '../src/data/collisionProxyManifests.js';
 import { dockingCorridor } from '../src/systems/dockingCorridor.js';
@@ -77,6 +79,32 @@ function frameVel(alongSpeed, latSpeed = 0) {
 
 function classify(along, lat, vel) {
   return corridorStateFor(HELIOS, heliosStation(), framePos(along, lat), vel);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Live-resolution frame (re-pinned 2026-09-27): ad1f92053 made declared proxy ids resolve through
+// the measured model-truth skin — the corridor bearing follows the GLB's real dock mouth (322.5°),
+// not the retired procedural-silhouette lanes (45/135/225/315). Tests that drive production seams
+// — autopilot target resolution, dockingCorridor.update, SG-02 authority, physics.updateDockRange —
+// must build geometry in the frame the runtime actually resolves. The pure volume/assist math
+// above stays pinned on the authored manifest (corridorStateFor/computeCaptureAssist take the
+// manifest as an argument and test the math, not the resolution).
+const SKIN = resolveCollisionProxyManifest(heliosStation());
+const SKIN_AXIS = resolveCorridorAxisWorld(heliosStation(), SKIN);
+
+function skinPos(along, lat = 0) {
+  return { x: SKIN_AXIS.x * along + -SKIN_AXIS.z * lat, z: SKIN_AXIS.z * along + SKIN_AXIS.x * lat };
+}
+
+function skinVel(alongSpeed, latSpeed = 0) {
+  return {
+    x: SKIN_AXIS.x * alongSpeed + -SKIN_AXIS.z * latSpeed,
+    z: SKIN_AXIS.z * alongSpeed + SKIN_AXIS.x * latSpeed,
+  };
+}
+
+function skinBerth(station) {
+  return resolveBerthWorld(station, SKIN);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -137,30 +165,30 @@ test('default station autopilot finishes inside the manifest berth gate, not the
   };
 
   // The retained 5c5421ac failure stopped on this legacy station-center ring. At an ordinary
-  // off-corridor bearing it is outside the authored capture volume, so waiting cannot create a
+  // off-corridor bearing it is outside the resolved capture volume, so waiting cannot create a
   // physical dock prompt.
   const legacyCenterStop = { x: station.pos.x + 90, z: station.pos.z };
-  assert.equal(corridorStateFor(HELIOS, station, legacyCenterStop, { x: 0, z: 0 }).inCapture, false);
+  assert.equal(corridorStateFor(SKIN, station, legacyCenterStop, { x: 0, z: 0 }).inCapture, false);
 
   const target = resolveAutopilotTarget(state, autopilot);
-  const berth = resolveBerthWorld(station, HELIOS);
-  assert.deepEqual({ x: target.x, z: target.z }, berth, 'default flight must resolve the authored berth');
+  const berth = skinBerth(station);
+  assert.deepEqual({ x: target.x, z: target.z }, berth, 'default flight must resolve the measured berth');
   assert.equal(target.radius, 0, 'station center collision radius must not re-expand the berth arrival');
-  assert.equal(target.dockingProxyId, HELIOS.id);
+  assert.equal(target.dockingProxyId, SKIN.id);
 
   const arrivalRadius = resolveAutopilotArrivalRadius(player, autopilot, target);
   assert.equal(
     arrivalRadius,
-    HELIOS.docking.berth.dockRadius,
+    SKIN.docking.berth.dockRadius,
     'the station terminal leg must use the same radius that owns the physical dock prompt',
   );
   const terminalStop = { x: berth.x + arrivalRadius, z: berth.z };
-  const terminal = corridorStateFor(HELIOS, station, terminalStop, { x: 0, z: 0 });
+  const terminal = corridorStateFor(SKIN, station, terminalStop, { x: 0, z: 0 });
   assert.equal(terminal.berthed, true, 'arrival must itself satisfy the physical berth gate');
   assert.equal(terminal.phase, 'berthed');
 });
 
-test('default station autopilot stages an outside-gap approach through the authored corridor mouth', () => {
+test('default station autopilot stages an outside-gap approach through the measured corridor mouth', () => {
   const station = heliosStation();
   // Candidate 93143293's live station center was (1280, -420); translate its terminal player
   // position (1233.7025146484375, -489.2889404296875) into this origin-centered fixture.
@@ -182,14 +210,15 @@ test('default station autopilot stages an outside-gap approach through the autho
 
   // Candidate 93143293 reached the same geometric condition: stopped outside the snapped gap,
   // roughly 115 WU from the berth, while the direct berth course remained active forever.
-  const retained = corridorStateFor(HELIOS, station, player.pos, player.vel);
+  const retained = corridorStateFor(SKIN, station, player.pos, player.vel);
   assert.equal(retained.phase, 'approach');
   assert.equal(retained.inCorridor, false);
   assert.equal(retained.inCapture, false);
-  assert.ok(Math.abs(retained.distToBerth - 115.11044802097827) < 1e-9);
+  assert.ok(Math.abs(retained.distToBerth - 102.16218682799379) < 1e-9,
+    'same retained case re-measured against the live skin berth');
 
-  const mouthRadius = HELIOS.docking.corridor.mouthRadius * station.data.dockRadius;
-  const mouth = framePos(mouthRadius);
+  const mouthRadius = SKIN.docking.corridor.mouthRadius * station.data.dockRadius;
+  const mouth = skinPos(mouthRadius);
   const approachTarget = resolveAutopilotTarget(state, autopilot);
   assert.equal(approachTarget.dockingStage, 'corridor-mouth');
   assert.deepEqual({ x: approachTarget.x, z: approachTarget.z }, mouth,
@@ -197,21 +226,21 @@ test('default station autopilot stages an outside-gap approach through the autho
 
   // The switch threshold must beat the 38-WU autopilot arrival floor; otherwise the flight
   // computer can stop at the staging point and deactivate before it ever targets the berth.
-  player.pos = framePos(mouthRadius + 40);
+  player.pos = skinPos(mouthRadius + 40);
   const berthTarget = resolveAutopilotTarget(state, autopilot);
   assert.equal(berthTarget.dockingStage, 'berth');
   assert.deepEqual(
     { x: berthTarget.x, z: berthTarget.z },
-    resolveBerthWorld(station, HELIOS),
+    skinBerth(station),
     'once aligned just outside the mouth, the terminal leg must run down the open lane',
   );
 });
 
 test('a hull knocked off the lane keeps the mouth aim, and lane lock only arms inside the lane', () => {
   const station = heliosStation();
-  const berth = resolveBerthWorld(station, HELIOS);
-  const mouthRadius = HELIOS.docking.corridor.mouthRadius * station.data.dockRadius;
-  const mouth = framePos(mouthRadius);
+  const berth = skinBerth(station);
+  const mouthRadius = SKIN.docking.corridor.mouthRadius * station.data.dockRadius;
+  const mouth = skinPos(mouthRadius);
   const autopilot = {
     targetEntityId: station.id,
     target: { x: station.pos.x, z: station.pos.z },
@@ -224,7 +253,7 @@ test('a hull knocked off the lane keeps the mouth aim, and lane lock only arms i
   // this bearing crosses structure, so the authored escape is the mouth aim through the ring gap.
   const wedged = {
     id: 'player', type: 'ship', alive: true, radius: 14,
-    pos: framePos(60, 70), vel: { x: 0, z: 0 },
+    pos: skinPos(60, 70), vel: { x: 0, z: 0 },
   };
   const wedgedState = {
     playerId: wedged.id,
@@ -242,7 +271,7 @@ test('a hull knocked off the lane keeps the mouth aim, and lane lock only arms i
   // Geometrically in the lane: berth stage arms and reports lane membership to the guidance.
   const aligned = {
     id: 'player', type: 'ship', alive: true, radius: 14,
-    pos: framePos(100, 0), vel: { x: 0, z: 0 },
+    pos: skinPos(100, 0), vel: { x: 0, z: 0 },
   };
   const alignedState = {
     playerId: aligned.id,
@@ -317,7 +346,7 @@ test('speed gates: corridor admits ≤55, capture admits ≤26, berth admits ≤
 
 test('live PQ-024 contact floor still emits dock range before the compound proxy can expel the ship', () => {
   const station = heliosStation();
-  const berth = resolveBerthWorld(station, HELIOS);
+  const berth = skinBerth(station);
   const capturedBestDistance = 18.878271755769823;
   const player = {
     id: 'player', type: 'ship', alive: true, radius: 14,
@@ -337,7 +366,7 @@ test('live PQ-024 contact floor still emits dock range before the compound proxy
     bus: { emit: (name, payload) => events.push({ name, payload }) },
   };
 
-  const corridor = corridorStateFor(HELIOS, station, player.pos, player.vel);
+  const corridor = corridorStateFor(SKIN, station, player.pos, player.vel);
   assert.equal(corridor.phase, 'berthed',
     'the exact live closest approach must count as physically dockable');
   physics.updateDockRange.call(host, state);
@@ -541,7 +570,7 @@ test('system update publishes the capture readout and queues an additive membran
   dockingCorridor.init({ bus: null });
   const dt = 1 / 60;
   const { state, player, station } = makeFlightState({
-    playerPos: framePos(100, 0),
+    playerPos: skinPos(100, 0),
     playerVel: { x: 0, z: 0 },
   });
   // The pilot's own control command is on the membrane BEFORE the assist runs.
@@ -552,10 +581,10 @@ test('system update publishes the capture readout and queues an additive membran
   const readout = state.dockingCorridor;
   assert.equal(readout.phase, 'capture');
   assert.equal(readout.stationId, 'station_helios');
-  assert.equal(readout.proxyId, 'helios_trade_hub');
+  assert.equal(readout.proxyId, SKIN.id);
   assert.ok(readout.assist, 'assist was applied this tick');
 
-  const expected = computeCaptureAssist(HELIOS, station, framePos(100, 0), { x: 0, z: 0 }, 0);
+  const expected = computeCaptureAssist(SKIN, station, skinPos(100, 0), { x: 0, z: 0 }, 0);
   assert.ok(Math.abs(readout.assist.ax - expected.x) < EPS);
   assert.ok(Math.abs(readout.assist.az - expected.z) < EPS);
 
@@ -576,12 +605,12 @@ test('system update preserves the input blend through the membrane', () => {
   dockingCorridor.init({ bus: null });
   const dt = 1 / 60;
   const { state, player, station } = makeFlightState({
-    playerPos: framePos(100, 0),
+    playerPos: skinPos(100, 0),
     playerVel: { x: 0, z: 0 },
     input: { moveZ: 1 },
   });
   dockingCorridor.update(dt, state);
-  const unblended = computeCaptureAssist(HELIOS, station, framePos(100, 0), { x: 0, z: 0 }, 0);
+  const unblended = computeCaptureAssist(SKIN, station, skinPos(100, 0), { x: 0, z: 0 }, 0);
   const command = consumePhysicsCommand(player);
   const impulse = command.impulses[0];
   assert.ok(Math.abs(Math.hypot(impulse.x, impulse.z) - Math.hypot(unblended.x, unblended.z) * 0.25 * 10 * dt) < 1e-8);
@@ -638,7 +667,7 @@ test('the nearest manifest station wins when several are in range', () => {
 test('proxy diagnostics publish frozen world geometry on the physicsRuntime surface (debug seam)', () => {
   dockingCorridor.init({ bus: null });
   const { state, station } = makeFlightState({
-    playerPos: framePos(100, 0),
+    playerPos: skinPos(100, 0),
     playerVel: { x: 0, z: 0 },
   });
   dockingCorridor.update(1 / 60, state);
@@ -650,22 +679,23 @@ test('proxy diagnostics publish frozen world geometry on the physicsRuntime surf
   assert.ok(Object.isFrozen(entry.primitives));
   assert.equal(entry.entityId, station.id);
   assert.equal(entry.stationId, 'station_helios');
-  assert.equal(entry.proxyId, 'helios_trade_hub');
+  assert.equal(entry.proxyId, 'skin:place_station_trade_hub');
   assert.deepEqual(entry.flags, {
     collides: true,
     renderable: false,
     targetable: false,
     radarVisible: false,
   });
-  assert.equal(entry.corridorBearingDeg, 135);
-  assert.equal(entry.primitives.length, 23, 'same expanded set the physics authority registers');
+  assert.equal(entry.corridorBearingDeg, effectiveCorridorBearingDeg(SKIN, station));
+  assert.equal(entry.corridorBearingDeg, 322.5);
+  assert.equal(entry.primitives.length, 22, 'same expanded set the physics authority registers');
   assert.ok(Math.abs(entry.corridor.mouthRadius - 121.5) < EPS);
   assert.ok(Math.abs(entry.corridor.captureOuterRadius - 108) < EPS);
   assert.ok(Math.abs(entry.corridor.captureHalfWidth - 37.8) < EPS);
   assert.equal(entry.corridor.speedGate, 55);
   assert.equal(entry.corridor.captureSpeedGate, 26);
   assert.equal(entry.corridor.headingGateDeg, 42);
-  const berth = resolveBerthWorld(station, HELIOS);
+  const berth = skinBerth(station);
   assert.ok(Math.abs(entry.berth.x - berth.x) < EPS);
   assert.ok(Math.abs(entry.berth.z - berth.z) < EPS);
 
@@ -699,7 +729,7 @@ async function flyRealAuthorityTrajectory() {
     const station = heliosStation();
     const player = {
       id: 'player', type: 'ship', alive: true, collides: true, flags: {},
-      pos: framePos(105), vel: frameVel(-12), rot: 0, angVel: 0, radius: 14, mass: 32, data: {},
+      pos: skinPos(105), vel: skinVel(-12), rot: 0, angVel: 0, radius: 14, mass: 32, data: {},
     };
     const state = {
       mode: 'flight', playerId: player.id,
@@ -708,7 +738,7 @@ async function flyRealAuthorityTrajectory() {
     };
     dockingCorridor.init({ bus: null });
     owner.syncFromEntities([station, player]);
-    const berth = resolveBerthWorld(station, HELIOS);
+    const berth = skinBerth(station);
     const series = [];
     let maxDeltaV = 0;
     for (let tick = 0; tick < 900; tick++) {
@@ -734,9 +764,9 @@ async function flyRealAuthorityTrajectory() {
 
 test('real authority: capture settles at the berth with bounded per-tick velocity change', async () => {
   const run = await flyRealAuthorityTrajectory();
-  assert.ok(run.distToBerth < HELIOS.docking.berth.dockRadius,
+  assert.ok(run.distToBerth < SKIN.docking.berth.dockRadius,
     `settled within the berth dock radius (${run.distToBerth.toFixed(2)} wu)`);
-  assert.ok(run.speed < HELIOS.docking.berth.speedGate,
+  assert.ok(run.speed < SKIN.docking.berth.speedGate,
     `settled under the berth speed gate (${run.speed.toFixed(2)} wu/s)`);
   // The coast-into-core regression guard: per-tick Δv must never exceed the bounded assist — a
   // solver contact spike here means the assist let the ship coast into the station silhouette.
@@ -761,7 +791,7 @@ test('real authority: an off-lane knock inside the silhouette recovers through t
     const station = heliosStation();
     const player = {
       id: 'player', type: 'ship', alive: true, collides: true, flags: {},
-      pos: framePos(80, 50), vel: { x: 0, z: 0 }, rot: 0, angVel: 0, radius: 14, mass: 32, data: {},
+      pos: skinPos(80, 50), vel: { x: 0, z: 0 }, rot: 0, angVel: 0, radius: 14, mass: 32, data: {},
     };
     const autopilot = {
       active: true, targetEntityId: station.id,
@@ -775,7 +805,7 @@ test('real authority: an off-lane knock inside the silhouette recovers through t
     };
     dockingCorridor.init({ bus: null });
     owner.syncFromEntities([station, player]);
-    const berth = resolveBerthWorld(station, HELIOS);
+    const berth = skinBerth(station);
     const dt = 1 / 60;
     const stages = [];
     for (let tick = 0; tick < 7200; tick++) {
@@ -801,7 +831,7 @@ test('real authority: an off-lane knock inside the silhouette recovers through t
       `the knocked-off-lane hull must recover through the mouth aim and berth (stages: ${stages.join(' → ')})`);
     assert.ok(stages.includes('corridor-mouth') && stages.includes('berth'),
       `recovery must route mouth-aim escape → lane re-entry → berth (saw ${stages.join(' → ')})`);
-    assert.ok(Math.hypot(player.pos.x - berth.x, player.pos.z - berth.z) <= HELIOS.docking.berth.dockRadius,
+    assert.ok(Math.hypot(player.pos.x - berth.x, player.pos.z - berth.z) <= SKIN.docking.berth.dockRadius,
       'the hull settles inside the physical berth gate');
   } finally {
     owner.dispose();
@@ -844,7 +874,7 @@ async function createAutopilotApproachRig({ startPos, startVel }) {
   flightV3.bus = bus;
   dockingCorridor.init({ bus });
   owner.syncFromEntities([station, player]);
-  const berth = resolveBerthWorld(station, HELIOS);
+  const berth = skinBerth(station);
   const dt = 1 / 60;
   const stepCraft = (t) => {
     state.tick = t; state.simTime = t * dt;
@@ -909,8 +939,8 @@ test('real authority: a tangential burn-speed approach sheds the burn and berths
     `burn momentum must shed, not cruise forever (speed at 45s: ${speedAt45s.toFixed(0)} wu/s)`);
   assert.ok(run.berthed,
     `the autopilot must recover a tangential exile and berth (ended ${run.berthDist.toFixed(0)} wu out)`);
-  assert.ok(run.berthDist <= HELIOS.docking.berth.dockRadius);
-  assert.ok(run.speed < HELIOS.docking.berth.speedGate);
+  assert.ok(run.berthDist <= SKIN.docking.berth.dockRadius);
+  assert.ok(run.speed < SKIN.docking.berth.speedGate);
 });
 
 // Post-expulsion signature: near the station, thrown OUTBOUND at burn speed — closing speed is
@@ -926,23 +956,24 @@ test('real authority: an outbound burn-speed expulsion brakes, turns back, and b
     `an outbound exile must shed the burn (speed at 50s: ${speedAt50s.toFixed(0)} wu/s)`);
   assert.ok(run.berthed,
     `the autopilot must recover an outbound expulsion and berth (ended ${run.berthDist.toFixed(0)} wu out)`);
-  assert.ok(run.berthDist <= HELIOS.docking.berth.dockRadius);
+  assert.ok(run.berthDist <= SKIN.docking.berth.dockRadius);
 });
 
 // The same burn speed aimed straight in: brakes inside its own stopping distance and docks —
-// guards that the total-speed planner did not break the ordinary fast approach.
+// guards that the total-speed planner did not break the ordinary fast approach. The original
+// scene approached along the authored 135° lane; the live lane is the measured 322.5° mouth,
+// so the straight-in approach runs down the resolved skin axis at the same range and speed.
 test('real authority: an inbound burn-speed approach berths promptly', async () => {
-  const dx = -46236.68, dz = 28912.01;
-  const d = Math.hypot(dx, dz);
+  const d = Math.hypot(-46236.68, 28912.01);
   const run = await flyAutopilotDockApproach({
-    startPos: { x: dx, z: dz },
-    startVel: { x: (-dx / d) * 3857, z: (-dz / d) * 3857 },
+    startPos: skinPos(d),
+    startVel: skinVel(-3857),
     secondsMax: 75,
   });
   assert.ok(run.berthed,
     `a direct burn-speed approach must berth promptly (ended ${run.berthDist.toFixed(0)} wu out after ${(run.ticks / 60).toFixed(0)}s)`);
-  assert.ok(run.berthDist <= HELIOS.docking.berth.dockRadius);
-  assert.ok(run.speed < HELIOS.docking.berth.speedGate);
+  assert.ok(run.berthDist <= SKIN.docking.berth.dockRadius);
+  assert.ok(run.speed < SKIN.docking.berth.speedGate);
 });
 
 // The soak's second dock signature: the hull sat latched inside the approach margin carrying
@@ -954,10 +985,12 @@ test('real authority: an inbound burn-speed approach berths promptly', async () 
 test('real authority: a latched hull at the soak drift state re-opens the stop plan', async () => {
   // Place the hull ~143 wu from the corridor-mouth aim (the soak's autopilot.distance) on a
   // tangential vector — inside the stopping bound, where the settle floor is the only gate.
-  const mouth = { x: -85.91347391416552, z: 85.91347391416554 };
+  // The aim is the resolved skin mouth (322.5° lane), not the retired procedural mouth; the
+  // drift sign carries it across open space — the +lat mirror drifts into the arm-11/arm-12
+  // spar pocket (gap 18 wu < hull diameter), a wedge this contract does not defend.
   const rig = await createAutopilotApproachRig({
-    startPos: { x: mouth.x + 143, z: mouth.z },
-    startVel: { x: 0, z: 82.6 },
+    startPos: skinPos(121.5 + 143),
+    startVel: skinVel(0, -82.6),
   });
   const { state, player, autopilot } = rig;
   try {

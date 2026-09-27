@@ -130,12 +130,13 @@ test('runModifiers validate the live v0 draft-pick record', () => {
 });
 
 test('every live draft verb validates, and no validator verb is orphaned', async () => {
-  const [{ SURVIVAL_DRAFT_OFFERS }, { SWARM_DRAFT_OFFERS }] = await Promise.all([
+  const [{ SURVIVAL_DRAFT_OFFERS }, { SWARM_DRAFT_OFFERS }, { SURVIVAL_EVOLUTIONS }] = await Promise.all([
     import('../src/data/survivalDraft.js'),
     import('../src/data/swarmDraft.js'),
+    import('../src/data/survivalEvolutions.js'),
   ]);
   const catalogVerbs = new Set(
-    [...SURVIVAL_DRAFT_OFFERS, ...SWARM_DRAFT_OFFERS].map((offer) => offer.verb),
+    [...SURVIVAL_DRAFT_OFFERS, ...SWARM_DRAFT_OFFERS, ...SURVIVAL_EVOLUTIONS].map((offer) => offer.verb),
   );
   for (const verb of catalogVerbs) {
     assert.ok(

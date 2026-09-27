@@ -47,11 +47,11 @@ const CSS = `
 .orr-crest.is-east .orr-crest__words { left:calc(100% + 12px); top:50%; transform:translateY(-50%); align-items:flex-start; }
 .orr-crest.is-west .orr-crest__words { right:calc(100% + 12px); top:50%; transform:translateY(-50%); align-items:flex-end; }
 .orr-crest__name { pointer-events:none;
-  font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .62);
+  font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .62);
   paint-order:stroke; text-shadow:0 0 6px rgb(4 6 9 / .9); }
 .orr-crest.is-chosen .orr-crest__name, .orr-crest:is(:hover, :focus-visible) .orr-crest__name { color:rgb(248 244 234); }
 .orr-crest__rep { pointer-events:none; display:block; white-space:nowrap;
-  font-family:var(--dp-face-numeral, "Archivo"); font-size:10.5px; font-weight:600; letter-spacing:.02em; color:rgb(248 244 234); font-variant-numeric:tabular-nums; text-shadow:0 0 6px rgb(4 6 9 / .9); }
+  font-family:var(--dp-face-numeral, "Archivo"); font-size: 12px; font-weight:600; letter-spacing:.02em; color:rgb(248 244 234); font-variant-numeric:tabular-nums; text-shadow:0 0 6px rgb(4 6 9 / .9); }
 .orr-crest__rep.is-against { color:var(--dp-danger, #ff5038); }
 .orr-crest__rep.is-zero { color:rgb(${BONE} / .5); }
 .orr-crestorbit__centre { position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); pointer-events:none; }
@@ -95,7 +95,7 @@ html.sf-reduce-motion .orr-crest, html.sf-reduce-motion .orr-crest > img { trans
 .orr-crestorbit.is-small .orr-crest { width:40px; height:40px; margin:-20px 0 0 -20px; }
 .orr-crestorbit.is-small .orr-crest > img { width:30px; height:30px; margin:5px; }
 .orr-crestorbit.is-small .orr-crest::before { width:48px; height:48px; margin:-24px 0 0 -24px; }
-.orr-crestorbit.is-small .orr-crest__name { font-size:8px; letter-spacing:.1em; }
+.orr-crestorbit.is-small .orr-crest__name { font-size: 12px; letter-spacing:.1em; }
 .orr-crestorbit.is-small .orr-crest.is-authority::after { display:none; }
 /* the standing scale: a ruler from Sworn Enemy to Hero, the light cursor at the rep */
 .orr-standing { position:relative; width:100%; height:74px; }
@@ -104,20 +104,20 @@ html.sf-reduce-motion .orr-crest, html.sf-reduce-motion .orr-crest > img { trans
 .orr-svg .orr-standing__hostile { stroke:var(--dp-danger, #ff5038); opacity:.32; }
 .orr-svg .orr-standing__tick { stroke:rgb(${BONE} / .5); }
 .orr-svg .orr-standing__tick--aggro { stroke:var(--dp-danger, #ff5038); }
-.orr-svg text.orr-standing__name { font-size:10.5px; font-weight:650; letter-spacing:.12em; fill:rgb(${BONE} / .52); text-transform:uppercase; paint-order:stroke; stroke:rgb(6 8 11 / .92); stroke-width:3px; stroke-linejoin:round; }
+.orr-svg text.orr-standing__name { font-size: 12px; font-weight:650; letter-spacing:.12em; fill:rgb(${BONE} / .52); text-transform:uppercase; paint-order:stroke; stroke:rgb(6 8 11 / .92); stroke-width:3px; stroke-linejoin:round; }
 .orr-svg .orr-standing__bracket { stroke:rgb(${BONE} / .5); }
-.orr-svg text.orr-standing__rung-detail { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:9px; font-weight:650; letter-spacing:.12em; text-transform:uppercase; fill:rgb(${BONE} / .56); }
-.orr-svg text.orr-standing__bracket-n { fill:rgb(248 244 234); font-family:var(--dp-face-label, "Archivo"); font-size:9.5px; font-weight:650; letter-spacing:.14em; }
+.orr-svg text.orr-standing__rung-detail { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size: 12px; font-weight:650; letter-spacing:.12em; text-transform:uppercase; fill:rgb(${BONE} / .56); }
+.orr-svg text.orr-standing__bracket-n { fill:rgb(248 244 234); font-family:var(--dp-face-label, "Archivo"); font-size: 12px; font-weight:650; letter-spacing:.14em; }
 .orr-svg text.orr-standing__name.is-current { fill:rgb(248 244 234); }
-.orr-svg.is-compact text.orr-standing__name { font-size:9px; letter-spacing:.1em; }
+.orr-svg.is-compact text.orr-standing__name { font-size: 12px; letter-spacing:.1em; }
 .orr-svg text.orr-standing__name.is-hostile { fill:rgb(${BONE} / .52); }
 .orr-svg text.orr-standing__name.is-hostile.is-current { fill:var(--dp-danger, #ff5038); }
-.orr-svg text.orr-standing__val { font-family:var(--dp-face-numeral, "Archivo"); font-size:10px; font-weight:600; letter-spacing:.02em; fill:rgb(${BONE} / .7); paint-order:stroke; stroke:rgb(6 8 11 / .9); stroke-width:3px; }
+.orr-svg text.orr-standing__val { font-family:var(--dp-face-numeral, "Archivo"); font-size: 12px; font-weight:600; letter-spacing:.02em; fill:rgb(${BONE} / .7); paint-order:stroke; stroke:rgb(6 8 11 / .9); stroke-width:3px; }
 .orr-svg text.orr-standing__val.is-hostile { fill:rgb(255 104 82); }
 .orr-svg .orr-standing__cursor { stroke:rgb(248 244 234); }
 .orr-svg .orr-standing__cursor-bloom { stroke:rgb(248 244 234); opacity:.25; }
 .orr-svg .orr-standing__rung-leader { stroke:rgb(${BONE} / .32); }
-.orr-standing text.orr-standing__rung { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:9px; letter-spacing:.12em; fill:rgb(248 244 234); }
+.orr-standing text.orr-standing__rung { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.12em; fill:rgb(248 244 234); }
 .orr-standing text.orr-standing__rung.is-locked { fill:rgb(${BONE} / .62); }
 .orr-standing text.orr-standing__rung.is-locked.is-next { fill:rgb(${BONE} / .72); }
 .orr-standing text.orr-standing__rung.is-sealed { fill:rgb(${BONE} / .6); }

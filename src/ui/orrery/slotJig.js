@@ -25,13 +25,13 @@ const CSS = `
   transform-box:fill-box; transform-origin:center; animation:orr-slotjig-halo 1.8s ease-out infinite; }
 @keyframes orr-slotjig-halo { from { transform:scale(.6); opacity:.7; } to { transform:scale(1.9); opacity:0; } }
 html.sf-reduce-motion .orr-slotjig .orr-slotjig__halo { animation:none; }
-.orr-slotjig .orr-slotjig__word { font-size:10.5px; font-weight:650; letter-spacing:.18em; fill:var(--dp-hand-hot, #ffd98c);
+.orr-slotjig .orr-slotjig__word { font-size: 12px; font-weight:650; letter-spacing:.18em; fill:var(--dp-hand-hot, #ffd98c);
   paint-order:stroke; stroke:rgb(4 6 9 / .9); stroke-width:4px; stroke-linejoin:round; }
-.orr-slotjig .orr-slotjig__bearing { font-size:10px; font-weight:650; letter-spacing:.08em; fill:rgb(236 230 216 / .45); }
+.orr-slotjig .orr-slotjig__bearing { font-size: 12px; font-weight:650; letter-spacing:.08em; fill:rgb(236 230 216 / .45); }
 .orr-slotjig .orr-slotjig__seg { fill:none; stroke:rgb(236 230 216 / .22); }
 .orr-slotjig .orr-slotjig__seg.is-fitted { stroke:rgb(236 230 216 / .8); }
 .orr-slotjig .orr-slotjig__seg.is-target { stroke:var(--dp-hand, #f2b950); }
-.orr-slotjig .orr-slotjig__sub { font-size:10.5px; font-weight:600; letter-spacing:.04em; fill:rgb(236 230 216 / .82);
+.orr-slotjig .orr-slotjig__sub { font-size: 12px; font-weight:600; letter-spacing:.04em; fill:rgb(236 230 216 / .82);
   paint-order:stroke; stroke:rgb(4 6 9 / .9); stroke-width:4px; stroke-linejoin:round; }
 `;
 

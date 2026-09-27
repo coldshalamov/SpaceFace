@@ -26,7 +26,7 @@ import { el, words, rows, hero, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectArchiveLayouts } from '../orrery/archiveLayouts.js';
 import {
-  archivePlateSvg, archiveBladeSvg, archiveDialAngle, archiveDialIndex, archiveGaugeSvg, archiveScramble, archiveHash,
+  archivePlateSvg, archiveBladeSvg, archiveHoverSvg, archiveDialAngle, archiveDialIndex, archiveGaugeSvg, archiveScramble, archiveHash,
   archiveWedgeSvg, archiveZoom, createLadderHand,
 } from '../orrery/archiveInstruments.js';
 import { decrypt, rollTo } from '../orrery/text.js';
@@ -549,7 +549,7 @@ export const codexScreen = {
     }
     if (typeof ResizeObserver === 'function') {
       try {
-        const ro = new ResizeObserver(() => { this._drawWedge(); this._placeHand(true); });
+        const ro = new ResizeObserver(() => { this._alignReading(); this._drawWedge(); this._placeHand(true); });
         ro.observe(hang);
       } catch (_) { /* no observer, no resize */ }
     }
@@ -577,17 +577,19 @@ export const codexScreen = {
     const rings = el('div', 'cx-plate__rings');
     const blade = el('div', 'cx-plate__blade');
     blade.innerHTML = archiveBladeSvg();
+    const hover = el('div', 'cx-plate__hover');
     plate.appendChild(aperture);
     plate.appendChild(rings);
+    plate.appendChild(hover);
     plate.appendChild(blade);
     const caption = el('div', 'cx-plate__caption');
     caption.hidden = true;
     caption.setAttribute('aria-hidden', 'true');
     plateHost.appendChild(plate);
-    plateHost.appendChild(caption);
+    plate.appendChild(caption);
     rootEl.appendChild(plateHost);
     const arm = typeof blade.querySelector === 'function' ? blade.querySelector('.cx-blade__arm') : null;
-    this._dial = { host: plateHost, plate, aperture, rings, blade, arm, caption, angle: 0 };
+    this._dial = { host: plateHost, plate, aperture, rings, blade, hover, arm, caption, angle: 0 };
     this._dial.spring = createSpring({ value: 0, preset: 'swing', onUpdate: (deg) => {
       this._dial.angle = deg;
       if (arm && arm.style) arm.style.transform = 'rotate(' + deg.toFixed(2) + 'deg)';
@@ -661,7 +663,7 @@ export const codexScreen = {
     this._arrive();
     // the type settles once the faces load: the Hand and the fan are measured again then
     if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(() => { this._placeHand(true); this._drawWedge(); }).catch(() => {});
+      document.fonts.ready.then(() => { this._alignReading(); this._placeHand(true); this._drawWedge(); }).catch(() => {});
     }
     if (this._regions && typeof requestAnimationFrame === 'function') {
       try {
@@ -715,7 +717,7 @@ export const codexScreen = {
     // The open tab rides on the root so the sheet can set the entry pane's emblem for its kind.
     if (this._codexRoot && this._codexRoot.dataset) this._codexRoot.dataset.tab = String(this._activeTab || '').toLowerCase();
     // Archive + Ledger are media/panel surfaces, not searchable narrative — hide the chrome.
-    const isChromeLess = this._activeTab === 'Archive' || this._activeTab === 'Ledger';
+    const isChromeLess = this._activeTab === 'Ledger';
     this._searchWrap.hidden = isChromeLess;
     this._status.hidden = isChromeLess;
     if (this._search && !isChromeLess && this._search.value !== this._query) this._search.value = this._query;
@@ -820,10 +822,18 @@ export const codexScreen = {
     if (!dial) return;
     const list = this._tapeEntries || [];
     const entry = i >= 0 ? list[i] : null;
-    if (!entry) { dial.caption.hidden = true; this._hoverI = -1; return; }
+    if (!entry) { dial.caption.hidden = true; dial.hover.innerHTML = ''; dial.plate.classList.remove('is-pointing'); this._hoverI = -1; return; }
     if (i === this._hoverI && !dial.caption.hidden) return;
     this._hoverI = i;
+    const lit = archiveHoverSvg(i, list.length);
+    dial.hover.innerHTML = lit.svg;
+    dial.plate.classList.add('is-pointing');
     dial.caption.hidden = false;
+    dial.caption.classList.toggle('is-right', lit.side === 'right');
+    if (dial.caption.style) {
+      dial.caption.style.left = (lit.x * 100).toFixed(2) + '%';
+      dial.caption.style.top = (lit.y * 100).toFixed(2) + '%';
+    }
     dial.caption.textContent = '';
     dial.caption.appendChild(el('span', 'cx-plate__caption-at', pad2(i + 1) + ' / ' + pad2(list.length)));
     if (entry.locked) {
@@ -987,7 +997,28 @@ export const codexScreen = {
     if (!this._hand) this._hand = createLadderHand(this._index, { className: 'orr-arc-hand orr-arc-hand--bone', nodeY: 15 });
     const row = this._list && typeof this._list.querySelector === 'function'
       ? this._list.querySelector('.k-row[aria-selected="true"]') : null;
+    this._keepRowClear(row);
     this._hand.moveTo(row, { instant });
+  },
+
+  /** The chosen rung stands clear of the ladder's fold (its fade) rather than half under it. */
+  _keepRowClear(row) {
+    const box = this._index;
+    if (!row || !box || typeof box.getBoundingClientRect !== 'function' || typeof row.getBoundingClientRect !== 'function') return;
+    if (!(Number(box.scrollHeight) > Number(box.clientHeight) + 2)) return;
+    const b = box.getBoundingClientRect();
+    const r = row.getBoundingClientRect();
+    if (!(r.height > 0)) return;
+    const z = archiveZoom(box, b);
+    const top = (r.top - b.top) / z;
+    const bottom = (r.bottom - b.top) / z;
+    const limit = Number(box.clientHeight) - 40;
+    let shift = 0;
+    if (bottom > limit) shift = bottom - limit;
+    else if (top < 4) shift = top - 4;
+    if (!shift) return;
+    box.scrollTop = Math.max(0, (Number(box.scrollTop) || 0) + shift);
+    this._drawWedge();
   },
 
   /**
@@ -1038,43 +1069,31 @@ export const codexScreen = {
     for (const entry of entries) this._entries.push(entry);
   },
 
-  // Signal Archive — the posters as a row of stills 200 px tall, each with its title, its caption
-  // and Play as a fine word; Play runs the 6s clip through the UI system's shared cinematic player
-  // (ui.playCinematic). No new modal machinery; reuses the existing player.
+  // Signal Archive — every recovered signal an entry on the dial (its still in the aperture); PLAY
+  // runs the clip through the UI system's shared cinematic player (ui.playCinematic).
   _renderArchive() {
-    const article = el('article', 'sf-codex-entry cx-archive');
-    const heading = el('h2', 'k-display k-t-title', 'Signal Archive');
-    article.appendChild(heading);
-    const count = el('p', 'cx-reader__meta', SIGNAL_ARCHIVE.length + ' recovered signals');
-    article.appendChild(count);
-    article.appendChild(el('p', 'k-sentence', 'Recovered transmission stills from the Reach corridor. Select a signal to replay its clip.'));
-    const row = el('ul', 'k-words k-words--row fh-cluster');
-    row.setAttribute('aria-label', 'Signal Archive');
-    for (const c of SIGNAL_ARCHIVE) {
-      const item = el('li');
-      const still = el('button', 'cx-still');
-      still.type = 'button';
-      still.setAttribute('aria-label', 'Play signal ' + c.id + ': ' + c.title);
-      const img = el('img');
-      img.src = c.poster;
-      img.alt = c.title;
-      still.appendChild(img);
-      still.addEventListener('click', () => { cue('confirm'); this._playCinematic(c.video, c.title); });
-      item.appendChild(still);
-      item.appendChild(el('div', 'cx-still__name', c.id + ' · ' + c.title));
-      item.appendChild(el('div', 'k-t-fine fh-fine', c.caption));
-      const play = el('button', 'k-word k-word--fine', 'Play');
+    // Each recovered signal is an entry: its still in the aperture, its log as the reading, and
+    // PLAY, the tab's one Lamp Key, under it (the clip runs through the UI's shared player).
+    const entries = SIGNAL_ARCHIVE.map((c) => {
+      const entry = makeEntry({
+        id: 'signal:' + c.id,
+        name: c.id + ' · ' + c.title,
+        sub: 'Recovered signal',
+        title: c.title,
+        meta: 'Recovered signal ' + c.id + ' · Reach corridor',
+        body: c.caption,
+        image: c.poster,
+      });
+      const play = el('button', 'k-word k-word--emph cx-play', 'Play');
       play.type = 'button';
       play.dataset.action = 'play:' + c.id;
       play.setAttribute('aria-label', 'Play signal ' + c.id + ': ' + c.title);
       play.addEventListener('click', () => { cue('confirm'); this._playCinematic(c.video, c.title); });
-      const verb = el('div');
-      verb.appendChild(play);
-      item.appendChild(verb);
-      row.appendChild(item);
-    }
-    article.appendChild(row);
-    this._body.appendChild(article);
+      try { dressLampKey(play); } catch (_) { /* a host without SVG keeps the word */ }
+      entry.article.appendChild(play);
+      return entry;
+    });
+    this._section('Recovered Signals', entries);
   },
 
   _playCinematic(video, title) {
@@ -1431,6 +1450,7 @@ export const codexScreen = {
       locked: entry.locked,
       cipher: parts ? (parts.cipher + '  ·  ').repeat(6) : '',
     });
+    this._alignReading();
     dial.plate.classList.toggle('is-fresh', !!fresh);
     if (fresh) {
       // replay the arrival (the ring draws, the art opens) on a fresh page
@@ -1439,6 +1459,24 @@ export const codexScreen = {
       dial.plate.classList.add('is-arriving');
     }
     this._syncTape();
+  },
+
+  /**
+   * The reading, the section scale and the entries' rail all stand on the plate's foot: the gap
+   * between the stage's bottom and the plate's is measured and handed to the sheet.
+   */
+  _alignReading() {
+    const root = this._codexRoot;
+    const host = this._dial && this._dial.host;
+    const stage = this._body;
+    if (!root || !host || !stage || typeof stage.getBoundingClientRect !== 'function') return;
+    if (host.hidden) { if (root.style && typeof root.style.removeProperty === 'function') root.style.removeProperty('--cx-foot-gap'); return; }
+    const s = stage.getBoundingClientRect();
+    const p = host.getBoundingClientRect();
+    if (!(s.height > 0) || !(p.height > 0)) return;
+    const z = archiveZoom(stage, s);
+    const gap = Math.max(0, Math.round((s.bottom - p.bottom) / z));
+    if (root.style && typeof root.style.setProperty === 'function') root.style.setProperty('--cx-foot-gap', gap + 'px');
   },
 
   /** The produced art an entry stands in the aperture (locked entries show theirs dimmed, blurred). */

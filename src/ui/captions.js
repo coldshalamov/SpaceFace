@@ -11,6 +11,10 @@ export const CAPTIONS_SEED = 16501;
 
 export const AUDIO_CUE_CAPTIONS = Object.freeze({
   well: 'Gravity well',
+  repulsor: 'Repulsor deployed',
+  cone: 'Cone deployed',
+  skim: 'Skim sheet deployed',
+  seed: 'Seed deployed',
   taut: 'Line taut',
   tetherTaut: 'Line taut',
   telegraph: 'Incoming telegraph',
@@ -18,7 +22,19 @@ export const AUDIO_CUE_CAPTIONS = Object.freeze({
 
 export const ACCESSIBILITY_AUDIO_CUE_TABLE = Object.freeze({
   well: Object.freeze({
-    id: 'a11y.well', kind: 'well', recipeId: 'sfx_anomaly_swell', caption: AUDIO_CUE_CAPTIONS.well,
+    id: 'a11y.well', kind: 'well', recipeId: 'sfx_field_deploy_well', caption: AUDIO_CUE_CAPTIONS.well,
+  }),
+  repulsor: Object.freeze({
+    id: 'a11y.repulsor', kind: 'repulsor', recipeId: 'sfx_field_deploy_repulsor', caption: AUDIO_CUE_CAPTIONS.repulsor,
+  }),
+  cone: Object.freeze({
+    id: 'a11y.cone', kind: 'cone', recipeId: 'sfx_field_deploy_cone', caption: AUDIO_CUE_CAPTIONS.cone,
+  }),
+  skim: Object.freeze({
+    id: 'a11y.skim', kind: 'skim', recipeId: 'sfx_field_deploy_skim', caption: AUDIO_CUE_CAPTIONS.skim,
+  }),
+  seed: Object.freeze({
+    id: 'a11y.seed', kind: 'seed', recipeId: 'sfx_field_deploy_seed', caption: AUDIO_CUE_CAPTIONS.seed,
   }),
   taut: Object.freeze({
     id: 'a11y.tether_taut', kind: 'taut', recipeId: 'sfx_doctrine_tether_spool', caption: AUDIO_CUE_CAPTIONS.taut,

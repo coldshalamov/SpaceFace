@@ -14,6 +14,10 @@
 import { mulberry32 } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { swarmDoctrineStamp } from '../data/swarmMode.js';
+import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';
+import { LAGRANGE_BOSS_ROLE } from './lagrangeCrucible.js';
+import { CRYO_BOSS_ROLE } from './cryoDriftArena.js';
+import { STORM_BOSS_ROLE } from './stormLatticeArena.js';
 
 /** Ring radius for a gate. C1 engagement scale: enemies arrive inside the frame envelope. */
 export const SURVIVAL_SPAWN_DISTANCE = 260;
@@ -84,6 +88,24 @@ function spawnIdOf(spawned) {
   if (spawned == null) return null;
   if (typeof spawned === 'object') return spawned.id != null ? spawned.id : null;
   return spawned;
+}
+
+// PQ-133.08: a law arena's boss wave fields a ROLE over the shared dreadnought hull — the
+// arena module's `bossRole` is the contract (`hullId` + `role` identify the package exactly;
+// neither alone does — `elite` chaff exists and the hull is arena-agnostic). The dressing kind
+// rides on `data.bossDressing` so the render layer can hang its machinery without the shared
+// enemy def gaining arena logic. Presentation-only; the boss fights identically without it.
+const LAW_ARENA_BOSS_ROLES = Object.freeze({
+  [LAGRANGE_BOSS_ROLE.law]: LAGRANGE_BOSS_ROLE,
+  [CINDER_BOSS_ROLE.law]: CINDER_BOSS_ROLE,
+  [CRYO_BOSS_ROLE.law]: CRYO_BOSS_ROLE,
+  [STORM_BOSS_ROLE.law]: STORM_BOSS_ROLE,
+});
+
+export function lawArenaBossDressing(arenaId, enemyId, role) {
+  const bossRole = typeof arenaId === 'string' ? LAW_ARENA_BOSS_ROLES[arenaId] : null;
+  if (!bossRole || enemyId !== bossRole.hullId || role !== bossRole.role) return null;
+  return { kind: bossRole.id, law: bossRole.law };
 }
 
 /**
@@ -173,6 +195,8 @@ export function materializeWaveBatch(ctx, request) {
       if (doctrine) spec.data.ai.combatDoctrineId = doctrine;
       spec.data.runWave = Number.isInteger(req.wave) ? req.wave : 0;
       if (typeof req.role === 'string') spec.data.runRole = req.role;
+      const bossDressing = lawArenaBossDressing(req.arenaId, req.enemyId, req.role);
+      if (bossDressing) spec.data.bossDressing = bossDressing;
       const spawned = helpers.spawnEntity(spec);
       const id = spawnIdOf(spawned);
       if (id == null) continue;

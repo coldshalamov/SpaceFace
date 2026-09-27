@@ -35,6 +35,7 @@ export default defineEncounter(trigger, {
     size: [2, 3],
     doctrine: 'scavenger',
     formation: 'loose',
+    cohortRecipe: 'fodder_river',
   },
   bark: 'ambush_tele',
 });

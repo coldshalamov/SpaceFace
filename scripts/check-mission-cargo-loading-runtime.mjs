@@ -12,6 +12,13 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
+// Headless software GL stretches the pre-menu warmup past the generic 10s wait (the station-tabs
+// probe budgets the same environment at 60s). Budget the environment, assert the behavior.
+const MENU_TIMEOUT_MS = 60000;
+// Same starvation allowance for short render/state waits: the loaded headless host brick-walls
+// frames for hundreds of ms, so waits that would pass in well under a second on a quiet host
+// need real headroom. These budget wall-clock, not gameplay behavior.
+const UI_TIMEOUT_MS = 30000;
 const { chromium } = await loadPlaywright();
 let server = null;
 let browser = null;
@@ -33,7 +40,7 @@ try {
   // this is an environment allowance, not a behavioural assertion being loosened. Everything
   // these checks actually assert happens after boot and is untouched.
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
-  await waitVisible(page, '[data-screen="mainMenu"]', 'main menu');
+  await waitVisible(page, '[data-screen="mainMenu"]', 'main menu', MENU_TIMEOUT_MS);
   assert.equal(await clickButton(page, 'New Game'), true, 'main menu should expose New Game');
   await waitVisible(page, '[data-screen="newGame"] .sf-ng-route', 'new-game first-session rail');
   assert.equal(await clickButton(page, 'Launch'), true, 'New Game should expose Launch');
@@ -53,7 +60,27 @@ try {
     sf.bus.emit('dock:docked', { stationId: station.data.stationId });
     return { stationId: station.data.stationId, label: station.data.name || station.data.stationName || station.data.stationId };
   });
-  await waitVisible(page, '[data-screen="station"]', 'station hub after dock', 15000);
+  await waitVisible(page, '[data-screen="station"]', 'station hub after dock', UI_TIMEOUT_MS)
+    .catch(async (err) => {
+      const dump = await page.evaluate(() => {
+        const sf = window.SF;
+        const screens = [...document.querySelectorAll('[data-screen]')].map((el) => ({
+          id: el.dataset.screen,
+          display: getComputedStyle(el).display,
+          ariaHidden: el.getAttribute('aria-hidden'),
+          w: Math.round(el.getBoundingClientRect().width),
+        }));
+        const st = sf && sf.state;
+        return {
+          mode: st && st.mode,
+          docked: st && st.ui && st.ui.docked,
+          dockedStationId: st && st.ui && st.ui.dockedStationId,
+          screens,
+        };
+      });
+      throw new Error(err.message + ' :: screen state ' + JSON.stringify(dump)
+        + ' :: page issues ' + JSON.stringify(issues.errorIssues().slice(-5)));
+    });
 
   await stationTab(page, 'missions');
   const seeded = await page.evaluate(() => {
@@ -113,7 +140,7 @@ try {
     const state = window.SF.state;
     const mission = state.missions.active.find((m) => m.title === 'Probe contract cargo loading' && m.status === 'active');
     return !!(mission && state.ui.trackedMissionId === mission.id && state.nav.waypoint && state.nav.waypoint.missionId === mission.id);
-  }, null, { timeout: 10000 }).catch(async (err) => {
+  }, null, { timeout: UI_TIMEOUT_MS }).catch(async (err) => {
     const report = await page.evaluate(() => {
       const state = window.SF.state;
       const mission = state.missions.active.find((m) => m.title === 'Probe contract cargo loading');
@@ -155,9 +182,11 @@ try {
     function text(el) { return (el && el.textContent || '').replace(/\s+/g, ' ').trim(); }
   });
   assert.equal(buyReport.ok, true, 'Market should let the player buy the tracked contract commodity: ' + JSON.stringify(buyReport));
-  assert.match(buyReport.buyText || '', /Confirm Purchase/i, 'Buy affordance should expose the current purchase commitment');
+  // The ORRERY market rewrite authored `Buy ${qty}` on the commit affordance (the quoted total
+  // sits beside it) — the pin is verb + explicit quantity, not the pre-rewrite "Confirm Purchase".
+  assert.match(buyReport.buyText || '', /^Buy\s+\d/i, 'Buy affordance should name the verb and quantity it commits');
   await page.waitForFunction(({ cmdtyId, beforeOwned }) => (window.SF.state.player.cargo.items[cmdtyId] || 0) >= beforeOwned + 1,
-    { cmdtyId: buyReport.cmdtyId, beforeOwned: buyReport.beforeOwned }, { timeout: 10000 });
+    { cmdtyId: buyReport.cmdtyId, beforeOwned: buyReport.beforeOwned }, { timeout: UI_TIMEOUT_MS });
 
   marketReport = await trackedMarketReport(page);
   assert.equal(marketReport.trackedMissionId, buyReport.missionId, 'cargo purchase should preserve tracked mission id');
@@ -171,7 +200,7 @@ try {
   await page.waitForFunction(() => {
     const state = window.SF && window.SF.state;
     return !!(state && state.mode === 'flight' && state.ui && state.ui.docked === false);
-  }, null, { timeout: 15000 });
+  }, null, { timeout: UI_TIMEOUT_MS });
   await page.waitForFunction(() => {
     const tracker = document.querySelector('.sf-mission-tracker');
     const arrow = document.querySelector('.sf-objarrow');
@@ -181,13 +210,40 @@ try {
     const text = (tracker.textContent || '').replace(/\s+/g, ' ');
     const box = tracker.getBoundingClientRect();
     return tcs.display !== 'none' && box.width > 20 && /sell/i.test(text) && acs.display !== 'none';
-  }, null, { timeout: 10000 }).catch(async (err) => {
+  }, null, { timeout: UI_TIMEOUT_MS }).catch(async (err) => {
     throw new Error('Timed out waiting for flight destination line after cargo loading: '
       + JSON.stringify(await readFlightObjectiveHud(page)) + ' :: ' + err.message);
   });
   const hud = await readFlightObjectiveHud(page);
   assert.equal(hud.mode, 'flight', 'undock should return to flight mode');
   assert.equal(hud.waypointMissionId, hud.missionId, 'flight nav should still target the loaded contract mission');
+  // ETA is omitted from the readings when closing speed is unknown (hud.js drops the placeholder
+  // dash on purpose) — a parked ship legitimately shows none. Engage the autopilot on the contract
+  // waypoint itself (waypoint untouched; ui:setCourse would steal it) so the tracker prints a
+  // real ETA earned through the flight system rather than asserting the retired placeholder.
+  await page.evaluate(() => {
+    const state = window.SF.state;
+    const wp = state.nav && state.nav.waypoint && state.nav.waypoint.pos;
+    if (!wp) return;
+    state.nav.autopilot = {
+      active: true,
+      target: { x: wp.x, z: wp.z },
+      targetEntityId: state.nav.waypoint.targetEntityId ?? null,
+      label: state.nav.waypoint.label || 'Contract destination',
+      arrivalRadius: 12,
+      status: 'armed',
+    };
+    window.SF.bus.emit('nav:autopilot', state.nav.autopilot);
+  });
+  await page.waitForFunction(
+    () => /ETA/i.test((document.querySelector('.sf-mission-tracker') || {}).textContent || ''),
+    null, { timeout: UI_TIMEOUT_MS });
+  const hudMoving = await readFlightObjectiveHud(page);
+  // Park the ship again: the check asserts the destination surface, not an approach leg.
+  await page.evaluate(() => {
+    const ap = window.SF.state.nav && window.SF.state.nav.autopilot;
+    if (ap) { ap.active = false; ap.status = 'idle'; }
+  });
   // Live flight HUD after this route (observed, not inferred): the tracker is one destination
   // line — "Sell 1u Iron Ore at Coalition HQ · 1.4k WU · ETA — · ↙". CURRENT OBJECTIVE and
   // AMBER DIAMOND / GOAL were retired as tracker chrome; the world diamond is the goal marker.
@@ -199,8 +255,8 @@ try {
     'flight HUD should carry the loaded contract destination: ' + JSON.stringify(hud));
   assert.match(hud.trackerText, /\d+(?:\.\d+)?k?\s*WU/i,
     'flight HUD destination line should carry distance to the loaded contract: ' + JSON.stringify(hud));
-  assert.match(hud.trackerText, /ETA/i,
-    'flight HUD destination line should carry ETA to the loaded contract: ' + JSON.stringify(hud));
+  assert.match(hudMoving.trackerText, /ETA/i,
+    'flight HUD destination line should carry ETA to the loaded contract once closing: ' + JSON.stringify(hudMoving));
   assert.match(hud.trackerText, /[↑↗→↘↓↙←↖]/,
     'flight HUD destination line should carry bearing to the loaded contract: ' + JSON.stringify(hud));
   assert.equal(hud.markerVisible, true,
@@ -319,7 +375,7 @@ async function finishOnboardingForProbe(page) {
     'cargo-loading probe must enter the ordinary post-tutorial mission flow');
 }
 
-async function waitVisible(page, selector, label, timeout = 10000) {
+async function waitVisible(page, selector, label, timeout = UI_TIMEOUT_MS) {
   await page.waitForFunction((sel) => {
     const el = document.querySelector(sel);
     if (!el) return false;

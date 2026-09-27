@@ -196,6 +196,10 @@ export const wingMorale = {
         const ai = entity.data.ai || (entity.data.ai = {});
         if (ai.wingMorale && ai.wingMorale.reason === rec.reason) delete ai.wingMorale;
         if (ai.forceFlee === true && ai._wingMoraleUntil === rec.until) delete ai.forceFlee;
+        // The scatter stamp's fsm must end with the hold: effectiveActivityForAI reads fsm:'flee'
+        // at every decision gate, so a survivor that keeps it would flee forever (the 10k WU
+        // kite) instead of re-pressing once the shock expires.
+        if (ai.fsm === 'flee' && ai._wingMoraleUntil === rec.until) delete ai.fsm;
         if (ai._wingMoraleUntil === rec.until) delete ai._wingMoraleUntil;
         if (ai._moraleUntil === rec.until) delete ai._moraleUntil;
         if (entity.data.morale === 'scattered') delete entity.data.morale;

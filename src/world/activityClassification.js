@@ -67,6 +67,7 @@ export function entityPresenceRadius(entity) {
     finite(entity && entity.radius),
     finite(data.visualRadius),
     finite(data.placeRadius),
+    finite(data.placeTargetRadius),
     entity && entity.type === 'station' ? finite(data.dockRadius) : 0,
   );
 }

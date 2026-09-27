@@ -45,7 +45,7 @@ test('empty-space and contact field motion is uniform-driven; steady descriptors
 test('six ordinary fields plus appended Seed are visible; bounded pool does not drop Seed',()=>{
  const active=Array.from({length:6},(_,i)=>field('well','well-'+i));active.push(field('seed'));
  const owner=new FieldForcePresentation(new THREE.Scene()),s=state(active);prime(owner,s);
- assert.equal(owner.stats.active,7);assert.equal(owner.stats.surfaces,6*19+16);assert.equal(owner.stats.dropped,0);
+ assert.equal(owner.stats.active,7);assert.equal(owner.stats.surfaces,6*FIELD_SIGNATURES.well.surfaces+FIELD_SIGNATURES.seed.surfaces);assert.equal(owner.stats.dropped,0);
  const seed=owner.slots.find(x=>x.kind==='seed');assert.ok(seed?.seen);
  owner.dispose();
 });

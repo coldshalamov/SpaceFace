@@ -122,6 +122,8 @@ test('the default Caved Shaft carrier exposes archive, flavor, plate, and repeat
 
   const spawned = [];
   const system = Object.assign({}, worldProto, {
+    // Non-live-actor POIs persist as dressing rows, which requires the world state contract.
+    state: { world: {}, entities: new Map(), nextEntityId: 1 },
     helpers: {
       spawnEntity(spec) {
         const entity = { id: spawned.length + 1, alive: true, ...spec };
@@ -168,7 +170,7 @@ test('a second close scan returns the durable frame through the real mission and
 
   // The first ordinary close reading can already be filed before the hardened-probe job is taken.
   h.scanner._pulse(h.state, h.player, 12);
-  const signalId = `signal:entity:${h.shaft.id}`;
+  const signalId = `signal:poi:${POI_ID}`;
   assert.equal(h.state.signalInvestigation.records[signalId].sourceKind, 'archive');
   h.bus.emit('signal:track', { signalId });
   h.scanner._updateTrackedSignal(h.state);

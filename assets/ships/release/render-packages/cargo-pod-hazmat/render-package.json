@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "58e4c02b6285551a99727b644d61cfb3e2a6ddb2ef9914b64e084d9d1d5058d6",
+  "contentHash": "f48e7c21bcf37348bc8dd35e48aae70c60519ee3e45eb755651d4c6783f86c6c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1065,7 +1065,7 @@
     },
     "sourceManifest": {
       "bytes": 189651,
-      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
+      "sha256": "3ecc49675c4461c1d5dad70d57139018370959475d3875fbb52431e71251f225",
       "uri": "pilots.json"
     }
   },
@@ -1536,7 +1536,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_cargo_pod_hazmat.glb"
   },
-  "runtimeHash": "f1df70ed37e9fd452c4083f7393374d4bd59fa4c0e670a944b440b5adaecc5d9",
+  "runtimeHash": "a0f1f45c9dcadcc3ff69cb90827bcf20f438a59170c6bd97d31ecf8317b74f66",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

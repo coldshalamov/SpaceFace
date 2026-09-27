@@ -42,6 +42,10 @@ import {
   preferRoleCounterOffers,
   unbindSwarmRoleProblems,
 } from './survivalSwarm.js';
+import {
+  EVOLUTION_OFFER_KIND,
+  evolutionOffersFor,
+} from '../data/survivalEvolutions.js';
 import { WEAPONS } from '../data/weapons.js';
 import { buildSlotList, fits } from './ships.js';
 
@@ -120,16 +124,32 @@ export const survivalDraft = {
     if (!run || !isSwarmRuleset(run.ruleset) || !this._draftInput) return offers;
     // Preserve the stock, but re-evaluate fitting targets after each purchase. Two offers may
     // initially want the same empty slot; the second purchase must see the new loadout.
-    const legal = offerDraft({ ...this._draftInput, ...this._activeLoadout(), count: 100 }).offers || [];
-    return offers.map(offer => {
+    const loadout = this._activeLoadout();
+    const legal = offerDraft({ ...this._draftInput, ...loadout, count: 100 }).offers || [];
+    const legalById = new Map(legal.map((entry) => [entry.id, entry]));
+    // Evolutions are not seeded cards — they exist exactly when the build holds their parts, so
+    // they re-evaluate against the live loadout the same way slot legality does after a purchase.
+    // A part that arrives mid-armory (bought, then stripped at the refit) turns the row on
+    // without waiting for the next wave's snapshot.
+    for (const entry of this._evolutionOffers(loadout)) legalById.set(entry.id, entry);
+    const rows = offers.map(offer => {
       const purchased = this._purchased?.has(offer.id) === true;
-      const current = legal.find(entry => entry.id === offer.id);
-      const price = swarmPurchasePrice(offer.defId);
+      const current = legalById.get(offer.id);
+      const price = offer.kind === EVOLUTION_OFFER_KIND ? offer.price : swarmPurchasePrice(offer.defId);
       return { ...offer, ...(current || {}), price, purchased,
         available: !purchased && !!current && price != null && run.credits >= price,
         unavailableReason: purchased ? 'Fitted' : !current ? 'No compatible slot' :
           run.credits < price ? `Save ${price - run.credits} more cr` : null };
     });
+    const shown = new Set(rows.map((row) => row.id));
+    for (const entry of this._evolutionOffers(loadout)) {
+      if (shown.has(entry.id)) continue;
+      const purchased = this._purchased?.has(entry.id) === true;
+      rows.push({ ...entry, purchased,
+        available: !purchased && run.credits >= entry.price,
+        unavailableReason: purchased ? 'Fitted' : run.credits < entry.price ? `Save ${entry.price - run.credits} more cr` : null });
+    }
+    return rows;
   },
 
   /** PQ-175.02 catalog audit. Pure data; does not touch the open draft. */
@@ -237,10 +257,31 @@ export const survivalDraft = {
       return;
     }
     this._offers = preferRoleCounterOffers(offers, this.state);
+    // Named syntheses ride the armory list, gated to swarm: the gauntlet draft grants its pick
+    // outright and has no run wallet, so "explicit conversion and cost" cannot exist there.
+    if (isSwarmRuleset(run.ruleset)) {
+      this._offers = this._offers.concat(this._evolutionOffers(loadout));
+    }
     this._emit('run:draftOffered', {
       wave: run.wave, offers: this._offers.map((o) => ({ ...o })), rerolls: 0,
     });
     this._openScreen(CRUCIBLE_DRAFT_SCREEN_ID);
+  },
+
+  /**
+   * The synthesis rows a build can take right now. Empty on non-swarm rulesets and on hulls that
+   * hold no complete part set — the absence is the offer state, never an error to report.
+   */
+  _evolutionOffers(loadout) {
+    const player = this.state && this.state.player;
+    const shipDef = loadout && loadout.hullId ? SHIP_DEF_BY_ID.get(loadout.hullId) : null;
+    if (!shipDef) return [];
+    return evolutionOffersFor({
+      hullId: loadout.hullId,
+      slots: buildSlotList(shipDef),
+      fittings: loadout.fittings,
+      moduleInventory: (player && player.moduleInventory) || [],
+    });
   },
 
   _openRefit() {
@@ -338,6 +379,10 @@ export const survivalDraft = {
       const pending = this._pendingPurchase;
       if (!pending || payload.credits !== pending.price) return;
       this._pendingPurchase = null;
+      if (pending.kind === EVOLUTION_OFFER_KIND) {
+        this._resolveEvolutionPurchase(pending);
+        return;
+      }
       // Fitting by definition is the existing ships-owner purchase route. There is no temporary
       // inventory grant to leak if fitting is refused after the wallet authorizes the purchase.
       const fitted = !!this._ships()?.fitModule({ slotIndex: pending.slotIndex, defId: pending.defId });
@@ -488,6 +533,21 @@ export const survivalDraft = {
       this._notice = 'Fitting is unavailable. Your money is safe.';
       return false;
     }
+    if (offer.kind === EVOLUTION_OFFER_KIND) {
+      // Mounted parts come off BEFORE the blocker: the conversion frees their hardpoints, so the
+      // fitting authority must judge the build as it will look after the trade, not before it.
+      // A refused wallet then merely leaves the parts sitting in the hold — nothing is charged
+      // and nothing is consumed.
+      const fittings = this._activeLoadout().fittings;
+      for (const defId of offer.consumes || []) {
+        const slotIndex = fittings.indexOf(defId);
+        if (slotIndex < 0) continue;
+        if (!ships.unfitModule({ slotIndex })) {
+          this._notice = 'A synthesis part would not come off. Nothing was charged.';
+          return false;
+        }
+      }
+    }
     const blocker = ships.moduleFitBlocker?.({ slotIndex: offer.slotIndex, def: MODULE_DEF_BY_ID.get(offer.defId) });
     if (blocker) {
       this._notice = blocker.text || 'That item no longer fits. Your money is safe.';
@@ -501,6 +561,70 @@ export const survivalDraft = {
       return false;
     }
     return this._purchased.has(offer.id);
+  },
+
+  /**
+   * The named synthesis, after the wallet has already said yes.
+   *
+   * Order is the whole contract, because the charge is real by the time this runs:
+   *   1. Unfit the consumed parts that are mounted — every failure aborts BEFORE anything is
+   *      consumed, with unfitted parts simply waiting in the run inventory;
+   *   2. the parts are removed from the run (conversion — they do not come back as spares);
+   *   3. the evolved item fits where the offer said it would;
+   *   4. on any post-consumption failure the parts are re-granted to the inventory and the wallet
+   *      is refunded — a refused fit can never eat both the money and the build.
+   */
+  _resolveEvolutionPurchase(pending) {
+    const ships = this._ships();
+    const player = this.state && this.state.player;
+    const inventory = (player && player.moduleInventory) || [];
+    const refund = (text) => {
+      for (const defId of pending.consumes) ships.grantModule({ defId, reason: 'crucible:evolutionRefund' });
+      this._emit('run:awardRequested', { credits: pending.price, reason: 'crucible:purchaseRefund' });
+      this._notice = text;
+    };
+    if (!ships || !player || !Array.isArray(inventory)) {
+      refund('The synthesis could not run. Your parts and credits are safe.');
+      return;
+    }
+    const fittings = this._activeLoadout().fittings;
+    const mounted = pending.consumes
+      .map((defId) => ({ defId, slotIndex: fittings.indexOf(defId) }))
+      .filter((entry) => entry.slotIndex >= 0);
+    for (const { slotIndex } of mounted) {
+      if (!ships.unfitModule({ slotIndex })) {
+        refund(`A part would not come off. ${pending.price} cr refunded — nothing was consumed.`);
+        return;
+      }
+    }
+    for (const defId of pending.consumes) {
+      const index = inventory.findIndex((item) => item && item.defId === defId);
+      if (index < 0) {
+        refund('A synthesis part went missing mid-conversion. The run has been made whole.');
+        return;
+      }
+      inventory.splice(index, 1);
+    }
+    const fitted = !!ships.fitModule({ slotIndex: pending.slotIndex, defId: pending.defId });
+    if (!fitted) {
+      refund(`${pending.name} could not be fitted. Parts returned and ${pending.price} cr refunded.`);
+      return;
+    }
+    this._purchased.add(pending.id);
+    const consumedNames = pending.consumes
+      .map((defId) => (MODULE_DEF_BY_ID.get(defId) || {}).name || defId)
+      .join(' + ');
+    this._notice = `${pending.name} synthesized — ${consumedNames} consumed. Buy again or launch the next round.`;
+    this._emit('run:modifierRecordRequested', {
+      record: {
+        kind: 'evolution', offerId: pending.id, verb: pending.verb, defId: pending.defId,
+        slotIndex: pending.slotIndex, replaced: null, consumes: pending.consumes.slice(),
+        wave: this._wave,
+      },
+      draft: { wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id },
+      wave: this._wave,
+    });
+    this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
   },
 
   /**

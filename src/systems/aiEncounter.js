@@ -72,6 +72,7 @@ const REINFORCEMENT_PACKAGES = Object.freeze({
     doctrine: 'scavenger',
     factionId: 'faction_reach',
     squadPrefix: 'sg06_reaver_screen',
+    cohortRecipe: 'fodder_crescent',
   }),
   iron_maw_screen: Object.freeze({
     typeId: 'wasp_swarmer',
@@ -83,6 +84,7 @@ const REINFORCEMENT_PACKAGES = Object.freeze({
     doctrine: 'scavenger',
     factionId: 'faction_vael',
     squadPrefix: 'iron_maw_screen',
+    cohortRecipe: 'fodder_crescent',
   }),
 });
 
@@ -322,6 +324,7 @@ export const aiEncounter = {
         doctrine: pkg.doctrine,
         factionId: pkg.factionId,
         squadId,
+        cohortRecipe: pkg.cohortRecipe || null,
         callerId: command.callerId == null ? null : command.callerId,
       });
     }
@@ -385,6 +388,7 @@ export const aiEncounter = {
         encounterId: `sg06:${pending.commandSeq}`,
         encounterKind: 'sg06_reinforcement',
         encounterRole: 'reinforcement',
+        cohortRecipe: pending.cohortRecipe || undefined,
         activity: normalizeActivity({
           kind: ActivityKind.ATTACK_RUN,
           reason: `sg06_reinforcement:${pending.packageId}`,
