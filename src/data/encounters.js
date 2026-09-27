@@ -399,6 +399,10 @@ export const ENCOUNTER_BARKS = Object.freeze({
     'VAEL: another reading, another watch. Withdraw from the old door.',
     'VAEL: the obelisk records you. Our ring closes with its count.',
   ]),
+  // B7 civilian set pieces
+  yard_towout_alert: 'YARD CONTROL: dead hauler drifting on the crusher mouth. Tow it clear or the jaw eats it.',
+  archive_dive_alert: 'ARCHIVE RELAY: dead core pinging in the field. Scavenger flight inbound — scan it before they strip it.',
+  liner_toll_run_alert: 'TRAFFIC ALERT: liner holding at the gate line for customs scan. Escort her through or break the picket.',
   // salvage
   salvage_ping: Object.freeze([
     'Salvage transponder, faint. Derelict field marked.',
