@@ -7536,6 +7536,15 @@ _drawGalaxy(g, state, w, h) {
     // ORRERY: the sensor lattice behind the chart, brightening in a lens under the pointer.
     drawSensorLattice(g, w, h, { pointer: this._pointer, a: 0.075 });
 
+    const field = this._clearField(w, h);
+    const fieldPad = 14;
+    const inGalaxyField = (x, y) => x >= field.x - fieldPad && x <= field.x + field.width + fieldPad
+      && y >= field.y - fieldPad && y <= field.y + field.height + fieldPad;
+    g.save();
+    g.beginPath();
+    g.rect(field.x - fieldPad, field.y - fieldPad, field.width + fieldPad * 2, field.height + fieldPad * 2);
+    g.clip();
+
     // The token's rest size follows the chart's scale: about half the shortest charted lane, so the
     // produced art reads (≈64-80 px at the default framing) and neighbours never touch.
     let shortest = Infinity;
@@ -7772,6 +7781,7 @@ _drawGalaxy(g, state, w, h) {
 
       // Sector label + its presence rows, as ONE solver-managed block (a name and the rows that
       // belong to it travel together, so the rows can never orphan from their name).
+      const nodeInField = inGalaxyField(x, y);
       const nodeLines = [n.name];
       if (n.current && opTag && shipAt && Math.hypot(shipAt.x - x, shipAt.y - y) <= r) {
         nodeLines.push(opTag);
@@ -7782,7 +7792,7 @@ _drawGalaxy(g, state, w, h) {
         : [];
       for (const row of presenceRows) nodeLines.push(`◆ ${row.label}`);
       if (stale) nodeLines.push('STALE');
-      labelCandidates.push(makeMapLabelCandidate(g, {
+      if (nodeInField) labelCandidates.push(makeMapLabelCandidate(g, {
         id: `sector:${n.id}`,
         kind: n.current ? 'gate' : 'station',
         selected: !!(this._selectedTarget && this._selectedTarget.id === n.id),
@@ -7842,6 +7852,8 @@ _drawGalaxy(g, state, w, h) {
         }
       }
     }
+
+    g.restore();
 
     // Resolve every sector block against the others before any of them paints. The goal plate is
     // reserved first (below) so a node label can never be placed under it.

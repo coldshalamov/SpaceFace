@@ -138,7 +138,7 @@ ${C} .gm-frame-group .gm-frame-btn:disabled { color:rgb(${BONE} / .58) !importan
 /* setting a course is a commit verb in bone at the reading's weight; the Hand lights where you reach it */
 ${C} :is(#gm-set-course-btn, .gm-plot-btn) { ${PLAIN} width:auto !important; min-height:0 !important; padding:6px 0 10px !important; justify-content:flex-start !important;
   font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125% !important; font-variation-settings:"wdth" 125, "wght" 800 !important; font-weight:800 !important;
-  font-size:18px !important; letter-spacing:.1em !important; text-transform:uppercase !important; color:rgb(248 244 234) !important; }
+  font-size:16px !important; letter-spacing:.1em !important; text-transform:uppercase !important; color:rgb(248 244 234) !important; }
 ${C} :is(#gm-set-course-btn, .gm-plot-btn)::before, ${C} :is(#gm-set-course-btn, .gm-plot-btn)::after { ${RESET_PSEUDO} }
 ${C} :is(#gm-set-course-btn, .gm-plot-btn):not(:disabled):is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important;
   background:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / 0)) 0 100% / 100% 2px no-repeat !important; }
@@ -149,7 +149,8 @@ ${C} #gm-engage-route-btn.orr-lampkey { width:auto !important; align-self:flex-s
 ${C} #gm-engage-route-btn.orr-lampkey[data-engage-state="nav:abortRoute"]:not(:disabled)::before { background:var(--dp-danger, #ff5038) !important; }
 html:not(.sf-reduce-motion) ${C} #gm-engage-route-btn.orr-lampkey:not(:disabled)::after { animation:orr-lampkey-sheen 6s linear infinite !important; }
 ${C} :is(.gm-frame-reason, .gm-plot-reason, .gm-engage-reason, .gm-ribbon-reason) { color:rgb(${BONE} / .72) !important; }
-${C} .gm-place-btn { ${PLAIN} ${LABEL} min-height:28px !important; padding:3px 0 !important; font-size:12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
+${C} .gm-place-actions { gap:0 22px !important; }
+${C} .gm-place-btn { ${PLAIN} ${LABEL} min-height:24px !important; padding:2px 0 !important; font-size:12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
 ${C} .gm-place-btn::before { all:unset !important; content:"›" !important; margin-right:8px !important; color:rgb(${BONE} / .6) !important; font-size:15px !important; letter-spacing:0 !important; }
 ${C} .gm-place-btn::after { ${RESET_PSEUDO} }
 ${C} .gm-place-btn:not(:disabled):is(:hover, :focus-visible) { outline:none !important; background:linear-gradient(0deg, rgb(${BONE} / .7) 0 2px, transparent 2px) 0 100% / 100% 100% no-repeat !important; }
