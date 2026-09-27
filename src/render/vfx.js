@@ -35,6 +35,7 @@ import { StationOperationVfx } from './vfx/stationOperationVfx.js';
 import { BombDetonationVfx } from './vfx/bombDetonationVfx.js';
 import { StatusMatterVfx } from './vfx/statusMatterVfx.js';
 import { CombatContactVfx } from './vfx/combatContactVfx.js';
+import { DamagedPortVfxPlanner } from './vfx/damagedPortVfx.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { createEmergentPrimitivePools } from './forceLanguage/emergentPrimitivePools.js';
@@ -1242,6 +1243,8 @@ export const vfx = {
     this._bombDetonationVfx = null;
     this._statusMatterVfx = null;
     this._combatContactVfx = null;
+    this._damagedPortVfx = new DamagedPortVfxPlanner();
+    this._damagedPortVfxRows = [];
     this._arcadeStructuralSerial = 0;
     this._collisionContactTicks = new Map();
     this._collisionMediumTicks = new Map();
@@ -2051,7 +2054,6 @@ export const vfx = {
     this._explosionRupture = new ExplosionRupture(scene, {
       localize: (x, z, out) => this._toLocalXZ(x, z, out),
     });
-    this._gasVentTick = 0;
     this._gasAblationAt = new Map();
     for (let i = 0; i < SPRITE_CAP; i++) {
       this._spr.push({
@@ -2253,6 +2255,7 @@ export const vfx = {
     for (const name of ACTION_VFX_EVENTS) add(name, (p) => this._onActionVfx(name, p));
     for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
       add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); });
+      add(name, () => this._resetDamagedPortVfx());
     }
     const clearTumbleCadenceFor = (p) => {
       const id = p && (p.id ?? p.entityId ?? p.targetId);
@@ -4290,10 +4293,6 @@ export const vfx = {
           '#ffb36a', '#3a1710', 1.2);
       }
       if (!this._isReduced()) this._flashLight({ x: pos.x, z: pos.z }, '#ff7040', 2.2, 11, 90);
-      if (this._weaponPresenter && this._weaponPresenter.quarks && tgt && tgt.hp != null && tgt.maxHp != null && tgt.hp / tgt.maxHp < 0.35) {
-        const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
-        this._weaponPresenter.quarks.spawnDamageVenting(local.x, 0.35, local.z, nx, 0.2, nz, 6);
-      }
     }
   },
 
@@ -7950,7 +7949,7 @@ export const vfx = {
     beam.t += dt;
     beam.shaderShared.time.value = beam.t;
     beam.shaderShared.power.value = accessibility.flashOpacityScale;
-    beam.shaderShared.motion.value = reduced ? .12 : 1;
+    beam.shaderShared.motion.value = reduced ? 0 : 1;
     beam.shaderShared.flow.value = beam.verb === 'extract' ? -1 : 1;
     if (!beam.active) {
       beam.release = Math.max(0, beam.release - dt / MINING_BEAM_RELEASE_S);
@@ -11241,8 +11240,8 @@ export const vfx = {
       context.depthWidth = 0;
       context.depthHeight = 0;
       this._weaponPresenter.update(dt, context);
-      this._updateDamageVenting(dt);
     }
+    this._updateDamageVenting(dt);
     const trailScroll = (this._t * 0.35) % 1;
     if (this._particleMat) {
       if (this._particleMat.uniforms.uTrailScroll) this._particleMat.uniforms.uTrailScroll.value = trailScroll;
@@ -11651,72 +11650,67 @@ export const vfx = {
     return emitted;
   },
 
+  _resetDamagedPortVfx() {
+    this._damagedPortVfx?.reset();
+    if (this._damagedPortVfxRows) this._damagedPortVfxRows.length = 0;
+    this._damageVentingTimer = 0;
+  },
+
   _updateDamageVenting(dt) {
-    if (!this._weaponPresenter || !this._weaponPresenter.quarks) return;
+    if (!this._damagedPortVfx || !this.state) return 0;
     this._damageVentingTimer = (this._damageVentingTimer || 0) + dt;
-    if (this._damageVentingTimer < 0.14) return;
+    if (this._damageVentingTimer < 0.14) return 0;
     this._damageVentingTimer = 0;
 
     const state = this.state;
-    if (!state) return;
+    const rows = this._damagedPortVfx.collect(state, this._damagedPortVfxRows);
+    if (!rows.length) return 0;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
-    if (player && player.alive && player.pos && player.hp != null && player.maxHp != null) {
-      if (player.hp / player.maxHp <= 0.35) {
-        const local = this._toLocalXZ(player.pos.x, player.pos.z, this._spawnLocalXZ);
-        const rot = player.rot || 0;
-        const rearX = -Math.cos(rot);
-        const rearZ = -Math.sin(rot);
-        this._emitGasVent(player, local, rearX, rearZ, 1.0);
+    const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
+    const drawSq = drawWu * drawWu;
+    let emitted = 0;
+    for (const row of rows) {
+      const body = this._ent(row.entityId);
+      if (player?.pos && body?.pos) {
+        const dx = body.pos.x - player.pos.x;
+        const dz = body.pos.z - player.pos.z;
+        if (dx * dx + dz * dz > drawSq) continue;
+      }
+      const point = row.contactPoint;
+      if (row.mode === 'rupture' && this._scene) {
+        // ActionVfx owns the broad folded vent primitive. A subsystem-qualified kind keeps two
+        // independent damaged ports on one hull from collapsing into one slot.
+        if (this._onActionVfx('salvage:reactorVented', {
+          targetId: row.entityId,
+          subsystemId: row.subsystemId,
+          kind: `${row.subsystemId}:${row.phase}`,
+          contactPoint: point,
+          direction: row.direction,
+          radius: row.radius,
+          attachToTarget: true,
+          seed: row.seed,
+        })) emitted++;
+      }
+      if (this._gas) {
+        const occluder = row.occluder;
+        if (this._gas.emitVent({
+          world: true,
+          x: point.x,
+          y: point.y,
+          z: point.z,
+          heading: row.heading,
+          severity: row.severity,
+          scale: row.scale,
+          lifeScale: row.lifeScale,
+          seed: row.seed,
+          occluderX: occluder.x,
+          occluderY: occluder.y,
+          occluderZ: occluder.z,
+          occluderRadius: occluder.radius,
+        })) emitted++;
       }
     }
-
-    const targetId = state.player && state.player.targetId;
-    if (targetId != null) {
-      const target = this._ent(targetId);
-      if (target && target.alive && target.pos && target.hp != null && target.maxHp != null) {
-        if (target.hp / target.maxHp <= 0.35) {
-          const local = this._toLocalXZ(target.pos.x, target.pos.z, this._spawnLocalXZ);
-          const rot = target.rot || 0;
-          const rearX = -Math.cos(rot);
-          const rearZ = -Math.sin(rot);
-          this._emitGasVent(target, local, rearX, rearZ, 0.78);
-        }
-      }
-    }
-  },
-
-  /**
-   * Pressurised coolant leaving a hull breach. This REPLACES the three.quarks damageVenting
-   * emitter, which the 2026-09-16 audit records as foreign work in progress: venting is
-   * participating matter, not a particle spray. It runs on a slower beat than the 0.14 s damage
-   * cadence because a volume body lives about a second - firing one every tick would fill the
-   * pool with copies of itself instead of reading as a leak.
-   */
-  _emitGasVent(entity, local, rearX, rearZ, strength) {
-    if (!this._gas || !entity) return false;
-    this._gasVentTick = ((this._gasVentTick || 0) + 1) % 3;
-    if (this._gasVentTick !== 0) return false;
-    const radius = entity.radius || 6;
-    const hp = Number.isFinite(entity.hp) && Number.isFinite(entity.maxHp) && entity.maxHp > 0
-      ? entity.hp / entity.maxHp
-      : 0.3;
-    // A breach nearly through vents harder. The hull sphere is the soft occluder, so the plume
-    // dilutes into the hull face instead of ending on a hard line across it.
-    const severity = Math.min(1, strength * (0.45 + (0.35 - Math.min(0.35, hp)) * 1.8));
-    return this._gas.emitVent({
-      world: false,
-      x: local.x + rearX * radius * 0.62,
-      y: 0.3,
-      z: local.z + rearZ * radius * 0.62,
-      heading: Math.atan2(rearZ, rearX),
-      severity,
-      scale: radius * 0.95,
-      seed: ((entity.id | 0) % 89) / 89,
-      occluderX: local.x,
-      occluderY: 0,
-      occluderZ: local.z,
-      occluderRadius: radius * 0.92,
-    });
+    return emitted;
   },
 
   /**
