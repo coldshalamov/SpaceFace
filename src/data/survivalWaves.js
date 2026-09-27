@@ -508,6 +508,40 @@ export function catalogQuestionIssues(recipes = SURVIVAL_WAVES) {
       issues.push({ path: `${arenaId}.${item.path}`, message: item.message });
     }
   }
+  // Catalog-level ids: question props, role problems and endless overlays all name enemy ids
+  // OUTSIDE the package loop above. A typo there used to survive every gate (the props check
+  // only proves packages field the named id). Authored content may not lean on the spawn
+  // fallback — every named id must be a live catalog member.
+  for (const item of catalogEnemyIdIssues()) issues.push(item);
+  return issues;
+}
+
+function catalogEnemyIdIssues() {
+  const issues = [];
+  const checkId = (path, value) => {
+    if (typeof value !== 'string' || !ENEMY_IDS.has(value)) {
+      issues.push(issue(path, `unknown enemyId ${JSON.stringify(value)}`));
+    }
+  };
+  for (const [wave, props] of Object.entries(SURVIVAL_QUESTION_PROPS)) {
+    for (const enemyId of props.bodies || []) {
+      checkId(`questionProps[${wave}].bodies`, enemyId);
+    }
+    for (const enemyId of props.pair || []) {
+      checkId(`questionProps[${wave}].pair`, enemyId);
+    }
+  }
+  for (const enemyId of WAVE_20_QUESTION_PROPS.bodies || []) {
+    checkId('wave20QuestionProps.bodies', enemyId);
+  }
+  for (const [role, problem] of Object.entries(SURVIVAL_ROLE_PROBLEMS)) {
+    checkId(`roleProblems.${role}.enemyId`, problem && problem.enemyId);
+  }
+  for (const overlay of SURVIVAL_ENDLESS_OVERLAYS) {
+    for (const key of ['massEnemyId', 'pressureEnemyId', 'controlEnemyId']) {
+      if (overlay[key] != null) checkId(`endlessOverlays.${overlay.id}.${key}`, overlay[key]);
+    }
+  }
   return issues;
 }
 
@@ -1100,6 +1134,16 @@ export const SURVIVAL_ENDLESS_OVERLAYS = freezeDeep([
     massEnemyId: 'corsair_raider',
     massRole: 'elite',
     arenaPhase: 'boss',
+  },
+  {
+    // Endless pressure rows become fuse runners: the closing push IS the ordnance, and the
+    // shove answer the arc taught stays the correct one — shove the dart back into its pack.
+    id: 'fuse_runners',
+    massEnemyId: 'reaver_pirate',
+    massRole: 'pressure',
+    pressureEnemyId: 'detonator_dart',
+    pressureRole: 'pressure',
+    arenaPhase: 'shutter_lane_close',
   },
 ]);
 

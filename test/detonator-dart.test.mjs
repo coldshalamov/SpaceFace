@@ -14,15 +14,36 @@ import { ContactKind, ManeuverKind, ObjectiveKind } from '../src/ai/contracts.js
 import { ActivityKind, RulesOfEngagement } from '../src/ai/doctrine.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import {
+  SURVIVAL_ENDLESS_OVERLAYS,
   SURVIVAL_WAVES,
   THROW_CLASS_MAX_MASS,
   catalogQuestionIssues,
   validateWaveRecipe,
 } from '../src/data/survivalWaves.js';
+import {
+  SWARM_ROSTER,
+  pickSwarmArchetype,
+  swarmCatalogIssues,
+  swarmEligibleEnemyIds,
+} from '../src/data/swarmMode.js';
 import { COMBAT_LAB_ARENAS } from '../src/data/combatLabSetups.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
-import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+import { combat, makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { impulseCharges } from '../src/systems/impulseCharges.js';
+import { lightCookoffEligible } from '../src/combat/lightCookoff.js';
+import { scalarHitToDamagePacket } from '../src/combat/damage.js';
+import { resolveBossSurfaceContact } from '../src/combat/bossSurface.js';
+import { specialistPlanByEnemyId } from '../src/ai/specialistPlans.js';
+import { createBus } from '../src/core/eventBus.js';
+import { createGameState } from '../src/core/gameState.js';
+import { makeBudgetApi } from '../src/systems/spawnBudget.js';
+import { runSession } from '../src/systems/runSession.js';
+import {
+  SURVIVAL_ARENA_INTRO_TICKS,
+  SURVIVAL_WAVE_INTRO_TICKS,
+  survivalRun,
+} from '../src/systems/survivalRun.js';
+import { survivalWave } from '../src/systems/survivalWave.js';
 import {
   doctrinePhaseStage,
   grammarForDoctrine,
@@ -375,4 +396,256 @@ test('wave 2 of the default authored route fields the dart in its rear pressure 
 
   const plan = planWave({ seed: 47, arenaId, wave: 2, act: 0, difficulty: 1, mutators: [], buildSummary: null });
   assert.ok(plan.packages.some((p) => p.enemyId === 'detonator_dart'), 'the planner carries the package');
+});
+
+test('the swarm roster carries the dart from wave 5, and every swarm-named id resolves', () => {
+  const row = SWARM_ROSTER.find((entry) => entry.enemyId === 'detonator_dart');
+  assert.ok(row, 'the endless ruleset must field the dart');
+  assert.equal(row.role, 'pressure');
+  assert.equal(row.fromWave, 5, 'one newcomer per wave — wave 5 was the free slot');
+  assert.ok(!swarmEligibleEnemyIds(4).has('detonator_dart'), 'not yet legal at wave 4');
+  assert.ok(swarmEligibleEnemyIds(5).has('detonator_dart'), 'legal from its unlock wave');
+  // Wave-5 newcomer bias is 2.5x; a roll at the top of the wheel lands the dart.
+  const dart = pickSwarmArchetype(5, 0.99);
+  assert.equal(dart.enemyId, 'detonator_dart', 'the unlock wave actually fields it, not just lists it');
+  assert.equal(swarmCatalogIssues().length, 0,
+    'every roster and boss-rotation id is a live catalog member');
+});
+
+test('endless overlays field the dart and the catalog gate proves every named id', () => {
+  const overlay = SURVIVAL_ENDLESS_OVERLAYS.find((row) => row.pressureEnemyId === 'detonator_dart'
+    || row.massEnemyId === 'detonator_dart' || row.controlEnemyId === 'detonator_dart');
+  assert.ok(overlay, 'an endless overlay carries the dart into deep-run compositions');
+  assert.equal(catalogQuestionIssues().length, 0,
+    'question props, role problems and overlays all name live catalog ids');
+  // The package gate still fails bad ids the moment a recipe ships one.
+  const recipe = SURVIVAL_WAVES.find((r) => r.arenaId === COMBAT_LAB_ARENAS[0].id && r.wave === 2);
+  const bad = { ...recipe, packages: [...recipe.packages, { ...recipe.packages[0], enemyId: 'wasp_typo' }] };
+  const result = validateWaveRecipe(bad);
+  assert.equal(result.ok, false);
+  assert.ok(result.issues.some((i) => i.path.endsWith('.enemyId')), 'the failure names the bad id');
+});
+
+// ── one blast per hull: no generic cookoff under the fuse ──────────────────────
+
+test('a dart does not ALSO light-cook-off — its authored pop is the whole blast', () => {
+  const state = { run: { kind: 'survival' } };
+  const dartHull = {
+    type: 'ship', alive: false, mass: 20,
+    data: { runCohort: 'survival', shipClass: 'drone', detonator: { ...DART_DEF.detonator } },
+  };
+  // Throw-class survival hull — would cook off if not for the detonator exclusion.
+  assert.equal(lightCookoffEligible(state, dartHull), false,
+    'the fuse pop is the dart\'s death blast; a second small burst would be double-dipping');
+  const plainWasp = {
+    type: 'ship', alive: false, mass: 16,
+    data: { runCohort: 'survival', shipClass: 'drone' },
+  };
+  assert.equal(lightCookoffEligible(state, plainWasp), true, 'ordinary lights still cook off');
+});
+
+// ── plan-level integration ────────────────────────────────────────────────────
+
+test('the dart is a doctrine hull, not a counterplay-verb specialist', () => {
+  // specialistPlans are applySpecialistCounterplay verbs (cut/disrupt/snare/ward). A kamikaze
+  // has no verb to dispatch — its counterplay is physical, and impulseCharges owns the fuse.
+  // The absence is deliberate; the doctrine below is its plan integration.
+  assert.equal(specialistPlanByEnemyId('detonator_dart'), null);
+  assert.equal(DART_DEF.combatDoctrineId, 'detonator_run');
+  assert.ok(isLiveDoctrineId('detonator_run'));
+  assert.ok(String(DART_DEF.counterHint).includes('shove'),
+    'the counter hint names the physical answer');
+});
+
+// ── survival cohort bookkeeping ───────────────────────────────────────────────
+
+const WAVE_DT = 1 / 60;
+const WAVE_SEED = 7;
+
+function waveBoot() {
+  const state = createGameState(WAVE_SEED);
+  const raw = createBus();
+  const emitted = [];
+  const bus = {
+    on: raw.on.bind(raw),
+    off: raw.off.bind(raw),
+    once: raw.once.bind(raw),
+    emit(event, payload) { emitted.push({ event, payload }); raw.emit(event, payload); },
+  };
+  const budget = makeBudgetApi(state);
+  const spawned = [];
+  const helpers = {
+    spawnBudget: budget,
+    spawnEntity(spec) {
+      const id = state.nextEntityId++;
+      const entity = { ...spec, id, alive: true, pos: spec.pos ? { x: spec.pos.x, z: spec.pos.z } : { x: 0, z: 0 } };
+      state.entities.set(id, entity);
+      state.entityList.push(entity);
+      spawned.push(entity);
+      return entity;
+    },
+  };
+  const player = { id: state.nextEntityId++, alive: true, pos: { x: 400, z: 0 }, type: 'ship' };
+  state.entities.set(player.id, player);
+  state.entityList.push(player);
+  state.playerId = player.id;
+  raw.on('entity:destroyed', (p) => budget.releaseEntity(p && p.id, p && p.entity));
+  const ctx = { state, bus, helpers };
+  runSession.init(ctx);
+  survivalWave.init(ctx);
+  survivalRun.init(ctx);
+  return { state, bus, emitted, helpers, budget, spawned, player };
+}
+
+function waveTick(h, n = 1) {
+  for (let i = 0; i < n; i++) {
+    survivalWave.update(WAVE_DT);
+    survivalRun.update(WAVE_DT);
+  }
+}
+
+function reachActive(h) {
+  h.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'scored', seed: WAVE_SEED, arenaId: 'helios_core' });
+  h.bus.emit('run:loadoutReady', {});
+  waveTick(h, 1);
+  waveTick(h, SURVIVAL_ARENA_INTRO_TICKS);
+  waveTick(h, SURVIVAL_WAVE_INTRO_TICKS);
+  return h.state.run;
+}
+
+test('a cohort member resolves on its kill receipt — a corpse that lingers cannot hold the wave', () => {
+  const h = waveBoot();
+  reachActive(h);
+  assert.equal(h.state.run.phase, 'active');
+  assert.equal(h.spawned.length, 6);
+  // Kill every member WITHOUT any entity:destroyed receipt — the hulls stay in the entity map
+  // as dead corpses, the way a wreck lingers. The wave must still resolve.
+  for (const body of [...h.spawned]) {
+    body.alive = false;
+    h.bus.emit('entity:killed', { id: body.id, killerId: h.player.id });
+  }
+  assert.equal(survivalWave._cohort.size, 0, 'kill receipts resolved every member');
+  assert.equal(survivalWave._resolved, 6);
+  waveTick(h, 1);
+  const cleared = h.emitted.filter((e) => e.event === 'run:waveCleared');
+  assert.equal(cleared.length, 1, 'the wave cleared on kills alone — no destroy receipts needed');
+  // A destroy receipt that arrives after the kill resolution does not double-count the body.
+  const resolvedBefore = survivalWave._resolved;
+  for (const body of h.spawned) {
+    h.state.entities.delete(body.id);
+    h.bus.emit('entity:destroyed', { id: body.id, entity: body });
+  }
+  assert.equal(survivalWave._resolved, resolvedBefore, 'late destroy receipts are deduped');
+});
+
+test('a stale destroy receipt cannot drop a live cohort member that recycled its id', () => {
+  const h = waveBoot();
+  reachActive(h);
+  const victim = h.spawned[0];
+  const recycledId = victim.id;
+  victim.alive = false;
+  h.bus.emit('entity:killed', { id: recycledId, killerId: h.player.id });
+  assert.equal(survivalWave._cohort.has(recycledId), false, 'the kill resolved the slot');
+  h.state.entities.delete(recycledId);
+  // The id is recycled into a NEW live cohort body (the wave's own respawn path hands ids out
+  // of freeIds inside one step). Then the predecessor's queued destroy receipt finally lands.
+  const recycled = {
+    id: recycledId, type: 'ship', alive: true, team: 1,
+    pos: { x: 10, z: 0 }, data: { runCohort: 'survival', runWave: 1, runRole: 'mass' },
+  };
+  h.state.entities.set(recycledId, recycled);
+  survivalWave._cohort.set(recycledId, { role: 'mass', entity: recycled });
+  const sizeBefore = survivalWave._cohort.size;
+  h.bus.emit('entity:destroyed', { id: recycledId, entity: victim });
+  assert.equal(survivalWave._cohort.size, sizeBefore,
+    'the predecessor corpse receipt does not drop the recycled live member');
+  assert.equal(survivalWave._cohort.get(recycledId).entity, recycled);
+  // The live member's own destroy receipt resolves it.
+  h.state.entities.delete(recycledId);
+  h.bus.emit('entity:destroyed', { id: recycledId, entity: recycled });
+  assert.equal(survivalWave._cohort.has(recycledId), false, 'the live member resolves on its own receipt');
+});
+
+// ── determinism ───────────────────────────────────────────────────────────────
+
+test('the same seed plans and materializes the identical wave, darts included', () => {
+  const arenaId = COMBAT_LAB_ARENAS[0].id;
+  const args = { seed: 47, arenaId, wave: 2, act: 0, difficulty: 1, mutators: [], buildSummary: null };
+  assert.deepEqual(planWave(args), planWave({ ...args }), 'same seed -> identical plan');
+  // Two boots of the run place every hull at the same point. The wave systems are module
+  // singletons — each boot re-binds them, so drive each run to active before the next boot.
+  const a = waveBoot();
+  reachActive(a);
+  const b = waveBoot();
+  reachActive(b);
+  assert.deepEqual(
+    a.spawned.map((e) => ({ t: e.data.lootTableId, x: e.pos.x, z: e.pos.z })),
+    b.spawned.map((e) => ({ t: e.data.lootTableId, x: e.pos.x, z: e.pos.z })),
+    'same seed -> identical placement stream',
+  );
+});
+
+// ── two stat skins that are NOT stat skins any more ────────────────────────────
+// patrol_lawman and customs_cutter share ship_hornet, the patrol_interdict silhouette, the
+// brawler archetype and the interceptor_flyby doctrine — the pair was differentiated by
+// numbers alone. Each now carries one physical differentiator on existing machinery.
+
+function routeHitOnLaw(target, hitPos) {
+  const bus = { on() { return () => {}; }, emit() {} };
+  const state = {
+    tick: 300, simTime: 5, playerId: 9,
+    meta: { seed: 47 },
+    settings: { gameplay: { difficulty: 'standard' } },
+    input: { actions: {} }, player: { credits: 0 },
+    entities: new Map([[target.id, target]]),
+    entityList: [target],
+    world: {},
+  };
+  combat.init({ state, bus, helpers: {}, registry: { get() { return null; } } });
+  return combat.ensureKernel().routeDamage({
+    attackerId: 9,
+    targetId: target.id,
+    packet: scalarHitToDamagePacket({ damage: 100, damageType: 'kinetic', pos: hitPos, subsystemShare: 0 }),
+    origin: { kind: 'test', id: 'skin-diff' },
+  });
+}
+
+test('the interceptor reads as a plated prow: face-tanking sheds, the stern pays', () => {
+  const patrol = ENEMY_TYPES.find((e) => e.id === 'patrol_lawman');
+  const cutter = ENEMY_TYPES.find((e) => e.id === 'customs_cutter');
+  assert.equal(patrol.silhouette, cutter.silhouette, 'precondition: the pair shares one silhouette');
+  assert.equal(patrol.shipId, cutter.shipId, 'precondition: the pair shares one hull');
+  const spec = makeEnemySpawnSpec('patrol_lawman', 3, { x: 0, z: 0 });
+  assert.ok(spec.data.directionalArmor, 'the interceptor carries authored directional armor');
+  const target = {
+    id: 2, type: 'ship', alive: true, team: 1,
+    pos: { x: 0, z: 0 }, rot: 0,
+    hull: 1000, hullMax: 1000, armorHp: 0, armorMax: 0, shield: 0, shieldMax: 0,
+    data: { lootTableId: 'patrol_lawman', directionalArmor: spec.data.directionalArmor },
+  };
+  const front = routeHitOnLaw(target, { x: 100, z: 0 });
+  const rear = routeHitOnLaw({ ...target, hull: 1000, pos: { x: 0, z: 0 }, rot: 0 }, { x: -100, z: 0 });
+  assert.equal(front.directionalArc, 'front');
+  assert.equal(rear.directionalArc, 'rear');
+  assert.ok(rear.totalApplied > front.totalApplied, 'crossing the pass to the stern beats the prow');
+});
+
+test('the cutter reads as a plated boarding prow: nose contacts bank, flanks eat', () => {
+  const cutter = ENEMY_TYPES.find((e) => e.id === 'customs_cutter');
+  assert.ok(cutter.prowSurface, 'the cutter carries authored prow surface');
+  const target = {
+    pos: { x: 0, z: 0 }, rot: 0,
+    data: { lootTableId: 'customs_cutter' },
+  };
+  const nose = resolveBossSurfaceContact({
+    surface: target,
+    receipt: { point: { x: 50, z: 0 } },
+  });
+  assert.equal(nose.ok, true);
+  assert.equal(nose.response, 'reflect', 'a ricochet shot at the boarding prow banks');
+  const flank = resolveBossSurfaceContact({
+    surface: target,
+    receipt: { point: { x: 0, z: 50 } },
+  });
+  assert.equal(flank.response, 'damage', 'outside the prow arc the contact is ordinary armor');
 });

@@ -179,6 +179,12 @@ export const ENEMY_TYPES = [
     maxSpeed: 140, accel: 112, turnRate: 1.95, collisionRadius: 18, mass: 70,
     weapons: [{ id: 'wpn_pulse_laser_m' }, { id: 'wpn_flak_turret_s' }],
     aiDoctrine: { defaultActivity: 'patrol_route', roe: 'lawful_wanted_only', preferredRange: 320, leashRadius: 2600 },
+    // The interceptor and the customs cutter share the Hornet hull and patrol_interdict
+    // silhouette — the physical read has to be carried by geometry, not a paint job. The
+    // pursuit prow is plated for running down a wanted ship head-on; the stern is exposed
+    // for exactly as long as an overshoot takes to come back around.
+    directionalArmor: { frontArcDeg: 120, frontMult: 0.65, rearArcDeg: 130, rearMult: 1.25 },
+    counterHint: 'cross_the_pass_shoot_the_stern_while_it_turns_back',
     behavior: 'lawful patrol; hostile only if player wanted; assists at Trusted+ rep',
     bountyCr: 0, factionLawful: true, shipClass: 'gunship',
     loot: {
@@ -289,6 +295,12 @@ export const ENEMY_TYPES = [
       { id: 'wpn_flak_turret_s', defensiveOnly: true },
     ],
     aiDoctrine: { defaultActivity: 'patrol_route', roe: 'lawful_wanted_only', preferredRange: 320, leashRadius: 2600 },
+    // Same Hornet hull and patrol_interdict silhouette as the interceptor — the cutter's
+    // differentiator is its plated boarding prow. Within a narrow 90° nose arc an eligible
+    // ricochet shot banks off the plate instead of landing; every other contact is the
+    // ordinary hull. The boss-surface machinery resolves the verdict per contact.
+    prowSurface: { arcDeg: 90, material: 'plate' },
+    counterHint: 'bank_shots_off_room_plate_or_attack_the_flanks',
     behavior: 'lawful interdiction cutter; hostile only if wanted or contraband scan fails; assists Trusted+ pilots',
     bountyCr: 0, factionLawful: true, shipClass: 'gunship',
     loot: {
