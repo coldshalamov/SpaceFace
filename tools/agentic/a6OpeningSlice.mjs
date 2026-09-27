@@ -87,7 +87,7 @@ function lawResponders(state) {
  * `beats` is the ordered beat log ({name, t}); `ordered` is true only when every required beat
  * fired in BEAT_ORDER sequence; `phase` is 'done' on full success or the fail_* stop reason.
  */
-export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSeconds = 14 * 60 } = {}) {
+export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSeconds = 14 * 60, stopAfterBeat = null } = {}) {
   const log = verbose ? (...a) => console.log(...a) : () => {};
   const lookup = getNodeSystemFactoryTable();
   // The DOM input adapter is a no-op in this headless slice: the pilot publishes the same
@@ -287,6 +287,13 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
 
   const MAX_TICKS = Math.round(maxSimSeconds * 60);
   for (let i = 0; i < MAX_TICKS && phase !== 'done'; i++) {
+    // B10 bounded vehicle: stop one tick after the named beat lands. The full-slice
+    // verdict below still requires every beat, so an early stop never reads ordered.
+    if (stopAfterBeat != null) {
+      let landed = false;
+      for (const b of beats) if (b.name === stopAfterBeat) { landed = true; break; }
+      if (landed) break;
+    }
     const t = state.simTime;
     lawIds = new Set(lawResponders(state).map(e => e.id));
     masslineIdle();
@@ -462,7 +469,7 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
           && (e.p.killerId == null || e.p.killerId === payloadId || e.p.killerId === playerId));
         if (kill) {
           log(`  mid-swing kill t=${t.toFixed(1)}: payload ${payloadId} died on the line (killer=${kill.p.killerId})`);
-          beat('throw_kill', { victim: kill.p.id, expected: expectedVictimId, killerId: kill.p.killerId, via: 'mid_swing' });
+          beat('throw_kill', { victim: kill.p.id, expected: expectedVictimId, killerId: kill.p.killerId, payload: payloadId, via: 'mid_swing' });
           killPos = kill.p.pos || (payload ? { ...payload.pos } : null);
           phase = 'collect'; phaseStart = t; continue;
         }
@@ -567,7 +574,7 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
         && (e.p.id === payloadId || e.p.id === expectedVictimId)
         && (e.p.killerId == null || e.p.killerId === payloadId || e.p.killerId === playerId));
       if (kill) {
-        beat('throw_kill', { victim: kill.p.id, expected: expectedVictimId, killerId: kill.p.killerId });
+        beat('throw_kill', { victim: kill.p.id, expected: expectedVictimId, killerId: kill.p.killerId, payload: payloadId });
         killPos = kill.p.pos || (payload ? { ...payload.pos } : null);
         phase = 'collect'; phaseStart = t;
       } else if (releasedAt != null && t - releasedAt > 14) {
@@ -877,12 +884,16 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
     if (i % 3600 === 0) log(`..t=${state.simTime.toFixed(0)} phase=${phase} pos=(${player.pos.x.toFixed(0)},${player.pos.z.toFixed(0)})`);
   }
 
+  // Release module-singleton systems (capitalBoss et al) so a second run in the same
+  // process can init cleanly. Every exit flows through the single return below.
+  if (runtime && typeof runtime.dispose === 'function') runtime.dispose();
+
   // ordered-beat verdict — the required beats must appear as an in-order subsequence
   const names = beats.map(b => b.name);
   let needed = 0;
   for (const n of names) if (n === BEAT_ORDER[needed]) needed++;
   const ordered = needed === BEAT_ORDER.length && phase === 'done';
-  return { beats, ordered, phase, events, credits: state.player.credits, docked, bought };
+  return { beats, ordered, phase, events, credits: state.player.credits, docked, bought, playerId };
 }
 
 if (import.meta.url === `file:///${process.argv[1]?.replace(/\\/g, '/')}` || process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'))) {
