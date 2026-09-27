@@ -133,7 +133,11 @@ if (bombTar) {
     // field keeps the pole seamless and lets separate pools join and recede naturally.
     float theta = (bombT - 2.0) * 6.2831853;
     vec2 wet = vec2(cos(theta),sin(theta)) * bombV;
-    float circulation = bombPhase * 0.38;
+    float circulation = bombPhase * 1.65;
+    // Curl the reaction coordinates at two speeds. Separate pockets meet and break;
+    // this is advected chemistry, not a slowly rotating leaf-shaped contour.
+    wet += .10 * vec2(bombSin(wet.y * 7.0 - circulation),
+      bombSin(wet.x * 6.0 + circulation * .73));
     float field = 0.5 + 0.22 * bombSin(wet.x * 9.0 + bombSin(wet.y * 6.0 + circulation))
       + 0.18 * bombSin(wet.y * 11.0 - circulation + bombSin(wet.x * 5.0 - circulation))
       + 0.10 * bombSin(wet.x * 17.0 + wet.y * 13.0 + circulation);
@@ -141,7 +145,9 @@ if (bombTar) {
     float reaction = bombBand(field - 0.58, 0.045);
     bombDensity = 0.09 + pockets * 0.53;
     bombMatter = pockets * 0.028;
-    bombWorking = reaction * (0.14 + 0.24 * bombWave(wet.x * 14.0 - wet.y * 9.0 - circulation,2.0,0.375));
+    float ignition = bombWave(wet.x * 12.0 - wet.y * 9.0 - circulation * 2.1,2.0,0.375);
+    bombWorking = reaction * (0.04 + 1.05 * ignition * ignition);
+    bombMatter += pockets * ignition * .065;
   }
   diffuseColor.rgb *= 1.8;
 } else if (!bombFlowing) {
@@ -158,7 +164,7 @@ if (bombFlowing && !bombTar) bombLight = mix(bombLight, vec3(0.80,0.94,1.0), cla
 totalEmissiveRadiance += bombLight * vBombSurface.y * (0.025 + bombMatter + bombWorking * bombRadiance) * (0.80 + 0.20 * bombGrazing);
 diffuseColor.a *= bombEdge * bombTips * clamp(bombDensity, 0.0, 0.72);`);
   };
-  material.customProgramCacheKey = () => 'bomb-transport-volume-v5';
+  material.customProgramCacheKey = () => 'bomb-transport-volume-v6';
   return material;
 }
 
@@ -542,7 +548,7 @@ export class BombPresentationBatch {
     // Dark throat with a shallow counter-turning lip; the core is a cavity, never a glow ball.
     // Continuous angles close the seam, unlike the old twelve-sided disconnected polygon rim.
     this.surfaceHeat = 0.08;
-    const core = radius * 0.078;
+    const core = radius * 0.055;
     for (let i = 0; i < 40; i++) {
       const a0 = i * Math.PI / 20, a1 = (i + 1) * Math.PI / 20;
       // Capture closes in unequal sectors only after inflowing matter reaches the throat.
@@ -553,13 +559,13 @@ export class BombPresentationBatch {
       const q1 = 1 + 0.10 * Math.sin(a1 * 3 + time * 0.8 + seed);
       const x0 = x + Math.cos(a0) * core * q0, z0 = z + Math.sin(a0) * core * q0;
       const x1 = x + Math.cos(a1) * core * q1, z1 = z + Math.sin(a1) * core * q1;
-      this.tri(x, -radius * 0.054, z, x0, -1.8, z0, x1, -1.8, z1,
+      this.tri(x, -Math.min(4, radius * 0.035), z, x0, -0.8, z0, x1, -0.8, z1,
         0.035 * r, 0.045 * g, 0.055 * b, opacity * 0.92 * sector, 0, 0, 0, 0, 0, 0);
-      this.tri(x0, -1.8, z0, x + (x0 - x) * 1.52, 2.2, z + (z0 - z) * 1.52,
-        x + (x1 - x) * 1.52, 2.2, z + (z1 - z) * 1.52,
-        r * 0.36, g * 0.36, b * 0.36, opacity * 0.82 * sector, 0, 0, 0, 0, 0, 0);
-      this.tri(x0, -1.8, z0, x + (x1 - x) * 1.52, 2.2, z + (z1 - z) * 1.52,
-        x1, -1.8, z1, r * 0.36, g * 0.36, b * 0.36, opacity * 0.82 * sector, 0, 0, 0, 0, 0, 0);
+      this.tri(x0, -0.8, z0, x + (x0 - x) * 1.52, .45, z + (z0 - z) * 1.52,
+        x + (x1 - x) * 1.52, .45, z + (z1 - z) * 1.52,
+        r * 0.10, g * 0.13, b * 0.17, opacity * 0.72 * sector, 0, 0, 0, 0, 0, 0);
+      this.tri(x0, -0.8, z0, x + (x1 - x) * 1.52, .45, z + (z1 - z) * 1.52,
+        x1, -0.8, z1, r * 0.10, g * 0.13, b * 0.17, opacity * 0.72 * sector, 0, 0, 0, 0, 0, 0);
     }
     // A shared low accretion basin physically joins the unequal inflows to the throat.
     // It carries intermittent luminous eddies, not a solid disc or three detached fans.
@@ -631,7 +637,7 @@ export class BombPresentationBatch {
     const ca = Math.cos(a), sa = Math.sin(a);
     const extent = radius * (0.67 + 0.095 * Math.sin(a * 3 + seed)
       + 0.085 * Math.sin(a * 5 - seed + time * 0.23));
-    const wave = a * 3 + u * 8 - time * 0.35 + seed;
+    const wave = a * 3 + u * 8 - time * 1.35 + seed;
     const belly = Math.sin(Math.PI * u), lobe = 0.72 + 0.28 * Math.sin(wave);
     const depth = Math.min(4, radius * 0.15);
     const height = depth * belly * lobe * envelope * (1 - this.cooling * 0.86);
@@ -699,16 +705,16 @@ export class BombPresentationBatch {
     out[SECTION_DATA + 3] = this.tarCoverage(u, angle, seed);
     const ca = Math.cos(angle), sa = Math.sin(angle);
     const side = radius * (0.12 * Math.sin(u * 6.2 + seed)
-      + 0.032 * Math.sin(time * 0.58 + seed + u * 4.5) * belly);
+      + 0.032 * Math.sin(time * 1.38 + seed + u * 4.5) * belly);
     const along = radius * (0.10 + u * 0.86);
     cx = x + ca * along - sa * side; cz = z + sa * along + ca * side;
     nx = -sa; nz = ca;
-    const lumps = 0.71 + 0.22 * Math.sin(u * 11.8 - time * 0.52 + seed)
-      + 0.07 * Math.sin(u * 23.4 + time * 0.31 + seed * 2);
+    const lumps = 0.71 + 0.22 * Math.sin(u * 11.8 - time * 1.72 + seed)
+      + 0.07 * Math.sin(u * 23.4 + time * .91 + seed * 2);
     width = Math.min(6, radius * (0.012 + 0.24 * Math.pow(Math.max(0, belly), 0.8))) * lumps * (1 - u * 0.5);
-    cy = 0.6 + Math.min(1.6, radius * 0.019) * belly * (1 + Math.sin(u * 8.8 - time * 0.55 + seed));
+    cy = 0.6 + Math.min(1.6, radius * 0.019) * belly * (1 + Math.sin(u * 8.8 - time * 1.25 + seed));
     fold = Math.min(3.5, radius * 0.145) * Math.pow(Math.max(0, belly), 0.8)
-      * (0.80 + 0.20 * Math.sin(u * 12.2 - time * 0.62 + seed)) * envelope * (1 - this.cooling * 0.86);
+      * (0.80 + 0.20 * Math.sin(u * 12.2 - time * 1.52 + seed)) * envelope * (1 - this.cooling * 0.86);
     for (let j = 0; j < SECTION_VERTICES; j++) {
       const v = j / (SECTION_VERTICES - 1) * 2 - 1, p = j * 3;
       // The heavy wet fold joins its underlying basin with real sidewalls.

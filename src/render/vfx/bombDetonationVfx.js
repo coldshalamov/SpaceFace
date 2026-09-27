@@ -199,6 +199,20 @@ export class BombDetonationVfx {
         this._piece(5,jx,jz,dir+(k%2?.67:-.56),0,length*.23,width*.65,width*.6,
           width*.9,0,0,seed+k*3.4,opacity*smooth((age-.10-k*.018)/.055),fill,cut+.16,1.15);
       }
+      // Received charge crawls along the named body's facing surface after the primary
+      // bridge arrives. Separate forks extend tangentially; no false links to unrelated bodies.
+      for(let k=0;k<s.targetCount;k++){
+        const t=s.targets[k],dir=Math.atan2(t.z-s.z,t.x-s.x),w=clamp(t.radius*.26,1.8,4.5);
+        for(let branch=0;branch<3;branch++){
+          const side=branch%2?-1:1,delay=.10+branch*.055;
+          const spread=side*w*(.45+branch*.4);
+          const x=t.x+Math.cos(dir+Math.PI/2)*spread-Math.cos(dir)*w*.35;
+          const z=t.z+Math.sin(dir+Math.PI/2)*spread-Math.sin(dir)*w*.35;
+          this._piece(5,x,z,dir+side*1.30,-w*.3,w*(1.9+branch*.28),
+            w*.52,w*.66,side*w*.9,0,0,seed+branch*2.3,
+            opacity*smooth((age-delay)/.07),clamp((age-delay)/.12),cut+branch*.075,1.45);
+        }
+      }
       this._parcels(s,age,reduced,'current',a,r*1.7);
     }else if(s.payload==='bomb_thermite'){
       const count=s.directionCount||2;
