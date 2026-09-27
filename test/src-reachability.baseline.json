@@ -28,7 +28,8 @@
     "src/ui/commandDeckRefit.js": "Off-route additive presentation lab; production does not import or auto-mount. Tests and commandDeckRefitHooks remain on the station path.",
     "src/ui/orrery/flightInstruments.js": "ORRERY flight-instrument cluster staged by the live frontend refactor (Title/Bar/Industry rows landing on master); wire to the default route when the cluster mounts.",
     "src/ui/orrery/flightPreview.js": "ORRERY flight preview staged alongside flightInstruments.js by the same live refactor; wire with the cluster or retire it.",
-    "src/ui/virtualList.js": "PQ-184.01 list windowing kernel; long screens have not mounted it yet. Keep until that leaf wires market/contracts/ledger/codex or retires the component."
+    "src/ui/virtualList.js": "PQ-184.01 list windowing kernel; long screens have not mounted it yet. Keep until that leaf wires market/contracts/ledger/codex or retires the component.",
+    "src/render/glbPrepassWorker.js": "Worker loaded via new URL() from glbPrepass.js (defaultWorkerUrl); the static import graph cannot see that wire. Batch-decodes meshopt bufferViews off-thread for the GLB prepass."
   },
   "recordedAt": "2026-09-16"
 }
