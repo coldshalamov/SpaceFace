@@ -110,7 +110,11 @@ import {
   takeCachedStaticBatchGeometry,
 } from './staticBatchGeometryCache.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
-import { canonicalizeAuthoredProgramState } from './programCanon.js';
+import {
+  canonicalizeAuthoredProgramState,
+  mountCanonicalProgramSpecimens,
+  settleCanonicalProgramSpecimens,
+} from './programCanon.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../data/collisionProxyManifests.js';
 import {
@@ -5634,6 +5638,9 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   configureRealtimeCanopyMaterials(root);
   configureTransparentSinglePassSurfaces(root);
   canonicalizeAuthoredProgramState(root);
+  // Retained program specimens ride this admission's own compile (cache-hit binds, no extra
+  // links) and keep each covered program key alive after the boundary's materials release.
+  const programSpecimenMount = mountCanonicalProgramSpecimens(root);
   const policiesMs = Math.max(0, monotonicNow() - policiesStartedAtMs);
   const tier1 = tier1CausalCounters();
   if (tier1) {
@@ -5642,9 +5649,14 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
     if (typeof prepareResidency === 'function') tier1.countPipelinePreparation('gpu-residency', 1);
   }
   const compileStartedAtMs = monotonicNow();
-  const pipelines = typeof preparePipelines === 'function'
-    ? await preparePipelines(root)
-    : { skipped: true, reason: 'pipeline compiler unavailable' };
+  let pipelines;
+  try {
+    pipelines = typeof preparePipelines === 'function'
+      ? await preparePipelines(root)
+      : { skipped: true, reason: 'pipeline compiler unavailable' };
+  } finally {
+    settleCanonicalProgramSpecimens(root, programSpecimenMount);
+  }
   const compileMs = Math.max(0, monotonicNow() - compileStartedAtMs);
   assertAuthoredVisualPreparationActive(options, 'after-pipeline-compile');
   if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
