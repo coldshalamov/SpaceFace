@@ -162,12 +162,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.container-rack",
-    "expectedContentHash": "e8c768cd70bf87613a7f465152158fca90ba1b9dda2614294ea1bf77bc810ded",
+    "expectedContentHash": "84deffa7e47a23930041b819f537b0bb6096d444892df088ff0deb8c14f8a422",
     "key": "container-rack",
     "metadataUrl": "assets/ships/release/render-packages/container-rack/render-package.json",
     "runtimeAssetId": "place_container_rack",
     "slot": "place",
-    "sourceSha256": "d4e5f355f28c1eeb185beebc60d2e3870b0afdbb3cf6344e4ddbb3fe1aaa8c78",
+    "sourceSha256": "0bd353b7064980a28b9822955108d93becac82a4ef9f2b7ce14cdb5c05f6cd3c",
     "sourceUrl": "assets/ships/release/parts/places/place_container_rack.glb"
   },
   {
@@ -954,12 +954,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.sensor-mast",
-    "expectedContentHash": "eca3e671c1afeb214e042cada3af93abbd835698e40966af7611e723527a3b87",
+    "expectedContentHash": "07655671caccbc17874dabde0bdaa792238e5c33e9015cd974b63724f6b92837",
     "key": "sensor-mast",
     "metadataUrl": "assets/ships/release/render-packages/sensor-mast/render-package.json",
     "runtimeAssetId": "place_sensor_mast",
     "slot": "place",
-    "sourceSha256": "fd64505fd9d7639cfe38400e61dec6c38edc956327bb040e65d367c4487957f3",
+    "sourceSha256": "54308140eba7fafbf8b939d55303a4612f25865dd127a4a7f116ca605aa3f768",
     "sourceUrl": "assets/ships/release/parts/places/place_sensor_mast.glb"
   },
   {

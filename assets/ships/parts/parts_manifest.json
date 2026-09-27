@@ -2691,12 +2691,13 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_container_rack.glb",
-      "tris": 6600,
-      "bytes": 1976624,
+      "tris": 16120,
+      "bytes": 2247000,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Struct",
-        "accent": "Material_PaintTeal"
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical"
       },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `container_rack`. LOD0/1/2 tris 6600/6528/928. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
@@ -2707,19 +2708,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -6.76928186416626,
-          -4.070000171661377,
-          -4.179999828338623
+          -6.675000190734863,
+          -4.220000267028809,
+          -3.6500000953674316
         ],
         "max": [
-          6.76928186416626,
-          7.62999963760376,
-          4.180000305175781
+          6.675000190734863,
+          7.996195316314697,
+          3.6500000953674316
         ],
         "dimensionsM": [
-          13.53856372833252,
-          11.699999809265137,
-          8.360000133514404
+          13.350000381469727,
+          12.216195583343506,
+          7.300000190734863
         ]
       },
       "triangleMetric": "lod0"
@@ -3696,11 +3697,13 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_sensor_mast.glb",
-      "tris": 1248,
-      "bytes": 1238272,
+      "tris": 14084,
+      "bytes": 1490648,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Struct"
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical"
       },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `sensor_mast`. LOD0/1/2 tris 1248/768/468. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
@@ -3710,19 +3713,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.9900000095367432,
-          -0.03060007095336914,
-          -2.200000047683716
+          -1.3124871253967285,
+          0,
+          -2.0850000381469727
         ],
         "max": [
-          4.300000190734863,
-          13.300000190734863,
-          1.7999999523162842
+          3.716480255126953,
+          13.274499893188477,
+          2.0850000381469727
         ],
         "dimensionsM": [
-          5.2900002002716064,
-          13.330600261688232,
-          4
+          5.028967380523682,
+          13.274499893188477,
+          4.170000076293945
         ]
       },
       "triangleMetric": "lod0"

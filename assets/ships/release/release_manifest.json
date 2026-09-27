@@ -1649,25 +1649,6 @@
       }
     },
     {
-      "id": "place_container_rack",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_container_rack.glb",
-      "release": "assets/ships/release/parts/places/place_container_rack.glb",
-      "sourceSha256": "7e28873732dc3150d7da2c6bd953d9419518704bbef8b4ea9d7f7157e5fb717b",
-      "releaseSha256": "d4e5f355f28c1eeb185beebc60d2e3870b0afdbb3cf6344e4ddbb3fe1aaa8c78",
-      "sourceBytes": 1976624,
-      "releaseBytes": 585236,
-      "textures": 28,
-      "ktx2Textures": 28,
-      "meshoptBufferViews": 17,
-      "contractNodeCount": 22,
-      "textureProfiles": {
-        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
-        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
-        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
-      }
-    },
-    {
       "id": "place_container_rack_abandoned",
       "kind": "part:places",
       "source": "assets/incubator/everyday_space_kit/source/container_rack_abandoned.glb",
@@ -2273,25 +2254,6 @@
       "ktx2Textures": 24,
       "meshoptBufferViews": 12,
       "contractNodeCount": 16,
-      "textureProfiles": {
-        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
-        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
-        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
-      }
-    },
-    {
-      "id": "place_sensor_mast",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_sensor_mast.glb",
-      "release": "assets/ships/release/parts/places/place_sensor_mast.glb",
-      "sourceSha256": "9b6ec31ee9047422d909e70206e4f89c10051091d5dd03d451ab305c26622e1e",
-      "releaseSha256": "fd64505fd9d7639cfe38400e61dec6c38edc956327bb040e65d367c4487957f3",
-      "sourceBytes": 1238272,
-      "releaseBytes": 530764,
-      "textures": 28,
-      "ktx2Textures": 28,
-      "meshoptBufferViews": 15,
-      "contractNodeCount": 19,
       "textureProfiles": {
         "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
@@ -4427,6 +4389,34 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 109,
       "contractNodeCount": 28
+    },
+    {
+      "id": "place_container_rack",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_container_rack.glb",
+      "release": "assets/ships/release/parts/places/place_container_rack.glb",
+      "sourceSha256": "9b63739cd146854c3f8c3ba94fa09fc9327759f8710c076d0ff15ad18cf597f4",
+      "releaseSha256": "0bd353b7064980a28b9822955108d93becac82a4ef9f2b7ce14cdb5c05f6cd3c",
+      "sourceBytes": 2247000,
+      "releaseBytes": 872696,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 145,
+      "contractNodeCount": 38
+    },
+    {
+      "id": "place_sensor_mast",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_sensor_mast.glb",
+      "release": "assets/ships/release/parts/places/place_sensor_mast.glb",
+      "sourceSha256": "8e3c70cb462a592e1111b7a0988a2f0eca9ce7cd070a54722c4772329591a644",
+      "releaseSha256": "54308140eba7fafbf8b939d55303a4612f25865dd127a4a7f116ca605aa3f768",
+      "sourceBytes": 1490648,
+      "releaseBytes": 686228,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 115,
+      "contractNodeCount": 32
     }
   ]
 }

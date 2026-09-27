@@ -284,10 +284,16 @@
       "slot": "place",
       "releaseAssetId": "place_container_rack",
       "sourceUrl": "assets/ships/release/parts/places/place_container_rack.glb",
-      "releaseSha256": "d4e5f355f28c1eeb185beebc60d2e3870b0afdbb3cf6344e4ddbb3fe1aaa8c78",
-      "releaseBytes": 585236,
-      "rootNode": "place_container_rack",
-      "dynamicNameIncludes": [],
+      "releaseSha256": "0bd353b7064980a28b9822955108d93becac82a4ef9f2b7ce14cdb5c05f6cd3c",
+      "releaseBytes": 872696,
+      "rootNode": "SF_PLACE_CONTAINER_RACK_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/container-rack",
       "metadataUrl": "assets/ships/release/render-packages/container-rack/render-package.json"
     },
@@ -1541,10 +1547,16 @@
       "slot": "place",
       "releaseAssetId": "place_sensor_mast",
       "sourceUrl": "assets/ships/release/parts/places/place_sensor_mast.glb",
-      "releaseSha256": "fd64505fd9d7639cfe38400e61dec6c38edc956327bb040e65d367c4487957f3",
-      "releaseBytes": 530764,
-      "rootNode": "place_sensor_mast",
-      "dynamicNameIncludes": [],
+      "releaseSha256": "54308140eba7fafbf8b939d55303a4612f25865dd127a4a7f116ca605aa3f768",
+      "releaseBytes": 686228,
+      "rootNode": "SF_PLACE_SENSOR_MAST_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/sensor-mast",
       "metadataUrl": "assets/ships/release/render-packages/sensor-mast/render-package.json"
     },

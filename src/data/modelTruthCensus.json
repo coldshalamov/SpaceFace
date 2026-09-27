@@ -42110,56 +42110,56 @@
       "bounds": {
         "center": [
           0,
-          1.779884,
+          1.88793,
           0
         ],
         "max": [
-          6.769282,
-          7.63,
-          4.18011
+          6.675,
+          7.996285,
+          3.650273
         ],
         "min": [
-          -6.769282,
-          -4.070232,
-          -4.180109
+          -6.675,
+          -4.220424,
+          -3.650273
         ],
         "size": [
-          13.538564,
-          11.700231,
-          8.360219
+          13.35,
+          12.216709,
+          7.300547
         ]
       },
-      "bytes": 585236,
+      "bytes": 872696,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_container_rack",
         "kind": "proxy",
         "outline": [
-          6.427359,
-          7.430988,
-          7.908061,
-          5.511132,
-          4.241449,
-          4.051232,
-          4.051232,
-          4.241449,
-          5.511132,
-          7.908061,
-          7.430988,
-          6.427359,
-          6.427354,
-          7.430988,
-          7.908061,
-          5.511132,
-          4.241449,
-          4.051232,
-          4.051232,
-          4.241449,
-          5.511132,
-          7.908061,
-          7.430988,
-          6.427354
+          6.688211,
+          6.527377,
+          6.671658,
+          4.274983,
+          3.72165,
+          3.540717,
+          3.540717,
+          3.72165,
+          4.274983,
+          6.671658,
+          6.527377,
+          6.688211,
+          6.688197,
+          6.527377,
+          6.671658,
+          4.274983,
+          3.72165,
+          3.124848,
+          3.124848,
+          3.72165,
+          4.274983,
+          6.671658,
+          6.527377,
+          6.688197
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -42200,7 +42200,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_BareSteel",
+          "name": "Material_Armor",
           "role": "opaqueHull"
         },
         {
@@ -42208,7 +42208,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_LightFlood",
+          "name": "Material_Emissive_Amber",
           "role": "emissive"
         },
         {
@@ -42216,7 +42216,15 @@
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_LightNavGreen",
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
           "role": "emissive"
         },
         {
@@ -42224,7 +42232,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_PaintTeal",
+          "name": "Material_Hull",
           "role": "opaqueHull"
         },
         {
@@ -42232,7 +42240,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Struct",
+          "name": "Material_Hull_blue",
           "role": "opaqueHull"
         },
         {
@@ -42240,7 +42248,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Tank",
+          "name": "Material_Hull_ochre",
           "role": "opaqueHull"
         },
         {
@@ -42248,19 +42256,59 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Truss",
+          "name": "Material_Hull_rust",
           "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_teal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
         }
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 20,
-      "nodes": 24,
+      "meshes": 37,
+      "nodes": 40,
       "note": null,
       "opening": null,
       "pivot": [
         0,
-        1.779884,
+        1.88793,
         0
       ],
       "proposedSkin": {
@@ -42274,8 +42322,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.38588,
-            "bz": -0.050802,
+            "bx": -0.402044,
+            "bz": -0.05293,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.028125
@@ -42283,8 +42331,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.417535,
-            "bz": -0.172949,
+            "bx": -0.365358,
+            "bz": -0.151336,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.028125
@@ -42292,8 +42340,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.382201,
-            "bz": -0.293273,
+            "bx": -0.320894,
+            "bz": -0.246231,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.028125
@@ -42301,8 +42349,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.202076,
-            "bz": -0.26335,
+            "bx": -0.155043,
+            "bz": -0.202056,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.028125
@@ -42310,8 +42358,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.096662,
-            "bz": -0.233363,
+            "bx": -0.08423,
+            "bz": -0.203349,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.028125
@@ -42319,8 +42367,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.031418,
-            "bz": -0.238643,
+            "bx": -0.027253,
+            "bz": -0.207009,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.028125
@@ -42328,8 +42376,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.031418,
-            "bz": -0.238643,
+            "bx": 0.027253,
+            "bz": -0.207009,
             "id": "arm-6",
             "kind": "capsule",
             "r": 0.028125
@@ -42337,8 +42385,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.096662,
-            "bz": -0.233363,
+            "bx": 0.08423,
+            "bz": -0.203349,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.028125
@@ -42346,8 +42394,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.202076,
-            "bz": -0.26335,
+            "bx": 0.155043,
+            "bz": -0.202056,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.028125
@@ -42355,8 +42403,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.382201,
-            "bz": -0.293273,
+            "bx": 0.320894,
+            "bz": -0.246231,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.028125
@@ -42364,8 +42412,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.417535,
-            "bz": -0.172949,
+            "bx": 0.365358,
+            "bz": -0.151336,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.028125
@@ -42373,8 +42421,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.38588,
-            "bz": -0.050802,
+            "bx": 0.402044,
+            "bz": -0.05293,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.028125
@@ -42382,8 +42430,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.38588,
-            "bz": 0.050802,
+            "bx": 0.402043,
+            "bz": 0.05293,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.028125
@@ -42391,8 +42439,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.417535,
-            "bz": 0.172949,
+            "bx": 0.365358,
+            "bz": 0.151336,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.028125
@@ -42400,8 +42448,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.382201,
-            "bz": 0.293273,
+            "bx": 0.320894,
+            "bz": 0.246231,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.028125
@@ -42409,8 +42457,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.202076,
-            "bz": 0.26335,
+            "bx": 0.155043,
+            "bz": 0.202056,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.028125
@@ -42418,8 +42466,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.096662,
-            "bz": 0.233363,
+            "bx": 0.08423,
+            "bz": 0.203349,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.028125
@@ -42427,8 +42475,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.031418,
-            "bz": 0.238643,
+            "bx": 0.023861,
+            "bz": 0.181239,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.028125
@@ -42436,8 +42484,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.031418,
-            "bz": 0.238643,
+            "bx": -0.023861,
+            "bz": 0.181239,
             "id": "arm-18",
             "kind": "capsule",
             "r": 0.028125
@@ -42445,8 +42493,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.096662,
-            "bz": 0.233363,
+            "bx": -0.08423,
+            "bz": 0.203349,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.028125
@@ -42454,8 +42502,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.202076,
-            "bz": 0.26335,
+            "bx": -0.155043,
+            "bz": 0.202056,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.028125
@@ -42463,8 +42511,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.382201,
-            "bz": 0.293273,
+            "bx": -0.320894,
+            "bz": 0.246231,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.028125
@@ -42472,8 +42520,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.417535,
-            "bz": 0.172949,
+            "bx": -0.365358,
+            "bz": 0.151336,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.028125
@@ -42481,23 +42529,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.38588,
-            "bz": 0.050802,
+            "bx": -0.402043,
+            "bz": 0.05293,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.028125
           }
         ],
-        "silhouetteRadius": 7.908061,
+        "silhouetteRadius": 6.688211,
         "toleranceWu": 2
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 0,
-        "inwardFaceFraction": 0.4455,
-        "silhouetteRadius": 7.908061,
+        "boundaryEdges": 1038,
+        "inwardFaceFraction": 0.2595,
+        "silhouetteRadius": 6.688211,
         "sliceY": 0
       },
       "sockets": [
@@ -42522,13 +42570,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 14056,
+      "triangles": 24743,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_container_rack.glb",
       "worldSize": [
-        13.538564,
-        11.700231,
-        8.360219
+        13.35,
+        12.216709,
+        7.300547
       ]
     },
     {
