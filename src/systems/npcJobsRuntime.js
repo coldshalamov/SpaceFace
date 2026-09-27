@@ -139,6 +139,13 @@ const BEAM_MK1 = BEAMS.find((row) => row && row.id === 'beam_mk1') || {
 };
 // Drift already says this on the belt. One line, not a new voice.
 const HELIOS_STARTER_MINER_REASON = barkFor('faction_dmc', 'patrol-greeting', 1);
+// INF-U6: a worker shot by the player. Clean-player damage is invisible to the proximity
+// threat query, so it interrupts through the damage seam instead — protest, flee, scatter.
+const PLAYER_THREAT_FLEE_S = 8;
+const PLAYER_THREAT_WINDOW_S = 30;
+const PLAYER_THREAT_ESCALATE_HITS = 3;
+const PLAYER_THREAT_SCATTER_WU = 600;
+const PLAYER_THREAT_PROTEST_COOLDOWN_S = 20;
 
 /** PQ-045 targets include dressing FX and seam asteroids. Those types are excluded from
  *  forEachLivingWorldActor, so event-time refresh walks the live list. Not a 60 Hz owner loop. */
@@ -886,6 +893,10 @@ export const npcJobsRuntime = {
         this._onEntityGone(payload);
       });
       this.bus.on('fieldDepletion:changed', (p) => this._onFieldDepletionChanged(p || {}));
+      // INF-U6: the clean player is invisible to the proximity threat query by design
+      // (_isJobThreat only fears the wanted), so shot workers kept drilling while the
+      // player hosed them down. Damage with the player's signature interrupts directly.
+      this.bus.on('combat:damage', (p) => this._onPlayerDamage(p || {}));
       // PQ-195.04: the local consequence. Berth Three's stalled worker resumes (or runs its reduced
       // repair shuttle) on the receiver's OWN committed handoff receipt — never a timer or a cue.
       this.bus.on('heist:receiverCommitted', (receipt) => this._onBerthHandoff(receipt || {}));
@@ -4091,9 +4102,117 @@ export const npcJobsRuntime = {
       });
     } catch { /* advisory only */ }
     if (!quiet) {
+      // INF-U6: a worker the PLAYER scattered does not thank the player for cover.
+      const threat = entry.threatId != null && this.state.entities
+        ? this.state.entities.get(entry.threatId)
+        : null;
+      const shotByPlayer = entry.threatId === (this.state && this.state.playerId)
+        || (threat && threat.data && threat.data.isWingman === true);
+      const text = shotByPlayer
+        ? `${kindLabel} back to work. Watch your fire.`
+        : `${kindLabel} back to work — thanks for the cover.`;
       try {
-        this.bus.emit('toast', { text: `${kindLabel} back to work — thanks for the cover.`, kind: 'info', ttl: 4 });
+        this.bus.emit('toast', { text, kind: 'info', ttl: 4 });
       } catch { /* advisory only */ }
+    }
+  },
+
+  _jobIdForEntity(entityId) {
+    if (entityId == null) return null;
+    const byId = this._byId();
+    for (const id of Object.keys(byId)) {
+      if (byId[id] && byId[id].entityId === entityId) return id;
+    }
+    return null;
+  },
+
+  // INF-U6 v1: damage carrying the player's signature (own guns or wingman) interrupts
+  // the victim's job and draws a protest. The proximity query never sees a clean player,
+  // so without this a worker would drill through a whole magazine without reacting.
+  _onPlayerDamage(p) {
+    const attackerId = p && p.attackerId;
+    if (attackerId == null || this.state == null) return;
+    const playerId = this.state.playerId;
+    let fromWing = false;
+    if (attackerId !== playerId) {
+      const attacker = this.state.entities && typeof this.state.entities.get === 'function'
+        ? this.state.entities.get(attackerId)
+        : null;
+      if (!attacker || !attacker.data || attacker.data.isWingman !== true) return;
+      fromWing = true;
+    }
+    const targetId = p.targetId;
+    if (targetId == null || targetId === playerId) return;
+    const jobId = this._jobIdForEntity(targetId);
+    if (jobId == null) return;
+    const entry = this._byId()[jobId];
+    if (!entry || !entry.job || entry.job.corrupt) return;
+    if (entry.job.phase === NPC_JOB_PHASE.COMPLETE) return;
+    const now = finite(this.state && this.state.simTime, 0);
+    if (!Number.isFinite(entry.playerHitT0) || now - entry.playerHitT0 > PLAYER_THREAT_WINDOW_S) {
+      entry.playerHitT0 = now;
+      entry.playerHits = 0;
+    }
+    entry.playerHits = (entry.playerHits || 0) + 1;
+    const threat = { entityId: attackerId, untilSimT: now + PLAYER_THREAT_FLEE_S };
+    const player = this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(playerId)
+      : null;
+    if (player && player.pos) { threat.x = player.pos.x; threat.z = player.pos.z; }
+    const wasFlee = entry.job.phase === NPC_JOB_PHASE.FLEE;
+    this.interruptJob(jobId, threat);
+    if (!wasFlee) this._noteThreatened(entry, jobId, fromWing);
+    else if (entry.playerHits === PLAYER_THREAT_ESCALATE_HITS) {
+      this._noteThreatened(entry, jobId, fromWing, true);
+      this._scatterWorkSite(entry, jobId, threat);
+    }
+    if (this.bus && typeof this.bus.emit === 'function') {
+      try {
+        this.bus.emit('npcjobs:threatened', {
+          jobId, kind: entry.job.kind, sectorId: entry.sectorId || null,
+          attackerId, fromWing, hits: entry.playerHits, simTime: now,
+        });
+      } catch { /* advisory only */ }
+    }
+  },
+
+  _noteThreatened(entry, jobId, fromWing, escalated = false) {
+    if (!entry || !entry.job || !this.bus || typeof this.bus.emit !== 'function') return;
+    const now = Number(this.state && this.state.simTime) || 0;
+    if (!escalated && Number.isFinite(entry.lastProtestT)
+      && now - entry.lastProtestT < PLAYER_THREAT_PROTEST_COOLDOWN_S) return;
+    entry.lastProtestT = now;
+    const kindLabel = { miner: 'Miner', hauler: 'Hauler', salvor: 'Salvor', tender: 'Tender', courier: 'Courier', patrol: 'Patrol' }[entry.job.kind] || 'Crew';
+    const line = escalated
+      ? (fromWing ? 'Call off your dog or I call it in!' : 'Keep shooting and I call it in!')
+      : (fromWing ? 'Hey! Your wingman is shooting a worker!' : 'Hey! I\'m working here!');
+    try {
+      this.bus.emit('toast', { text: `${kindLabel}: ${line}`, kind: 'warn', ttl: 4 });
+    } catch { /* advisory only */ }
+  },
+
+  // INF-U6 v2: a worker shot past the escalation line screams, and the screaming
+  // empties the site — every other job hull inside the scatter ring suspends too.
+  _scatterWorkSite(victimEntry, victimJobId, threat) {
+    if (!victimEntry) return;
+    const victim = victimEntry.entityId != null && this.state.entities
+      ? this.state.entities.get(victimEntry.entityId)
+      : null;
+    if (!victim || !victim.pos) return;
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      if (jobId === victimJobId) continue;
+      const entry = byId[jobId];
+      if (!entry || !entry.job || entry.job.corrupt || entry.control) continue;
+      if (entry.job.phase === NPC_JOB_PHASE.COMPLETE || entry.job.phase === NPC_JOB_PHASE.FLEE) continue;
+      const hull = entry.entityId != null && this.state.entities
+        ? this.state.entities.get(entry.entityId)
+        : null;
+      if (!hull || !hull.pos) continue;
+      const dx = hull.pos.x - victim.pos.x;
+      const dz = hull.pos.z - victim.pos.z;
+      if (dx * dx + dz * dz > PLAYER_THREAT_SCATTER_WU * PLAYER_THREAT_SCATTER_WU) continue;
+      this.interruptJob(jobId, threat);
     }
   },
 
