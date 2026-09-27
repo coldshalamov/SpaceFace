@@ -18,7 +18,7 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'leviathan'
 COLORS = {
-    'paint': '#151c27',    # black-blue hull (brief #1c2430, deepened so the lit ivory city carries)
+    'paint': '#10161f',    # black-blue hull (brief #1c2430, deepened so the lit ivory city carries)
     'paint2': '#6a6557',   # ivory (brief #a8a08c, authored darker: the key light lifts ~2.5x)
     'stripe': '#7e622b',   # gold (brief #a8843a, same calibration)
     'hazard': '#7e622b',
@@ -146,6 +146,14 @@ def build():
     F.box(s, 'Maw', (8.1, 0.0, 3.75), (0.6, 4.6, 1.3), material='dark', bevel=0.0)
     F.box(s, 'MawFloor', (8.55, 0.0, 3.12), (0.6, 4.5, 0.05), material='glow_warm', bevel=0.0)
     F.box(s, 'MawCeiling', (8.55, 0.0, 4.39), (0.4, 4.5, 0.05), material='glow_warm', bevel=0.0)
+    # parked strike craft on the deck margins: tiny arrowheads that make the carrier read huge
+    for side in (1, -1):
+        for k, x in enumerate((22.6, 19.4, 16.2, 13.0)):
+            y = side * 4.45
+            F.plate(s, f'Parked{side}{k}', [(x + 1.0, y), (x - 0.8, y + 0.75), (x - 0.55, y), (x - 0.8, y - 0.75)],
+                    z0=3.08, thickness=0.16, material='paint2', chamfer=0.04, bevel=0.0)
+            F.box(s, f'ParkedCanopy{side}{k}', (x + 0.15, y, 3.27), (0.5, 0.18, 0.08), material='glass', bevel=0.0)
+            F.box(s, f'ParkedPad{side}{k}', (x, y, 3.07), (2.3, 1.9, 0.04), material='gunmetal', bevel=0.0)
     # deck-edge catapult rails either side of the runway
     for side in (1, -1):
         F.box(s, f'Catapult{side}', (18.0, side * 3.6, 3.06), (15.0, 0.22, 0.08), material='gunmetal', bevel=0.0)

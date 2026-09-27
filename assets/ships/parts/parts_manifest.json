@@ -5939,18 +5939,19 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/ashline_dart.glb",
-      "tris": 18642,
-      "bytes": 19306708,
+      "tris": 36536,
+      "bytes": 2107540,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN",
-        "Gun_Assembly"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -5961,25 +5962,27 @@
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -7.025000095367432,
-          -0.7225860953330994,
-          -3.0249998569488525
+          -7.770679950714111,
+          -1.100000023841858,
+          -3.4468319416046143
         ],
         "max": [
-          8.750126838684082,
-          1.5750000476837158,
-          3.0249998569488525
+          8.54833984375,
+          1.3244999647140503,
+          3.4468319416046143
         ],
         "dimensionsM": [
-          15.775126934051514,
-          2.297586143016815,
-          6.049999713897705
+          16.31901979446411,
+          2.424499988555908,
+          6.8936638832092285
         ]
       },
       "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Dart, live flyby_interceptor Reach hostile body; explicit LOD0/1/2, 8/7/7 draws, damageable drive/gun roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
@@ -5989,18 +5992,18 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/ashline_lode.glb",
-      "tris": 27240,
-      "bytes": 20186928,
+      "tris": 31372,
+      "bytes": 1932852,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN",
-        "Gun_Assembly"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -6011,25 +6014,27 @@
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -11.524999618530273,
-          -1.7549999952316284,
-          -4.987500190734863
+          -10.920680046081543,
+          -0.9504451751708984,
+          -5.510000228881836
         ],
         "max": [
-          12.09999942779541,
-          2.575000047683716,
-          4.987500190734863
+          11.199649810791016,
+          3.075606107711792,
+          5.510000228881836
         ],
         "dimensionsM": [
-          23.624999046325684,
-          4.330000042915344,
-          9.975000381469727
+          22.12032985687256,
+          4.02605128288269,
+          11.020000457763672
         ]
       },
       "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Maul, live heavy_brawler Reach hostile body; explicit LOD0/1/2, 8/7/7 draws, damageable drive/gun roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
@@ -6039,19 +6044,19 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/ashline_rig.glb",
-      "tris": 14724,
-      "bytes": 19004932,
+      "tris": 36992,
+      "bytes": 2282732,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN",
-        "Gun_Assembly",
-        "HOOK_TETHER_SPOOL"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -6060,28 +6065,29 @@
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
-        "SOCKET_Tether_Front",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.175000190734863,
-          -2.0999999046325684,
-          -3.1814281940460205
+          -8.72065258026123,
+          -0.8250197172164917,
+          -3.105302095413208
         ],
         "max": [
-          9.539999961853027,
-          3.870000123977661,
-          1.8050000667572021
+          9.64134693145752,
+          2.076219081878662,
+          3.0450000762939453
         ],
         "dimensionsM": [
-          17.71500015258789,
-          5.9700000286102295,
-          4.986428260803223
+          18.36199951171875,
+          2.901238799095154,
+          6.150302171707153
         ]
       },
       "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Hook, live tether_control_raider Reach hostile body; explicit LOD0/1/2, 9/8/8 draws, damageable drive/gun/tether roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
@@ -6092,19 +6098,19 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/ashline_rig_corsair_blade.glb",
-      "tris": 19444,
-      "bytes": 19515116,
+      "tris": 35760,
+      "bytes": 2211500,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN",
-        "Gun_Assembly",
-        "HOOK_TETHER_SPOOL"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -6113,28 +6119,29 @@
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
-        "SOCKET_Tether_Front",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.175000190734863,
-          -2.0999999046325684,
-          -3.1814281940460205
+          -8.720653533935547,
+          -0.675000011920929,
+          -3.2748405933380127
         ],
         "max": [
-          9.641732215881348,
-          4.349392890930176,
-          2.5526046752929688
+          10.599640846252441,
+          1.7044999599456787,
+          3.2748405933380127
         ],
         "dimensionsM": [
-          17.81673240661621,
-          6.449392795562744,
-          5.734032869338989
+          19.32029438018799,
+          2.3794999718666077,
+          6.549681186676025
         ]
       },
       "note": "PQ-193.06 — Corsair Blade, live corsair_raider body. Foundry variant of the Ashline Rig with ram-lip, four blades, weapon collars, and lamps; donor PBR materials on the kit; pirate Rig slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_ashline_rig_corsair_blade_v01.glb."

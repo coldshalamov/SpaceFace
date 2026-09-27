@@ -16,6 +16,7 @@ SHIP_ID = 'bastion'
 COLORS = {
     'paint': '#232b36',    # military slate (brief #39434f, authored darker: the key light lifts ~2.5x)
     'paint2': '#111418',   # dark hull slate
+    'paint.upper': '#3a4552',  # lighter upper-works slate: turrets, citadel, bridge
     'stripe': '#7a241c',   # warning red (brief #8a2a22)
     'hazard': '#7a241c',
     'dark': '#16191d',
@@ -34,7 +35,7 @@ def turret(s, name, x, z, r=0.95, barrel=2.3):
     F.cylinder(s, name + 'Race', (x, 0.0, z + 0.2), (x, 0.0, z + 0.26), r * 0.86, material='dark', segments=40)
     house = [(x + 1.05, 0.55), (x + 0.45, 0.8), (x - 0.95, 0.8), (x - 1.15, 0.5), (x - 1.15, -0.5),
              (x - 0.95, -0.8), (x + 0.45, -0.8), (x + 1.05, -0.55)]
-    F.plate(s, name + 'House', house, z0=z + 0.24, thickness=0.62, material='paint', chamfer=0.22,
+    F.plate(s, name + 'House', house, z0=z + 0.24, thickness=0.62, material='paint.upper', chamfer=0.22,
             side_material='paint')
     F.band(s, name + 'House', (x - 0.3, 0.0, 0), (1, 0, 0), 0.22, 'stripe', inset=0.01, depth=0.015)
     F.box(s, name + 'Sight', (x - 0.45, 0.42, z + 0.95), (0.42, 0.24, 0.18), material='gunmetal', bevel=0.02)
@@ -80,7 +81,7 @@ def build():
 
     # --- citadel: raised armoured superstructure --------------------------------------------------
     cit = mirror_full([(2.6, 0.0), (1.6, 1.25), (-6.4, 1.55), (-7.4, 1.1), (-7.4, 0.0)])
-    F.plate(s, 'Citadel', cit, z0=0.7, thickness=0.75, material='paint', chamfer=0.3, side_material='paint2')
+    F.plate(s, 'Citadel', cit, z0=0.7, thickness=0.75, material='paint.upper', chamfer=0.3, side_material='paint2')
     # missile hatch grid aft of the bridge: 2 x 4 recessed dark cells
     for i in range(4):
         for y in (0.5, -0.5):
@@ -88,9 +89,9 @@ def build():
 
     # --- bridge tower: stepped block, lit window band facing forward ------------------------------
     F.plate(s, 'Bridge1', [(-1.2, 0.0), (-1.6, 1.0), (-4.2, 1.1), (-4.4, 0.0), (-4.2, -1.1), (-1.6, -1.0)],
-            z0=1.4, thickness=0.8, material='paint', chamfer=0.2, side_material='paint2')
+            z0=1.4, thickness=0.8, material='paint.upper', chamfer=0.2, side_material='paint2')
     F.plate(s, 'Bridge2', [(-2.05, 0.7), (-3.8, 0.75), (-3.9, 0.0), (-3.8, -0.75), (-2.05, -0.7)],
-            z0=2.15, thickness=0.6, material='paint', chamfer=0.16, side_material='paint2')
+            z0=2.15, thickness=0.6, material='paint.upper', chamfer=0.16, side_material='paint2')
     # lit bridge glazing wrapped round the forward faces of the upper block
     F.band(s, 'Bridge2', (-2.3, 0, 2.42), (0, 0, 1), 0.2, 'glow_warm', facing=(1, 0, 0), min_facing=0.7)
     F.windows(s, 'TowerWin', -3.9, -1.9, 1.03, 1.85, 4, size=(0.3, 0.14), finish='glow_warm', mirror=True)

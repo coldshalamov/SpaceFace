@@ -29,10 +29,14 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_dart",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_dart.glb",
-      "releaseSha256": "c99be1793bd37fcc19897bf9005cd8fc0353105b05f7e99600335ca6c0dc607e",
-      "releaseBytes": 8098584,
+      "releaseSha256": "ae7d725174f6817561adb3c0c25309a30ff3c6a25a5fdebffa13a1d26b63e29d",
+      "releaseBytes": 842044,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
       ],
       "outputDir": "assets/ships/release/render-packages/ashline-dart",
       "metadataUrl": "assets/ships/release/render-packages/ashline-dart/render-package.json",
@@ -46,10 +50,14 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_lode",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_lode.glb",
-      "releaseSha256": "f6571b315fc3998c7888d127d2a7340e0345c3040ccc62c6e13a5af7210ddc83",
-      "releaseBytes": 8319776,
+      "releaseSha256": "36f209866cbbd4889f866b3b20a000703382a2bef3a7d337e54c2bb7e4d05f63",
+      "releaseBytes": 812492,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
       ],
       "outputDir": "assets/ships/release/render-packages/ashline-lode",
       "metadataUrl": "assets/ships/release/render-packages/ashline-lode/render-package.json",
@@ -63,11 +71,14 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_rig",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig.glb",
-      "releaseSha256": "4107311a3a9a38ca60a3c70b72e9d767280a36d4edd5757cd49bdec87b2d94e7",
-      "releaseBytes": 7984808,
+      "releaseSha256": "752b5ab655a6447463158c9632c450398cb29a9bc363693a3d8af333395fdde6",
+      "releaseBytes": 910188,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_TETHER"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
       ],
       "outputDir": "assets/ships/release/render-packages/ashline-rig",
       "metadataUrl": "assets/ships/release/render-packages/ashline-rig/render-package.json",
@@ -81,11 +92,14 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_rig_corsair_blade",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig_corsair_blade.glb",
-      "releaseSha256": "1169468438edf2737a61fe58950c9b8438f114c6eb0feaa6c8922f38df916990",
-      "releaseBytes": 8132544,
+      "releaseSha256": "df5ff59e4c0a7abcf25bc7e5f1467972fd1d2da70198fa8366356513da2171a8",
+      "releaseBytes": 883992,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_TETHER"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
       ],
       "outputDir": "assets/ships/release/render-packages/ashline-rig-corsair-blade",
       "metadataUrl": "assets/ships/release/render-packages/ashline-rig-corsair-blade/render-package.json",

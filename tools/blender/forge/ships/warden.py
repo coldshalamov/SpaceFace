@@ -17,7 +17,7 @@ import forge as F  # noqa: E402
 SHIP_ID = 'warden'
 COLORS = {
     'paint': '#1a2840',    # navy hull (brief #223247, deepened: the key light lifts it to slate)
-    'paint2': '#2a3342',   # steel armour: turret houses, bridge tier, belt plates
+    'paint2': '#121821',   # dark armour: spine deck, secondary turret houses, belt plates
     'stripe': '#7e622b',   # gold trim (brief #b08a3c, authored darker: the key light lifts ~2.5x)
     'hazard': '#7e622b',
     'dark': '#16191e',
@@ -53,7 +53,7 @@ def hull_y(x, z):
     return h['w'] * (1 - r ** h['n']) ** (1 / h['n'])
 
 
-def turret(s, name, x, y, z, sc=1.0, barrels=3, yaw=0.0, housing='paint2', rangefinder=True):
+def turret(s, name, x, y, z, sc=1.0, barrels=3, yaw=0.0, housing='paint', rangefinder=True):
     """Local helper: a naval turret — barbette + gold ring, faceted armoured house, mantlet, barrels
     with blast sleeves and muzzle brakes, rangefinder bar across the rear roof. yaw=pi faces aft."""
     c, sn = math.cos(yaw), math.sin(yaw)
@@ -125,11 +125,11 @@ def build():
     # --- armour deck on the spine ----------------------------------------------------------------
     deck = [(13.6, 1.1), (11.5, 2.5), (-16.2, 2.95), (-18.6, 2.3), (-18.6, -2.3), (-16.2, -2.95), (11.5, -2.5),
             (13.6, -1.1)]
-    F.plate(s, 'Deck', deck, z0=1.95, thickness=0.6, material='paint', chamfer=0.25, side_material='paint',
+    F.plate(s, 'Deck', deck, z0=1.95, thickness=0.6, material='paint2', chamfer=0.25, side_material='paint',
             bevel=0.05)
-    # raised steel armour plates between the turret barbettes
-    F.panel(s, 'Deck', (8.2, 0.0), (0.9, 3.6), 'paint2', inset=0.04, depth=0.04)
-    F.panel(s, 'Deck', (-14.0, 0.0), (0.8, 4.2), 'paint2', inset=0.04, depth=0.04)
+    # raised navy armour plates between the turret barbettes
+    F.panel(s, 'Deck', (8.25, 0.0), (0.5, 3.6), 'paint', inset=0.04, depth=0.04)
+    F.panel(s, 'Deck', (-13.95, 0.0), (0.45, 4.2), 'paint', inset=0.04, depth=0.04)
     F.panel(s, 'Deck', (-17.6, 0.0), (1.2, 3.4), 'dark', inset=0.04, depth=-0.03)
     F.band(s, 'Deck', (0, 2.55, 0), (0, 1, 0), 0.16, 'stripe', facing=(0, 0, 1), min_facing=0.2)
     F.band(s, 'Deck', (0, -2.55, 0), (0, 1, 0), 0.16, 'stripe', facing=(0, 0, 1), min_facing=0.2)
@@ -152,26 +152,26 @@ def build():
 
     # --- main battery: four triple turrets on the spine ------------------------------------------
     zdeck = 2.55
-    turret(s, 'T1', 10.4, 0.0, zdeck, 1.1)
+    turret(s, 'T1', 10.4, 0.0, zdeck, 1.25)
     # T2 superfires over T1 from a raised barbette
-    F.plate(s, 'T2Tower', [(7.9, 1.2), (6.9, 1.7), (4.4, 1.7), (4.1, 1.2), (4.1, -1.2), (4.4, -1.7), (6.9, -1.7),
-                           (7.9, -1.2)], z0=2.4, thickness=1.2, material='paint', chamfer=0.25, bevel=0.04)
-    turret(s, 'T2', 6.0, 0.0, zdeck + 1.1, 1.1)
+    F.plate(s, 'T2Tower', [(8.3, 1.3), (7.3, 2.0), (4.3, 2.0), (3.8, 1.3), (3.8, -1.3), (4.3, -2.0), (7.3, -2.0),
+                           (8.3, -1.3)], z0=2.4, thickness=1.2, material='paint', chamfer=0.25, bevel=0.04)
+    turret(s, 'T2', 6.0, 0.0, zdeck + 1.1, 1.25)
     # aft pair faces aft; T3 superfires over T4
-    F.plate(s, 'T3Tower', [(-9.8, 1.2), (-10.2, 1.7), (-12.8, 1.7), (-13.6, 1.2), (-13.6, -1.2), (-12.8, -1.7),
-                           (-10.2, -1.7), (-9.8, -1.2)], z0=2.4, thickness=1.2, material='paint', chamfer=0.25,
+    F.plate(s, 'T3Tower', [(-9.6, 1.3), (-10.2, 2.0), (-13.2, 2.0), (-13.9, 1.3), (-13.9, -1.3), (-13.2, -2.0),
+                           (-10.2, -2.0), (-9.6, -1.3)], z0=2.4, thickness=1.2, material='paint', chamfer=0.25,
             bevel=0.04)
-    turret(s, 'T3', -11.8, 0.0, zdeck + 1.1, 1.1, yaw=math.pi)
-    turret(s, 'T4', -15.6, 0.0, zdeck, 0.9, yaw=math.pi, rangefinder=False)
+    turret(s, 'T3', -11.8, 0.0, zdeck + 1.1, 1.25, yaw=math.pi)
+    turret(s, 'T4', -15.7, 0.0, zdeck, 1.0, yaw=math.pi, rangefinder=False)
 
     # --- secondary battery: twin turrets on the sponsons -----------------------------------------
     sponson_top = 1.2
     for side in (1, -1):
         sd = 'P' if side > 0 else 'S'
-        turret(s, f'S1{sd}', 5.3, side * 4.25, sponson_top, 0.52, barrels=2, rangefinder=False)
-        turret(s, f'S2{sd}', 0.2, side * 4.3, sponson_top, 0.52, barrels=2, rangefinder=False)
-        turret(s, f'S3{sd}', -6.8, side * 4.95, sponson_top, 0.58, barrels=2, rangefinder=False)
-        sec = turret(s, f'S4{sd}', -12.0, side * 4.95, sponson_top, 0.58, barrels=2, rangefinder=False)
+        turret(s, f'S1{sd}', 5.3, side * 4.25, sponson_top, 0.52, barrels=2, housing='paint2', rangefinder=False)
+        turret(s, f'S2{sd}', 0.2, side * 4.3, sponson_top, 0.52, barrels=2, housing='paint2', rangefinder=False)
+        turret(s, f'S3{sd}', -6.8, side * 4.95, sponson_top, 0.58, barrels=2, housing='paint2', rangefinder=False)
+        sec = turret(s, f'S4{sd}', -12.0, side * 4.95, sponson_top, 0.58, barrels=2, housing='paint2', rangefinder=False)
         if side > 0:
             s.hook_part('HOOK_SECONDARY_TURRET', *sec)
 

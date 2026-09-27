@@ -12,42 +12,42 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ashline-dart",
-    "expectedContentHash": "ea851b14d58e9b2bb65ba68838b603cd10fb4c640fb5f34873f90bc530ee7c87",
+    "expectedContentHash": "36837ce45def3b7e65179374a736c817ebee497a4caebbfba29d8eb610a79f43",
     "key": "ashline-dart",
     "metadataUrl": "assets/ships/release/render-packages/ashline-dart/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_DART",
     "slot": "hull",
-    "sourceSha256": "c99be1793bd37fcc19897bf9005cd8fc0353105b05f7e99600335ca6c0dc607e",
+    "sourceSha256": "ae7d725174f6817561adb3c0c25309a30ff3c6a25a5fdebffa13a1d26b63e29d",
     "sourceUrl": "assets/ships/release/parts/wholeships/ashline_dart.glb"
   },
   {
     "assetId": "sf.render.ashline-lode",
-    "expectedContentHash": "00413a1591e5c180db318ccecb677f38630852b5325df87e29b9c98839bc3a53",
+    "expectedContentHash": "dc4f6874e3cf3a1f25848fbee51c387b6b42abd2a6dbcdb27496eeb494ad5097",
     "key": "ashline-lode",
     "metadataUrl": "assets/ships/release/render-packages/ashline-lode/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_LODE",
     "slot": "hull",
-    "sourceSha256": "f6571b315fc3998c7888d127d2a7340e0345c3040ccc62c6e13a5af7210ddc83",
+    "sourceSha256": "36f209866cbbd4889f866b3b20a000703382a2bef3a7d337e54c2bb7e4d05f63",
     "sourceUrl": "assets/ships/release/parts/wholeships/ashline_lode.glb"
   },
   {
     "assetId": "sf.render.ashline-rig",
-    "expectedContentHash": "e5ebc7376702c0693609ad9926616edc1ddfe322ab5250fa50fc5440c879921e",
+    "expectedContentHash": "65847a8204bc456fd5d42b90f3812e92c4e46529338973037fa5b0b8687b6c03",
     "key": "ashline-rig",
     "metadataUrl": "assets/ships/release/render-packages/ashline-rig/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_RIG",
     "slot": "hull",
-    "sourceSha256": "4107311a3a9a38ca60a3c70b72e9d767280a36d4edd5757cd49bdec87b2d94e7",
+    "sourceSha256": "752b5ab655a6447463158c9632c450398cb29a9bc363693a3d8af333395fdde6",
     "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig.glb"
   },
   {
     "assetId": "sf.render.ashline-rig-corsair-blade",
-    "expectedContentHash": "502d1f7ee0d9212b93fd782b6ddea6662b718761d271d7955b92ea96287630dc",
+    "expectedContentHash": "2304c5e10c34ddd92d85e933766da0c63861714339a19345e665a3e5cfae2899",
     "key": "ashline-rig-corsair-blade",
     "metadataUrl": "assets/ships/release/render-packages/ashline-rig-corsair-blade/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE",
     "slot": "hull",
-    "sourceSha256": "1169468438edf2737a61fe58950c9b8438f114c6eb0feaa6c8922f38df916990",
+    "sourceSha256": "df5ff59e4c0a7abcf25bc7e5f1467972fd1d2da70198fa8366356513da2171a8",
     "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig_corsair_blade.glb"
   },
   {
