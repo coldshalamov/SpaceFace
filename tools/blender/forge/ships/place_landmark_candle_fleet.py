@@ -182,6 +182,11 @@ def lathe(s, name, c, prof, material, segs=24, bevel=0.0, smooth=40.0, phase=0.0
     return s.add(F._new_object(name, bm, s.slots(finishes), bevel=bevel, smooth_angle=smooth))
 
 
+def bpy_obj(name):
+    import bpy
+    return bpy.data.objects[name]
+
+
 def octagon(r, c=(0.0, 0.0), rot=0.0):
     cx, cy = c
     return [(cx + r * math.cos(rot + math.pi / 8 + k * math.pi / 4), cy + r * math.sin(rot + math.pi / 8 + k * math.pi / 4))
@@ -248,8 +253,8 @@ def build_candle(s, i):
     # the flame: amber root, warm body, a teardrop tip
     fz = PYLON_TOP + 0.6
     lathe(s, f'Flame{i}', (x, y), [
-        (fz, 0.01, 'glow_amber'), (fz + 0.5, 1.7, 'glow_amber'), (fz + 1.5, 2.1), (fz + 3.0, 1.95), (fz + 4.6, 1.35),
-        (fz + 6.0, 0.7), (fz + 7.2, 0.0),
+        (fz, 0.01, 'glow_amber'), (fz + 0.5, 1.9, 'glow_amber'), (fz + 1.6, 2.35), (fz + 3.1, 2.2), (fz + 4.7, 1.5),
+        (fz + 6.1, 0.75), (fz + 7.4, 0.0),
     ], 'glow_warm', segs=16, smooth=80.0)
     # lantern cage: six bronze ribs from the lip curving in to a crown ring, a finial on top
     ribs = []
@@ -258,18 +263,24 @@ def build_candle(s, i):
         d = Vector((math.cos(ang), math.sin(ang), 0))
         p0 = Vector((x, y, PYLON_TOP + 1.2)) + d * 2.95
         p1 = Vector((x, y, PYLON_TOP + 5.2)) + d * 2.75
-        p2 = Vector((x, y, PYLON_TOP + 8.2)) + d * 1.25
+        p2 = Vector((x, y, PYLON_TOP + 8.6)) + d * 0.7
         ribs += [(p0, p1), (p1, p2)]
     beams(s, f'Cage{i}', ribs, 0.22, material='stripe')
-    F.ring(s, f'CageCrown{i}', (x, y, PYLON_TOP + 8.2), 1.25, 0.16, axis=(0, 0, 1), material='stripe', segments=10,
+    F.ring(s, f'CageCrown{i}', (x, y, PYLON_TOP + 8.6), 0.7, 0.14, axis=(0, 0, 1), material='stripe', segments=10,
            sides=4)
     lathe(s, f'Finial{i}', (x, y), [
-        (PYLON_TOP + 8.0, 0.5), (PYLON_TOP + 8.6, 0.45), (PYLON_TOP + 9.6, 0.12), (PYLON_TOP + 10.4, 0.0),
+        (PYLON_TOP + 8.5, 0.3), (PYLON_TOP + 9.4, 0.18), (PYLON_TOP + 10.4, 0.0),
     ], 'stripe', segs=8)
     # underside: the pylon's counterweight finial through the keel to the under-truss
     lathe(s, f'Root{i}', (x, y), [
         (WALK_Z0 - 3.6, 2.2), (WALK_Z0 - 6.5, 1.5), (-11.0, 1.1), (-13.5, 0.4), (-14.5, 0.0),
     ], 'paint.graphite', segs=10)
+    # eight family votives on the pad's corners: a small warm halo at every candle's foot
+    vot = []
+    for k in range(8):
+        ang = rz + math.pi / 8 + k * math.pi / 4
+        vot.append(((x + 5.0 * math.cos(ang), y + 5.0 * math.sin(ang), WALK_Z1 + 1.1), (0.45, 0.45, 0.4), ang))
+    cluster(s, f'PadVotives{i}', vot, 'glow_warm')
     # bronze family plaque on the outward face of the die, a second on the inward face
     for side, nm in ((1, 'O'), (-1, 'I')):
         p = Vector((x, y, 0)) + out * side * 2.86
@@ -353,19 +364,26 @@ def build_dark_plinth(s):
         dict(x=x + 6.2, w=2.2, ht=2.9, hb=2.3, zc=ztop + 5.2, n=2.3, y=y - 1.2),
         dict(x=x + 7.0, w=0.9, ht=1.8, hb=1.2, zc=ztop + 4.8, n=2.0, y=y - 1.8),
     ], material='paint.scorch', back_material='dark', front_material='dark', count=32, bevel=0.05)
+    frag_pivot = Vector((x, y, ztop + 5.8))
     # the convoy's livery survives as one faded orange band and a charcoal frame course
     F.band(s, 'Fragment', (x - 3.2, 0, 0), (1, 0, 0), 1.3, 'hazard', inset=0.05, depth=0.06)
     F.band(s, 'Fragment', (x + 1.6, 0, 0), (1, 0, 0), 0.6, 'paint.graphite', inset=0.05, depth=0.1)
     # the torn aft edge: exposed frames and stringers where the hull broke
     frames = []
+    torn = []
     for k in range(7):
         ang = math.radians(20 + k * 46)
         py = y + 0.6 + 3.1 * math.cos(ang)
         pz = ztop + 5.8 + 2.8 * math.sin(ang)
         frames.append(((x - 8.2, py, pz), (x - 11.0 + (k % 3) * 0.9, py * 1.05, pz + 0.3 * (k % 2))))
-    beams(s, 'TornStringers', frames, 0.35, material='paint.graphite')
-    F.ring(s, 'TornFrame', (x - 8.3, y + 0.6, ztop + 5.8), 3.0, 0.3, axis=(1, 0, 0), material='paint.graphite',
-           segments=18, sides=4)
+    torn.append(beams(s, 'TornStringers', frames, 0.35, material='paint.graphite'))
+    torn.append(F.ring(s, 'TornFrame', (x - 8.3, y + 0.6, ztop + 5.8), 3.0, 0.3, axis=(1, 0, 0),
+                       material='paint.graphite', segments=18, sides=4))
+    # held aloft: the fragment rides nose-up and slightly yawed in its cradle, torn end to the centre
+    tilt = (Matrix.Translation(frag_pivot) @ Matrix.Rotation(math.radians(8), 4, 'Z') @
+            Matrix.Rotation(math.radians(-16), 4, 'Y') @ Matrix.Translation(-frag_pivot))
+    for o in [bpy_obj('Fragment')] + torn:
+        o.data.transform(tilt)
     # the flight recorder in a glass case on the plinth's inward face (towards the still point)
     F.box(s, 'RecorderCase', (x - 7.2, y, WALK_Z1 + 3.4), (1.6, 2.4, 2.6), material='glass', bevel=0.02)
     F.box(s, 'Recorder', (x - 7.2, y, WALK_Z1 + 3.2), (1.0, 1.5, 1.2), material='hazard', bevel=0.05)
@@ -383,32 +401,34 @@ def build_dark_plinth(s):
 
 
 def build_still_point(s):
-    """The dark still point at the centre: a black mirror pool in a charcoal lens, an ivory rim,
-    three tension spokes to the ring and the bronze course line to the dark plinth."""
+    """The dark still point at the centre: a matte black pool in a charcoal lens with bronze ripple
+    rings, an ivory rim, three tension spokes to the ring and the bronze course line to the dark plinth."""
     lathe(s, 'Lens', (0, 0), [
-        (-7.0, 0.0), (-6.2, 4.5), (-3.8, 9.5), (-1.2, 12.0), (0.2, 12.4, 'paint.graphite'), (0.6, 12.4),
-        (0.6, 10.6, 'dark'), (0.2, 10.2),
-    ], 'paint.graphite', segs=48, smooth=35.0)
-    lathe(s, 'Pool', (0, 0), [(0.15, 10.25), (0.2, 10.25)], 'glass', segs=48)
-    F.ring(s, 'Rim', (0, 0, 0.62), 11.5, 0.35, axis=(0, 0, 1), material='paint', segments=64, sides=6)
-    F.ring(s, 'RimInner', (0, 0, 0.62), 10.5, 0.12, axis=(0, 0, 1), material='stripe', segments=64, sides=4)
+        (-8.5, 0.0), (-7.6, 5.5), (-4.6, 12.0), (-1.4, 15.2), (0.2, 15.6, 'paint.graphite'), (0.7, 15.6),
+        (0.7, 13.6, 'dark'), (0.3, 13.2),
+    ], 'paint.graphite', segs=56, smooth=35.0)
+    F.ring(s, 'Rim', (0, 0, 0.72), 14.6, 0.42, axis=(0, 0, 1), material='paint', segments=72, sides=6)
+    F.ring(s, 'RimInner', (0, 0, 0.5), 13.4, 0.14, axis=(0, 0, 1), material='stripe', segments=72, sides=4)
+    for k, rr in enumerate((3.2, 6.6, 10.0)):
+        annulus(s, f'Ripple{k}', rr - 0.14, rr + 0.14, 0.3, 0.05, 48, material='stripe', side='stripe', bevel=0.0)
+    lathe(s, 'StillCore', (0, 0), [(0.3, 1.1), (0.7, 1.1), (0.9, 0.7), (1.0, 0.0)], 'paint.graphite', segs=16)
     # 24 small bronze studs round the rim (one per flame) and a gap facing the dark plinth
     studs = []
     for i in range(1, N):
         a = STEP * i
-        px, py, _ = polar(11.5, a)
-        studs.append(((px, py, 1.05), (0.7, 0.7, 0.35), math.radians(a)))
+        px, py, _ = polar(14.6, a)
+        studs.append(((px, py, 1.2), (0.8, 0.8, 0.4), math.radians(a)))
     cluster(s, 'RimStuds', studs, 'stripe')
     # tension spokes (charcoal) at 120-degree steps; the +X one carries the course line
     spokes = []
     for a in (0.0, 120.0, 240.0):
-        spokes.append((polar(12.0, a, -0.4), polar(WALK_R0 + 0.4, a, -0.4)))
+        spokes.append((polar(15.2, a, -0.4), polar(WALK_R0 + 0.4, a, -0.4)))
     beams(s, 'Spokes', spokes, 1.1, material='paint.graphite', h=1.4)
     under = []
     for a in (0.0, 120.0, 240.0):
-        under.append((polar(10.0, a, -5.2), polar(WALK_R0 - 1.0, a, -2.6)))
+        under.append((polar(12.0, a, -6.0), polar(WALK_R0 - 1.0, a, -2.6)))
     beams(s, 'SpokeStays', under, 0.5, material='gunmetal')
-    beams(s, 'CourseLine', [((12.1, 0, 0.33), (WALK_R0 + 0.4, 0, 0.33))], 0.45, material='stripe', h=0.12)
+    beams(s, 'CourseLine', [((15.3, 0, 0.33), (WALK_R0 + 0.4, 0, 0.33))], 0.45, material='stripe', h=0.12)
     # spoke feet on the kerb
     for a in (0.0, 120.0, 240.0):
         px, py, _ = polar(WALK_R0 - 0.2, a)
