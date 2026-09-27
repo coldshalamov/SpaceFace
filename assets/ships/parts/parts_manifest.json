@@ -3528,6 +3528,122 @@
       "triangleMetric": "lod0"
     },
     {
+      "id": "place_landmark_skerris_throne",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_landmark_skerris_throne.glb",
+      "tris": 69182,
+      "bytes": 7645384,
+      "textureSize": 1024,
+      "note": "The Skerris Throne (Sker Haven, Reach): fortress welded from captured hulls, skull prow, throne of freighters. Forge (tools/blender/forge/ships/place_landmark_skerris_throne.py).",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -117.11862182617188,
+          -12.029521942138672,
+          -107.51862335205078
+        ],
+        "max": [
+          99.9255599975586,
+          74.74641418457031,
+          82.36476135253906
+        ],
+        "dimensionsM": [
+          217.04418182373047,
+          86.77593612670898,
+          189.88338470458984
+        ]
+      },
+      "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_landmark_resonant_cathedral",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_landmark_resonant_cathedral.glb",
+      "tris": 62152,
+      "bytes": 7319756,
+      "textureSize": 1024,
+      "note": "The Resonant Cathedral (Vesta Forge, Choir): foundry hall under a singing magenta arch between twin spires. Forge (tools/blender/forge/ships/place_landmark_resonant_cathedral.py).",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -36.31684112548828,
+          -18.01851463317871,
+          -90.08845520019531
+        ],
+        "max": [
+          73,
+          120.51499938964844,
+          90.08845520019531
+        ],
+        "dimensionsM": [
+          109.31684112548828,
+          138.53351402282715,
+          180.17691040039062
+        ]
+      },
+      "triangleMetric": "lod0",
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy"
+      }
+    },
+    {
+      "id": "place_landmark_candle_fleet",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_landmark_candle_fleet.glb",
+      "tris": 76342,
+      "bytes": 9196492,
+      "textureSize": 1024,
+      "note": "The Candle Fleet (Helios Prime memorial): 24 lit candle plinths round a dark 25th holding the recovered convoy bow. Forge (tools/blender/forge/ships/place_landmark_candle_fleet.py).",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -99.88648986816406,
+          -17,
+          -99.68394470214844
+        ],
+        "max": [
+          97.33208465576172,
+          40.52000045776367,
+          113.27995300292969
+        ],
+        "dimensionsM": [
+          197.21857452392578,
+          57.52000045776367,
+          212.96389770507812
+        ]
+      },
+      "triangleMetric": "lod0",
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy"
+      }
+    },
+    {
       "id": "place_mining_drone",
       "category": "places",
       "priority": "P1",
@@ -8277,7 +8393,10 @@
       "places/place_claim_outpost_catcher.glb",
       "places/place_claim_outpost_fence.glb",
       "places/place_breakaway_sp07.glb",
-      "places/place_breakaway_fork.glb"
+      "places/place_breakaway_fork.glb",
+      "places/place_landmark_candle_fleet.glb",
+      "places/place_landmark_resonant_cathedral.glb",
+      "places/place_landmark_skerris_throne.glb"
     ]
   }
 }

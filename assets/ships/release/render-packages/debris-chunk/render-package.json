@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "608b835aec6d49b136a3e2fdadf42db286bafe58b49f2da840e8e569c6467fd7",
+  "contentHash": "f4001075bc5e6f3c44324d40ce40dc3fc7d9c3b715eedd80a1bfdbd2bf524251",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2548,8 +2548,8 @@
       "uri": "place_debris_chunk.glb"
     },
     "sourceManifest": {
-      "bytes": 197520,
-      "sha256": "1e2d5a5ed3e8b430a626bc3a8a3d823002a4f8db8cffd907c8cafd720b483321",
+      "bytes": 199726,
+      "sha256": "7637b7f5ceea5ba4b8791c17a98e7bc67a8125fdeaafe3714950e8679ad2ba26",
       "uri": "pilots.json"
     }
   },
@@ -3459,7 +3459,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_debris_chunk.glb"
   },
-  "runtimeHash": "bbabca69da4291fceb3735bf9ac99330e3011b60d201cc2562aaf611b0a2945d",
+  "runtimeHash": "575e7818e54275447186209ab2e632cd6edbf416a85247ea5912d4ee6e001f24",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

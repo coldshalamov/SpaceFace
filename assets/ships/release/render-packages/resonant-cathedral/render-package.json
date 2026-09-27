@@ -1,0 +1,5230 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.resonant-cathedral.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6,
+        26,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentNodeId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6,
+        26,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        4,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentNodeId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        4,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.resonant-cathedral",
+  "collisions": [
+    {
+      "id": "sf.render.resonant-cathedral.collision",
+      "nodeId": "sf.render.resonant-cathedral.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "4e28054aaad193f66600b638783dac53006de094f5b074f8cb3af47e3c7da538",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          73.00528717041016,
+          120.51268768310547,
+          90.0615463256836
+        ],
+        "min": [
+          -36.1338996887207,
+          -18.008440017700195,
+          -90.0615463256836
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "731c7e463b31aa2ee1a68a067741deaa8fa99f6477145ac46af387e43d7a0e19",
+      "id": "sf.render.resonant-cathedral.node.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.resonant-cathedral.node.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 872
+    },
+    {
+      "bounds": {
+        "max": [
+          70.10045623779297,
+          41.00300598144531,
+          90
+        ],
+        "min": [
+          -35.60223388671875,
+          -8.003006935119629,
+          -90
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d9870d276d6d6b42ebd349e9193513cce8d4a0a160d3214c776e5f8a2984869f",
+      "id": "sf.render.resonant-cathedral.node.lod0-armor.primitive.0",
+      "indexCount": 16362,
+      "indexed": true,
+      "materialHash": "fe5a44e6953ad78807aa8869203632b3075a837349d999e800b259664a87c70f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 7101
+    },
+    {
+      "bounds": {
+        "max": [
+          36.20440673828125,
+          54.99845886230469,
+          64.44999694824219
+        ],
+        "min": [
+          -33.9044075012207,
+          -5.948457717895508,
+          -64.44999694824219
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7e34f21ba87fc2c184d5db2702c2f58b47074e42aa1e0c489bef078e9392931a",
+      "id": "sf.render.resonant-cathedral.node.lod0-beacon-amber.primitive.0",
+      "indexCount": 3126,
+      "indexed": true,
+      "materialHash": "6f08a4ce950adc05cf7913e335be7b01c8e27047c8a87a00ae8fe8cf9619e7c8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 1660
+    },
+    {
+      "bounds": {
+        "max": [
+          67.19987487792969,
+          19.047269821166992,
+          53.323333740234375
+        ],
+        "min": [
+          -20.69987678527832,
+          -2.2052690982818604,
+          -64.1500015258789
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ccccd4a2cda94fc3fb0bedf07358e3b32f31b80a3b855565448c7e1d4ded58cf",
+      "id": "sf.render.resonant-cathedral.node.lod0-canopy.primitive.0",
+      "indexCount": 8400,
+      "indexed": true,
+      "materialHash": "50cbee9d60f8fea310fdafbeb920ddcd2d8816bb20d855d784afde5f8914b546",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_CANOPY",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 5545
+    },
+    {
+      "bounds": {
+        "max": [
+          63.2515754699707,
+          120.51991271972656,
+          76.44999694824219
+        ],
+        "min": [
+          -27.451576232910156,
+          -2.1799159049987793,
+          -76.44999694824219
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "44cded17a55a306206e9dc8ed16f0e42e6d46e5c9c97de20dac9a2c7be1b72fb",
+      "id": "sf.render.resonant-cathedral.node.lod0-hook-nav-port.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_PORT",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          63.25,
+          -1.8249915838241577,
+          38.95000076293945
+        ],
+        "min": [
+          62.75,
+          -2.1750082969665527,
+          38.45000076293945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "de19ee6208131c1c196dea91ed3a2c72d30f380ffc65d165865d47c95f27fcc4",
+      "id": "sf.render.resonant-cathedral.node.lod0-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          72.99822235107422,
+          90.18034362792969,
+          90
+        ],
+        "min": [
+          -36.19822692871094,
+          -18.00533676147461,
+          -90
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "be5647f918e285052cc2a4bcbb13e0d782def547ae4b871fbb70b00335b05e30",
+      "id": "sf.render.resonant-cathedral.node.lod0-hull-graphite.primitive.0",
+      "indexCount": 70059,
+      "indexed": true,
+      "materialHash": "389878f32f8d148b8814d2978e148e225d0f5f3dd34455b70493e3e2c23fd49b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_graphite",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 24056
+    },
+    {
+      "bounds": {
+        "max": [
+          69.501953125,
+          105.99828338623047,
+          84.30000305175781
+        ],
+        "min": [
+          -8.301956176757812,
+          -3.8770389556884766,
+          -84.30000305175781
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b9a736f1608d78bc7e6f5c913da5790c0a833cd17324a9174b152718ba16fa4a",
+      "id": "sf.render.resonant-cathedral.node.lod0-hull-spire.primitive.0",
+      "indexCount": 4089,
+      "indexed": true,
+      "materialHash": "504e223a8ef210406f965a9b6fbec10ecb2a73ccdc8a783003cbdafffed6151a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_spire",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-hull-spire",
+      "primitiveIndex": 0,
+      "vertexCount": 1529
+    },
+    {
+      "bounds": {
+        "max": [
+          70.00140380859375,
+          97.0340576171875,
+          89.48255920410156
+        ],
+        "min": [
+          -13.284804344177246,
+          -5.898049354553223,
+          -89.48255920410156
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e0b3e947fa09fa9601fa3a0343fb8c2510f40b7b7f49f8112147c0bcfbe1b87e",
+      "id": "sf.render.resonant-cathedral.node.lod0-hull.primitive.0",
+      "indexCount": 18408,
+      "indexed": true,
+      "materialHash": "8530e3ff6e9d322fda21a68111e6861d43c356ad40584f69fb32916b262a83a3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 10005
+    },
+    {
+      "bounds": {
+        "max": [
+          70.62427520751953,
+          119.99987030029297,
+          90
+        ],
+        "min": [
+          -22.004276275634766,
+          -4.599872589111328,
+          -90
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5e2bde5aa2baf985233973d5db2026f687c50b04fe3e4961bdcf440e0fce5cbb",
+      "id": "sf.render.resonant-cathedral.node.lod0-lights-cyan-magenta.primitive.0",
+      "indexCount": 23604,
+      "indexed": true,
+      "materialHash": "14707ecf5a0da9a5ebb982e20663c435747b2963a10bf89a909c3ee9a5db2381",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Cyan_magenta",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-lights-cyan-magenta",
+      "primitiveIndex": 0,
+      "vertexCount": 8020
+    },
+    {
+      "bounds": {
+        "max": [
+          69.00298309326172,
+          19.047786712646484,
+          90.08845520019531
+        ],
+        "min": [
+          -22.13298225402832,
+          -8.797786712646484,
+          -90.08845520019531
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "edc0fb17186051c271d4f810cb511712ab5bbe10bf9d2f8ec7015c289752f810",
+      "id": "sf.render.resonant-cathedral.node.lod0-lights-warm.primitive.0",
+      "indexCount": 19584,
+      "indexed": true,
+      "materialHash": "adea96abfc81bc2f1c22c22562c5469a591e93ead6b4daca6ec963a7cee73e2f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Warm",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 13056
+    },
+    {
+      "bounds": {
+        "max": [
+          22.23893928527832,
+          8.500195503234863,
+          49.29999923706055
+        ],
+        "min": [
+          -22.23893928527832,
+          -3.5001955032348633,
+          -49.29999923706055
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "70168cd20fb627c07bd7e7c37921364fcf0bd2849d15f84c10f2df99b2d85c9b",
+      "id": "sf.render.resonant-cathedral.node.lod0-livery.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "9193b94df4e47126be01f6b2c156c0f8c272a6869f2f0f5091e7a2e52f198945",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          70.77658081054688,
+          69.52967071533203,
+          60.72821044921875
+        ],
+        "min": [
+          -11.528288841247559,
+          -3.248476982116699,
+          -48.994876861572266
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f32eea7b254011d050e6c2dacb80cb2a90eea5a79f3144b86db1c446593e5dcd",
+      "id": "sf.render.resonant-cathedral.node.lod0-mechanical.primitive.0",
+      "indexCount": 10368,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 3948
+    },
+    {
+      "bounds": {
+        "max": [
+          41.6026496887207,
+          61.492523193359375,
+          89.48255920410156
+        ],
+        "min": [
+          -34.1026496887207,
+          -5.998303413391113,
+          -89.48255920410156
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "54f56e65e202c38585534645f5bd7f1ff7decf0891285174aa1bf39d5d3238c5",
+      "id": "sf.render.resonant-cathedral.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 8040,
+      "indexed": true,
+      "materialHash": "41da3573796a770727b980666a1bdc4ccf396957136b7b6994c1d504648190f7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 3785
+    },
+    {
+      "bounds": {
+        "max": [
+          42.086063385009766,
+          53.40314865112305,
+          62.04999923706055
+        ],
+        "min": [
+          -34.6986083984375,
+          6.496854782104492,
+          -62.04999923706055
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8a4f2f9d2ceae5c1080fff722d5d18b9a205d4f3745f749426fc5db35a159110",
+      "id": "sf.render.resonant-cathedral.node.lod0-warning.primitive.0",
+      "indexCount": 3840,
+      "indexed": true,
+      "materialHash": "3cc15faf187e1a9e813ce4b7ddef8e7acc4f650ce5d0130a4e909e1353a8d2b6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.resonant-cathedral.node.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 1576
+    },
+    {
+      "bounds": {
+        "max": [
+          70.0979232788086,
+          40.82024002075195,
+          89.82763671875
+        ],
+        "min": [
+          -35.59970474243164,
+          -11.995678901672363,
+          -89.82763671875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d6ade3ad5acacafd59bf93182c808be65bfd0c66f80618d8351165f95d39190a",
+      "id": "sf.render.resonant-cathedral.node.lod1-armor.primitive.0",
+      "indexCount": 5670,
+      "indexed": true,
+      "materialHash": "fe5a44e6953ad78807aa8869203632b3075a837349d999e800b259664a87c70f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 3378
+    },
+    {
+      "bounds": {
+        "max": [
+          36.20440673828125,
+          54.99845886230469,
+          64.44999694824219
+        ],
+        "min": [
+          -33.9044075012207,
+          -5.948457717895508,
+          -64.44999694824219
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4610dfbf3cece23f982d45582c8cfa6bab2fc8a26823ce23c572c2dde936f2df",
+      "id": "sf.render.resonant-cathedral.node.lod1-beacon-amber.primitive.0",
+      "indexCount": 1662,
+      "indexed": true,
+      "materialHash": "6f08a4ce950adc05cf7913e335be7b01c8e27047c8a87a00ae8fe8cf9619e7c8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 948
+    },
+    {
+      "bounds": {
+        "max": [
+          20.700105667114258,
+          19.04890251159668,
+          53.276668548583984
+        ],
+        "min": [
+          -20.700105667114258,
+          15.051097869873047,
+          -64.10334014892578
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bd9287ce9208f1184e1ead3eae0f324c4363ad92f256a30d40cd61c70c06f1b6",
+      "id": "sf.render.resonant-cathedral.node.lod1-canopy.primitive.0",
+      "indexCount": 2748,
+      "indexed": true,
+      "materialHash": "50cbee9d60f8fea310fdafbeb920ddcd2d8816bb20d855d784afde5f8914b546",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_CANOPY",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 1832
+    },
+    {
+      "bounds": {
+        "max": [
+          63.2515754699707,
+          120.51991271972656,
+          76.44999694824219
+        ],
+        "min": [
+          -27.451576232910156,
+          -2.1799159049987793,
+          -76.44999694824219
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "737b022d1dabcfe840091f075e953bf36cb6a717ab5748e655d853716505002d",
+      "id": "sf.render.resonant-cathedral.node.lod1-hook-nav-port.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_PORT",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          63.25,
+          -1.8249915838241577,
+          38.95000076293945
+        ],
+        "min": [
+          62.75,
+          -2.1750082969665527,
+          38.45000076293945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "264f2158b233ba1eb5011fc340828d77dab88fae835bc4bd90a1c13df53b0653",
+      "id": "sf.render.resonant-cathedral.node.lod1-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          72.99356842041016,
+          90.17964935302734,
+          90.00000762939453
+        ],
+        "min": [
+          -36.2028923034668,
+          -18.00603485107422,
+          -90.00000762939453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9083f90011d2109b71db365249b3c2021cf890a4561e9d6d0d193ebbdb70c657",
+      "id": "sf.render.resonant-cathedral.node.lod1-hull-graphite.primitive.0",
+      "indexCount": 22290,
+      "indexed": true,
+      "materialHash": "389878f32f8d148b8814d2978e148e225d0f5f3dd34455b70493e3e2c23fd49b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_graphite",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 9806
+    },
+    {
+      "bounds": {
+        "max": [
+          69.4999771118164,
+          106.32161712646484,
+          84.30000305175781
+        ],
+        "min": [
+          -8.303936004638672,
+          -3.8624322414398193,
+          -84.30000305175781
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8372a1e466c0e456faa3a205bfbfb20c9915aedfffbba362734167b1daff187c",
+      "id": "sf.render.resonant-cathedral.node.lod1-hull-spire.primitive.0",
+      "indexCount": 1296,
+      "indexed": true,
+      "materialHash": "504e223a8ef210406f965a9b6fbec10ecb2a73ccdc8a783003cbdafffed6151a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_spire",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-hull-spire",
+      "primitiveIndex": 0,
+      "vertexCount": 338
+    },
+    {
+      "bounds": {
+        "max": [
+          69.9936752319336,
+          97.041259765625,
+          89.49507904052734
+        ],
+        "min": [
+          -13.282329559326172,
+          -5.905250549316406,
+          -89.49507904052734
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b70512993dd538baf735e4666d91d6057f755345531906271f248321c790013e",
+      "id": "sf.render.resonant-cathedral.node.lod1-hull.primitive.0",
+      "indexCount": 15354,
+      "indexed": true,
+      "materialHash": "8530e3ff6e9d322fda21a68111e6861d43c356ad40584f69fb32916b262a83a3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 8827
+    },
+    {
+      "bounds": {
+        "max": [
+          70.6187744140625,
+          119.99407958984375,
+          89.82763671875
+        ],
+        "min": [
+          -13.996461868286133,
+          -11.99409294128418,
+          -89.3147964477539
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "77a1ccd10663808fa6b51bf89a2e895609fa7c81ab5dec8b3ddae612b5f3ef4c",
+      "id": "sf.render.resonant-cathedral.node.lod1-lights-cyan-magenta.primitive.0",
+      "indexCount": 11445,
+      "indexed": true,
+      "materialHash": "14707ecf5a0da9a5ebb982e20663c435747b2963a10bf89a909c3ee9a5db2381",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Cyan_magenta",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-lights-cyan-magenta",
+      "primitiveIndex": 0,
+      "vertexCount": 3897
+    },
+    {
+      "bounds": {
+        "max": [
+          69.00621032714844,
+          19.052635192871094,
+          90.0487060546875
+        ],
+        "min": [
+          -22.089542388916016,
+          -8.80263614654541,
+          -90.0487060546875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ff831042b59ecb9a804064020cd17fccb48e4adbbc65286a02d157416f96e328",
+      "id": "sf.render.resonant-cathedral.node.lod1-lights-warm.primitive.0",
+      "indexCount": 6960,
+      "indexed": true,
+      "materialHash": "adea96abfc81bc2f1c22c22562c5469a591e93ead6b4daca6ec963a7cee73e2f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Warm",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 4640
+    },
+    {
+      "bounds": {
+        "max": [
+          22.196809768676758,
+          8.500195503234863,
+          49.29999923706055
+        ],
+        "min": [
+          -22.196809768676758,
+          -3.5001955032348633,
+          -49.29999923706055
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7e3086d0a37cd9c01c9bf6581ebd73c7ad48d59767583cd38a39730f34d55211",
+      "id": "sf.render.resonant-cathedral.node.lod1-livery.primitive.0",
+      "indexCount": 96,
+      "indexed": true,
+      "materialHash": "9193b94df4e47126be01f6b2c156c0f8c272a6869f2f0f5091e7a2e52f198945",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Livery",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          70.7761459350586,
+          69.53128814697266,
+          60.726661682128906
+        ],
+        "min": [
+          -11.526339530944824,
+          -3.2447519302368164,
+          -48.99324035644531
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7da5f8ae818df963f87974dd1775ef227f8b9ee3639553817160b2aff7192869",
+      "id": "sf.render.resonant-cathedral.node.lod1-mechanical.primitive.0",
+      "indexCount": 1584,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 939
+    },
+    {
+      "bounds": {
+        "max": [
+          41.60213088989258,
+          61.496253967285156,
+          89.10214233398438
+        ],
+        "min": [
+          -34.107635498046875,
+          -5.968700885772705,
+          -89.10214233398438
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dd5eafc1968c1ca8130089b5630a2b2043394554c9711abac7a3baccbe12a959",
+      "id": "sf.render.resonant-cathedral.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 4029,
+      "indexed": true,
+      "materialHash": "41da3573796a770727b980666a1bdc4ccf396957136b7b6994c1d504648190f7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 1960
+    },
+    {
+      "bounds": {
+        "max": [
+          42.088134765625,
+          47.19863510131836,
+          62.043521881103516
+        ],
+        "min": [
+          -32.840492248535156,
+          6.507839202880859,
+          -62.043521881103516
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "85e314dd3ee8b34ac0145f2a558fe1750c1acfceb704e6b30f04125fad61adf1",
+      "id": "sf.render.resonant-cathedral.node.lod1-warning.primitive.0",
+      "indexCount": 1158,
+      "indexed": true,
+      "materialHash": "3cc15faf187e1a9e813ce4b7ddef8e7acc4f650ce5d0130a4e909e1353a8d2b6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.resonant-cathedral.node.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 772
+    },
+    {
+      "bounds": {
+        "max": [
+          70.00345611572266,
+          41.107173919677734,
+          89.73847961425781
+        ],
+        "min": [
+          -35.961727142333984,
+          -12.138334274291992,
+          -89.73847961425781
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5a330d330ebe1b81674736076060f0c050adcde3d1e73d6be2913fbb3cbd7bbf",
+      "id": "sf.render.resonant-cathedral.node.lod2-armor.primitive.0",
+      "indexCount": 2058,
+      "indexed": true,
+      "materialHash": "fe5a44e6953ad78807aa8869203632b3075a837349d999e800b259664a87c70f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.resonant-cathedral.node.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1089
+    },
+    {
+      "bounds": {
+        "max": [
+          36.139923095703125,
+          54.93722915649414,
+          50.5
+        ],
+        "min": [
+          -33.89649963378906,
+          -5.948767185211182,
+          -50.25
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7aa86836ff7a0dce1bca05a57935eb6c311fd9d95c4837ba6325fd4e34be3c94",
+      "id": "sf.render.resonant-cathedral.node.lod2-beacon-amber.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "6f08a4ce950adc05cf7913e335be7b01c8e27047c8a87a00ae8fe8cf9619e7c8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.resonant-cathedral.node.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 200
+    },
+    {
+      "bounds": {
+        "max": [
+          20.700105667114258,
+          19.04890251159668,
+          53.276668548583984
+        ],
+        "min": [
+          -20.700105667114258,
+          15.051097869873047,
+          -64.10334014892578
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bd9287ce9208f1184e1ead3eae0f324c4363ad92f256a30d40cd61c70c06f1b6",
+      "id": "sf.render.resonant-cathedral.node.lod2-canopy.primitive.0",
+      "indexCount": 2748,
+      "indexed": true,
+      "materialHash": "50cbee9d60f8fea310fdafbeb920ddcd2d8816bb20d855d784afde5f8914b546",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD2_CANOPY",
+      "nodeId": "sf.render.resonant-cathedral.node.lod2-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 1832
+    },
+    {
+      "bounds": {
+        "max": [
+          63.25,
+          56.28392028808594,
+          45.35000228881836
+        ],
+        "min": [
+          -27.450002670288086,
+          -2.06058931350708,
+          -45.35000228881836
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "70e1e04b1561bac468c71d391552ec1c1011bee2b106a435e8e6c72ff02580c1",
+      "id": "sf.render.resonant-cathedral.node.lod2-hook-nav-port.primitive.0",
+      "indexCount": 15,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_PORT",
+      "nodeId": "sf.render.resonant-cathedral.node.lod2-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 15
+    },
+    {
+      "bounds": {
+        "max": [
+          63.25,
+          -1.9416792392730713,
+          38.95000457763672
+        ],
+        "min": [
+          62.75,
+          -2.058320999145508,
+          38.45000457763672
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa16717d045ff587b27ac06d661770bf682bf34833eb333028206b42758e6232",
+      "id": "sf.render.resonant-cathedral.node.lod2-hook-nav-starboard.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.resonant-cathedral.node.lod2-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          72.97716522216797,
+          90.17584228515625,
+          90.00971221923828
+        ],
+        "min": [
+          -36.31679153442383,
+          -18.01935386657715,
+          -90.0061264038086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "37385ee15b5b5349b55455494d51c4bfe544a855d15b0cb56fbeea3f3a16d3f1",
+      "id": "sf.render.resonant-cathedral.node.lod2-hull-graphite.primitive.0",
+      "indexCount": 9630,
+      "indexed": true,
+      "materialHash": "389878f32f8d148b8814d2978e148e225d0f5f3dd34455b70493e3e2c23fd49b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_graphite",
+      "nodeId": "sf.render.resonant-cathedral.node.lod2-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 4931
+    },
+    {
+      "bounds": {
+        "max": [
+          69.50383758544922,
+          107.99861907958984,
+          84.20783996582031
+        ],
+        "min": [
+          -8.297246932983398,
+          -3.833049774169922,
+          -84.20783996582031
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "746babc4f8198ebafe0eb27eec2c5e8a9f5e380447604bd90a77de3bb7fb9c88",
+      "id": "sf.render.resonant-cathedral.node.lod2-hull-spire.primitive.0",
+      "indexCount": 630,
+      "indexed": true,
+      "materialHash": "504e223a8ef210406f965a9b6fbec10ecb2a73ccdc8a783003cbdafffed6151a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_spire",
+      "nodeId": "sf.render.resonant-cathedral.node.lod2-hull-spire",
+      "primitiveIndex": 0,
+      "vertexCount": 200
+    },
+    {
+      "bounds": {
+        "max": [
+          69.99980163574219,
+          97.02507019042969,
+          89.49507904052734
+        ],
+        "min": [
+          -13.276202201843262,
+          -5.899593830108643,
+          -89.49507904052734
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8404003be1fb5123ca06f41b327795b92058a81e31b6502d85dc2a545356d281",
+      "id": "sf.render.resonant-cathedral.node.lod2-hull.primitive.0",
+      "indexCount": 6069,
+      "indexed": true,
+      "materialHash": "8530e3ff6e9d322fda21a68111e6861d43c356ad40584f69fb32916b262a83a3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.resonant-cathedral.node.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 4301
+    },
+    {
+      "bounds": {
+        "max": [
+          70.62742614746094,
+          120.0039291381836,
+          89.97455596923828
+        ],
+        "min": [
+          -14.002725601196289,
+          -12.152542114257812,
+          -88.92205047607422
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "48af63ebd9ebce9002d81351c0ba49408adcb9f8f06876359fdf4289024be43a",
+      "id": "sf.render.resonant-cathedral.node.lod2-lights-cyan-magenta.primitive.0",
+      "indexCount": 3921,
+      "indexed": true,
+      "materialHash": "14707ecf5a0da9a5ebb982e20663c435747b2963a10bf89a909c3ee9a5db2381",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Cyan_magenta",
+      "nodeId": "sf.render.resonant-cathedral.node.lod2-lights-cyan-magenta",
+      "primitiveIndex": 0,
+      "vertexCount": 1739
+    },
+    {
+      "bounds": {
+        "max": [
+          68.86699676513672,
+          19.050127029418945,
+          53.276668548583984
+        ],
+        "min": [
+          -20.700326919555664,
+          -4.650125980377197,
+          -64.10334014892578
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4fc1184e5d7b448d7797d42470cc3c74b1e4651d9ada0ca427ff069ca70423c5",
+      "id": "sf.render.resonant-cathedral.node.lod2-lights-warm.primitive.0",
+      "indexCount": 1440,
+      "indexed": true,
+      "materialHash": "adea96abfc81bc2f1c22c22562c5469a591e93ead6b4daca6ec963a7cee73e2f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Warm",
+      "nodeId": "sf.render.resonant-cathedral.node.lod2-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 1024
+    },
+    {
+      "bounds": {
+        "max": [
+          70.82017517089844,
+          69.51271057128906,
+          39.831504821777344
+        ],
+        "min": [
+          15.309364318847656,
+          -3.2587506771087646,
+          -22.14649772644043
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0a69485435ed6fe58a0cc3f38fe7d63c36279a0812a2b40ce02c1c906b171a7c",
+      "id": "sf.render.resonant-cathedral.node.lod2-mechanical.primitive.0",
+      "indexCount": 279,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.resonant-cathedral.node.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 207
+    },
+    {
+      "bounds": {
+        "max": [
+          41.6020622253418,
+          61.46278381347656,
+          89.31434631347656
+        ],
+        "min": [
+          -34.222591400146484,
+          -5.966593265533447,
+          -89.31434631347656
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fc7c5658ac9e164503e01e9f8aba239209c24c239eb6928da3459c29c16b0829",
+      "id": "sf.render.resonant-cathedral.node.lod2-mechanicaldark.primitive.0",
+      "indexCount": 1677,
+      "indexed": true,
+      "materialHash": "41da3573796a770727b980666a1bdc4ccf396957136b7b6994c1d504648190f7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.resonant-cathedral.node.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 1073
+    },
+    {
+      "bounds": {
+        "max": [
+          42.083980560302734,
+          15.653192520141602,
+          61.95212936401367
+        ],
+        "min": [
+          -8.121312141418457,
+          6.472017765045166,
+          -61.95212936401367
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7b15819def8fc4c37f7c6fc19af3295a1d8c4e600111e1c8d9c519dc7066336b",
+      "id": "sf.render.resonant-cathedral.node.lod2-warning.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "3cc15faf187e1a9e813ce4b7ddef8e7acc4f650ce5d0130a4e909e1353a8d2b6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.resonant-cathedral.node.lod2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 116
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "14707ecf5a0da9a5ebb982e20663c435747b2963a10bf89a909c3ee9a5db2381",
+      "id": "material:14707ecf5a0da9a5ebb982e2",
+      "name": "Material_Emissive_Cyan_magenta",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "389878f32f8d148b8814d2978e148e225d0f5f3dd34455b70493e3e2c23fd49b",
+      "id": "material:389878f32f8d148b8814d297",
+      "name": "Material_Hull_graphite",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "3cc15faf187e1a9e813ce4b7ddef8e7acc4f650ce5d0130a4e909e1353a8d2b6",
+      "id": "material:3cc15faf187e1a9e813ce4b7",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "41da3573796a770727b980666a1bdc4ccf396957136b7b6994c1d504648190f7",
+      "id": "material:41da3573796a770727b98066",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "504e223a8ef210406f965a9b6fbec10ecb2a73ccdc8a783003cbdafffed6151a",
+      "id": "material:504e223a8ef210406f965a9b",
+      "name": "Material_Hull_spire",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "50cbee9d60f8fea310fdafbeb920ddcd2d8816bb20d855d784afde5f8914b546",
+      "id": "material:50cbee9d60f8fea310fdafbe",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6f08a4ce950adc05cf7913e335be7b01c8e27047c8a87a00ae8fe8cf9619e7c8",
+      "id": "material:6f08a4ce950adc05cf7913e3",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "id": "material:7dbce0f058ce69aeee64664b",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8530e3ff6e9d322fda21a68111e6861d43c356ad40584f69fb32916b262a83a3",
+      "id": "material:8530e3ff6e9d322fda21a681",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9193b94df4e47126be01f6b2c156c0f8c272a6869f2f0f5091e7a2e52f198945",
+      "id": "material:9193b94df4e47126be01f6b2",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "adea96abfc81bc2f1c22c22562c5469a591e93ead6b4daca6ec963a7cee73e2f",
+      "id": "material:adea96abfc81bc2f1c22c225",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "fe5a44e6953ad78807aa8869203632b3075a837349d999e800b259664a87c70f",
+      "id": "material:fe5a44e6953ad78807aa8869",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.resonant-cathedral.node.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_CANOPY",
+      "nodeName": "LOD0_CANOPY",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-hook-nav-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+      "nodeName": "LOD0_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-hook-nav-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_graphite",
+      "nodeName": "LOD0_Hull_graphite",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-hull-spire",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_spire",
+      "nodeName": "LOD0_Hull_spire",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-lights-cyan-magenta",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Cyan_magenta",
+      "nodeName": "LOD0_Lights_Cyan_magenta",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Warm",
+      "nodeName": "LOD0_Lights_Warm",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod0-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_CANOPY",
+      "nodeName": "LOD1_CANOPY",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-hook-nav-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+      "nodeName": "LOD1_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-hook-nav-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_graphite",
+      "nodeName": "LOD1_Hull_graphite",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-hull-spire",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_spire",
+      "nodeName": "LOD1_Hull_spire",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-lights-cyan-magenta",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Cyan_magenta",
+      "nodeName": "LOD1_Lights_Cyan_magenta",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Warm",
+      "nodeName": "LOD1_Lights_Warm",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Livery",
+      "nodeName": "LOD1_Livery",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod2-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod2-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod2-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_CANOPY",
+      "nodeName": "LOD2_CANOPY",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod2-hook-nav-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
+      "nodeName": "LOD2_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod2-hook-nav-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod2-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod2-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_graphite",
+      "nodeName": "LOD2_Hull_graphite",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod2-hull-spire",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_spire",
+      "nodeName": "LOD2_Hull_spire",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod2-lights-cyan-magenta",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Cyan_magenta",
+      "nodeName": "LOD2_Lights_Cyan_magenta",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod2-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Warm",
+      "nodeName": "LOD2_Lights_Warm",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.lod2-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_PLACE_LANDMARK_RESONANT_CATHEDRAL_ROOT",
+      "nodeName": "SF_PLACE_LANDMARK_RESONANT_CATHEDRAL_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6,
+        26,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6,
+        26,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.resonant-cathedral.node.socket-structure-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        4,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Structure_Core",
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.resonant-cathedral.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        4,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "3f2a9a80879911009a5a8f304fb5283a2bca0e0d30305797989dc37f59d83979"
+    },
+    "sourceGlb": {
+      "bytes": 2185212,
+      "sha256": "e1e0e468c9099a541c4172a3c7099c8d766953cbf4d3f8201f3817b5329cd23b",
+      "uri": "place_landmark_resonant_cathedral.glb"
+    },
+    "sourceManifest": {
+      "bytes": 199726,
+      "sha256": "7637b7f5ceea5ba4b8791c17a98e7bc67a8125fdeaafe3714950e8679ad2ba26",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 4103928,
+    "sha256": "5c2bb52c1fc8c26bd25c44b8704513d77fff00efc9a238300b30b2788c1d83d5",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        18.344247817993164,
+        51.25027942657471,
+        0
+      ],
+      "max": [
+        73.00528717041016,
+        120.51991271972656,
+        90.08845520019531
+      ],
+      "min": [
+        -36.31679153442383,
+        -18.01935386657715,
+        -90.08845520019531
+      ],
+      "size": [
+        109.32207870483398,
+        138.5392665863037,
+        180.17691040039062
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          6,
+          26,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 44,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.resonant-cathedral.anchor.socket-camera-focus",
+              "sf.render.resonant-cathedral.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4,
+          4,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 45,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Structure_Core",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.resonant-cathedral.anchor.socket-structure-core",
+              "sf.render.resonant-cathedral.node.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 2,
+      "glass": 3,
+      "hull": 13,
+      "mechanical": 6,
+      "signal": 15,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "warning"
+      }
+    ],
+    "nodeCount": 46,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_CANOPY",
+        "planIndex": 5,
+        "tags": {
+          "canopy": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_graphite",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_spire",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Lights_Cyan_magenta",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Lights_Warm",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Livery",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Beacon_Amber",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_CANOPY",
+        "planIndex": 19,
+        "tags": {
+          "canopy": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull_graphite",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull_spire",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Lights_Cyan_magenta",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Lights_Warm",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Livery",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_CANOPY",
+        "planIndex": 33,
+        "tags": {
+          "canopy": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull_graphite",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull_spire",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Lights_Cyan_magenta",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Lights_Warm",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_landmark_resonant_cathedral.glb"
+  },
+  "runtimeHash": "a241adeac494ffd9cacb376adb31055a442e48fbefed100908d6571b873b1cb6",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          73.00528717041016,
+          120.51991271972656,
+          90.08845520019531
+        ],
+        "min": [
+          -36.31679153442383,
+          -18.01935386657715,
+          -90.08845520019531
+        ]
+      },
+      "id": "sf.render.resonant-cathedral.body",
+      "nodeIds": [
+        "sf.render.resonant-cathedral.node.collision-hull",
+        "sf.render.resonant-cathedral.node.lod0-armor",
+        "sf.render.resonant-cathedral.node.lod0-beacon-amber",
+        "sf.render.resonant-cathedral.node.lod0-canopy",
+        "sf.render.resonant-cathedral.node.lod0-hook-nav-port",
+        "sf.render.resonant-cathedral.node.lod0-hook-nav-starboard",
+        "sf.render.resonant-cathedral.node.lod0-hull",
+        "sf.render.resonant-cathedral.node.lod0-hull-graphite",
+        "sf.render.resonant-cathedral.node.lod0-hull-spire",
+        "sf.render.resonant-cathedral.node.lod0-lights-cyan-magenta",
+        "sf.render.resonant-cathedral.node.lod0-lights-warm",
+        "sf.render.resonant-cathedral.node.lod0-livery",
+        "sf.render.resonant-cathedral.node.lod0-mechanical",
+        "sf.render.resonant-cathedral.node.lod0-mechanicaldark",
+        "sf.render.resonant-cathedral.node.lod0-warning",
+        "sf.render.resonant-cathedral.node.lod1-armor",
+        "sf.render.resonant-cathedral.node.lod1-beacon-amber",
+        "sf.render.resonant-cathedral.node.lod1-canopy",
+        "sf.render.resonant-cathedral.node.lod1-hook-nav-port",
+        "sf.render.resonant-cathedral.node.lod1-hook-nav-starboard",
+        "sf.render.resonant-cathedral.node.lod1-hull",
+        "sf.render.resonant-cathedral.node.lod1-hull-graphite",
+        "sf.render.resonant-cathedral.node.lod1-hull-spire",
+        "sf.render.resonant-cathedral.node.lod1-lights-cyan-magenta",
+        "sf.render.resonant-cathedral.node.lod1-lights-warm",
+        "sf.render.resonant-cathedral.node.lod1-livery",
+        "sf.render.resonant-cathedral.node.lod1-mechanical",
+        "sf.render.resonant-cathedral.node.lod1-mechanicaldark",
+        "sf.render.resonant-cathedral.node.lod1-warning",
+        "sf.render.resonant-cathedral.node.lod2-armor",
+        "sf.render.resonant-cathedral.node.lod2-beacon-amber",
+        "sf.render.resonant-cathedral.node.lod2-canopy",
+        "sf.render.resonant-cathedral.node.lod2-hook-nav-port",
+        "sf.render.resonant-cathedral.node.lod2-hook-nav-starboard",
+        "sf.render.resonant-cathedral.node.lod2-hull",
+        "sf.render.resonant-cathedral.node.lod2-hull-graphite",
+        "sf.render.resonant-cathedral.node.lod2-hull-spire",
+        "sf.render.resonant-cathedral.node.lod2-lights-cyan-magenta",
+        "sf.render.resonant-cathedral.node.lod2-lights-warm",
+        "sf.render.resonant-cathedral.node.lod2-mechanical",
+        "sf.render.resonant-cathedral.node.lod2-mechanicaldark",
+        "sf.render.resonant-cathedral.node.lod2-warning",
+        "sf.render.resonant-cathedral.node.sf-place-landmark-resonant-cathedral-root",
+        "sf.render.resonant-cathedral.node.socket-camera-focus",
+        "sf.render.resonant-cathedral.node.socket-structure-core"
+      ]
+    }
+  ]
+}

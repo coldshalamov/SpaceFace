@@ -39,7 +39,8 @@ const CORE_SECTOR_ANCHORS = {
       {
         id: 'poi_memorial',
         pos: { x: 1680, z: -820 },
-        landmarkGlb: 'place_memorial_array',
+        // The Candle Fleet's own Forge body; placeTargetRadius sets its drawn size (D54).
+        landmarkGlb: 'place_landmark_candle_fleet',
         landmark: true,
         visualRadius: 28,
         // D54 hero-landmark scale: the Candle Fleet reads ~100 WU against the

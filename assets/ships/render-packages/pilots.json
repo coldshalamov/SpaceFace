@@ -1264,6 +1264,57 @@
       "sceneRoot": true
     },
     {
+      "key": "skerris-throne",
+      "assetId": "sf.render.skerris-throne",
+      "runtimeAssetId": "SF_PLACE_LANDMARK_SKERRIS_THRONE",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_landmark_skerris_throne",
+      "sourceUrl": "assets/ships/release/parts/places/place_landmark_skerris_throne.glb",
+      "releaseSha256": "d3c01ecc79c544aa77394d334d54537e2443a65c706ba7fb9add01fcf177ebdd",
+      "releaseBytes": 2411520,
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/skerris-throne",
+      "metadataUrl": "assets/ships/release/render-packages/skerris-throne/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "resonant-cathedral",
+      "assetId": "sf.render.resonant-cathedral",
+      "runtimeAssetId": "SF_PLACE_LANDMARK_RESONANT_CATHEDRAL",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_landmark_resonant_cathedral",
+      "sourceUrl": "assets/ships/release/parts/places/place_landmark_resonant_cathedral.glb",
+      "releaseSha256": "e1e0e468c9099a541c4172a3c7099c8d766953cbf4d3f8201f3817b5329cd23b",
+      "releaseBytes": 2185212,
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/resonant-cathedral",
+      "metadataUrl": "assets/ships/release/render-packages/resonant-cathedral/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "candle-fleet",
+      "assetId": "sf.render.candle-fleet",
+      "runtimeAssetId": "SF_PLACE_LANDMARK_CANDLE_FLEET",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_landmark_candle_fleet",
+      "sourceUrl": "assets/ships/release/parts/places/place_landmark_candle_fleet.glb",
+      "releaseSha256": "d322d57dfc0b2e9c5f1a2649fc0743ad2d84eccb718cb462481f5cd75a9e2ffc",
+      "releaseBytes": 2766068,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/candle-fleet",
+      "metadataUrl": "assets/ships/release/render-packages/candle-fleet/render-package.json",
+      "sceneRoot": true
+    },
+    {
       "key": "military",
       "assetId": "sf.render.military",
       "runtimeAssetId": "SF_PLACE_STATION_MILITARY",

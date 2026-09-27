@@ -4412,6 +4412,48 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 184,
       "contractNodeCount": 52
+    },
+    {
+      "id": "place_landmark_skerris_throne",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_landmark_skerris_throne.glb",
+      "release": "assets/ships/release/parts/places/place_landmark_skerris_throne.glb",
+      "sourceSha256": "16532814c01aeabb5e5aff286bf8947d89c8310ac28e0314e4179b09ed54e8f2",
+      "releaseSha256": "d3c01ecc79c544aa77394d334d54537e2443a65c706ba7fb9add01fcf177ebdd",
+      "sourceBytes": 7645384,
+      "releaseBytes": 2411520,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 189,
+      "contractNodeCount": 50
+    },
+    {
+      "id": "place_landmark_resonant_cathedral",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_landmark_resonant_cathedral.glb",
+      "release": "assets/ships/release/parts/places/place_landmark_resonant_cathedral.glb",
+      "sourceSha256": "c5f27240c83b3eef95c12c34c164560595e2bdd514b4a148ded73754739f9820",
+      "releaseSha256": "e1e0e468c9099a541c4172a3c7099c8d766953cbf4d3f8201f3817b5329cd23b",
+      "sourceBytes": 7319756,
+      "releaseBytes": 2185212,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 159,
+      "contractNodeCount": 43
+    },
+    {
+      "id": "place_landmark_candle_fleet",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_landmark_candle_fleet.glb",
+      "release": "assets/ships/release/parts/places/place_landmark_candle_fleet.glb",
+      "sourceSha256": "49b34b1cee515a10d7621743ff4aaea23fd51400de5b54ebea78472509851654",
+      "releaseSha256": "d322d57dfc0b2e9c5f1a2649fc0743ad2d84eccb718cb462481f5cd75a9e2ffc",
+      "sourceBytes": 9196492,
+      "releaseBytes": 2766068,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 171,
+      "contractNodeCount": 44
     }
   ]
 }

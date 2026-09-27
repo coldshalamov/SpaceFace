@@ -20,15 +20,16 @@ function allPoiUses(assetId) {
 }
 
 test('the Candle Fleet memorial has one dedicated authored identity', () => {
-  assert.deepEqual(allPoiUses('place_memorial_array'), [
+  // The Candle Fleet has its own Forge landmark body; the shared memorial array stays a prop.
+  assert.deepEqual(allPoiUses('place_landmark_candle_fleet'), [
     { sectorId: 'sector_helios_prime', poiId: 'poi_memorial' },
   ]);
   const memorial = SECTORS.find((sector) => sector.id === 'sector_helios_prime')
     ?.pois.find((poi) => poi.id === 'poi_memorial');
   assert.equal(memorial?.visualRadius, 28);
   assert.equal(
-    resolvePlaceFileForEntity({ type: 'fx', data: { landmarkGlb: 'place_memorial_array' } }),
-    'places/place_memorial_array.glb',
+    resolvePlaceFileForEntity({ type: 'fx', data: { landmarkGlb: 'place_landmark_candle_fleet' } }),
+    'places/place_landmark_candle_fleet.glb',
   );
 });
 

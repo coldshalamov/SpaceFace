@@ -13,7 +13,7 @@ The build-map entry is `build_map.md` §13D, Wave GFX.
 | Ships | **All 47 live bodies are Forge.** That covers the 14 player hulls (Kestrel/Hitch to Leviathan), the Ashline raiders, Helios civil traffic, the work fleet, the faction variants (Span dmc/mts/reach, Wasp free/mts/scn) and the Massline liner. Registry: `tools/blender/forge/fleet.json`. |
 | Stations | **Forge:** refinery, mining rig, fab yard, military bastion, research array, black-market warren, jump gate. **In progress:** trade hub (`tools/blender/forge/ships/place_station_trade_hub.py`). |
 | Props | **Forge:** cargo pod, lane beacon, nav buoy, mining drone, worklight tower, container rack, sensor mast. Everything else under `assets/ships/parts/places/` is still an older pipeline (see backlog GFX-3). |
-| Landmarks | **In progress:** the Candle Fleet, the Resonant Cathedral and the Skerris Throne as new places (ledger D54). The Wreck Cathedral is an older pipeline. |
+| Landmarks | **Forge (live):** the Candle Fleet, the Resonant Cathedral and the Skerris Throne, as new places drawn at landmark scale (`placeTargetRadius` 100/110/150). The Wreck Cathedral is an older pipeline. |
 | Runtime look | Forge materials (`spacefaceFinish: forge-v1`) skip the rescue layers (roughness noise, palette multiplies, pigment). The procedural PBR fallback no longer stamps fine-grain relief on manufactured surfaces. |
 | Interface art | HUD silhouettes are traced from the hulls (`tools/blender/forge/silhouettes.py`). Hero/side/top/holo/jig posters are rendered for all player hulls (`tools/art/render_hull_posters.mjs`). `src/ui/hullPosters.js` lists only the original four; enabling the rest is an ORRERY-lane change (GFX-5). |
 | Size | Release wholeships 356 MB → 60 MB. Render packages 744 MB → 456 MB. One shared 1024 tile texture set instead of per-ship bakes. |
@@ -113,7 +113,6 @@ Inspect GLBs with `node tools/blender/forge/glbinfo.cjs <file>`.
 | # | Task | Why | Done when |
 |---|---|---|---|
 | **GFX-1** | Finish and publish the Forge trade hub; verify the three faction overlays (`var_station_trade_hub_{free,mts,scn}_overlay_v01`) sit on it. | It is the first and most-seen building in the game. | Overlay check renders show nothing floating; the receipts check passes on the forge stamp. |
-| **GFX-2** | Finish the three hero landmarks, register them as new places (2.2) and point the POIs at them at landmark scale (Candle Fleet ≈ 90–110 WU, Resonant Cathedral ≈ 100–120, Skerris Throne ≈ 140–160). | Ledger D54: named wonders currently draw at player-ship size. | A pilot flying up to each one sees it fill the chase frame; the D54 row is deleted. |
 | **GFX-3** | Rebuild the remaining places in Forge, in player-visibility order. See the ordered list below the table. | These are the last pre-Forge bodies on the default route. | Each is same-slot replaced with the live sockets. |
 | **GFX-4** | Quiessence dark freighters (17 carriers) as a Forge ship family instead of `place_dead_hulk` stand-ins. | Lore beat in Pallas Drift. | The ring of 17 reads as a becalmed fleet. |
 | **GFX-5** | Enable posters for all 14 player hulls in `src/ui/hullPosters.js`. The assets are already rendered. **ORRERY lane owns `src/ui`.** | Menus and the flight cluster show the flown ship for every hull. | The ORRERY lane lands the entries after a bench walk. |

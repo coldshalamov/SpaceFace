@@ -1931,7 +1931,6 @@ here and there in the fixing commit.
 | Row | Outcome |
 |---|---|
 | **GFX-1** | Forge trade hub published; the three faction overlays verified sitting on it. |
-| **GFX-2** | Candle Fleet, Resonant Cathedral and Skerris Throne as new Forge places at landmark scale (ledger D54). |
 | **GFX-3** | Remaining pre-Forge places rebuilt, in order: opening route → claim outposts / conveyor / industry props → law & travel → the rest. |
 | **GFX-4** | Quiessence dark freighters as a Forge family (replaces the dead-hulk stand-ins). |
 | **GFX-5** | Posters for all 14 player hulls enabled in `src/ui/hullPosters.js` (assets rendered; **ORRERY lane owns `src/ui`**). |

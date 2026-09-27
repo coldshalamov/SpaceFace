@@ -296,6 +296,10 @@ const PLACE_FILES = Object.freeze([
   // path as every other place. Its World Site manifest, Ceres placement, and route acceptance are
   // separate PQ-018 phases; registration here only makes the release artifact resolvable.
   'places/place_landmark_wreck_cathedral.glb',
+  // Forge hero landmarks (D54): the named wonders get their own bodies.
+  'places/place_landmark_candle_fleet.glb',
+  'places/place_landmark_resonant_cathedral.glb',
+  'places/place_landmark_skerris_throne.glb',
   // PQ-195.00: the SP-07 spindle (authored payload) and the capture fork machine resolve through
   // the same authored-place path. The fork GLB's origin is the mouth plane (no recentering).
   'places/place_breakaway_sp07.glb',
@@ -1779,6 +1783,11 @@ const DRESSING_RADIUS_BY_PLACE = Object.freeze({
   place_asteroid_rock_b: 18,
   place_asteroid_rock_c: 10,
   place_asteroid_graffiti: 16,
+  // Forge hero landmarks: the reference radius is the authored plan half-extent, so a POI's
+  // visualRadius is the drawn world radius (D54).
+  place_landmark_candle_fleet: 106,
+  place_landmark_resonant_cathedral: 90,
+  place_landmark_skerris_throne: 109,
 });
 
 function placeFamily(placeId) {

@@ -13,19 +13,19 @@ const LANDMARKS = [
   {
     poiId: 'poi_memorial',
     sectorId: 'sector_helios_prime',
-    placeId: 'place_memorial_array',
+    placeId: 'place_landmark_candle_fleet',
     band: [90, 110],
   },
   {
     poiId: 'poi_vesta_resonant_cathedral',
     sectorId: 'sector_vesta_forge',
-    placeId: 'place_maintenance_gantry',
+    placeId: 'place_landmark_resonant_cathedral',
     band: [100, 120],
   },
   {
     poiId: 'poi_sker_throne',
     sectorId: 'sector_sker_haven',
-    placeId: 'place_dead_hulk',
+    placeId: 'place_landmark_skerris_throne',
     band: [140, 160],
   },
 ];
