@@ -45,7 +45,8 @@ frames, and any encoded MP4s. Continuous frames are retained only with
 removed. Repeat `--scenario` to select several cases; `--all` selects the whole page catalog.
 Add `--seed-variant` or `--context-variant` to capture a cross-product of deterministic
 seed/context variants. Use the interactive page for unlimited continuous playback.
-`--browser-channel default` keeps the bundled Playwright Chromium; `chromium`, `chrome`, and
+The default `--browser-channel chromium` uses new headless Chromium (Intel/ANGLE on the tested Windows host).
+Explicit `--browser-channel default` selects the bundled headless shell; `chrome` and
 `msedge` select an installed Playwright channel for a controlled renderer comparison. The
 manifest records the browser version, WebGL debug vendor/renderer when exposed, source/module
 hashes, exact capture configuration, wall time, and per-chunk frame throughput. Resume rejects

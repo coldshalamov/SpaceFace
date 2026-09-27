@@ -583,8 +583,8 @@ def main() -> int:
     parser.add_argument(
         "--browser-channel",
         choices=("default", "chromium", "chrome", "msedge"),
-        default="default",
-        help="Playwright browser channel; default uses the bundled Chromium executable",
+        default="chromium",
+        help="Playwright browser channel; chromium uses new headless (default), default selects headless shell",
     )
     parser.add_argument("--reduced-motion", action="store_true")
     parser.add_argument("--reduced-flash", action="store_true")
