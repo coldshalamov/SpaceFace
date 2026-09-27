@@ -41,7 +41,7 @@ function parseContractBars(text) {
     // cells: [**Bn Title**, statement, live value, scenario, status] — the trailing three columns
     // prove the row is a complete §B row even though only the statement is quoted by checks.
     assert.ok(cells.length >= 5, `bar row for ${match[1]} must carry all five §B columns`);
-    const statement = normalize(cells[1]).replace(/\(Rewritten[^)]*\)\s*$/u, '').trim();
+    const statement = normalize(cells[1]).replace(/\s*\([^()]*\)\s*$/u, '').trim();
     bars.set(match[1], {
       id: match[1],
       statement,
