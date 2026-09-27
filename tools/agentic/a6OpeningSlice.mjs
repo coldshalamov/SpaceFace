@@ -26,6 +26,7 @@ import { buildSlotList, makeShipEntitySpec, fittingsFromDefaultModules } from '.
 import { SHIPS } from '../../src/data/ships.js';
 import { NEW_GAME } from '../../src/data/newGameDefaults.js';
 import { sweptDiskContact } from '../../src/combat/masslineReleaseGeometry.js';
+import { isMasslineLatchedPickup } from '../../src/systems/mining.js';
 import { assessTangentRelease } from '../../src/systems/tetherGameplay.js';
 import { readCadencePair } from '../../src/systems/masslineControlLaw.js';
 import { planTangentReleaseMeeting } from '../../src/systems/masslineThrow.js';
@@ -106,6 +107,38 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
 
   const events = [];
   for (const ev of WATCHED_EVENTS) bus.on(ev, (p) => events.push({ t: state.simTime, ev, p }));
+
+  // D60 writer attribution: wrap every system's update and flag the one that moves the
+  // player >300 u in a single call — the silent teleport leaves no event trail, but the
+  // per-system pos diff names the owner outright. Verbose-only; zero cost in CI.
+  if (verbose) {
+    for (const name of lookup.keys()) {
+      const sys = runtime.getSystem(name);
+      if (!sys || typeof sys.update !== 'function' || sys.update._d60Wrapped) continue;
+      const orig = sys.update.bind(sys);
+      const wrapped = function (dt, s) {
+        const pl = s && s.entities && state.playerId != null ? s.entities.get(state.playerId) : null;
+        const bx = pl && pl.pos ? pl.pos.x : null, bz = pl && pl.pos ? pl.pos.z : null;
+        const w0 = s && s.world || {};
+        const fo0 = w0.frameOrigin ? { x: w0.frameOrigin.x, z: w0.frameOrigin.z } : null;
+        const seq0 = w0.frameOriginSeq;
+        const r = orig(dt, s);
+        if (bx != null && pl && pl.pos) {
+          const jumped = Math.hypot(pl.pos.x - bx, pl.pos.z - bz);
+          if (jumped > 300) {
+            const fo1 = w0.frameOrigin || {};
+            const dx = pl.pos.x - bx, dz = pl.pos.z - bz;
+            const odx = fo1.x - (fo0 ? fo0.x : 0), odz = fo1.z - (fo0 ? fo0.z : 0);
+            log(`  !!WRITER=${name} t=${(state.simTime || 0).toFixed(2)} moved player ${jumped.toFixed(0)}u (${bx.toFixed(0)},${bz.toFixed(0)}) -> (${pl.pos.x.toFixed(0)},${pl.pos.z.toFixed(0)}) vel=${JSON.stringify(pl.vel)}`
+              + ` frameOrigin=(${fo0 ? `${fo0.x.toFixed(0)},${fo0.z.toFixed(0)}` : '?'})->(${fo1.x},${fo1.z}) seq=${seq0}->${w0.frameOriginSeq} jumpΔ=(${dx.toFixed(0)},${dz.toFixed(0)}) originΔ=(${odx.toFixed(0)},${odz.toFixed(0)}) jump−originΔ=(${(dx - odx).toFixed(0)},${(dz - odz).toFixed(0)})`);
+          }
+        }
+        return r;
+      };
+      wrapped._d60Wrapped = true;
+      try { sys.update = wrapped; } catch (_) { /* frozen system — skip */ }
+    }
+  }
   // Full-fidelity tap for the position-jump hunt: record every emission verbatim so the
   // teleport cause can't hide behind the watch list. Verbose-only so the fixture stays lean.
   if (verbose) {
@@ -124,13 +157,19 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
   state.settings.gameplay.tutorialHints = false;
   if (!state.input.actions) state.input.actions = {};
   state.player.credits = NEW_GAME.credits;
-  runtime.getSystem('ships').newGame();
+  const shipsSys = runtime.getSystem('ships');
+  shipsSys.newGame();
   const player0 = runtime.spawn(makeShipEntitySpec(NEW_GAME.shipId, {
     team: 0, factionId: 'faction_free', isPlayer: true, player: state.player,
     fittings: fittingsFromDefaultModules(NEW_GAME.shipId, NEW_GAME.fittedModules || []),
     pos: { x: 0, z: 0 }, rot: 0,
   }));
   state.playerId = player0.id;
+  // Mirror bootstrapScene's post-spawn step: recomputeActiveShip emits
+  // ship:cargoCapChanged so player.cargo.capVolume tracks the hull's derived hold
+  // (250 on the Hitch) instead of sitting at the createGameState default of 40 —
+  // a 40-unit hold silently starves the collect beat and shortfalls the buy.
+  if (typeof shipsSys.recomputeActiveShip === 'function') shipsSys.recomputeActiveShip();
   const world = runtime.getSystem('world');
   if (typeof world.newGame === 'function') world.newGame();
   const econ0 = runtime.getSystem('economy');
@@ -139,6 +178,53 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
   bus.emit('game:started', {});
   await withFeatures(() => runtime.getSystem('physics').prepareBackend(state, { reset: true }));
   runtime.runTicks(60, DT);
+
+  // D60 sub-step attribution: the per-system trap named `physics`; now name the sub-step.
+  // Wraps the physics system's sg02-branch methods and, once the owner resolves, its internals
+  // (world.step vs the post passes) so a one-tick million-unit write is attributed exactly.
+  if (verbose) {
+    const physSys = runtime.getSystem('physics');
+    const wrapPos = (obj, method, label) => {
+      if (!obj || typeof obj[method] !== 'function' || obj[method]._d60) return;
+      const orig = obj[method].bind(obj);
+      const w = function (...args) {
+        const pl = state.entities && state.playerId != null ? state.entities.get(state.playerId) : null;
+        const bx = pl && pl.pos ? pl.pos.x : null, bz = pl && pl.pos ? pl.pos.z : null;
+        const r = orig(...args);
+        if (bx != null && pl && pl.pos) {
+          const j = Math.hypot(pl.pos.x - bx, pl.pos.z - bz);
+          if (j > 300) log(`  !!SUBSTEP=${label} moved player ${j.toFixed(0)}u (${bx.toFixed(0)},${bz.toFixed(0)}) -> (${pl.pos.x.toFixed(0)},${pl.pos.z.toFixed(0)})`);
+        }
+        return r;
+      };
+      w._d60 = true;
+      try { obj[method] = w; } catch (_) {}
+    };
+    for (const m of ['_syncSg02FrameOrigin', '_queueSectorFenceImpulses', '_syncSg02DynamicAuthorityEntities',
+      '_reconcileCombatPhysicsBeforeStep', 'step', 'collectPickups', 'sweepProjectiles', 'updateDockRange',
+      '_syncDynamicSpatialHash', 'integrate', 'collide']) {
+      wrapPos(physSys, m, `physics.${m}`);
+    }
+    const armOwnerWrap = () => {
+      const owner = physSys && physSys._sg02;
+      if (!owner) return false;
+      for (const m of ['_applyAttachmentSprings', '_readPostStepKinematics', '_applyStructuralGive',
+        '_enforcePlane', '_clampSpeed', '_canonicalizeManualSpringBody', '_syncEntityFromKinematics',
+        '_applyCommand', '_maybeResyncBodyPose', '_syncRecord', '_createRecord', '_applyProjectileContinuation',
+        'syncFromEntities', 'syncFromEntityLayers']) {
+        wrapPos(owner, m, `sg02.${m}`);
+      }
+      if (owner.world && typeof owner.world.step === 'function' && !owner.world.step._d60) {
+        wrapPos(owner.world, 'step', 'rapier.world.step');
+      }
+      return true;
+    };
+    if (!armOwnerWrap()) {
+      // owner resolves on a promise — poll until present (bounded)
+      let tries = 0;
+      const t = setInterval(() => { if (armOwnerWrap() || ++tries > 600) clearInterval(t); }, 50);
+    }
+  }
 
   const playerId = state.playerId;
   const player = state.entities.get(playerId);
@@ -282,6 +368,12 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
   let payloadId = null, haulerId = null, swingStart = null, armPressedAt = null, throwTries = 0;
   let docked = false, bought = false, collectTargetId = null, resumePhase = null, lastPos = null;
   let lastFrameOrigin = null, lastAct = null, sweepCovered = false;
+  // Zero-accept embargo: a target parked in contact range that yields nothing for a few
+  // seconds is uncollectable (hold volume full, forbidden cargo class, dry pool the value
+  // filter misjudged). A real pilot doesn't park on a container that won't open — strike
+  // it off the sweep and move to the next one. Keyed on entity id, one-shot per run.
+  const uncollectable = new Map();
+  let dwellId = null, dwellSince = 0, dwellValue = 0;
   let killPos = null, expectedVictimId = null, releasedAt = null;
   let phaseStart = state.simTime;
 
@@ -336,7 +428,13 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       log(`  !!POSITION JUMP t=${t.toFixed(1)} (${lastPos.x.toFixed(0)},${lastPos.z.toFixed(0)}) -> (${player.pos.x.toFixed(0)},${player.pos.z.toFixed(0)}) v=${Math.hypot(player.vel?.x || 0, player.vel?.z || 0).toFixed(0)} phase=${phase} sector=${state.world && state.world.currentSectorId} mode=${state.mode} docked=${!!(state.ui && state.ui.docked)} auto=${JSON.stringify(state.nav && state.nav.autopilot && state.nav.autopilot.target)}`);
       for (const e of events.slice(-20)) {
         let ps = '';
-        try { ps = e.p ? JSON.stringify(e.p).slice(0, 200) : ''; } catch (_) { ps = '[unserializable]'; }
+        try {
+          if (e.ev === 'heat:changed' && e.p && ((e.p.value || 0) >= 0.15 || (e.p.previousValue || 0) >= 0.15)) {
+            ps = JSON.stringify({ value: e.p.value, reason: e.p.reason, incident: e.p.incident, wanted: e.p.wanted });
+          } else {
+            ps = e.p ? JSON.stringify(e.p).slice(0, 200) : '';
+          }
+        } catch (_) { ps = '[unserializable]'; }
         log(`    evt ${e.t.toFixed(2)} ${e.ev} ${ps}`);
       }
       const near = (state.entityList || []).filter(e => e && e.id !== playerId && e.pos && dist(e.pos, player.pos) < 800)
@@ -628,13 +726,32 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       const hasValue = (e) => {
         const d = e.data;
         return (d.amount || 0) > 0
-          || (d.salvagePool && Object.keys(d.salvagePool).length > 0)
+          // a drained pool keeps its keys at zero — only a positive qty is value
+          // (matches mining.salvagePoolHasCargo; a dry husk would otherwise park
+          // the sweep for the whole phase budget)
+          || (d.salvagePool && Object.values(d.salvagePool).some(v => Number(v) > 0))
           || !!d.freightCustodyPod
           || !!d.lootShard;
       };
+      // progress signal for the dwell embargo: the collectible mass a target still
+      // holds. Anything the collector can consume decreases this; a flat reading at
+      // contact means the target cannot be collected (hold full, forbidden class…).
+      const valueMass = (e) => {
+        const d = e.data || {};
+        let v = Number(d.amount || 0);
+        if (d.salvagePool) for (const q of Object.values(d.salvagePool)) v += Number(q) || 0;
+        if (d.freightCustodyPod) v += 1;
+        if (d.lootShard) v += 1;
+        return v;
+      };
       const pickups = (state.entityList || []).filter(e => e && e.id !== playerId
         && (e.type === 'payload' || e.type === 'loot' || e.type === 'pickup' || e.type === 'debris' || e.type === 'wreck')
+        // wrecks are dead hulks by design — for payloads/pickups/loot/debris a dead
+        // husk is uncollectable (magnet and _collectPayload both early-return on
+        // !alive), so targeting one parks the sweep on a corpse forever
+        && (e.type === 'wreck' || e.alive !== false)
         && e.data && hasValue(e) && !isTheft(e)
+        && !uncollectable.has(e.id)
         && dist(e.pos, player.pos) < 3000);
       // Kite-sweep: under fire a pilot doesn't park on a pod — it keeps moving on the
       // escape bearing toward the station/law and hoovers what lies along that line.
@@ -675,6 +792,21 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
         // the beam only works parked on the target — with a hostile inside 600 u
         // standing still is how the hull dies; chips still bank on the flyby.
         const clear = !pressed.length || dist(pressed[0].pos, player.pos) > 600;
+        // Dwell embargo: engaged on the target (contact range or beam arc) with the
+        // collectible mass unmoved — the collector is refusing it (hold full,
+        // forbidden class, dry remnant) and will keep refusing. Strike the target
+        // and let the sweep pick the next one.
+        const engaged = d < 80 || (d < 220 && clear);
+        const vMass = valueMass(tgt);
+        if (tgt.id !== dwellId || !engaged || vMass < dwellValue) {
+          dwellId = tgt.id; dwellSince = t; dwellValue = vMass;
+        } else if (t - dwellSince > 8) {
+          uncollectable.set(tgt.id, true);
+          const cg0 = state.player.cargo || {};
+          log(`  ${phase}: ${tgt.id}:${tgt.type} yielded nothing in ${(t - dwellSince).toFixed(0)}s at contact — embargoed (pool=${JSON.stringify(tgt.data && tgt.data.salvagePool || {})} vol=${(cg0.usedVolume || 0).toFixed(1)}/${cg0.capVolume})`);
+          dwellId = null;
+          continue;
+        }
         if (d < 220 && clear) {
           input.aimAngle = Math.atan2(tgt.pos.z - player.pos.z, tgt.pos.x - player.pos.x);
           input.fireGroup = 2;
@@ -682,8 +814,12 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
           input.fireGroup = 0;
         }
         if (i % 60 === 0) {
-          const valued = pickups.map(e => `${e.id}:${e.type} amt=${e.data && e.data.amount || 0} pod=${e.data && e.data.freightCustodyPod ? 'y' : 'n'} pool=${e.data && e.data.salvagePool ? Object.keys(e.data.salvagePool).length : 0}`);
-          log(`  ${phase} dbg t=${t.toFixed(1)} tgt=${tgt.id}:${tgt.type} d=${d.toFixed(0)} n=${pickups.length} cargo=${JSON.stringify(state.player.cargo && state.player.cargo.items)} credits=${state.player.credits}`);
+          const valued = pickups.map(e => `${e.id}:${e.type} amt=${e.data && e.data.amount || 0} d=${dist(e.pos, player.pos).toFixed(0)}${e.data && e.data.pickupEmbargoUntil ? ` emb=${(e.data.pickupEmbargoUntil - t).toFixed(1)}` : ''}${e.data && e.data.pickupAcceptanceRetryAt ? ` rty=${(e.data.pickupAcceptanceRetryAt - t).toFixed(1)}` : ''}${e.data && e.data.anchored ? ' anch' : ''}${e.data && e.data.tetherPayload ? ' twp' : ''} pod=${e.data && e.data.freightCustodyPod ? 'y' : 'n'} al=${e.alive} pool=${e.data && e.data.salvagePool ? JSON.stringify(e.data.salvagePool) : '{}'}`);
+          const md = state.miningRuntime && state.miningRuntime.diagnostics;
+          const idx = state.entityIndex;
+          const cg = state.player.cargo || {};
+          log(`  ${phase} dbg t=${t.toFixed(1)} tgt=${tgt.id}:${tgt.type} d=${d.toFixed(0)} n=${pickups.length} cargo=${JSON.stringify(cg.items)} vol=${(cg.usedVolume||0).toFixed(1)}/${cg.capVolume} credits=${state.player.credits} idx=${idx ? `r=${!!idx.ready} pk=${idx.pickups ? idx.pickups.length : '-'} pl=${idx.payloads ? idx.payloads.length : '-'}` : 'none'} diag=${md ? `scans=${md.pickupScans} cand=${md.pickupCandidates} mag=${md.pickupsMagnetized} col=${md.pickupsCollected}` : '-'}`);
+          if (tgt && tgt.data) log(`    tgt.data keys=${JSON.stringify(Object.keys(tgt.data))} latch=${isMasslineLatchedPickup(state, player, tgt) || 'n/a'}`);
           for (const v of valued.slice(0, 10)) log(`    ${v}`);
         }
       } else {
@@ -834,7 +970,16 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
         phase = 'docked'; phaseStart = t;
         continue;
       }
+      // The dock run is the exposed leg: raiders that outlasted the patrol window chase
+      // the whole way, and a silent straight line through their firing solution is how
+      // the Hitch reached 0 hull inside six seconds. Shoot back on the way in — fire
+      // inputs don't interrupt the autopilot (boost/brake/manual axes would).
+      const dockThreats = (state.entityList || []).filter(e => e && e.alive !== false && e.id !== playerId
+        && e.type === 'ship' && e.pos && dist(e.pos, player.pos) < 600 && isHostileToPlayer(e));
+      dockThreats.sort((a, b) => dist(a.pos, player.pos) - dist(b.pos, player.pos));
+      if (dockThreats.length) aimAndFire(dockThreats[0], 450);
       steerTo(station, { arrivalRadius: 12 });
+      if (i % 60 === 0) log(`  dock dbg t=${t.toFixed(1)} stn=${dist(station.pos, player.pos).toFixed(0)} ap=${state.nav?.autopilot?.status} near=${dockThreats.length ? dockThreats[0].id : '-'} hull=${player.hull}`);
       if (t - phaseStart > 180) { log('never reached dock range'); phase = 'fail_dock'; break; }
     } else if (phase === 'docked') {
       // sell the sweep, then take the first-haul offer — Helios sells the S drive to the
@@ -849,7 +994,7 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
           } catch (e) { log('sell err', cid, e.message); }
         }
         log('docked: credits', state.player.credits, 'cargo', JSON.stringify(cargoItems));
-        for (const e of events) if (/^economy:|bounty|custody|reward/.test(e.ev)) log(`    ${e.t.toFixed(1)} ${e.ev} ${JSON.stringify(e.p).slice(0, 220)}`);
+        for (const e of events) if (/^economy:|bounty|custody|reward|^law:|^heat:|theft|stolen/.test(e.ev)) log(`    ${e.t.toFixed(1)} ${e.ev} ${JSON.stringify(e.p).slice(0, e.ev === 'heat:changed' || /^law:/.test(e.ev) ? 900 : 220)}`);
         const slots = buildSlotList(SHIPS.find(s => s.id === 'ship_kestrel'));
         const utilIdx = slots.findIndex(s => s.type === 'utility');
         bus.emit('ui:buyModule', { defId: SWING_DRIVE, fitSlotIndex: utilIdx });

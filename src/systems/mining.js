@@ -22,6 +22,7 @@ import { MODULES } from '../data/modules.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, combatTableRowDistance, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { collectDirtyIds, markDirty, DIRTY } from '../core/dirtyJournal.js';
+import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import {
   clearPickupAcceptanceRetry,
@@ -152,6 +153,7 @@ export const mining = {
     this.registry = ctx.registry;
     this._pickupScratch = [];
     this._mineableScratch = [];
+    this._magnetImpulse = { x: 0, y: 0, z: 0 };
     this._tenderScratch = [];         // WF-05 beam-tender candidate gather (ship domain)
     this._settledChipKeys = new Set(); // F6 once-only chip receipt ledger (session scope)
     this._tenderThanks = new Map();    // WF-05 weld-out receipt cooldown, per target (session scope)
@@ -1038,13 +1040,42 @@ export const mining = {
         const need = Math.hypot(dvx, dvz);
         const maxDv = MAGNET_ACCEL * dt * (closeBoost > 1 ? 1.8 : 1);
         if (!(e.vel)) e.vel = { x: 0, z: 0 };
+        let appliedDvx, appliedDvz;
         if (need <= maxDv || need < 1e-6) {
+          appliedDvx = desiredVx - e.vel.x;
+          appliedDvz = desiredVz - e.vel.z;
           e.vel.x = desiredVx;
           e.vel.z = desiredVz;
         } else {
           const s = maxDv / need;
-          e.vel.x = finiteNum(e.vel.x) + dvx * s;
-          e.vel.z = finiteNum(e.vel.z) + dvz * s;
+          appliedDvx = dvx * s;
+          appliedDvz = dvz * s;
+          e.vel.x = finiteNum(e.vel.x) + appliedDvx;
+          e.vel.z = finiteNum(e.vel.z) + appliedDvz;
+        }
+        // Pickups/payloads are dynamic Rapier bodies: a bare entity.vel write only reaches the
+        // solver through a teleport-class pose resync, so the vacuum "pulled" forever while
+        // chips sat parked at spawn velocity (the A6 opening-slice starve-out). The authority
+        // seam is the additive impulse — the same Δv = p/m contract fields.js uses for wells —
+        // so the queued impulse is the applied Δv scaled by the solver's effective mass: the
+        // combat runtime's physicsResponse.massScale (PINNED/UNMOORED) is part of that mass the
+        // same way it is for bombs.js effectiveMass. The e.vel write above stays for the
+        // compatibility backend and body-less test entities; the impulse is only queued for a
+        // bound DYNAMIC spec — a spec'd-but-static body has no consumer for it.
+        if (e.physicsBody && typeof e.physicsBody === 'object' && isDynamicPhysicsBodyEntity(e)) {
+          const specMass = finiteNum(e.physicsBody.mass, 0);
+          const entityMass = finiteNum(e.mass, 0);
+          const baseMass = specMass > 0 ? specMass : entityMass > 0 ? entityMass : 1;
+          const scale = Number(state.combat && state.combat.entities
+            && state.combat.entities[String(e.id)]
+            && state.combat.entities[String(e.id)].physicsResponse
+            && state.combat.entities[String(e.id)].physicsResponse.massScale) || 1;
+          const mass = baseMass * Math.max(0.25, Math.min(8, scale));
+          const impulse = this._magnetImpulse;
+          impulse.x = appliedDvx * mass;
+          impulse.y = 0;
+          impulse.z = appliedDvz * mass;
+          queuePhysicsImpulse(e, impulse);
         }
         this._diag.pickupsMagnetized++;
       }
