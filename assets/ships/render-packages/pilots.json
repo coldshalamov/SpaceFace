@@ -1069,9 +1069,12 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_kestrel",
       "sourceUrl": "assets/ships/release/parts/wholeships/kestrel.glb",
-      "releaseSha256": "d640cdd207b7e1613da6bd467166b69e2dfd0fd49d2730112cab49182c75b366",
-      "releaseBytes": 34559016,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db",
+      "releaseBytes": 755692,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV"
+      ],
       "outputDir": "assets/ships/release/render-packages/kestrel",
       "metadataUrl": "assets/ships/release/render-packages/kestrel/render-package.json",
       "sceneRoot": true
@@ -1084,10 +1087,13 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_kestrel_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/kestrel_lod1.glb",
-      "releaseSha256": "8b900c11a7cc325df808c2ba332ef0aeaa8819eb12671ac1112b3e54980ee6fb",
-      "releaseBytes": 26590732,
+      "releaseSha256": "2204d4618216d660d21b68ee73d679109765005561cfca576125a2e4586a1e0b",
+      "releaseBytes": 523696,
       "rootNode": "KESTREL_V4_LOD1_ROOT",
-      "dynamicNameIncludes": [],
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV"
+      ],
       "outputDir": "assets/ships/release/render-packages/kestrel-lod1",
       "metadataUrl": "assets/ships/release/render-packages/kestrel-lod1/render-package.json"
     },
@@ -1099,10 +1105,13 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_kestrel_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/kestrel_lod2.glb",
-      "releaseSha256": "d6a091a5a80379ebd6a9369425ad02bafeb551abc028a3f4c53fccf575d38b33",
-      "releaseBytes": 22957080,
+      "releaseSha256": "3086f728df9baab9e1dbe5057c114f7b0b06015514caf1d5087b96f813a3d938",
+      "releaseBytes": 408052,
       "rootNode": "KESTREL_V4_LOD2_ROOT",
-      "dynamicNameIncludes": [],
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV"
+      ],
       "outputDir": "assets/ships/release/render-packages/kestrel-lod2",
       "metadataUrl": "assets/ships/release/render-packages/kestrel-lod2/render-package.json"
     },

@@ -6853,22 +6853,19 @@
         "lod1": "wholeships/kestrel_lod1.glb",
         "lod2": "wholeships/kestrel_lod2.glb"
       },
-      "tris": 40490,
-      "bytes": 53462012,
+      "tris": 33460,
+      "bytes": 1906948,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Accent_FrontierCyan",
-        "warning": "Material_Accent_WarningOrange",
-        "repair": "Material_RepairGreen"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_NAV_PORT",
-        "HOOK_NAV_STARBOARD",
-        "HOOK_DRIVE_CORE",
-        "HOOK_SENSOR_DISH",
-        "HOOK_ARMOR_PORT",
-        "HOOK_SECONDARY_POD"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -6884,48 +6881,48 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.316186904907227,
-          -2.766388416290283,
-          -7.0153326988220215
+          -14.119999885559082,
+          -3.049999952316284,
+          -6.6305999755859375
         ],
         "max": [
-          13.905739784240723,
-          4.36378288269043,
-          7.0153326988220215
+          13.399999618530273,
+          3.7679154872894287,
+          6.6305999755859375
         ],
         "dimensionsM": [
-          28.22192668914795,
-          7.130171298980713,
-          14.030665397644043
+          27.519999504089355,
+          6.817915439605713,
+          13.261199951171875
         ]
       },
-      "note": "Hitch V7 polish live promotion — same boat, manufactured drive/sensor/shoulders/radiators, DIE LAUGHING spray stencil, role-mapped PBR, nine sockets, no baked plume."
+      "note": "SF-K0 Borrowed Time (Hitch) forge-v1 rebuild of the owner's design (tools/blender/forge/ships/kestrel.py): pressure hull on an axial drive drum, armoured shoulder sponsons with radiator combs, dorsal spine over a long canopy, twin bow guns, chin mining head, salvage-green repair pod, dorsal dish. Clean forge surfaces replace the grime/scratch texture stack."
     },
     {
       "id": "wholeship_kestrel_lod1",
       "category": "wholeships",
       "priority": "P0",
       "file": "wholeships/kestrel_lod1.glb",
-      "tris": 17063,
-      "bytes": 38684688,
+      "tris": 13560,
+      "bytes": 931076,
       "textureSize": 1024,
       "mount": "origin",
       "note": "Kestrel LOD1 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth.",
       "bounds": {
         "min": [
-          -14.315042495727539,
-          -2.7618954181671143,
-          -7.0153326988220215
+          -14.119999885559082,
+          -3.049999952316284,
+          -6.6305999755859375
         ],
         "max": [
-          13.905739784240723,
-          4.359975337982178,
-          7.0153326988220215
+          13.399700164794922,
+          3.767686605453491,
+          6.6305999755859375
         ],
         "dimensionsM": [
-          28.22078227996826,
-          7.121870756149292,
-          14.030665397644043
+          27.519700050354004,
+          6.817686557769775,
+          13.261199951171875
         ]
       },
       "sockets": [
@@ -6945,26 +6942,26 @@
       "category": "wholeships",
       "priority": "P0",
       "file": "wholeships/kestrel_lod2.glb",
-      "tris": 10142,
-      "bytes": 32994768,
+      "tris": 5192,
+      "bytes": 520184,
       "textureSize": 1024,
       "mount": "origin",
       "note": "Kestrel LOD2 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth.",
       "bounds": {
         "min": [
-          -14.319999694824219,
-          -2.7699999809265137,
-          -7.0153326988220215
+          -14.120523452758789,
+          -3.049999952316284,
+          -6.380000114440918
         ],
         "max": [
-          13.905739784240723,
-          4.36378288269043,
-          7.0153326988220215
+          13.398127555847168,
+          3.7699413299560547,
+          6.380000114440918
         ],
         "dimensionsM": [
-          28.22573947906494,
-          7.133782863616943,
-          14.030665397644043
+          27.518651008605957,
+          6.819941282272339,
+          12.760000228881836
         ]
       },
       "sockets": [

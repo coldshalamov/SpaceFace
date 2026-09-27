@@ -112,11 +112,12 @@ def _root_empty(name, extras):
     return e
 
 
-def _collision_hull(ship, prefix_parent):
+def _collision_hull(ship, prefix_parent, sources=None):
     bm = bmesh.new()
-    for o in ship.objects:
+    k = float(getattr(ship, 'collision_scale', 1.0))
+    for o in (sources or ship.objects):
         for v in o.data.vertices:
-            bm.verts.new(o.matrix_world @ v.co)
+            bm.verts.new((o.matrix_world @ v.co) * k)
     res = bmesh.ops.convex_hull(bm, input=bm.verts)
     for v in [g for g in res['geom_interior'] if isinstance(g, bmesh.types.BMVert)]:
         bm.verts.remove(v)
@@ -144,6 +145,22 @@ def _collision_hull(ship, prefix_parent):
 def _lod_meshes(ship, level, prefix):
     objs = [o for o in ship.objects if not (level >= 2 and o.get('forge_detail', 0) >= 1)]
     objs = [o for o in objs if not (level >= 1 and o.get('forge_detail', 0) >= 2)]
+    # Hooked parts (damage roles: HOOK_SECONDARY_*, HOOK_SENSOR_*, HOOK_ARMOR_*) stay separate
+    # meshes so the runtime can bind, shed or flicker them.
+    hooked = {}
+    for o in objs:
+        if o.get('forge_hook'):
+            hooked.setdefault(o['forge_hook'], []).append(o)
+    objs = [o for o in objs if not o.get('forge_hook')]
+    named = []
+    for hook, parts in hooked.items():
+        named += _join_named(parts, level, f'{prefix}_{hook}')
+    return named + _join_named(objs, level, prefix)
+
+
+def _join_named(objs, level, prefix):
+    if not objs:
+        return []
     dups = _duplicate(objs)
     _select_only(dups)
     bpy.ops.object.join()
@@ -165,18 +182,23 @@ def _lod_meshes(ship, level, prefix):
         if not p.data.polygons:
             bpy.data.objects.remove(p)
             continue
-        finish = mat.get('forgeFinish', 'part') if mat else 'part'
+        finish = mat.get('forgeKey', mat.get('forgeFinish', 'part')) if mat else 'part'
         if len(used) == 1:
             keep = p.data.materials[list(used)[0]]
             p.data.materials.clear()
             p.data.materials.append(keep)
-            finish = keep.get('forgeFinish', finish)
-        name = f'{prefix}_{MESH_NAMES.get(finish, finish)}'
+            finish = keep.get('forgeKey', keep.get('forgeFinish', finish))
+        label = MESH_NAMES.get(finish.split('.')[0], finish.split('.')[0])
+        if '.' in finish:
+            label = f"{label}_{finish.split('.', 1)[1]}"
+        name = f'{prefix}_{label}'
+        if 'HOOK_' in prefix and label.startswith('HOOK_'):
+            name = f'{prefix}_{finish.replace(".", "_")}'
         for key in [k for k in p.keys() if k.startswith('forge_')]:
             del p[key]
         p.name = name
         p.data.name = name
-        if finish == 'glow_drive':
+        if finish.split('.')[0] == 'glow_drive':
             # origin at the cores' centroid so the runtime pulse scales in place
             _select_only([p])
             bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
@@ -194,7 +216,10 @@ def _rename_materials(ship):
 
 
 def _add_sockets(ship, parent):
+    only = getattr(ship, 'socket_names', None)
     for name, pos in default_sockets(ship).items():
+        if only and name not in only:
+            continue
         role, fwd = SOCKET_ROLES.get(name, ('attachment', (1, 0, 0)))
         e = bpy.data.objects.new(name, None)
         bpy.context.scene.collection.objects.link(e)
@@ -281,16 +306,18 @@ def export_ship(ship, spec, out_dir=None, preview=False):
     if spec['layout'] == 'player':
         for level in (0, 1, 2):
             root = _root_empty(f"{spec['root']}_LOD{level}_ROOT", {})
-            meshes = _lod_meshes(ship, level, 'LOD0')
+            prefix = f'LOD{level}' if spec.get('lod_prefix') == 'per_file' else 'LOD0'
+            meshes = _lod_meshes(ship, level, prefix)
             for m in meshes:
                 m.parent = root
-            coll = _collision_hull(ship, root)
+            coll = _collision_hull(ship, root, meshes)
             _add_sockets(ship, root)
             suffix = '' if level == 0 else f'_lod{level}'
             path = os.path.join(out_dir, f"{spec['file']}{suffix}.glb")
             export_objs = [root] + list(root.children)
             _export(export_objs, path)
-            _stamp(path, identity, f'lod{level}')
+            wiring = spec.get('wiring')
+            _stamp(path, {**identity, **({'wiringStatus': wiring[level]} if wiring else {})}, f'lod{level}')
             tris = sum(sum(len(p.vertices) - 2 for p in m.data.polygons) for m in meshes)
             print(f'[forge] {path} lod{level} tris={tris} meshes={len(meshes)}')
             written.append((path, tris))

@@ -138,10 +138,20 @@ try {
       const t0 = Date.now();
       let res;
       try {
-        res = await page.evaluate(async (o) => {
-          const r = await window.SF_fleetLook.shoot(o);
-          return r;
-        }, { ...spec, view, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0) });
+        for (let attempt = 0; attempt < 4; attempt++) {
+          res = await page.evaluate(async (o) => {
+            const r = await window.SF_fleetLook.shoot(o);
+            return r;
+          }, { ...spec, view, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0) });
+          // Under a busy CPU the first frames can present before shaders finish linking: a blank
+          // frame has almost no bright pixels. Re-shoot instead of reporting an empty ship.
+          const stats = await sharp(Buffer.from(res.url.split(',')[1], 'base64')).stats();
+          const lit = stats.channels.slice(0, 3).reduce((a, c) => a + c.max, 0);
+          const spread = stats.channels.slice(0, 3).reduce((a, c) => a + c.stdev, 0);
+          if (lit > 300 && spread > 6) break;
+          console.log('  blank frame, re-shooting', name, view);
+          await page.waitForTimeout(4000);
+        }
       } catch (err) {
         report.push({ name, view, error: String(err).slice(0, 400) });
         console.log('FAIL', name, view, String(err).slice(0, 200));

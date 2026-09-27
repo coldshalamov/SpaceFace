@@ -170,6 +170,20 @@
       "asset_id": "SF_WHOLESHIP_YARD_TUG",
       "part_id": "wholeship_yard_tug",
       "npc_root": "SF_NPCWORK_YARD_TUG_ROOT"
+    },
+    "kestrel": {
+      "layout": "player",
+      "file": "kestrel",
+      "asset_id": "SF_K0_KESTREL_BORROWED_TIME_V4",
+      "part_id": "wholeship_kestrel",
+      "root": "KESTREL_V4",
+      "note": "SF-K0 Borrowed Time (Hitch) forge-v1 rebuild of the owner's design (tools/blender/forge/ships/kestrel.py): pressure hull on an axial drive drum, armoured shoulder sponsons with radiator combs, dorsal spine over a long canopy, twin bow guns, chin mining head, salvage-green repair pod, dorsal dish. Clean forge surfaces replace the grime/scratch texture stack.",
+      "lod_prefix": "per_file",
+      "wiring": [
+        "live_player_only",
+        "retained_lod_family_member",
+        "retained_lod_family_member"
+      ]
     }
   }
 }

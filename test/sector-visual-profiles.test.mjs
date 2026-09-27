@@ -337,10 +337,11 @@ test('ordinary Kestrel route selects the authored GLB and applies its cobalt/cya
   const glb = readGlbJson(new URL(`../assets/ships/release/parts/${selection.file}`, import.meta.url));
   const definitions = new Map((glb.materials || []).map((material) => [material.name, material]));
   assert.ok(definitions.has('Material_Hull'), 'release GLB must expose its dominant hull material');
-  assert.ok(definitions.has('Material_Accent_FrontierCyan'),
+  // Forge Hitch (tools/blender/forge/ships/kestrel.py) names its frontier-cyan livery Material_Accent.
+  assert.ok(definitions.has('Material_Accent'),
     'release GLB must expose its canonical cyan accent material');
   const hull = materialFromGlbDefinition(definitions.get('Material_Hull'));
-  const accent = materialFromGlbDefinition(definitions.get('Material_Accent_FrontierCyan'));
+  const accent = materialFromGlbDefinition(definitions.get('Material_Accent'));
   assert.equal(authoredSurfaceTintRole({}, hull), 'hull');
   assert.equal(authoredSurfaceTintRole({}, accent), 'accent');
 

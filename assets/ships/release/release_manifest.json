@@ -3739,48 +3739,6 @@
       "contractNodeCount": 37
     },
     {
-      "id": "wholeship_kestrel",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/kestrel.glb",
-      "release": "assets/ships/release/parts/wholeships/kestrel.glb",
-      "sourceSha256": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
-      "releaseSha256": "d640cdd207b7e1613da6bd467166b69e2dfd0fd49d2730112cab49182c75b366",
-      "sourceBytes": 53462012,
-      "releaseBytes": 34559016,
-      "textures": 32,
-      "ktx2Textures": 32,
-      "meshoptBufferViews": 133,
-      "contractNodeCount": 42
-    },
-    {
-      "id": "wholeship_kestrel_lod1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/kestrel_lod1.glb",
-      "release": "assets/ships/release/parts/wholeships/kestrel_lod1.glb",
-      "sourceSha256": "fa3614c54faef7068d82872a673d9ac9fad3401faa1b987ffe3e6d5cae894555",
-      "releaseSha256": "8b900c11a7cc325df808c2ba332ef0aeaa8819eb12671ac1112b3e54980ee6fb",
-      "sourceBytes": 38684688,
-      "releaseBytes": 26590732,
-      "textures": 24,
-      "ktx2Textures": 24,
-      "meshoptBufferViews": 55,
-      "contractNodeCount": 22
-    },
-    {
-      "id": "wholeship_kestrel_lod2",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/kestrel_lod2.glb",
-      "release": "assets/ships/release/parts/wholeships/kestrel_lod2.glb",
-      "sourceSha256": "114d2642834aa7ef9f1a1ede572a8895a9d213f5043a9e12b3fe90a4a2368904",
-      "releaseSha256": "d6a091a5a80379ebd6a9369425ad02bafeb551abc028a3f4c53fccf575d38b33",
-      "sourceBytes": 32994768,
-      "releaseBytes": 22957080,
-      "textures": 21,
-      "ktx2Textures": 21,
-      "meshoptBufferViews": 39,
-      "contractNodeCount": 18
-    },
-    {
       "id": "wholeship_survey_pin",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/survey_pin.glb",
@@ -4437,6 +4395,48 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 106,
       "contractNodeCount": 47
+    },
+    {
+      "id": "wholeship_kestrel",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/kestrel.glb",
+      "release": "assets/ships/release/parts/wholeships/kestrel.glb",
+      "sourceSha256": "6dc76e02aa203c83c5e5f16fbb3f9e61bcccdb1fc644f3da00a82692c8a6fc72",
+      "releaseSha256": "51a8fa86d80ccf75dbcb7ce6c1c9190072cbd177b682c32eaeef1579e378b9db",
+      "sourceBytes": 1906948,
+      "releaseBytes": 755692,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 78,
+      "contractNodeCount": 29
+    },
+    {
+      "id": "wholeship_kestrel_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/kestrel_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/kestrel_lod1.glb",
+      "sourceSha256": "ec09fab21004b20ae4bc81bf90004ef10a533eeb62a2b729e44f32e46735552b",
+      "releaseSha256": "2204d4618216d660d21b68ee73d679109765005561cfca576125a2e4586a1e0b",
+      "sourceBytes": 931076,
+      "releaseBytes": 523696,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 78,
+      "contractNodeCount": 29
+    },
+    {
+      "id": "wholeship_kestrel_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/kestrel_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/kestrel_lod2.glb",
+      "sourceSha256": "3d0d84400598210d28673dd526136b13c8040782a100168199f76a280f5f1eb2",
+      "releaseSha256": "3086f728df9baab9e1dbe5057c114f7b0b06015514caf1d5087b96f813a3d938",
+      "sourceBytes": 520184,
+      "releaseBytes": 408052,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 69,
+      "contractNodeCount": 27
     }
   ]
 }

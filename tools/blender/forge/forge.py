@@ -469,6 +469,7 @@ class Ship:
             base = finish.split('.')[0]
             self._mats[finish] = make_material(f'{self.id}_{finish}', base if base in FINISHES else finish, color,
                                                self.id)
+            self._mats[finish]['forgeKey'] = finish
         return self._mats[finish]
 
     def slots(self, finishes):
@@ -479,6 +480,11 @@ class Ship:
             obj['forge_detail'] = self.detail
         self.objects.append(obj)
         return obj
+
+    def hook_part(self, hook, *objs):
+        """Keep these parts as their own mesh named LOD0_<hook>_... (damage/drive role binding)."""
+        for o in objs:
+            o['forge_hook'] = hook
 
     def socket(self, name, pos, forward=(1, 0, 0)):
         self.sockets[name] = (tuple(pos), tuple(forward))

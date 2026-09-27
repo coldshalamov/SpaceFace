@@ -13,26 +13,14 @@ import { MeshoptDecoder } from 'meshoptimizer';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const LIVE_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME_V4';
 const MAX_GITHUB_BYTES = 100 * 1024 * 1024;
+// Forge rebuild (tools/blender/forge/ships/kestrel.py), 2026-09-27: the owner's SF-K0 design on the
+// fleet-wide forge surface set. Triangle bands are the measured forge build +-5%; draws are one
+// primitive per finish plus the separate damage-hook parts (repair pod, sensor dish, armour cap).
+const FORGE_PROVENANCE = 'forge-v1';
 const FAMILY = Object.freeze([
-  Object.freeze({
-    lod: 'lod0', file: 'kestrel.glb', triangles: [36_000, 38_000], maxDraws: 30,
-    // Dated 2026-08-23: Hitch V9 copied the live PNG source (fingerprint E9FE81) without
-    // restamping extras and left KTX2 release on V7 (`releaseUntouched: true`). Source hash is
-    // the pre-stamp V9 candidate; release hash remains the V7 accepted candidate. maxDraws is
-    // the measured V9 LOD0 source (30); V7 release stays at 23, still under the ceiling.
-    acceptedSourceSha256: '46D0957959C2E695572E6B7200C8E1174705DA4E28FF4282F9FEABF704C12B84',
-    acceptedReleaseSha256: '73A53A89A222FA7B2AF31436749CE81FE114BA0C5E0A227F2C15DFEC0E778150',
-  }),
-  Object.freeze({
-    lod: 'lod1', file: 'kestrel_lod1.glb', triangles: [15_000, 16_500], maxDraws: 14,
-    acceptedSourceSha256: '8B3541674094340756A5AE6A2287A5D4C311FC5FC8BDE6ADE90E5D458AE8FFED',
-    acceptedReleaseSha256: '6961187E55C62AC0A08D86B1E709B212B0D8A9E2956F84018B59AE2B35E694DC',
-  }),
-  Object.freeze({
-    lod: 'lod2', file: 'kestrel_lod2.glb', triangles: [9_400, 10_400], maxDraws: 10,
-    acceptedSourceSha256: '6394303A52CA03CE5EDAED0903D5BA16D48D7EF3A3B74A90C75104CCDA2004A7',
-    acceptedReleaseSha256: '43240099CD422D43DE4437DE86C4281C7C5C4C8A09CDEED7341BA24E43576568',
-  }),
+  Object.freeze({ lod: 'lod0', file: 'kestrel.glb', triangles: [31_500, 34_800], maxDraws: 24 }),
+  Object.freeze({ lod: 'lod1', file: 'kestrel_lod1.glb', triangles: [12_600, 13_900], maxDraws: 24 }),
+  Object.freeze({ lod: 'lod2', file: 'kestrel_lod2.glb', triangles: [4_650, 5_150], maxDraws: 22 }),
 ]);
 const REQUIRED_SOCKETS = Object.freeze([
   'SOCKET_Weapon_Front',
@@ -68,30 +56,30 @@ const SOCKET_FORWARDS = Object.freeze({
   SOCKET_RCS_Starboard: [0, 0, 1],
 });
 const REQUIRED_LOD0_MATERIALS = Object.freeze([
-  'Material_Accent_FrontierCyan',
-  'Material_Accent_WarningOrange',
-  'Material_ArmorDark',
-  'Material_BrushedMetal',
-  'Material_Decal_Hazard',
-  'Material_Decal_Stencils',
+  'Material_Accent',
+  'Material_Armor',
+  'Material_Armor_ivory',
+  'Material_Canopy',
+  'Material_Emissive_Amber',
   'Material_Emissive_Cyan',
-  'Material_Emissive_DriveCore',
-  'Material_Emissive_Orange',
-  'Material_EngineCeramic',
-  'Material_Glass_Canopy',
+  'Material_Emissive_NavGreen',
+  'Material_Emissive_NavRed',
+  'Material_Emissive_Warm',
   'Material_Hull',
+  'Material_Hull_green',
   'Material_Mechanical',
-  'Material_Radiator',
-  'Material_RepairGreen',
-  'Material_Rubber',
-  'Material_V6_MarkingIvory',
+  'Material_MechanicalDark',
+  'Material_Thruster',
+  'Material_Warning',
 ].sort());
 const FACTOR_ONLY_MATERIALS = Object.freeze([
+  'Material_Canopy',
+  'Material_Emissive_Amber',
   'Material_Emissive_Cyan',
-  'Material_Emissive_DriveCore',
-  'Material_Emissive_Orange',
-  'Material_Glass_Canopy',
-  'Material_V6_MarkingIvory',
+  'Material_Emissive_NavGreen',
+  'Material_Emissive_NavRed',
+  'Material_Emissive_Warm',
+  'Material_Thruster',
 ].sort());
 
 await MeshoptDecoder.ready;
@@ -139,7 +127,7 @@ for (const member of FAMILY) {
 }
 
 assert.deepEqual(sourceFamily[0].materials, REQUIRED_LOD0_MATERIALS,
-  'LOD0 must preserve the Hitch V7 polish semantic material set exactly');
+  'LOD0 must carry the forge Hitch material set exactly');
 for (const member of sourceFamily) {
   const collisionRatios = member.collisionDimensions.map((value, index) => value / member.visibleDimensions[index]);
   assert.ok(collisionRatios.every((ratio) => ratio >= 0.90 && ratio <= 0.94),
@@ -183,8 +171,10 @@ assert.match(assetLoader, /fetchImpl\(url,\s*\{\s*cache:\s*['"]no-cache['"]\s*\}
   'whole-ship validation must revalidate current on-disk GLBs through the injected fetch seam');
 // Dated 2026-08-23: the loader now passes cache mode as resolveMetadata's 4th argument
 // (`'no-cache'` / `'reload'`) rather than a `cache:` object literal. Still forbid force-cache.
-assert.doesNotMatch(renderPackageLoader, /['"]force-cache['"]/,
-  'Hitch production packages must not pin a stale Electron cache entry');
+// Package URLs are content-hash immutable, so the loader may read through force-cache; what must hold
+// is that a cached body is SHA-256 verified and a mismatch re-reads with 'reload'.
+assert.match(renderPackageLoader, /digest\s*!==\s*metadata\.render\.sha256\)\s*\{\s*bytes\s*=\s*await\s+read\('reload'\)/,
+  'Hitch production packages must verify a cached body and re-read a stale one');
 assert.match(renderPackageLoader, /['"]no-cache['"]/,
   'Hitch production packages must revalidate the current on-disk render package');
 assert.match(renderPackageLoader, /['"]reload['"]/,
@@ -225,9 +215,8 @@ function verifyMember(result, member, label) {
   const expectedFactorOnly = FACTOR_ONLY_MATERIALS.filter((name) => result.materials.includes(name));
   assert.deepEqual([...(result.asset.factorOnlyMaterials || [])].sort(), expectedFactorOnly,
     `${label} ${member.lod} must declare the intentional emissive/glass/stencil factor-only materials`);
-  const accepted = label === 'source' ? member.acceptedSourceSha256 : member.acceptedReleaseSha256;
-  assert.equal(result.asset.acceptedCandidateSha256, accepted,
-    `${label} ${member.lod} must retain accepted-candidate provenance`);
+  assert.equal(result.asset.surfaceGeometryRemaster, FORGE_PROVENANCE,
+    `${label} ${member.lod} must be the forge build (tools/blender/forge/ships/kestrel.py)`);
   assert.equal(result.asset.wiringStatus, member.lod === 'lod0' ? 'live_player_only' : 'retained_lod_family_member',
     `${label} ${member.lod} wiring status`);
 }

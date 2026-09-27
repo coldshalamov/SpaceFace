@@ -172,6 +172,9 @@ export function installFleetLook(SF) {
         if (t && renderer.initTexture) { try { renderer.initTexture(t); } catch (_) {} }
       }
     });
+    // Link this body's programs up front: the post route's unready-drawable guard hides any mesh
+    // whose program is still linking, and a harness frame must never be a guard-hidden blank.
+    try { renderer.compile(holder, cam, scene); } catch (_) {}
     for (let i = 0; i < 4; i++) { renderOnce(renderer, scene, cam); await wait(50); }
     // Same task as the draw: without preserveDrawingBuffer the canvas clears after compositing.
     renderOnce(renderer, scene, cam);

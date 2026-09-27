@@ -36650,57 +36650,57 @@
     {
       "bounds": {
         "center": [
-          -0.205224,
-          0.798804,
+          -0.36,
+          0.358717,
           0
         ],
         "max": [
-          13.90574,
-          4.363677,
-          7.015836
+          13.4,
+          3.7679,
+          6.630349
         ],
         "min": [
-          -14.316187,
-          -2.766068,
-          -7.015836
+          -14.12,
+          -3.050466,
+          -6.630349
         ],
         "size": [
-          28.221927,
-          7.129744,
-          14.031671
+          27.52,
+          6.818366,
+          13.260697
         ]
       },
-      "bytes": 34559016,
+      "bytes": 755692,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:ship_kestrel",
         "kind": "proxy",
         "outline": [
-          12.298881,
-          11.195658,
-          10.494625,
-          7.76769,
-          6.125107,
-          4.85346,
-          5.864387,
-          6.037048,
-          6.299292,
-          8.084592,
-          6.228209,
-          11.866753,
-          11.866753,
-          6.227792,
-          8.084592,
-          6.24063,
-          6.037048,
-          5.864387,
-          4.853244,
-          6.12405,
-          7.76769,
-          10.495436,
-          11.193816,
-          12.298904
+          12.517587,
+          10.015255,
+          9.945882,
+          7.952688,
+          6.542236,
+          5.935451,
+          5.994958,
+          6.563665,
+          6.75157,
+          5.93678,
+          6.105078,
+          11.732066,
+          11.732066,
+          6.105078,
+          5.93678,
+          6.75157,
+          6.563665,
+          5.994958,
+          5.935451,
+          6.542236,
+          7.952688,
+          9.945882,
+          10.015255,
+          12.517587
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -36713,7 +36713,7 @@
         0,
         0
       ],
-      "drawScale": 0.853237,
+      "drawScale": 0.875,
       "family": "player-hull",
       "forwardAxis": "+X",
       "frozenMesh": true,
@@ -36736,10 +36736,10 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.028986,
-          "lod2": 2.097778
+          "lod1": 0.176924,
+          "lod2": 5.935451
         },
-        "overTolerance": false,
+        "overTolerance": true,
         "toleranceWu": 4
       },
       "materials": [
@@ -36747,8 +36747,24 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Accent_FrontierCyan",
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor_ivory",
           "role": "opaqueHull"
         },
         {
@@ -36756,54 +36772,22 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": true,
-          "name": "Material_Accent_WarningOrange",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_ArmorDark",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_BrushedMetal",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_BrushedMetal_RemasterNickel",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "BLEND",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Decal_Hazard",
-          "role": "decal"
-        },
-        {
-          "additive": false,
-          "alphaMode": "BLEND",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Decal_Stencils",
-          "role": "decal"
+          "name": "Material_Canopy",
+          "role": "glass"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": false,
-          "doubleSided": true,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
           "name": "Material_Emissive_Cyan",
           "role": "emissive"
         },
@@ -36811,39 +36795,31 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": false,
-          "doubleSided": true,
-          "name": "Material_Emissive_DriveCore",
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
           "role": "emissive"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": false,
-          "doubleSided": true,
-          "name": "Material_Emissive_Orange",
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
           "role": "emissive"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_EngineCeramic",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "BLEND",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Glass_Canopy",
-          "role": "glass"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": true,
+          "doubleSided": false,
           "name": "Material_Hull",
           "role": "opaqueHull"
         },
@@ -36851,7 +36827,15 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": true,
+          "doubleSided": false,
+          "name": "Material_Hull_green",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
           "name": "Material_Mechanical",
           "role": "opaqueHull"
         },
@@ -36859,49 +36843,25 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Mechanical_RemasterHeatCopper",
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
           "role": "opaqueHull"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Mechanical_RemasterOxidized",
-          "role": "opaqueHull"
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Thruster",
+          "role": "emissive"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Radiator",
+          "doubleSided": false,
+          "name": "Material_Warning",
           "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_RepairGreen",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Rubber",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_V6_MarkingIvory",
-          "role": "decal"
         },
         {
           "additive": false,
@@ -36913,18 +36873,18 @@
         }
       ],
       "measuredProportions": {
-        "halfWidth": 0.427584,
-        "height": 0.434526,
+        "halfWidth": 0.414397,
+        "height": 0.426148,
         "length": 1.72
       },
-      "meshHash": "e15c4b1fc71a3ae6a6989748717dbf26ac4d8b85398c9ab6aa179f86f711a311",
-      "meshes": 34,
-      "nodes": 47,
+      "meshHash": "a4c8f5c27473786b77d1109335a9cb87426e29798b5f204b9e4760e519e77edb",
+      "meshes": 21,
+      "nodes": 31,
       "note": null,
       "opening": null,
       "pivot": [
-        -0.205224,
-        0.798804,
+        -0.36,
+        0.358717,
         0
       ],
       "proposedSkin": {
@@ -36938,8 +36898,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.856812,
-            "bz": -0.112801,
+            "bx": -0.872301,
+            "bz": -0.114841,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.032143
@@ -36947,8 +36907,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.725619,
-            "bz": -0.300561,
+            "bx": -0.647722,
+            "bz": -0.268295,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.032143
@@ -36956,8 +36916,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.583377,
-            "bz": -0.447641,
+            "bx": -0.552281,
+            "bz": -0.42378,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.032143
@@ -36965,8 +36925,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.329066,
-            "bz": -0.428847,
+            "bx": -0.33711,
+            "bz": -0.43933,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.032143
@@ -36974,8 +36934,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.16196,
-            "bz": -0.391006,
+            "bx": -0.173362,
+            "bz": -0.418533,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.032143
@@ -36983,8 +36943,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.043386,
-            "bz": -0.329546,
+            "bx": -0.053473,
+            "bz": -0.40617,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.032143
@@ -36992,8 +36952,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.052811,
-            "bz": -0.401138,
+            "bx": 0.054028,
+            "bz": -0.410384,
             "id": "arm-6",
             "kind": "capsule",
             "r": 0.032143
@@ -37001,8 +36961,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.159553,
-            "bz": -0.385195,
+            "bx": 0.173948,
+            "bz": -0.419947,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.032143
@@ -37010,8 +36970,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.265215,
-            "bz": -0.345635,
+            "bx": 0.284882,
+            "bz": -0.371265,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.032143
@@ -37019,8 +36979,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.446805,
-            "bz": -0.342845,
+            "bx": 0.325092,
+            "bz": -0.249452,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.032143
@@ -37028,8 +36988,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.39781,
-            "bz": -0.164778,
+            "bx": 0.389684,
+            "bz": -0.161413,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.032143
@@ -37037,8 +36997,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.82621,
-            "bz": -0.108773,
+            "bx": 0.816672,
+            "bz": -0.107517,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.032143
@@ -37046,8 +37006,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.82621,
-            "bz": 0.108773,
+            "bx": 0.816672,
+            "bz": 0.107517,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.032143
@@ -37055,8 +37015,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.397782,
-            "bz": 0.164767,
+            "bx": 0.389684,
+            "bz": 0.161413,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.032143
@@ -37064,8 +37024,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.446805,
-            "bz": 0.342845,
+            "bx": 0.325092,
+            "bz": 0.249452,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.032143
@@ -37073,8 +37033,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.262664,
-            "bz": 0.342311,
+            "bx": 0.284882,
+            "bz": 0.371265,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.032143
@@ -37082,8 +37042,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.159553,
-            "bz": 0.385195,
+            "bx": 0.173948,
+            "bz": 0.419947,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.032143
@@ -37091,8 +37051,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.052811,
-            "bz": 0.401138,
+            "bx": 0.054028,
+            "bz": 0.410384,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.032143
@@ -37100,8 +37060,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.043384,
-            "bz": 0.329531,
+            "bx": -0.053473,
+            "bz": 0.40617,
             "id": "arm-18",
             "kind": "capsule",
             "r": 0.032143
@@ -37109,8 +37069,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.161931,
-            "bz": 0.390936,
+            "bx": -0.173362,
+            "bz": 0.418533,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.032143
@@ -37118,8 +37078,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.329066,
-            "bz": 0.428847,
+            "bx": -0.33711,
+            "bz": 0.43933,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.032143
@@ -37127,8 +37087,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.583423,
-            "bz": 0.447676,
+            "bx": -0.552281,
+            "bz": 0.42378,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.032143
@@ -37136,8 +37096,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.725497,
-            "bz": 0.300511,
+            "bx": -0.647722,
+            "bz": 0.268295,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.032143
@@ -37145,23 +37105,24 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.856814,
-            "bz": 0.112802,
+            "bx": -0.872301,
+            "bz": 0.114841,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.032143
           }
         ],
-        "silhouetteRadius": 12.298904,
+        "silhouetteRadius": 12.517587,
         "toleranceWu": 2
       },
       "reasons": [
+        "lod-outline",
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 558,
-        "inwardFaceFraction": 0.458,
-        "silhouetteRadius": 12.298904,
+        "boundaryEdges": 1696,
+        "inwardFaceFraction": 0.17275,
+        "silhouetteRadius": 12.517587,
         "sliceY": 0
       },
       "sockets": [
@@ -37242,7 +37203,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 40490,
+      "triangles": 33460,
       "unmeasuredHitVolumes": [
         "subsystem_tether_spool",
         "subsystem_transport_clamp"
@@ -37250,8 +37211,8 @@
       "url": "assets/ships/release/parts/wholeships/kestrel.glb",
       "worldSize": [
         24.08,
-        6.083364,
-        11.972345
+        5.96607,
+        11.60311
       ]
     },
     {
