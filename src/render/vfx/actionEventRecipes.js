@@ -9,6 +9,8 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
       engine_flare:{verb:'ignition',primitive:'compression',color:0xeac891,life:1.6},
       attach_spool:{verb:'catch',primitive:'capture',color:0x82cce6,life:1.6,surfaceCapture:true,surfaceWork:true},
       weapon_charge:{verb:'command',primitive:'induction',color:0xe8ae76,life:1.6,surfaceWork:true},
+      // Fuse-lit kamikaze: a hot ignition burn on the hull itself, not a muzzle glow.
+      detonator_fuse:{verb:'ignition',primitive:'compression',color:0xff5030,life:1.6,surfaceWork:true},
     }},
   'ai:flee': {verb:'vent',primitive:'compression',color:0xdcb99d,life:.85,continuous:false},
   'ai:formationBroken': {verb:'disrupt',primitive:'induction',color:0xe2a983,life:.8,surfaceWork:true,continuous:false},
@@ -46,7 +48,7 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
   if(name==='presentation:cue')return resolveWorldCueReceipt(p,state);
   if(name==='ai:telegraph'||name==='ai:flee'){
     const source=body(state,p.entityId);if(!point(source?.pos)||source.alive===false)return null;
-    if(name==='ai:telegraph'&&!['engine_flare','attach_spool','weapon_charge'].includes(p.kind))return null;
+    if(name==='ai:telegraph'&&!['engine_flare','attach_spool','weapon_charge','detonator_fuse'].includes(p.kind))return null;
     const aft=name==='ai:flee'||p.kind==='engine_flare';
     const a=(source.rot||0)+(aft?Math.PI:0),r=source.radius||6;
     return {...p,targetId:source.id,sourceId:source.id,

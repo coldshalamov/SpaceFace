@@ -6,24 +6,30 @@
 //   * Spawning goes through spawnBudget and makeEnemySpawnSpec only (see waveMaterialization.js).
 //     A batch that the cap refuses is still DISPATCHED — waiting on bodies the cap will never
 //     allow would strand the player in `active` forever with nothing to shoot.
-//   * `run:waveCleared` is bookkeeping over THIS wave's own admitted ids, decremented by
-//     entity:destroyed receipts. It is never "are there any hostiles left in the sector?" —
-//     no phase is inferred from an entity scan (§27.3).
+//   * `run:waveCleared` is bookkeeping over THIS wave's own admitted ids. A member resolves on
+//     its entity:killed receipt; entity:destroyed stays the backstop for bodies removed without
+//     dying (sweeps, carry-overs gone stale). A corpse that lingers as a wreck — or a member
+//     whose destroy receipt never arrives — cannot hold its wave open, and a recycled id cannot
+//     drop the live body that now carries it. It is never "are there any hostiles left in the
+//     sector?" — no phase is inferred from an entity scan (§27.3).
 //
 // Never writes state.run (runSession is the sole writer) and never touches campaign economy.
 
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
+import { catalogQuestionIssues } from '../data/survivalWaves.js';
 import {
   SWARM_BOSS_ENEMY_ID,
   SWARM_WAVE_DURATION_TICKS,
   pickSwarmArchetype,
+  swarmCatalogIssues,
   swarmGateFor,
   swarmLevel,
   swarmPressureAt,
   swarmPressureIsHolding,
   swarmReinforceCount,
 } from '../data/swarmMode.js';
+import { validateCombatChoreography } from '../presentation/combatChoreography.js';
 import { WAVE_CLEARED_SEAM } from './survivalRun.js';
 import {
   SURVIVAL_SPAWN_DISTANCE,
@@ -65,6 +71,36 @@ export function waveOwnerId(wave) {
   return `${SURVIVAL_WAVE_OWNER_PREFIX}${Number.isInteger(wave) ? wave : 0}`;
 }
 
+/**
+ * One startup audit over every content catalog this system's pipeline consumes — arc wave
+ * recipes plus the catalog-level ids they lean on (question props, role problems, endless
+ * overlays — catalogQuestionIssues already runs catalogEnemyIdIssues internally), the swarm
+ * roster + boss rotation, and the combat choreography grammars.
+ *
+ * These validators used to be test-only, so a typo'd enemyId survived until spawn time and
+ * surfaced only as a silent wasp fallback from makeEnemySpawnSpec. init() runs this once on
+ * the default route's system init and reports every issue. `opts.recipes` exists so the
+ * focused test can drive the same collector over a deliberately broken recipe list.
+ */
+export function collectContentCatalogIssues(opts = {}) {
+  const issues = [];
+  const pushAll = (source, list) => {
+    for (const item of list || []) {
+      if (!item) continue;
+      issues.push(typeof item === 'string'
+        ? { source, path: '', message: item }
+        : { source, path: item.path || '', message: item.message || String(item) });
+    }
+  };
+  pushAll('survivalWaves', catalogQuestionIssues(opts.recipes));
+  pushAll('swarmMode', swarmCatalogIssues());
+  const choreography = validateCombatChoreography();
+  if (choreography && choreography.ok === false) {
+    pushAll('combatChoreography', choreography.issues);
+  }
+  return issues;
+}
+
 function playerIsAlive(state) {
   if (!state || state.playerId == null || !state.entities || typeof state.entities.get !== 'function') {
     return false;
@@ -87,12 +123,14 @@ export const survivalWave = {
     this._unsubs = [];
     this._resetWave();
     this._owners = [];
+    this._reportContentIssues();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
     this._unsubs.push(this.bus.on('run:ended', () => this._teardown()));
     this._unsubs.push(this.bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p)));
+    this._unsubs.push(this.bus.on('entity:killed', (p) => this._onEntityKilled(p)));
   },
 
   destroy() {
@@ -222,19 +260,50 @@ export const survivalWave = {
   _onEntityDestroyed(payload) {
     const id = payload && payload.id;
     if (id == null || !this._cohort) return;
-    if (!this._cohort.has(id)) return;
-    // Same-tick id reuse. core recycles a dead body's id into freeIds immediately but QUEUES its
-    // entity:destroyed to the end of the step, so a batch dispatched in the same tick can be
-    // handed the id of a body whose death receipt has not been delivered yet. Acting on that
-    // receipt would drop a LIVE hostile out of the census — and if it were the last one accounted
-    // for, the wave would report itself cleared with an enemy still shooting. If a live cohort
-    // body holds this id now, the receipt belongs to its predecessor: keep the entry, which is
-    // already the right one for the new occupant.
+    const entry = this._cohort.get(id);
+    if (!entry) return;
+    // Same-tick id reuse, decided by IDENTITY. core recycles a dead body's id into freeIds
+    // immediately but QUEUES its entity:destroyed to the end of the step, so a batch dispatched
+    // in the same tick can be handed the id of a body whose removal receipt has not been
+    // delivered yet. The single-removal path stamps the destroyed object on the receipt — if
+    // that object is not the member this id currently names, the receipt belongs to a recycled
+    // predecessor and must not drop the live occupant. (spawnBudget's binding applies the same
+    // generation check; the batch sweep omits the ref, so the live-occupant guard below stays
+    // as the fallback for ref-less receipts.)
+    if (payload.entity != null && entry.entity != null && payload.entity !== entry.entity) return;
     const live = this.state && this.state.entities && typeof this.state.entities.get === 'function'
       ? this.state.entities.get(id)
       : null;
-    if (live && live.alive && live.data && live.data.runCohort === 'survival') return;
-    this._cohort.delete(id);
+    if (live && live !== entry.entity && live.alive !== false
+      && live.data && live.data.runCohort === 'survival') return;
+    this._resolveCohort(id);
+  },
+
+  /**
+   * Death resolves a cohort slot at the kill, not at corpse disposal. Combat emits
+   * entity:killed synchronously while the body is still in the entity map; a hull that then
+   * lingers as a wreck — or is reaped by a path that never emits entity:destroyed — can no
+   * longer hold its wave open on a dead entry. entity:destroyed remains the backstop for
+   * removals that never went through a kill.
+   */
+  _onEntityKilled(payload) {
+    const id = payload && payload.id;
+    if (id == null || !this._cohort) return;
+    const entry = this._cohort.get(id);
+    if (!entry) return;
+    // Stale-receipt guard, same generation rule as the destroyed path: if the id already
+    // reports a different occupant, this receipt belongs to a predecessor and the live member
+    // keeps its entry. With no recorded ref, only a demonstrably dead (or gone) holder resolves.
+    const holder = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(id)
+      : null;
+    if (entry.entity && holder && holder !== entry.entity) return;
+    if (!entry.entity && holder && holder.alive !== false) return;
+    this._resolveCohort(id);
+  },
+
+  _resolveCohort(id) {
+    if (!this._cohort || !this._cohort.delete(id)) return;
     this._bossIds.delete(id);
     this._resolved += 1;
     this._publishThreat();
@@ -320,7 +389,14 @@ export const survivalWave = {
       this._requestedTotal += receipt.requested;
       this._admittedTotal += receipt.admitted;
       for (const id of receipt.spawnedIds) {
-        this._cohort.set(id, entry.role);
+        // Record the spawned OBJECT, not just the id: entity ids recycle through freeIds inside
+        // a step, so the kill/destroy seams resolve membership by identity, never by id alone.
+        this._cohort.set(id, {
+          role: entry.role,
+          entity: this.state && this.state.entities && typeof this.state.entities.get === 'function'
+            ? this.state.entities.get(id) || null
+            : null,
+        });
         // The champion is the wave's WORK, not one more body in the count. Remembering which hulls
         // they are means a kill quota met on chaff cannot end a boss wave with the boss still
         // flying — and because the marker is a FLAG rather than an enemy id, a wave can owe a wing
@@ -415,7 +491,14 @@ export const survivalWave = {
     });
     this._requestedTotal += receipt.requested;
     this._admittedTotal += receipt.admitted;
-    for (const id of receipt.spawnedIds) this._cohort.set(id, archetype.role);
+    for (const id of receipt.spawnedIds) {
+      this._cohort.set(id, {
+        role: archetype.role,
+        entity: this.state && this.state.entities && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(id) || null
+          : null,
+      });
+    }
     if (receipt.admitted > 0) {
       this._publishThreat();
       this._emit('run:waveMaterialized', {
@@ -447,9 +530,11 @@ export const survivalWave = {
   _checkCleared(run) {
     if (this._cleared) return;
     if (!this._active) return;
-    // A swarm wave clears on the SIXTY-SECOND CLOCK. Survivors are left flying — they become
-    // the next wave's opening pressure. Kill count does not end the wave. A living champion
-    // does not end the wave. Death at the boundary is a death, not a surviving-wave award.
+    // Swarm waves clear one of two ways. A kill-target round ends when every body it admitted
+    // has RESOLVED — kills count at the kill, corpses that linger no longer stall the check.
+    // A legacy timed round clears on the duration clock: survivors are left flying and become
+    // the next wave's opening pressure. Either way a living champion keeps the wave open, and
+    // death at the boundary is a death, not a surviving-wave award.
     if (this._swarm) {
       if (run.phase !== 'active') return;
       if (!playerIsAlive(this.state)) return;
@@ -475,8 +560,8 @@ export const survivalWave = {
       return;
     }
     if (this._pending && this._pending.length > 0) return;
-    for (const role of this._cohort.values()) {
-      if (this._blockingRoles.size === 0 || this._blockingRoles.has(role)) return;
+    for (const member of this._cohort.values()) {
+      if (this._blockingRoles.size === 0 || this._blockingRoles.has(member && member.role)) return;
     }
     this._cleared = true;
     this._active = false;
@@ -528,6 +613,39 @@ export const survivalWave = {
       for (const ownerId of this._owners || []) budget.release(ownerId);
     }
     this._owners = [];
+  },
+
+  /**
+   * Startup content audit — runs once per system init (the default route's boot). Reports are
+   * loud but NEVER thrown: a typo'd catalog row must light up the log, not kill the route.
+   * Channels: one console.error summary, one console.warn per issue (systems-style warn), and
+   * a `survival:contentIssues` bus event for observers/diagnostics.
+   */
+  _reportContentIssues() {
+    let issues = null;
+    try {
+      issues = collectContentCatalogIssues();
+    } catch (err) {
+      try {
+        if (typeof console !== 'undefined' && console.error) {
+          console.error('[survivalWave] content catalog audit failed to run', err);
+        }
+      } catch { /* reporting must never throw */ }
+      return;
+    }
+    if (!issues || issues.length === 0) return;
+    try {
+      if (typeof console !== 'undefined' && console.error) {
+        console.error(`[survivalWave] content catalog audit: ${issues.length} issue(s)`);
+      }
+      if (typeof console !== 'undefined' && console.warn) {
+        for (const item of issues) {
+          const where = item.path ? `${item.source}.${item.path}` : item.source;
+          console.warn(`[survivalWave] content issue ${where}: ${item.message}`);
+        }
+      }
+      this._emit('survival:contentIssues', { issues });
+    } catch { /* reporting must never throw */ }
   },
 
   _emit(event, payload) {

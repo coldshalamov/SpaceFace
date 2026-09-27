@@ -1398,6 +1398,16 @@ export function selectedWorldSiteTarget(state) {
     : null;
 }
 
+// Combat hull archetypes that stay throwable while their AI posture is standing down.
+// `ai.passive` is a fire-authority read (the hull will not open fire first), not a physical
+// property of the mass on the rope — an ambush pirate lying in wait is still a hull a pilot
+// can swing. Noncombat archetypes (trader/miner/civilian) are absent so unlisted hulls keep
+// the weld-beam default.
+const THROW_ARM_COMBAT_ARCHETYPES = new Set([
+  'pirate', 'raider', 'marauder', 'corsair', 'outlaw', 'brawler', 'sniper', 'swarmer',
+  'hunter', 'mercenary', 'miniboss_capital',
+]);
+
 /**
  * True when the active tether payload should steal RMB for throwArm.
  * HOSTILE ships/drones = combat throw (case D). Fracture chunks / tow payloads = throw-mass (case C).
@@ -1414,8 +1424,12 @@ function isThrowArmPayload(state) {
   if (!target || target.alive === false) return false;
   if (target.type === 'ship' || target.type === 'drone') {
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
-    // Missing player or unreadable hostility fails closed to the beam (tend, don't throw).
-    return !!(player && isHostileToPlayer(target, player.team, state));
+    if (player && isHostileToPlayer(target, player.team, state)) return true;
+    const data = target.data || {};
+    const ai = data.ai || null;
+    const archetype = String((ai && (ai.archetype || ai.doctrine || ai.role))
+      || data.role || data.scenarioRole || '').toLowerCase();
+    return THROW_ARM_COMBAT_ARCHETYPES.has(archetype);
   }
   if (target.type === 'asteroid' && target.data && target.data.isChunk) return true;
   if (target.type === 'payload') return true;

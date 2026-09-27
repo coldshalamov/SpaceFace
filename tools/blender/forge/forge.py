@@ -34,6 +34,11 @@ FINISHES = {
     # role, roughness, metallic, texture set, env intent
     'paint':      dict(role='hull',       rough=0.46, metal=0.10, tex='panel'),
     'paint2':     dict(role='hull',       rough=0.50, metal=0.10, tex='panel'),
+    # deadmetal: hull-role skin for derelicts/becalmed hulls. Under the sector env probe a
+    # dielectric has a fixed pale floor (white F0 spec picks up the hot amber backdrop no matter
+    # how dark the albedo), while a full metal's reflection is albedo-tinted and stays dark —
+    # so deadmetal is metal 1.0 with near-black albedo; roughness keeps it matte, not chrome.
+    'deadmetal':  dict(role='hull',       rough=0.55, metal=1.0, tex='panel'),
     'stripe':     dict(role='accent',     rough=0.42, metal=0.08, tex='panel'),
     'gunmetal':   dict(role='mechanical', rough=0.38, metal=0.85, tex='machinery'),
     'dark':       dict(role='mechanical', rough=0.62, metal=0.55, tex='machinery'),

@@ -310,6 +310,10 @@ const PLACE_FILES = Object.freeze([
   // the same authored-place path. The fork GLB's origin is the mouth plane (no recentering).
   'places/place_breakaway_sp07.glb',
   'places/place_breakaway_fork.glb',
+  // GFX-4: the Quiessence becalmed dark freighters — three bespoke hulls ringing the buoy.
+  'places/place_quiessence_freighter_a.glb',
+  'places/place_quiessence_freighter_b.glb',
+  'places/place_quiessence_freighter_c.glb',
   ...Object.values(CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID),
   ...STATION_ARCHETYPE_FILES,
   ...TRADE_HUB_OVERLAY_FILES,

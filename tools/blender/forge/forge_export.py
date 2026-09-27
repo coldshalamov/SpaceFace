@@ -25,7 +25,8 @@ WHOLESHIP_DIR = os.path.join(ROOT, 'assets', 'ships', 'parts', 'wholeships')
 # finish -> exported material name. Names keep the fleet's Material_* vocabulary so manifests,
 # routing tests and name-based fallbacks all read them; extras carry the authoritative role.
 MATERIAL_NAMES = {
-    'paint': 'Material_Hull', 'paint2': 'Material_Armor', 'stripe': 'Material_Accent',
+    'paint': 'Material_Hull', 'paint2': 'Material_Armor', 'deadmetal': 'Material_Hull',
+    'stripe': 'Material_Accent',
     'gunmetal': 'Material_Mechanical', 'dark': 'Material_MechanicalDark', 'bare': 'Material_BrushedMetal',
     'ceramic': 'Material_Ceramic', 'hazard': 'Material_Warning', 'glass': 'Material_Canopy',
     'glow_drive': 'Material_Thruster', 'glow_cyan': 'Material_Emissive_Cyan', 'glow_red': 'Material_Emissive_NavRed',

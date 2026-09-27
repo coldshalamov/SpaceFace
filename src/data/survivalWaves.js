@@ -252,7 +252,7 @@ export const HEAVY_TERRAIN_MIN_MASS = 150;
  */
 export const SURVIVAL_QUESTION_PROPS = freezeDeep({
   1: { id: 'identical_mass', bodies: ['wasp_swarmer'], throwable: true },
-  2: { id: 'split_behind', bodies: ['wasp_swarmer', 'reaver_pirate'], pair: ['reaver_pirate', 'wasp_swarmer'] },
+  2: { id: 'split_behind', bodies: ['wasp_swarmer', 'reaver_pirate', 'detonator_dart'], pair: ['reaver_pirate', 'wasp_swarmer'] },
   3: { id: 'tether_pull', bodies: ['tether_control_raider'] },
   4: { id: 'three_gate_anvil', bodies: ['mine_layer_jackal', 'bruiser_brawler'], pair: ['mine_layer_jackal', 'bruiser_brawler'] },
   5: { id: 'ace_in_the_noise', bodies: ['wasp_swarmer', 'corsair_raider'], throwable: true },
@@ -506,6 +506,40 @@ export function catalogQuestionIssues(recipes = SURVIVAL_WAVES) {
     const ids = ordered.map((row) => row.questionId);
     for (const item of consecutiveQuestionIssues(ids)) {
       issues.push({ path: `${arenaId}.${item.path}`, message: item.message });
+    }
+  }
+  // Catalog-level ids: question props, role problems and endless overlays all name enemy ids
+  // OUTSIDE the package loop above. A typo there used to survive every gate (the props check
+  // only proves packages field the named id). Authored content may not lean on the spawn
+  // fallback — every named id must be a live catalog member.
+  for (const item of catalogEnemyIdIssues()) issues.push(item);
+  return issues;
+}
+
+function catalogEnemyIdIssues() {
+  const issues = [];
+  const checkId = (path, value) => {
+    if (typeof value !== 'string' || !ENEMY_IDS.has(value)) {
+      issues.push(issue(path, `unknown enemyId ${JSON.stringify(value)}`));
+    }
+  };
+  for (const [wave, props] of Object.entries(SURVIVAL_QUESTION_PROPS)) {
+    for (const enemyId of props.bodies || []) {
+      checkId(`questionProps[${wave}].bodies`, enemyId);
+    }
+    for (const enemyId of props.pair || []) {
+      checkId(`questionProps[${wave}].pair`, enemyId);
+    }
+  }
+  for (const enemyId of WAVE_20_QUESTION_PROPS.bodies || []) {
+    checkId('wave20QuestionProps.bodies', enemyId);
+  }
+  for (const [role, problem] of Object.entries(SURVIVAL_ROLE_PROBLEMS)) {
+    checkId(`roleProblems.${role}.enemyId`, problem && problem.enemyId);
+  }
+  for (const overlay of SURVIVAL_ENDLESS_OVERLAYS) {
+    for (const key of ['massEnemyId', 'pressureEnemyId', 'controlEnemyId']) {
+      if (overlay[key] != null) checkId(`endlessOverlays.${overlay.id}.${key}`, overlay[key]);
     }
   }
   return issues;
@@ -872,10 +906,13 @@ function tenWaveBlock(arenaId, gateA, gateB) {
     // thing is that the fight now has a behind.
     waveRecipe({
       arenaId, wave: 2, shape: 'split_arrival',
-      objectiveKind: 'resolve_hostiles', threatBudget: 10,
+      objectiveKind: 'resolve_hostiles', threatBudget: 12,
       packages: [
         pkg(0, gateA, 'mass', 'wasp_swarmer', 5),
         pkg(75, gateB, 'pressure', 'reaver_pirate', 3),
+        // Two fuse-lit darts land in the rear push half a second behind the raiders — the wave's
+        // shove lesson now pays double: a dart shoved forward converts into the front pack.
+        pkg(105, gateB, 'pressure', 'detonator_dart', 2),
       ],
       arenaPhase: 'idle', blockingRoles: ['mass', 'pressure'], cleanupTicks: 180,
       xp: 64, credits: 16,
@@ -1097,6 +1134,16 @@ export const SURVIVAL_ENDLESS_OVERLAYS = freezeDeep([
     massEnemyId: 'corsair_raider',
     massRole: 'elite',
     arenaPhase: 'boss',
+  },
+  {
+    // Endless pressure rows become fuse runners: the closing push IS the ordnance, and the
+    // shove answer the arc taught stays the correct one — shove the dart back into its pack.
+    id: 'fuse_runners',
+    massEnemyId: 'reaver_pirate',
+    massRole: 'pressure',
+    pressureEnemyId: 'detonator_dart',
+    pressureRole: 'pressure',
+    arenaPhase: 'shutter_lane_close',
   },
 ]);
 

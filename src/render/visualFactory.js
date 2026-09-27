@@ -1728,6 +1728,35 @@ function buildDreadnoughtEnemy(ctx) {
   }
 }
 
+// detonator_dart — Detonator Dart. A warhead with an engine strapped on: fat bomb nose,
+// cruciform tail fins, one hot fuse lamp. Reads: flying bomb — it is not here to shoot you.
+function buildDetonatorDart(ctx) {
+  const { g, R, hm, accent, vis } = ctx;
+  const L = vis.length || 1.1;
+  // The payload is most of the silhouette — the hull is a bomb first and a ship second.
+  const warhead = new THREE.Mesh(getGeometry('edr:dartWarhead', () => new THREE.SphereGeometry(0.42, 12, 8)), accent);
+  warhead.scale.set(R * 0.95, R * 0.8, R * 0.95); warhead.position.set(0, 0, L * R * 0.35); g.add(warhead);
+  const cap = new THREE.Mesh(getGeometry('edr:dartCap', () => new THREE.ConeGeometry(0.16, 0.3, 8)), hm);
+  cap.rotation.x = Math.PI / 2; cap.position.set(0, 0, L * R * 0.74); cap.scale.setScalar(R); g.add(cap);
+  const neck = new THREE.Mesh(getGeometry('edr:dartNeck', () => new THREE.CylinderGeometry(0.14, 0.2, 0.55, 8)), hm);
+  neck.rotation.x = Math.PI / 2; neck.position.set(0, 0, -L * R * 0.12); neck.scale.setScalar(R); g.add(neck);
+  // Cruciform tail fins: the flying-bomb planform — no other hostile silhouette carries them.
+  const finGeo = getGeometry('edr:dartFin', () => new THREE.BoxGeometry(0.34, 0.05, 0.26));
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    const fin = new THREE.Mesh(finGeo, hm);
+    fin.position.set(Math.cos(a) * 0.24 * R, Math.sin(a) * 0.24 * R, -L * R * 0.42);
+    fin.rotation.z = a; fin.scale.setScalar(R); g.add(fin);
+  }
+  const noz = new THREE.Mesh(getGeometry('edr:dartNoz', () => new THREE.CylinderGeometry(0.12, 0.2, 0.26, 8)), hm);
+  noz.rotation.x = Math.PI / 2; noz.position.set(0, 0, -L * R * 0.62); noz.scale.setScalar(R); g.add(noz);
+  const glow = new THREE.Mesh(getGeometry('edr:dartGlow', () => new THREE.CircleGeometry(0.1, 10)), accent);
+  glow.position.set(0, 0, -L * R * 0.78); glow.scale.setScalar(R); g.add(glow);
+  // The lit fuse lamp above the warhead: the one light on this hull that means "running".
+  const fuse = lampFixture('#ff5030', R * 0.05, 3.4);
+  fuse.position.set(0, R * 0.34, L * R * 0.35); g.add(fuse);
+}
+
 const ENEMY_FAMILY_BUILDERS = {
   drone_swarm: buildDroneSwarm,
   sniper_lance: buildSniperLance,
@@ -1737,6 +1766,7 @@ const ENEMY_FAMILY_BUILDERS = {
   corsair_blade: buildCorsairBlade,
   patrol_interdict: buildPatrolInterdict,
   dreadnought_enemy: buildDreadnoughtEnemy,
+  detonator_dart: buildDetonatorDart,
 };
 
 const FAMILY_BUILDERS = {

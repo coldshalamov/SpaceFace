@@ -1,0 +1,3527 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.quiessence-freighter-c.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -17.399999618530273,
+        5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentNodeId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -17.399999618530273,
+        5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentNodeId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.quiessence-freighter-c",
+  "collisions": [
+    {
+      "id": "sf.render.quiessence-freighter-c.collision",
+      "nodeId": "sf.render.quiessence-freighter-c.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "c357039639b2eb90dff1f69bfc96135e94a663af64dad3b612d13059f44725bc",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod0-hook-nav-port-dim.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod0-hook-nav-port-dim"
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod1-hook-nav-port-dim.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod1-hook-nav-port-dim"
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod2-hook-nav-port-dim.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod2-hook-nav-port-dim"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          20.427520751953125,
+          8.717949867248535,
+          4.260862827301025
+        ],
+        "min": [
+          -21.700000762939453,
+          -2.2989492416381836,
+          -3.550863027572632
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d6a1a7a49eb586f5513fcd9173aae33af116e89c264e34a17aa58a98a9988790",
+      "id": "sf.render.quiessence-freighter-c.node.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.quiessence-freighter-c.node.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 734
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.000137329101562,
+          7.35006856918335,
+          1.7999999523162842
+        ],
+        "min": [
+          -17.799861907958984,
+          6.449931621551514,
+          -1.7999999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ffc1d7f3f34e6c3d71e832050bb0cdbb303915447d5b65334c46604d7c791c3c",
+      "id": "sf.render.quiessence-freighter-c.node.lod0-canopy.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "e30760445e202cbb6cb626a68a7f51d64d8eb8e68552ad5c0216e078065f6039",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_CANOPY",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod0-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          20.427520751953125,
+          8.249763488769531,
+          3.1090645790100098
+        ],
+        "min": [
+          -21.600000381469727,
+          -2.2997636795043945,
+          -3.1090641021728516
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fac366e1336e82e8201454e41edef88c9cec212f19b0a2bebece5f729900d87b",
+      "id": "sf.render.quiessence-freighter-c.node.lod0-deadmetal-deep.primitive.0",
+      "indexCount": 7188,
+      "indexed": true,
+      "materialHash": "8410890ab3287f2fa5549fa7a571cdfe4e18993bcea575d4a6f5cd888212e498",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal_deep",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod0-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 2230
+    },
+    {
+      "bounds": {
+        "max": [
+          -15.569894790649414,
+          7.699999809265137,
+          2.2299904823303223
+        ],
+        "min": [
+          -19.2301025390625,
+          2.299999952316284,
+          -2.2299904823303223
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5bf30d20cf9b51f866af71140c94c7f380323689059041e967968c2b139f1c4a",
+      "id": "sf.render.quiessence-freighter-c.node.lod0-deadmetal.primitive.0",
+      "indexCount": 1068,
+      "indexed": true,
+      "materialHash": "6197234e14868c8347d6d6f7d9c9a259690ed0f1d75441f87316fd3753369a23",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod0-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 360
+    },
+    {
+      "bounds": {
+        "max": [
+          18.55999994277954,
+          0.6420019980072411,
+          4.259999752044678
+        ],
+        "min": [
+          18.44000005722046,
+          0.5579980496764747,
+          4.139999866485596
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "430f8df936fd4402e5bcb68a6dc9519a5dac33a2d11d6e5aaf164af527a023d2",
+      "id": "sf.render.quiessence-freighter-c.node.lod0-hook-nav-port-dim.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "17b3b1d64b3ae9b7a6b07c8b1c1b81a22d0c464e261d83a7e3acf0f3614b91c5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_PORT_dim",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod0-hook-nav-port-dim",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.229999542236328,
+          8.719006538391113,
+          0.1700000762939453
+        ],
+        "min": [
+          -17.56999969482422,
+          8.48099422454834,
+          -0.1700000762939453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cf34966f8b4d8c5c1a5e807527b49807a28dc5dc46cc4a0408f112d0a0450c9d",
+      "id": "sf.render.quiessence-freighter-c.node.lod0-lights-warm-violet.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "367a37c9a439a9f6de559ff5055c3b2876865e4ac3a69d0f15a419033fb7bcf2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Warm_violet",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod0-lights-warm-violet",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.149869918823242,
+          5.769988059997559,
+          2.299999952316284
+        ],
+        "min": [
+          -18.650129318237305,
+          4.430011749267578,
+          -2.299999952316284
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e7fb28ec9719ab098f3ee3472ae7b4529cff7cc71366e04f5ae3d9755021d7a0",
+      "id": "sf.render.quiessence-freighter-c.node.lod0-lights-warm.primitive.0",
+      "indexCount": 432,
+      "indexed": true,
+      "materialHash": "4fb8787d395dc1c019153597af33a146b838de64bd9bf09ae59d05ba6b644bc3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Warm",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod0-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 288
+    },
+    {
+      "bounds": {
+        "max": [
+          12.346409797668457,
+          6.665943622589111,
+          3.5496561527252197
+        ],
+        "min": [
+          -19.259998321533203,
+          -1.8619118928909302,
+          -3.5496561527252197
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d73d6252e41a792e19b163edc85ef003354b94ffd5fb1919f7dcdc58e313456d",
+      "id": "sf.render.quiessence-freighter-c.node.lod0-livery.primitive.0",
+      "indexCount": 2856,
+      "indexed": true,
+      "materialHash": "08b16916fbde19badf365c86d8d7640f8f1a1061c2bb78b75dc123d9c02b1cb3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 964
+    },
+    {
+      "bounds": {
+        "max": [
+          17,
+          3.198756456375122,
+          2.7700555324554443
+        ],
+        "min": [
+          -20.600000381469727,
+          -1.698756456375122,
+          -2.7700552940368652
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0342bd7c4754125854bc6577dfeca103330f05febf4577b2f0979b757a385488",
+      "id": "sf.render.quiessence-freighter-c.node.lod0-mechanical.primitive.0",
+      "indexCount": 10188,
+      "indexed": true,
+      "materialHash": "b5dd1fb6432c35825cf6dcb412397554386eab312160bc8809d60cab9b1e2fd1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 3162
+    },
+    {
+      "bounds": {
+        "max": [
+          -21.399999618530273,
+          1.027005910873413,
+          2.7800002098083496
+        ],
+        "min": [
+          -21.700000762939453,
+          -1.027005910873413,
+          -2.7800002098083496
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7dcb5c95b62e7a5cad641526f344be9942ad8ecb46a3728e7e13600dcbee1e8a",
+      "id": "sf.render.quiessence-freighter-c.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "f6a38d598edfd5eef51f179ee5d8a46b241b2db1a49c9865bec9246562bb88c4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.003646850585938,
+          7.345848083496094,
+          1.7956116199493408
+        ],
+        "min": [
+          -17.79635238647461,
+          6.4541521072387695,
+          -1.79561185836792
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "deaf3a5147fdeed30dc33e80a6358e27d3be2385a55de00e7fba7e87c706f863",
+      "id": "sf.render.quiessence-freighter-c.node.lod1-canopy.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e30760445e202cbb6cb626a68a7f51d64d8eb8e68552ad5c0216e078065f6039",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_CANOPY",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod1-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          20.42973518371582,
+          8.244132041931152,
+          3.1089818477630615
+        ],
+        "min": [
+          -21.595632553100586,
+          -2.29972505569458,
+          -3.10882830619812
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "20a41b352eed2ba51973953fed899a4a99462ad58d40367243b728178a6aeb41",
+      "id": "sf.render.quiessence-freighter-c.node.lod1-deadmetal-deep.primitive.0",
+      "indexCount": 3102,
+      "indexed": true,
+      "materialHash": "8410890ab3287f2fa5549fa7a571cdfe4e18993bcea575d4a6f5cd888212e498",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal_deep",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod1-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 983
+    },
+    {
+      "bounds": {
+        "max": [
+          -15.570086479187012,
+          7.69729471206665,
+          2.23002552986145
+        ],
+        "min": [
+          -19.229909896850586,
+          2.3075661659240723,
+          -2.23002552986145
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2a7b7e9267b15e9e5254b745acb8fd214cdd5d842572d8632aeff0049babfe82",
+      "id": "sf.render.quiessence-freighter-c.node.lod1-deadmetal.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "6197234e14868c8347d6d6f7d9c9a259690ed0f1d75441f87316fd3753369a23",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod1-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 99
+    },
+    {
+      "bounds": {
+        "max": [
+          18.55999994277954,
+          0.6420019980072411,
+          4.259999752044678
+        ],
+        "min": [
+          18.44000005722046,
+          0.5579980496764747,
+          4.139999866485596
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8898c5d6f6c4b9c18b2c4c66d2475b4c9540ea79a5792acd2821faed0a743b55",
+      "id": "sf.render.quiessence-freighter-c.node.lod1-hook-nav-port-dim.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "17b3b1d64b3ae9b7a6b07c8b1c1b81a22d0c464e261d83a7e3acf0f3614b91c5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_PORT_dim",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod1-hook-nav-port-dim",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.229999542236328,
+          8.719006538391113,
+          0.1700000762939453
+        ],
+        "min": [
+          -17.56999969482422,
+          8.48099422454834,
+          -0.1700000762939453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "27456161ab8661ec31724a4118fbdc04667fbe8998c9d0b85b64cc6efbab1b0d",
+      "id": "sf.render.quiessence-freighter-c.node.lod1-lights-warm-violet.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "367a37c9a439a9f6de559ff5055c3b2876865e4ac3a69d0f15a419033fb7bcf2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Warm_violet",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod1-lights-warm-violet",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.149869918823242,
+          5.769988059997559,
+          2.299999952316284
+        ],
+        "min": [
+          -18.650129318237305,
+          4.430011749267578,
+          -2.299999952316284
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "04bcbb884908fdf95013638e95d7cf0729c2e6e153593ee8d03b8e71e6dca1fb",
+      "id": "sf.render.quiessence-freighter-c.node.lod1-lights-warm.primitive.0",
+      "indexCount": 432,
+      "indexed": true,
+      "materialHash": "4fb8787d395dc1c019153597af33a146b838de64bd9bf09ae59d05ba6b644bc3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Warm",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod1-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 288
+    },
+    {
+      "bounds": {
+        "max": [
+          12.346409797668457,
+          6.662112236022949,
+          3.5493578910827637
+        ],
+        "min": [
+          -19.257343292236328,
+          -1.8611690998077393,
+          -3.5493578910827637
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c4dec2dae60b808530a1f0a7dfc62e46be49a846260e6974f889fd01052917a2",
+      "id": "sf.render.quiessence-freighter-c.node.lod1-livery.primitive.0",
+      "indexCount": 2298,
+      "indexed": true,
+      "materialHash": "08b16916fbde19badf365c86d8d7640f8f1a1061c2bb78b75dc123d9c02b1cb3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Livery",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod1-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 779
+    },
+    {
+      "bounds": {
+        "max": [
+          16.99324607849121,
+          3.1946682929992676,
+          2.7623846530914307
+        ],
+        "min": [
+          -20.59712028503418,
+          -1.6924118995666504,
+          -2.762539863586426
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5322181795b356741c2ed032f0132cc26597dd90efa649351e4cad45ed0b507e",
+      "id": "sf.render.quiessence-freighter-c.node.lod1-mechanical.primitive.0",
+      "indexCount": 2586,
+      "indexed": true,
+      "materialHash": "b5dd1fb6432c35825cf6dcb412397554386eab312160bc8809d60cab9b1e2fd1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 1012
+    },
+    {
+      "bounds": {
+        "max": [
+          -21.399999618530273,
+          1.027005910873413,
+          2.7800002098083496
+        ],
+        "min": [
+          -21.700000762939453,
+          -1.027005910873413,
+          -2.7800002098083496
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f3cf4659ec7ae78226006596ea0f3efcd87d64d67abbe1beee44c653ba7de346",
+      "id": "sf.render.quiessence-freighter-c.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "f6a38d598edfd5eef51f179ee5d8a46b241b2db1a49c9865bec9246562bb88c4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.01272201538086,
+          7.336957931518555,
+          1.7870458364486694
+        ],
+        "min": [
+          -17.787277221679688,
+          6.463041305541992,
+          -1.7870458364486694
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d37f87dd564643fd7a9b65fe4ca06644899c7f02fc142d933121f93d5e421f17",
+      "id": "sf.render.quiessence-freighter-c.node.lod2-canopy.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e30760445e202cbb6cb626a68a7f51d64d8eb8e68552ad5c0216e078065f6039",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD2_CANOPY",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod2-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          20.391733169555664,
+          8.210251808166504,
+          3.1079187393188477
+        ],
+        "min": [
+          -21.58705711364746,
+          -2.2181477546691895,
+          -3.108124256134033
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7c8216ed637f01a5765629bc82d87536a8464bed4734c850363fd5e763077670",
+      "id": "sf.render.quiessence-freighter-c.node.lod2-deadmetal-deep.primitive.0",
+      "indexCount": 948,
+      "indexed": true,
+      "materialHash": "8410890ab3287f2fa5549fa7a571cdfe4e18993bcea575d4a6f5cd888212e498",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal_deep",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod2-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 424
+    },
+    {
+      "bounds": {
+        "max": [
+          -15.60272216796875,
+          7.690317630767822,
+          2.197354793548584
+        ],
+        "min": [
+          -19.197246551513672,
+          2.3096985816955566,
+          -2.1973564624786377
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "58512e1389f85ed0159ac87ec21bf35c90d59732c5862c896981e04962345241",
+      "id": "sf.render.quiessence-freighter-c.node.lod2-deadmetal.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "6197234e14868c8347d6d6f7d9c9a259690ed0f1d75441f87316fd3753369a23",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod2-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          18.560001373291016,
+          0.6139971607198982,
+          4.260000467300415
+        ],
+        "min": [
+          18.440000534057617,
+          0.5860029465684624,
+          4.139999628067017
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3695e38e6d767d0b50a330e702c198eb5290093545743e44503743a395795269",
+      "id": "sf.render.quiessence-freighter-c.node.lod2-hook-nav-port-dim.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "17b3b1d64b3ae9b7a6b07c8b1c1b81a22d0c464e261d83a7e3acf0f3614b91c5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_PORT_dim",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod2-hook-nav-port-dim",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.229999542236328,
+          8.63965892791748,
+          0.1700000762939453
+        ],
+        "min": [
+          -17.56999969482422,
+          8.560342788696289,
+          -0.1700000762939453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1032a09032bfb8bae9dbd5cd779defefc8694e71b98eb6608eca7a2b5152caca",
+      "id": "sf.render.quiessence-freighter-c.node.lod2-lights-warm-violet.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "367a37c9a439a9f6de559ff5055c3b2876865e4ac3a69d0f15a419033fb7bcf2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Warm_violet",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod2-lights-warm-violet",
+      "primitiveIndex": 0,
+      "vertexCount": 8
+    },
+    {
+      "bounds": {
+        "max": [
+          12.346409797668457,
+          6.65751838684082,
+          3.5505831241607666
+        ],
+        "min": [
+          -19.251081466674805,
+          -1.8602172136306763,
+          -3.5505831241607666
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5d051a748abcee39e5fa38bbf48cfed083a43f55fe440dc018341015f9851df2",
+      "id": "sf.render.quiessence-freighter-c.node.lod2-livery.primitive.0",
+      "indexCount": 2130,
+      "indexed": true,
+      "materialHash": "08b16916fbde19badf365c86d8d7640f8f1a1061c2bb78b75dc123d9c02b1cb3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Livery",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod2-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 698
+    },
+    {
+      "bounds": {
+        "max": [
+          16.961977005004883,
+          3.184055805206299,
+          2.7594759464263916
+        ],
+        "min": [
+          -20.590198516845703,
+          -1.6613860130310059,
+          -2.7598354816436768
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "09117af2126b9deb8c72f781160ae3f8ba0fbd817d06d9e3dd87c39ad8250b12",
+      "id": "sf.render.quiessence-freighter-c.node.lod2-mechanical.primitive.0",
+      "indexCount": 684,
+      "indexed": true,
+      "materialHash": "b5dd1fb6432c35825cf6dcb412397554386eab312160bc8809d60cab9b1e2fd1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 408
+    },
+    {
+      "bounds": {
+        "max": [
+          -21.400001525878906,
+          1.027005910873413,
+          2.7800002098083496
+        ],
+        "min": [
+          -21.700000762939453,
+          -1.027005910873413,
+          -2.7800002098083496
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4da6f61bc13b74a5e7a5fab88b15e718f7e104226c1fb82bbf42e9ec29cf7b00",
+      "id": "sf.render.quiessence-freighter-c.node.lod2-mechanicaldark.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "f6a38d598edfd5eef51f179ee5d8a46b241b2db1a49c9865bec9246562bb88c4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.quiessence-freighter-c.node.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 68
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "08b16916fbde19badf365c86d8d7640f8f1a1061c2bb78b75dc123d9c02b1cb3",
+      "id": "material:08b16916fbde19badf365c86",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "17b3b1d64b3ae9b7a6b07c8b1c1b81a22d0c464e261d83a7e3acf0f3614b91c5",
+      "id": "material:17b3b1d64b3ae9b7a6b07c8b",
+      "name": "Material_Emissive_NavRed_dim",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "367a37c9a439a9f6de559ff5055c3b2876865e4ac3a69d0f15a419033fb7bcf2",
+      "id": "material:367a37c9a439a9f6de559ff5",
+      "name": "Material_Emissive_Warm_violet",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "4fb8787d395dc1c019153597af33a146b838de64bd9bf09ae59d05ba6b644bc3",
+      "id": "material:4fb8787d395dc1c019153597",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6197234e14868c8347d6d6f7d9c9a259690ed0f1d75441f87316fd3753369a23",
+      "id": "material:6197234e14868c8347d6d6f7",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8410890ab3287f2fa5549fa7a571cdfe4e18993bcea575d4a6f5cd888212e498",
+      "id": "material:8410890ab3287f2fa5549fa7",
+      "name": "Material_Hull_deep",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b5dd1fb6432c35825cf6dcb412397554386eab312160bc8809d60cab9b1e2fd1",
+      "id": "material:b5dd1fb6432c35825cf6dcb4",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e30760445e202cbb6cb626a68a7f51d64d8eb8e68552ad5c0216e078065f6039",
+      "id": "material:e30760445e202cbb6cb626a6",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "f6a38d598edfd5eef51f179ee5d8a46b241b2db1a49c9865bec9246562bb88c4",
+      "id": "material:f6a38d598edfd5eef51f179e",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.quiessence-freighter-c.node.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod0-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_CANOPY",
+      "nodeName": "LOD0_CANOPY",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod0-deadmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deadmetal",
+      "nodeName": "LOD0_deadmetal",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod0-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deadmetal_deep",
+      "nodeName": "LOD0_deadmetal_deep",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod0-hook-nav-port-dim",
+      "localTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        18.5,
+        0.6000000238418579,
+        4.199999809265137,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT_dim",
+      "nodeName": "LOD0_HOOK_NAV_PORT_dim",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        18.5,
+        0.6000000238418579,
+        4.199999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod0-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Warm",
+      "nodeName": "LOD0_Lights_Warm",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod0-lights-warm-violet",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Warm_violet",
+      "nodeName": "LOD0_Lights_Warm_violet",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod0-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod0-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod1-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_CANOPY",
+      "nodeName": "LOD1_CANOPY",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod1-deadmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal",
+      "nodeName": "LOD1_deadmetal",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod1-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal_deep",
+      "nodeName": "LOD1_deadmetal_deep",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod1-hook-nav-port-dim",
+      "localTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        18.5,
+        0.6000000238418579,
+        4.199999809265137,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_PORT_dim",
+      "nodeName": "LOD1_HOOK_NAV_PORT_dim",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        18.5,
+        0.6000000238418579,
+        4.199999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod1-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Warm",
+      "nodeName": "LOD1_Lights_Warm",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod1-lights-warm-violet",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Warm_violet",
+      "nodeName": "LOD1_Lights_Warm_violet",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod1-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Livery",
+      "nodeName": "LOD1_Livery",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod2-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_CANOPY",
+      "nodeName": "LOD2_CANOPY",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod2-deadmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal",
+      "nodeName": "LOD2_deadmetal",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod2-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal_deep",
+      "nodeName": "LOD2_deadmetal_deep",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod2-hook-nav-port-dim",
+      "localTransform": [
+        0.06000041961669922,
+        0,
+        0,
+        0,
+        0,
+        0.06000041961669922,
+        0,
+        0,
+        0,
+        0,
+        0.06000041961669922,
+        0,
+        18.500000953674316,
+        0.6000000536441803,
+        4.200000047683716,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_PORT_dim",
+      "nodeName": "LOD2_HOOK_NAV_PORT_dim",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        0.06000041961669922,
+        0,
+        0,
+        0,
+        0,
+        0.06000041961669922,
+        0,
+        0,
+        0,
+        0,
+        0.06000041961669922,
+        0,
+        18.500000953674316,
+        0.6000000536441803,
+        4.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod2-lights-warm-violet",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Warm_violet",
+      "nodeName": "LOD2_Lights_Warm_violet",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod2-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Livery",
+      "nodeName": "LOD2_Livery",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_PLACE_QUIESSENCE_FREIGHTER_C_ROOT",
+      "nodeName": "SF_PLACE_QUIESSENCE_FREIGHTER_C_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -17.399999618530273,
+        5,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -17.399999618530273,
+        5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.quiessence-freighter-c.node.socket-structure-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Structure_Core",
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.quiessence-freighter-c.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "af8cd0434ce96acc0aef06a3bb94a36ef96d1efec7a98cbd5d1716e4cd9c038f"
+    },
+    "sourceGlb": {
+      "bytes": 525928,
+      "sha256": "2bb7a960c50f3465571a5952e8518ae849d632e7942a1bb8f7054157e27bba7d",
+      "uri": "place_quiessence_freighter_c.glb"
+    },
+    "sourceManifest": {
+      "bytes": 203788,
+      "sha256": "8361e46abf91eba0b1e694e7dae87b812124bb990cf1bc562a95382c7c8d23b3",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 781704,
+    "sha256": "b083b72a12d2237a8d4426b08144d48664a0ed21df3aea997525a3dabbbc88d6",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.6351327896118164,
+        3.2096214294433594,
+        0.3549998998641968
+      ],
+      "max": [
+        20.42973518371582,
+        8.719006538391113,
+        4.260862827301025
+      ],
+      "min": [
+        -21.700000762939453,
+        -2.2997636795043945,
+        -3.550863027572632
+      ],
+      "size": [
+        42.12973594665527,
+        11.018770217895508,
+        7.811725854873657
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -17.399999618530273,
+          5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 29,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.quiessence-freighter-c.anchor.socket-camera-focus",
+              "sf.render.quiessence-freighter-c.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 30,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Structure_Core",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.quiessence-freighter-c.anchor.socket-structure-core",
+              "sf.render.quiessence-freighter-c.node.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "glass": 3,
+      "hull": 7,
+      "mechanical": 6,
+      "signal": 8
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 31,
+    "primitives": [
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_CANOPY",
+        "planIndex": 3,
+        "tags": {
+          "canopy": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deadmetal",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deadmetal_deep",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          18.5,
+          0.6000000238418579,
+          4.199999809265137,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT_dim",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Lights_Warm",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Lights_Warm_violet",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Livery",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_CANOPY",
+        "planIndex": 12,
+        "tags": {
+          "canopy": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal_deep",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          18.5,
+          0.6000000238418579,
+          4.199999809265137,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT_dim",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Lights_Warm",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Lights_Warm_violet",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Livery",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_CANOPY",
+        "planIndex": 21,
+        "tags": {
+          "canopy": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deadmetal_deep",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.06000041961669922,
+          0,
+          0,
+          0,
+          0,
+          0.06000041961669922,
+          0,
+          0,
+          0,
+          0,
+          0.06000041961669922,
+          0,
+          18.500000953674316,
+          0.6000000536441803,
+          4.200000047683716,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT_dim",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Lights_Warm_violet",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Livery",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_quiessence_freighter_c.glb"
+  },
+  "runtimeHash": "14a8022e62a798fcef77ad91dc2dee10b991946fb6feb3b51c4853a46f54c04a",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          20.42973518371582,
+          8.719006538391113,
+          4.260862827301025
+        ],
+        "min": [
+          -21.700000762939453,
+          -2.2997636795043945,
+          -3.550863027572632
+        ]
+      },
+      "id": "sf.render.quiessence-freighter-c.body",
+      "nodeIds": [
+        "sf.render.quiessence-freighter-c.node.collision-hull",
+        "sf.render.quiessence-freighter-c.node.lod0-canopy",
+        "sf.render.quiessence-freighter-c.node.lod0-deadmetal",
+        "sf.render.quiessence-freighter-c.node.lod0-deadmetal-deep",
+        "sf.render.quiessence-freighter-c.node.lod0-hook-nav-port-dim",
+        "sf.render.quiessence-freighter-c.node.lod0-lights-warm",
+        "sf.render.quiessence-freighter-c.node.lod0-lights-warm-violet",
+        "sf.render.quiessence-freighter-c.node.lod0-livery",
+        "sf.render.quiessence-freighter-c.node.lod0-mechanical",
+        "sf.render.quiessence-freighter-c.node.lod0-mechanicaldark",
+        "sf.render.quiessence-freighter-c.node.lod1-canopy",
+        "sf.render.quiessence-freighter-c.node.lod1-deadmetal",
+        "sf.render.quiessence-freighter-c.node.lod1-deadmetal-deep",
+        "sf.render.quiessence-freighter-c.node.lod1-hook-nav-port-dim",
+        "sf.render.quiessence-freighter-c.node.lod1-lights-warm",
+        "sf.render.quiessence-freighter-c.node.lod1-lights-warm-violet",
+        "sf.render.quiessence-freighter-c.node.lod1-livery",
+        "sf.render.quiessence-freighter-c.node.lod1-mechanical",
+        "sf.render.quiessence-freighter-c.node.lod1-mechanicaldark",
+        "sf.render.quiessence-freighter-c.node.lod2-canopy",
+        "sf.render.quiessence-freighter-c.node.lod2-deadmetal",
+        "sf.render.quiessence-freighter-c.node.lod2-deadmetal-deep",
+        "sf.render.quiessence-freighter-c.node.lod2-hook-nav-port-dim",
+        "sf.render.quiessence-freighter-c.node.lod2-lights-warm-violet",
+        "sf.render.quiessence-freighter-c.node.lod2-livery",
+        "sf.render.quiessence-freighter-c.node.lod2-mechanical",
+        "sf.render.quiessence-freighter-c.node.lod2-mechanicaldark",
+        "sf.render.quiessence-freighter-c.node.sf-place-quiessence-freighter-c-root",
+        "sf.render.quiessence-freighter-c.node.socket-camera-focus",
+        "sf.render.quiessence-freighter-c.node.socket-structure-core"
+      ]
+    }
+  ]
+}

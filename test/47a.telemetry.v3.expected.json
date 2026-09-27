@@ -68,7 +68,7 @@
     "audio:cue": 6
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "54586020b6db6ddada1b410547d1ea17cb53afeab36727485ce49145a8a2d2aa",
+    "authoritativeHash": "ebfc2c42f20093d417a1552a4a5de8badce4735c41d9f11dc373134e3a30c81e",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -198,6 +198,10 @@
     "Stability note: 6ff452c31 (Measure live hulls) landed during the re-record window and moved only the legacy envelope (uniform remeasured-hull translation); this V3 hash is identical at a394b7483 and 9c3dab1f1.",
     "2026-09-26 deliberate re-record over ae2d5217d (D59 bounty pay prices the hunt it actually takes), same single cause as the legacy envelope. The prior authoritativeHash was 9187d8e57a1d24ccf1b94970b3a917a092413895eb5c9e41973c29a6e8d5165a.",
     "Field-by-field canonical snapshot diff at tick 720 moves exactly one leaf: $.missions.config.BASE.bounty_hunt 552 -> 303 — the authored EHP/DPS-model reconciliation. All headline metrics, trace counts, entity states and reload@60 are unchanged.",
+    "2026-09-27 deliberate re-record: the economy-honesty batch wires src/data/mining.js RECIPES into live station industry — same single cause as the legacy envelope.",
+    "The prior authoritativeHash was c3fa7d521f2797898ade129cadcebee85b4c2b8142853820e6aa99ecadcb0817.",
+    "Snapshot diff at tick 720 (clean HEAD worktree vs candidate) moves exactly 12 leaves, ALL under $.economy.markets — identical stations, stocks and directions as the legacy envelope (industry is flight-model independent).",
+    "Zero entity motion fields changed; trace counts and reload@60 unchanged.",
     "2026-09-27 re-record: alien-ecology adds 2 commodities; $.economy churn (19480 leaves). Zero motion fields changed in the v3 envelope."
   ]
 }

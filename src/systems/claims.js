@@ -57,6 +57,7 @@ import { isRunSealed } from '../core/runSeal.js';
 import { farActorTableRadius } from '../world/farActorTable.js';
 import { depotPatrolLine, stationFactionIdFor, stationGrowthReaction, endgamePullLine, aceTrophyNewsLine } from '../data/conflictReactions.js';
 import { aceById } from '../data/namedAces.js';
+import { stableRecordId, RECORD_KIND } from '../world/worldRecords.js';
 
 // Refinery conversion: 2 ore -> 1 refined material (the "lighter, dearer goods to ship" beat).
 const REFINE_RATIO = 2;
@@ -285,6 +286,12 @@ export const claims = {
         const body = this._body(payload && payload.bodyId);
         if (body && body.spec && body.spec.defense) this._settleDefense(body, 'ignored');
       });
+      // Physical relay convoys: traffic manifests and routes the carrier hull; claims owns the
+      // leg ledger. Manifestation flips the leg onto the physical track; a berth unload settles
+      // the sale; a hull kill arrives through the ordinary freight:loss ledger.
+      this.bus.on('claim:convoyManifested', (payload) => this._onConvoyManifested(payload || {}));
+      this.bus.on('claim:convoyDocked', (payload) => this._onConvoyDocked(payload || {}));
+      this.bus.on('freight:loss', (payload) => this._onConvoyFreightLoss(payload || {}));
     }
     this._resumeDefenseIds = new Set();
   },
@@ -979,37 +986,42 @@ export const claims = {
     // arrivals resolve even while cold — the convoy is already flying
     if (spec.convoy && t >= spec.convoy.arriveAt) {
       const convoy = spec.convoy;
-      spec.convoy = null;
-      const sector = SECTOR_BY_ID.get(body.sectorId);
-      const danger = sector ? dangerIndex(sector) : 0;
-      const lawful = !!sector && sector.security >= RAID_SECURITY_FLOOR;
-      const pLoss = lawful ? 0 : Math.min(RELAY_LOSS_BASE + danger * RELAY_LOSS_DANGER, RELAY_LOSS_CAP);
-      if (pLoss > 0 && this._rng() < pLoss) {
-        spec.totals.lostU += convoy.qty;
-        this._receipt(body, 'convoy_lost', 'Convoy lost en route — ' + convoy.qty + 'u gone',
-          { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId });
-        this.bus.emit('toast', { text: 'Relay convoy lost near ' + body.name + ' (-' + convoy.qty + ' goods)', kind: 'warn', ttl: 4 });
+      // A manifested leg resolves on its hull: berth unload emits claim:convoyDocked, a kill
+      // emits freight:loss. While that carrier is still flying, the schedule does not touch it.
+      const ent = convoy.manifested === true && convoy.entityId != null && state.entities
+        && typeof state.entities.get === 'function' ? state.entities.get(convoy.entityId) : null;
+      const hullFlying = !!(ent && ent.alive !== false && ent.data
+        && ent.data.claimConvoy && ent.data.claimConvoy.convoyId === convoy.convoyId);
+      if (hullFlying) {
+        // still en route — the physical arrival is the arrival
       } else {
-        const economy = this._economyPeer();
-        const unit = economy && economy.priceOf ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell') : null;
-        if (!(unit > 0)) {
-          // no market truth at arrival: freight comes home — never fabricate a price
-          spec.store.input[convoy.goodId] = (spec.store.input[convoy.goodId] || 0) + convoy.qty;
-          this._receipt(body, 'convoy_returned', 'No buyer found — freight returned',
-            { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId });
-        } else {
-          // PQ-170.01: a station the player's freight grew keeps less of the sale.
-          const saleFee = this._relaySaleFee(def, convoy.destStationId);
-          const revenue = Math.round(convoy.qty * unit * (1 - saleFee));
-          this.bus.emit('economy:grantCredits', { amount: revenue, reason: 'claim_relay_sale' });
-          this.bus.emit('economy:applyTradePressure', { stationId: convoy.destStationId, good: convoy.goodId, vol: convoy.qty });
-          spec.totals.soldTotalCr += revenue;
-          this._receipt(body, 'convoy_sold', 'Convoy sold ' + convoy.qty + 'u at ' + (this._stationName(convoy.destStationId) || convoy.destStationId),
-            { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId, revenueCr: revenue, saleFee });
-          // Relay freight landing at a real market is player-supplied throughput for that station.
-          this._recordStationThroughput(convoy.destStationId, convoy.qty, 'relay_convoy', {
-            goodId: convoy.goodId, bodyId: body.id,
+        spec.convoy = null;
+        if (convoy.manifested === true) {
+          // Leg is done on paper; retire any carrier record so nothing ownerless lingers.
+          this.bus.emit('claim:convoyAbandoned', {
+            bodyId: body.id, convoyId: convoy.convoyId,
+            worldRecordId: convoy.worldRecordId, entityId: convoy.entityId,
+            reason: 'leg_settled',
           });
+        }
+        if (convoy.convoyId) {
+          // No unseen dice deleting player property: a convoy that never manifested (nobody
+          // there to witness it) cannot be killed — it simply completes its transit.
+          this._settleConvoySale(body, spec, def, convoy, convoy.qty);
+        } else {
+          // Legacy convoy legs (saved before physical carriers) keep their original resolution.
+          const sector = SECTOR_BY_ID.get(body.sectorId);
+          const danger = sector ? dangerIndex(sector) : 0;
+          const lawful = !!sector && sector.security >= RAID_SECURITY_FLOOR;
+          const pLoss = lawful ? 0 : Math.min(RELAY_LOSS_BASE + danger * RELAY_LOSS_DANGER, RELAY_LOSS_CAP);
+          if (pLoss > 0 && this._rng() < pLoss) {
+            spec.totals.lostU += convoy.qty;
+            this._receipt(body, 'convoy_lost', 'Convoy lost en route — ' + convoy.qty + 'u gone',
+              { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId });
+            this.bus.emit('toast', { text: 'Relay convoy lost near ' + body.name + ' (-' + convoy.qty + ' goods)', kind: 'warn', ttl: 4 });
+          } else {
+            this._settleConvoySale(body, spec, def, convoy, convoy.qty);
+          }
         }
       }
     }
@@ -1028,11 +1040,108 @@ export const claims = {
           const qty = Math.min(def.convoyLoadU, bestQty);
           spec.store.input[bestGood] -= qty;
           if (spec.store.input[bestGood] <= 0) delete spec.store.input[bestGood];
-          spec.convoy = { goodId: bestGood, qty, destStationId: dest, departedAt: t, arriveAt: t + def.transitS };
+          const convoySeq = (spec.convoySeq || 0) + 1;
+          spec.convoySeq = convoySeq;
+          spec.convoy = {
+            goodId: bestGood, qty, destStationId: dest, departedAt: t, arriveAt: t + def.transitS,
+            convoyId: body.id + ':cv' + convoySeq,
+            bodyId: body.id,
+            // Durable identity minted at dispatch: traffic materializes the carrier under this
+            // record id, so kill/shelf/relink paths all name the same ship.
+            worldRecordId: stableRecordId(
+              (state.meta && state.meta.seed) || 1,
+              body.sectorId || (state.world && state.world.currentSectorId) || 'sector',
+              RECORD_KIND.CONVOY,
+              'claim-convoy:' + body.id + ':' + convoySeq,
+            ),
+            manifested: false,
+            entityId: null,
+          };
           this._receipt(body, 'convoy_dispatched', 'Convoy away — ' + qty + 'u to ' + (this._stationName(dest) || dest),
             { goodId: bestGood, qty, destStationId: dest });
         }
       }
+    }
+  },
+
+  /**
+   * Sell or return one convoy leg's freight at the destination market. Shared by the physical
+   * berth unload (qty = what actually survived aboard) and the unwitnessed abstract transit.
+   * Never fabricates a price — no market truth means the freight comes home.
+   */
+  _settleConvoySale(body, spec, def, convoy, qty) {
+    const economy = this._economyPeer();
+    const unit = economy && economy.priceOf ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell') : null;
+    if (!(unit > 0)) {
+      spec.store.input[convoy.goodId] = (spec.store.input[convoy.goodId] || 0) + qty;
+      this._receipt(body, 'convoy_returned', 'No buyer found — freight returned',
+        { goodId: convoy.goodId, qty, destStationId: convoy.destStationId });
+      return;
+    }
+    // PQ-170.01: a station the player's freight grew keeps less of the sale.
+    const saleFee = this._relaySaleFee(def, convoy.destStationId);
+    const revenue = Math.round(qty * unit * (1 - saleFee));
+    this.bus.emit('economy:grantCredits', { amount: revenue, reason: 'claim_relay_sale' });
+    this.bus.emit('economy:applyTradePressure', { stationId: convoy.destStationId, good: convoy.goodId, vol: qty });
+    spec.totals.soldTotalCr += revenue;
+    this._receipt(body, 'convoy_sold', 'Convoy sold ' + qty + 'u at ' + (this._stationName(convoy.destStationId) || convoy.destStationId),
+      { goodId: convoy.goodId, qty, destStationId: convoy.destStationId, revenueCr: revenue, saleFee });
+    // Relay freight landing at a real market is player-supplied throughput for that station.
+    this._recordStationThroughput(convoy.destStationId, qty, 'relay_convoy', {
+      goodId: convoy.goodId, bodyId: body.id,
+    });
+  },
+
+  /** Traffic spawned the carrier for this leg — flip it onto the physical track. */
+  _onConvoyManifested(payload) {
+    const body = this._body(payload && payload.bodyId);
+    const convoy = body && body.spec && body.spec.convoy;
+    if (!convoy || convoy.convoyId !== payload.convoyId) {
+      // Leg already settled — the just-materialized hull is ownerless; retire it now.
+      if (payload && payload.convoyId) this.bus.emit('claim:convoyAbandoned', { ...payload, reason: 'leg_gone' });
+      return;
+    }
+    convoy.manifested = true;
+    convoy.entityId = payload.entityId;
+  },
+
+  /** Berth-side unload: settle the sale for what actually survived the run aboard the hull. */
+  _onConvoyDocked(payload) {
+    const body = this._body(payload && payload.bodyId);
+    const spec = body && body.spec;
+    const convoy = spec && spec.convoy;
+    if (!convoy || convoy.convoyId !== payload.convoyId) return;
+    if (payload.stationId && convoy.destStationId !== payload.stationId) return;
+    spec.convoy = null;
+    const aboard = Math.max(0, Math.min(convoy.qty, Math.floor(Number(payload.qty) || 0)));
+    if (aboard <= 0) {
+      // Berthed with an empty hold — the cargo spilled to pods en route and nobody recovered it.
+      spec.totals.lostU += convoy.qty;
+      this._receipt(body, 'convoy_lost', 'Convoy berthed empty — cargo spilled en route',
+        { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId });
+      this.bus.emit('toast', { text: 'Relay convoy arrived empty near ' + body.name, kind: 'warn', ttl: 4 });
+      return;
+    }
+    const def = spec.id && BODY_SPECIALIZATION_BY_ID.get(spec.id);
+    this._settleConvoySale(body, spec, def, convoy, aboard);
+  },
+
+  /**
+   * A manifested convoy hull was destroyed — the ordinary freight:loss ledger already booked
+   * scarcity pressure and the headline; claims resolves the leg's own ledger exactly once.
+   */
+  _onConvoyFreightLoss(payload) {
+    const freighterKey = payload && payload.freighterKey;
+    if (typeof freighterKey !== 'string' || !freighterKey) return;
+    for (const body of (this.state.claims && this.state.claims.bodies) || []) {
+      const spec = body && body.spec;
+      const convoy = spec && spec.convoy;
+      if (!convoy || convoy.worldRecordId !== freighterKey) continue;
+      spec.convoy = null;
+      spec.totals.lostU += convoy.qty;
+      this._receipt(body, 'convoy_lost', 'Convoy destroyed en route — ' + convoy.qty + 'u gone',
+        { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId });
+      this.bus.emit('toast', { text: 'Relay convoy destroyed near ' + body.name + ' (-' + convoy.qty + ' goods)', kind: 'warn', ttl: 4 });
     }
   },
 

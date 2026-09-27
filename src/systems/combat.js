@@ -60,6 +60,9 @@ const ARCHETYPE_TACTICAL_CAPABILITIES = Object.freeze({
   miniboss_capital: Object.freeze(['disable', 'ranged', 'screen']),
   // Warden Escort: area-denial gunnery around its ward, no disable/tether verbs.
   guardian: Object.freeze(['ranged', 'screen']),
+  // Kamikaze hulls carry no weapons and no support verbs — the hull itself is the ordnance.
+  // BASE caps (drive/sensor) alone keep squad allocation honest: a dart cannot fill a gunner slot.
+  kamikaze: Object.freeze([]),
 });
 
 function factionBehaviorForCombatSpawn(factionId, opts = {}) {
@@ -123,7 +126,15 @@ function resolveEnemyWeapon(w, slotIndex) {
 const WEAPON_CAP_REGEN_MULT = 1.15;
 
 export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
-  const def = ENEMY.get(enemyTypeId) || ENEMY_TYPES[0];
+  let def = ENEMY.get(enemyTypeId);
+  if (!def) {
+    // Unknown ids used to silently spawn a wasp — a typo in a wave recipe or encounter script
+    // shipped as a real body with no trail. Keep the safe fallback (a spawn that never throws,
+    // so callers that reserved a slot still get a body) but make it loud and inspectable.
+    def = ENEMY_TYPES[0];
+    console.warn(`[combat] makeEnemySpawnSpec: unknown enemyTypeId ${JSON.stringify(enemyTypeId)} — spawning fallback ${JSON.stringify(def.id)}`);
+    opts = { ...opts, spawnFallbackFor: enemyTypeId };
+  }
   level = level || (def.levelRange ? def.levelRange[0] : 1);
   const s = scaleCombatant(def, level);
   // Faction identity is READABILITY only (radar/HUD color + kill-rep target) — hostility is decided
@@ -214,6 +225,8 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   spec.data.bountyCr = def.bountyCr || 0;
   spec.data.loot = def.loot || null;
   spec.data.lootTableId = def.id;
+  if (opts.spawnFallbackFor) spec.data.spawnFallbackFor = opts.spawnFallbackFor;
+  if (def.detonator) spec.data.detonator = { ...def.detonator };
   spec.data.shipClass = def.shipClass || 'fighter';
   if (def.reinforcements) spec.data.reinforcements = { ...def.reinforcements };
   spec.data.level = level;
@@ -263,6 +276,7 @@ function doctrineTelegraphFor(doctrineId) {
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'field_spool';
   if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return 'broadside_charge';
   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'weapon_charge';
+  if (doctrineId === CombatDoctrineId.DETONATOR_RUN) return 'detonator_fuse';
   return 'engine_flare';
 }
 

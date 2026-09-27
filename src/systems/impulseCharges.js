@@ -17,7 +17,7 @@
 // cooks off at a reduced yield when IT slams. Wells prime on grind through `well:grind`.
 // This system is the SINGLE WRITER of primed state; fields.js only reports the grind.
 import { CHAIN_REACTION, IMPULSE_CHARGES, MASSLINE_COMBOS } from '../data/impulseCharges.js';
-import { lightCookoffEligible, lightCookoffHits } from '../combat/lightCookoff.js';
+import { LIGHT_COOKOFF, lightCookoffEligible, lightCookoffHits } from '../combat/lightCookoff.js';
 import { removeCargo } from './cargo.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
@@ -226,6 +226,7 @@ export const impulseCharges = {
         this.bus.on('entity:killed', (p) => {
           this._onPrimedDeath(p);
           this._onLightCookoffDeath(p);
+          this._onDetonatorDeath(p);
         }),
         this.bus.on('game:new', () => this._resetChainState()),
         this.bus.on('save:loaded', () => this._resetChainState()),
@@ -270,6 +271,8 @@ export const impulseCharges = {
     this._pendingGrinds = [];
     this._pendingDeaths = [];
     this._pendingCookoffs = [];
+    this._pendingDetonations = [];
+    this._detonatedIds = new Set();
     this._cookoffDepth = 0;
     this._slamScratch = [];
   },
@@ -342,11 +345,168 @@ export const impulseCharges = {
   },
 
   _tickChain(state) {
+    this._resolveDetonatorDeaths(state);
+    this._tickDetonatorFuses(state);
     this._resolveLightCookoffs(state);
     this._resolvePrimedDeaths(state);
     this._expirePrimes(state);
     this._resolveGrinds(state);
     this._resolveSlams(state);
+  },
+
+  /**
+   * entity:killed COLLECT for the kamikaze fuse. Like the primed-death handler, this only queues;
+   * the blast itself runs in update() through _tickChain, never inside the kill path's own frame.
+   * The id set is the single exactly-once gate: a duplicated kill receipt (sweep + kill path) or
+   * a dart already spent on its proximity fuse both stop here.
+   */
+  _onDetonatorDeath(payload) {
+    if (!payload || payload.id == null || !this._detonatedIds) return;
+    if (this._detonatedIds.has(payload.id)) return;
+    const state = this.state;
+    const victim = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(payload.id)
+      : null;
+    const spec = victim && victim.data && victim.data.detonator;
+    if (!victim || !spec) return;
+    if (!this._pendingDetonations) this._pendingDetonations = [];
+    if (this._pendingDetonations.length >= 8) return;
+    // Snapshot the corpse's position — the entity pool may reuse the id before update() runs.
+    this._pendingDetonations.push({
+      id: victim.id,
+      pos: { x: Number(victim.pos && victim.pos.x) || 0, z: Number(victim.pos && victim.pos.z) || 0 },
+      spec,
+      killerId: payload.killerId == null ? null : payload.killerId,
+      trigger: 'death',
+    });
+  },
+
+  _resolveDetonatorDeaths(state) {
+    const pending = this._pendingDetonations || [];
+    if (!pending.length) return;
+    this._pendingDetonations = [];
+    // Kill receipts first, same travelling beat as primed deaths: a dart killed inside another
+    // dart's blast queues for next tick, so a chain of darts reads as links, not a white frame.
+    for (const rec of pending) {
+      this._detonatorBlast(state, rec, rec.trigger, rec.killerId, null);
+    }
+  },
+
+  /**
+   * Proximity fuse. An armed dart pops when any hull NOT on its own team crosses the trigger
+   * ring — the fuse only knows team, so a dart swung back into its own pack never early-pops on
+   * a wingman (the slam that kills it pops it instead). This runs inside _tickChain: the pop is
+   * room physics, not a weapon fire, and it belongs to the same lane the cook-offs use.
+   */
+  _tickDetonatorFuses(state) {
+    const shipLike = indexedShipLikeScan(state);
+    for (const dart of shipLike) {
+      if (!dart || dart.alive === false || !dart.pos) continue;
+      const spec = dart.data && dart.data.detonator;
+      if (!spec) continue;
+      if (this._detonatedIds && this._detonatedIds.has(dart.id)) continue;
+      const triggerRange = Math.max(0, Number(spec.triggerRange) || 56);
+      const near = stickCandidatesNear(state, dart.pos, triggerRange, this._stickScratch);
+      let hostile = null;
+      for (const cand of near) {
+        if (!cand || cand.id === dart.id || cand.alive === false || !cand.pos) continue;
+        if (cand.team === dart.team) continue;
+        if (cand.type !== 'ship' && cand.type !== 'drone') continue;
+        // stickCandidatesNear degrades to the whole entityList when no spatial hash is live —
+        // the ring is the fuse's contract, so the radius is enforced here, not by the query.
+        const dx = cand.pos.x - dart.pos.x, dz = cand.pos.z - dart.pos.z;
+        if (dx * dx + dz * dz > triggerRange * triggerRange) continue;
+        hostile = cand;
+        break;
+      }
+      if (hostile) {
+        this._detonatorBlast(state, {
+          id: dart.id,
+          pos: { x: Number(dart.pos.x) || 0, z: Number(dart.pos.z) || 0 },
+          spec,
+        }, 'proximity', null, dart);
+      }
+    }
+  },
+
+  /**
+   * THE dart's pop: one blast through _blastVictims — the same falloff, impulse, hitstun/prime
+   * law and damage router every other explosion uses, never a second blast implementation.
+   * Attribution mirrors light cook-off: a dart the PLAYER put down pops with player credit (the
+   * kill chain counts it as their counterplay); a dart that flew its own fuse attributes to
+   * itself. A live dart then pays its own hull through the same damage router, so a proximity
+   * pop produces a canonical kill receipt rather than a scripted removal.
+   */
+  _detonatorBlast(state, rec, trigger, killerId, liveEntity) {
+    if (!rec || rec.id == null || !this._detonatedIds) return null;
+    if (this._detonatedIds.has(rec.id)) return null;
+    this._detonatedIds.add(rec.id);
+    const spec = rec.spec || {};
+    const radius = Math.max(0, Number(spec.blastRadius) || 96);
+    const damage = Math.max(0, Number(spec.damage) || 0);
+    const impulse = Math.max(0, Number(spec.impulse) || 0);
+    const pos = {
+      x: Number(rec.pos && rec.pos.x) || 0,
+      z: Number(rec.pos && rec.pos.z) || 0,
+    };
+    const creditId = killerId === state.playerId ? state.playerId : rec.id;
+    const result = this._blastVictims(state, {
+      pos,
+      ownerId: creditId,
+      radius,
+      impulse,
+      damage,
+      impulseMult: 1,
+      damageMult: 1,
+      chargeId: 'detonator_dart',
+      excludeId: rec.id,
+      originId: rec.id,
+      // The dart's own light hull is the mass the hitstun law weighs victims against — a shove
+      // that launches a 20-ton warhead into you reads differently than a thrown plate.
+      sourceId: rec.id,
+      trigger,
+      link: 1,
+    });
+    this.bus.emit('detonator:detonated', {
+      entityId: rec.id,
+      pos,
+      radius,
+      trigger,
+      killerId: creditId,
+      hits: result.hits,
+      shoves: result.shoves,
+      tick: state.tick | 0,
+    });
+    // The shared blast receipt: explosion VFX, audio and kill-credit chains already listen here.
+    this.bus.emit('charge:detonated', {
+      pos,
+      hits: result.hits,
+      radius,
+      shoves: result.shoves,
+      trigger: 'detonator_dart',
+      hostId: rec.id,
+    });
+    this.bus.emit('audio:cue', { id: 'sfx_explosion_small', position: pos, gain: 0.8 });
+    const live = liveEntity && liveEntity.alive !== false ? liveEntity
+      : (state.entities && typeof state.entities.get === 'function' ? state.entities.get(rec.id) : null);
+    if (live && live.alive !== false) {
+      const packet = scalarHitToDamagePacket({
+        // Enough to clear its own hull/armor/shield stack deterministically — a fuse that
+        // fizzled on a ward screen would leave a dud kamikaze orbiting forever.
+        damage: Math.max(60, (Number(live.hull) || 0) * 2 + (Number(live.armorHp) || 0) * 2 + (Number(live.shield) || 0) * 2 + 8),
+        damageType: 'explosive',
+        pos,
+        source: { kind: 'detonator_dart', chargeId: 'detonator_dart' },
+      });
+      packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+      this._routeDamage({
+        attackerId: rec.id,
+        targetId: rec.id,
+        packet,
+        origin: { kind: 'detonator_dart', id: rec.id },
+      });
+    }
+    return result;
   },
 
   _onLightCookoffDeath(payload) {
@@ -361,6 +521,7 @@ export const impulseCharges = {
     this._pendingCookoffs.push({
       id: victim.id,
       pos: { x: victim.pos.x, z: victim.pos.z },
+      killerId: payload && payload.killerId,
     });
   },
 
@@ -371,14 +532,18 @@ export const impulseCharges = {
     this._cookoffDepth = 1;
     try {
       for (const origin of pending) {
-        const neighbors = stickCandidatesNear(state, origin.pos, 36, this._blastScratch);
+        const neighbors = stickCandidatesNear(state, origin.pos, LIGHT_COOKOFF.radius, this._blastScratch);
         const hits = lightCookoffHits(origin, neighbors, { playerId: state.playerId });
+        if (!hits.length) continue;
+        const creditId = origin.killerId === state.playerId ? state.playerId : origin.id;
+        const hitIds = [];
+        const shoves = [];
         for (const hit of hits) {
           const ent = state.entities && typeof state.entities.get === 'function'
             ? state.entities.get(hit.id)
             : null;
           if (ent) {
-            this._applyBlastImpulse(ent, hit.dirX * hit.impulse, hit.dirZ * hit.impulse, state, origin.id, 'light_cookoff');
+            this._applyBlastImpulse(ent, hit.dirX * hit.impulse, hit.dirZ * hit.impulse, state, creditId, 'light_cookoff');
           }
           const packet = scalarHitToDamagePacket({
             damage: hit.damage,
@@ -388,12 +553,23 @@ export const impulseCharges = {
           });
           packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
           this._routeDamage({
-            attackerId: origin.id,
+            attackerId: creditId,
             targetId: hit.id,
             packet,
             origin: { kind: 'light_cookoff', id: origin.id },
           });
+          hitIds.push(hit.id);
+          considerImpulseShove(shoves, hit.id, hit.dirX, hit.dirZ, hit.impulse);
         }
+        this.bus.emit('charge:detonated', {
+          pos: origin.pos,
+          hits: hitIds,
+          radius: LIGHT_COOKOFF.radius,
+          shoves: freezeImpulseShoves(shoves),
+          trigger: 'light_cookoff',
+          hostId: origin.id,
+        });
+        this.bus.emit('audio:cue', { id: 'sfx_explosion_small', position: origin.pos, gain: 0.55 });
       }
     } finally {
       this._cookoffDepth = 0;

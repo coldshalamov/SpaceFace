@@ -16,6 +16,7 @@ export const DOCTRINE_IDS = Object.freeze([
   'tether_control_raider',
   'ranged_disengager',
   'escort_screen',
+  'detonator_run',
 ]);
 
 export const DAMAGE_LAYERS = Object.freeze(['shield', 'armor', 'hull']);
@@ -28,6 +29,9 @@ const DOCTRINE_GRAMMARS = Object.freeze({
   ranged_disengager: grammar('ranged_disengager', 'bracket', '#ff5c5c', 'weapon_charge', 'fire_window', 'reset'),
   // Warden screen: a line held between ward and threat; cold blue (guarding, not hunting).
   escort_screen: grammar('escort_screen', 'line', '#5cc8ff', 'engine_flare', 'screen_hold', 'regroup'),
+  // Kamikaze run: a closing V wedge in fuse red — the "action" is the detonation itself, which
+  // impulseCharges reports as detonator:detonated; commit is the terminal approach beat.
+  detonator_run: grammar('detonator_run', 'wedge', '#ff5030', 'detonator_fuse', 'commit', 'breakaway'),
 });
 
 const BREAK_PHASES = Object.freeze({
@@ -36,6 +40,7 @@ const BREAK_PHASES = Object.freeze({
   tether_control_raider: new Set(['escape']),
   ranged_disengager: new Set(['reset', 'retreat']),
   escort_screen: new Set(['regroup']),
+  detonator_run: new Set(['breakaway']),
 });
 
 const WITHDRAW_PHASES = Object.freeze({
@@ -44,6 +49,7 @@ const WITHDRAW_PHASES = Object.freeze({
   tether_control_raider: new Set(['reform']),
   ranged_disengager: new Set(['outer_standoff']),
   escort_screen: new Set(['screen_approach']),
+  detonator_run: new Set(['reform']),
 });
 
 export function isLiveDoctrineId(id) {

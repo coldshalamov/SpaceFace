@@ -38,6 +38,7 @@ import { describeEntity } from './interactionDescriptors.js';
 import { isHostileToPlayer } from './scanner.js';
 import { resolveBeamVerb, spawnPayloadEntity, BEAM_CUE_IDS } from '../combat/industrialBeam.js';
 import { actionForWreck, poolForAction } from '../data/salvageActions.js';
+import { debrisCacheFor, spawnDebrisCachePods } from '../data/scanReveal.js';
 import { removeCargo, addCargo } from './cargo.js';
 import {
   claimRichSeamOpportunity,
@@ -1394,6 +1395,10 @@ export const mining = {
     // direct pool, never _claimSource), so a staked wreck defends itself here: the flag
     // is the claim, and stripping another crew's stake is theft, prosecuted or not.
     this._protestClaimJump(player, wreck, got);
+    // INF-U18 v2: the second honest approach — a biting beam cracks a sealed
+    // cache in unscanned generic debris. Same deterministic roll as the scan
+    // path, so scanning first and beaming first never double-pay.
+    this._crackDebrisCache(wreck, got, sourceKey);
 
     if (d.salvageTimeLeft <= 0 || remaining <= 0) {
       this.bus.emit('salvage:completed', {
@@ -1412,6 +1417,42 @@ export const mining = {
       wreck.alive = false;
       this._stopBeam();
     }
+  },
+
+  // INF-U18 v2+v3: crack the sealed cache once, on the first biting drain.
+  // Authored mirrors stay exact (their ledger owns every unit) and loss-linked
+  // hulls keep their story-or-cache separation — caches are the generic game.
+  _crackDebrisCache(wreck, got, sourceKey) {
+    const state = this.state;
+    const d = (wreck && wreck.data) || {};
+    if (!wreck || wreck.type !== 'wreck' || d.debrisCache != null) return null;
+    if (sourceKey) return null;
+    if (d.provenance && d.provenance.lossId) return null;
+    const total = Object.values(got || {}).reduce((sum, qty) => sum + (Number(qty) || 0), 0);
+    if (!(total > 0)) return null;
+    const seed = (state && state.meta && state.meta.seed) || 1;
+    const cache = debrisCacheFor(wreck, seed);
+    if (!cache) {
+      d.debrisCache = 'empty';
+      return null;
+    }
+    d.debrisCache = 'claimed';
+    const now = (state && state.simTime) || 0;
+    spawnDebrisCachePods(this.bus, wreck, cache, now);
+    this.bus.emit('toast', {
+      text: 'The beam cracked a sealed cache in the debris!',
+      kind: 'good', ttl: 4,
+    });
+    this.bus.emit('scan:debrisCache', {
+      entityId: wreck.id,
+      wreckId: wreck.id,
+      via: 'beam',
+      kind: cache.kind,
+      cold: cache.cold,
+      lots: cache.lots.map((lot) => ({ ...lot })),
+      at: now,
+    });
+    return cache;
   },
 
   // Another crew's stake, stripped by the player's beam: the crew protests, the theft

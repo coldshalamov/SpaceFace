@@ -530,6 +530,9 @@ export const world = {
     bus.on('save:restoring', () => {
       this._vestaDecisionSignature = null;
       this._pallasDecisionSignature = null;
+      // The loaded save carries its own simTime; stamps taken against the pre-load clock are
+      // stale — a leftover entry could suppress a fresh wire report for up to the full cooldown.
+      if (this._wireReportAt) this._wireReportAt.clear();
     });
     bus.on('save:loaded', () => {
       if (this._vestaDecisionNeedsRebind) this._vestaDecisionSignature = null;
@@ -2564,12 +2567,12 @@ export const world = {
             : 1600,
           memorialHull: true,
           scanRange: finitePositive(poi.scanRange) ? Number(poi.scanRange) : SCAN_RANGE,
-          // PQ-153.02 still review: carriers that render as nothing fail the shipping-camera
-          // bar — the census saw the ring, the camera saw one hull and bare space. The
-          // shared dead-hulk GLB at half scale is the stand-in silhouette (H1c owns the
-          // bespoke dark-freighter art); `hidden` keeps them off contacts as before.
-          placeId: 'place_dead_hulk',
-          placeScale: 0.5,
+          // PQ-153.02 carriers render as the bespoke Quiessence dark freighters — intact,
+          // becalmed hulls cycling three variants around the ring. placeTargetRadius pins the
+          // drawn size so the fleet reads without hulls overlapping; `hidden` keeps them off
+          // contacts as before.
+          placeId: `place_quiessence_freighter_${'abc'[shipIndex % 3]}`,
+          placeTargetRadius: 21,
           visualRadius: 21,
         });
         for (let shipIndex = 1; shipIndex <= fleetCount; shipIndex += 1) {
@@ -6072,6 +6075,9 @@ export const world = {
     resetFarActors(state);
     state.world.currentSectorId = null;
     this._nextCriticalSpawnTick = 0;
+    // simTime restarts at 0 on a new run — drop the wire-report cooldown map with it, or every
+    // stamped sector suppresses its first report for up to WIRE_REPORT_COOLDOWN_S.
+    this._wireReportAt = new Map();
     this._vestaDecisionSignature = null;
     this._vestaDecisionNeedsRebind = false;
     this._pallasDecisionSignature = null;

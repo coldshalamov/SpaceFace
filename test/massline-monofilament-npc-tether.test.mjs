@@ -265,7 +265,12 @@ test('the tether-cutter reads as a corsair blade that spools a Massline before F
     'the specialist is not gated on Fire Control');
   assert.ok(raiderAmbush.gates.minSectorTier >= 1);
   assert.equal(sweep.requiresTech, 'tech_fire_control');
-  assert.ok(tech.cost.rp >= 110, 'Fire Control is the late buy; the raider arrives on the route first');
+  // The Economy Pulse reprice moved Fire Control to an early-route node (rp ~12, second combat
+  // tier) — the "late buy" characterization is stale. The durable claim this test owns is that
+  // the raider is never gated on the tech (asserted above) and the sweep stays reachable early:
+  // FC must remain well below the capital tier so the demonstrated head isn't a distant tease.
+  assert.ok(tech.cost.rp > 0 && tech.cost.rp <= 24,
+    'Fire Control stays an early-route buy; the sweep the raider demonstrates is reachable early');
 });
 
 test('a taut tether-cutter sweep severs the player line in one pass', () => {

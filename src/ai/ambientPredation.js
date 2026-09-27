@@ -23,6 +23,7 @@
 
 import { hash32, mulberry32 } from '../core/rng.js';
 import { zonesForSector } from '../data/sectorZones.js';
+import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { CERES_ACTIVITY_SECTOR_ID } from '../data/sectorActivityPockets.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
@@ -688,7 +689,7 @@ export function evaluateAmbientPairing(state, ambient, ctx = {}) {
     }
     if (!best) continue;
     usedRaiders.add(best.id);
-    const zone = laneZoneNear(sectorId, zones, victim.pos);
+    const zone = laneZoneNear(sectorId, zones, globalToSectorLocalForSector(victim.pos, sectorId));
     bound.push(bindAmbientRaid(state, ambient, best, victim, zone, ctx));
   }
   return bound;
@@ -859,8 +860,10 @@ function isAmbientVictimCandidate(state, sectorId, zones, entity, now) {
   if (data.playerOwned === true || data.playerCollectOnly === true) return false;
   if (Number.isFinite(data.ambientVictimCooldownUntil) && data.ambientVictimCooldownUntil > now) return false;
   if (!posFinite(entity.pos)) return false;
-  // Lane-adjacent: inside (or just off) a trade/patrol/ambush lane disc.
-  if (!laneZoneNear(sectorId, zones, entity.pos)) return false;
+  // Lane-adjacent: inside (or just off) a trade/patrol/ambush lane disc. Zone centers are
+  // authored sector-local; live entity poses are corridor-global — convert before comparing,
+  // the same seam encounterDirector uses for every other zonesForSector read.
+  if (!laneZoneNear(sectorId, zones, globalToSectorLocalForSector(entity.pos, sectorId))) return false;
   // Under lawful station guns the raid cannot start at all.
   if (protectedStationAt(state, entity)) return false;
   // Low lawful presence: no lawful hull or lawful-faction station covering the victim.

@@ -239,7 +239,8 @@ test('PQ-141.00 Massline (KeyF) is held during both cargo-grab aim windows', () 
   assert.equal(tapeKeyDownAt(tape, 'KeyW', 300), false, 'do not cruise away from the spilled pod');
   assert.equal(tapeKeyDownAt(tape, 'Mouse2', 800), true, 'arm the throw while the melee ships are still close');
   assert.equal(tapeKeyDownAt(tape, 'Mouse2', 1100), true, 'RMB throw-arm while the pirate is latched');
-  assert.equal(tapeKeyDownAt(tape, 'KeyF', 1100), true, 'stay latched while the throw is armed');
+  assert.equal(tapeKeyDownAt(tape, 'KeyF', 1100), false,
+    'the whip stays latched with the tether key UP — holding it enters line control, which collapses the orbit slack');
 });
 
 test('PQ-141.00 census sees pirates when pointed at Ambush Run', { timeout: 120_000 }, async () => {

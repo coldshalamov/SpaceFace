@@ -42,6 +42,9 @@ const DOCTRINE_ANCHORS = Object.freeze({
   field_anchor_controller: { id: 'specialist', verve: 0.50, poise: 0.65, weave: 0.40, dash: 0.45, aim: 0.60 },
   mine_layer_wake: { id: 'saboteur', verve: 0.60, poise: 0.55, weave: 0.55, dash: 0.55, aim: 0.55 },
   shield_breaker: { id: 'specialist', verve: 0.55, poise: 0.60, weave: 0.40, dash: 0.45, aim: 0.65 },
+  // Kamikaze: flat-out and unflinching. No weave, no brake-check — a dart that jinks reads as
+  // trying to survive, and it is not.
+  detonator_run: { id: 'fanatic', verve: 0.98, poise: 0.50, weave: 0.10, dash: 0.15, aim: 0.30 },
 });
 
 const TRAIT_KEYS = Object.freeze(['verve', 'poise', 'weave', 'dash', 'aim']);

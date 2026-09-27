@@ -33,6 +33,12 @@ const JUMPER_STRIP_S = 2.5;  // ...one unit per this many seconds
 const JUMPER_FLEE_RANGE = 320;     // player inside this spooks the jumper off
 const JUMPER_DESPAWN_RANGE = 2600; // fled this far → gone
 const JUMPER_DROP_MAX = 3;   // spooked jumper drops up to this many stolen units as one pod
+// INF-U16: a latched Massline shakes the take loose. A tether on a laden jumper
+// rips one unit free per RIP_S as a scoopable pod — the rope is the recovery
+// tool, not just the chase. First rip bolts the jumper (it abandons the strip
+// and runs with your line on); the rip continues while latched, so holding the
+// line on a runner is the skill. Re-latching re-arms the cadence.
+const JUMPER_RIP_S = 2.5;
 
 const KIND_LABEL = {
   drone: 'Mining drone', trader: 'Trade hauler', fleet: 'Wingman', outpost: 'Outpost',
@@ -278,6 +284,8 @@ export const intervention = {
     const player = state.entities.get(state.playerId);
     const wreck = rec.wreckEntityId != null ? state.entities.get(rec.wreckEntityId) : null;
     const now = state.simTime || 0;
+    // INF-U16 v1: the tether rip ticks in every live phase, including the chase.
+    this._tickJumperRip(state, rec, ent, now);
     if (jumper.phase === 'fled') {
       steerIntent(ent, awayFrom(ent.pos, player && player.pos));
       ent.data.intent.mode = 'intervention_jumper_flee';
@@ -328,6 +336,54 @@ export const intervention = {
         });
       }
     }
+  },
+
+  // INF-U16 v1: a latched line shakes the take loose — one unit per RIP_S as a
+  // scoopable pod, stolen decremented as pods spawn (never decremented without
+  // a pod). v2: the first rip bolts a working jumper — it abandons the strip
+  // and runs with the line on; the rip keeps ticking through the chase.
+  _tickJumperRip(state, rec, ent, now) {
+    const jumper = rec.jumper;
+    const tether = state.player && state.player.tether;
+    const latched = !!(tether && tether.active && tether.targetId === ent.id);
+    if (!latched || !(jumper.stolen > 0)) {
+      if (!latched) jumper.ripAt = 0; // re-latching re-arms the cadence
+      return;
+    }
+    if (!(jumper.ripAt > 0)) jumper.ripAt = now + JUMPER_RIP_S;
+    if (now < jumper.ripAt) return;
+    jumper.ripAt = now + JUMPER_RIP_S;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    this.helpers.spawnEntity({
+      type: 'pickup',
+      pos: { x: ent.pos.x, z: ent.pos.z },
+      vel: { x: (ent.vel && ent.vel.x || 0) * 0.3, z: (ent.vel && ent.vel.z || 0) * 0.3 },
+      radius: 3, mass: 0.1, collides: true,
+      data: {
+        kind: 'cargo', commodityId: 'cmdty_scrap_metal', amount: 1,
+        despawnAt: now + 90,
+        jumperRip: rec.id,
+      },
+    });
+    jumper.stolen -= 1;
+    jumper.ripped = (jumper.ripped || 0) + 1;
+    if (!jumper.ripAnnounced) {
+      jumper.ripAnnounced = true;
+      this.bus.emit('toast', {
+        text: 'The tether shakes cargo loose — hold the line!',
+        kind: 'good', ttl: 4,
+      });
+    }
+    if (jumper.phase === 'stripping' || jumper.phase === 'inbound') {
+      jumper.phase = 'fled';
+      this.bus.emit('toast', {
+        text: 'The jumper bolts with your line on — run it down!',
+        kind: 'warn', ttl: 4,
+      });
+    }
+    this.bus.emit('intervention:jumperRipped', {
+      id: rec.id, ripped: jumper.ripped, left: jumper.stolen, at: now,
+    });
   },
 
   // The player closed in: the jumper drops part of its take as one scoopable pod and runs.

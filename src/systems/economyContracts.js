@@ -160,6 +160,17 @@ export const economyContracts = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this._ensureState();
+    // missions._onExternalBoardOffer returns its accept/reject verdict through the synchronous
+    // mission:offerBoarded event (bus.emit returns nothing). We hear it inside the same emit
+    // that offered it, so a latch only commits after the board actually took the row.
+    this._boardedOfferIds = new Set();
+    this._onOfferBoarded = (p) => {
+      if (p && p.offerId) {
+        if (this._boardedOfferIds.size > 256) this._boardedOfferIds.clear();
+        this._boardedOfferIds.add(p.offerId);
+      }
+    };
+    this.bus.on('mission:offerBoarded', this._onOfferBoarded);
     this._onDocked = (p) => this._handleDock(p && p.stationId);
     this.bus.on('dock:docked', this._onDocked);
     // Fresh runs reset dedupe. Loads restore it through deserialize before save:loaded fires.
@@ -169,6 +180,7 @@ export const economyContracts = {
 
   newGame() {
     this.state.economyContracts = { evaluatedEpochByStation: {}, firstTradeOffered: false };
+    if (this._boardedOfferIds) this._boardedOfferIds.clear();
   },
 
   _ensureState() {
@@ -213,6 +225,40 @@ export const economyContracts = {
     return isStationEpochEvaluated(own, stationId, ep);
   },
 
+  /**
+   * True when missions already owns this offer — either still listed on the station board or
+   * already accepted into the active list. A taken-into-active offer is a delivered offer:
+   * without this the latch would stay open and every later dock would re-emit (and be
+   * rejected as) the same row.
+   */
+  _offerOnBoard(stationId, offerId) {
+    const missions = this.state && this.state.missions;
+    const board = missions && missions.boards && missions.boards[stationId];
+    const slots = board && board.slots;
+    if (Array.isArray(slots) && slots.some((row) => row && row.id === offerId)) return true;
+    const active = missions && missions.active;
+    if (Array.isArray(active) && active.some((row) => row
+      && (row.id === offerId || row.sourceOfferId === offerId))) return true;
+    return false;
+  },
+
+  /**
+   * Emit mission:offered and report whether the board actually TOOK the row.
+   * missions._onExternalBoardOffer emits mission:offerBoarded synchronously inside this emit
+   * when it unshifts the row; the init listener captured the id, so a confirmed boarding is
+   * readable the moment emit() returns. Board inspection is the belt to that suspenders.
+   * When no missions board state exists at all (bare harness) the emit-only contract cannot
+   * be confirmed or refused — treat the emit as delivered, matching the pre-gate semantics.
+   */
+  _emitOfferForBoard(stationId, offer) {
+    this.bus.emit('mission:offered', offer);
+    if (this._boardedOfferIds.delete(offer.id)) return true; // consumed: confirmed in this emit
+    if (this._offerOnBoard(stationId, offer.id)) return true;
+    const missions = this.state && this.state.missions;
+    if (!missions || !missions.boards) return true;
+    return false;
+  },
+
   _handleDock(stationId) {
     try {
       if (!stationId) return;
@@ -223,42 +269,59 @@ export const economyContracts = {
       const emittedClasses = new Set();
 
       // G06: one authored first-trade teaching contract at Helios on/after first dock.
-      // Emit-only — missions boards the offer via mission:offered. Once per run.
+      // Emit-only — missions boards the offer via mission:offered. Once per run AND ONLY once
+      // the row actually boards: a full board or a source-row collision must not spend the
+      // latch — the same authored offer is re-attempted on the next dock until it lands.
+      // A restored board already carrying the row commits the latch silently (no re-emit).
       if (stationId === FIRST_TRADE_CONTRACT_STATION_ID && !own.firstTradeOffered) {
         const firstTrade = planFirstTradeOffer(this.state);
-        own.firstTradeOffered = true;
-        const firstTradeClass = offerClassFor(firstTrade);
-        if (firstTradeClass) emittedClasses.add(firstTradeClass);
-        this.bus.emit('mission:offered', firstTrade);
+        if (this._offerOnBoard(stationId, firstTrade.id)) {
+          own.firstTradeOffered = true;
+          const firstTradeClass = offerClassFor(firstTrade);
+          if (firstTradeClass) emittedClasses.add(firstTradeClass);
+        } else if (this._emitOfferForBoard(stationId, firstTrade)) {
+          own.firstTradeOffered = true; // committed only after the board took the row
+          const firstTradeClass = offerClassFor(firstTrade);
+          if (firstTradeClass) emittedClasses.add(firstTradeClass);
+          if (!isOnboardingActive(this.state)) {
+            const line = `Contract posted at ${info.name}: ${firstTrade.title}`;
+            const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'
+              ? this.helpers.voice.say({ channel: 'news', text: line, kind: 'contract' })
+              : false;
+            if (!said) this.bus.emit('toast', { text: line, kind: 'info', ttl: 4 });
+          }
+        }
+        // else: the board refused it — the latch stays open and the next dock retries.
+      }
+
+      // Dedupe per station-epoch: one field evaluation lands on the board per epoch.
+      // "Evaluated" is committed ONLY when the epoch's offer actually boarded; a refused
+      // offer leaves the epoch open so the identical seeded row retries on a later dock.
+      if (isStationEpochEvaluated(own, stationId, epoch)) return;
+
+      const offer = this.planOffer(info, epoch) || this.planMaintenanceOffer(info, epoch);
+      if (!offer) { markStationEpochEvaluated(own, stationId, epoch); return; }
+      const fieldClass = offerClassFor(offer);
+      if (fieldClass && emittedClasses.has(fieldClass)) {
+        markStationEpochEvaluated(own, stationId, epoch);
+        return;
+      }
+
+      // EMIT-ONLY: never writes state.missions — missions.js owns boards/active.
+      if (this._offerOnBoard(stationId, offer.id)) {
+        markStationEpochEvaluated(own, stationId, epoch); // boarded earlier — dedupe, silent
+      } else if (this._emitOfferForBoard(stationId, offer)) {
+        markStationEpochEvaluated(own, stationId, epoch); // confirmed boarding this emit
         if (!isOnboardingActive(this.state)) {
-          const line = `Contract posted at ${info.name}: ${firstTrade.title}`;
+          // One news line, through the arbiter (falls back to a toast like marketNews).
+          const line = `Contract posted at ${info.name}: ${offer.title}`;
           const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'
             ? this.helpers.voice.say({ channel: 'news', text: line, kind: 'contract' })
             : false;
           if (!said) this.bus.emit('toast', { text: line, kind: 'info', ttl: 4 });
         }
       }
-
-      // Dedupe per station-epoch: one field evaluation, offer or not.
-      if (isStationEpochEvaluated(own, stationId, epoch)) return;
-      markStationEpochEvaluated(own, stationId, epoch);
-
-      const offer = this.planOffer(info, epoch) || this.planMaintenanceOffer(info, epoch);
-      if (!offer) return;
-      const fieldClass = offerClassFor(offer);
-      if (fieldClass && emittedClasses.has(fieldClass)) return;
-
-      // EMIT-ONLY: never writes state.missions — missions.js owns boards/active.
-      // Durable offer + station-epoch state always land; only the nonessential news voice
-      // is suppressed while onboarding owns the one-voice channel (spec2/00 + first-hour).
-      this.bus.emit('mission:offered', offer);
-      if (isOnboardingActive(this.state)) return;
-      // One news line, through the arbiter (falls back to a toast exactly like marketNews).
-      const line = `Contract posted at ${info.name}: ${offer.title}`;
-      const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'
-        ? this.helpers.voice.say({ channel: 'news', text: line, kind: 'contract' })
-        : false;
-      if (!said) this.bus.emit('toast', { text: line, kind: 'info', ttl: 4 });
+      // else: the board refused — the epoch stays open; the same seeded offer retries.
     } catch (err) {
       console.error('[economyContracts] dock:docked', err);
     }
@@ -462,8 +525,10 @@ export const economyContracts = {
   },
 
   destroy() {
+    if (this.bus && this.bus.off && this._onOfferBoarded) this.bus.off('mission:offerBoarded', this._onOfferBoarded);
     if (this.bus && this.bus.off && this._onDocked) this.bus.off('dock:docked', this._onDocked);
     if (this.bus && this._onStarted) this.bus.off('game:started', this._onStarted);
+    this._onOfferBoarded = null;
     this._onStarted = null;
     this._onDocked = null;
   },

@@ -41,6 +41,12 @@ export const SPECIALIST_PLANS = Object.freeze([
     verb: 'ward_screen',
     telegraphKind: 'engine_flare',
   }),
+  // The kamikaze dart is deliberately NOT a row here. These plans are counterplay VERBS the
+  // applySpecialistCounterplay dispatcher owns (cut_line / disrupt_field / snare_field /
+  // ward_screen) — the dart has no verb to dispatch: its counterplay is physical (shove it,
+  // sling it, kill it before it arrives) and its blast is owned by impulseCharges. Its
+  // plan-level integration is the combat doctrine, detonator_run, resolved like any other
+  // doctrine by the tactical stack.
 ]);
 
 export function specialistPlanById(id) {

@@ -29,6 +29,7 @@
 // it is handed. Same (seed, wave) always yields the same wave.
 
 import { SPAWN_BUDGET_DEFAULT_MAX, SPAWN_BUDGET_HARD_MAX } from './survivalActs.js';
+import { ENEMY_TYPES } from './enemies.js';
 
 export const SWARM_RULESET = 'swarm';
 export const SWARM_SCHEMA_VERSION = 2;
@@ -277,6 +278,10 @@ export const SWARM_ROSTER = Object.freeze([
   { enemyId: 'wasp_swarmer', role: 'mass', fromWave: 1, weight: 10, name: 'Wasp Swarmer' },
   { enemyId: 'reaver_pirate', role: 'pressure', fromWave: 2, weight: 6, name: 'Reaver Pirate' },
   { enemyId: 'choir_zealot', role: 'mass', fromWave: 4, weight: 7, name: 'Choir Zealot' },
+  // The dart joins one wave after the zealot pack: by round five the room is crowded enough
+  // that "the hull running at you IS the ordnance" stays legible instead of being lost noise.
+  // Light enough to sling, fuse-lit on approach, and it pops where it dies either way.
+  { enemyId: 'detonator_dart', role: 'pressure', fromWave: 5, weight: 4, name: 'Detonator Dart' },
   { enemyId: 'mine_layer_jackal', role: 'disruptor', fromWave: 6, weight: 2, name: 'Mine-Layer Jackal' },
   { enemyId: 'lancer_sniper', role: 'reach', fromWave: 8, weight: 3, name: 'Lancer Sniper' },
   { enemyId: 'corsair_raider', role: 'elite', fromWave: 10, weight: 3, name: 'Corsair Raider' },
@@ -519,6 +524,32 @@ export function swarmEligibleEnemyIds(wave) {
     }
   }
   return ids;
+}
+
+const SWARM_ENEMY_IDS = new Set(ENEMY_TYPES.map((enemy) => enemy.id));
+
+/**
+ * Catalog check for every enemy id the swarm content names — roster rows and boss-rotation
+ * packages. makeEnemySpawnSpec still falls back safely at runtime (a bad id spawns a wasp and
+ * logs), but AUTHORED content is not allowed to lean on that path: a typo'd roster id is a
+ * defect to fail, not a spawn to substitute. Mirrors catalogQuestionIssues' shape.
+ */
+export function swarmCatalogIssues() {
+  const issues = [];
+  const check = (path, enemyId) => {
+    if (typeof enemyId !== 'string' || !SWARM_ENEMY_IDS.has(enemyId)) {
+      issues.push({ path, message: `unknown enemyId ${JSON.stringify(enemyId)}` });
+    }
+  };
+  SWARM_ROSTER.forEach((entry, i) => {
+    check(`swarmRoster[${i}].enemyId`, entry && entry.enemyId);
+  });
+  SWARM_BOSS_ROTATION.forEach((boss, i) => {
+    (boss.packages || []).forEach((pkg, j) => {
+      check(`bossRotation[${i}].packages[${j}].enemyId`, pkg && pkg.enemyId);
+    });
+  });
+  return issues;
 }
 
 /**

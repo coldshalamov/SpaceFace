@@ -10,6 +10,7 @@ import {
   isHostileForAI,
 } from '../src/ai/engagementAuthority.js';
 import { ambientObjective } from '../src/ai/ambientPredation.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { createSimulation } from '../src/core/sim.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
@@ -510,8 +511,16 @@ test('Continue rematerialization rebuilds stable role identity without reviving 
 // disc centred at (1420, 760) r=640.
 
 const AMBIENT_SECTOR = 'sector_pallas_drift';
+// Authored ambush-lane disc centre in SECTOR-LOCAL space — zonesForSector rows are local while
+// live entity.pos is galactic-global, so fixtures must place hulls on the global frame.
 const AMBIENT_LANE = Object.freeze({ x: 1420, z: 760 });
 const AMBIENT_MANIFEST = 'ambient_test_manifest';
+
+function lanePoint(sectorId, dx, dz) {
+  return sectorLocalToGlobalForSector(
+    { x: AMBIENT_LANE.x + dx, z: AMBIENT_LANE.z + dz },
+    sectorId);
+}
 
 function ambientRaiderSpec(pos) {
   return {
@@ -600,7 +609,7 @@ function bootAmbient(seed = 47060, overrides = {}) {
   state.story.beatIndex = 7;
   const player = sim.spawn({
     type: 'ship', team: 0,
-    pos: { x: AMBIENT_LANE.x + 5000, z: AMBIENT_LANE.z + 5000 },
+    pos: lanePoint(state.world.currentSectorId, 5000, 5000),
     vel: { x: 0, z: 0 }, hull: 200, hullMax: 200, radius: 8,
     data: { intent: {}, ai: {} },
   });
@@ -616,9 +625,9 @@ function bootAmbient(seed = 47060, overrides = {}) {
 /** Idle pirate + manifested hauler sharing the authored ambush lane in low-security space. */
 function ambientPair(harness, opts = {}) {
   const raider = harness.sim.spawn(ambientRaiderSpec(
-    opts.raiderPos || { x: AMBIENT_LANE.x - 200, z: AMBIENT_LANE.z - 100 }));
+    opts.raiderPos || lanePoint(harness.state.world.currentSectorId, -200, -100)));
   const victim = harness.sim.spawn(ambientHaulerSpec(
-    opts.victimPos || { x: AMBIENT_LANE.x + 150, z: AMBIENT_LANE.z + 60 },
+    opts.victimPos || lanePoint(harness.state.world.currentSectorId, 150, 60),
     opts.manifestId, opts.victimQty));
   return { raider, victim };
 }
@@ -709,7 +718,7 @@ test('ambient evaluator excludes lawful actors, lawful presence, and the Ceres p
     ambientPair(harness);
     harness.sim.spawn({
       type: 'ship', team: 1,
-      pos: { x: AMBIENT_LANE.x + 400, z: AMBIENT_LANE.z },
+      pos: lanePoint(harness.state.world.currentSectorId, 400, 0),
       vel: { x: 0, z: 0 }, hull: 100, hullMax: 100, radius: 10,
       data: { intent: {}, weapons: [{ id: 'wpn_autocannon_s' }],
         ai: { archetype: 'brawler', lawful: true, combatDoctrineId: 'brawler_commit',
@@ -740,8 +749,8 @@ test('ambient raid cap binds at most one concurrent raid', () => {
   const harness = bootAmbient(47066);
   ambientPair(harness);
   ambientPair(harness, {
-    raiderPos: { x: AMBIENT_LANE.x + 240, z: AMBIENT_LANE.z - 160 },
-    victimPos: { x: AMBIENT_LANE.x - 100, z: AMBIENT_LANE.z + 180 },
+    raiderPos: lanePoint(harness.state.world.currentSectorId, 240, -160),
+    victimPos: lanePoint(harness.state.world.currentSectorId, -100, 180),
     manifestId: `${AMBIENT_MANIFEST}:b`,
   });
   harness.sim.runTicks(8 * 60);

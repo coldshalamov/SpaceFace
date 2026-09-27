@@ -21,6 +21,10 @@ export const QUARRY_TUNING = Object.freeze({
   refugeScan: 6000,          // stations scanned this far out as refuge candidates
   jinkRange: 260,            // hunter inside this → the quarry weaves instead of running straight
   gratitudeCr: 350,          // quarry pays the player for killing its hunter
+  escapeGratitudeCr: 180,    // quarry pays the player for harrying the hunter off its tail
+  escapeAssistDmg: 40,       // applied player damage on the hunter that counts as an assist
+  escapeGratitudeRep: 3,     // quarry-faction rep for buying the escape
+  escapeGuildCostRep: -3,    // hunter-faction rep for costing them a contract
   surrenderBountyCr: 650,    // posted payoff once the quarry surrenders
   hunterCutCr: 200,          // hunter's guild pays the player for killing the quarry
   gratitudeRep: 6,           // quarry-faction rep for the save
@@ -34,6 +38,11 @@ export const QUARRY_TUNING = Object.freeze({
   stageShipCap: 80,          // never stage into a busier sky than this
   dumpPodTtlS: 90,           // dumped pods persist this long for the scoop-or-leave choice
   contractTimeoutS: 300,     // staged flag clears after this even if the pair wanders off
+  guardRadius: 260,          // player inside this of a surrendered mark can stand guard
+  guardHoldS: 3,             // continuous held position that warns the hunter off
+  guardMaxRelSpeed: 60,      // guard needs a matched hover, not a flyby
+  guardGratitudeRep: 4,      // quarry-faction rep for the non-lethal save (mercy pays in kind)
+  weakHullFrac: 0.4,         // player hull below this gets the contract turned on them instead
 });
 
 /** Road-names for staged quarries — the distress call needs a person, not a contract id. */

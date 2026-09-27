@@ -69,6 +69,18 @@ try {
     }, String(args.ship));
     console.log('ship swap', swapped);
   }
+  if (args.sector) {
+    // Jump to a non-opening sector through the same entry point a gate/drive jump uses, so the
+    // sector materializes at full presence before we aim.
+    const jumped = await page.evaluate((sectorId) => {
+      const world = window.SF.registry?.get?.('world');
+      if (!world?.enterSector) return 'no world.enterSector';
+      world.enterSector(sectorId, { fromJump: true, via: 'drive', fromSectorId: window.SF.state.world?.currentSectorId });
+      return `sector=${window.SF.state.world?.currentSectorId}`;
+    }, String(args.sector));
+    console.log('sector', jumped);
+    await page.waitForTimeout(4000);
+  }
   if (args.aim) {
     // The chase camera follows player position only — park the player `aimDist` WU +Z of the
     // named station so the place sits on screen.
@@ -77,7 +89,7 @@ try {
       let target = null;
       for (const e of s.entities.values()) {
         const d = e.data || {};
-        if (d.stationId === token || d.archetypeGlb === token || e.id === token) { target = e; break; }
+        if (d.stationId === token || d.archetypeGlb === token || d.poiId === token || e.id === token) { target = e; break; }
       }
       if (!target) return 'no station match';
       const p = s.entities.get(s.playerId);

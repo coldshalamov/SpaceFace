@@ -568,6 +568,24 @@ export const salvage = {
     }
   },
 
+  /**
+   * True when this point's offer is already claimed by the durable trails missions owns — a
+   * settle receipt, a live accepted mission, or a still-boarded row. Sector replan forgets
+   * `offered` (points are rebuilt on entry/Continue), so without this check a settled find
+   * would re-sound its signal and re-emit an offer the board must reject anyway.
+   */
+  _offerAlreadyKnown(point) {
+    const offerId = `salvage_${point && point.id}`;
+    const missionState = this.state.missions;
+    if (!missionState) return false;
+    if ((missionState.receipts || []).some((r) => r && r.sourceOfferId === offerId)) return true;
+    if ((missionState.active || []).some((m) => m && m.sourceOfferId === offerId)) return true;
+    for (const board of Object.values(missionState.boards || {})) {
+      if ((board && board.slots || []).some((o) => o && o.id === offerId)) return true;
+    }
+    return false;
+  },
+
   // Reveal the black-box/log line and emit the mission offer hook. Idempotent per point.
   _offerFromPoint(point) {
     if (!point || point.offered) return;
@@ -579,6 +597,11 @@ export const salvage = {
       return;
     }
 
+    // Replan rebuilt this point un-offered; the contract it carries may already be settled,
+    // live, or still sitting on a board. In every case stay quiet — no replayed signal, no
+    // re-emitted row (the receipt is the authority that also blocks re-boarding).
+    if (this._offerAlreadyKnown(point)) return;
+
     // The black-box / distress log line (the hook the brief asks for).
     this.bus.emit('comms:log', { from: mission.giver || 'Derelict', text: mission.log, kind: 'salvage' });
     this.bus.emit('toast', { text: `Signal recovered — ${mission.giver}: "${truncate(mission.log, 80)}"`, kind: 'info', ttl: 5 });
@@ -588,7 +611,9 @@ export const salvage = {
     // touch missions state directly (we don't own it); we hand over the full template so a listener
     // can add it to the active list / show an accept prompt.
     const offer = this._buildOffer(mission, point);
-    this.bus.emit('mission:offered', offer);
+    // Only emit a row the board can actually host — an unreachable stationId would spend the
+    // offer silently. With the remote fallback this stays a defensive gate, not the path.
+    if (offer.stationId) this.bus.emit('mission:offered', offer);
     this.bus.emit('salvage:communicatorFound', {
       salvagePointId: point.id,
       sectorId: point.sectorId,
@@ -608,13 +633,27 @@ export const salvage = {
   // hash32(point.id) picks the slot so re-entering the sector re-issues the same board row.
   _wreckStation(point) {
     const sec = SECTOR_BY_ID.get(point && point.sectorId);
-    const stations = (sec && sec.stations) || [];
+    if (!sec) return null;                    // an uncharted sector id can host no board at all
+    const stations = sec.stations || [];
     const capable = stations.filter((s) => s && s.services && s.services.includes('missions') && !s.repGated);
     const pool = capable.length ? capable : stations.filter((s) => s && !s.repGated);
-    const list = pool.length ? pool : stations;
-    if (!list.length) return null;
-    const idx = fallbackHash32(point.id, 'salvage-station') % list.length;
-    return list[idx] || list[0] || null;
+    if (pool.length) {
+      const idx = fallbackHash32(point.id, 'salvage-station') % pool.length;
+      return pool[idx] || pool[0] || null;
+    }
+    // The sector's own docks are either absent or entirely rep-locked — boarding there would
+    // spend the communicator's one offer on a row the player can never reach. Reroute the
+    // posting to a deterministic mission-capable dock anywhere on the chart instead: the
+    // contract is still playable, just filed at the operator's home station.
+    const remote = [];
+    for (const sector of SECTORS) {
+      for (const s of (sector && sector.stations) || []) {
+        if (s && !s.repGated && s.services && s.services.includes('missions')) remote.push(s);
+      }
+    }
+    if (!remote.length) return null;
+    remote.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    return remote[fallbackHash32(point.id, 'salvage-station-remote') % remote.length] || null;
   },
 
   _buildOffer(mission, point) {
