@@ -6,6 +6,7 @@ import {
 } from '../forceLanguage/weaponDischargePool.js';
 import { resolveVfxAccessibilityProfile } from '../vfxAccessibility.js';
 import { EnergyBoltPool } from './energyBoltPool.js';
+import { HeavyImpactVfx } from './heavyImpactVfx.js';
 import { WeaponRibbonPool } from './ribbonPool.js';
 import { DistortionField } from './distortionField.js';
 import { WeaponLightPool } from './weaponLights.js';
@@ -135,6 +136,8 @@ export class WeaponVfxPresenter {
       };
     this.bolts = new EnergyBoltPool(this.scene);
     this.discharges = new WeaponDischargePool(this.scene);
+    this.heavyImpacts = new HeavyImpactVfx(this.scene);
+    this._motorMeshes = new WeakSet();
     // One resolver for the whole weapon-surface pool: source slots follow the firing socket,
     // impact slots re-lift their retained target-local contact each frame.
     this._dischargePoseResolver = (slot) => this._resolveSurfacePose(slot);
@@ -285,8 +288,14 @@ export class WeaponVfxPresenter {
         world.z + nz * 0.4,
         nx, 0.06, nz,
       );
-      const impact = this._flashSpec(0.14, 1.6, 2.8, 1.15);
-      this._spawnImpactSurface(captured, IMPACT_KIND.HULL, recipe, impact, nx, nz, ax, az, payload.targetId);
+      const body = this.state?.entities?.get?.(payload.targetId);
+      const handled = this.heavyImpacts.spawn(recipe.variant, captured, payload,
+        Math.max(1, Number(body?.radius) || Number(payload.targetRadius) || 8),
+        Number.isFinite(this.state?.simTime) ? this.state.simTime : this.heavyImpacts.time);
+      if (!handled) {
+        const impact = this._flashSpec(0.14, 1.6, 2.8, 1.15);
+        this._spawnImpactSurface(captured, IMPACT_KIND.HULL, recipe, impact, nx, nz, ax, az, payload.targetId);
+      }
     }
     if (!hitShield && recipe.hull.scorch) {
       const captured = this._captureTargetLocal(payload.targetId, world.x, y, world.z, nx, 0.08, nz);
@@ -349,6 +358,8 @@ export class WeaponVfxPresenter {
     ageShieldContacts(dt);
     const accessibilityProfile = this._a11y();
     this.discharges.update(dt, this._dischargePoseResolver, accessibilityProfile);
+    this.heavyImpacts.update(Number.isFinite(this.state?.simTime) ? this.state.simTime
+      : this.heavyImpacts.time + Math.max(0, dt), this._dischargePoseResolver, accessibilityProfile);
     this.bolts.setCamera(camera, viewportHeight);
     this.bolts.setDepthTexture(
       context.depthTexture || null,
@@ -435,8 +446,20 @@ export class WeaponVfxPresenter {
           this.ribbons.release(entity.id);
         }
       }
-      if (recipe.flight.mode !== FLIGHT_MODE.ENERGY_CARD) continue;
+      const motor = recipe.flight.motor === true;
+      if (recipe.flight.mode !== FLIGHT_MODE.ENERGY_CARD && !motor) continue;
       if (!onFrame) continue;
+      if (motor) {
+        const root = this._mesh(entity.id);
+        if (root && !this._motorMeshes.has(root)) {
+          // The pooled motor replaces the legacy emissive capsules; body and warhead stay.
+          const core = root.getObjectByName('ProjectileMissileExhaust');
+          const sheath = root.getObjectByName('ProjectileMissileExhaustSheath');
+          if (core) core.visible = false;
+          if (sheath) sheath.visible = false;
+          this._motorMeshes.add(root);
+        }
+      }
       const rawVx = entity.vel && Number(entity.vel.x);
       const rawVz = entity.vel && Number(entity.vel.z);
       let vx = Number.isFinite(rawVx) ? rawVx : 0;
@@ -462,6 +485,13 @@ export class WeaponVfxPresenter {
       bolt.coreR = cr; bolt.coreG = cg; bolt.coreB = cb;
       bolt.sheathR = _color.r; bolt.sheathG = _color.g; bolt.sheathB = _color.b;
       bolt.minPixels = recipe.flight.pixelFloor;
+      if (motor) {
+        // No smear for a powered nozzle: put the fixed hot end at the actual missile rear.
+        const rear = Math.max(.35, finiteOr(entity.radius, .7));
+        const offset = rear + bolt.length * .5;
+        bolt.x -= vx / speed * offset; bolt.z -= vz / speed * offset;
+        bolt.prevX = bolt.x; bolt.prevZ = bolt.z;
+      }
       this.bolts.writeBolt(bolt);
     }
     for (const [entityId] of this.ribbons.byEntity) {
@@ -737,6 +767,7 @@ export class WeaponVfxPresenter {
     if (!ox && !oz) return;
     this.quarks?.reproject(ox, oz);
     this.discharges.reproject(ox, oz);
+    this.heavyImpacts.reproject(ox, oz);
     for (const slot of this.scorches.slots) {
       if (!slot.alive) continue;
       if (slot.targetId != null) continue;
@@ -765,7 +796,7 @@ export class WeaponVfxPresenter {
   }
 
   getMeshes() {
-    return [this.bolts.mesh, this.discharges.mesh, this.ribbons.mesh, this.scorches.mesh];
+    return [this.bolts.mesh, this.discharges.mesh, this.heavyImpacts.mesh, this.ribbons.mesh, this.scorches.mesh];
   }
 
   /** Stable presenter-owned roots for scene residency/isolation checks. */
@@ -773,6 +804,7 @@ export class WeaponVfxPresenter {
     return [
       this.bolts.mesh,
       this.discharges.mesh,
+      this.heavyImpacts.mesh,
       this.ribbons.mesh,
       this.scorches.mesh,
       this.distortion.scene,
@@ -791,6 +823,7 @@ export class WeaponVfxPresenter {
     clearShieldContacts();
     this.bolts.dispose();
     this.discharges.dispose();
+    this.heavyImpacts.dispose();
     this.ribbons.dispose();
     this.distortion.dispose();
     this.wellDistortion.dispose();

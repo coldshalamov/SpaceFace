@@ -113,6 +113,11 @@ const RIBBON_FRAG = /* glsl */`
     // Compact ballistic/starter wakes remain purely additive (zero extinction alpha).
     vec3 c = special ? vColor * (0.32 + hot * 1.6) + vec3(0.7,0.85,1.0) * pow(hot,4.0) * 0.35
       : mix(vColor, vec3(1.0, 0.97, 0.92), clamp(hot, 0.0, 1.0) * (0.12 + 0.22 * edgeOn));
+    if(id>2.5&&id<3.5){
+      // Spent motor gas keeps the colour of carried combustion, not the white ignition
+      // core. The hot nozzle is a separate 3D owner at the missile's current rear.
+      c=vColor*(.22+hot*.86)+vec3(.45,.18,.05)*pow(hot,4.0)*.24;
+    }
     a = min(a * (special ? 0.62 : 1.0), 0.88);
     gl_FragColor = vec4(c * a * uIntensity, special ? a : 0.0);
   }

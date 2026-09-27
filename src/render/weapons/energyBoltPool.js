@@ -68,7 +68,7 @@ const VERTEX_SHADER = /* glsl */`
     vAlong = uv.x;
     vVariation = aBoltVariation;
     vPatch=aBoltTopology.y;
-    bool special=(aBoltSize.w>0.5&&aBoltSize.w<1.5)||(aBoltSize.w>3.5&&aBoltSize.w<5.5);
+    bool special=(aBoltSize.w>0.5&&aBoltSize.w<1.5)||(aBoltSize.w>3.5&&aBoltSize.w<5.5)||aBoltSize.w>6.5;
     if(special!=(aBoltTopology.x>0.5)){
       vBoltWorld=vec3(0.0);gl_Position=vec4(2.0,2.0,2.0,1.0);return;
     }
@@ -141,11 +141,10 @@ const VERTEX_SHADER = /* glsl */`
       shaped.yz = vec2(shaped.y * cs - shaped.z * sn, shaped.y * sn + shaped.z * cs);
       shaped.x += (1.0 - side * side) * (1.0 - t) * 0.09;
     } else if (aBoltSize.w >= 2.5 && aBoltSize.w < 3.5) {
-      // Rail / siege: a relativistic needle with one detached ionisation collar behind the
-      // nose. Thinner than the sabot along its whole length, so the two never read alike.
-      float collar = exp(-pow((t - (0.68 + aBoltVariation.y * 0.08)) / 0.085, 2.0));
-      shaped.yz *= 0.60 + 0.32 * pow(1.0 - t, 2.2) + collar * 1.18;
-      shaped.x += collar * side * 0.07;
+      // Rail carries a continuous penetrator with a broad driving heel. No detached
+      // white collar or periodic bands: a hot leading edge leaves a cold solid shaft.
+      shaped.yz *= 0.44 + 0.82 * pow(1.0 - t, 2.4);
+      shaped.x += side * side * (1.0-t) * .04;
     } else if (aBoltSize.w >= 3.5 && aBoltSize.w < 4.5) {
       // Induction is an opposed fork, not a thermal helix. Two thick channels
       // bridge at the heel, split, and reconnect at the charged leading junction.
@@ -164,6 +163,31 @@ const VERTEX_SHADER = /* glsl */`
       shaped.x=(t-.5)*.48+.16*cos(side*1.8)-shell*.075;
       shaped.y=cos(theta)*span;
       shaped.z=sin(theta)*span;
+    } else if (aBoltSize.w > 7.5) {
+      // A motor is fed at t=1 (the real rear nozzle). Two open, rolled exhaust banks
+      // spread into unequal afterburn reaches; torpedo carries a third loaded bank.
+      float patch=aBoltTopology.y,heavy=step(8.5,aBoltSize.w);
+      if(patch>1.5&&heavy<.5){vBoltWorld=vec3(0.0);gl_Position=vec4(2.0,2.0,2.0,1.0);return;}
+      float aft=1.0-t,turn=patch*(heavy>.5?2.0943951:3.14159265);
+      float section=side*2.3+.25*sin(aft*9.0-evolution*3.8+patch);
+      float spread=(.09+.36*pow(aft,.7))*(.8+.2*sin(t*3.14159265));
+      float radial=sin(section)*spread,deep=(.52-cos(section))*spread;
+      shaped.x=t-.5;
+      shaped.y=cos(turn)*radial-sin(turn)*deep;
+      shaped.z=sin(turn)*radial+cos(turn)*deep;
+      shaped.yz+=vec2(sin(aft*8.0-evolution*4.2+patch),cos(aft*7.0-evolution*3.0+patch))*.06*aft;
+    } else if (aBoltSize.w > 6.5) {
+      // Siege carries a loaded three-lobed bore chamber, with a dark axial lumen and
+      // a blunt compressed leading shoulder. This is separate volume topology, not a rail tint.
+      float patch=aBoltTopology.y,turn=patch*2.0943951;
+      float envelope=pow(max(bow,0.0),.42);
+      float roll=side*2.35+.12*sin(t*7.0-evolution*2.4+patch);
+      float radius=(.28+.11*smoothstep(.38,.76,t))*envelope;
+      float radial=radius+sin(roll)*.17*envelope;
+      float cross=(.62-cos(roll))*.17*envelope;
+      shaped.x=t-.5+envelope*.045*sin(side*2.0+patch);
+      shaped.y=cos(turn)*radial-sin(turn)*cross;
+      shaped.z=sin(turn)*radial+cos(turn)*cross;
     } else if (aBoltSize.w >= 5.5) {
       // Flak: a stubby tumbling fragment. Stepped facets instead of a taper, and a body that
       // sits off the flight axis, so fragmentation never reads as a short glowing dart.
@@ -221,7 +245,9 @@ const FRAGMENT_SHADER = /* glsl */`
     bool thermal=vVariant>.5&&vVariant<1.5;
     bool induction=vVariant>3.5&&vVariant<4.5;
     bool pressure=vVariant>4.5&&vVariant<5.5;
-    if(thermal||induction||pressure){
+    bool siege=vVariant>6.5&&vVariant<7.5;
+    bool motor=vVariant>7.5;
+    if(thermal||induction||pressure||siege||motor){
       float t=vUv.x,v=vUv.y*2.0-1.0;
       float flow=t*13.0-boltClock*5.8+vPatch*2.1;
       float curl=v+.19*boltWave(t*9.0-boltClock*3.1+vPatch);
@@ -244,6 +270,20 @@ const FRAGMENT_SHADER = /* glsl */`
         float front=boltStrand(t-.73-.05*boltWave(boltClock*3.0+vPatch),.15);
         hot=front*(.65+.70*secondary)+broad*.22;
         body=.20+.25*convection;alpha=.13+.40*front+.14*patches;
+      }else if(siege){
+        // Dense transported charge walks toward the shoulder while return flow vents
+        // down the outer folds. Dark separation survives even on a bright sky.
+        float shoulder=boltStrand(t-.72,.13);
+        float charge=boltStrand(t-(.24+.45*convection),.18);
+        hot=shoulder*(.45+.50*secondary)+charge*broad*.65+fold*.28;
+        body=.18+.24*patches;alpha=.23+.25*patches+.12*shoulder;
+      }else if(motor){
+        float aft=1.0-t;
+        float carried=.5+.5*boltWave(aft*17.0-boltClock*8.0+vPatch*1.8);
+        float nozzle=boltStrand(aft-.13,.10);
+        hot=(broad*(.35+.75*carried)+fold*.45)*(1.0-aft*.58)+nozzle*.48;
+        body=.12+.20*carried;alpha=(.20+.28*carried)*(1.0-smoothstep(.63,1.0,aft));
+        channel=boltStrand(curl,.25);
       }
       float tips=smoothstep(0.0,.085,t)*(1.0-smoothstep(.90,1.0,t));
       alpha*=edge*tips;
@@ -306,16 +346,15 @@ const FRAGMENT_SHADER = /* glsl */`
     col = mix(col, vec3(1.0, 0.97, 0.9), machCore * machHead * kinetic * 0.95);
     col = mix(col, vec3(1.0, 0.62, 0.22), machTail * kinetic * 0.85);
 
-    // Variant 3: Rail / Siege - relativistic needle with a white-hot core, a tight ionized
-    // halo, and shock rings running the shaft. Thinner and hotter than the kinetic Mach
-    // tracer: the most authoritative line on the field.
+    // Variant 3: Rail - a continuous cold shaft with a brief incandescent leading edge.
     float rail = step(2.5, vVariant) * (1.0 - step(3.5, vVariant));
     float railNeedle = pow(max(0.0, 1.0 - across), 10.0);
     float railHalo = pow(max(0.0, 1.0 - across), 2.6);
-    float railRings = 0.86 + uBoltFlicker * 0.14 * boltWave(vAlong * 44.0 - boltClock * 62.0);
     float railHead = smoothstep(0.35, 1.0, vAlong);
-    body = mix(body, (railNeedle * 1.7 + railHalo * 0.4) * railRings * (0.7 + railHead * 0.8), rail);
-    col = mix(col, vec3(1.0, 0.99, 0.96), railNeedle * rail * 0.95);
+    float railTip=boltStrand(vAlong-.78,.085);
+    body = mix(body, (railNeedle*(.64+.22*railHead)+railHalo*.24)*tip, rail);
+    vec3 railStock=mix(vSheath*.25,vColor*.72,railHead)+vec3(.75,.48,.20)*railTip*railNeedle;
+    col = mix(col,railStock,rail);
 
     // Variant 4: EMP - bifurcated electric arcs crackling across fins
     float emp = step(3.5, vVariant) * (1.0 - step(4.5, vVariant));

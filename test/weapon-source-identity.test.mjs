@@ -343,7 +343,7 @@ test('projectile drawn extent is a directional smear, never a damage footprint',
   pool.dispose();
 });
 
-test('every bolt dialect has its own silhouette, not one dart at seven widths', () => {
+test('every bolt dialect has its own silhouette, including siege and ordnance motors', () => {
   const pool = new EnergyBoltPool(null, { capacity: 2 });
   const shader = pool.material.vertexShader;
   // One branch per variant band. Before this lane, kinetic, rail and flak shared the unshaped
@@ -356,10 +356,12 @@ test('every bolt dialect has its own silhouette, not one dart at seven widths', 
     /aBoltSize\.w >= 3\.5 && aBoltSize\.w < 4\.5/,
     /aBoltSize\.w >= 4\.5 && aBoltSize\.w < 5\.5/,
     /aBoltSize\.w >= 5\.5/,
+    /aBoltSize\.w > 6\.5/,
+    /aBoltSize\.w > 7\.5/,
   ]) assert.match(shader, branch);
   // Every branch must move geometry (shaped.*), not only tint - tint lives in the fragment stage.
   const bodies = shader.split(/} else if \(aBoltSize\.w/).slice(1);
-  assert.equal(bodies.length, 6);
+  assert.equal(bodies.length, 8);
   for (const body of bodies) {
     assert.match(body.split('}')[0] + body.split('}')[1], /shaped\.(x|y|z|yz)/);
   }
