@@ -5886,20 +5886,21 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/apron_shuttle.glb",
-      "tris": 12202,
-      "bytes": 4037604,
+      "tris": 33304,
+      "bytes": 2040476,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
-        "SOCKET_Bay_Front",
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
@@ -5908,24 +5909,27 @@
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -9.300000190734863,
-          -2.2249999046325684,
-          -2.1600000858306885
+          -9.670866966247559,
+          -1.2670583724975586,
+          -2.7640111446380615
         ],
         "max": [
-          8.449999809265137,
-          1.7468531131744385,
-          2.0799999237060547
+          9.200294494628906,
+          2.3024609088897705,
+          2.7640111446380615
         ],
         "dimensionsM": [
-          17.75,
-          3.971853017807007,
-          4.240000009536743
+          18.871161460876465,
+          3.569519281387329,
+          5.528022289276123
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Apron Shuttle, live traffic role shuttle; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (3456/410/174 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -6321,18 +6325,19 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_arclight.glb",
-      "tris": 35888,
-      "bytes": 7175388,
+      "tris": 56374,
+      "bytes": 3279344,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN",
-        "Gun_Assembly"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -6343,25 +6348,27 @@
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -16.111364364624023,
-          -4.099999904632568,
-          -5.885962009429932
+          -15.720616340637207,
+          -2.000002384185791,
+          -5.9721832275390625
         ],
         "max": [
-          16.80000114440918,
-          4.203999757766724,
-          5.869999885559082
+          16.399999618530273,
+          6.931492328643799,
+          5.9721856117248535
         ],
         "dimensionsM": [
-          32.9113655090332,
-          8.303999662399292,
-          11.755961894989014
+          32.12061595916748,
+          8.93149471282959,
+          11.944368839263916
         ]
       },
       "note": "PQ-193.07 — Helios Arclight, rare heavy hauler. Distinct body from live Span/Atlas slots. Provenance: assets/ships/m4_hero_hauler/."
@@ -6739,46 +6746,50 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/inspection_cutter.glb",
-      "tris": 16503,
-      "bytes": 5046852,
+      "tris": 33880,
+      "bytes": 2011524,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
-        "SOCKET_Inspection_Front",
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
-        "SOCKET_Sensor_Dorsal",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -11.577497482299805,
-          -3.329519271850586,
-          -2.4963157176971436
+          -11.370562553405762,
+          -2.4000000953674316,
+          -2.720390796661377
         ],
         "max": [
-          11,
-          3.8499999046325684,
-          2.4963157176971436
+          11.30008316040039,
+          4.000248432159424,
+          2.7203235626220703
         ],
         "dimensionsM": [
-          22.577497482299805,
-          7.179519176483154,
-          4.992631435394287
+          22.670645713806152,
+          6.4002485275268555,
+          5.440714359283447
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Inspection Cutter, live traffic role customs; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4144/1356/578 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7271,46 +7282,49 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/prospector_skiff.glb",
-      "tris": 12244,
-      "bytes": 4052368,
+      "tris": 36895,
+      "bytes": 2143284,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
-        "SOCKET_Scan_Pin",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
-        "SOCKET_Weapon_Front",
-        "SOCKET_Work_Boom"
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -7.899999618530273,
-          -1.9494436979293823,
-          -2.6697006225585938
+          -8.121079444885254,
+          -1.0218192338943481,
+          -2.5892467498779297
         ],
         "max": [
-          9.440000534057617,
-          1.7400000095367432,
-          2.319999933242798
+          10.300000190734863,
+          2.220898389816284,
+          2.5892133712768555
         ],
         "dimensionsM": [
-          17.34000015258789,
-          3.6894437074661255,
-          4.989700555801392
+          18.421079635620117,
+          3.2427176237106323,
+          5.178460121154785
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Prospector Skiff, live traffic role prospector; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (2636/500/212 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7380,17 +7394,19 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/repair_tender.glb",
-      "tris": 18502,
-      "bytes": 4384148,
+      "tris": 52748,
+      "bytes": 3061692,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -7401,27 +7417,27 @@
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
-        "SOCKET_Umbilical_Dorsal",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Weapon_Front",
-        "SOCKET_Work_Boom"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -12.399999618530273,
-          -2.359999895095825,
-          -5.267666339874268
+          -12.370664596557617,
+          -1.6201947927474976,
+          -4.963932514190674
         ],
         "max": [
-          12.30000114440918,
-          3.380717158317566,
-          4.25
+          13.220000267028809,
+          3.327272653579712,
+          4.963932514190674
         ],
         "dimensionsM": [
-          24.700000762939453,
-          5.740717053413391,
-          9.517666339874268
+          25.590664863586426,
+          4.9474674463272095,
+          9.927865028381348
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Repair Tender, live traffic role tender; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (5652/920/392 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7431,46 +7447,49 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/rescue_lifter.glb",
-      "tris": 19676,
-      "bytes": 4435288,
+      "tris": 63359,
+      "bytes": 3605348,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
-        "SOCKET_Bay_Front",
         "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
-        "SOCKET_Hoist_Main",
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.200000762939453,
-          -2.7250001430511475,
-          -3.5999999046325684
+          -15.42050552368164,
+          -1.5800023078918457,
+          -3.952970266342163
         ],
         "max": [
-          14.80000114440918,
-          4.329999923706055,
-          3.5999999046325684
+          14.600010871887207,
+          3.902582883834839,
+          3.952970266342163
         ],
         "dimensionsM": [
-          29.000001907348633,
-          7.055000066757202,
-          7.199999809265137
+          30.020516395568848,
+          5.482585191726685,
+          7.905940532684326
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Rescue Lifter, live traffic role rescue; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4692/684/292 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7480,48 +7499,49 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/salvage_cutter.glb",
-      "tris": 13964,
-      "bytes": 4165432,
+      "tris": 35522,
+      "bytes": 2103892,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
-        "SOCKET_Cargo_Aft",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
-        "SOCKET_Tether_Port",
-        "SOCKET_Tether_Starboard",
         "SOCKET_Trail_Main",
-        "SOCKET_Weapon_Front",
-        "SOCKET_Work_Boom"
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -10.09999942779541,
-          -2,
-          -3.669999837875366
+          -10.37114429473877,
+          -1.4500200748443604,
+          -3.569999933242798
         ],
         "max": [
-          10.70056438446045,
-          3.1097946166992188,
-          3.669999837875366
+          10.75,
+          3.364231824874878,
+          3.569999933242798
         ],
         "dimensionsM": [
-          20.80056381225586,
-          5.109794616699219,
-          7.339999675750732
+          21.12114429473877,
+          4.814251899719238,
+          7.139999866485596
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Salvage Cutter, live traffic role salvor; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4400/742/318 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7531,46 +7551,50 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/scrap_sweeper.glb",
-      "tris": 12916,
-      "bytes": 4073192,
+      "tris": 31888,
+      "bytes": 2001700,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
-        "SOCKET_Bay_Front",
         "SOCKET_Camera_Focus",
-        "SOCKET_Cargo_Aft",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -9.5,
-          -2.350706934928894,
-          -3.1472036838531494
+          -10.22094440460205,
+          -1.228190302848816,
+          -3.282108783721924
         ],
         "max": [
-          9.426920890808105,
-          3.5,
-          3.1472036838531494
+          9.944897651672363,
+          3.2744998931884766,
+          3.282146692276001
         ],
         "dimensionsM": [
-          18.926920890808105,
-          5.850706934928894,
-          6.294407367706299
+          20.165842056274414,
+          4.5026901960372925,
+          6.564255475997925
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Scrap Sweeper, live traffic role sweeper; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (3520/678/290 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7580,47 +7604,50 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/survey_pin.glb",
-      "tris": 13884,
-      "bytes": 4704344,
+      "tris": 35374,
+      "bytes": 2085660,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
-        "SOCKET_Scan_Pin",
-        "SOCKET_Sensor_Dorsal",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -11.100000381469727,
-          -1.563264012336731,
-          -3.892145872116089
+          -10.370341300964355,
+          -1.149999976158142,
+          -4.199999809265137
         ],
         "max": [
-          9.800000190734863,
-          4.550000190734863,
-          4.050000190734863
+          11.532835960388184,
+          4.188587188720703,
+          4.199999809265137
         ],
         "dimensionsM": [
-          20.90000057220459,
-          6.113264203071594,
-          7.942146062850952
+          21.90317726135254,
+          5.338587164878845,
+          8.399999618530273
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Survey Pin, live traffic role surveyor; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4104/666/284 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7630,46 +7657,50 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/volatiles_tanker.glb",
-      "tris": 23377,
-      "bytes": 5227900,
+      "tris": 65248,
+      "bytes": 3718372,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
-        "SOCKET_Cargo_Dorsal",
-        "SOCKET_Coupling_Front",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -17.244871139526367,
-          -1.6758301258087158,
-          -3.333834171295166
+          -17.520679473876953,
+          -3.000007390975952,
+          -3.2219927310943604
         ],
         "max": [
-          17.880001068115234,
-          5.9735918045043945,
-          2.630000114440918
+          17.600311279296875,
+          3.6781911849975586,
+          3.2219927310943604
         ],
         "dimensionsM": [
-          35.1248722076416,
-          7.64942193031311,
-          5.963834285736084
+          35.12099075317383,
+          6.678198575973511,
+          6.443985462188721
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Volatiles Tanker, live traffic role tanker; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (8688/2646/1130 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7966,46 +7997,49 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/yard_tug.glb",
-      "tris": 24558,
-      "bytes": 4769860,
+      "tris": 64514,
+      "bytes": 3637072,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
         "SOCKET_Mining_Front",
-        "SOCKET_Push_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -12.618180274963379,
-          -1.5800000429153442,
-          -3.5401997566223145
+          -12.970670700073242,
+          -1.2700060606002808,
+          -3.9147284030914307
         ],
         "max": [
-          13.50999927520752,
-          4.420000076293945,
-          3.5401997566223145
+          13.321646690368652,
+          4.531373023986816,
+          3.9147284030914307
         ],
         "dimensionsM": [
-          26.1281795501709,
-          6.0000001192092896,
-          7.080399513244629
+          26.292317390441895,
+          5.801379084587097,
+          7.829456806182861
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Yard Tug, live traffic role tug; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (8208/3116/1331 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."

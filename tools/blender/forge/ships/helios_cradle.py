@@ -19,9 +19,10 @@ COLORS = {
     'paint2': '#98652a',       # miner ochre, deeper for the big bin mass
     'stripe': '#b87a28',
     'hazard': '#d99a2a',
-    'ceramic': '#1c1510',      # ore heap, dark umber
-    'ceramic.ore': '#2e2218',
-    'ceramic.ore2': '#4a3018',  # rusty lumps
+    'dark.ore': '#241c14',     # ore heap bed, near-black umber
+    'ceramic': '#1c1510',
+    'ceramic.ore': '#231a12',  # ore lumps
+    'ceramic.ore2': '#3a2614',  # rusty lumps
 }
 
 
@@ -75,7 +76,7 @@ def build():
     # Ore heap inside the well: a dark mound with chunky lumps on it.
     heap = [(-4.25, 1.0, 0.25), (-3.5, 2.1, 0.75), (-1.0, 2.15, 1.0), (1.5, 2.1, 0.75), (2.25, 1.0, 0.25)]
     F.loft(s, 'OreHeap', [dict(x=x, w=w, ht=h, hb=0.05, zc=2.1, n=2.2) for (x, w, h) in heap],
-           material='ceramic', count=32, bevel=0.0, smooth_angle=25.0)
+           material='dark.ore', count=32, bevel=0.0, smooth_angle=25.0)
     s.detail = 1
     k = 0
     for i, x in enumerate((-3.5, -2.5, -1.5, -0.5, 0.5, 1.5)):
@@ -85,7 +86,7 @@ def build():
             hx = max(0.0, 1.0 - ((x + jx + 1.0) / 3.4) ** 2)
             hy = max(0.0, 1.0 - ((y + jy) / 2.1) ** 2) ** 0.5
             z = 2.1 + 1.0 * hx * hy + 0.05
-            r = 0.36 + 0.14 * (0.5 + 0.5 * math.sin(k * 5.1))
+            r = 0.46 + 0.16 * (0.5 + 0.5 * math.sin(k * 5.1))
             ore_lump(s, f'Ore{k}', (x + jx, y + jy, z), r, seed=k + 1,
                      finish='ceramic.ore2' if k % 3 == 0 else 'ceramic.ore')
             k += 1

@@ -28,8 +28,8 @@ COLORS = {
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
-    build_frame(s)
-    build_engine(s)
+    build_frame(s, rail_y=0.95)
+    build_engine(s, ew=1.3)
 
     # Long cutting prow: flat diamond-section blade with a sodium ridge and a honed steel edge.
     F.loft(s, 'Prow', [
@@ -49,8 +49,8 @@ def build():
     # Blade armour over the frame: two swept plates a side, layered aft over fore, with a black slot
     # down the spine where the rig's truss still shows through.
     fwd = [(0.0, 0.32), (5.0, 0.32), (4.3, 0.95), (0.7, 2.0), (-0.4, 1.95)]
-    F.plate(s, 'ArmorFwd', fwd, z0=0.56, thickness=0.2, material='paint', chamfer=0.14, chamfer_bottom=0.04,
-            mirror=True, side_material='paint2')
+    F.plate(s, 'ArmorFwd', fwd, z0=0.56, thickness=0.2, material='paint2', chamfer=0.14, chamfer_bottom=0.04,
+            mirror=True, side_material='gunmetal')
     aft = [(-4.6, 0.32), (0.9, 0.32), (0.1, 1.3), (-2.9, 2.6), (-4.9, 3.1), (-4.25, 2.15), (-4.95, 1.4)]
     F.plate(s, 'ArmorAft', aft, z0=0.66, thickness=0.22, material='paint', chamfer=0.15, chamfer_bottom=0.04,
             mirror=True, side_material='paint2')
@@ -58,13 +58,17 @@ def build():
     F.band(s, 'ArmorAft', (-1.4, 1.95, 0), (0.4, 0.92, 0), 0.22, 'stripe', facing=(0, 0, 1), mirror=True,
            min_facing=0.2)
     F.panel(s, 'ArmorAft', (-2.6, 1.05), (2.2, 0.7), 'dark', inset=0.04, depth=-0.04, mirror=True)
+    # Honed steel along each aft blade's outer leading edge: the Ashline edge, as on the Dart.
+    blade_edge = [(0.3, 1.44), (-2.8, 2.78), (-5.1, 3.28), (-4.9, 3.1), (-2.9, 2.6), (0.1, 1.3)]
+    F.plate(s, 'BladeEdge', blade_edge, z0=0.7, thickness=0.1, material='bare', chamfer=0.03, mirror=True)
     F.band(s, 'ArmorFwd', (2.2, 1.0, 0), (1, 0, 0), 0.14, 'stripe', facing=(0, 0, 1), mirror=True, min_facing=0.2)
 
     # Canopy: a low raked blister on the prow root.
     F.canopy(s, 'Canopy', x0=3.6, x1=5.7, w=0.42, h=0.3, z=0.96, peak=0.4)
 
     # Twin long guns slung either side on pylons from the rails.
-    F.box(s, 'Pylon', (1.2, 1.55, 0.28), (0.9, 1.3, 0.22), material='paint2', mirror=True)
+    F.plate(s, 'Pylon', [(-0.6, 0.9), (1.9, 0.9), (1.5, 2.25), (-1.0, 2.25)], z0=0.18, thickness=0.22,
+            material='paint2', chamfer=0.06, mirror=True, side_material='gunmetal')
     F.cylinder(s, 'GunPod', (-1.6, 2.2, 0.25), (2.6, 2.2, 0.25), 0.27, 0.24, material='paint2', mirror=True,
                cap_material='dark', segments=28)
     F.band(s, 'GunPod', (0.4, 2.2, 0), (1, 0, 0), 0.2, 'stripe', mirror=True)

@@ -39,10 +39,15 @@ const manifestPath = join(ROOT, 'assets/ships/parts/parts_manifest.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const row = manifest.parts.find((r) => r.id === `wholeship_${entry.file}`);
 if (!row) throw new Error(`no parts_manifest row wholeship_${entry.file}`);
-row.tintable = {
+// Tint slots name only materials this body actually carries (a ship without a livery stripe has no
+// Material_Accent).
+const glb = readFileSync(join(ROOT, 'assets/ships/parts/wholeships', `${entry.file}.glb`));
+const glbJson = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8'));
+const present = new Set((glbJson.materials || []).map((m) => m.name));
+row.tintable = Object.fromEntries(Object.entries({
   hull: 'Material_Hull', dark: 'Material_Armor', mechanical: 'Material_Mechanical',
   accent: 'Material_Accent', canopy: 'Material_Canopy', thruster: 'Material_Thruster',
-};
+}).filter(([, name]) => present.has(name)));
 row.hooks = ['HOOK_DRIVE_CORE'];
 if (entry.note) row.note = entry.note;
 writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);

@@ -13,10 +13,10 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'volatiles_tanker'
 COLORS = {
-    'paint': '#c89a1e',    # hazard yellow tanks
+    'paint': '#9a7418',    # hazard yellow tanks (authored dark: big surfaces lift ~2.5x)
     'paint2': '#26282c',   # graphite cab, frames and drive block
     'stripe': '#121316',   # hazard black
-    'hazard': '#c89a1e',
+    'hazard': '#9a7418',
 }
 
 TANKS = (7.6, 2.6, -2.4, -7.4)   # tank centres (x)
@@ -77,7 +77,7 @@ def build():
         F.cylinder(s, f'Hatch{i}', (x0 - 0.8, 0.9, TR - 0.3), (x0 - 0.8, 0.9, TR + 0.12), 0.46, material='paint2',
                    segments=18)
     for j, x in enumerate(FRAMES):
-        F.light(s, f'WarnLamp{j}', (x, 0.0, MZ + 0.12), 'glow_red', size=0.34)
+        F.light(s, f'WarnLamp{j}', (x, 0.0, MZ + 0.16), 'glow_red', size=0.46)
         F.box(s, f'LampFoot{j}', (x, 0.0, CZ + 0.17), (0.5, 0.6, 0.1), material='gunmetal', bevel=0.01)
 
     # --- Blast shield between cab and cargo: graphite wall, wider than the cage, black/yellow top.
@@ -108,9 +108,9 @@ def build():
         dict(x=-15.8, w=2.6, ht=2.5, hb=2.5, zc=0.0, n=3.4),
         dict(x=-11.0, w=2.6, ht=2.5, hb=2.5, zc=0.0, n=3.4),
         dict(x=-10.3, w=2.3, ht=2.2, hb=2.2, zc=0.0, n=3.0),
-    ], material='paint2', back_material='dark', count=56)
-    for k, x in enumerate((-15.2, -14.5, -13.8)):
-        F.band(s, 'DriveBlock', (x, 0, 0), (0.707, 0.707, 0), 0.38, 'paint', facing=(0, 0, 1), min_facing=0.2)
+    ], material='paint2', back_material='dark', count=48)
+    for k, x in enumerate((-15.3, -14.55, -13.8)):
+        F.band(s, 'DriveBlock', (x, 0, 0), (1, 0, 0), 0.38, 'paint')
     F.panel(s, 'DriveBlock', (-12.1, 0.0), (2.2, 3.2), 'dark', inset=0.05, depth=-0.08)
     for y in (1.3, -1.3):
         F.nozzle(s, f'Nozzle{y}', (-17.5, y, 0.0), 1.0, 1.2, material='gunmetal', bell=1.15)

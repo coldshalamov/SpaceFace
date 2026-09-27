@@ -11,10 +11,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_apron_shuttle",
       "sourceUrl": "assets/ships/release/parts/wholeships/apron_shuttle.glb",
-      "releaseSha256": "9ec4a5ef177157b0fcb0f5dc482b6f5495fc1cbdca304518b1887e4c0c54b253",
-      "releaseBytes": 2774160,
+      "releaseSha256": "2772f11aa88fa7158ef5e76b970ebbf4f7a8928a3b6eea58512900e6544265f6",
+      "releaseBytes": 802572,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/apron-shuttle",
       "metadataUrl": "assets/ships/release/render-packages/apron-shuttle/render-package.json",
@@ -728,10 +729,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_arclight",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_arclight.glb",
-      "releaseSha256": "109d67993cc86ee0a63405c67aa44a37e67b15dda110830376fdb0d3b7207cff",
-      "releaseBytes": 6994988,
+      "releaseSha256": "150504c42ca7f45c5e58046d87c1adb69fb4bc94acfe1c99a94e4042a093eeb7",
+      "releaseBytes": 1147976,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-arclight",
       "metadataUrl": "assets/ships/release/render-packages/helios-arclight/render-package.json",
@@ -1022,10 +1024,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_inspection_cutter",
       "sourceUrl": "assets/ships/release/parts/wholeships/inspection_cutter.glb",
-      "releaseSha256": "231035fbbb1f256f108ce77b9ae99e6750de274534f8ba9926a916dbfaffc83e",
-      "releaseBytes": 3017852,
+      "releaseSha256": "0d4cf3382a77c1ba60a9fbf3df870e0aa12f0d2b50e5d28af30b32a6d1cda434",
+      "releaseBytes": 806024,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/inspection-cutter",
       "metadataUrl": "assets/ships/release/render-packages/inspection-cutter/render-package.json",
@@ -1335,10 +1338,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_prospector_skiff",
       "sourceUrl": "assets/ships/release/parts/wholeships/prospector_skiff.glb",
-      "releaseSha256": "55439095694d2affeb218264d2da4b5b1d9ae301697da3f97289e5ad6eb8a9a2",
-      "releaseBytes": 2782256,
+      "releaseSha256": "81c353440ea6d7c941c67444d18f91df969d975441e48a14c9a4cd1d403894b7",
+      "releaseBytes": 861284,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/prospector-skiff",
       "metadataUrl": "assets/ships/release/render-packages/prospector-skiff/render-package.json",
@@ -1367,10 +1371,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_repair_tender",
       "sourceUrl": "assets/ships/release/parts/wholeships/repair_tender.glb",
-      "releaseSha256": "b9fee4012e72f3f674ce67c7286f6f98ba841f31849f7fbe8fe1edc09aa41082",
-      "releaseBytes": 2857900,
+      "releaseSha256": "22d306eea599dbe643845c5d6c277e62d1275de50e19126728d1845bb243e259",
+      "releaseBytes": 1093768,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/repair-tender",
       "metadataUrl": "assets/ships/release/render-packages/repair-tender/render-package.json",
@@ -1384,10 +1389,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_rescue_lifter",
       "sourceUrl": "assets/ships/release/parts/wholeships/rescue_lifter.glb",
-      "releaseSha256": "5b05acdfbb8c2a4ae466a059a1e6c7affd9b1db179921c815134cb861dad3e61",
-      "releaseBytes": 2868564,
+      "releaseSha256": "614f57c312959fcbdfd42958f92c19b4535dd9653b25b85c7c68fa844ed04c2b",
+      "releaseBytes": 1248364,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/rescue-lifter",
       "metadataUrl": "assets/ships/release/render-packages/rescue-lifter/render-package.json",
@@ -1416,10 +1422,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_salvage_cutter",
       "sourceUrl": "assets/ships/release/parts/wholeships/salvage_cutter.glb",
-      "releaseSha256": "6b635e3dfa797875757fa28500f17183e23eab5246ffa418c1a87d0105351e75",
-      "releaseBytes": 2809616,
+      "releaseSha256": "46ef26425fffb0de49a9b96cd620ed379f4557f834f8c07314101f2641aceb6d",
+      "releaseBytes": 872712,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/salvage-cutter",
       "metadataUrl": "assets/ships/release/render-packages/salvage-cutter/render-package.json",
@@ -1448,10 +1455,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_scrap_sweeper",
       "sourceUrl": "assets/ships/release/parts/wholeships/scrap_sweeper.glb",
-      "releaseSha256": "d22b81c5f0a9062e2a195c7140c66ca7d21f6dafe4371562d2a18acd323eabea",
-      "releaseBytes": 2783328,
+      "releaseSha256": "29a8139251ecae3a64ae2e4ee204ba4575314c8ce650ecbda913015c3a1e163e",
+      "releaseBytes": 849756,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/scrap-sweeper",
       "metadataUrl": "assets/ships/release/render-packages/scrap-sweeper/render-package.json",
@@ -1555,10 +1563,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_survey_pin",
       "sourceUrl": "assets/ships/release/parts/wholeships/survey_pin.glb",
-      "releaseSha256": "dccdd77e22bb62b9e89c9fece5969d830ae468c21e5ee8d23b2bcf07caaa4276",
-      "releaseBytes": 2939888,
+      "releaseSha256": "6f37dbd4bcdcb9f32d7bacd7cec29d425de63405d4dc60eaec8c87a23fae6702",
+      "releaseBytes": 827932,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/survey-pin",
       "metadataUrl": "assets/ships/release/render-packages/survey-pin/render-package.json",
@@ -1602,10 +1611,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_volatiles_tanker",
       "sourceUrl": "assets/ships/release/parts/wholeships/volatiles_tanker.glb",
-      "releaseSha256": "8e30d998df72f06a528a5d79518e0e1dd28ec02a0ab84df92cccc2138c076f76",
-      "releaseBytes": 3081884,
+      "releaseSha256": "3c5295a06ad37faf5d4f3172f78c8da2bfb034670d7336ff6a67ab5bec1c4f32",
+      "releaseBytes": 1278972,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/volatiles-tanker",
       "metadataUrl": "assets/ships/release/render-packages/volatiles-tanker/render-package.json",
@@ -2069,10 +2079,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_yard_tug",
       "sourceUrl": "assets/ships/release/parts/wholeships/yard_tug.glb",
-      "releaseSha256": "b1dfd44a1615aee587b7b8c1b5e31871d9329fb53a09c3d864e1d648db3b4396",
-      "releaseBytes": 2947416,
+      "releaseSha256": "347180719464002bca05a56a408239fa697ac08f864d72c8237b6403bb2c1689",
+      "releaseBytes": 1234912,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/yard-tug",
       "metadataUrl": "assets/ships/release/render-packages/yard-tug/render-package.json",

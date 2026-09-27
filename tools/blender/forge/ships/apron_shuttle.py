@@ -46,10 +46,11 @@ def build():
     # Teal belt line under the window row, both flanks, raised a touch.
     for side in (1, -1):
         F.band(s, 'Body', (0, 0, -0.32), (0, 0, 1), 0.46, 'stripe', facing=(0, side, 0), min_facing=0.55)
-    # Teal nose ring and tail ring.
+    # Teal cab ring behind the windshield and a teal tail ring.
+    F.band(s, 'Body', (6.35, 0, 0), (1, 0, 0), 0.4, 'paint2', inset=0.02, depth=0.02)
     F.band(s, 'Body', (-7.85, 0, 0), (1, 0, 0), 0.5, 'paint2', inset=0.02, depth=0.02)
     # Raised roof plates fore and aft of the skylight spine.
-    F.panel(s, 'Body', (5.6, 0.0), (1.6, 2.2), 'paint', inset=0.04, depth=0.03)
+    F.panel(s, 'Body', (5.3, 0.0), (1.4, 2.2), 'paint', inset=0.04, depth=0.03)
     F.panel(s, 'Body', (-6.85, 0.0), (1.3, 2.3), 'dark', inset=0.04, depth=-0.06)
     # Dark rub strake at the waterline: the apron bumper, and a dark outline round the plan.
     for side in (1, -1):
@@ -103,7 +104,7 @@ def build():
     # Roof hardware: air units either side of the spine, a docking hatch ring forward, mast, dome.
     F.vent(s, 'RoofVent', (-4.6, 0.95, 1.45), (1.9, 0.4, 0.12), mirror=True, slats=5)
     F.vent(s, 'RoofVentFwd', (0.4, 0.95, 1.45), (1.9, 0.4, 0.12), mirror=True, slats=5)
-    F.cylinder(s, 'Hatch', (6.0, 0.0, HT - 0.1), (6.0, 0.0, HT + 0.12), 0.55, material='gunmetal', segments=32,
+    F.cylinder(s, 'Hatch', (5.5, 0.0, HT - 0.1), (5.5, 0.0, HT + 0.12), 0.55, material='gunmetal', segments=32,
                cap_material='paint2')
     F.antenna(s, 'Mast', (-7.2, -0.8, HT - 0.05), 0.8, tip=None)
     F.sensor_dome(s, 'Dome', (7.2, 0.0, 1.28), 0.26)

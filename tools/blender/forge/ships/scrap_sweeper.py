@@ -5,6 +5,7 @@ cable net, a brush roller spans the throat, an open rust-orange bin behind it is
 (the only ship in the fleet that shows its cargo from above), and a high olive cab block aft looks
 out over the bin, twin drives behind it.
 """
+import math
 import os
 import sys
 
@@ -13,15 +14,19 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'scrap_sweeper'
 COLORS = {
-    'paint': '#9a4a28',    # rust-orange
-    'paint2': '#4a4e2c',   # olive
+    'paint': '#7a3a20',    # rust-orange (authored dark: the key light lifts it ~2.5x)
+    'paint2': '#363b20',   # olive
     'stripe': '#26282c',   # graphite (chevron partner of the hazard yellow)
     'hazard': '#c89a1e',
     'bare.scrap': '#6f6a62',   # the scrap heap: dull mixed metal
     'paint.scrap': '#3f5a6a',  # a stray blue hull plate in the heap
 }
 
-AY = 2.72     # arm centre line
+# The sweeper arms flare: inner edge 1.95 m off the centre line at the throat, 2.35 m at the tips.
+
+
+def arm_in(x):
+    return 1.95 + (x - 2.3) / 7.3 * 0.4
 
 
 def work_lamp(s, name, base, direction, r, mirror=False):
@@ -68,6 +73,12 @@ def build():
         ((-2.2, -0.6, 0.35), (1.1, 0.7, 0.4), 1.2, 'paint2'),
         ((1.1, 0.4, 0.5), (0.9, 0.6, 0.35), -0.3, 'dark'),
         ((-1.6, 0.4, 0.62), (1.2, 0.2, 0.2), -1.0, 'gunmetal'),
+        ((-2.9, -1.1, 0.2), (1.0, 0.9, 0.6), 0.5, 'paint'),
+        ((0.9, -0.2, 0.25), (1.3, 1.0, 0.45), -1.1, 'bare.scrap'),
+        ((1.7, 1.1, 0.2), (0.8, 0.7, 0.5), 0.7, 'paint2'),
+        ((-0.6, 1.2, 0.3), (1.1, 0.8, 0.5), -0.2, 'bare.scrap'),
+        ((-2.9, 0.1, 0.5), (0.7, 1.5, 0.25), 0.1, 'gunmetal'),
+        ((0.3, -1.3, 0.3), (0.9, 0.6, 0.45), 1.4, 'paint.scrap'),
     ]
     for i, (c, sz, rz, fin) in enumerate(heap):
         F.box(s, f'Scrap{i}', c, sz, material=fin, bevel=0.04, rot_z=rz)
@@ -75,33 +86,36 @@ def build():
                cap_material='dark')
 
     # --- Throat: crossbeam carrying the brush roller, the arms bolted to its ends.
-    F.plate(s, 'Throat', [(3.6, 3.05), (2.3, 3.05), (2.3, -3.05), (3.6, -3.05)], z0=-0.9, thickness=0.75,
+    F.plate(s, 'Throat', [(3.6, 2.85), (2.3, 2.85), (2.3, -2.85), (3.6, -2.85)], z0=-0.9, thickness=0.75,
             material='paint2', chamfer=0.12)
-    F.cylinder(s, 'Roller', (3.45, 2.3, 0.2), (3.45, -2.3, 0.2), 0.55, material='dark', segments=28)
-    for i in range(7):
-        y = -1.95 + i * 0.65
+    F.cylinder(s, 'Roller', (3.45, 1.95, 0.2), (3.45, -1.95, 0.2), 0.55, material='dark', segments=28)
+    for i in range(6):
+        y = -1.62 + i * 0.65
         F.cylinder(s, f'Brush{i}', (3.45, y - 0.15, 0.2), (3.45, y + 0.15, 0.2), 0.68, material='paint2', segments=24,
                    bevel=0.0, cap=False)
-    F.box(s, 'RollerCheek', (3.45, 2.42, 0.1), (1.2, 0.24, 1.3), material='gunmetal', bevel=0.03, mirror=True)
+    F.box(s, 'RollerCheek', (3.45, 2.05, 0.1), (1.2, 0.24, 1.3), material='gunmetal', bevel=0.03, mirror=True)
 
-    # --- Sweeper arms: flat rust booms reaching forward, hazard-chevron tips.
-    arm = [(9.6, AY - 0.4), (9.9, AY + 0.1), (9.6, AY + 0.45), (2.3, AY + 0.42), (2.3, AY - 0.4)]
+    # --- Sweeper arms: flat rust booms flaring forward into a funnel mouth, hazard-chevron tips.
+    arm = [(9.6, arm_in(9.6)), (9.95, arm_in(9.6) + 0.45), (9.6, arm_in(9.6) + 0.86), (2.3, arm_in(2.3) + 0.86),
+           (2.3, arm_in(2.3))]
     F.plate(s, 'Arm', arm, z0=-0.55, thickness=0.95, material='paint', chamfer=0.14, chamfer_bottom=0.06,
             mirror=True)
     for i, x in enumerate((9.15, 8.45, 7.75)):
-        F.band(s, 'Arm', (x, AY, 0), (0.72, 0.69, 0), 0.34, 'hazard' if i % 2 == 0 else 'stripe', facing=(0, 0, 1),
-               min_facing=0.5, mirror=True)
-    F.band(s, 'Arm', (5.0, AY, 0), (1, 0, 0), 2.4, 'paint2', facing=(0, 0, 1), min_facing=0.5, inset=0.03,
+        F.band(s, 'Arm', (x, arm_in(x) + 0.4, 0), (0.72, 0.69, 0), 0.34, 'hazard' if i % 2 == 0 else 'stripe',
+               facing=(0, 0, 1), min_facing=0.5, mirror=True)
+    F.band(s, 'Arm', (5.0, 0, 0), (1, 0, 0), 2.4, 'paint2', facing=(0, 0, 1), min_facing=0.5, inset=0.03,
            depth=-0.03, mirror=True)
-    # arm guide rails: a raised gunmetal lip along the inner edge
-    F.box(s, 'ArmLip', (6.0, AY - 0.42, 0.05), (7.2, 0.16, 1.15), material='gunmetal', bevel=0.02, mirror=True)
+    # arm guide rail: a raised gunmetal lip along each inner edge
+    ang = math.atan2(0.4, 7.3)
+    F.box(s, 'ArmLip', (6.0, arm_in(6.0) + 0.02, 0.05), (7.2, 0.16, 1.15), material='gunmetal', bevel=0.02,
+          rot_z=ang, mirror=True)
     # --- The net: longitudinal and cross cables slung low in the mouth.
     NZ = -0.35
-    for i, y in enumerate((-1.8, -0.9, 0.0, 0.9, 1.8)):
-        F.cylinder(s, f'NetLong{i}', (3.9, y, NZ), (9.4, y * 1.12, NZ + 0.1), 0.05, material='gunmetal', segments=8,
+    for i, y in enumerate((-1.6, -0.8, 0.0, 0.8, 1.6)):
+        F.cylinder(s, f'NetLong{i}', (3.9, y, NZ), (9.4, y * 1.2, NZ + 0.1), 0.05, material='gunmetal', segments=8,
                    bevel=0.0)
     for i, x in enumerate((4.8, 6.4, 8.0, 9.35)):
-        F.cylinder(s, f'NetCross{i}', (x, AY - 0.45, NZ + 0.05), (x, -AY + 0.45, NZ + 0.05), 0.06, material='bare',
+        F.cylinder(s, f'NetCross{i}', (x, arm_in(x), NZ + 0.05), (x, -arm_in(x), NZ + 0.05), 0.06, material='bare',
                    segments=8, bevel=0.0)
 
     # --- Cab block aft: olive, tall, windows forward over the bin; drive block behind.
@@ -123,9 +137,9 @@ def build():
     s.hook('HOOK_DRIVE_CORE', (-10.1, 0.0, -0.5))
 
     s.detail = 1
-    work_lamp(s, 'ArmFlood', (9.2, AY + 0.15, 0.55), (0.72, 0.0, 0.7), 0.24, mirror=True)
+    work_lamp(s, 'ArmFlood', (9.2, arm_in(9.2) + 0.55, 0.55), (0.72, 0.0, 0.7), 0.24, mirror=True)
     work_lamp(s, 'CabFlood', (-4.8, 1.1, 2.25), (0.7, 0.0, 0.72), 0.2, mirror=True)
-    F.rcs(s, 'RCSFwd', (3.0, AY + 0.55, -0.2), size=0.34, mirror=True)
+    F.rcs(s, 'RCSFwd', (3.0, arm_in(3.0) + 0.99, -0.2), size=0.34, mirror=True)
     F.rcs(s, 'RCSAft', (-8.4, 1.95, -0.4), size=0.34, mirror=True)
     F.antenna(s, 'Mast', (-7.0, -0.9, 2.15), 1.1, tip='glow_red')
     for i, x in enumerate((-2.2, 0.4)):
@@ -133,9 +147,9 @@ def build():
                    segments=10, mirror=True)
     s.detail = 0
 
-    F.light(s, 'NavPort', (9.7, AY + 0.47, 0.1), 'glow_red', size=0.18)
-    F.light(s, 'NavStarboard', (9.7, -AY - 0.47, 0.1), 'glow_green', size=0.18)
-    F.light(s, 'ArmBeacon', (9.55, AY - 0.05, 0.45), 'glow_amber', size=0.2, mirror=True)
+    F.light(s, 'NavPort', (9.7, arm_in(9.6) + 0.84, 0.1), 'glow_red', size=0.18)
+    F.light(s, 'NavStarboard', (9.7, -arm_in(9.6) - 0.84, 0.1), 'glow_green', size=0.18)
+    F.light(s, 'ArmBeacon', (9.55, arm_in(9.55) + 0.25, 0.45), 'glow_amber', size=0.2, mirror=True)
     F.light(s, 'Beacon', (-5.8, 0.0, 2.32), 'glow_amber', size=0.24)
     return s
 

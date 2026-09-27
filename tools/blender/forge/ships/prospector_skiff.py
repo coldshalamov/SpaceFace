@@ -13,14 +13,15 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'prospector_skiff'
 COLORS = {
-    'paint': '#a8842c',    # prospector mustard
+    'paint': '#6e5a26',    # prospector mustard (authored dark: the key light lifts it ~2.5x)
     'paint2': '#2c2e33',   # graphite
     'stripe': '#2c2e33',
     'hazard': '#c8901e',
-    'paint.patch': '#8c6e26',  # a replaced plate, a shade off the original paint
+    'paint.patch': '#4b4a45',  # a replaced plate still in primer grey
 }
 
-TY = 1.95   # saddle tank centre line
+TY = 2.0    # saddle tank centre line
+TZ = 0.12   # saddle tank centre height
 
 
 def build():
@@ -40,25 +41,25 @@ def build():
     F.band(s, 'Hull', (-4.9, 0, 0), (1, 0, 0), 0.5, 'paint2', inset=0.02, depth=0.03)
     F.band(s, 'Hull', (4.6, 0, 0), (1, 0, 0), 0.9, 'paint2', inset=0.02, depth=0.02)
     F.band(s, 'Hull', (4.0, 0, 0), (1, 0, 0), 0.22, 'hazard')
-    F.panel(s, 'Hull', (0.2, 0.0), (1.6, 1.8), 'paint', inset=0.04, depth=0.03)
     # Cockpit bubble, set forward on the crown.
-    # Patch plate: a replaced panel on the starboard quarter, a shade off the original mustard.
-    F.panel(s, 'Hull', (-3.2, -1.2), (2.0, 0.55), 'paint.patch', inset=0.04, depth=0.04)
+    # Patch plate: a replaced crown panel still in primer grey, off-centre beside the canopy.
+    F.panel(s, 'Hull', (0.15, 0.5), (1.5, 0.85), 'paint.patch', inset=0.04, depth=0.04)
+    F.panel(s, 'Hull', (0.15, -0.5), (1.5, 0.85), 'paint', inset=0.04, depth=0.03)
     F.canopy(s, 'Canopy', x0=1.2, x1=4.4, w=0.72, h=0.55, z=1.25, peak=0.45, n=2.4)
     # --- Saddle tanks: graphite, with mustard end caps; one cap replaced in plain gunmetal.
     F.loft(s, 'Tank', [
-        dict(x=-4.9, w=0.25, ht=0.25, hb=0.25, zc=-0.15, n=2.0, y=TY),
-        dict(x=-4.6, w=0.48, ht=0.48, hb=0.48, zc=-0.15, n=2.0, y=TY),
-        dict(x=1.6, w=0.48, ht=0.48, hb=0.48, zc=-0.15, n=2.0, y=TY),
-        dict(x=2.2, w=0.3, ht=0.3, hb=0.3, zc=-0.15, n=2.0, y=TY),
-        dict(x=2.4, w=0.08, ht=0.08, hb=0.08, zc=-0.15, n=2.0, y=TY),
+        dict(x=-4.9, w=0.25, ht=0.25, hb=0.25, zc=TZ, n=2.0, y=TY),
+        dict(x=-4.6, w=0.48, ht=0.48, hb=0.48, zc=TZ, n=2.0, y=TY),
+        dict(x=1.6, w=0.48, ht=0.48, hb=0.48, zc=TZ, n=2.0, y=TY),
+        dict(x=2.2, w=0.3, ht=0.3, hb=0.3, zc=TZ, n=2.0, y=TY),
+        dict(x=2.4, w=0.08, ht=0.08, hb=0.08, zc=TZ, n=2.0, y=TY),
     ], material='paint2', count=36, mirror=True)
     F.band(s, 'Tank', (1.9, TY, 0), (1, 0, 0), 0.8, 'paint', mirror=True)
     F.band(s, 'Tank', (-4.5, TY, 0), (1, 0, 0), 0.6, 'paint', mirror=True)
     F.band(s, 'Tank', (-1.4, TY, 0), (1, 0, 0), 0.3, 'hazard', mirror=True)
     for i, x in enumerate((-3.4, 0.6)):
-        F.box(s, f'TankStrap{i}', (x, TY * 0.72, -0.1), (0.4, 1.0, 0.4), material='gunmetal', bevel=0.03, mirror=True)
-        F.cylinder(s, f'TankBand{i}', (x - 0.12, TY, -0.15), (x + 0.12, TY, -0.15), 0.52, material='gunmetal',
+        F.box(s, f'TankStrap{i}', (x, TY * 0.72, TZ), (0.4, 1.0, 0.4), material='gunmetal', bevel=0.03, mirror=True)
+        F.cylinder(s, f'TankBand{i}', (x - 0.12, TY, TZ), (x + 0.12, TY, TZ), 0.52, material='gunmetal',
                    segments=28, mirror=True, cap=False)
 
     # --- Drill lance: motor housing on the chin, long shaft, cutter head with spiral flutes.
@@ -96,17 +97,21 @@ def build():
                cap_material='dark')
     F.nozzle(s, 'Nozzle', (-8.1, 0.0, 0.1), 0.8, 1.0, material='gunmetal', bell=1.2)
     s.hook('HOOK_DRIVE_CORE', (-8.0, 0.0, 0.1))
+    # Canted tail fins off the drive collar: graphite, mustard tips (the skiff's little swagger).
+    F.plate(s, 'TailFin', [(-4.4, 0.7), (-6.4, 1.75), (-7.1, 1.75), (-6.3, 0.7)], z0=1.0, thickness=0.14,
+            material='paint2', chamfer=0.07, mirror=True)
+    F.band(s, 'TailFin', (-6.7, 1.6, 0), (0, 1, 0), 0.3, 'paint', facing=(0, 0, 1), mirror=True)
 
     s.detail = 1
-    F.rcs(s, 'RCS', (2.0, TY + 0.46, -0.15), size=0.3, mirror=True)
+    F.rcs(s, 'RCS', (2.0, TY + 0.46, TZ), size=0.3, mirror=True)
     F.antenna(s, 'Mast', (-0.3, -0.7, 1.22), 1.0, tip=None)
     F.cylinder(s, 'ProbeArm', (5.1, -0.75, 0.55), (6.7, -1.0, 0.55), 0.06, material='gunmetal', segments=8)
     F.sensor_dome(s, 'ProbeHead', (6.75, -1.0, 0.5), 0.16)
     F.box(s, 'ProbeFoot', (5.1, -0.75, 0.55), (0.3, 0.25, 0.25), material='gunmetal', bevel=0.02)
     s.detail = 0
 
-    F.light(s, 'NavPort', (-4.6, TY + 0.5, -0.1), 'glow_red', size=0.14)
-    F.light(s, 'NavStarboard', (-4.6, -TY - 0.5, -0.1), 'glow_green', size=0.14)
+    F.light(s, 'NavPort', (-4.6, TY + 0.5, TZ), 'glow_red', size=0.14)
+    F.light(s, 'NavStarboard', (-4.6, -TY - 0.5, TZ), 'glow_green', size=0.14)
     F.light(s, 'Beacon', (-5.25, 0.0, 1.5), 'glow_amber', size=0.16)
     return s
 

@@ -78,7 +78,7 @@ def build():
     for name, x0, x1, wr, wf, hr, hf in segs:
         shell(s, name, x0, x1, wr, wf, hr, hf, zc=0.32)
         # dorsal seam: the split between the two wing cases, a sunk dark groove
-        F.band(s, name, (0, 0, 0), (0, 1, 0), 0.2, 'dark', facing=(0, 0, 1), min_facing=0.4, inset=0.015,
+        F.band(s, name, (0, 0, 0), (0, 1, 0), 0.3, 'dark', facing=(0, 0, 1), min_facing=0.4, inset=0.02,
                depth=-0.05)
         # oxide-red rim round the shell's skirt: the underbody colour wraps up to the overlap edge
         F.band(s, name, (0, 0, 0.42), (0, 0, 1), 0.34, 'paint2')
@@ -97,7 +97,7 @@ def build():
         dict(x=4.75, w=1.5, ht=1.0, hb=0.18, zc=0.32, n=2.4),
         dict(x=4.95, w=1.05, ht=0.7, hb=0.14, zc=0.32, n=2.2),
     ], material='paint', back_material='dark', front_material='paint2', count=52, bevel=0.04)
-    F.band(s, 'Pronotum', (0, 0, 0), (0, 1, 0), 0.2, 'dark', facing=(0, 0, 1), min_facing=0.4, inset=0.015,
+    F.band(s, 'Pronotum', (0, 0, 0), (0, 1, 0), 0.3, 'dark', facing=(0, 0, 1), min_facing=0.4, inset=0.015,
            depth=-0.05)
     F.band(s, 'Pronotum', (4.45, 0, 0), (1, 0, 0), 0.3, 'hazard', inset=0.015, depth=0.02)
     F.band(s, 'Pronotum', (0, 0, 0.42), (0, 0, 1), 0.34, 'paint2')

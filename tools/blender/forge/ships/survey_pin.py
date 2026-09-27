@@ -13,8 +13,8 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'survey_pin'
 COLORS = {
-    'paint': '#8a4220',    # service orange (Helios key light lifts values ~2.5x: author dark)
-    'paint2': '#8e897f',   # instrument ivory
+    'paint': '#7a381a',    # service orange (Helios key light lifts values ~2.5x: author dark)
+    'paint2': '#7f7a70',   # instrument ivory
     'stripe': '#2a2c30',
     'hazard': '#c8901e',
 }
@@ -37,7 +37,10 @@ def build():
     F.band(s, 'Hull', (0, 0, 0), (0, 1, 0), 1.3, 'paint2', facing=(0, 0, 1), min_facing=0.55, inset=0.03, depth=0.03)
     F.band(s, 'Hull', (-7.9, 0, 0), (1, 0, 0), 0.45, 'paint2', inset=0.02, depth=0.02)
     F.canopy(s, 'Canopy', x0=1.2, x1=3.7, w=0.72, h=0.5, z=0.92, peak=0.45, n=2.4)
-    F.windows(s, 'HullWin', -1.6, 0.4, 1.66, 0.35, 4, size=(0.42, 0.22), mirror=True)
+    F.windows(s, 'HullWin', -1.6, 0.4, 1.66, 0.35, 3, size=(0.55, 0.3), mirror=True)
+    # instrument bays: dark recessed strips along the shoulders ahead of the arrays
+    for side in (1, -1):
+        F.panel(s, 'Hull', (0.2, 1.05 * side), (3.0, 0.42), 'dark', inset=0.03, depth=-0.05)
 
     # --- Survey boom: a banded rod far ahead of the nose ------------------------------------------
     F.loft(s, 'Boom', [
@@ -56,10 +59,11 @@ def build():
     F.cylinder(s, 'HeadPod', (9.7, 0, 0.2), (10.9, 0, 0.2), 0.42, 0.34, material='paint', segments=28,
                cap_material='stripe')
     F.cylinder(s, 'DishNeck', (10.3, 0, 0.5), (10.3, 0, 0.95), 0.12, material='gunmetal', segments=12)
-    F.cylinder(s, 'Dish', (10.2, 0, 0.9), (10.55, 0, 1.25), 0.25, 1.15, material='paint2', segments=40,
+    F.cylinder(s, 'Dish', (10.15, 0, 0.9), (10.55, 0, 1.3), 0.25, 1.4, material='paint2', segments=44,
                cap_material='gunmetal')
-    F.cylinder(s, 'DishFeed', (10.55, 0, 1.25), (11.05, 0, 1.75), 0.05, material='gunmetal', segments=8)
-    F.light(s, 'DishFeedLens', (11.08, 0, 1.78), 'glow_cyan', size=0.16)
+    F.cylinder(s, 'DishHub', (10.5, 0, 1.25), (10.62, 0, 1.37), 0.36, material='paint', segments=20)
+    F.cylinder(s, 'DishFeed', (10.6, 0, 1.35), (11.1, 0, 1.85), 0.05, material='gunmetal', segments=8)
+    F.light(s, 'DishFeedLens', (11.13, 0, 1.88), 'glow_cyan', size=0.16)
     F.light(s, 'HeadLens', (10.95, 0, 0.2), 'glow_cyan', size=0.26)
 
     # --- Big radome on the back -------------------------------------------------------------------
@@ -87,6 +91,10 @@ def build():
             ((-5.7, -0.7), 1.4, 'glow_cyan'), ((-8.1, -0.2), 0.9, None), ((-6.6, 0.0), 2.8, 'glow_red'))
     for i, ((x, y), h, tip) in enumerate(farm):
         F.antenna(s, f'Farm{i}', (x, y, 1.36), h, tip=tip)
+    # yagi cross-arms on the tall mast: reads as an antenna even from straight above
+    for i, (z, L) in enumerate(((1.36 + 1.7, 1.7), (1.36 + 2.2, 1.3), (1.36 + 2.6, 0.9))):
+        F.box(s, f'Yagi{i}', (-6.6, 0.0, z), (0.07, L, 0.07), material='gunmetal', bevel=0.0)
+        F.light(s, f'YagiTip{i}', (-6.6, L / 2, z), 'glow_cyan', size=0.08, mirror=True)
     F.cylinder(s, 'FarmDishPost', (-7.9, 0.75, 1.1), (-7.9, 0.75, 1.75), 0.06, material='gunmetal', segments=8)
     F.cylinder(s, 'FarmDish', (-7.95, 0.75, 1.7), (-7.75, 0.75, 1.9), 0.08, 0.5, material='paint2', segments=24)
     F.box(s, 'FarmDeck', (-6.8, 0.0, 1.3), (3.2, 1.6, 0.14), material='gunmetal', bevel=0.02)

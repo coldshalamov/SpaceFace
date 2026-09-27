@@ -68,8 +68,14 @@ def build():
     F.band(s, 'Body', (7.6, 0, 0), (1, 0, 0), 0.7, 'paint2', inset=0.02, depth=0.03)
     F.band(s, 'Body', (6.6, 0, 0), (1, 0, 0), 0.3, 'paint2', inset=0.02, depth=0.03)
     F.band(s, 'Body', (-1.6, 0, 0), (1, 0, 0), 0.5, 'paint2', inset=0.02, depth=0.03)
-    F.panel(s, 'Body', (3.0, 0.0), (4.4, 2.6), 'paint', inset=0.05, depth=0.04)
-    F.panel(s, 'Body', (-0.6, 0.0), (1.6, 1.8), 'dark', inset=0.04, depth=-0.05)
+    F.panel(s, 'Body', (4.6, 0.0), (2.6, 2.8), 'paint', inset=0.05, depth=0.04)
+    # Roof rescue hatch: a big graphite collar ring with an orange lid (the top-down 'rescue' mark).
+    F.cylinder(s, 'RoofHatch', (4.6, 0.0, 2.2), (4.6, 0.0, 2.5), 0.95, material='paint.graphite', segments=36)
+    F.cylinder(s, 'RoofHatchLid', (4.6, 0.0, 2.5), (4.6, 0.0, 2.62), 0.72, material='paint2', segments=36)
+    F.box(s, 'RoofHatchBar', (4.6, 0.0, 2.66), (1.3, 0.22, 0.1), material='gunmetal', bevel=0.02)
+    # Graphite equipment deck aft on the roof.
+    F.plate(s, 'EquipDeck', [(1.9, 1.15), (-2.3, 1.15), (-2.3, -1.15), (1.9, -1.15)], z0=1.95, thickness=0.55,
+            material='paint.graphite', chamfer=0.1)
     F.windows(s, 'CabWin', 8.4, 10.4, 2.24, 0.75, 3, size=(0.5, 0.36), mirror=True)
     # Side airlock (rescue hatch): a raised orange door frame on each flank.
     F.box(s, 'Airlock', (4.4, 2.26, 0.15), (1.5, 0.16, 2.0), material='paint2', bevel=0.05, mirror=True)
@@ -118,31 +124,35 @@ def build():
     F.box(s, 'HookBlock', (GX, 0.0, -0.8), (0.7, 0.5, 0.5), material='hazard', bevel=0.05)
 
     # --- Clamp jaws: arms reaching in from both rails, orange pads, fore and aft of the gantry.
-    for i, x in enumerate((-2.6, -10.6)):
-        F.plate(s, f'Jaw{i}', [(x + 0.45, RY - 0.5), (x + 0.3, 1.35), (x - 0.3, 1.35), (x - 0.45, RY - 0.5)],
-                z0=-0.25, thickness=0.55, material='gunmetal', chamfer=0.08, mirror=True)
-        F.box(s, f'JawPad{i}', (x, 1.2, 0.02), (0.95, 0.35, 0.8), material='paint2', bevel=0.05, mirror=True)
-        F.cylinder(s, f'JawRam{i}', (x, RY - 0.4, 0.45), (x, 1.7, 0.45), 0.14, material='bare', segments=12,
-                   mirror=True)
+    for i, x in enumerate((-3.9, -10.1)):
+        F.plate(s, f'Jaw{i}', [(x + 0.62, RY - 0.3), (x + 0.45, 0.95), (x - 0.45, 0.95), (x - 0.62, RY - 0.3)],
+                z0=0.05, thickness=0.72, material='paint2', chamfer=0.1, mirror=True)
+        F.band(s, f'Jaw{i}', (x, 1.35, 0), (0, 1, 0), 0.3, 'hazard', facing=(0, 0, 1), min_facing=0.5, mirror=True)
+        F.box(s, f'JawPad{i}', (x, 0.88, 0.35), (1.0, 0.26, 0.95), material='dark', bevel=0.06, mirror=True)
+        F.box(s, f'JawHinge{i}', (x, RY - 0.45, 0.62), (1.4, 0.5, 0.5), material='gunmetal', bevel=0.05, mirror=True)
+        F.cylinder(s, f'JawRam{i}', (x + 0.3, RY - 0.5, 0.86), (x + 0.3, 1.25, 0.86), 0.1, material='bare',
+                   segments=10, mirror=True)
+        F.cylinder(s, f'JawRamB{i}', (x - 0.3, RY - 0.5, 0.86), (x - 0.3, 1.25, 0.86), 0.1, material='bare',
+                   segments=10, mirror=True)
 
     # --- Light bar on the cab roof: alternating red and amber blocks on a graphite bar.
     F.box(s, 'LightBar', (10.0, 0.0, 2.3), (0.8, 3.2, 0.3), material='paint.graphite', bevel=0.04)
     for i, y in enumerate((-1.3, -0.65, 0.0, 0.65, 1.3)):
         F.box(s, f'Lamp{i}', (10.0, y, 2.52), (0.62, 0.5, 0.2), material='glow_red' if i % 2 == 0 else 'glow_amber',
               bevel=0.0)
-    beacon(s, 'BeaconAft', (-2.6, 0.0, 2.1), 'glow_amber', r=0.3)
+    beacon(s, 'BeaconAft', (-0.75, 0.0, 2.6), 'glow_amber', r=0.3)
     beacon(s, 'RailBeacon', (-12.4, RY, RZ + 0.92), 'glow_red', r=0.24, mirror=True)
     beacon(s, 'ShoulderBeacon', (1.4, RY - 0.2, 0.62), 'glow_amber', r=0.2, mirror=True)
 
     s.detail = 1
-    work_lamp(s, 'CradleFlood', (GX + 0.3, RY - 0.05, 1.55), (-0.5, -0.35, 0.79), 0.26, mirror=True)
+    work_lamp(s, 'CradleFlood', (GX + 1.25, RY - 0.1, 1.45), (0.35, -0.3, 0.89), 0.36, mirror=True)
     work_lamp(s, 'NoseFlood', (12.3, 1.2, 1.55), (0.6, 0.0, 0.8), 0.2, mirror=True)
-    F.vent(s, 'RoofVent', (4.2, 1.15, 2.12), (2.2, 0.5, 0.12), mirror=True, slats=6)
+    F.vent(s, 'RoofVent', (0.2, 0.62, 2.5), (2.4, 0.46, 0.1), mirror=True, slats=7)
     F.vent(s, 'RailVent', (-1.6, RY, RZ + 0.8), (1.4, 0.8, 0.1), mirror=True, slats=5)
     F.rcs(s, 'RCSFwd', (11.0, 2.08, 0.0), size=0.36, mirror=True)
     F.rcs(s, 'RCSAft', (-12.0, RY + 0.72, RZ), size=0.36, mirror=True)
-    F.antenna(s, 'Mast', (1.0, -0.9, 2.2), 1.2, tip=None)
-    F.sensor_dome(s, 'Dome', (1.0, 0.9, 2.22), 0.34)
+    F.antenna(s, 'Mast', (1.5, 0.0, 2.5), 1.4, tip=None)
+    F.sensor_dome(s, 'Dome', (-1.65, 0.0, 2.5), 0.4)
     s.detail = 0
 
     F.light(s, 'NavPort', (-13.6, RY + 1.0, RZ), 'glow_red', size=0.2)

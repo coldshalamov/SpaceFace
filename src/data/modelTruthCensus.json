@@ -57077,57 +57077,57 @@
     {
       "bounds": {
         "center": [
-          -0.65,
-          1.493285,
-          0.079127
+          0.581247,
+          1.518774,
+          0
         ],
         "max": [
-          9.8,
-          4.549487,
-          4.050329
+          11.532836,
+          4.187884,
+          4.2
         ],
         "min": [
-          -11.1,
-          -1.562916,
-          -3.892074
+          -10.370341,
+          -1.150336,
+          -4.2
         ],
         "size": [
-          20.900001,
-          6.112404,
-          7.942403
+          21.903177,
+          5.33822,
+          8.4
         ]
       },
-      "bytes": 2939888,
+      "bytes": 827932,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:traffic:surveyor",
         "kind": "proxy",
         "outline": [
-          12.864623,
-          12.521856,
-          4.806493,
-          4.088649,
-          3.342015,
-          3.019108,
-          4.572169,
-          4.472096,
-          5.978388,
-          6.460555,
-          11.118238,
-          11.297718,
-          11.297718,
-          11.750536,
-          6.460521,
-          5.978304,
-          4.471984,
-          4.572169,
-          2.290124,
-          2.551472,
-          3.349043,
-          4.80631,
-          12.583111,
-          12.864622
+          11.444076,
+          5.56767,
+          6.539529,
+          5.771765,
+          4.979632,
+          1.886602,
+          1.890184,
+          0.545545,
+          0.614883,
+          3.178194,
+          3.701157,
+          12.679014,
+          12.679014,
+          3.701157,
+          3.178194,
+          0.614883,
+          0.545545,
+          1.890184,
+          1.886602,
+          4.979632,
+          5.771765,
+          6.539194,
+          5.56767,
+          11.444085
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -57140,7 +57140,7 @@
         0,
         0
       ],
-      "drawScale": 1.152153,
+      "drawScale": 1.099384,
       "family": "traffic-hull",
       "forwardAxis": "+X",
       "frozenMesh": false,
@@ -57172,7 +57172,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_BrushedMetal_RemasterNickel",
+          "name": "Material_Accent",
           "role": "opaqueHull"
         },
         {
@@ -57180,32 +57180,56 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Cyan",
+          "name": "Material_Armor",
           "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "Material_Canopy",
+          "role": "glass"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": false,
-          "doubleSided": true,
-          "name": "Material_Emissive_Warm_RemasterRecess",
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
           "role": "emissive"
         },
         {
           "additive": false,
-          "alphaMode": "BLEND",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Glass",
-          "role": "glass"
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan",
+          "role": "emissive"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
-          "depthWrite": true,
+          "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_Glass_RemasterOptical",
-          "role": "glass"
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
         },
         {
           "additive": false,
@@ -57228,24 +57252,16 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Mechanical_RemasterHeatCopper",
+          "name": "Material_MechanicalDark",
           "role": "opaqueHull"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
-          "depthWrite": true,
+          "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_Mechanical_RemasterOxidized",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "Material_Warm",
-          "role": "opaqueHull"
+          "name": "Material_Thruster",
+          "role": "emissive"
         },
         {
           "additive": false,
@@ -57257,19 +57273,19 @@
         }
       ],
       "measuredProportions": {
-        "halfWidth": 0.326817,
-        "height": 0.50303,
+        "halfWidth": 0.329815,
+        "height": 0.419197,
         "length": 1.72
       },
       "meshHash": null,
-      "meshes": 23,
-      "nodes": 35,
+      "meshes": 37,
+      "nodes": 50,
       "note": null,
       "opening": null,
       "pivot": [
-        -0.65,
-        1.493285,
-        0.079127
+        0.581247,
+        1.518774,
+        0
       ],
       "proposedSkin": {
         "adopted": true,
@@ -57282,8 +57298,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.896877,
-            "bz": -0.118076,
+            "bx": -0.796277,
+            "bz": -0.104832,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.032143
@@ -57291,8 +57307,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.813136,
-            "bz": -0.336812,
+            "bx": -0.35422,
+            "bz": -0.146723,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.032143
@@ -57300,8 +57316,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.261041,
-            "bz": -0.200304,
+            "bx": -0.359249,
+            "bz": -0.275662,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.032143
@@ -57309,8 +57325,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.16909,
-            "bz": -0.220362,
+            "bx": -0.242277,
+            "bz": -0.315741,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.032143
@@ -57318,8 +57334,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.085886,
-            "bz": -0.207346,
+            "bx": -0.130649,
+            "bz": -0.315415,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.032143
@@ -57327,8 +57343,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.026283,
-            "bz": -0.199642,
+            "bx": -0.015725,
+            "bz": -0.119441,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.032143
@@ -57336,8 +57352,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.040763,
-            "bz": -0.309626,
+            "bx": 0.015758,
+            "bz": -0.119695,
             "id": "arm-6",
             "kind": "capsule",
             "r": 0.032143
@@ -57345,8 +57361,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.116776,
-            "bz": -0.281922,
+            "bx": 0.009445,
+            "bz": -0.022803,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.032143
@@ -57354,8 +57370,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.251261,
-            "bz": -0.32745,
+            "bx": 0.01804,
+            "bz": -0.023511,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.032143
@@ -57363,8 +57379,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.354774,
-            "bz": -0.272227,
+            "bx": 0.168769,
+            "bz": -0.129501,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.032143
@@ -57372,8 +57388,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.72051,
-            "bz": -0.298445,
+            "bx": 0.231046,
+            "bz": -0.095702,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.032143
@@ -57381,8 +57397,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.785913,
-            "bz": -0.103467,
+            "bx": 0.883732,
+            "bz": -0.116346,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.032143
@@ -57390,8 +57406,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.785913,
-            "bz": 0.103467,
+            "bx": 0.883732,
+            "bz": 0.116346,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.032143
@@ -57399,8 +57415,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.762236,
-            "bz": 0.315728,
+            "bx": 0.231046,
+            "bz": 0.095702,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.032143
@@ -57408,8 +57424,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.354772,
-            "bz": 0.272226,
+            "bx": 0.168769,
+            "bz": 0.129501,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.032143
@@ -57417,8 +57433,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.251258,
-            "bz": 0.327445,
+            "bx": 0.01804,
+            "bz": 0.023511,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.032143
@@ -57426,8 +57442,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.116773,
-            "bz": 0.281914,
+            "bx": 0.009445,
+            "bz": 0.022803,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.032143
@@ -57435,8 +57451,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.040763,
-            "bz": 0.309626,
+            "bx": 0.015758,
+            "bz": 0.119695,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.032143
@@ -57444,8 +57460,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.019487,
-            "bz": 0.148017,
+            "bx": -0.015725,
+            "bz": 0.119441,
             "id": "arm-18",
             "kind": "capsule",
             "r": 0.032143
@@ -57453,8 +57469,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.064276,
-            "bz": 0.155177,
+            "bx": -0.130649,
+            "bz": 0.315415,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.032143
@@ -57462,8 +57478,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.13693,
-            "bz": 0.17845,
+            "bx": -0.242277,
+            "bz": 0.315741,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.032143
@@ -57471,8 +57487,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.261031,
-            "bz": 0.200296,
+            "bx": -0.35923,
+            "bz": 0.275647,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.032143
@@ -57480,8 +57496,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.817179,
-            "bz": 0.338487,
+            "bx": -0.35422,
+            "bz": 0.146723,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.032143
@@ -57489,38 +57505,46 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.896877,
-            "bz": 0.118076,
+            "bx": -0.796278,
+            "bz": 0.104832,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.032143
           }
         ],
-        "silhouetteRadius": 12.864623,
+        "silhouetteRadius": 12.679014,
         "toleranceWu": 2
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 104,
-        "inwardFaceFraction": 0.486,
-        "silhouetteRadius": 12.864623,
+        "boundaryEdges": 4157,
+        "inwardFaceFraction": 0.2945,
+        "silhouetteRadius": 12.679014,
         "sliceY": 0
       },
       "sockets": [
         {
           "name": "SOCKET_Camera_Focus",
           "position": [
-            0,
-            0.6,
+            2.333582,
+            1.51725,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0.581364,
+            -1.1,
             0
           ]
         },
         {
           "name": "SOCKET_Engine_Main",
           "position": [
-            -10.85,
+            -10.1,
             0,
             0
           ]
@@ -57528,73 +57552,73 @@
         {
           "name": "SOCKET_Mining_Front",
           "position": [
-            9.8,
-            1.493285,
-            0.079127
+            11.032727,
+            1.36725,
+            0
           ]
         },
         {
           "name": "SOCKET_RCS_Port",
           "position": [
-            -0.65,
-            1.493285,
-            -3.892074
+            0.581364,
+            1.51725,
+            -2.52
           ]
         },
         {
           "name": "SOCKET_RCS_Starboard",
           "position": [
-            -0.65,
-            1.493285,
-            4.050329
-          ]
-        },
-        {
-          "name": "SOCKET_Scan_Pin",
-          "position": [
-            10.3,
-            0,
-            3.05
-          ]
-        },
-        {
-          "name": "SOCKET_Sensor_Dorsal",
-          "position": [
-            0.2,
-            2.95,
-            0
+            0.581364,
+            1.51725,
+            2.52
           ]
         },
         {
           "name": "SOCKET_Tether_Massline",
           "position": [
-            -5.3525,
-            1.493285,
-            0.079127
+            -4.237236,
+            2.09225,
+            0
           ]
         },
         {
           "name": "SOCKET_Trail_Main",
           "position": [
-            -11.3,
+            -10.47,
             0,
             0
           ]
         },
         {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -10.47,
+            0,
+            -1.05
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -10.47,
+            0,
+            1.05
+          ]
+        },
+        {
           "name": "SOCKET_Utility_Dorsal",
           "position": [
-            -4.6,
-            2.2,
+            0.581364,
+            4.1345,
             0
           ]
         },
         {
           "name": "SOCKET_Weapon_Front",
           "position": [
-            9.8,
-            1.493285,
-            0.079127
+            11.132728,
+            1.51725,
+            0
           ]
         }
       ],
@@ -57602,15 +57626,15 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 13884,
+      "triangles": 35374,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
       "url": "assets/ships/release/parts/wholeships/survey_pin.glb",
       "worldSize": [
         24.08,
-        7.042425,
-        9.150864
+        5.868753,
+        9.234824
       ]
     },
     {

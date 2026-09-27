@@ -13,13 +13,13 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'salvage_cutter'
 COLORS = {
-    'paint': '#56624f',         # salvage green-grey
-    'paint2': '#30362e',        # dark green-grey armour
-    'stripe': '#30362e',
-    'hazard': '#c85a1c',        # salvage orange
-    'paint.patch': '#6a4630',   # rust-primer patch plate
-    'paint.primer': '#5b5e60',  # grey-primer patch plate
-    'paint2.olive': '#48532f',  # olive replacement plate
+    'paint': '#364640',         # salvage green-grey (Helios key light lifts values ~2.5x: author dark)
+    'paint2': '#212824',        # dark green-grey armour
+    'stripe': '#212824',
+    'hazard': '#b8521a',        # salvage orange
+    'paint.patch': '#5a3622',   # rust-primer patch plate
+    'paint.primer': '#4c4f51',  # grey-primer patch plate
+    'paint2.olive': '#3c4526',  # olive replacement plate
 }
 
 
@@ -61,6 +61,7 @@ def build():
     F.band(s, 'Hull', (-8.1, 0, 0), (1, 0, 0), 0.5, 'hazard', inset=0.02, depth=0.02)
     # patched plates: mismatched replacement panels, modelled proud of the skin
     F.panel(s, 'Hull', (1.6, 0.95), (1.5, 1.1), 'paint.patch', inset=0.04, depth=0.05)
+    F.panel(s, 'Hull', (-0.05, 0.35), (0.8, 1.3), 'dark', inset=0.04, depth=-0.05)
     F.panel(s, 'Hull', (-8.6, -1.1), (1.2, 1.2), 'paint.primer', inset=0.04, depth=0.05)
     F.panel(s, 'Hull', (0.4, -1.4), (1.1, 0.8), 'paint2.olive', inset=0.04, depth=0.04)
     F.panel(s, 'Hull', (-4.2, 2.35), (1.6, 0.5), 'paint.primer', facing=(0, 1, 0), inset=0.04, depth=0.04)
@@ -84,6 +85,12 @@ def build():
     F.plate(s, 'Blade', blade, z0=-0.1, thickness=0.2, material='bare', chamfer=0.06, mirror=True)
     glow = list(offset(edge, -0.05)) + list(reversed(offset(edge, 0.08)))
     F.plate(s, 'CutterEdge', glow, z0=-0.13, thickness=0.26, material='glow_amber', mirror=True)
+    # shredder roller in the jaw throat: toothed drum that feeds cut scrap back to the cage
+    F.cylinder(s, 'Shredder', (5.75, 1.05, 0.0), (5.75, -1.05, 0.0), 0.5, material='dark', segments=28)
+    for i in range(6):
+        y = -0.85 + i * 0.34
+        F.cylinder(s, f'ShredderTooth{i}', (5.75, y - 0.06, 0.0), (5.75, y + 0.06, 0.0), 0.62, material='bare',
+                   segments=10, bevel=0.0)
     # hydraulic rams from hull shoulders to jaw backs
     F.cylinder(s, 'JawRam', (1.8, 2.2, 0.55), (4.6, 2.7, 0.55), 0.3, material='gunmetal', mirror=True,
                cap_material='dark', segments=20)
@@ -118,6 +125,8 @@ def build():
     F.box(s, 'Scrap0', (-6.4, 0.9, 2.0), (1.6, 1.0, 0.8), material='paint.primer', rot_z=0.4, bevel=0.03)
     F.box(s, 'Scrap1', (-4.6, -0.8, 1.95), (2.0, 1.2, 0.7), material='paint.patch', rot_z=-0.3, bevel=0.03)
     F.box(s, 'Scrap2', (-2.3, 0.7, 2.1), (1.4, 1.3, 1.0), material='paint2.olive', rot_z=0.9, bevel=0.03)
+    F.plate(s, 'ScrapWing', [(-7.3, -1.7), (-5.2, -1.2), (-5.6, -0.3), (-7.1, -0.6)], z0=2.25, thickness=0.12,
+            material='hazard', chamfer=0.0)
     F.cylinder(s, 'ScrapSpar', (-7.2, -1.4, 2.0), (-1.2, 0.2, 2.5), 0.16, material='bare', segments=12)
     F.nozzle(s, 'ScrapBell', (-1.6, -1.0, 2.1), 0.45, 0.6, material='gunmetal', glow='dark')
     F.plate(s, 'ScrapSheet', [(-5.6, 0.2), (-3.4, -0.2), (-3.0, 1.4), (-4.9, 1.6)], z0=2.2, thickness=0.08,

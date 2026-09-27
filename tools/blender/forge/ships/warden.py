@@ -16,8 +16,8 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'warden'
 COLORS = {
-    'paint': '#223247',    # navy hull
-    'paint2': '#282f3a',   # steel armour: turret houses, bridge tier, belt plates
+    'paint': '#1a2840',    # navy hull (brief #223247, deepened: the key light lifts it to slate)
+    'paint2': '#2a3342',   # steel armour: turret houses, bridge tier, belt plates
     'stripe': '#7e622b',   # gold trim (brief #b08a3c, authored darker: the key light lifts ~2.5x)
     'hazard': '#7e622b',
     'dark': '#16191e',
@@ -98,12 +98,12 @@ def turret(s, name, x, y, z, sc=1.0, barrels=3, yaw=0.0, housing='paint2', range
 
 def pd_mount(s, name, x, y, z, yaw=0.0):
     """Point-defence mount: squat drum with a twin gatling pointed outboard."""
-    F.cylinder(s, name + '_Drum', (x, y, z - 0.15), (x, y, z + 0.35), 0.38, 0.32, material='gunmetal',
+    F.cylinder(s, name + '_Drum', (x, y, z - 0.15), (x, y, z + 0.35), 0.38, 0.32, material='paint2',
                segments=14, bevel=0.0, cap_material='dark')
     c, sn = math.cos(yaw), math.sin(yaw)
     for dy in (-0.1, 0.1):
-        F.cylinder(s, f'{name}_Gun{dy}', (x + 0.2 * c - dy * sn, y + 0.2 * sn + dy * c, z + 0.25),
-                   (x + 1.1 * c - dy * sn, y + 1.1 * sn + dy * c, z + 0.25), 0.05, material='dark',
+        F.cylinder(s, f'{name}_Gun{dy}', (x + 0.2 * c - dy * sn, y + 0.2 * sn + dy * c, z + 0.22),
+                   (x + 0.95 * c - dy * sn, y + 0.95 * sn + dy * c, z + 0.22), 0.05, material='gunmetal',
                    segments=8, bevel=0.0)
 
 
@@ -135,8 +135,10 @@ def build():
     F.band(s, 'Deck', (0, -2.55, 0), (0, 1, 0), 0.16, 'stripe', facing=(0, 0, 1), min_facing=0.2)
     # forecastle: raised armour wedge over the bow in front of turret one
     F.plate(s, 'Forecastle', [(18.6, 0.35), (14.0, 1.6), (12.6, 1.5), (12.6, -1.5), (14.0, -1.6), (18.6, -0.35)],
-            z0=1.1, thickness=1.05, material='paint2', chamfer=0.35, side_material='paint', bevel=0.05)
-    F.band(s, 'Forecastle', (16.3, 0, 0), (1, 0, 0), 0.3, 'stripe', facing=(0, 0, 1))
+            z0=1.1, thickness=1.05, material='paint', chamfer=0.35, side_material='paint', bevel=0.05)
+    # the marque: a raised gold chevron on the forecastle
+    F.plate(s, 'Chevron', [(17.6, 0.0), (15.6, 1.05), (15.1, 1.05), (16.9, 0.0), (15.1, -1.05), (15.6, -1.05)],
+            z0=2.05, thickness=0.14, material='stripe', chamfer=0.03, bevel=0.0)
 
     # --- sponson gun decks: narrow forward deck, wider aft deck ----------------------------------
     sponson = [(9.5, 3.4), (7.2, 5.1), (-3.2, 5.1), (-4.6, 6.0), (-15.4, 6.0), (-16.9, 5.2), (-16.9, 3.4)]
@@ -205,6 +207,14 @@ def build():
             F.box(s, f'BowWin{i}_{zw}', (x, yw, zw), (0.3, 0.06, 0.18), material='glow_warm', bevel=0.0,
                   rot_z=math.atan(dw), mirror=True)
 
+    # upper flank portholes between the sponson deck and the armour deck
+    for i in range(30):
+        x = 8.6 - i * 0.82
+        if abs(x - 0.2) < 0.9 or abs(x - 5.3) < 0.9:
+            continue
+        yw = hull_y(x, 1.62)
+        F.box(s, f'FlankWin{i}', (x, yw, 1.62), (0.3, 0.06, 0.18), material='glow_warm', bevel=0.0, mirror=True)
+
     # --- drives: three main bells + a pod drive in each sponson ---------------------------------
     F.box(s, 'DriveBlock', (-18.9, 0.0, 0.15), (1.2, 6.2, 3.2), material='gunmetal', bevel=0.05)
     F.nozzle(s, 'MainDrive', (-20.2, 0.0, 0.25), 1.2, 1.5, material='gunmetal', bell=1.15, segments=40)
@@ -242,9 +252,9 @@ def build():
             F.box(s, f'VLSLid{i}{j}', (x, y, 2.63), (0.56, 1.02, 0.06), material='gunmetal', bevel=0.0)
     for side in (1, -1):
         for x in (12.2, 8.3, -1.2, -9.6, -13.8):
-            pd_mount(s, f'PD{x}{side}', x, side * 2.35 if x > 0 else side * 2.55, 2.6, yaw=side * 1.2)
-        pd_mount(s, f'PDSp{side}', 8.2, side * 3.95, 1.25, yaw=side * 0.9)
-        pd_mount(s, f'PDSa{side}', -3.1, side * 4.55, 1.25, yaw=side * 1.3)
+            pd_mount(s, f'PD{x}{side}', x, side * 2.35 if x > 0 else side * 2.55, 2.6, yaw=side * 0.35)
+        pd_mount(s, f'PDSp{side}', 8.2, side * 3.95, 1.25, yaw=side * 0.3)
+        pd_mount(s, f'PDSa{side}', -3.1, side * 4.55, 1.25, yaw=side * 0.4)
     F.vent(s, 'DeckVent', (-9.3, 1.9, 2.56), (1.2, 0.6, 0.12), mirror=True)
     F.vent(s, 'SternVent', (-17.4, 1.3, 2.56), (1.0, 0.7, 0.12), mirror=True)
     F.vent(s, 'SponsonVent', (-14.9, 4.7, 1.22), (1.4, 1.2, 0.12), mirror=True, axis='y')

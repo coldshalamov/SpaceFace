@@ -64,8 +64,10 @@ def build():
         dict(x=1.6, w=1.35, ht=0.8, hb=0.7, zc=0.05, n=2.3),
     ], material='paint', belly='paint2', back_material='dark', front_material='dark', count=64)
     F.band(s, 'Body', (-3.6, 0, 0), (1, 0, 0), 0.45, 'stripe', inset=0.02, depth=0.02)
+    # Orange crest down the back, carried from the bill; broken by the raised roof hatch.
+    F.band(s, 'Body', (0, 0, 0), (0, 1, 0), 0.42, 'stripe', facing=(0, 0, 1), min_facing=0.6)
     F.panel(s, 'Body', (-1.7, 0.0), (2.2, 1.6), 'paint', inset=0.05, depth=0.04)
-    F.canopy(s, 'Canopy', x0=-0.6, x1=1.25, w=1.15, h=0.45, z=1.12, peak=0.55, n=2.6)
+    F.canopy(s, 'Canopy', x0=-0.6, x1=1.25, w=1.15, h=0.45, z=1.12, peak=0.55, n=2.6, frame=False)
 
     # --- The bill: open-topped scoop with a short upper mandible -------------------------------
     # Floor (dark inside, orange underside) and orange side walls that sweep down to a lip.
@@ -94,8 +96,9 @@ def build():
         y = -0.9 + i * 0.3
         F.box(s, f'Tooth{i}', (4.2, y, 0.02), (0.22, 0.12, 0.16), material='bare', bevel=0.01, rot_z=0.0)
         F.box(s, f'ToothB{i}', (4.56, y + 0.15, -0.35), (0.16, 0.12, 0.22), material='bare', bevel=0.01)
-    F.box(s, 'LampHousing', (3.5, 0.0, -0.4), (0.42, 2.3, 0.5), material='dark', bevel=0.01)
-    F.box(s, 'CutterLamp', (3.5, 0.0, -0.13), (0.28, 2.1, 0.08), material='glow_amber', bevel=0.0)
+    F.box(s, 'LampHousing', (3.5, 0.0, -0.4), (0.52, 2.3, 0.5), material='dark', bevel=0.01)
+    F.box(s, 'CutterLamp', (3.5, 0.0, -0.13), (0.38, 2.1, 0.08), material='glow_amber', bevel=0.0)
+
     # Grab rails along the jaw floor.
     for y in (0.55, -0.55):
         F.box(s, f'FloorRail{y}', (5.6, y, -0.6), (3.0, 0.1, 0.06), material='gunmetal', bevel=0.0)
@@ -128,6 +131,7 @@ def build():
     s.detail = 1
     F.vent(s, 'Vent', (-4.4, 0.95, 1.2), (1.1, 0.4, 0.1), mirror=True)
     F.vent(s, 'SpineVent', (-4.5, 0.0, 1.38), (1.2, 0.8, 0.1), axis='y')
+    F.vent(s, 'PodVent', (-5.2, PY, 0.68), (0.9, 0.36, 0.08), mirror=True)
     F.rcs(s, 'RCS', (0.2, 1.95, 0.2), size=0.34, mirror=True)
     F.antenna(s, 'Mast', (-3.0, -0.7, 1.6), 0.9, tip='glow_red')
     F.sensor_dome(s, 'Dome', (-2.8, 0.7, 1.62), 0.28)

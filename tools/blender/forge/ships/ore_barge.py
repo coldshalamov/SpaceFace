@@ -87,7 +87,7 @@ def build():
     F.band(s, 'Hull', (0, 0, 0.62), (0, 0, 1), 0.26, 'hazard')
     # Ochre walkway stripes down both side decks.
     for y in (3.35, -3.35):
-        F.band(s, 'Hull', (0, y, 0), (0, 1, 0), 0.5, 'stripe', facing=(0, 0, 1), min_facing=0.6, inset=0.02,
+        F.band(s, 'Hull', (0, y, 0), (0, 1, 0), 0.5, 'paint2', facing=(0, 0, 1), min_facing=0.6, inset=0.02,
                depth=0.02)
     # The four open hoppers, sunk into the deck.
     for i, x in enumerate(HOPPERS):

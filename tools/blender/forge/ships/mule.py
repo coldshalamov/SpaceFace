@@ -12,7 +12,7 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'mule'
 COLORS = {
-    'paint': '#3e4429',    # olive drab (#5b6340 as seen under the key light)
+    'paint': '#353a2a',    # olive drab (#5b6340 as seen: the key light lifts value and chroma)
     'paint2': '#958b6f',   # cream
     'stripe': '#958b6f',
     'hazard': '#b88a22',
@@ -48,6 +48,12 @@ def build():
     F.panel(s, 'Cab', (5.6, 0.0), (1.0, 1.6), 'paint2', inset=0.04, depth=0.03)
     F.canopy(s, 'Canopy', x0=5.9, x1=7.35, w=1.05, h=0.38, z=1.12, peak=0.3, n=2.8)
     F.windows(s, 'CabWin', 4.9, 6.7, 1.44, 0.95, 3, size=(0.36, 0.2), mirror=True)
+    # Mule ears: two swept sensor vanes on the cab roof.
+    for y in (0.62, -0.62):
+        F.box(s, f'Ear{y}', (4.75, y, 1.72), (0.8, 0.14, 0.62), material='paint', bevel=0.03, taper=0.45,
+              rot_z=0.25 if y > 0 else -0.25)
+        F.box(s, f'EarInner{y}', (4.68, y * 0.93, 1.66), (0.5, 0.04, 0.4), material='paint2', bevel=0.0, taper=0.5,
+              rot_z=0.25 if y > 0 else -0.25)
     F.box(s, 'Bumper', (7.8, 0.0, -0.05), (0.4, 1.9, 0.5), material='gunmetal', bevel=0.05)
     F.band(s, 'Bumper', (7.8, 0.35, 0), (0, 1, 0), 0.3, 'hazard')
     F.band(s, 'Bumper', (7.8, -0.35, 0), (0, 1, 0), 0.3, 'hazard')
@@ -60,8 +66,18 @@ def build():
             (RIBS[2] + 0.15, POD_X1 - 0.15)]
     for (a, b) in bays[1:3]:
         F.panel(s, 'Pod', ((a + b) / 2, PY), (b - a - 0.2, 1.45), 'paint2', inset=0.05, depth=0.04, mirror=True)
-    for (a, b) in (bays[0], bays[3]):
-        F.panel(s, 'Pod', ((a + b) / 2, PY - 0.25), (b - a - 0.3, 0.9), 'paint2', inset=0.05, depth=0.04, mirror=True)
+    # End bays carry louvred heat vents instead of lids (the dark share of the top view).
+    for i, (a, b) in enumerate((bays[0], bays[3])):
+        F.vent(s, f'PodVent{i}', ((a + b) / 2, PY - 0.3, POD_H / 2), (b - a - 0.5, 0.8, 0.12), mirror=True, slats=6)
+    # Saddlebag flaps folded over the outboard walls of the two middle bays, buckled down.
+    for i, (a, b) in enumerate(bays[1:3]):
+        xm = (a + b) / 2
+        F.box(s, f'Flap{i}', (xm, PY + POD_W / 2 + 0.03, POD_H / 2 - 0.38), (b - a - 0.25, 0.07, 0.78),
+              material='paint2', bevel=0.02, mirror=True)
+        F.box(s, f'FlapBuckle{i}', (xm, PY + POD_W / 2 + 0.08, POD_H / 2 - 0.55), (0.2, 0.06, 0.95),
+              material='gunmetal', bevel=0.01, mirror=True)
+        F.box(s, f'FlapClasp{i}', (xm, PY + POD_W / 2 + 0.12, POD_H / 2 - 0.72), (0.34, 0.06, 0.22),
+              material='hazard', bevel=0.01, mirror=True)
     # Ribs and end frames: the container read.
     for i, x in enumerate(RIBS):
         F.box(s, f'Rib{i}', (x, PY, 0.0), (0.16, POD_W + 0.08, POD_H + 0.06), material='gunmetal', bevel=0.02,
@@ -103,7 +119,7 @@ def build():
     F.vent(s, 'SpineVent', (-4.2, 0.0, 1.1), (1.3, 0.6, 0.1), axis='y')
     F.rcs(s, 'RCS', (2.8, PY + POD_W / 2 + 0.1, 0.55), size=0.32, mirror=True)
     F.rcs(s, 'RCSAft', (-4.3, PY + POD_W / 2 + 0.1, 0.55), size=0.32, mirror=True)
-    F.antenna(s, 'Mast', (5.0, -0.7, 1.6), 1.0, tip='glow_red')
+    F.antenna(s, 'Mast', (3.9, -0.55, 1.25), 1.0, tip='glow_red')
     F.sensor_dome(s, 'Dome', (4.3, 0.6, 1.3), 0.26)
     F.light(s, 'Headlamp', (7.95, 0.62, 0.25), 'glow_warm', size=0.16, mirror=True)
     s.detail = 0
