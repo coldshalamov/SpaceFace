@@ -67,6 +67,9 @@ Seven further action responses cover boost preparation, reactor venting, cargo c
 rich-core extraction, a failed rich-core charge, mine arming and mine detonation. They use the existing production event bus
 and real body/contact anchors, with the same pause, rebasing, cleanup and accessibility rules.
 
+Use the [primitive composition guide](./VFX_PRIMITIVE_GUIDE.md) for the shared material vocabulary,
+receipt/port attachment rules, and adding a new effect without another renderer.
+
 Use the [ship-context lab workflow](./VFX_LAB_WORKFLOW.md) for repeatable multi-frame review
 beside released ship and asteroid assets. Its scenario code imports the production effect owners.
 

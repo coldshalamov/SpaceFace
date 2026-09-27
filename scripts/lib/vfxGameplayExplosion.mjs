@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { vfx } from '../../src/render/vfx.js';
 import { QuarksVfxSystem } from '../../src/render/vfx/quarksSystem.js';
+import { installGameplayWorldPresentation } from './vfxGameplayWorldEvents.mjs';
 import { resolveVfxAccessibilityProfile } from '../../src/render/vfxAccessibility.js';
 
 const NOOP = () => {};
@@ -58,12 +59,15 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
   };
   // The isolated bus installs production VFX subscribers. Audio and gameplay systems
   // are absent; emitted presentation inputs cannot mutate the real game or player saves.
+  const helpers={player:()=>privateState.entities?.get(privateState.playerId)||null,
+    npcJobs:{get:id=>privateState.traffic?.labJobs?.[id]||null}};
   owner.init({
     state: privateState,
     bus,
-    helpers: { player: () => privateState.entities?.get(privateState.playerId) || null },
+    helpers,
   });
 
+  const worldPresentation=installGameplayWorldPresentation({state:privateState,bus,helpers});
   let disposed = false;
   let seed = 17;
   let randomState = seed;
@@ -99,6 +103,8 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     privateState.massline2 = state.massline2;
     privateState.beacons = state.beacons;
     privateState.tick = state.tick;
+    privateState.entityList=state.entityList;
+    for(const key of ['drill','jump','cruise','combat','traffic','meta'])privateState[key]=state[key];
     owner._syncFrameMembrane();
     accessibility = resolveVfxAccessibilityProfile(privateState.settings);
     owner._gas.setAccessibility(accessibility);
@@ -107,6 +113,17 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
   function publish(dt) {
     // Shipping update reacquires this owner after WebGL context restoration.
     owner._initArcadeStructural();
+    worldPresentation.update(dt);
+    owner._updateTransitSweep(dt);
+    owner._updateDoctrineTells(dt);
+    owner._updateStationSideEvents(dt);
+    owner._updateCeresJobActionVfx(dt);
+    owner._updateLawHeatTelegraph(dt);
+    owner._updateDamageVenting(dt);
+    owner._updateStatusAttachedVfx(dt);
+    const sinkStep=owner._consumeCadence('_labSinkCadence',dt,12);
+    if(sinkStep>0)owner._updateMomentumSinkPresentation();
+    owner._statusMatterVfx?.update(privateState);
     owner._integrateParticles(dt);
     owner._integrateSprites(dt);
     owner._integrateTrailStreaks(dt);
@@ -136,6 +153,8 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
       quarksBatches: quarks.renderer.batches.length,
       structured: owner._arcadeStructural.stats(),
       action: owner._actionVfx?.inspect?.() || null,
+      statusMatter: owner._statusMatterVfx?.stats || null,
+      worldPresentation: worldPresentation.inspect(),
       bombTransients: owner._bombDetonationVfx?.stats || null,
       rupture: typeof owner._explosionRupture?.inspect === 'function'
         ? owner._explosionRupture.inspect()
@@ -152,6 +171,13 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     fired = 0;
     lastReceipt = null;
     phases.length = 0;
+    worldPresentation.clear();
+    owner._clearStationSideEvents();
+    owner._clearCeresJobActionVfx();
+    owner._clearLawHeatTelegraph();
+    owner._transitSweepT=-1;owner._transitSweepSpawned=0;
+    owner._statusMatterVfx?.clear();owner._statusAttachedCd?.clear();owner._resetMomentumSinkPresentation();
+    owner._labSinkCadence=0;
     owner._resetPendingDetonations();
     owner._explosions.clear();
     owner._explosions._serial = seed;

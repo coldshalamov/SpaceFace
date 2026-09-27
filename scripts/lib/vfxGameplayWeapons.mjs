@@ -71,6 +71,7 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
   const factory = createVisualFactory();
   let presenter = null, ship = null, target = null, shot = null;
   let shotMesh = null, combatBeams = null, mineOwner = null;
+  let shieldContext=null;
   let scenario = 'idle', seed = 17, randomState = 17, clock = 0, born = 0, disposed = false;
   let socketMode = 'radius fallback', launchCount = 0, impactCount = 0;
   const events = [];
@@ -111,7 +112,8 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
     const profile = syncContext();
     actions.update(privateState);
     presenter.update(dt, { state: privateState, camera, viewportHeight, interpolationAlpha: 1 });
-    syncShipAuxPools(shieldPool, scenario === 'shield-impact' ? [ship] : [], auxMeshes);
+    if(shieldContext)ship.shield=shieldContext==='collapse'&&clock-born>=.2?0:100;
+    syncShipAuxPools(shieldPool, scenario === 'shield-impact'||shieldContext ? [ship] : [], auxMeshes);
     const cameraDistance = camera.position.length();
     combatBeams?.update(clock, null, profile,
       worldSizeForPixels(cameraDistance, 8, camera.fov, viewportHeight), entry => socketWorldPose(entry.ownerId));
@@ -144,7 +146,7 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
     if (disposed) throw new Error('Weapons adapter is disposed');
     seed = Number.isFinite(options.seed) ? options.seed >>> 0 : seed;
     clock = born = Number.isFinite(options.time) ? options.time : (Number(state.simTime) || 0);
-    randomState = seed; scenario = 'idle'; shot = null; events.length = 0;
+    randomState = seed; shieldContext=null; scenario = 'idle'; shot = null; events.length = 0;
     actions.clear(); actions.serial = seed; actions.update({ ...privateState, simTime: clock });
     launchCount = impactCount = 0; socketMode = 'radius fallback';
     clearExtraOwners();
@@ -393,5 +395,5 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
     entities.clear(); meshes.clear(); auxMeshes.clear(); disposed = true;
   }
   reset({ seed, time: Number(state.simTime) || 0 });
-  return { root, reset, select, fire, update, inspect, dispose, get presenter() { return presenter; } };
+  return { root, reset, select, fire, update, inspect, dispose, setShieldContext(mode){shieldContext=mode;}, get presenter() { return presenter; } };
 }
