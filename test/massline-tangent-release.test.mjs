@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
+import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { createDamageRouter } from '../src/combat/damage.js';
 import { createCombatCatalog } from '../src/combat/runtime.js';
 import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
@@ -53,10 +54,16 @@ test('a taut release leaves the hull on ballistics — no impulse, no rewrite, n
     assert.equal(outcome.enemyShield, 110);
     assert.equal(outcome.rockAlive, true);
     assert.equal(outcome.playerAlive, true);
+    assert.equal(outcome.covertEvents.length, 0,
+      `seed ${seed}: no physics:impact / combat:damage / entity:killed / tether:whipImpact is emitted in a no-contact run`);
+    assert.equal(outcome.queuedImpulses, 0,
+      `seed ${seed}: nothing queues a physics command on any body after the cut`);
     assert.equal(outcome.velTrail.every((v) => v.x === 0 && v.z === 120), true,
       `seed ${seed}: the hull keeps the velocity the swing earned — nothing steers it`);
     assert.equal(outcome.posTrail.every((p) => p.x === 120 && p.z === 0), true,
       `seed ${seed}: the system never writes the hull's position`);
+    assert.equal(outcome.unmoved, true,
+      `seed ${seed}: no body — rock, station, heavy, or player — is repositioned to meet the throw`);
     assert.equal(outcome.releaseRead.classification, 'razor',
       'the release is still named at the cut — prediction survives, steering does not');
   }
@@ -99,9 +106,13 @@ function drive(seed, layout, options = {}) {
   const meetings = [];
   const broke = [];
   const rated = [];
+  const covertEvents = [];
   built.bus.on('massline:tangentMeeting', (payload) => meetings.push(payload));
   built.bus.on('tether:broke', (payload) => broke.push(payload));
   built.bus.on('tether:releaseRated', (payload) => rated.push(payload));
+  for (const name of ['physics:impact', 'combat:damage', 'entity:killed', 'tether:whipImpact']) {
+    built.bus.on(name, (payload) => covertEvents.push({ name, payload }));
+  }
   const throwSystem = Object.create(masslineThrow);
   const tether = Object.create(tetherGameplay);
   try {
@@ -125,19 +136,39 @@ function drive(seed, layout, options = {}) {
     const ticks = options.ticks || 180;
     const velTrail = [];
     const posTrail = [];
+    // A "meet halfway" steering path would write any body, not only the thrown hull — trail them
+    // all, and poll the physics-authority queue so a covert impulse cannot hide in a side channel.
+    const bodyTrails = new Map(built.state.entityList.map((entity) => [entity.id, {
+      vel: { x: entity.vel ? entity.vel.x : 0, z: entity.vel ? entity.vel.z : 0 },
+      pos: { x: entity.pos.x, z: entity.pos.z },
+    }]));
+    let queuedImpulses = 0;
     for (let i = 0; i < ticks; i++) {
       throwSystem.update(DT, built.state);
       velTrail.push({ x: built.enemy.vel.x, z: built.enemy.vel.z });
       posTrail.push({ x: built.enemy.pos.x, z: built.enemy.pos.z });
+      for (const entity of built.state.entityList) {
+        const command = consumePhysicsCommand(entity);
+        if (command) queuedImpulses += command.impulses.length + command.torqueImpulses.length;
+      }
       built.state.tick += 1;
       built.state.simTime += DT;
     }
+    const unmoved = built.state.entityList.every((entity) => {
+      const start = bodyTrails.get(entity.id);
+      return entity.pos.x === start.pos.x && entity.pos.z === start.pos.z
+        && (entity.vel ? entity.vel.x : 0) === start.vel.x
+        && (entity.vel ? entity.vel.z : 0) === start.vel.z;
+    });
     const subtree = built.state.massline2 && built.state.massline2.throw || {};
     return {
       draws: built.draws,
       impulseCalls: built.impulseCalls,
       damageCalls: built.damageCalls,
       meetings,
+      covertEvents,
+      queuedImpulses,
+      unmoved,
       broke: broke.length,
       velTrail,
       posTrail,

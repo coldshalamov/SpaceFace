@@ -4637,9 +4637,11 @@ sent it. Afterward it looks complicated. In the moment it was a few honest rules
 does not secretly fly the cool move. A light hull is something you can turn into a projectile.
 A heavy hull is something you swing around. Missing is allowed, and missing is readable.
 
-**What is lying.** A taut throw can already kill, and the solver will still steer the victim
-onto a meeting. That is why it can feel like luck or a cutscene. The signature mechanic is
-doing the player's authorship for them.
+**What is lying.** Fixed: the solver no longer steers the victim — the release is ballistic,
+the prediction only predicts, and a miss lands as a miss. What remains is learnability: the
+release read names the swing (`tether:releaseRated`) and the preview arc draws the solver's
+predicted ray, but nothing yet teaches a new hand *why* one cut was a razor and the next a
+tow.
 
 **You invent.** How a player learns the cut — by eye, by ear, by the body — without a homing
 aid and without a tutorial modal. Prediction is welcome if it never becomes steering.

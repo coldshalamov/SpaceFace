@@ -57,8 +57,8 @@ const WATCHED_EVENTS = [
   'dock:docked', 'dock:undocked', 'module:purchased', 'module:equipped', 'economy:chargeCredits',
   'economy:saleExecuted', 'law:incidentOpened', 'law:dispatchStarted', 'law:incidentResolved',
   'law:responseDeferred', 'law:distressRaised', 'heat:changed',
-  'massline:releaseCommitted', 'massline:releaseCancelled', 'tether:latchDenied',
-  'massline:tangentMeeting', 'massline:throw', 'economy:grantCredits', 'combat:fire',
+  'massline:releaseCancelled', 'tether:latchDenied',
+  'massline:throw', 'economy:grantCredits', 'combat:fire',
   'economy:cargoSold', 'mission:failed', 'encounter:resolved', 'salvage:completed',
   'pickup:collected', 'world:playerRelocated',
 ];
