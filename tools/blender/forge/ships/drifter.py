@@ -121,8 +121,8 @@ def build():
 
     # Scout dish on the dorsal, behind the cockpit.
     F.cylinder(s, 'DishPost', (-0.9, -0.35, 1.2), (-0.9, -0.35, 1.72), 0.12, 0.09, material='gunmetal', segments=12)
-    F.cylinder(s, 'Dish', (-0.82, -0.35, 1.75), (-1.0, -0.35, 1.9), 0.62, 0.68, material='gunmetal', segments=28,
-               cap_material='dark')
+    F.cylinder(s, 'Dish', (-0.82, -0.35, 1.75), (-1.0, -0.35, 1.9), 0.62, 0.68, material='gunmetal', segments=28)
+    F.cylinder(s, 'DishFace', (-0.99, -0.35, 1.89), (-1.03, -0.35, 1.93), 0.42, material='dark', segments=24)
     F.cylinder(s, 'DishHorn', (-0.98, -0.35, 1.88), (-1.2, -0.35, 2.25), 0.04, 0.025, material='gunmetal', segments=8)
     F.light(s, 'DishFeed', (-1.21, -0.35, 2.27), 'glow_cyan', size=0.08)
 

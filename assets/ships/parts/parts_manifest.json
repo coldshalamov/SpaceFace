@@ -6159,19 +6159,20 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_atlas",
-      "tris": 65126,
-      "bytes": 3605096,
+      "tris": 37912,
+      "bytes": 2198404,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent",
-        "warning": "Material_Warning",
         "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -6189,19 +6190,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -12.131999967332359,
-          -1.5999999716877937,
-          -3.570000171661377
+          -12.02005386352539,
+          -1.5,
+          -3.790271282196045
         ],
         "max": [
-          11,
-          3.1699994908616547,
-          3.570000171661377
+          11.700323104858398,
+          2.986191749572754,
+          3.7900466918945312
         ],
         "dimensionsM": [
-          23.13199996733236,
-          4.769999462549448,
-          7.140000343322754
+          23.72037696838379,
+          4.486191749572754,
+          7.580317974090576
         ]
       },
       "note": "Fleet remaster production Atlas. Live player heavy hauler. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -6219,19 +6220,19 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_bastion",
-      "tris": 40702,
-      "bytes": 2139000,
+      "tris": 29012,
+      "bytes": 1733424,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent",
-        "warning": "Material_Warning",
-        "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -6249,19 +6250,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -10.381999967332359,
-          -1.1999999955296516,
-          -2.5199999809265137
+          -10.92003345489502,
+          -1.100000023841858,
+          -4.300316333770752
         ],
         "max": [
-          9.25,
-          2.180000066757202,
-          2.5199999809265137
+          10.18411636352539,
+          3.9790000915527344,
+          4.3001227378845215
         ],
         "dimensionsM": [
-          19.63199996733236,
-          3.380000062286854,
-          5.039999961853027
+          21.10414981842041,
+          5.079000115394592,
+          8.600439071655273
         ]
       },
       "note": "Fleet remaster production Bastion. Live player corvette. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -6819,19 +6820,19 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_ironback",
-      "tris": 42530,
-      "bytes": 2228356,
+      "tris": 43642,
+      "bytes": 2423640,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
-        "accent": "Material_Accent",
-        "warning": "Material_Warning",
         "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -6849,19 +6850,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -9.632000183461342,
-          -1.4999999478459358,
-          -3.0200002193450928
+          -9.970046997070312,
+          -1.0499999523162842,
+          -3.3908004760742188
         ],
         "max": [
-          8.5,
-          2.2567517870714475,
-          3.0199999809265137
+          9.946205139160156,
+          2.7751877307891846,
+          3.390800714492798
         ],
         "dimensionsM": [
-          18.132000183461344,
-          3.7567517349173833,
-          6.0400002002716064
+          19.91625213623047,
+          3.8251876831054688,
+          6.781601190567017
         ]
       },
       "note": "Fleet remaster production Ironback. Live player mining barge. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -7357,19 +7358,19 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_ranger",
-      "tris": 24744,
-      "bytes": 3125224,
+      "tris": 27532,
+      "bytes": 1609292,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
-        "accent": "Material_Accent",
-        "warning": "Material_Warning",
         "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
@@ -7387,19 +7388,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.619999885559082,
-          -0.9713971614837646,
-          -3.4531514644622803
+          -8.320137977600098,
+          -0.6499999761581421,
+          -3.770914077758789
         ],
         "max": [
-          8.699999809265137,
-          1.8799999952316284,
-          3.4531514644622803
+          9.410038948059082,
+          2.7469706535339355,
+          3.770986318588257
         ],
         "dimensionsM": [
-          17.31999969482422,
-          2.851397156715393,
-          6.9063029289245605
+          17.73017692565918,
+          3.3969706296920776,
+          7.541900396347046
         ]
       },
       "note": "PQ-050.03 chase_form_v4a. Cycle 4: remass bow + mid-hull into a broader, shorter continuous explorer shell (no new garnish). Hitch/Kestrel/Hornet/Drifter untouched. Chase Hitch-plus REVISE (CAGE_READ NO; TUBE_PADDLE NO; Hitch still wins formed-shell massing/skin)."

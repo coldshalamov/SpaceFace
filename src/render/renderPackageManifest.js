@@ -2174,22 +2174,22 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.atlas-production-v1",
-    "expectedContentHash": "f2c67f1c2beea4ab6c263d5a8fec03ebae2b9fff63e4349e12dd77759cc7c7a9",
+    "expectedContentHash": "85fc5c4eb058d0b9c817a3203259f6e445f33a2e0d45508985d71f87f53407e2",
     "key": "atlas-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/atlas-production-v1/render-package.json",
     "runtimeAssetId": "SF_ATLAS_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "9f1a3830dbc45573ebfcf6e66816560bd88113c8a6ad5744811608e9395429d5",
+    "sourceSha256": "31ca56945bc57baf408f725bcd528dca7ee37fdb0f1e1769fb654be0c0e90f06",
     "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1.glb"
   },
   {
     "assetId": "sf.render.bastion-production-v1",
-    "expectedContentHash": "84b56348f9f83a45251a1d4a9a09edff52a642d1799c95a2caa23ae275da590b",
+    "expectedContentHash": "20419e8a9bf9c477d2a719a15140a5ccdcf9d022d4ac20cfbc503cb2d2560907",
     "key": "bastion-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1/render-package.json",
     "runtimeAssetId": "SF_BASTION_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "916672c86e0b4cc703911130b6fa5a3c71f66c7db8db1aedc1d147799cf650dd",
+    "sourceSha256": "446fca2e2b52bae1d7631291c210ac3e4903f425717caf1f22b5cb0cbbea1c42",
     "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1.glb"
   },
   {
@@ -2214,12 +2214,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ironback-production-v1",
-    "expectedContentHash": "936566490668c5a15e0e9a3d759f83f6309d7fd55eece7b4ae6ec16d2ed2d26a",
+    "expectedContentHash": "9db38d4ea4f8d3ccf1aad795db24ac60b0f8a45c4ec1304f14285ab6d82f540c",
     "key": "ironback-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1/render-package.json",
     "runtimeAssetId": "SF_IRONBACK_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "cc74b23794c28711f799d1f0c88272892c0a43d553214ee1c4c6627b1dda6578",
+    "sourceSha256": "7da97991c55ad22abbe11676a60b966bf220ad7c3e18ae08cfbb0356dc5b358e",
     "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1.glb"
   },
   {
@@ -2244,12 +2244,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ranger-production-v1",
-    "expectedContentHash": "c5de284fdce19954b33c86c7c000fbd693bf40f546855d6e53db054a71f2f96a",
+    "expectedContentHash": "1304f0595b3d3465ff3b5b5a40dd371850ab546589c668d09eeac6a81eb70292",
     "key": "ranger-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1/render-package.json",
     "runtimeAssetId": "SF_RANGER_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "fe5affe134bd9fdc769311133ad6deef429539d211c690e2421f24a9d3674f2c",
+    "sourceSha256": "69d6f56e061e617eb3fb3339193768ded1219b0b4a83bf5950763b319aaf8b07",
     "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1.glb"
   },
   {
@@ -2424,22 +2424,22 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.bastion-production-v1-lod1",
-    "expectedContentHash": "f2d39829d3ab69d534a17b27a288a64b482216a83c929529b5e3e40ae94335fb",
+    "expectedContentHash": "4c9ced578d44e6761400421b152835300804090850a2812115c0f6d96959b33b",
     "key": "bastion-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_BASTION_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "8b083bf2e2ab931bca62c1cf24274183245249f80a3b283ccbc931808380e4c9",
+    "sourceSha256": "aec276184df4b4eb7d7cf1c4d8217b3e8f22964052095b2bba6398638d592ae1",
     "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.bastion-production-v1-lod2",
-    "expectedContentHash": "1c01eaa51edb6d4fe5e4d6f6a06250d2008522614f0d73ff862c7f4e24c8a2e0",
+    "expectedContentHash": "748deccceb5005536c74b04aea8884ad39d59d13e6919a88bb925e3e9471f622",
     "key": "bastion-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_BASTION_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "318ea457813683ddf9489b01562d314e048f632f8fa3fa126a711fc508c1cacb",
+    "sourceSha256": "fc440c46813de6e92046c32fcbcf4455c5a82e8809c53ae942324d7e5325238b",
     "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1_lod2.glb"
   },
   {
@@ -2504,42 +2504,42 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.atlas-production-v1-lod1",
-    "expectedContentHash": "b01ee92bf1115db8564bc90cca69512bb3df7947fa50f272117fb344372325ae",
+    "expectedContentHash": "ff2f4aafe27dd651fcfb4b1c7fc9c4e15247816fdfdfc54765b3a5af402a70cf",
     "key": "atlas-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/atlas-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_ATLAS_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "4f0c6017019741b3ad51c945c2e78a4b79ea0e4c945e9ef1c98c37d15788d98d",
+    "sourceSha256": "41fc8093c5fee1ef6a9d2d38845ba1e782a59ae2ce3c06af65d5180843ce9a75",
     "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.atlas-production-v1-lod2",
-    "expectedContentHash": "bf65eff0bb76e2d09c52f68c1e1c3bed213aa3574b44dc96ace65f9cecf6b9f4",
+    "expectedContentHash": "1d36c20c856df9822f486f6384565a35130f22aadff894c0d8d1d7439d2127b0",
     "key": "atlas-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/atlas-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_ATLAS_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "a0a85587e4e85d4e9f49673c4cc500f23abbedf38cf325365e54b6a4a2e05f7d",
+    "sourceSha256": "8e3d56595a651d05de85a4b2b1491fdbb4778b2b6d73622faeaea8346eb9aef4",
     "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1_lod2.glb"
   },
   {
     "assetId": "sf.render.ranger-production-v1-lod1",
-    "expectedContentHash": "751c0ae73ff09b5f0f1a9a6d76683f5e58651925a3ee8f94d3fe0f3825228c68",
+    "expectedContentHash": "59ed56fdb9b22e2dab285e6e11a75c547e4a0a1c0bee6c089a0963f8deda6b26",
     "key": "ranger-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_RANGER_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "70ca6aaf2669bd0db5dfb6d6140c04f6b0ff390b040a2ae157f1fa9537cf761b",
+    "sourceSha256": "036ea6fcaf796097265eeb461c73f4f652317091f3fb7a2470e55c28f4729275",
     "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.ranger-production-v1-lod2",
-    "expectedContentHash": "586570d45001b02f0b817ebf352b77215a605cf92cea18feaf6b757a645daf1f",
+    "expectedContentHash": "638134a2b8fc75cd49c0ea075a121c7e4269e416fe65b9c98cabe09d10d99fb0",
     "key": "ranger-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_RANGER_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "f33f8f78a9b9d9c6d88bb0b945a6217503db6ad588f96c24dc5bee1a81944cdc",
+    "sourceSha256": "d95692bf159c88e87d7179dfeb301e464256d1b1eff9caf3b945235ad1f46489",
     "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod2.glb"
   },
   {
@@ -2634,22 +2634,22 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ironback-production-v1-lod1",
-    "expectedContentHash": "96b9fe3edefade8290295370d00571b858d4a93c8c7ebfcf71a45d90e547dacc",
+    "expectedContentHash": "beca42ee7862b8bbb0760e459c22ec51f5ab934934207b086d0b62f9e66b4452",
     "key": "ironback-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_IRONBACK_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "c7da0b5e003791539fae7cfcfd866cf8d87b322e09b0c2c3cfe415b858478828",
+    "sourceSha256": "12b51387c4a63d377603fa7b0d172cd536f40a3c48d7189994d9d94d934547d1",
     "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.ironback-production-v1-lod2",
-    "expectedContentHash": "c980913f4f66047b2c7f90462bd9c723746b434cdaee94589a95e618a658d5c1",
+    "expectedContentHash": "1ac9351cc9c5934c8330b556cdea7a231430585a0db8b18164a86fcc988d7d2e",
     "key": "ironback-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_IRONBACK_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "64b2fcca1648fa3468575f05b78cd67bb7acbc5f61b573de9e68f22b148297ee",
+    "sourceSha256": "3cdac3b6844850e0f282ec1ac356db85f9464b3c57bf11af89d4a79c9f68d012",
     "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1_lod2.glb"
   },
   {

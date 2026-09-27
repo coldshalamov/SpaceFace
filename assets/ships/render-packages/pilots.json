@@ -3356,9 +3356,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_atlas_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1.glb",
-      "releaseSha256": "9f1a3830dbc45573ebfcf6e66816560bd88113c8a6ad5744811608e9395429d5",
-      "releaseBytes": 884372,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "31ca56945bc57baf408f725bcd528dca7ee37fdb0f1e1769fb654be0c0e90f06",
+      "releaseBytes": 834604,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/atlas-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/atlas-production-v1/render-package.json",
       "sceneRoot": true
@@ -3371,9 +3377,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_bastion_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1.glb",
-      "releaseSha256": "916672c86e0b4cc703911130b6fa5a3c71f66c7db8db1aedc1d147799cf650dd",
-      "releaseBytes": 495208,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "446fca2e2b52bae1d7631291c210ac3e4903f425717caf1f22b5cb0cbbea1c42",
+      "releaseBytes": 711804,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/bastion-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1/render-package.json",
       "sceneRoot": true
@@ -3419,9 +3431,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ironback_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1.glb",
-      "releaseSha256": "cc74b23794c28711f799d1f0c88272892c0a43d553214ee1c4c6627b1dda6578",
-      "releaseBytes": 509864,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "7da97991c55ad22abbe11676a60b966bf220ad7c3e18ae08cfbb0356dc5b358e",
+      "releaseBytes": 885920,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/ironback-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1/render-package.json",
       "sceneRoot": true
@@ -3464,9 +3482,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ranger_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1.glb",
-      "releaseSha256": "fe5affe134bd9fdc769311133ad6deef429539d211c690e2421f24a9d3674f2c",
-      "releaseBytes": 635880,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "69d6f56e061e617eb3fb3339193768ded1219b0b4a83bf5950763b319aaf8b07",
+      "releaseBytes": 669540,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/ranger-production-v1",
       "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1/render-package.json",
       "sceneRoot": true
@@ -3740,9 +3764,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_bastion_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1_lod1.glb",
-      "releaseSha256": "8b083bf2e2ab931bca62c1cf24274183245249f80a3b283ccbc931808380e4c9",
-      "releaseBytes": 82352,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "aec276184df4b4eb7d7cf1c4d8217b3e8f22964052095b2bba6398638d592ae1",
+      "releaseBytes": 503012,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/bastion-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1-lod1/render-package.json",
       "sceneRoot": true
@@ -3755,9 +3785,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_bastion_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1_lod2.glb",
-      "releaseSha256": "318ea457813683ddf9489b01562d314e048f632f8fa3fa126a711fc508c1cacb",
-      "releaseBytes": 61632,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "fc440c46813de6e92046c32fcbcf4455c5a82e8809c53ae942324d7e5325238b",
+      "releaseBytes": 412828,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/bastion-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1-lod2/render-package.json",
       "sceneRoot": true
@@ -3860,9 +3896,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_atlas_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1_lod1.glb",
-      "releaseSha256": "4f0c6017019741b3ad51c945c2e78a4b79ea0e4c945e9ef1c98c37d15788d98d",
-      "releaseBytes": 113520,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "41fc8093c5fee1ef6a9d2d38845ba1e782a59ae2ce3c06af65d5180843ce9a75",
+      "releaseBytes": 593192,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/atlas-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/atlas-production-v1-lod1/render-package.json",
       "sceneRoot": true
@@ -3875,9 +3917,15 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_atlas_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/atlas_production_v1_lod2.glb",
-      "releaseSha256": "a0a85587e4e85d4e9f49673c4cc500f23abbedf38cf325365e54b6a4a2e05f7d",
-      "releaseBytes": 75416,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "8e3d56595a651d05de85a4b2b1491fdbb4778b2b6d73622faeaea8346eb9aef4",
+      "releaseBytes": 468352,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/atlas-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/atlas-production-v1-lod2/render-package.json",
       "sceneRoot": true
@@ -3890,10 +3938,16 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ranger_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod1.glb",
-      "releaseSha256": "70ca6aaf2669bd0db5dfb6d6140c04f6b0ff390b040a2ae157f1fa9537cf761b",
-      "releaseBytes": 107072,
+      "releaseSha256": "036ea6fcaf796097265eeb461c73f4f652317091f3fb7a2470e55c28f4729275",
+      "releaseBytes": 482500,
       "rootNode": "RANGER_LOD1_ROOT",
-      "dynamicNameIncludes": [],
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/ranger-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1-lod1/render-package.json"
     },
@@ -3905,10 +3959,16 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ranger_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod2.glb",
-      "releaseSha256": "f33f8f78a9b9d9c6d88bb0b945a6217503db6ad588f96c24dc5bee1a81944cdc",
-      "releaseBytes": 92704,
+      "releaseSha256": "d95692bf159c88e87d7179dfeb301e464256d1b1eff9caf3b945235ad1f46489",
+      "releaseBytes": 403172,
       "rootNode": "RANGER_LOD2_ROOT",
-      "dynamicNameIncludes": [],
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/ranger-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1-lod2/render-package.json"
     },
@@ -4056,11 +4116,17 @@
       "releaseAssetId": "wholeship_ironback_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1_lod1.glb",
       "rootNode": "IRONBACK_LOD1_ROOT",
-      "dynamicNameIncludes": [],
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/ironback-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod1/render-package.json",
-      "releaseBytes": 70160,
-      "releaseSha256": "c7da0b5e003791539fae7cfcfd866cf8d87b322e09b0c2c3cfe415b858478828"
+      "releaseBytes": 584808,
+      "releaseSha256": "12b51387c4a63d377603fa7b0d172cd536f40a3c48d7189994d9d94d934547d1"
     },
     {
       "key": "ironback-production-v1-lod2",
@@ -4071,11 +4137,17 @@
       "releaseAssetId": "wholeship_ironback_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1_lod2.glb",
       "rootNode": "IRONBACK_LOD2_ROOT",
-      "dynamicNameIncludes": [],
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/ironback-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod2/render-package.json",
-      "releaseBytes": 48984,
-      "releaseSha256": "64b2fcca1648fa3468575f05b78cd67bb7acbc5f61b573de9e68f22b148297ee"
+      "releaseBytes": 444292,
+      "releaseSha256": "3cdac3b6844850e0f282ec1ac356db85f9464b3c57bf11af89d4a79c9f68d012"
     },
     {
       "key": "leviathan-production-v1-lod1",
