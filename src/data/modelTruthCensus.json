@@ -1805,57 +1805,57 @@
     {
       "bounds": {
         "center": [
-          2.1,
-          0.59045,
+          2.139976,
+          0.636253,
           0
         ],
         "max": [
-          4.6,
-          1.30242,
-          1.195102
+          4.600216,
+          1.483207,
+          1.209109
         ],
         "min": [
-          -0.4,
-          -0.12152,
-          -1.195102
+          -0.320263,
+          -0.210701,
+          -1.209109
         ],
         "size": [
-          5,
-          1.42394,
-          2.390204
+          4.920479,
+          1.693908,
+          2.418218
         ]
       },
-      "bytes": 2781476,
+      "bytes": 673748,
       "collider": {
-        "coverageWu": 2.52557,
-        "gapWu": 2.52557,
+        "coverageWu": 2.448683,
+        "gapWu": 2.448683,
         "id": null,
         "kind": "none",
         "outline": [
-          2.40917,
-          2.52557,
-          1.931673,
-          1.2116,
-          0.945276,
-          1.01839,
-          1.009279,
-          1.063301,
-          1.470675,
-          2.142876,
-          2.08441,
-          2.417249,
-          2.417252,
-          2.08441,
-          2.142876,
-          1.470675,
-          1.063301,
-          1.009279,
-          1.01839,
-          1.062717,
-          1.2116,
-          1.931673,
-          2.52557,
-          2.40917
+          2.448682,
+          2.376689,
+          2.231771,
+          0.627313,
+          0.88407,
+          1.181476,
+          1.183682,
+          1.25061,
+          0.9897,
+          1.037057,
+          2.182924,
+          2.400189,
+          2.400189,
+          2.182924,
+          1.037057,
+          0.987529,
+          1.250913,
+          1.183682,
+          1.181476,
+          0.88407,
+          0.627313,
+          2.234384,
+          2.376664,
+          2.448683
         ],
         "overTolerance": true,
         "stickWu": 0,
@@ -1864,11 +1864,11 @@
         "worstSize": null
       },
       "drawOffset": [
-        -2.016,
-        -0.566832,
+        -2.087578,
+        -0.620674,
         0
       ],
-      "drawScale": 0.96,
+      "drawScale": 0.975515,
       "family": "drone",
       "forwardAxis": "+X",
       "frozenMesh": false,
@@ -1896,7 +1896,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Accent",
+          "name": "Material_Armor",
           "role": "opaqueHull"
         },
         {
@@ -1904,8 +1904,40 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Cable",
+          "name": "Material_BrushedMetal",
           "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
         },
         {
           "additive": false,
@@ -1928,51 +1960,43 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Mechanical_BrushedNickel",
+          "name": "Material_MechanicalDark",
           "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Thruster",
+          "role": "emissive"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Mechanical_ShadowEnamel",
+          "name": "Material_Warning",
           "role": "opaqueHull"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
-          "depthWrite": true,
+          "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_Radiator",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "Material_Safety",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
-          "name": "Material_Tool",
-          "role": "opaqueHull"
+          "name": "other",
+          "role": "other"
         }
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 27,
-      "nodes": 34,
+      "meshes": 34,
+      "nodes": 36,
       "note": "Mining drones stay collides:false so they are not pickup collectors.",
       "opening": null,
       "pivot": [
-        2.1,
-        0.59045,
+        2.139976,
+        0.636253,
         0
       ],
       "proposedSkin": null,
@@ -1980,9 +2004,9 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 0,
-        "inwardFaceFraction": 0.38175,
-        "silhouetteRadius": 2.52557,
+        "boundaryEdges": 1176,
+        "inwardFaceFraction": 0.2805,
+        "silhouetteRadius": 2.448683,
         "sliceY": 0
       },
       "sockets": [
@@ -1999,13 +2023,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 19124,
+      "triangles": 21618,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_mining_drone.glb",
       "worldSize": [
         4.8,
-        1.366983,
-        2.294595
+        1.652432,
+        2.359007
       ]
     },
     {
