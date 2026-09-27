@@ -32,6 +32,7 @@ import * as THREE from 'three';
 import { modelTruthPlumeSocketName } from '../data/modelTruth.js';
 import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
 import { BombDetonationVfx } from './vfx/bombDetonationVfx.js';
+import { StatusMatterVfx } from './vfx/statusMatterVfx.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { createEmergentPrimitivePools } from './forceLanguage/emergentPrimitivePools.js';
@@ -1236,6 +1237,7 @@ export const vfx = {
     this._arcadeStructural = null;
     this._actionVfx = null;
     this._bombDetonationVfx = null;
+    this._statusMatterVfx = null;
     this._arcadeStructuralSerial = 0;
     this._collisionContactTicks = new Map();
     this._collisionMediumTicks = new Map();
@@ -1520,6 +1522,8 @@ export const vfx = {
     }
     releaseVfxDynamicBufferOwner(this._seamMarkers && this._seamMarkers.dynamicBufferOwner);
     invokeVfxDisposer(this._fieldGeom, 'field force surfaces');
+    invokeVfxDisposer(this._statusMatterVfx, 'attached status matter');
+    this._statusMatterVfx = null;
     invokeVfxDisposer(this._bombDetonationVfx, 'bomb material handoffs');
     this._bombDetonationVfx = null;
     invokeVfxDisposer(this._actionVfx, 'action answers');
@@ -1730,6 +1734,7 @@ export const vfx = {
     add(this._fieldGeom && this._fieldGeom.mesh);
     add(this._actionVfx && this._actionVfx.mesh);
     add(this._bombDetonationVfx && this._bombDetonationVfx.mesh);
+    add(this._statusMatterVfx && this._statusMatterVfx.mesh);
     add(this._emergentPools && this._emergentPools.group);
     const arcadeRoots = this._arcadeStructural && (
       this._arcadeStructural.getOwnerRoots?.() || this._arcadeStructural.getMeshes?.()
@@ -2237,7 +2242,7 @@ export const vfx = {
     const add = (name, fn) => this._subs.push(bus.on(name, fn));
     for (const name of ACTION_VFX_EVENTS) add(name, (p) => this._onActionVfx(name, p));
     for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
-      add(name, () => { this._actionVfx?.clear(); this._bombDetonationVfx?.clear(); });
+      add(name, () => { this._actionVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); });
     }
     const clearTumbleCadenceFor = (p) => {
       const id = p && (p.id ?? p.entityId ?? p.targetId);
@@ -2262,6 +2267,7 @@ export const vfx = {
     add('projectile:bank', (p) => this._onArcadeBankShot(p, 'projectile:bank'));
     add('projectile:ricochet', (p) => this._onArcadeBankShot(p, 'projectile:ricochet'));
     add('combat:bankShot', (p) => this._onArcadeBankShot(p, 'combat:bankShot'));
+    add('combat:bounceContinued', (p) => this._onArcadeBankShot(p, 'combat:bounceContinued'));
     add('combat:damage', (p) => this._onDamage(p));
     add('combat:weakPointHit', (p) => this._onWeakPointHit(p));
     add('physics:impact', (p) => this._onPhysicsImpact(p));
@@ -2485,6 +2491,7 @@ export const vfx = {
       this._fieldGeom?.reproject(ox, oz);
       this._actionVfx?.reproject(ox, oz);
       this._bombDetonationVfx?.reproject(ox, oz);
+      this._statusMatterVfx?.reproject(ox, oz);
       this._targetContour?.reproject(ox, oz);
     }
     // Prevent double-reproject when both renderer prepareFrame and vfx.update observe the same seq.
@@ -5409,9 +5416,9 @@ export const vfx = {
 
   _onArcadeBankShot(p, eventName) {
     if (!this._scene || !p) return false;
-    const pos = this._posFrom(p, p.targetId ?? p.id);
+    const pos = p.receipt?.point || this._posFrom(p, p.targetId ?? p.id);
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
-    const approach = p.approach || p.direction || p.dir || null;
+    const approach = p.outgoing || p.approach || p.direction || p.dir || null;
     const req = _arcadeStructuralBurstReq;
     req.x = pos.x;
     req.z = pos.z;
@@ -11751,6 +11758,7 @@ export const vfx = {
     } else sub.fieldFlow = 0;
     if (this._actionVfx) this._actionVfx.update(this.state);
     if (this._bombDetonationVfx) this._bombDetonationVfx.update(this.state);
+    if (this._statusMatterVfx) this._statusMatterVfx.update(this.state);
     if (this.state && this.state.emergent && this.state.emergent.hot) {
       if (!this._emergentPools && this._scene) {
         this._emergentPools = createEmergentPrimitivePools();
@@ -12274,62 +12282,11 @@ export const vfx = {
     return count;
   },
 
-  _emitMomentumSinkPlan(plan) {
-    let emitted = false;
-    const priority = plan.admissionPriority;
-    const mainX = plan.targetX - plan.axisX * plan.centerOffset;
-    const mainZ = plan.targetZ - plan.axisZ * plan.centerOffset;
-    if (this._spawnProjectileTrailStreak(
-      mainX, 0.2, mainZ,
-      plan.life, plan.width, plan.length, plan.opacity,
-      MOMENTUM_SINK_VFX_COLORS.core,
-      plan.carryX, plan.carryZ, plan.axisX, plan.axisZ, priority,
-    )) emitted = true;
-
-    if (plan.streakCount > 1) {
-      const baseX = plan.targetX - plan.axisX * plan.radius * 0.12;
-      const baseZ = plan.targetZ - plan.axisZ * plan.radius * 0.12;
-      const sideX = plan.perpX * plan.sideOffset;
-      const sideZ = plan.perpZ * plan.sideOffset;
-      const inwardX = plan.perpX * plan.convergenceSpeed;
-      const inwardZ = plan.perpZ * plan.convergenceSpeed;
-      if (this._spawnProjectileTrailStreak(
-        baseX + sideX, 0.14, baseZ + sideZ,
-        plan.life, plan.width * 0.76, plan.length * 0.62, plan.opacity * 0.74,
-        MOMENTUM_SINK_VFX_COLORS.compression,
-        plan.carryX - inwardX, plan.carryZ - inwardZ,
-        plan.axisX, plan.axisZ, priority,
-      )) emitted = true;
-      if (this._spawnProjectileTrailStreak(
-        baseX - sideX, 0.14, baseZ - sideZ,
-        plan.life, plan.width * 0.76, plan.length * 0.62, plan.opacity * 0.74,
-        MOMENTUM_SINK_VFX_COLORS.compression,
-        plan.carryX + inwardX, plan.carryZ + inwardZ,
-        plan.axisX, plan.axisZ, priority,
-      )) emitted = true;
-
-      if (plan.particleCount > 0) {
-        const particleInwardX = plan.perpX * plan.particleSpeed;
-        const particleInwardZ = plan.perpZ * plan.particleSpeed;
-        const trailAxis = Math.atan2(plan.axisZ, plan.axisX);
-        const first = this._spawnParticle(
-          plan.targetX + sideX, plan.targetZ + sideZ,
-          plan.carryX - particleInwardX, plan.carryZ - particleInwardZ,
-          plan.life, plan.width * 1.25, 0.04,
-          this._momentumSinkParticleStart, this._momentumSinkParticleEnd,
-          7.5, 0.16, 0, trailAxis, 1.8, priority,
-        );
-        const second = this._spawnParticle(
-          plan.targetX - sideX, plan.targetZ - sideZ,
-          plan.carryX + particleInwardX, plan.carryZ + particleInwardZ,
-          plan.life, plan.width * 1.25, 0.04,
-          this._momentumSinkParticleStart, this._momentumSinkParticleEnd,
-          7.5, 0.16, 0, trailAxis, 1.8, priority,
-        );
-        if (first != null || second != null) emitted = true;
-      }
-    }
-    return emitted;
+  _ensureStatusMatterVfx() {
+    if (!this._statusMatterVfx && this._scene) this._statusMatterVfx = new StatusMatterVfx(this._scene, {
+      toLocal: this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)),
+    });
+    return this._statusMatterVfx;
   },
 
   _updateMomentumSinkPresentation() {
@@ -12355,7 +12312,7 @@ export const vfx = {
         this._momentumSinkPlanScratch,
         this._writeMomentumSinkInput(entity, active),
       );
-      if (plan.active && this._emitMomentumSinkPlan(plan)) emittedTargets++;
+      if (plan.active && this._ensureStatusMatterVfx()?.touchMomentum(entity, active, plan, this.state)) emittedTargets++;
       // Do not retain removed world entities or restored status records between cadence pulls.
       this._momentumSinkCandidates[index] = null;
       this._momentumSinkCandidateStatuses[index] = null;
@@ -13840,27 +13797,7 @@ export const vfx = {
       const plan = planStatusAttachedEmit(victim, cd.get(key) || 0, acc, frameDt);
       cd.set(key, plan.nextCadenceAgeS);
       if (!plan.emit) continue;
-      const sprites = plan.sprites;
-      for (let s = 0; s < sprites.length; s++) {
-        const sprite = sprites[s];
-        const kind = sprite.kind === 'combustion' ? SPR_COMBUSTION : SPR_PUFF;
-        this._spawnSprite(
-          kind,
-          victim.x + sprite.offset,
-          sprite.y,
-          victim.z,
-          sprite.life,
-          sprite.size0,
-          sprite.size1,
-          sprite.opacity0,
-          sprite.opacity1,
-          sprite.color,
-          sprite.vx,
-          sprite.vz,
-          1.15,
-          0,
-        );
-      }
+      this._ensureStatusMatterVfx()?.touchStatus(victim, this.state);
     }
     this._spawnFlashAccessibilityBypass = false;
     const stale = this._statusAttachedStale || (this._statusAttachedStale = []);

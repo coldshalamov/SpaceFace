@@ -352,6 +352,7 @@ export function classifyCausalVfxFamily(eventName, payload) {
     name === 'projectile:bank'
     || name === 'projectile:ricochet'
     || name === 'combat:bankShot'
+    || name === 'combat:bounceContinued'
   ) {
     return CAUSAL_VFX_FAMILIES.bank;
   }
