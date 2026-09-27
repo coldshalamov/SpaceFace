@@ -164,8 +164,8 @@ test('pirateDisengage detects a hurt generic pirate and aceMemory promotes it en
   // Nerve delay is 1 s of sim time; 120 ticks covers it with margin.
   t.sim.runTicks(120);
 
-  const triggered = t.events.length >= 0 && t.state.aceMemory[promotedPilotIdFor(pirate.id)];
-  assert.ok(triggered && triggered.promoted === true,
+  const rec = t.state.aceMemory[promotedPilotIdFor(pirate.id)];
+  assert.ok(rec && rec.promoted === true,
     'the real pirateDisengage pipeline promotes the fleeing hull');
 });
 
