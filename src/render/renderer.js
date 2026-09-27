@@ -193,6 +193,7 @@ import {
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { globalShipMicroMotion } from './shipMicroMotion.js';
 import { globalForgeCrown } from './forgeRegentCrown.js';
+import { globalLawArenaDressing } from './lawArenaDressing.js';
 import { createFlightOverheadPresentation } from './flightOverheadPresentation.js';
 import { writeSlipstreamState } from '../presentation/flightOverheadMath.js';
 import { globalAsteroidMotion } from './asteroidMotionPresentation.js';
@@ -10169,6 +10170,11 @@ export const render = {
     // kicks decode/runway for the plan's real hull keys only — no exemplar mesh, no
     // pipeline precompile (soft-GPU skips those anyway).
     onBus('survivalArena:rosterPrewarm', (p) => this._admitSurvivalRosterPrewarm(p));
+    // PQ-133.08: law-arena machinery is render-owned dressing installed/released on the arena's
+    // own events (field anchors, shutter bars, crusher presses, current mouths). The tracker
+    // self-gates on arenaId, so non-law rooms pass through untouched.
+    onBus('survivalArena:installed', (p) => globalLawArenaDressing.handleInstall(p, this.scene));
+    onBus('survivalArena:released', () => globalLawArenaDressing.handleReleased());
     onBus('run:wavePlanned', (p) => this._kickWaveHullDecodeRunway(p));
     // Between-round roster warm: every swarm wave ends in the armory, and the next wave's
     // newcomer set is fixed by its number, so the eligible-minus-covered cohort builds and
@@ -10191,6 +10197,7 @@ export const render = {
       catch (error) { console.warn('[render] deferred swarm warm fallback failed', error); }
     });
     onBus('run:ended', () => {
+      globalLawArenaDressing.handleReleased();
       this._releaseSurvivalRosterPrewarm('run_ended');
       // The early warm's root was pushed into _rosterPrewarmRoots at begin, so the release
       // above already disposed it — drop the handle so the cook never adopts a dead root.
@@ -12334,6 +12341,7 @@ export const render = {
       globalAsteroidMotion.releaseEntityMesh(entityId);
       globalInfrastructureMotion.releaseEntityMesh(entityId);
       globalForgeCrown.releaseEntityMesh(entityId);
+      globalLawArenaDressing.releaseEntityMesh(entityId);
     }
     // A save restore reissues ids, so the record pinning this exact mesh can live under a
     // recycled key the entity-id release above cannot reach — release by identity too.
@@ -12342,6 +12350,7 @@ export const render = {
       globalAsteroidMotion.releaseMesh(mesh);
       globalInfrastructureMotion.releaseMesh(mesh);
       globalForgeCrown.releaseMesh(mesh);
+      globalLawArenaDressing.releaseMesh(mesh);
     }
     // The submit-lane reservation is keyed by entity id, not by the world handle: it must
     // release even when the handle (or the world) is already gone, or the slot strands.
@@ -12381,6 +12390,7 @@ export const render = {
     globalOrdnanceMotion.prune(active);
     globalInfrastructureMotion.prune(active);
     globalForgeCrown.prune(active);
+    globalLawArenaDressing.prune(active);
     this._releaseDetachedBoundaryOwners();
   },
 
@@ -13277,6 +13287,9 @@ export const render = {
     const settings = this.state.settings || {};
     _worldSiteA11y.reducedMotion = !!(settings.video && settings.video.motionReduce);
     _worldSiteA11y.reducedFlash = !!(settings.accessibility && settings.accessibility.flashReduce);
+    // PQ-133.08: law-arena room machinery animates once per frame on the sim clock — never per
+    // entity, and never on wall time (a hard freeze holds the room's pose with the world).
+    globalLawArenaDressing.updateRoom(simNow, presFrameDt, _worldSiteA11y);
 
     const world = this._presentationWorld;
     const bounds = this._entityViewCullBounds();
@@ -13589,6 +13602,7 @@ export const render = {
           _craftMicroMotionOptions.flashReduce = _worldSiteA11y.reducedFlash;
           globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
           globalForgeCrown.updateForgeCrown(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+          globalLawArenaDressing.updateBossDressing(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
           if (isPlayer && this.scene) {
             slipstreamSeen = true;
             if (!this._overheadCues) this._overheadCues = createFlightOverheadPresentation(this.scene);
