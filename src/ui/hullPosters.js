@@ -20,7 +20,6 @@ export const HULL_POSTERS = Object.freeze({
   ship_kestrel: Object.freeze({ hero: 'ship_kestrel.hero.webp', side: 'ship_kestrel.side.webp', top: 'ship_kestrel.top.webp', holo: 'ship_kestrel.holo.webp', jig: 'ship_kestrel.jig.webp' }),
   ship_pelican: Object.freeze({ hero: 'ship_pelican.hero.webp', side: 'ship_pelican.side.webp', top: 'ship_pelican.top.webp', holo: 'ship_pelican.holo.webp', jig: 'ship_pelican.jig.webp' }),
   ship_wasp: Object.freeze({ hero: 'ship_wasp.hero.webp', side: 'ship_wasp.side.webp', top: 'ship_wasp.top.webp', holo: 'ship_wasp.holo.webp', jig: 'ship_wasp.jig.webp' }),
-  // the Crucible's own hull (three of its four starter builds fly it)
   ship_hornet: Object.freeze({ hero: 'ship_hornet.hero.webp', side: 'ship_hornet.side.webp', top: 'ship_hornet.top.webp', holo: 'ship_hornet.holo.webp', jig: 'ship_hornet.jig.webp' }),
 });
 
