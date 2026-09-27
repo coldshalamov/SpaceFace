@@ -142,7 +142,7 @@ Inspect GLBs with `node tools/blender/forge/glbinfo.cjs <file>`.
 Pick a row, read FORGE.md and this page, and use the matching brief template. When a row is done,
 delete it here and in `build_map.md` §13D Wave GFX in the same commit.
 
-## 5. Handoff: finishing the trade hub (GFX-1)
+## 5. Worked example: the trade hub (done 2026-09-27; the same steps apply to any station with overlays)
 
 The source is `tools/blender/forge/ships/place_station_trade_hub.py`, committed as work in progress,
 and the brief is `tools/blender/forge/briefs/trade_hub.md`. To finish it:
