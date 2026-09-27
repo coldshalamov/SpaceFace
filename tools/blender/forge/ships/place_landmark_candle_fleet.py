@@ -30,8 +30,8 @@ COLORS = {
     'paint.graphite': '#23272c',   # charcoal
     'paint.scorch': '#1e1c1b',     # the recovered hull: burnt, unlit
     'dark': '#131518',
-    'dark.pool': '#07080a',         # the still point's matte black pool
-    'glass': '#06090c',            # the still pool: black mirror
+    'ceramic.pool': '#060607',      # the still point's matte black pool
+    'glass': '#06090c',            # recorder case and tender glass
     'glow_warm': '#ffb86a',        # flame body
     'glow_amber': '#ff9a2a',       # flame root and votive rings
 }
@@ -430,7 +430,7 @@ def build_still_point(s):
     rings, an ivory rim, three tension spokes to the ring and the bronze course line to the dark plinth."""
     lathe(s, 'Lens', (0, 0), [
         (-8.5, 0.0), (-7.6, 5.5), (-4.6, 12.0), (-1.4, 15.2), (0.2, 15.6, 'paint.graphite'), (0.7, 15.6),
-        (0.7, 13.6, 'dark.pool'), (0.3, 13.2),
+        (0.7, 13.6, 'ceramic.pool'), (0.3, 13.2),
     ], 'paint.graphite', segs=56, smooth=35.0)
     F.ring(s, 'Rim', (0, 0, 0.72), 14.6, 0.42, axis=(0, 0, 1), material='paint', segments=72, sides=6)
     F.ring(s, 'RimInner', (0, 0, 0.5), 13.4, 0.14, axis=(0, 0, 1), material='stripe', segments=72, sides=4)

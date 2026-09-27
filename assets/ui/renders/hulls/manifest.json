@@ -1659,6 +1659,247 @@
      ]
     }
    }
+  },
+  "ship_hawser": {
+   "sourceGlb": "assets/ships/parts/wholeships/yard_tug.glb",
+   "sourceGlbSha256": "1AD1B36891F35E7A4AA2B5BEA3E909C8D22D42CC5253E1AC2EF973E081248A77",
+   "hero": {
+    "file": "ship_hawser.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 110082,
+    "hullSize": [
+     26.292,
+     7.82,
+     5.795
+    ],
+    "longAxis": 0,
+    "marks": {
+     "SF_NPCWORK_YARD_TUG_ROOT": [
+      0.5028,
+      0.5714,
+      69.153
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      66.786
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6293,
+      69.518
+     ],
+     "SOCKET_Engine_Main": [
+      0.6826,
+      0.3768,
+      78.657
+     ],
+     "SOCKET_Mining_Front": [
+      0.2608,
+      0.755,
+      58.959
+     ],
+     "SOCKET_RCS_Port": [
+      0.5557,
+      0.5282,
+      67.131
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4463,
+      0.4728,
+      69.59
+     ],
+     "SOCKET_Tether_Massline": [
+      0.6637,
+      0.332,
+      76.809
+     ],
+     "SOCKET_Trail_Main": [
+      0.6872,
+      0.3718,
+      78.934
+     ],
+     "SOCKET_Trail_Port": [
+      0.7082,
+      0.3811,
+      78.422
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6663,
+      0.3627,
+      79.446
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3662,
+      67.202
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2584,
+      0.7495,
+      58.823
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_hawser.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 64808,
+    "hullSize": [
+     26.292,
+     7.82,
+     5.795
+    ],
+    "longAxis": 0,
+    "marks": {
+     "SF_NPCWORK_YARD_TUG_ROOT": [
+      0.4943,
+      0.6144,
+      78.877
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      78.877
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.7002,
+      78.877
+     ],
+     "SOCKET_Engine_Main": [
+      0.085,
+      0.6144,
+      78.877
+     ],
+     "SOCKET_Mining_Front": [
+      0.9076,
+      0.5105,
+      78.877
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      81.223
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      76.531
+     ],
+     "SOCKET_Tether_Massline": [
+      0.1366,
+      0.5019,
+      78.877
+     ],
+     "SOCKET_Trail_Main": [
+      0.0731,
+      0.6144,
+      78.877
+     ],
+     "SOCKET_Trail_Port": [
+      0.0731,
+      0.6144,
+      79.854
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0731,
+      0.6144,
+      77.899
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.2998,
+      78.877
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9108,
+      0.5,
+      78.877
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_hawser.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 42030,
+    "hullSize": [
+     26.292,
+     7.82,
+     5.795
+    ],
+    "longAxis": 0,
+    "marks": {
+     "SF_NPCWORK_YARD_TUG_ROOT": [
+      0.5,
+      0.5057,
+      80.504
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      78.877
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      81.724
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.915,
+      80.504
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0924,
+      79.027
+     ],
+     "SOCKET_RCS_Port": [
+      0.4244,
+      0.5,
+      78.877
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5756,
+      0.5,
+      78.877
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.8634,
+      78.904
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9269,
+      80.504
+     ],
+     "SOCKET_Trail_Port": [
+      0.4685,
+      0.9269,
+      80.504
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5315,
+      0.9269,
+      80.504
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      76.03
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0892,
+      78.877
+     ]
+    }
+   }
   }
  }
 }

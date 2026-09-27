@@ -166,7 +166,7 @@ MAKES = {
 
 
 def hull(s, name, make, L, W, H, pos, yaw=0.0, pitch=0.0, roll=0.0, nose=True, tail=True, windows=None,
-         lights=None, bands=2):
+         lights=None, bands=2, fin=False, bridge=False, drives=0, straps=False):
     """A captured hull section, built along +X at the origin then placed. nose/tail False = a welded cut
     end (blunt, dark cap). Returns (object, matrix). windows/lights: lists that collect world boxes."""
     paint, belly, n, livery, style = MAKES[make]
@@ -197,7 +197,33 @@ def hull(s, name, make, L, W, H, pos, yaw=0.0, pitch=0.0, roll=0.0, nose=True, t
         bx = x0 + L * (0.3 + 0.28 * k)
         F.band(s, name, (bx, 0, 0), (1, 0, 0), max(L * 0.035, 0.8), livery if k == 0 else 'paint.graphite',
                inset=0.05, depth=0.12)
-    m = place([obj], pos, yaw, pitch, roll)
+    parts = [obj]
+    if fin:
+        # the prize's dorsal fin, still standing
+        parts.append(F.box(s, name + 'Fin', (x0 + L * 0.3, 0, H * 0.9 + H * 0.45), (L * 0.2, 0.6, H * 1.0),
+                           material='paint2', bevel=0.05, taper=0.45))
+    if bridge:
+        # its old bridge block, glass dark: nobody flies it any more
+        bx = x0 + L * (0.72 if nose else 0.6)
+        parts.append(F.box(s, name + 'Bridge', (bx, 0, H * 0.92 + 1.1), (L * 0.14, W * 1.1, 2.4),
+                           material=paint, bevel=0.1, taper=0.85))
+        parts.append(F.box(s, name + 'BridgeGlass', (bx + L * 0.07 + 0.05, 0, H * 0.92 + 1.4), (0.2, W * 0.9, 0.9),
+                           material='glass', bevel=0.0))
+    if drives and tail:
+        for k in range(drives):
+            dy = (k - (drives - 1) / 2) * W * 0.9
+            parts.append(F.nozzle(s, f'{name}Drive{k}', (x0 - 0.1, dy, 0.0), min(W, H) * 0.42, min(W, H) * 0.5,
+                                  material='gunmetal', glow='paint.graphite'))
+    if straps:
+        # crude weld straps where the hull was cut and fused to its neighbours
+        for f in (-0.44, 0.44):
+            parts.append(F.box(s, f'{name}Strap{f:+.1f}', (L * f, 0, (H - H * 0.9) / 2), (1.6, W * 2.12, H * 1.98),
+                               material='paint.graphite', bevel=0.12))
+    m = place(parts, pos, yaw, pitch, roll)
+    if lights is not None and straps:
+        for f in (-0.3, 0.0, 0.3):
+            p = m @ Vector((L * f, 0, H * 0.99))
+            lights.append(((p.x, p.y, p.z + 0.15), (0.7, 0.7, 0.4), yaw))
     if windows is not None:
         rows = max(int(L / 3.2), 2)
         for side in (1, -1):
@@ -252,7 +278,8 @@ def build_deck(s):
     F.plate(s, 'Deck', outline, z0=DECK_Z - 5.0, thickness=5.0, material='paint2', top_material='paint2',
             chamfer=1.2, chamfer_bottom=3.0, bevel=0.2)
     patches = []
-    fins = ['paint.navy', 'paint', 'paint.teal', 'paint.graphite', 'paint.work', 'paint', 'paint.graphite']
+    fins = ['paint.graphite', 'paint', 'paint.navy', 'paint.graphite', 'paint', 'paint.teal', 'paint.graphite',
+            'paint', 'paint.work']
     k = 0
     for gx in range(-62, 70, 13):
         for gy in range(-52, 56, 13):
@@ -284,14 +311,15 @@ def build_walls(s, windows, lights):
         H = (5.0 + 1.4 * rnd(i + 4)) * hs
         z = DECK_Z + H * 0.9
         hull(s, f'Wall{i}', lower, L, W, H, (mid[0], mid[1], z), yaw=yaw, nose=False, tail=False, windows=windows,
-             bands=2)
+             lights=lights, bands=2, fin=(i % 3 == 1 and upper is None), straps=True)
         if upper:
             L2 = L * (0.55 + 0.25 * rnd(i + 2))
             off = (rnd(i + 6) - 0.5) * (L - L2) * 0.8
             c = Vector((mid[0], mid[1], 0)) + d.normalized() * off
             hull(s, f'WallTop{i}', upper, L2, W * 0.72, H * 0.72, (c.x, c.y, z + H * 0.95 + H * 0.5),
                  yaw=yaw + (math.pi if rnd(i + 8) > 0.5 else 0.0), pitch=math.radians(4 * (rnd(i + 1) - 0.5)),
-                 nose=rnd(i + 3) > 0.4, tail=False, windows=windows, lights=lights, bands=1)
+                 nose=rnd(i + 3) > 0.4, tail=rnd(i + 3) > 0.4, windows=windows, lights=lights, bands=1,
+                 bridge=True, drives=2 if rnd(i + 5) > 0.3 else 3)
             # weld saddles between the two courses
             for f in (-0.3, 0.3):
                 p = c + d.normalized() * (L2 * f)
@@ -349,6 +377,12 @@ def build_throne(s, windows, lights):
             p = m @ Vector((-L / 2 + L * 0.12 + L * 0.7 * (i + 0.5) / rows, 0, W * 0.8 * 0.98))
             for dy in (-W * 0.3, W * 0.3):
                 windows.append(((p.x + 0.2, p.y + dy, p.z), (0.14, 1.0, 1.3), 0.0))
+    # the headrest: a long Ashline hull laid across the top of the back
+    hull(s, 'Headrest', 'ash', 54.0, 4.2, 4.0, (-26.0, 0.0, DECK_Z + 44.0), yaw=math.pi / 2, nose=True, tail=True,
+         windows=windows, lights=lights, bands=2, drives=2)
+    for y in (-14.0, 14.0):
+        beams(s, f'HeadrestPost{y:+.0f}', [((-26.0, y, DECK_Z + 26.0), (-26.0, y, DECK_Z + 41.0))], 2.4,
+              material='paint.graphite')
     # the back's weld frame: three horizontal girders binding the standing hulls
     for zz in (12.0, 26.0, 38.0):
         beams(s, f'BackTie{int(zz)}', [((-20.0, -23.0, zz), (-20.0, 23.0, zz))], 1.6, material='paint.graphite', h=2.4)
@@ -381,28 +415,30 @@ def build_skull(s, lights):
     captured nose cones, two swept-back horns."""
     cx, cz = 78.0, DECK_Z + 12.0
     F.loft(s, 'Cranium', [
-        dict(x=cx - 22.0, w=16.0, ht=10.0, hb=6.0, zc=cz, n=2.4),
-        dict(x=cx - 12.0, w=21.0, ht=16.0, hb=8.0, zc=cz, n=2.3),
-        dict(x=cx, w=22.0, ht=17.0, hb=9.0, zc=cz, n=2.2),
-        dict(x=cx + 10.0, w=19.0, ht=13.0, hb=10.0, zc=cz - 1.0, n=2.4),
-        dict(x=cx + 16.0, w=15.0, ht=7.0, hb=10.5, zc=cz - 2.5, n=2.8),
-        dict(x=cx + 19.0, w=10.0, ht=3.0, hb=9.0, zc=cz - 4.0, n=3.0),
-    ], material='paint.bone', belly='paint2', back_material='paint2', front_material='dark', count=40, bevel=0.0)
+        dict(x=cx - 22.0, w=16.0, ht=10.0, hb=6.0, zc=cz, n=2.0),
+        dict(x=cx - 12.0, w=21.0, ht=16.0, hb=8.0, zc=cz, n=2.0),
+        dict(x=cx, w=22.0, ht=17.0, hb=9.0, zc=cz, n=2.0),
+        dict(x=cx + 10.0, w=19.0, ht=13.0, hb=10.0, zc=cz - 1.0, n=2.1),
+        dict(x=cx + 16.0, w=14.0, ht=7.0, hb=10.5, zc=cz - 2.5, n=2.4),
+        dict(x=cx + 19.0, w=9.0, ht=3.0, hb=9.0, zc=cz - 4.0, n=2.6),
+    ], material='paint.bone', belly='paint2', back_material='paint2', front_material='dark', count=24, bevel=0.0)
     # plating courses across the dome: the skull grows a course after every raid
-    for k, x in enumerate((cx - 16.0, cx - 9.0, cx - 2.0, cx + 5.0)):
-        F.band(s, 'Cranium', (x, 0, 0), (1, 0, 0), 0.9, 'paint.graphite' if k % 2 else 'paint', inset=0.1, depth=0.3)
-    F.band(s, 'Cranium', (0, 0, cz + 14.0), (0, 0, 1), 1.2, 'paint', facing=(0, 0, 1), inset=0.1, depth=0.25)
-    # eye pits: dark sockets sunk into the brow, sodium fire deep inside, facing up and forward
-    ax = Vector((0.75, 0, 0.66)).normalized()
+    for k, x in enumerate((cx - 18.0, cx - 13.0, cx - 8.0, cx - 3.0, cx + 2.0)):
+        F.band(s, 'Cranium', (x, 0, 0), (1, 0, 0), 0.8 + 0.3 * (k % 2), 'paint.graphite' if k % 2 else 'paint',
+               inset=0.1, depth=0.35)
+    F.band(s, 'Cranium', (0, 0, 0), (0, 1, 0), 1.6, 'paint2', facing=(0, 0, 1), inset=0.1, depth=0.4)
     for sgn in (1, -1):
-        c = Vector((cx + 9.0, sgn * 7.4, cz + 11.3))
-        F.cylinder(s, f'Socket{sgn:+d}', tuple(c - ax * 3.0), tuple(c + ax * 2.6), 4.4, 3.6, material='paint2',
-                   segments=16, cap_material='dark', bevel=0.0)
-        F.ring(s, f'Brow{sgn:+d}', tuple(c + ax * 2.6), 4.0, 0.7, axis=tuple(ax), material='paint2', segments=20, sides=6)
-        F.cylinder(s, f'Eye{sgn:+d}', tuple(c + ax * 2.55), tuple(c + ax * 2.75), 2.6, material='glow_amber',
-                   segments=16, bevel=0.0)
-        F.cylinder(s, f'Pupil{sgn:+d}', tuple(c + ax * 2.76), tuple(c + ax * 2.9), 1.0, material='dark',
-                   segments=10, bevel=0.0)
+        F.band(s, 'Cranium', (0, sgn * 13.0, 0), (0, 1, 0), 1.0, 'paint.graphite', inset=0.08, depth=0.3)
+    # eye pits: slanted dark sockets on the brow slope, sodium fire in each, heavy black brows
+    for sgn in (1, -1):
+        rot = (0.0, math.radians(24), sgn * math.radians(-14))
+        c = Vector((cx + 8.6, sgn * 7.6, cz + 11.6))
+        n = Matrix.Rotation(rot[2], 3, 'Z') @ Matrix.Rotation(rot[1], 3, 'Y') @ Vector((0, 0, 1))
+        F.box(s, f'Socket{sgn:+d}', tuple(c), (8.0, 5.8, 3.0), material='paint2', rot=rot, bevel=0.15)
+        F.box(s, f'Eye{sgn:+d}', tuple(c + n * 1.56), (6.2, 3.6, 0.2), material='glow_amber', rot=rot, bevel=0.0)
+        F.box(s, f'EyeCore{sgn:+d}', tuple(c + n * 1.68), (3.4, 1.4, 0.12), material='glow_warm', rot=rot, bevel=0.0)
+        F.box(s, f'Brow{sgn:+d}', (cx + 5.6, sgn * 9.0, cz + 14.6), (5.0, 11.0, 2.6), material='paint2',
+              rot=(sgn * math.radians(-10), math.radians(18), sgn * math.radians(24)), bevel=0.2, taper=0.8)
     # nasal pit
     F.box(s, 'Nasal', (cx + 15.2, 0.0, cz + 2.6), (3.0, 3.6, 4.0), material='dark', rot=(0, math.radians(35), 0),
           bevel=0.05)
