@@ -14900,7 +14900,7 @@
       "priority": 359,
       "title": "This asteroid's rock: kill the tan wash",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-130.01"
       ],
@@ -14919,9 +14919,11 @@
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-130-03-this-rock-3d-REPORT.md"
+        "design/program/roadmap/receipts/PQ-130-03-this-rock-3d-REPORT.md",
+        "design/program/roadmap/receipts/PQ-130.03-RECEIPT.md"
       ],
-      "brief": "Spirit: you recognize the body you tethered to. Lighting as stone, not a blown-out fill. Illegal: darken the tan hex and keep key light 4.2. Unsurveyed is still rock. Do not restyle ore clusters or the rover here."
+      "brief": "Spirit: you recognize the body you tethered to. Lighting as stone, not a blown-out fill. Illegal: darken the tan hex and keep key light 4.2. Unsurveyed is still rock. Do not restyle ore clusters or the rover here.",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-130.03-RECEIPT.md"
     },
     {
       "id": "PQ-130.04",
@@ -14957,7 +14959,7 @@
       "priority": 361,
       "title": "The vehicle: rover readable at play size",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-130.01",
         "PQ-130.03"
@@ -14976,9 +14978,11 @@
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-130-05-the-vehicle-REPORT.md"
+        "design/program/roadmap/receipts/PQ-130-05-the-vehicle-REPORT.md",
+        "design/program/roadmap/receipts/PQ-130.05-RECEIPT.md"
       ],
-      "brief": "Spirit: that is my drill. Silhouette, cabin, bit, hazard paint against dark rock. Findable in a second. Illegal: makeRover scale ×1.4 on the same box stack. Authored GLB only if the rebuilt rig still fails. No billboard."
+      "brief": "Spirit: that is my drill. Silhouette, cabin, bit, hazard paint against dark rock. Findable in a second. Illegal: makeRover scale ×1.4 on the same box stack. Authored GLB only if the rebuilt rig still fails. No billboard.",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-130.05-RECEIPT.md"
     },
     {
       "id": "PQ-130.06",
@@ -15109,7 +15113,7 @@
       "priority": 366,
       "title": "The site reads: networks, lamps, port, courier on the board",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-130.07",
         "PQ-130.09"
@@ -15130,9 +15134,11 @@
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-130-10-the-site-reads-REPORT.md"
+        "design/program/roadmap/receipts/PQ-130-10-the-site-reads-REPORT.md",
+        "design/program/roadmap/receipts/PQ-130.10-RECEIPT.md"
       ],
-      "brief": "Design law §7 + §6.5 + §9: cables as warm gold lines along tunnel walls with junction nodes; lanes as floor flow-dots toward the port (buffer reads as dot density); machine lamps mint when running, dark + gold want-chip when starved; port stacks visible crates; couriers visibly slide up the shaft and launch. Faces + Network overlay lenses (one at a time, <=35% alpha over a board that never lies). Returning to a producing site opens at site zoom. Presentation only — read siteLogistics/siteProduction state, change no sim law. Illegal: a production report panel instead of the picture."
+      "brief": "Design law §7 + §6.5 + §9: cables as warm gold lines along tunnel walls with junction nodes; lanes as floor flow-dots toward the port (buffer reads as dot density); machine lamps mint when running, dark + gold want-chip when starved; port stacks visible crates; couriers visibly slide up the shaft and launch. Faces + Network overlay lenses (one at a time, <=35% alpha over a board that never lies). Returning to a producing site opens at site zoom. Presentation only — read siteLogistics/siteProduction state, change no sim law. Illegal: a production report panel instead of the picture.",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-130.10-RECEIPT.md"
     },
     {
       "id": "PQ-131.00",
@@ -15440,7 +15446,7 @@
       "priority": 377,
       "title": "Inclusion kit: ore, exotic, ice, gas, scars, lock plate, authored",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-131.00"
       ],
@@ -15460,10 +15466,12 @@
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-131-10-authored-inclusion-kit-REPORT.md"
+        "design/program/roadmap/receipts/PQ-131-10-authored-inclusion-kit-REPORT.md",
+        "design/program/roadmap/receipts/PQ-131.10-RECEIPT.md"
       ],
       "brief": "Inventory row .10: replaces the low-poly crystal clusters - ore cluster variants per family (silver, gold, iron, nickel), exotic lattice variants, an ice sheen plate, a gas crack decal set, the vented scar, the MK lock plate - authored, lit, occupying a real part of a cell, <=0.7 cell, one instanced mesh per variant, 1-3k each on a shared 2048^2 atlas. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural inclusion builders.",
-      "note": "Wired, captured, reviewed (KEEP/REVISE/REVISE — triaged in receipt). All named checks green except check:playable BOOT (red, undetermined fingerprint, not attributable to this unit; see receipt before re-running)."
+      "note": "Wired, captured, reviewed (KEEP/REVISE/REVISE — triaged in receipt). All named checks green except check:playable BOOT (red, undetermined fingerprint, not attributable to this unit; see receipt before re-running).",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-131.10-RECEIPT.md"
     },
     {
       "id": "PQ-133.00",
