@@ -471,6 +471,7 @@ function ensureEntityIndex(state) {
     radarContacts: [],
     radarAsteroids: [],
     byStationId: new Map(),
+    byWorldRecordId: new Map(),
     _indexedIds: new Set(),
     _sourceList: null,
     _sourceLength: -1,
@@ -529,6 +530,10 @@ function repairEntityIndex(index) {
   if (!Array.isArray(index.radarContacts)) index.radarContacts = [];
   if (!Array.isArray(index.radarAsteroids)) index.radarAsteroids = [];
   if (!(index.byStationId instanceof Map)) index.byStationId = new Map();
+  if (!(index.byWorldRecordId instanceof Map)) {
+    index.byWorldRecordId = new Map();
+    index.ready = false;
+  }
   if (!(index._indexedIds instanceof Set)) {
     index._indexedIds = new Set();
     index.ready = false;
@@ -573,6 +578,7 @@ function clearEntityIndex(index) {
   index.radarContacts.length = 0;
   index.radarAsteroids.length = 0;
   index.byStationId.clear();
+  index.byWorldRecordId.clear();
   index._indexedIds.clear();
 }
 
@@ -606,6 +612,11 @@ function appendEntityIndex(index, e) {
       && e.type !== 'masslineSnare' && e.type !== 'masslineSnareAnchor') {
     if (e.type === 'asteroid') index.radarAsteroids.push(e);
     else index.radarContacts.push(e);
+  }
+  // First holder wins, matching the entities-map walk every worldRecordId lookup used to run.
+  const worldRecordId = e.data && e.data.worldRecordId;
+  if (worldRecordId != null && !index.byWorldRecordId.has(worldRecordId)) {
+    index.byWorldRecordId.set(worldRecordId, e);
   }
 
   switch (e.type) {
@@ -739,6 +750,22 @@ function removeEntityIndex(index, e) {
       }
     }
   }
+  // Vacated worldRecordId slots remap to the next live holder so map lookups answer the same
+  // entity the entityList walk would have found (duplicate keepers exist for malformed rows).
+  const worldRecordId = e.data && e.data.worldRecordId;
+  if (worldRecordId != null && index.byWorldRecordId.get(worldRecordId) === e) {
+    index.byWorldRecordId.delete(worldRecordId);
+    const source = index._sourceList;
+    if (Array.isArray(source)) {
+      for (const survivor of source) {
+        if (survivor && survivor !== e && survivor.alive !== false
+          && survivor.data && survivor.data.worldRecordId === worldRecordId) {
+          index.byWorldRecordId.set(worldRecordId, survivor);
+          break;
+        }
+      }
+    }
+  }
   if (removedSpatialStatic) index.spatialStaticVersion++;
   if (removedPhysicsStatic) index.physicsStaticVersion++;
   index.version++;
@@ -817,6 +844,27 @@ function removeEntitiesFromIndex(index, corpses) {
           index.byStationId.set(stationId, station);
           break;
         }
+      }
+    }
+  }
+  // Same remap for worldRecordId slots, one shared rescan for the whole corpse set — the
+  // sequential path re-scanned the list per vacated key, the batch scans it once.
+  let vacatedWorldRecordIds = null;
+  for (let i = 0; i < corpses.length; i++) {
+    const e = corpses[i];
+    if (!e || !removed.has(e)) continue;
+    const worldRecordId = e.data && e.data.worldRecordId;
+    if (worldRecordId != null && index.byWorldRecordId.get(worldRecordId) === e) {
+      index.byWorldRecordId.delete(worldRecordId);
+      (vacatedWorldRecordIds || (vacatedWorldRecordIds = new Set())).add(worldRecordId);
+    }
+  }
+  if (vacatedWorldRecordIds && Array.isArray(index._sourceList)) {
+    for (const survivor of index._sourceList) {
+      if (!survivor || survivor.alive === false || !survivor.data) continue;
+      const key = survivor.data.worldRecordId;
+      if (key != null && vacatedWorldRecordIds.has(key) && !index.byWorldRecordId.has(key)) {
+        index.byWorldRecordId.set(key, survivor);
       }
     }
   }

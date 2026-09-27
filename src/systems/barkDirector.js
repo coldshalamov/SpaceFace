@@ -663,7 +663,10 @@ export const barkDirector = {
     }
     const player = state.entities?.get?.(state.playerId);
     let danger = tick < (this._stuntDangerUntil || 0) || tick < (this._voiceBusyUntil || 0) || state.onboarding?.active && !state.onboarding?.finished;
-    if (player?.pos) for (const e of state.entities.values()) {
+    const index = state.entityIndex;
+    const projectileScan = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.projectiles) ? index.projectiles : state.entities.values();
+    if (player?.pos) for (const e of projectileScan) {
       if (!e.alive || !['bullet','projectile','missile'].includes(e.type) || (e.ownerId ?? e.data?.ownerId) === state.playerId || !e.pos) continue;
       const rx=e.pos.x-player.pos.x, rz=e.pos.z-player.pos.z, vx=(e.vel?.x||0)-(player.vel?.x||0), vz=(e.vel?.z||0)-(player.vel?.z||0);
       const square=vx*vx+vz*vz, t=square?-(rx*vx+rz*vz)/square:-1;

@@ -3851,15 +3851,13 @@ export const world = {
         if (within(rec.pos, rec.data)) return true;
       }
     }
-    const idx = state.entityIndex || {};
-    const lists = [idx.asteroids, idx.mineables, state.entityList];
-    for (const list of lists) {
-      if (!Array.isArray(list)) continue;
-      for (let i = 0; i < list.length; i++) {
-        const entity = list[i];
-        if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
-        if (within(entity.pos, entity.data)) return true;
-      }
+    // Live asteroids only: the mineables bucket repeats wrecks and the fat list adds nothing
+    // the asteroids bucket does not already hold.
+    const list = indexedTypeScan(state, 'asteroids');
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
+      if (within(entity.pos, entity.data)) return true;
     }
     return false;
   },
@@ -3871,7 +3869,7 @@ export const world = {
     // A seam rock that survived sector demotion (mission-pinned, persistent) still owns its
     // slot — re-spawning it would duplicate the asteroidSlotId.
     const liveSlots = new Set();
-    for (const e of state.entityList || []) {
+    for (const e of indexedTypeScan(state, 'asteroids')) {
       if (e && e.alive !== false && e.data && e.data.fieldId === plan.fieldId
         && e.data.asteroidSlotId != null) liveSlots.add(e.data.asteroidSlotId);
     }
@@ -3966,17 +3964,11 @@ export const world = {
         if (rec.data && rec.data.fieldId === fieldId) live++;
       }
     }
-    const idx = state.entityIndex || {};
-    const lists = [idx.asteroids, idx.mineables, state.entityList];
-    const seen = new Set();
-    for (const list of lists) {
-      if (!Array.isArray(list)) continue;
-      for (let i = 0; i < list.length; i++) {
-        const e = list[i];
-        if (!e || e.alive === false || e.type !== 'asteroid' || seen.has(e)) continue;
-        seen.add(e);
-        if (e.data && e.data.fieldId === fieldId) live++;
-      }
+    const list = indexedTypeScan(state, 'asteroids');
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.alive === false || e.type !== 'asteroid') continue;
+      if (e.data && e.data.fieldId === fieldId) live++;
     }
     return live;
   },
@@ -4048,10 +4040,7 @@ export const world = {
 
   /** Unmined published rocks standing in the sector right now (the world's own inventory cap). */
   _resourceWorkPublishedCount(state, sectorId) {
-    const list = (state.entityIndex && state.entityIndex.asteroids)
-      || (state.entityIndex && state.entityIndex.mineables)
-      || state.entityList
-      || [];
+    const list = indexedTypeScan(state, 'asteroids');
     let count = 0;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
@@ -4090,7 +4079,7 @@ export const world = {
   /** True when a spawned disc at (x,z) would not intersect a live hull. Radius should be the
    * real collider radius — that is the circle physics resolves, not the visual reference. */
   _seamCandidateClearOfHulls(state, x, z, radius) {
-    const list = state.entityList || [];
+    const list = indexedShipLikeScan(state);
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || e.alive === false || (e.type !== 'ship' && e.type !== 'drone')) continue;

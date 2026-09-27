@@ -98,6 +98,47 @@ export function entityIndexVersion(state) {
     : null;
 }
 
+/**
+ * `worldRecordId` → live entity. The entity index carries a first-holder `byWorldRecordId`
+ * map maintained at spawn/despawn, so this is O(1) once the index is ready. A miss — index
+ * unready, a carrier stamped with its record id after spawn, or a duplicate keeper that
+ * outlived the first holder — falls back to the same entity walk callers ran before, so no
+ * record-holder is ever dropped (PERF-93). A walk hit reseeds the map; the next lookup is O(1).
+ */
+export function indexedWorldRecordEntity(state, worldRecordId) {
+  if (!state || worldRecordId == null || worldRecordId === '') return null;
+  const index = state.entityIndex;
+  const map = index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && index.byWorldRecordId instanceof Map
+    ? index.byWorldRecordId
+    : null;
+  if (map) {
+    const hit = map.get(worldRecordId);
+    if (hit && hit.alive !== false) return hit;
+  }
+  const entities = state.entities;
+  if (entities && typeof entities.values === 'function') {
+    for (const entity of entities.values()) {
+      if (entity && entity.alive !== false && entity.data
+        && entity.data.worldRecordId === worldRecordId) {
+        if (map) map.set(worldRecordId, entity);
+        return entity;
+      }
+    }
+    return null;
+  }
+  const list = state.entityList || EMPTY_TYPE_SCAN;
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (entity && entity.alive !== false && entity.data
+      && entity.data.worldRecordId === worldRecordId) {
+      if (map) map.set(worldRecordId, entity);
+      return entity;
+    }
+  }
+  return null;
+}
+
 /** Heist/facility dressing marked as a witness. Never asteroids. */
 export function forEachExplicitWitnessMarker(state, fn) {
   if (typeof fn !== 'function') return 'none';
