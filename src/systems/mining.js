@@ -759,6 +759,7 @@ export const mining = {
       oreType: this._dominantOre(def),
       seamHit: seam.onSeam,
       yieldMult: seam.yieldMult,
+      sourceEntityId: minerId,
     });
 
     // Continuous ore delivery (Mining 2.0 feel fix — see design/WORLD_OVERHAUL_2_1.md §Mining).

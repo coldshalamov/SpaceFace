@@ -20,7 +20,47 @@ import {
   normalizeLiveWingOrder,
   wingOrderActivity,
 } from '../data/wingOrders.js';
+import { BEAMS } from '../data/mining.js';
 import { setEntityDoctrine } from '../ai/doctrine.js';
+
+// ── Mining wingmen (fleet order 'mine') ──────────────────────────────────────────────
+// A wingman on mine order is a working extractor, not a follower: it prospects the
+// nearest live rock inside MINE_PROSPECT_WU of the player (or the rock the player has
+// targeted), flies a SCREEN guard ring anchored ON the rock with DEFENSIVE roe, and
+// holds the live mining.applyMining extractor while inside beam range. Ore ejects as
+// ordinary magnet pickups — the player scoops what the wingman cuts. No second
+// extractor, no cargo writes here; mining.js stays the single owner of extraction.
+const WINGMAN_MINE_BEAM = BEAMS.find((row) => row && row.id === 'beam_mk1') || {
+  dps: 18, range: 240, heatMax: 100, heatRate: 22, coolRate: 55,
+};
+export const WINGMAN_MINE_PROSPECT_WU = 1400;
+export const WINGMAN_MINE_LEASH_WU = 1800;
+export const WINGMAN_MINE_ANCHOR_LEASH = 260;
+const WINGMAN_MINE_TOAST_COOLDOWN_S = 60;
+
+function wingmanMineableRock(rock) {
+  if (!rock || rock.alive === false || rock.type !== 'asteroid' || !rock.pos) return false;
+  const d = rock.data || {};
+  if (d.siteAnchored || d.opticMaterial || d.isChunk) return false;
+  if (d.oreHP != null && !(d.oreHP > 0)) return false;
+  return true;
+}
+
+function ensureWingmanMineBeam(entity) {
+  const data = entity.data || (entity.data = {});
+  if (data.miningBeam && Number(data.miningBeam.dps) > 0) return data.miningBeam;
+  data.miningBeam = {
+    tierId: 'beam_mk1',
+    dps: WINGMAN_MINE_BEAM.dps,
+    range: WINGMAN_MINE_BEAM.range,
+    directToCargo: false,
+    heat: 0,
+    heatMax: WINGMAN_MINE_BEAM.heatMax,
+    heatRate: WINGMAN_MINE_BEAM.heatRate,
+    coolRate: WINGMAN_MINE_BEAM.coolRate,
+  };
+  return data.miningBeam;
+}
 
 const WINGMAN_ARCHETYPE_BY_ORDER = {
   escort: 'brawler',   // stick near the player, engage nearby hostiles
@@ -37,6 +77,8 @@ export const wingmen = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this.registry = ctx.registry || null;
+    this._mineToastT = new Map();
     this._fleetRef = null;
     this._fleetSourceRows = [];
     this._fleetSourceIds = [];
@@ -66,6 +108,7 @@ export const wingmen = {
     this._fleetSourceIds.length = 0;
     this._orderedFleet.length = 0;
     this._orderRuntime.clear();
+    if (this._mineToastT) this._mineToastT.clear();
   },
 
   update(dt, state) {
@@ -89,7 +132,10 @@ export const wingmen = {
         fs._liveId = null;
         continue;
       }
-      if (player) this._applyWingOrder(fs, e, player, index, orderedFleet.length);
+      if (player) {
+        if (fs.order === 'mine') this._applyMiningOrder(fs, e, player, dt, state);
+        else this._applyWingOrder(fs, e, player, index, orderedFleet.length);
+      }
       // Sync hull% so the AutomationPanel health bar reflects live combat damage.
       fs.hullPct = e.hullMax > 0 ? Math.max(0, e.hull / e.hullMax) : 0;
       fs.hp = fs.hullPct;
@@ -188,6 +234,11 @@ export const wingmen = {
     e.data.ai = e.data.ai || {};
     e.data.ai.archetype = archetype;
     e.data.wingmanOrder = order;
+    if (order !== 'mine') {
+      fs._mineRockId = null;
+      e.data.wingmanMining = null;
+      this._orderRuntime.delete(fs.id);
+    }
     // "Attack my target" (radial): point the live wing's combat target at the player's selected
     // target so the archetype's targeting locks onto it directly, not just the nearest hostile.
     if (order === 'attack') {
@@ -314,6 +365,131 @@ export const wingmen = {
       reason,
       commandId: previousCommandId,
     });
+  },
+
+  // ── Mining order ──────────────────────────────────────────────────────────────
+  // Prospect → fly the rock → cut. The doctrine anchor moves WITH the rock: SCREEN
+  // flies the formation slot and DEFENSIVE answers nearby hostiles, so a mining
+  // wingman works until trouble arrives, deals with it like an escort, and the
+  // anchor pulls it back to the face when the sky clears.
+  _applyMiningOrder(fs, entity, player, dt, state) {
+    const rock = this._mineTargetRock(fs, entity, player, state);
+    if (!rock) {
+      if (entity.data) entity.data.wingmanMining = null;
+      fs._mineRockId = null;
+      this._mineToast(fs, 'norock', 'No rock in reach — holding formation.');
+      this._applyWingOrder(fs, entity, player, 0, 1);
+      return;
+    }
+    if (fs._mineRockId !== rock.id) {
+      fs._mineRockId = rock.id;
+      setEntityDoctrine(entity, {
+        activity: {
+          kind: 'screen',
+          reason: 'wing_order:mine',
+          anchor: { x: rock.pos.x, z: rock.pos.z },
+          leashRadius: WINGMAN_MINE_ANCHOR_LEASH,
+          preferredRange: WINGMAN_MINE_ANCHOR_LEASH,
+          targetId: null,
+          startedTick: Number.isInteger(state.tick) ? state.tick : 0,
+        },
+        roe: 'defensive',
+      });
+      this._orderRuntime.delete(fs.id);
+      this._mineToast(fs, 'rock', 'Stripping rock — scoop what falls.', true);
+    }
+    const ai = entity.data && entity.data.ai;
+    if (ai && (ai.forceFlee === true || ai.fsm === 'flee')) {
+      if (entity.data) entity.data.wingmanMining = null;
+      this._mineToast(fs, 'flee', 'Breaking off — trouble inbound.');
+      return;
+    }
+    const mining = this.registry && this.registry.get && this.registry.get('mining');
+    const beam = ensureWingmanMineBeam(entity);
+    const dist = Math.hypot(entity.pos.x - rock.pos.x, entity.pos.z - rock.pos.z);
+    if (mining && typeof mining.applyMining === 'function'
+      && dist <= (beam.range || 0) + (rock.radius || 0)) {
+      mining.applyMining(rock.id, beam.dps || 0, dt, entity.id);
+      if (entity.data) entity.data.wingmanMining = rock.id;
+      this._mineHoldFullNote(fs, state);
+    } else if (entity.data) {
+      entity.data.wingmanMining = null;
+    }
+  },
+
+  // The player's marked rock wins; otherwise the nearest live face inside the
+  // prospect ring. Deterministic: distance, then rock id — no rng draws.
+  // Sticky: a working wingman keeps its face while it is mineable and leashed, so a
+  // transiting player does not flick the crew across the belt every tick. Spread: two
+  // mining wings do not stack on one rock unless the player marks it (focus fire).
+  _mineTargetRock(fs, entity, player, state) {
+    const targetId = state.player && state.player.targetId;
+    if (targetId != null && state.entities) {
+      const marked = state.entities.get(targetId);
+      if (wingmanMineableRock(marked) && this._rockInLeash(marked, player)) return marked;
+    }
+    if (fs._mineRockId != null && state.entities) {
+      const held = state.entities.get(fs._mineRockId);
+      if (wingmanMineableRock(held) && this._rockInLeash(held, player)) return held;
+    }
+    const claimed = this._mineClaimedRocks(fs, state);
+    const list = state.entityList || [];
+    let best = null;
+    let bestD2 = Infinity;
+    let bestId = '';
+    for (let i = 0; i < list.length; i++) {
+      const rock = list[i];
+      if (!wingmanMineableRock(rock)) continue;
+      if (claimed && claimed.has(rock.id)) continue;
+      const dx = rock.pos.x - player.pos.x;
+      const dz = rock.pos.z - player.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > WINGMAN_MINE_PROSPECT_WU * WINGMAN_MINE_PROSPECT_WU) continue;
+      const id = String(rock.id);
+      if (d2 < bestD2 || (d2 === bestD2 && id < bestId)) {
+        best = rock;
+        bestD2 = d2;
+        bestId = id;
+      }
+    }
+    return best;
+  },
+
+  _mineClaimedRocks(self, state) {
+    const fleet = state.automation && state.automation.fleet;
+    if (!Array.isArray(fleet)) return null;
+    const claimed = new Set();
+    for (const row of fleet) {
+      if (row && row !== self && row.order === 'mine' && row._mineRockId != null) {
+        claimed.add(row._mineRockId);
+      }
+    }
+    return claimed;
+  },
+
+  _rockInLeash(rock, player) {
+    if (!rock || !rock.pos || !player || !player.pos) return false;
+    return Math.hypot(rock.pos.x - player.pos.x, rock.pos.z - player.pos.z) <= WINGMAN_MINE_LEASH_WU;
+  },
+
+  _mineToast(fs, key, text, force = false) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const now = Number(this.state && this.state.simTime) || 0;
+    const mapKey = (fs && fs.id) + ':' + key;
+    const last = this._mineToastT ? this._mineToastT.get(mapKey) : null;
+    if (!force && Number.isFinite(last) && now - last < WINGMAN_MINE_TOAST_COOLDOWN_S) return;
+    if (this._mineToastT) this._mineToastT.set(mapKey, now);
+    const name = (fs && (fs.customName || fs.name)) || 'Wingman';
+    try {
+      this.bus.emit('toast', { text: name + ': ' + text, kind: 'info', ttl: 4 });
+    } catch { /* advisory only */ }
+  },
+
+  _mineHoldFullNote(fs, state) {
+    const cargo = state.player && state.player.cargo;
+    if (!cargo || !Number.isFinite(cargo.capVolume) || cargo.capVolume <= 0) return;
+    if ((cargo.usedVolume || 0) < cargo.capVolume) return;
+    this._mineToast(fs, 'full', "Hold's full — the cut stays on the ground.", false);
   },
 
   _orderedFleetFor(fleet) {
