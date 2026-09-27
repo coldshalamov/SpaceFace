@@ -843,8 +843,12 @@ function runHunter() {
     // Mission payout via live formula (bounty_hunt); credits only through economy writer.
     const strength = useMid ? targetStrengthMid : targetStrengthEarly;
     const reward = missionRewardCr('bounty_hunt', distance, riskTier, strength, 1, 1);
-    // Bounty board also pays enemy.bountyCr as kill bonus when present (live enemy data).
-    const killBonus = enemySpec.data?.bountyCr || 0;
+    // Live combat suppresses ambient bounty on mission-owned kills (combat.js
+    // authoredRewardEligible: missionOwns zeroes bountyCr; AC-01 death does not
+    // grant twice — the writ pays the mission reward only). Record the suppressed
+    // ambient figure for audit, never as income. D81.
+    const ambientBountySuppressed = enemySpec.data?.bountyCr || 0;
+    const killBonus = 0;
     // Mission counterplay: a deterministic fraction of marks break contact or force withdrawal.
     // The attempt still consumes travel, toll, time, and repair; failed writs pay nothing.
     const missionSucceeded = (hash32(seed, 'hunter_counterplay', loops + 1) % 7) !== 0;
@@ -872,7 +876,8 @@ function runHunter() {
       loops += 1;
       receipt.loops.push({
         loop: loops, t: r1(t), reward: missionSucceeded ? reward : 0,
-        killBonus: missionSucceeded ? killBonus : 0, outcome: missionSucceeded ? 'completed' : 'countered',
+        killBonus: missionSucceeded ? killBonus : 0, ambientBountySuppressed,
+        outcome: missionSucceeded ? 'completed' : 'countered',
         fightS: r1(fightS), ehp, dps,
         damageTaken: r1(damageTaken), repairCr, ammoThis, partialReturn: true,
         enemyId: enemy.id, weaponId: weapon.id, creditsAfter: ctx.state.player.credits | 0,
@@ -893,6 +898,7 @@ function runHunter() {
       t: r1(t),
       reward: missionSucceeded ? reward : 0,
       killBonus: missionSucceeded ? killBonus : 0,
+      ambientBountySuppressed,
       outcome: missionSucceeded ? 'completed' : 'countered',
       fightS: r1(fightS),
       ehp,
