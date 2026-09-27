@@ -210,6 +210,17 @@ const CANONICAL_CONTACTS = [
     factionId: 'faction_quiet',
     line: 'Writs on the wall. The Quiet price is the quiet price.',
   },
+  {
+    // Charon Expanse hunter exchange: the writ wall gets a face. Ferrow files the tags
+    // the board pays on and knows which distress squawks nobody will.
+    key: 'ferrow',
+    stationIds: ['station_expanse'],
+    name: 'Ferrow',
+    role: 'bounty_hunter',
+    roleLabel: 'Writ Clerk',
+    factionId: 'faction_dmc',
+    line: 'The writ wall tracks raiders, wrecks, and radiation lanes. Pick a name; the ledger does the rest.',
+  },
 ];
 
 const CANONICAL_BY_STATION = new Map();
@@ -1199,6 +1210,25 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
       if (choiceId === 'rumors') return { text: 'Quinn\'s Place is under new management. Same rates. Funny how often new management knows where the old drawer is.' };
       if (choiceId === 'word') return { text: 'Count the stack once under bar light, once under UV. If the totals match, somebody else already paid.' };
       if (choiceId === 'drink') return { text: 'Rate is posted. No questions. The count ends when the drawer closes.' };
+      return null;
+
+    case 'ferrow':
+      if (choiceId === 'bounties') {
+        const board = getMissionBoard(state, stationId);
+        const bounty = board && board.slots
+          ? board.slots.find(m => m.type === 'bounty_hunt' || m.type === 'patrol_clear')
+          : null;
+        if (bounty) {
+          const reward = rewardCreditsText(bounty);
+          return {
+            text: 'Filed and stamped: "' + missionOfferTitle(bounty) + '." Pays ' + reward + ' cr. The tag clears payment at any intake desk; Accept + Track so the ledger follows you out.',
+            missionOffer: bounty,
+          };
+        }
+        return { text: 'Wall is bare this shift. That is not peace — that is paperwork catching up. Look again after the patrols file.' };
+      }
+      if (choiceId === 'action') return { text: 'The radiation lane east of the intake churns. Raiders den where patrols will not loiter, and the Lung swallows anything that stalls there.' };
+      if (choiceId === 'low') return { text: 'I never do. The wall remembers every name I did not post.' };
       return null;
 
     default:

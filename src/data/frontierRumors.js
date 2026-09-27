@@ -17,6 +17,10 @@ export const FRONTIER_RUMOR_RECEIPT_LIMIT = 48;
 // remains available on the same screen.
 export const AUTHORED_DOCK_RUMORS = Object.freeze({
   station_ceres: 'The Long Berth is an abandoned yard tug still turning beside Ceres Refinery. She is loose: Massline her and pull her clear of the hauler approach.',
+  // Charon Expanse hunter exchange: the bar lead names the sector's real distress site —
+  // poi_charon_tether_wreck (Snapped-Tether Hab-Pod, survivorPod + recoveryEncounter) — so
+  // the writ wall's own bar can send a hunter at something the writ does not pay for.
+  station_expanse: 'A tether snapped on a deep-belt haul-out and a hab-pod is still squawking distress out on the radiation lane, past the Lung. The writ wall pays for bodies, not saves. Go anyway.',
 });
 
 // PQ-048.11: this is a remembered physical discovery, not a new contact or mission authority.
