@@ -88,6 +88,7 @@ import {
   OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID,
   PART_LIBRARY_CONTRACT,
 } from './partsLibrary.js';
+import { clearCanonicalProgramSpecimens } from './programCanon.js';
 import {
   bindAuthoredAssetPerfCounters,
   listDecodedAuthoredParts,
@@ -5175,6 +5176,8 @@ export const render = {
         this._sessionLiveSectorCookedId = null;
         if (state.render) state.render.sessionLiveSectorCookedId = null;
         this._authoredPreparationEpoch++;
+        // Program pins die with the context; let the next admissions re-mint specimens.
+        clearCanonicalProgramSpecimens();
         this._sectorBoundaryPreparations?.abortAll('webgl-context-lost');
         dynamicBuffers.handleContextLost();
         const preparedPoolResources = prepareAuthoredInstancePoolsForContextLoss(scene, renderer);
