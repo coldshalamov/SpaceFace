@@ -15974,6 +15974,9 @@ function disposeObject(obj) {
   detachStashedStaleWebGlDisposeListeners([obj]);
   obj.traverse((c) => {
     if (!c) return;
+    // Release the vendored maintained shadow-caster registry entry: a flagged-but-torn-down
+    // object would stay pinned by the registry Set otherwise.
+    c.castShadow = false;
     // A boundary torn down while its publication-deferred authored payload is still parked
     // owns the preparedAuthoredRoots registration for that detached tree. Firing the installed
     // disposer here unregisters those roots; skipping it leaves every context root — composed
