@@ -193,7 +193,7 @@ if (!classification && (consoleErrors.length > 0 || pageErrors.length > 0)) {
     milestones: pilotResult?.milestones || [],
     stop: options.stop,
     cause,
-    message: (pageErrors[0] || consoleErrors[0] || '').slice(0, 400),
+    message: (pageErrors[0]?.text || consoleErrors[0]?.text || '').slice(0, 400),
   });
 }
 
