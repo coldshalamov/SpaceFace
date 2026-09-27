@@ -394,7 +394,7 @@ ${ML} > .k-hang.sf-mlog-body[data-overflow="1"] { -webkit-mask-image:linear-grad
   mask-image:linear-gradient(180deg, #000 calc(100% - var(--ml-cut, 0px) - 18px), transparent calc(100% - var(--ml-cut, 0px))) !important; }
 ${ML} .ml-beam { position:absolute; left:9px; top:0; width:10px; height:0; z-index:0; pointer-events:none; will-change:transform;
   background:linear-gradient(90deg, transparent 4px, rgb(${BONE} / .66) 4px, rgb(${BONE} / .66) 6px, transparent 6px),
-    linear-gradient(90deg, transparent 2px, rgb(${BONE} / .28) 2px, rgb(${BONE} / .28) 8px, transparent 8px),
+    linear-gradient(90deg, transparent 2px, rgb(${BONE} / .32) 2px, rgb(${BONE} / .32) 8px, transparent 8px),
     repeating-linear-gradient(180deg, rgb(${BONE} / .4) 0 2px, transparent 2px 8px) 0 0 / 2px 100% no-repeat; border-radius:5px; }
 ${ML} .ml-beam[hidden] { display:none !important; }
 ${ML} .ml-beam::after { content:""; position:absolute; left:3px; right:3px; bottom:-10px; height:10px; border-radius:0 0 3px 3px;
