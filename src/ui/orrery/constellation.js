@@ -78,8 +78,8 @@ html.sf-reduce-motion .con-lens__read { transition:none; }
 html.sf-reduce-motion .con-lens { transition:none; }
 
 /* the dial: orbits, the rim scale, the branch sectors, the tier spoke */
-.orr-svg .con-orbit { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1.5; }
-.orr-svg .con-orbit.is-outer { stroke:rgb(${BONE} / .64); stroke-width:1.8; }
+.orr-svg .con-orbit { fill:none; stroke:rgb(${BONE} / .2); stroke-width:1.5; }
+.orr-svg .con-orbit.is-outer { stroke:rgb(${BONE} / .3); stroke-width:1.8; }
 /* each tier orbit's body: a band of light the core rides on */
 .orr-svg .con-orbit__band { fill:none; stroke:rgb(${BONE} / .3); stroke-width:6; }
 .orr-svg .con-orbit__band.is-outer { stroke:rgb(${BONE} / .33); }
@@ -223,6 +223,7 @@ html.sf-reduce-motion .con-lens { transition:none; }
 .con-label.is-w, .con-label.is-nw, .con-label.is-sw { text-align:right; }
 .con-label.is-n, .con-label.is-s { text-align:center; }
 .con-label.is-dropped { display:none; }
+.con-sky.is-fontwait .con-label { visibility:hidden; }
 .con-label.is-covered { opacity:.3; transition:opacity .2s linear; }
 .con-label.is-covered { opacity:0; }
 .con-star-btn:is(:hover, :focus-visible) > .con-label.is-under-hand { opacity:1; }
@@ -471,6 +472,13 @@ function segHits(rect, s) {
     || cross(x1, y1, x2, y2, x, y + h, x + w, y + h) || cross(x1, y1, x2, y2, x, y, x, y + h);
 }
 
+/** How far a rect stands from a circle's edge (0 when it touches or overlaps it). */
+function gapTo(rect, c) {
+  const nx = Math.max(rect.x, Math.min(c.x, rect.x + rect.w));
+  const ny = Math.max(rect.y, Math.min(c.y, rect.y + rect.h));
+  return Math.max(0, Math.hypot(nx - c.x, ny - c.y) - (c.r || 0));
+}
+
 /** How many places round its star a label could take before any other label is placed. */
 function freePlaces(it, { discs = [], rects = [], points = [], bounds }) {
   let n = 0;
@@ -509,6 +517,7 @@ export function solveLabels(items, { discs = [], segs = [], rects = [], points =
       for (const [gi, gap] of [it.gap, it.gap + 9, it.gap + 18].entries()) for (const dir of dirs) {
         const rect = rectFor(s, dir, box, gap);
         if (!inBounds(rect)) continue;
+        if (it.dirMin != null && (dir.x * ox + dir.y * oy) / len < it.dirMin) continue;
         if (discs.some((d) => d.id !== it.id && discHits(rect, d))) continue;
         if (rects.some((q) => hit(rect, q, 1))) continue;
         if (pointHit(rect)) continue;
@@ -517,6 +526,11 @@ export function solveLabels(items, { discs = [], segs = [], rects = [], points =
         const crossings = segs.reduce((n, sg) => n + ((sg.w || 1) > 1 ? (segHits(grown, sg) ? sg.w : 0) : (segHits(rect, sg) ? 1 : 0)), 0);
         const score = crossings * 12 + dir.rank * 2 + bi * 3 + gi * 2.5;
         if (!peek || score < peek.score) peek = { rect, dir, box, score };
+        // at rest a name must read as its own medal's: 20 px nearer its halo than any other
+        if (it.assoc) {
+          const own = gapTo(rect, it.assoc.own);
+          if (it.assoc.others.some((o) => gapTo(rect, o) < own + (it.assoc.margin || 20))) continue;
+        }
         if (placed.some((p) => hit(rect, p, 8))) continue;
         if (!best || score < best.score) best = { rect, dir, box, score };
       }
@@ -527,6 +541,40 @@ export function solveLabels(items, { discs = [], segs = [], rects = [], points =
     else out[it.id] = null;
   }
   return out;
+}
+
+/**
+ * The knockout a line of light makes round a name, as SVG for a luminance mask: each line of words in its
+ * own shape, dilated 4 px and feathered 3 px further (the words stroked four times, the widest faintest), so
+ * a band fades out round the words instead of stopping at a box. `spans` are the elements whose text is
+ * set; `toLocal(rect)` maps a client rect into the mask's space.
+ */
+export function wordCut(doc, spans, toLocal) {
+  const g = svg('g', { class: 'orr-wordcut', fill: '#000', stroke: '#000', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
+  const view = doc && doc.defaultView;
+  for (const el of spans || []) {
+    const text = el && el.textContent;
+    if (!text || !text.trim()) continue;
+    let r = null;
+    try {
+      const range = doc.createRange();
+      range.selectNodeContents(el);
+      r = range.getBoundingClientRect();
+    } catch (_) { r = null; }
+    if (!r || r.width < 1 || r.height < 1) continue;
+    const box = toLocal(r);
+    const cs = view && typeof view.getComputedStyle === 'function' ? view.getComputedStyle(el) : null;
+    const fs = cs ? parseFloat(cs.fontSize) || box.h * 0.8 : box.h * 0.8;
+    const upper = cs && cs.textTransform === 'uppercase';
+    const face = cs ? `font-family:${cs.fontFamily};font-weight:${cs.fontWeight};font-stretch:${cs.fontStretch}` : '';
+    const words = upper ? text.toUpperCase() : text;
+    for (const [w, o] of [[14, 0.18], [12, 0.35], [10, 0.6], [8, 1]]) {
+      const t = svg('text', { x: f(box.x), y: f(box.y + box.h * 0.78), 'font-size': f(fs), textLength: f(box.w), lengthAdjust: 'spacingAndGlyphs', 'stroke-width': w, opacity: o, style: face });
+      t.textContent = words;
+      g.appendChild(t);
+    }
+  }
+  return g;
 }
 
 /* ---- the instrument ------------------------------------------------------------------------------ */
@@ -595,13 +643,28 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
   let measureSig = '';
   let avoidSig = '';
   let cutSeq = 0;
-  /** What the sky must stand clear of, in host px (the screen's title and its line). */
+  /** An element's box as laid out (offsets, not the screen's entrance transforms), in page px. */
+  const layoutBox = (el) => {
+    let x = 0;
+    let y = 0;
+    for (let n = el; n; n = n.offsetParent) { x += n.offsetLeft || 0; y += n.offsetTop || 0; }
+    return { x, y, w: el.offsetWidth || 0, h: el.offsetHeight || 0 };
+  };
+  /**
+   * What the sky must stand clear of, in host px (the screen's title and its line). Elements are measured as
+   * laid out, so a sky laid out while the screen is still arriving (a transform on the way in) lands where a
+   * still screen would put it.
+   */
   function avoidNow() {
     const out = [];
     if (typeof avoid !== 'function') return out;
     const hostBox = host.getBoundingClientRect();
+    const hostLay = layoutBox(host);
     for (const r of avoid() || []) {
-      if (r && r.width > 0 && r.height > 0) out.push({ x: r.left - hostBox.left - 12, y: r.top - hostBox.top - 10, w: r.width + 24, h: r.height + 20 });
+      if (r && typeof r.offsetWidth === 'number') {
+        const b = layoutBox(r);
+        if (b.w > 0 && b.h > 0) out.push({ x: b.x - hostLay.x - 12, y: b.y - hostLay.y - 10, w: b.w + 24, h: b.h + 20 });
+      } else if (r && r.width > 0 && r.height > 0) out.push({ x: r.left - hostBox.left - 12, y: r.top - hostBox.top - 10, w: r.width + 24, h: r.height + 20 });
     }
     return out;
   }
@@ -650,6 +713,7 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
   let lensAt = { x: 0, y: 0 };
   let lensFocus = null;
   let labelRects = new Map();
+  let allLabelRects = new Map();
   let captioned = new Set();
   let onViewCb = null;
   const clampView = () => {
@@ -762,6 +826,14 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       lensCaption.classList.toggle('is-above', up);
       for (const id of up ? aboveIds : below) next.add(id);
     }
+    if (lensOn) {
+      // a name the glass would cut in two leaves the sky while the Lens is on (the rim and 6 px beyond)
+      const R = D / 2 + 20;
+      for (const [id, r] of allLabelRects) {
+        const hr = { x: r.x * view.z + view.x, y: r.y * view.z + view.y, w: r.w * view.z, h: r.h * view.z };
+        if (gapTo(hr, { x: lensAt.x, y: lensAt.y, r: R }) <= 0) next.add(id);
+      }
+    }
     for (const id of captioned) if (!next.has(id)) { const b = buttons.get(id); if (b && b.firstElementChild) b.firstElementChild.classList.remove('is-captioned'); }
     for (const id of next) if (!captioned.has(id)) { const b = buttons.get(id); if (b && b.firstElementChild) b.firstElementChild.classList.add('is-captioned'); }
     captioned = next;
@@ -838,14 +910,24 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
   function keepInView(id) {
     const s = geo && geo.stars[id];
     if (!s) return;
-    const x = s.x * view.z + view.x;
-    const y = s.y * view.z + view.y;
-    const pad = 60;
-    const top = Math.max(pad, (parseFloat(host.style.getPropertyValue('--con-mask-top')) || 0) + 44);
+    // the star's body and its name, 12 px clear of the frame's fades (40 px at the sides and foot, 56 under the heading)
+    const br = Math.max(12, Math.min(18, geo.R / 26)) + 12;
+    let x0 = s.x - br;
+    let y0 = s.y - br;
+    let x1 = s.x + br;
+    let y1 = s.y + br;
+    const lr = allLabelRects.get(id);
+    if (lr) { x0 = Math.min(x0, lr.x); y0 = Math.min(y0, lr.y); x1 = Math.max(x1, lr.x + lr.w); y1 = Math.max(y1, lr.y + lr.h); }
+    const X0 = x0 * view.z + view.x;
+    const Y0 = y0 * view.z + view.y;
+    const X1 = x1 * view.z + view.x;
+    const Y1 = y1 * view.z + view.y;
+    const side = 52;
+    const top = (parseFloat(host.style.getPropertyValue('--con-mask-top')) || 0) + 68;
     let dx = 0;
     let dy = 0;
-    if (x < pad) dx = pad - x; else if (x > geo.W - pad) dx = geo.W - pad - x;
-    if (y < top) dy = top - y; else if (y > geo.H - pad) dy = geo.H - pad - y;
+    if (X0 < side) dx = side - X0; else if (X1 > geo.W - side) dx = geo.W - side - X1;
+    if (Y0 < top) dy = top - Y0; else if (Y1 > geo.H - side) dy = geo.H - side - Y1;
     if (dx || dy) { view.x += dx; view.y += dy; applyView(); }
   }
 
@@ -901,7 +983,24 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     return out;
   }
 
+  let fontsSettled = false;
+  function awaitFonts() {
+    const fonts = doc.fonts;
+    if (fontsSettled || !fonts || fonts.status !== 'loading' || typeof fonts.ready?.then !== 'function') { fontsSettled = true; return; }
+    host.classList.add('is-fontwait');
+    const settle = () => {
+      if (fontsSettled) return;
+      fontsSettled = true;
+      // lay the sky out again in the real faces before any name is shown
+      if (geo && (measureNow() !== measureSig || sigOf(avoidNow()) !== avoidSig)) { drawnKey = ''; layout(); }
+      host.classList.remove('is-fontwait');
+    };
+    fonts.ready.then(settle, settle);
+    setTimeout(settle, 1500);
+  }
+
   function layout() {
+    awaitFonts();
     const W = host.clientWidth || 0;
     const H = host.clientHeight || 0;
     if (!data || !data.nodes || !data.nodes.length || W < 360 || H < 300) { standDown(); return; }
@@ -1215,14 +1314,8 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     const solved = solveLabels(items, { discs, segs, rects: statics.rects, points: rimPoints, bounds });
     labelRects = new Map();
     for (const [id, sol] of Object.entries(solved)) if (sol && !sol.dropped) labelRects.set(id, sol.rect);
-    const cutId = `con-beam-cut-${++cutSeq}`;
-    const cut = svg('mask', { id: cutId, maskUnits: 'userSpaceOnUse', x: -geo.W, y: -geo.H, width: geo.W * 3, height: geo.H * 3 });
-    cut.appendChild(svg('rect', { x: -geo.W, y: -geo.H, width: geo.W * 3, height: geo.H * 3, fill: '#fff' }));
-    for (const r of labelRects.values()) cut.appendChild(svg('rect', { x: f(r.x - 3), y: f(r.y - 3), width: f(r.w + 6), height: f(r.h + 6), rx: 2, fill: '#000' }));
-    defs.appendChild(cut);
-    beams.setAttribute('mask', `url(#${cutId})`);
-    // the dial's orbits break for the names too: a band never runs through a star's words
-    dial.setAttribute('mask', `url(#${cutId})`);
+    allLabelRects = new Map();
+    for (const [id, sol] of Object.entries(solved)) if (sol) allLabelRects.set(id, sol.rect);
     covers = new Map();
     for (const [id, sol] of Object.entries(solved)) {
       if (!sol || !sol.dropped) continue;
@@ -1284,6 +1377,20 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       starLayer.appendChild(b);
       buttons.set(n.id, b);
     }
+    // the links and the dial's orbits fade out round every name, in the words' own shape
+    const cutId = `con-beam-cut-${++cutSeq}`;
+    const cut = svg('mask', { id: cutId, maskUnits: 'userSpaceOnUse', x: -geo.W, y: -geo.H, width: geo.W * 3, height: geo.H * 3 });
+    cut.appendChild(svg('rect', { x: -geo.W, y: -geo.H, width: geo.W * 3, height: geo.H * 3, fill: '#fff' }));
+    const hb = host.getBoundingClientRect();
+    const spans = [];
+    for (const id of labelRects.keys()) {
+      const label = buttons.get(id) && buttons.get(id).querySelector('.con-label');
+      if (label) spans.push(...label.querySelectorAll('.con-label__name, .con-label__cost'));
+    }
+    cut.appendChild(wordCut(doc, spans, (r) => ({ x: (r.left - hb.left - view.x) / view.z, y: (r.top - hb.top - view.y) / view.z, w: r.width / view.z, h: r.height / view.z })));
+    defs.appendChild(cut);
+    beams.setAttribute('mask', `url(#${cutId})`);
+    dial.setAttribute('mask', `url(#${cutId})`);
     paint({ instant: true });
     if (focusedNode && buttons.get(focusedNode)) {
       // giving focus back is not a choice: the star keeps focus, the chosen star stays chosen

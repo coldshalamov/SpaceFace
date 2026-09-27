@@ -331,7 +331,8 @@ export const techTreeScreen = {
       measure,
       wrap,
       // the dial stands clear of the title tucked into its corner
-      avoid: () => [heading, branchLine].map((node) => (node && typeof node.getBoundingClientRect === 'function' ? node.getBoundingClientRect() : null)),
+      // the elements themselves: the sky measures them as laid out, whatever the screen's arrival is doing
+      avoid: () => [heading, branchLine].filter((node) => node && typeof node.offsetWidth === 'number'),
       onPick: (id, how) => this._selectNode(id, { how }),
     });
 

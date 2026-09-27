@@ -21,7 +21,7 @@
 import { svg, polar, arcD, ticksD } from './svg.js';
 import { injectOrrery } from './tokens.js';
 import { createSpring, reducedMotion } from './motion.js';
-import { solveLabels } from './constellation.js';
+import { solveLabels, wordCut } from './constellation.js';
 
 const STYLE_ID = 'orr-medal-orrery-style';
 const BONE = '236 230 216';
@@ -42,7 +42,7 @@ const GAP = 14;
 /** Room past the outer medals for their names. */
 const LM = 22;
 /** Each orbit's rest, turned from the Hand's way by this share of the room it has (fixed: the rests never drift). */
-const STAGGER = [-0.5, 0, -0.45, 0.5];
+const STAGGER = [0.9, 0, -0.45, 0.5];
 let cutSeq = 0;
 const wrap180 = (a) => { let x = a % 360; if (x > 180) x -= 360; if (x <= -180) x += 360; return x; };
 
@@ -76,6 +76,8 @@ const CSS = `
   text-transform:uppercase; fill:rgb(${BONE} / .72); }
 .orr-svg text.con-morr__ringname tspan { fill:rgb(${WARM}); letter-spacing:.1em; }
 .orr-svg text.con-morr__ringname { opacity:0; transition:opacity .2s linear; }
+.orr-svg .con-morr__cutg { animation:con-morr-cut .35s linear var(--mo-ld, 460ms) both; }
+@keyframes con-morr-cut { from { opacity:0; } to { opacity:1; } }
 .orr-svg text.con-morr__ringname.is-on { opacity:1; transition:opacity .35s linear var(--mo-ld, 420ms); }
 .orr-svg .con-morr__ring.is-front text.con-morr__ringname { fill:rgb(${WARM}); }
 /* the hero gauge: the medals you hold */
@@ -154,6 +156,8 @@ const CSS = `
 .con-morr__label { position:absolute; display:flex; flex-direction:column; gap:3px; white-space:nowrap; opacity:0; transition:opacity .2s linear;
   text-shadow:0 0 2px rgb(4 6 9), 0 0 5px rgb(4 6 9), 0 0 10px rgb(4 6 9 / .9); }
 .con-morr__label.is-on { opacity:1; transition:opacity .35s linear var(--mo-ld, 420ms); }
+/* a name that could not stand at rest shows while its own medal is pointed at or focused */
+.con-morr__label.is-peek.is-shown { opacity:1; transition:opacity .15s linear; }
 .con-morr__label.is-w, .con-morr__label.is-nw, .con-morr__label.is-sw { align-items:flex-end; text-align:right; transform:translateX(-100%); }
 .con-morr__label.is-n, .con-morr__label.is-s { align-items:center; text-align:center; transform:translateX(-50%); }
 .con-morr__lname { display:block; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:var(--mo-lpx, 11.5px); line-height:1.25;
@@ -365,7 +369,7 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
 
   /** The front orbit's names, placed where the orbit will rest, shown once it gets there. */
   function placeLabels(target, front, { instant = false } = {}) {
-    for (const el of labels.values()) el.classList.remove('is-on');
+    for (const el of labels.values()) el.classList.remove('is-on', 'is-peek', 'is-shown');
     if (!geo || !front) return;
     const posOf = new Map();
     for (const ring of rings) {
@@ -388,10 +392,16 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
         prev = pt;
       }
     }
+    const halos = [];
+    for (const ring of rings) for (const id of ring.ids) { const [x, y] = posOf.get(id); halos.push({ id, x, y, r: ring.size * 0.46 + 2 }); }
     const items = front.ids.filter((id) => id !== chosen).map((id) => {
       const el = labels.get(id);
       const [x, y] = posOf.get(id);
-      return { id, star: { x, y, ox: x - geo.cx, oy: y - geo.cy }, boxes: [{ w: el.__w, h: el.__h, nameH: el.__nh, lines: [] }], gap: front.size / 2 + 12, rank: 0, depth: 0 };
+      const own = halos.find((h) => h.id === id);
+      return {
+        id, star: { x, y, ox: x - geo.cx, oy: y - geo.cy }, boxes: [{ w: el.__w, h: el.__h, nameH: el.__nh, lines: [] }], gap: front.size * 0.46 + 12, rank: 0, depth: 0,
+        dirMin: -0.3, assoc: { own, others: halos.filter((h) => h.id !== id), margin: 20 },
+      };
     });
     const points = [];
     for (const ring of rings) {
@@ -403,6 +413,7 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
     }
     const solved = solveLabels(items, { discs, segs, rects: geo.avoid || [], points, bounds: { x: 4, y: 4, w: geo.W - 8, h: geo.H - 8 } });
     if (labelCuts) labelCuts.textContent = '';
+    const shown = [];
     for (const [id, sol] of Object.entries(solved)) {
       const el = labels.get(id);
       if (!el || !sol) continue;
@@ -414,10 +425,18 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
       el.style.left = `${f(ax)}px`;
       el.style.top = `${f(sol.rect.y)}px`;
       el.style.setProperty('--mo-ld', instant ? '0ms' : '460ms');
+      el.classList.toggle('is-peek', !!sol.dropped);
       if (sol.dropped) continue;
       el.classList.add('is-on');
-      // the orbits break 4 px round the name
-      if (labelCuts) labelCuts.appendChild(svg('rect', { x: f(sol.rect.x - 4), y: f(sol.rect.y - 4), width: f(sol.rect.w + 8), height: f(sol.rect.h + 8), rx: 3, fill: '#000' }));
+      shown.push(...el.querySelectorAll('.con-morr__lname, .con-morr__lsub'));
+    }
+    // the orbits fade out round each name, in the words' own shape
+    if (labelCuts && shown.length) {
+      const hb = host.getBoundingClientRect();
+      const g = wordCut(doc, shown, (r) => ({ x: r.left - hb.left, y: r.top - hb.top, w: r.width, h: r.height }));
+      g.classList.add('con-morr__cutg');
+      g.style.setProperty('--mo-ld', instant ? '0ms' : '460ms');
+      labelCuts.appendChild(g);
     }
   }
 
@@ -432,6 +451,7 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
       const bs = ring.ids.map((_, i) => ((target.get(ring.id) + step * i) % 360 + 360) % 360).sort((a, b) => a - b);
       const half = ((ring.size / 2 + 6) / ring.nameR) * (180 / Math.PI);
       let best = null;
+      for (const lowOnly of [true, false]) {
       for (const span of [ring.nameSpanFull || ring.nameSpan, ring.nameSpanShort || ring.nameSpan]) {
       if (best) break;
       ring.nameSpan = span;
@@ -441,8 +461,16 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
         const room = a1 - a0;
         if (room < ring.nameSpan + 2) continue;
         // a gap may hold the name anywhere inside it: prefer the foot, and never the Hand's way
-        const lo = a0 + ring.nameSpan / 2 + 1;
-        const hi = a1 - ring.nameSpan / 2 - 1;
+        let lo = a0 + ring.nameSpan / 2 + 1;
+        let hi = a1 - ring.nameSpan / 2 - 1;
+        if (lowOnly) {
+          // the name's middle within 4 to 8 o'clock, its ends no more than 20 degrees past them
+          const reach = Math.max(0, 80 - ring.nameSpan / 2);
+          const base = [180, 540].find((c) => lo <= c + reach && hi >= c - reach);
+          if (base == null) continue;
+          lo = Math.max(lo, base - reach);
+          hi = Math.min(hi, base + reach);
+        }
         const near = (c) => Math.max(lo, Math.min(hi, c));
         const at = [180, 540].map(near).sort((p, q) => Math.min(Math.abs(p - 180), Math.abs(p - 540)) - Math.min(Math.abs(q - 180), Math.abs(q - 540)))[0];
         const mid = ((at % 360) + 360) % 360;
@@ -450,6 +478,8 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
         const score = room - Math.abs(wrap180(mid - 180)) * 0.6;
         if (!best || score > best.score) best = { mid, score };
       }
+      }
+      if (best) break;
       }
       if (ring.countTspan) ring.countTspan.textContent = best && ring.nameSpan === ring.nameSpanShort && ring.nameSpanShort !== ring.nameSpanFull ? '' : ring.countText;
       ring.nameArc = null;
@@ -689,6 +719,10 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
         b.setAttribute('aria-label', `${row.name}. ${row.description} ${row.status}.`);
         b.addEventListener('click', () => { if (typeof onPick === 'function') onPick(id, 'click'); });
         b.addEventListener('focus', () => { if (!restoring && chosen !== id && typeof onPick === 'function') onPick(id, 'focus'); });
+        const peekOn = (on) => { const lb = labels.get(id); if (lb) lb.classList.toggle('is-shown', !!on && lb.classList.contains('is-peek') && id !== chosen); };
+        b.addEventListener('pointerenter', () => peekOn(true));
+        b.addEventListener('pointerleave', () => peekOn(false));
+        b.addEventListener('blur', () => peekOn(false));
         list.appendChild(b);
         buttons.set(id, b);
         // its name, for when its orbit is the front one
@@ -740,6 +774,9 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
     else layout();
   };
   if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => { drawnKey = ''; schedule(); }); ro.observe(host); }
+  // the names and their cuts are measured in the faces they are set in: again once those land
+  const onFonts = () => { drawnKey = ''; schedule(); };
+  try { if (doc.fonts && typeof doc.fonts.addEventListener === 'function') doc.fonts.addEventListener('loadingdone', onFonts); } catch (_) { /* measured by estimate */ }
 
   // left and right turn the orbit a medal; up and down step to the next orbit out or in
   list.addEventListener('keydown', (event) => {
@@ -826,6 +863,7 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
     },
     button: (id) => buttons.get(id) || null,
     dispose() {
+      try { if (doc.fonts && typeof doc.fonts.removeEventListener === 'function') doc.fonts.removeEventListener('loadingdone', onFonts); } catch (_) { /* nothing to remove */ }
       reachSpring.stop();
       for (const r of rings) if (r.spring) r.spring.stop();
       clearTimeout(arriveTimer);
