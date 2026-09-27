@@ -3146,20 +3146,6 @@
       "contractNodeCount": 27
     },
     {
-      "id": "place_lane_beacon",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_lane_beacon.glb",
-      "release": "assets/ships/release/parts/places/place_lane_beacon.glb",
-      "sourceSha256": "b285ebc3f45dbfd0dff8505c23e64a370cfd0b26257a7d6ac8db8e55d68288d4",
-      "releaseSha256": "825be57019a90f08efe589c8226c9a3634d8dfe5ed0f82939168361f54f16c72",
-      "sourceBytes": 930796,
-      "releaseBytes": 373664,
-      "textures": 18,
-      "ktx2Textures": 18,
-      "meshoptBufferViews": 61,
-      "contractNodeCount": 19
-    },
-    {
       "id": "place_lane_pin",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_lane_pin.glb",
@@ -3200,20 +3186,6 @@
       "ktx2Textures": 28,
       "meshoptBufferViews": 99,
       "contractNodeCount": 30
-    },
-    {
-      "id": "place_nav_buoy",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_nav_buoy.glb",
-      "release": "assets/ships/release/parts/places/place_nav_buoy.glb",
-      "sourceSha256": "27b5c0883833970ff0c40602f651c0110aa16e052d812c5694a80a3521a2d999",
-      "releaseSha256": "fe99d8cdf34fbe70f6704d68b3a85d621c27c5fa1fc9177d73f07baed428146c",
-      "sourceBytes": 479320,
-      "releaseBytes": 338464,
-      "textures": 21,
-      "ktx2Textures": 21,
-      "meshoptBufferViews": 67,
-      "contractNodeCount": 22
     },
     {
       "id": "place_station_billboard",
@@ -4432,6 +4404,34 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 59,
       "contractNodeCount": 20
+    },
+    {
+      "id": "place_lane_beacon",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_lane_beacon.glb",
+      "release": "assets/ships/release/parts/places/place_lane_beacon.glb",
+      "sourceSha256": "622e1fa79486276eb6b243cf83f96a27abb420e5ed463353f83f71b4f4de18fa",
+      "releaseSha256": "8d2a398cc28a34e08298f5ac7e7fb7f29ee2ca7dc0aca05406a6188912609747",
+      "sourceBytes": 1781324,
+      "releaseBytes": 755312,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 117,
+      "contractNodeCount": 31
+    },
+    {
+      "id": "place_nav_buoy",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_nav_buoy.glb",
+      "release": "assets/ships/release/parts/places/place_nav_buoy.glb",
+      "sourceSha256": "3573a251635732a9b9857e9fcb273dfafd7e4ab651f1df0e911ccab25e9bd781",
+      "releaseSha256": "30b12dcf481fadd021de67a6447ecb5d2feccfda975c2620a864a9b21b62b984",
+      "sourceBytes": 1577000,
+      "releaseBytes": 708700,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 117,
+      "contractNodeCount": 34
     }
   ]
 }

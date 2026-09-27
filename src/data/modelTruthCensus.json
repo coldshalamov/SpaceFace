@@ -398,34 +398,34 @@
     {
       "bounds": {
         "center": [
-          3.725,
-          2.05,
+          3.775981,
+          2.06225,
           0
         ],
         "max": [
-          9.025047,
-          9.23,
-          1.574852
+          9.152392,
+          9.2245,
+          1.600014
         ],
         "min": [
-          -1.575047,
-          -5.13,
-          -1.574852
+          -1.600429,
+          -5.1,
+          -1.600014
         ],
         "size": [
-          10.600094,
-          14.36,
-          3.149704
+          10.752821,
+          14.3245,
+          3.200029
         ]
       },
-      "bytes": 373664,
+      "bytes": 755312,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_lane_beacon",
         "kind": "proxy",
         "outline": [
-          4.392555,
+          4.632463,
           0,
           0,
           0,
@@ -448,7 +448,7 @@
           0,
           0,
           0,
-          4.392555
+          4.632463
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -457,7 +457,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        -3.725,
+        -3.775981,
         0,
         0
       ],
@@ -497,6 +497,46 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
           "name": "Material_Hull",
           "role": "opaqueHull"
         },
@@ -513,7 +553,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Mechanical_BrushedNickel",
+          "name": "Material_MechanicalDark",
           "role": "opaqueHull"
         },
         {
@@ -521,27 +561,27 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Mechanical_ShadowEnamel",
+          "name": "Material_Warning",
           "role": "opaqueHull"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
-          "depthWrite": true,
+          "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_Warm",
-          "role": "opaqueHull"
+          "name": "other",
+          "role": "other"
         }
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 18,
-      "nodes": 21,
+      "meshes": 31,
+      "nodes": 33,
       "note": null,
       "opening": null,
       "pivot": [
-        3.725,
-        2.05,
+        3.775981,
+        2.06225,
         0
       ],
       "proposedSkin": {
@@ -555,32 +595,32 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.224133,
-            "bz": -0.029508,
+            "bx": -0.235623,
+            "bz": -0.03102,
             "id": "arm-0",
             "kind": "capsule",
-            "r": 0.031852
+            "r": 0.033592
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.224133,
-            "bz": 0.029508,
+            "bx": -0.235623,
+            "bz": 0.03102,
             "id": "arm-23",
             "kind": "capsule",
-            "r": 0.031852
+            "r": 0.033592
           }
         ],
-        "silhouetteRadius": 4.392555,
+        "silhouetteRadius": 4.632463,
         "toleranceWu": 2
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 0,
-        "inwardFaceFraction": 0.41525,
-        "silhouetteRadius": 4.392555,
+        "boundaryEdges": 1048,
+        "inwardFaceFraction": 0.4055,
+        "silhouetteRadius": 4.632463,
         "sliceY": 0
       },
       "sockets": [
@@ -597,13 +637,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 12124,
+      "triangles": 23200,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_lane_beacon.glb",
       "worldSize": [
-        10.600094,
-        14.36,
-        3.149704
+        10.752821,
+        14.3245,
+        3.200029
       ]
     },
     {

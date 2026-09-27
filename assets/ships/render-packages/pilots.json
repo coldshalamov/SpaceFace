@@ -1160,9 +1160,15 @@
       "slot": "place",
       "releaseAssetId": "place_lane_beacon",
       "sourceUrl": "assets/ships/release/parts/places/place_lane_beacon.glb",
-      "releaseSha256": "825be57019a90f08efe589c8226c9a3634d8dfe5ed0f82939168361f54f16c72",
-      "releaseBytes": 373664,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "8d2a398cc28a34e08298f5ac7e7fb7f29ee2ca7dc0aca05406a6188912609747",
+      "releaseBytes": 755312,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/lane-beacon",
       "metadataUrl": "assets/ships/release/render-packages/lane-beacon/render-package.json",
       "sceneRoot": true
@@ -1280,9 +1286,15 @@
       "slot": "place",
       "releaseAssetId": "place_nav_buoy",
       "sourceUrl": "assets/ships/release/parts/places/place_nav_buoy.glb",
-      "releaseSha256": "fe99d8cdf34fbe70f6704d68b3a85d621c27c5fa1fc9177d73f07baed428146c",
-      "releaseBytes": 338464,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "30b12dcf481fadd021de67a6447ecb5d2feccfda975c2620a864a9b21b62b984",
+      "releaseBytes": 708700,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/nav-buoy",
       "metadataUrl": "assets/ships/release/render-packages/nav-buoy/render-package.json",
       "sceneRoot": true
