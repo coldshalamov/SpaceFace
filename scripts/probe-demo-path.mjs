@@ -777,6 +777,7 @@ try {
     const WEAVE_SIM_S = envNum('SPACEFACE_DEMO_WEAVE_SIM_S', 90);
     const DIE_SIM_S = envNum('SPACEFACE_DEMO_DIE_SIM_S', 300);
     let simStart = null;
+    let loopT0 = null;
     let dieStartSim = null;
     let weaveDir = 'a';
     let weaveHeld = false;
@@ -819,7 +820,7 @@ try {
           screen: document.body.dataset.kScreen || null,
         };
       });
-      if (simStart == null && snap.simTime != null && snap.mode === 'flight') simStart = snap.simTime;
+      if (simStart == null && snap.simTime != null && snap.mode === 'flight') { simStart = snap.simTime; loopT0 = now; }
       const weaving = dieStartSim == null && snap.mode === 'flight'
         && (simStart == null || snap.simTime - simStart < WEAVE_SIM_S)
         && now < deadline - 2 * 60_000;
@@ -913,9 +914,11 @@ try {
       // Starved-host detector: on a contended machine the fixed-step sim runs far below
       // wall rate (observed 0.06× — 94 sim-s in 25 wall-min), so a wall-clock deadline can
       // expire a few sim-seconds into die mode and masquerade as "no death/results".
-      // Classify that honestly instead of burning the whole cap.
-      if (simStart != null && snap.simTime != null && now - t0 > 60_000) {
-        const simRate = (snap.simTime - simStart) / ((now - t0) / 1000);
+      // Classify that honestly instead of burning the whole cap. The rate is measured
+      // over the loop's own window (simStart/loopT0 share one baseline) after a 30 s
+      // observation window — judging against process-start wall time self-triggers.
+      if (simStart != null && snap.simTime != null && loopT0 != null && now - loopT0 > 30_000) {
+        const simRate = (snap.simTime - simStart) / ((now - loopT0) / 1000);
         if (simRate < 0.15) {
           fs.writeFileSync(path.join(OUT_DIR, 'rounds-trace.json'), JSON.stringify(snapTrace.filter((_, i) => i % 5 === 0), null, 1));
           throw new Error(`host-starved: sim advancing at ${(simRate * 100).toFixed(1)}% of wall — this machine cannot play the demo in real time (env contention, not a game defect); trace -> rounds-trace.json`);
