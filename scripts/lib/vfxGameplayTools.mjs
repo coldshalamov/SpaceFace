@@ -9,7 +9,7 @@ export const GAMEPLAY_TOOL_SCENARIOS = Object.freeze({
   'tool-extract': 4.2, 'tool-cut': 4.2, 'tool-repair': 4.2, 'tool-transfer': 4.2,
   'massline-loaded': 4.8, 'massline-snap': 4.8, 'massline-release': 4.8,
   'massline-release-arc': 4.8, 'massline-swing': 4.8, 'massline-monofilament': 4.8,
-  'massline-apex': 4.8, 'massline-snarl': 4.8,
+  'massline-apex': 4.8, 'massline-snarl': 5.2,
   propulsion: 6.2, 'propulsion-reverse': 4.4, 'propulsion-lateral': 4.4,
   'propulsion-yaw-brake': 4.4, 'propulsion-dash': 3.6,
 });
@@ -17,7 +17,7 @@ const NOOP = () => {};
 const STEP = 1 / 60;
 const MASSLINE_TETHER_SCENARIOS = new Set([
   'massline-loaded', 'massline-snap', 'massline-release', 'massline-release-arc',
-  'massline-swing', 'massline-monofilament', 'massline-apex',
+  'massline-swing', 'massline-monofilament', 'massline-apex', 'massline-snarl',
 ]);
 const MASSLINE_RELEASE_ARC_SCENARIOS = new Set(['massline-release-arc', 'massline-apex']);
 const MASSLINE_SWING_SCENARIOS = new Set(['massline-swing', 'massline-monofilament', 'massline-apex']);
@@ -100,6 +100,11 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
       owner._updateApexFlare?.(dt);
       if (owner._masslineReleaseArcActive?.()) owner._updateMasslineReleaseArc?.(dt);
       owner._tetherWebFx?.update(privateState);
+      if (scenario === 'massline-snarl' && !released) {
+        for (const key of ['mesh', 'glow', 'band', 'anchorCore']) {
+          if (owner._tetherCable[key]) owner._tetherCable[key].visible = false;
+        }
+      }
     }
     if (NATIVE_PROPULSION_SCENARIOS.has(scenario)) owner._updateEnergy?.(dt);
     quarks.update(dt, sync());
@@ -178,7 +183,8 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
       const tetherScenario = MASSLINE_TETHER_SCENARIOS.has(scenario);
       const releaseArcScenario = MASSLINE_RELEASE_ARC_SCENARIOS.has(scenario);
       privateState.player.tether = { active: tetherScenario, targetId: target.id,
-        attachmentId: `lab-line-${seed}`, restLength: Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z) + 6,
+        attachmentId: scenario === 'massline-snarl' ? `lab-snarl-${seed}` : `lab-line-${seed}`,
+        restLength: Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z) + 6,
         load: 0.12, strain: 0, phase: 'slack', reeling: false,
         headId: scenario === 'massline-monofilament' ? 'monofilament_sweep' : null };
       if (releaseArcScenario) {
@@ -199,7 +205,8 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
       if (scenario === 'massline-snarl') {
         snarlLink = {
           id: `lab-snarl-${seed}`, defId: 'attachment_snarl', state: 'active',
-          ownerId: ship.id, targetId: target.id, restLength: Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z) + 4,
+          ownerId: ship.id, controllerId: ship.id, targetId: target.id,
+          restLength: Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z) + 4,
           createdTick: 0,
         };
         privateState.combat.attachments.byId[snarlLink.id] = snarlLink;
@@ -221,12 +228,49 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
   }
   function stepMassline(dt, age) {
     if (scenario === 'massline-snarl') {
+      const tether = privateState.player.tether;
       if (snarlLink) {
-        snarlLink.createdTick = Math.max(0, privateState.tick - 18);
-        snarlLink.restLength = Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z)
-          + 4 + Math.sin(age * 2.4) * 2;
+        // createdTick is the native formation clock. Keep the receipt's original tick so the
+        // braid has one real take-up and then settles instead of being re-formed every frame.
+        if (!released) {
+          const distance = Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z);
+          snarlLink.restLength = distance + 4 + Math.sin(age * 2.4) * 2;
+          tether.load = Math.min(0.92, 0.16 + age * 0.24);
+          tether.strain = Math.min(0.88, Math.max(0, (tether.load - 0.4) * 1.45));
+          tether.phase = age < 0.5 ? 'capture' : 'loaded';
+          if (age >= 3.6) {
+            // The lab has no attachment service/bus, so publish the same native break identity to
+            // the production owner before retaining the record as broken history. This gives the
+            // web its real terminal state and lets the owner hold the cable recoil through its
+            // normal fade instead of leaving an active braid at the end of the clip.
+            const receipt = { sourceId: ship.id, ownerId: ship.id, targetId: target.id,
+              attachmentId: snarlLink.id, reason: 'engineered_break' };
+            owner._onTetherSnap(receipt);
+            snarlLink.state = 'broken';
+            snarlLink.brokenTick = privateState.tick;
+            snarlLink.breakReason = receipt.reason;
+            tether.active = false;
+            released = true;
+            target.vel.x = 12;
+            target.vel.z = -5;
+          }
+        }
       }
-      stage = age < 0.5 ? 'formation' : age < 3.8 ? 'tension' : 'cooldown';
+      if (released) {
+        target.pos.x += target.vel.x * dt; target.pos.z += target.vel.z * dt;
+        target.prevPos = { x: target.pos.x - target.vel.x * dt, z: target.pos.z - target.vel.z * dt };
+        place(targetMesh, target, targetBase.y);
+      }
+      owner._updateTetherCable(dt);
+      // Snarl's braided web is the active presentation. The ordinary cable owner is retained as
+      // the break tail only, preventing two unrelated live lines from competing during tension.
+      if (!released) {
+        for (const key of ['mesh', 'glow', 'band', 'anchorCore']) {
+          if (owner._tetherCable[key]) owner._tetherCable[key].visible = false;
+        }
+      }
+      stage = released ? (owner._tetherCable.fade > 0 ? 'release' : 'dead')
+        : age < 0.5 ? 'formation' : 'tension';
       return;
     }
     const tether = privateState.player.tether;
@@ -368,6 +412,9 @@ export function createGameplayTools({ scene, camera, state, shipMesh, targetMesh
         snarl: {
           visible: !!owner._tetherWebFx?.mesh?.visible,
           instances: owner._tetherWebFx?.mesh?.count || 0,
+          state: snarlLink?.state || null,
+          brokenTick: Number.isInteger(snarlLink?.brokenTick) ? snarlLink.brokenTick : null,
+          breakReason: snarlLink?.breakReason || null,
         },
       },
       propulsion: propulsion.inspect(),
