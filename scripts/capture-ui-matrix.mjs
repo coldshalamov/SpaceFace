@@ -982,7 +982,9 @@ export async function openSurface(page, surface, context = {}) {
     // Asteroid Works presses `b` and then the tether reels the hull in before the screen is
     // pushed. Twenty seconds is enough on a quiet laptop; forced-colors at 2560 is the slowest
     // Chromium path and timed out there with the latch already live.
-    const visibleMs = surface.id === 'asteroid-works' ? 60_000 : 20_000;
+    // The reel is real sim time. On a loaded headless run it has finished as late as
+    // ~90s of wall clock, and a 60s cap then reports the mine closed when it is only late.
+    const visibleMs = surface.id === 'asteroid-works' ? 120_000 : 20_000;
     await waitForAnyVisible(page, selectors, visibleMs, `${surface.id} visible`);
     return { ok: true, route: entry.kind };
   } catch (error) {
@@ -1231,16 +1233,34 @@ async function prepareAsteroidWorks(page) {
     };
   }
 
-  await page.keyboard.press('Space');
-  const latched = await page.waitForFunction((asteroidId) => {
-    const s = window.SF && window.SF.state;
-    const tether = s && s.player && s.player.tether;
-    if (tether && tether.active && String(tether.targetId) === String(asteroidId)) return true;
-    const byId = s && s.combat && s.combat.attachments && s.combat.attachments.byId;
-    if (!byId) return false;
-    return Object.values(byId).some((att) => att && (att.state === 'active' || att.state === 'latched')
-      && att.ownerId === s.playerId && String(att.targetId) === String(asteroidId));
-  }, readyId, { timeout: 8000 }).then(() => true).catch(() => false);
+  // One Space is enough when the ready receipt is still live. Under load the press
+  // sometimes lands after that receipt has gone stale, and a second press must not
+  // cut a line the first press already latched — so each attempt checks first.
+  let latched = false;
+  for (let attempt = 0; attempt < 3 && !latched; attempt += 1) {
+    const already = await page.evaluate((asteroidId) => {
+      const s = window.SF && window.SF.state;
+      const tether = s && s.player && s.player.tether;
+      if (tether && tether.active && String(tether.targetId) === String(asteroidId)) return 'latched';
+      const player = s && s.entities && s.entities.get && s.entities.get(s.playerId);
+      const tg = window.SF && window.SF.registry && window.SF.registry.get && window.SF.registry.get('tetherGameplay');
+      if (tg && typeof tg._refreshAcquisitionPreview === 'function' && player) {
+        tg._refreshAcquisitionPreview(player, { maxLength: 390 }, s, s.simTime || 0, true, true);
+      }
+      return 'open';
+    }, readyId);
+    if (already === 'latched') { latched = true; break; }
+    await page.keyboard.press('Space');
+    latched = await page.waitForFunction((asteroidId) => {
+      const s = window.SF && window.SF.state;
+      const tether = s && s.player && s.player.tether;
+      if (tether && tether.active && String(tether.targetId) === String(asteroidId)) return true;
+      const byId = s && s.combat && s.combat.attachments && s.combat.attachments.byId;
+      if (!byId) return false;
+      return Object.values(byId).some((att) => att && (att.state === 'active' || att.state === 'latched')
+        && att.ownerId === s.playerId && String(att.targetId) === String(asteroidId));
+    }, readyId, { timeout: 2500 }).then(() => true).catch(() => false);
+  }
   if (!latched) {
     const denial = await page.evaluate(() => {
       const tether = window.SF && window.SF.registry && window.SF.registry.get
@@ -1260,7 +1280,7 @@ async function prepareAsteroidWorks(page) {
     });
     return {
       ok: false,
-      reason: 'asteroid works: the standard massline never latched to the rock within 8s, so `b` has '
+      reason: 'asteroid works: the standard massline never latched to the rock after 3 tries, so `b` has '
         + 'nothing to drill (src/ui/input.js openDrill requires an active tether_standard on the target)'
         + (denial ? ` [${JSON.stringify(denial)}]` : ''),
     };

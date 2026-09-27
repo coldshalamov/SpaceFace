@@ -22,8 +22,12 @@
 // in that mode is NOT acceptance evidence; the run records which renderer produced it.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const require = createRequire(import.meta.url);
+const { PLAYWRIGHT_BACKGROUND_EXECUTION_SWITCHES } = require('./lib/performanceLifecycleLaunchPolicy.cjs');
 
 import {
   ADMITTED_OWNER_PACKETS,
@@ -198,7 +202,13 @@ async function measureAllSurfaces(surfaces) {
   const server = await startFreshServer();
   let browser = null;
   try {
-    browser = await chromium.launch({ headless: !args.headed });
+    // Headless Chromium on this host occludes the window and freezes rAF. The drill route
+    // is a live reel: if the sim and the screen's enter frame never run, the surface stays
+    // at opacity 0 and every cell reads as "did not open". Same switches as the theater check.
+    browser = await chromium.launch({
+      headless: !args.headed,
+      args: [...PLAYWRIGHT_BACKGROUND_EXECUTION_SWITCHES],
+    });
   } catch (error) {
     server.kill();
     throw new Error(`chromium.launch failed (server torn down): ${error.message}`);
