@@ -70,6 +70,14 @@ const LABEL_BY_COMMODITY = new Map(COMMODITIES.map((c) => [c.id, String(c.name |
 const LEGALITY_BY_COMMODITY = new Map(COMMODITIES.map((c) => [c.id, String(c.legality || 'legal')]));
 // Hot goods fence well: restricted/contraband lots bribe above face value.
 const BRIBE_HOT_MULT = 1.5;
+// INF-U20: crews remember. A paid crew halves the next demand from the same
+// faction, two consecutive pays wave you through, and a run or refused fight
+// prices the next demand up. Memory is per faction and expires.
+const CREW_MEMORY_WINDOW_S = 1200;
+const CREW_RECOGNIZED_MULT = 0.5;
+const CREW_GRUDGE_MULT = 1.5;
+const CREW_WAIVE_PAYS = 2;
+const CREW_MEMORY_CAP = 32;
 
 export const pirateParley = {
   name: 'pirateParley',
@@ -177,12 +185,19 @@ export const pirateParley = {
         rec.deadlineAt = now + DEMAND_WINDOW_S;
         rec.tithe = chooseTithe(state, rec.squadId);
         rec.demand = chooseDemand(state, rec.squadId, rec.tithe);
+        // INF-U20: the crew reads its ledger before it names a price.
+        if (applyCrewMemory(own, rec, now)) {
+          this._waive(rec, members, now);
+          continue;
+        }
         holdFire(state, rec, members);
         this._speak(rec, 'demand-cargo');
         this._emit('pirateParley:demand', {
           ...publicRecord(rec),
           demand: { ...rec.demand },
           tithe: { ...rec.tithe },
+          recognized: rec.recognized === true,
+          grudged: rec.grudged === true,
         });
       } else if (rec.phase === 'demand') {
         const player = state.entities && state.entities.get && state.entities.get(state.playerId);
@@ -284,12 +299,47 @@ export const pirateParley = {
     rec.breakOffUntil = now + BREAK_OFF_S;
 
     for (const e of members) breakOff(e, rec, state);
+    noteCrewPaid(ensureState(state), rec, now);
     this._emit('pirateParley:resolved', {
       ...publicRecord(rec),
       outcome: 'complied',
       next: 'break-off',
       payment: { ...payment },
       tithe: rec.tithe ? { ...rec.tithe } : null,
+    });
+    return true;
+  },
+
+  // INF-U20 v3: the third stop is free. A crew paid twice running waves the
+  // reliable payer through with its own outcome — the receipt still goes out
+  // so the strip renders the wave-through instead of a demand.
+  _waive(rec, members, now) {
+    rec.phase = 'break-off';
+    rec.resolved = true;
+    rec.choice = 'waived';
+    rec.outcome = 'waived';
+    rec.payment = null;
+    rec.waived = true;
+    rec.breakOffUntil = now + BREAK_OFF_S;
+    for (const entity of members) breakOff(entity, rec, this.state);
+    const text = String(rec.factionId || '').includes('vael')
+      ? 'VAEL: Your record is clean. Move along.'
+      : 'REACH: You keep paying — move along.';
+    rec.said.push({ situation: 'waived', text });
+    this._emit('pirateParley:voice', {
+      squadId: rec.squadId,
+      doctrineId: rec.doctrineId,
+      situation: 'waived',
+      text,
+      factionId: rec.factionId,
+    });
+    this._emit('pirateParley:resolved', {
+      ...publicRecord(rec),
+      outcome: 'waived',
+      next: 'break-off',
+      payment: null,
+      tithe: null,
+      waived: true,
     });
     return true;
   },
@@ -319,6 +369,7 @@ export const pirateParley = {
     rec.resolved = true;
     rec.outcome = outcome || 'refused';
     rec.choice = rec.outcome === 'timeout' ? null : 'refuse';
+    noteCrewGrudge(ensureState(state), rec, state.simTime || 0);
     for (const e of members) makeHostile(e, state, rec);
     this._speak(rec, 'attack');
     this._emit('pirateParley:resolved', {
@@ -340,6 +391,7 @@ export const pirateParley = {
     rec.outcome = 'evaded';
     rec.payment = null;
     rec.breakOffUntil = now + BREAK_OFF_S;
+    noteCrewGrudge(ensureState(state), rec, now);
     for (const entity of members) breakOff(entity, rec, state);
     this._emit('pirateParley:resolved', {
       ...publicRecord(rec),
@@ -460,6 +512,7 @@ export const pirateParley = {
     rec.outcome = 'complied';
     rec.payment = payment;
     rec.scoopUntil = now + BRIBE_SCOOP_S;
+    noteCrewPaid(ensureState(state), rec, now);
     for (const e of members) scoopBribe(e, rec, state);
     const text = String(rec.factionId || '').includes('vael')
       ? 'VAEL: Customs accepts your contribution. Move along.'
@@ -547,12 +600,13 @@ export const pirateParley = {
 };
 
 function freshState() {
-  return { squads: {} };
+  return { squads: {}, crews: {} };
 }
 
 function ensureState(state) {
   if (!state.pirateParley || typeof state.pirateParley !== 'object') state.pirateParley = freshState();
   if (!state.pirateParley.squads || typeof state.pirateParley.squads !== 'object') state.pirateParley.squads = {};
+  if (!state.pirateParley.crews || typeof state.pirateParley.crews !== 'object') state.pirateParley.crews = {};
   return state.pirateParley;
 }
 
@@ -939,13 +993,105 @@ function outsideSquadRange(player, members, radius) {
 }
 
 function demandInstruction(rec) {
+  // INF-U20: the demand names the history it prices.
+  const memory = rec.recognized === true
+    ? 'You paid last time — half today. '
+    : rec.grudged === true
+      ? 'You ran last time — interest. '
+      : '';
   if (rec.demand && rec.demand.kind === 'credits') {
-    return `REACH: Brake to transfer ${rec.demand.amount | 0} credits. Clear 1200 to run.`;
+    return `REACH: ${memory}Brake to transfer ${rec.demand.amount | 0} credits. Clear 1200 to run.`;
   }
   const tithe = rec.tithe || {};
   const qty = Math.max(0, Math.floor(Number(tithe.qty) || 0));
   const label = LABEL_BY_COMMODITY.get(tithe.commodityId) || 'cargo';
-  return `REACH: Brake to yield ${qty} ${label}. Clear 1200 to run.`;
+  return `REACH: ${memory}Brake to yield ${qty} ${label}. Clear 1200 to run.`;
+}
+
+// INF-U20: the crew ledger. Paying stamps the faction and clears any grudge;
+// running or fighting back stamps a grudge and breaks the pay streak.
+function crewKey(rec) {
+  return String((rec && rec.factionId) || 'faction_reach');
+}
+
+function noteCrewPaid(own, rec, now) {
+  if (!own || !own.crews) return null;
+  const mem = own.crews[crewKey(rec)] || (own.crews[crewKey(rec)] = {
+    paid: 0, consecutivePays: 0, lastPaidAt: -Infinity, grudgeAt: -Infinity,
+  });
+  mem.paid += 1;
+  mem.consecutivePays += 1;
+  mem.lastPaidAt = now;
+  mem.grudgeAt = -Infinity;
+  pruneCrewMemory(own, now);
+  return mem;
+}
+
+function noteCrewGrudge(own, rec, now) {
+  if (!own || !own.crews) return null;
+  const mem = own.crews[crewKey(rec)] || (own.crews[crewKey(rec)] = {
+    paid: 0, consecutivePays: 0, lastPaidAt: -Infinity, grudgeAt: -Infinity,
+  });
+  mem.consecutivePays = 0;
+  mem.grudgeAt = now;
+  pruneCrewMemory(own, now);
+  return mem;
+}
+
+function pruneCrewMemory(own, now) {
+  const keys = Object.keys(own.crews);
+  for (const key of keys) {
+    const mem = own.crews[key];
+    const last = Math.max(mem.lastPaidAt || -Infinity, mem.grudgeAt || -Infinity);
+    if (now - last > CREW_MEMORY_WINDOW_S) delete own.crews[key];
+  }
+  const rest = Object.keys(own.crews);
+  if (rest.length > CREW_MEMORY_CAP) {
+    rest.sort((a, b) => {
+      const ma = own.crews[a];
+      const mb = own.crews[b];
+      return Math.max(ma.lastPaidAt, ma.grudgeAt) - Math.max(mb.lastPaidAt, mb.grudgeAt);
+    });
+    for (let i = 0; i < rest.length - CREW_MEMORY_CAP; i++) delete own.crews[rest[i]];
+  }
+}
+
+// Read the ledger at demand time. Returns true when the stop is waived
+// outright; otherwise adjusts the priced demand in place and stamps the
+// record so the instruction and the event name the history.
+function applyCrewMemory(own, rec, now) {
+  const mem = own && own.crews && own.crews[crewKey(rec)];
+  if (!mem) return false;
+  const paidFresh = now - (mem.lastPaidAt || -Infinity) <= CREW_MEMORY_WINDOW_S;
+  const grudgeFresh = (mem.grudgeAt || -Infinity) > (mem.lastPaidAt || -Infinity)
+    && now - mem.grudgeAt <= CREW_MEMORY_WINDOW_S;
+  if (paidFresh && !grudgeFresh && mem.consecutivePays >= CREW_WAIVE_PAYS) return true;
+  if (grudgeFresh) {
+    rec.grudged = true;
+    scaleDemand(rec, CREW_GRUDGE_MULT);
+    return false;
+  }
+  if (paidFresh && mem.paid > 0) {
+    rec.recognized = true;
+    scaleDemand(rec, CREW_RECOGNIZED_MULT);
+  }
+  return false;
+}
+
+function scaleDemand(rec, mult) {
+  const demand = rec.demand || {};
+  const tithe = rec.tithe || {};
+  if (demand.kind === 'credits') {
+    demand.amount = Math.max(1, Math.round((Number(demand.amount) || 0) * mult));
+    rec.demand = demand;
+    return;
+  }
+  const qty = Math.max(1, Math.round((Number(tithe.qty) || 0) * mult));
+  tithe.qty = qty;
+  demand.amount = qty;
+  demand.qty = qty;
+  rec.tithe = tithe;
+  rec.demand = demand;
 }
 
 export default pirateParley;
