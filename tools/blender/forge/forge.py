@@ -310,8 +310,11 @@ def plate(ship, name, outline, z0, thickness, material='paint', chamfer=0.0, cha
     return obj
 
 
-def box(ship, name, center, size, material='gunmetal', bevel=0.02, mirror=False, rot_z=0.0, taper=1.0):
-    def build(c):
+def box(ship, name, center, size, material='gunmetal', bevel=0.02, mirror=False, rot_z=0.0, taper=1.0, rot=None,
+        mirror_flip=False):
+    """Bevelled box. rot_z yaws it; rot=(rx, ry, rz) radians tilts it on any axis (applied X, Y, Z).
+    mirror_flip=True mirrors the rotation too (a yawed/tilted part stays symmetric across the keel)."""
+    def build(c, sign):
         bm = bmesh.new()
         bmesh.ops.create_cube(bm, size=1.0)
         for v in bm.verts:
@@ -321,12 +324,17 @@ def box(ship, name, center, size, material='gunmetal', bevel=0.02, mirror=False,
             if taper != 1.0 and v.co.z > 0:
                 v.co.x *= taper
                 v.co.y *= taper
-        bmesh.ops.rotate(bm, verts=bm.verts, cent=(0, 0, 0), matrix=Matrix.Rotation(rot_z, 3, 'Z'))
+        if rot is not None:
+            rx, ry, rz = rot
+            m = (Matrix.Rotation(rz * sign, 3, 'Z') @ Matrix.Rotation(ry, 3, 'Y') @ Matrix.Rotation(rx * sign, 3, 'X'))
+            bmesh.ops.rotate(bm, verts=bm.verts, cent=(0, 0, 0), matrix=m)
+        bmesh.ops.rotate(bm, verts=bm.verts, cent=(0, 0, 0), matrix=Matrix.Rotation(rot_z * sign, 3, 'Z'))
         bmesh.ops.translate(bm, verts=bm.verts, vec=c)
         return bm
-    obj = ship.add(_new_object(name, build(center), ship.slots([material]), bevel=bevel, smooth_angle=30.0))
+    obj = ship.add(_new_object(name, build(center, 1), ship.slots([material]), bevel=bevel, smooth_angle=30.0))
     if mirror:
-        ship.add(_new_object(name + '_M', build((center[0], -center[1], center[2])), ship.slots([material]),
+        sign = -1 if mirror_flip else 1
+        ship.add(_new_object(name + '_M', build((center[0], -center[1], center[2]), sign), ship.slots([material]),
                              bevel=bevel, smooth_angle=30.0))
     return obj
 
@@ -627,6 +635,8 @@ def panel(ship, obj_name, center, size, finish, facing=(0, 0, 1), inset=0.03, de
         targets.append((obj_name + '_M', -cy, (facing[0], -facing[1], facing[2])))
     for name, y0, fdir in targets:
         obj = bpy.data.objects.get(name)
+        if obj is None and name.endswith('_M'):
+            obj = bpy.data.objects.get(name[:-2])  # centreline part: cut both sides into the one mesh
         if obj is None:
             raise KeyError(f'panel: no part {name}')
         me = obj.data
@@ -732,3 +742,121 @@ def container(ship, name, center, size, finish='paint2', mirror=False, ribs=4):
     for e in (-1, 1):
         box(ship, f'{name}_End{e}', (cx + e * (sx / 2 - 0.04), cy, cz), (0.1, sy + 0.06, sz + 0.06), material='dark',
             bevel=0.01, mirror=mirror)
+
+
+
+def ring(ship, name, center, radius, tube, axis=(1, 0, 0), material='gunmetal', segments=32, sides=10,
+         mirror=False):
+    """Torus: flanges, dish rims, cable wraps, drive collars. axis = the ring's normal."""
+    def build(c):
+        bm = bmesh.new()
+        rings = []
+        for i in range(segments):
+            a = 2 * math.pi * i / segments
+            ring_pts = []
+            for j in range(sides):
+                b = 2 * math.pi * j / sides
+                r = radius + tube * math.cos(b)
+                ring_pts.append(bm.verts.new((tube * math.sin(b), r * math.cos(a), r * math.sin(a))))
+            rings.append(ring_pts)
+        for i in range(segments):
+            for j in range(sides):
+                a, b = rings[i], rings[(i + 1) % segments]
+                bm.faces.new((a[j], a[(j + 1) % sides], b[(j + 1) % sides], b[j]))
+        rotm = Vector((1, 0, 0)).rotation_difference(Vector(axis).normalized()).to_matrix()
+        bmesh.ops.rotate(bm, verts=bm.verts, cent=(0, 0, 0), matrix=rotm)
+        bmesh.ops.translate(bm, verts=bm.verts, vec=c)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        return bm
+    obj = ship.add(_new_object(name, build(center), ship.slots([material]), bevel=0.0, smooth_angle=80.0))
+    if mirror:
+        ship.add(_new_object(name + '_M', build((center[0], -center[1], center[2])), ship.slots([material]),
+                             bevel=0.0, smooth_angle=80.0))
+    return obj
+
+
+def dish(ship, name, center, radius, depth, axis=(0, 0, 1), material='gunmetal', face='dark', segments=32,
+         feed='glow_cyan', mirror=False):
+    """Concave antenna dish: a shallow bowl opening along `axis`, a rim ring and a feed with a lens."""
+    def build(c):
+        bm = bmesh.new()
+        rows = 6
+        grid = []
+        for r in range(rows + 1):
+            t = r / rows
+            rr = radius * t
+            z = depth * t * t
+            grid.append([bm.verts.new((z, rr * math.cos(2 * math.pi * k / segments),
+                                       rr * math.sin(2 * math.pi * k / segments))) for k in range(segments)])
+        for r in range(rows):
+            for k in range(segments):
+                k2 = (k + 1) % segments
+                bm.faces.new((grid[r][k], grid[r][k2], grid[r + 1][k2], grid[r + 1][k]))
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+        # give the bowl a back skin so it is a solid shell
+        ret = bmesh.ops.solidify(bm, geom=list(bm.faces), thickness=radius * 0.06)
+        rotm = Vector((1, 0, 0)).rotation_difference(Vector(axis).normalized()).to_matrix()
+        bmesh.ops.rotate(bm, verts=bm.verts, cent=(0, 0, 0), matrix=rotm)
+        bmesh.ops.translate(bm, verts=bm.verts, vec=c)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        ax = Vector(axis).normalized()
+        for f in bm.faces:
+            f.material_index = 1 if f.normal.dot(ax) > 0.2 else 0
+        return bm
+    mats = ship.slots([material, face])
+    obj = ship.add(_new_object(name, build(center), mats, bevel=0.0, smooth_angle=70.0))
+    ax = Vector(axis).normalized()
+    c = Vector(center)
+    ring(ship, name + '_Rim', tuple(c + ax * depth), radius, radius * 0.05, axis=axis, material=material)
+    tip = c + ax * (depth + radius * 0.7)
+    cylinder(ship, name + '_Feed', tuple(c + ax * depth * 0.3), tuple(tip), radius * 0.05, radius * 0.03,
+             material=material, segments=8, bevel=0.0)
+    if feed:
+        light(ship, name + '_Lens', tuple(tip), feed, size=radius * 0.12)
+    return obj
+
+
+def work_lamp(ship, name, pos, aim=(0.4, 0.0, 1.0), size=0.3, lens='glow_warm', mirror=False):
+    """Floodlight can on a yoke, tilted so the chase camera sees the lit lens."""
+    p = Vector(pos)
+    a = Vector(aim).normalized()
+    cylinder(ship, name + '_Can', tuple(p - a * size * 0.6), tuple(p + a * size * 0.4), size * 0.5, size * 0.6,
+             material='gunmetal', segments=14, cap_material=lens, mirror=mirror)
+    box(ship, name + '_Yoke', (p.x, p.y, p.z - size * 0.55), (size * 0.5, size * 0.9, size * 0.25), material='dark',
+        bevel=0.0, mirror=mirror)
+
+
+def beacon(ship, name, pos, finish='glow_amber', size=0.22, mirror=False):
+    """Rotating-beacon dome: a short gunmetal base with a lit dome."""
+    x, y, z = pos
+    cylinder(ship, name + '_Base', (x, y, z), (x, y, z + size * 0.35), size * 0.8, size * 0.7, material='gunmetal',
+             segments=14, mirror=mirror)
+    loft(ship, name + '_Dome', [
+        dict(x=x - size * 0.62, w=0.01, ht=0.01, hb=0.01, zc=z + size * 0.35, n=2.0, y=y),
+        dict(x=x - size * 0.45, w=size * 0.45, ht=size * 0.3, hb=0.01, zc=z + size * 0.35, n=2.0, y=y),
+        dict(x=x, w=size * 0.62, ht=size * 0.55, hb=0.01, zc=z + size * 0.35, n=2.0, y=y),
+        dict(x=x + size * 0.45, w=size * 0.45, ht=size * 0.3, hb=0.01, zc=z + size * 0.35, n=2.0, y=y),
+        dict(x=x + size * 0.62, w=0.01, ht=0.01, hb=0.01, zc=z + size * 0.35, n=2.0, y=y),
+    ], material=finish, count=16, bevel=0.0, smooth_angle=80.0, mirror=mirror)
+
+
+def sweep(ship, name, path, width, height, material='gunmetal', bevel=0.01):
+    """Rectangular beam swept along a 3D polyline (arches, ribs, rails, pipe runs)."""
+    bm = bmesh.new()
+    pts = [Vector(p) for p in path]
+    rings = []
+    for i, p in enumerate(pts):
+        t = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
+        up = Vector((0, 0, 1)) if abs(t.z) < 0.9 else Vector((0, 1, 0))
+        side = t.cross(up).normalized()
+        nrm = side.cross(t).normalized()
+        w, h = width / 2, height / 2
+        rings.append([bm.verts.new(p + side * sx * w + nrm * sz * h) for sx, sz in ((-1, -1), (1, -1), (1, 1), (-1, 1))])
+    for i in range(len(rings) - 1):
+        a, b = rings[i], rings[i + 1]
+        for j in range(4):
+            bm.faces.new((a[j], a[(j + 1) % 4], b[(j + 1) % 4], b[j]))
+    bm.faces.new(list(reversed(rings[0])))
+    bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return ship.add(_new_object(name, bm, ship.slots([material]), bevel=bevel, smooth_angle=35.0))

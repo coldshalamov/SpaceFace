@@ -20,8 +20,9 @@ The camera is a 60° top-down chase at 144 WU (ship ≈ 170 px wide) with an opt
    alone: arrowhead, hammerhead, catamaran, barge, ring. Wings, sponsons, pods, booms and jaws are
    plan-view shapes (`plate`, `loft`), not decoration.
 2. **Three values.** Light primary paint, mid secondary, dark mechanical. Dark reads as depth
-   (recesses, intakes, gaps, engine blocks) and should be a visible share of the top view. Keep
-   primary paint below white (≈ #c0 max) so the key light never clips it.
+   (recesses, intakes, gaps, engine blocks) and should be a visible share of the top view. The
+   Helios key light lifts values about 2.5x: author paint channels ≈ 0x30–0x90 (Helios ivory
+   `#bfb6a3` is the brightest allowed), dark armour ≈ 0x20–0x2c. Look, then adjust.
 3. **One identity colour, carried in bands.** Stripes and bands are cut into the geometry with
    `band()`, so they follow the form and stay crisp at any zoom. No painted-on decals, no text.
 4. **Layered construction.** Panels are raised or recessed (`panel()`, `band(inset, depth)`),
@@ -58,6 +59,9 @@ absolute metres.
 | `panel(s, part, (x, y), (sx, sy), finish, inset, depth, mirror)` | rectangular raised/recessed plate cut into a part's top |
 | `box`, `cylinder`, `nozzle`, `canopy` | primitives; `nozzle` has a dark throat and an emissive core |
 | `vent`, `rcs`, `antenna`, `windows`, `sensor_dome`, `container`, `fins`, `light` | designed greebles |
+| `ring`, `dish`, `work_lamp`, `beacon`, `sweep` | torus flanges/rims, concave antenna dish with feed, camera-facing floodlight, lit beacon dome, beam swept along a path |
+| `box(..., rot=(rx, ry, rz), mirror_flip=True)` | tilted box; mirrored copy mirrors the rotation |
+| `s.hook_part('HOOK_SECONDARY_X', obj, ...)` | keeps damage parts (shed-first secondary, sensor, armour) as their own meshes |
 | `s.detail = 1` / `2` | parts added while set are dropped at LOD2 / LOD1+ |
 | `s.hook('HOOK_DRIVE_CORE', pos)`, `s.socket(name, pos)` | override default drive / socket positions |
 
