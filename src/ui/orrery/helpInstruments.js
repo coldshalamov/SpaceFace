@@ -203,7 +203,9 @@ export function keyGlyph(label, { small = false } = {}) {
   const node = doc.createElement('span');
   const text = String(label == null ? '' : label).trim();
   const none = !text || text === '—' || text === '-';
-  const sentence = !none && (text.length > 16 || /[:(]|when |button|prompted|->|near |target |then /i.test(text));
+  const keyParts = text.split(/\s+\/\s+|\//).map((q) => q.trim()).filter(Boolean);
+  const isKeys = keyParts.length > 1 && keyParts.every((q) => q.length <= 9 && !/\s\S+\s/.test(q));
+  const sentence = !none && !isKeys && (text.length > 16 || /[:(]|when |button|prompted|->|near |target |then /i.test(text));
   node.className = 'orr-hkey' + (small ? ' orr-hkey--small' : '') + (none ? ' orr-hkey--none' : '') + (sentence ? ' orr-hkey--text' : '');
   if (none) { node.textContent = 'not bound'; node.classList.add('orr-hkey--word'); return node; }
   if (sentence) { node.textContent = text; return node; }
