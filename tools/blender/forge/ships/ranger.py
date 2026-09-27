@@ -18,15 +18,15 @@ import forge as F  # noqa: E402
 SHIP_ID = 'ranger'
 COLORS = {
     'paint': '#1c3223',    # forest green (brief #2f4a36, authored darker: the key light lifts ~2.5x)
-    'paint2': '#6a6758',   # survey ivory (brief #a9a38f, same calibration)
-    'stripe': '#6a6758',
+    'paint2': '#6b6a60',   # survey ivory (brief #a9a38f, same calibration)
+    'stripe': '#6b6a60',
     'hazard': '#b0761c',
     'dark': '#1a1d1e',
 }
 
 
 def dish(s, name, center, radius, depth, normal, thickness=0.07, rings=10, segments=40, face='paint2',
-         back='gunmetal'):
+         back='gunmetal', ring_bands=(2, 6)):
     """Local helper: a real parabolic survey dish (concave face + shell back) aimed along `normal`."""
     bm = bmesh.new()
     front, rear = [], []
@@ -45,7 +45,10 @@ def dish(s, name, center, radius, depth, normal, thickness=0.07, rings=10, segme
         faces_front.append(bm.faces.new((pole_f, front[0][k], front[0][j])))
         faces_back.append(bm.faces.new((pole_r, rear[0][j], rear[0][k])))
         for i in range(rings - 1):
-            faces_front.append(bm.faces.new((front[i][k], front[i + 1][k], front[i + 1][j], front[i][j])))
+            f = bm.faces.new((front[i][k], front[i + 1][k], front[i + 1][j], front[i][j]))
+            if i in ring_bands:
+                f.material_index = 1
+            faces_front.append(f)
             faces_back.append(bm.faces.new((rear[i][k], rear[i][j], rear[i + 1][j], rear[i + 1][k])))
         faces_back.append(bm.faces.new((front[-1][k], rear[-1][k], rear[-1][j], front[-1][j])))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)

@@ -14,8 +14,8 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'bastion'
 COLORS = {
-    'paint': '#29313b',    # military slate (brief #39434f, authored darker: the key light lifts ~2.5x)
-    'paint2': '#171b21',   # dark hull slate
+    'paint': '#232b36',    # military slate (brief #39434f, authored darker: the key light lifts ~2.5x)
+    'paint2': '#111418',   # dark hull slate
     'stripe': '#7a241c',   # warning red (brief #8a2a22)
     'hazard': '#7a241c',
     'dark': '#16191d',
@@ -56,8 +56,8 @@ def build():
     lower = mirror_full([(10.2, 0.0), (6.0, 1.95), (-2.0, 3.0), (-8.8, 3.1), (-9.9, 2.5), (-9.9, 0.0)])
     F.plate(s, 'LowerHull', lower, z0=-1.1, thickness=1.15, material='paint2', chamfer=0.25, chamfer_bottom=0.55)
     # --- deck: slate armour with a sloped glacis, inset from the lower hull ----------------------
-    deck = mirror_full([(9.6, 0.0), (5.6, 1.75), (-2.0, 2.7), (-8.4, 2.75), (-9.4, 2.2), (-9.4, 0.0)])
-    F.plate(s, 'Deck', deck, z0=-0.05, thickness=0.85, material='paint', chamfer=0.55, side_material='paint')
+    deck = mirror_full([(9.6, 0.0), (5.6, 1.75), (-2.0, 2.7), (-8.0, 2.75), (-9.4, 1.9), (-9.4, 0.0)])
+    F.plate(s, 'Deck', deck, z0=-0.05, thickness=0.85, material='paint', chamfer=0.45, side_material='paint')
     # bow chevron: two red bands meeting in a V on the glacis
     F.band(s, 'Deck', (7.4, 0.55, 0), (0.42, 0.91, 0), 0.34, 'stripe', facing=(0, 0, 1), min_facing=0.3)
     F.band(s, 'Deck', (7.4, -0.55, 0), (0.42, -0.91, 0), 0.34, 'stripe', facing=(0, 0, 1), min_facing=0.3)

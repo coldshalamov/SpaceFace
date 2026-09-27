@@ -747,10 +747,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_cradle",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_cradle.glb",
-      "releaseSha256": "9defbe885168f593067b6e5dea26587841823d5f605b41da94757ae259967c1f",
-      "releaseBytes": 14274028,
+      "releaseSha256": "f5b3d635e5e347353f80b83f1ad12282ed8e19fbb8bed8e4995c48a4ce00a023",
+      "releaseBytes": 1247752,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-cradle",
       "metadataUrl": "assets/ships/release/render-packages/helios-cradle/render-package.json",
@@ -827,10 +828,14 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_span",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_span.glb",
-      "releaseSha256": "91e60a5784b0951e2aa76cb3b01ddf67dfa82fa7b1cf5964472c642d0f6fa59e",
-      "releaseBytes": 14404884,
+      "releaseSha256": "40fd8135d6a4a797c5b455e1e92538f9a29fb0d20a9b1e3871f06d6394957a64",
+      "releaseBytes": 1100972,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-span",
       "metadataUrl": "assets/ships/release/render-packages/helios-span/render-package.json",
@@ -1076,7 +1081,10 @@
       "releaseBytes": 755692,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
       ],
       "outputDir": "assets/ships/release/render-packages/kestrel",
       "metadataUrl": "assets/ships/release/render-packages/kestrel/render-package.json",
@@ -1095,7 +1103,10 @@
       "rootNode": "KESTREL_V4_LOD1_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
       ],
       "outputDir": "assets/ships/release/render-packages/kestrel-lod1",
       "metadataUrl": "assets/ships/release/render-packages/kestrel-lod1/render-package.json"
@@ -1113,7 +1124,10 @@
       "rootNode": "KESTREL_V4_LOD2_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
-        "HOOK_NAV"
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
       ],
       "outputDir": "assets/ships/release/render-packages/kestrel-lod2",
       "metadataUrl": "assets/ships/release/render-packages/kestrel-lod2/render-package.json"
@@ -1261,10 +1275,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ore_barge",
       "sourceUrl": "assets/ships/release/parts/wholeships/ore_barge.glb",
-      "releaseSha256": "2841d79ccf946edec6cceaf9264c4fc479f90a81bcc3b34a6ecc9da9c7cf7df9",
-      "releaseBytes": 2882932,
+      "releaseSha256": "830ed2ed7586afb214ccccf1cc54712a15e6b70f1431a6023b08bf160a99795e",
+      "releaseBytes": 1146216,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/ore-barge",
       "metadataUrl": "assets/ships/release/render-packages/ore-barge/render-package.json",

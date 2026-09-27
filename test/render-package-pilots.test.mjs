@@ -2027,8 +2027,9 @@ async function packageShipFixture({ includeAuthoredNavLights = true } = {}) {
   const heliosMetadata = JSON.parse(await readFile(new URL(
     '../assets/ships/release/render-packages/helios-span/render-package.json', import.meta.url,
   ), 'utf8'));
+  // Forge Span (tools/blender/forge/ships/helios_span.py) sheds a roof point-defence mount.
   const realSecondary = heliosMetadata.runtime.primitives.find((primitive) => (
-    primitive.name === 'LOD0_Gun_Assembly' && primitive.tags?.damageRole === 'secondary'
+    /^LOD0_/.test(primitive.name) && primitive.tags?.damageRole === 'secondary'
   ));
   assert.ok(realSecondary, 'the production Helios Span package exposes its damage-secondary gun assembly');
   const geometry = new THREE.BoxGeometry(4, 2, 3);

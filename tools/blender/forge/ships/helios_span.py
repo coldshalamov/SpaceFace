@@ -108,6 +108,14 @@ def build():
     for i in range(7):
         F.light(s, f'SpineLamp{i}', (-7.5 + i * 2.5, 0.0, 0.72), 'glow_warm', size=0.14)
     s.detail = 0
+    # Point-defence mount on the cab roof: the part that sheds first under fire (secondary damage).
+    pd = [
+        F.cylinder(s, 'PDBase', (9.3, 0.0, 1.95), (9.3, 0.0, 2.25), 0.5, 0.44, material='gunmetal', segments=20),
+        F.box(s, 'PDHousing', (9.35, 0.0, 2.42), (0.8, 0.62, 0.36), material='paint2', bevel=0.03),
+        F.cylinder(s, 'PDBarrelA', (9.7, 0.14, 2.45), (10.75, 0.14, 2.45), 0.06, material='gunmetal', segments=10),
+        F.cylinder(s, 'PDBarrelB', (9.7, -0.14, 2.45), (10.75, -0.14, 2.45), 0.06, material='gunmetal', segments=10),
+    ]
+    s.hook_part('HOOK_SECONDARY_GUN', *pd)
     F.light(s, 'NavPort', (-12.1, 4.62, 0.31), 'glow_red', size=0.28)
     F.light(s, 'NavStarboard', (-12.1, -4.62, 0.31), 'glow_green', size=0.28)
     F.light(s, 'Beacon', (-10.6, 0.0, 1.82), 'glow_amber', size=0.22)

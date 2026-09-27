@@ -16,7 +16,7 @@ SHIP_ID = 'atlas'
 COLORS = {
     'paint': '#283648',          # navy blue-grey (brief #34465a, authored darker: the key light lifts ~2.5x)
     'paint2': '#565c64',         # steel containers
-    'paint2.orange': '#6a3014',  # the odd orange box in the stack
+    'paint2.orange': '#5e2a12',  # the odd orange box in the stack
     'paint2.navy': '#2e3c4c',    # and the odd navy one
     'stripe': '#b0501a',         # safety orange (brief #c05a1c)
     'hazard': '#b0501a',
@@ -71,6 +71,8 @@ def build():
         F.box(s, 'CraneBeam', (GX, 0.0, 2.72), (0.5, 7.4, 0.42), material='hazard', bevel=0.03),
         F.box(s, 'CraneCab', (GX + 0.55, 0.45, 2.1), (0.5, 0.6, 0.5), material='paint', bevel=0.03),
     ]
+    for k, y in enumerate((-3.0, -2.2, -1.4, 1.4, 2.2, 3.0)):
+        F.band(s, 'CraneBeam', (GX, y, 0), (0.6, 0.8, 0), 0.26, 'dark', facing=(0, 0, 1), min_facing=0.5)
     crane.append(F.light(s, 'CraneCabWin', (GX + 0.81, 0.45, 2.18), 'glow_warm', size=0.2))
     for side in (1, -1):
         crane.append(F.box(s, f'CraneTrolley{side}', (GX, side * 2.4, 2.46), (0.8, 0.7, 0.3), material='gunmetal',

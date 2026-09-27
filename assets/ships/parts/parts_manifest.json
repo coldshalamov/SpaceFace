@@ -6378,19 +6378,19 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_cradle.glb",
-      "tris": 37870,
-      "bytes": 25784540,
+      "tris": 64008,
+      "bytes": 3655004,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN",
-        "Gun_Assembly",
-        "Mining_Emitter"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -6401,25 +6401,27 @@
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -10.350000381469727,
-          -3.6499998569488525,
-          -4.650000095367432
+          -10.820595741271973,
+          -3.4000000953674316,
+          -4.732181549072266
         ],
         "max": [
-          11.799999237060547,
-          5.049999713897705,
-          4.650000095367432
+          13.000091552734375,
+          3.6992721557617188,
+          4.732181549072266
         ],
         "dimensionsM": [
-          22.149999618530273,
-          8.699999570846558,
-          9.300000190734863
+          23.820687294006348,
+          7.09927225112915,
+          9.464363098144531
         ]
       },
       "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Cradle, live Helios traffic role miner; explicit LOD0/1/2, 9/9/9 draws, semantic 1K PBR maps, damageable drive/gun/mining roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
@@ -6482,18 +6484,19 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_span.glb",
-      "tris": 55736,
-      "bytes": 27039336,
+      "tris": 50326,
+      "bytes": 2997636,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN",
-        "Gun_Assembly"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -6504,25 +6507,27 @@
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.324999809265137,
-          -2.3000001907348633,
-          -4.460000038146973
+          -14.621007919311523,
+          -2.0200002193450928,
+          -4.7643046379089355
         ],
         "max": [
-          14.149999618530273,
-          2.81000018119812,
-          4.460000038146973
+          14.600387573242188,
+          3.1312243938446045,
+          4.7643046379089355
         ],
         "dimensionsM": [
-          28.47499942779541,
-          5.110000371932983,
-          8.920000076293945
+          29.22139549255371,
+          5.151224613189697,
+          9.528609275817871
         ]
       },
       "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Span, live Helios traffic role hauler; explicit LOD0/1/2, 8/8/8 draws, semantic 1K PBR maps, damageable drive/gun roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
@@ -7164,47 +7169,50 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/ore_barge.glb",
-      "tris": 21208,
-      "bytes": 4514944,
+      "tris": 55228,
+      "bytes": 3435064,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
-        "SOCKET_Cargo_Dorsal",
+        "SOCKET_Cargo_Ventral",
         "SOCKET_Engine_Main",
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Weapon_Front",
-        "SOCKET_Work_Boom"
+        "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -21.770000457763672,
-          -1.7999999523162842,
-          -3.819999933242798
+          -22.77107810974121,
+          -2.2300004959106445,
+          -4.755979537963867
         ],
         "max": [
-          17.85000228881836,
-          4.75115966796875,
-          3.819999933242798
+          20.539981842041016,
+          6.6402997970581055,
+          4.755979537963867
         ],
         "dimensionsM": [
-          39.62000274658203,
-          6.551159620285034,
-          7.639999866485596
+          43.31105995178223,
+          8.87030029296875,
+          9.511959075927734
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Ore Barge, live traffic role ore_carrier; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (7752/1044/446 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."

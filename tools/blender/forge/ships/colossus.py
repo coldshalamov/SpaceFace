@@ -128,10 +128,10 @@ def build():
         F.plate(s, f'EndCap{side}', [(24.0, side * 11.2), (23.3, side * 12.8), (14.9, side * 12.8),
                                      (15.3, side * 11.2)][::side], z0=-1.9, thickness=4.3, material='paint2',
                 chamfer=0.35, top_material='stripe', bevel=0.05)
-        F.band(s, f'EndCap{side}', (0, 0, -0.9), (0, 0, 1), 0.45, 'stripe', facing=(0, side, 0), min_facing=0.6,
+        F.band(s, f'EndCap{side}', (0, 0, 0.7), (0, 0, 1), 0.45, 'stripe', facing=(0, side, 0), min_facing=0.6,
                inset=0.02, depth=0.04)
-        F.windows(s, f'CapWin{side}', 22.6, 15.8, side * 12.82, 0.3, 11, size=(0.34, 0.2))
-        F.windows(s, f'CapWinB{side}', 22.6, 15.8, side * 12.82, 0.8, 11, size=(0.34, 0.2))
+        F.windows(s, f'CapWin{side}', 22.6, 15.8, side * 12.81, -0.45, 11, size=(0.34, 0.2))
+        F.windows(s, f'CapWinB{side}', 22.6, 15.8, side * 12.81, -1.05, 11, size=(0.34, 0.2))
     # snout: the armoured cannon housing that bulges out of the head's leading edge
     F.loft(s, 'Snout', [
         dict(x=11.0, w=3.0, ht=3.0, hb=2.4, zc=0.5, n=2.6),

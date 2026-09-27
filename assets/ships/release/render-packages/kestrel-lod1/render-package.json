@@ -427,8 +427,13 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "94fde2098d69fcf6c58a35cca9ddaac0af24442c9b7db3e03721dacbb4da2fc1",
+  "contentHash": "5cf5ed75fd0dcef15d1d0d244d2bdde2cb11833c48a16a695bc04ae3dba9fb96",
   "dynamicGroups": [
+    {
+      "id": "sf.render.kestrel-lod1.mesh.lod1-hook-armor-port-armor.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod1.mesh.lod1-hook-armor-port-armor"
+    },
     {
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-drive-core.dynamic",
       "kind": "dynamic-surface",
@@ -443,6 +448,36 @@
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-nav-starboard.dynamic",
       "kind": "dynamic-surface",
       "nodeId": "sf.render.kestrel-lod1.mesh.lod1-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.kestrel-lod1.mesh.lod1-hook-secondary-pod-armor.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod1.mesh.lod1-hook-secondary-pod-armor"
+    },
+    {
+      "id": "sf.render.kestrel-lod1.mesh.lod1-hook-secondary-pod-hull-green.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod1.mesh.lod1-hook-secondary-pod-hull-green"
+    },
+    {
+      "id": "sf.render.kestrel-lod1.mesh.lod1-hook-secondary-pod-warning.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod1.mesh.lod1-hook-secondary-pod-warning"
+    },
+    {
+      "id": "sf.render.kestrel-lod1.mesh.lod1-hook-sensor-dish-lights-cyan.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod1.mesh.lod1-hook-sensor-dish-lights-cyan"
+    },
+    {
+      "id": "sf.render.kestrel-lod1.mesh.lod1-hook-sensor-dish-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod1.mesh.lod1-hook-sensor-dish-mechanical"
+    },
+    {
+      "id": "sf.render.kestrel-lod1.mesh.lod1-hook-sensor-dish-mechanicaldark.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod1.mesh.lod1-hook-sensor-dish-mechanicaldark"
     }
   ],
   "geometry": [
@@ -575,17 +610,17 @@
       "bounds": {
         "max": [
           3.993204116821289,
-          0.7580645084381104,
-          -3.400405168533325
+          0.7580644836754519,
+          -3.4004051190680364
         ],
         "min": [
           0.5005616545677185,
-          0.6212025880813599,
-          -5.798898696899414
+          0.6212026128440183,
+          -5.798898746364703
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d5063b288e352eb8ac197e3fc0e13a2bb1e913c1e185a2d30a554efc037e8430",
+      "geometryHash": "5e9c073707b076027ec161c2b07ae15fd9a9639a623de2354e2bb8c2ae0ec32b",
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-armor-port-armor.primitive.0",
       "indexCount": 378,
       "indexed": true,
@@ -675,17 +710,17 @@
       "bounds": {
         "max": [
           -1.5010241270065308,
-          1.9190012216567993,
-          -3.7510364055633545
+          1.9190012243417096,
+          -3.7510364292309477
         ],
         "min": [
           -2.6989755630493164,
-          1.8414946794509888,
-          -4.947525501251221
+          1.8414946767660785,
+          -4.9475254775836275
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1520f2d987efbaa5e51ae92ffb463e9aab50d70b842ed657b18deef529715ec",
+      "geometryHash": "0ec1cdd7af08693386273e98870f47e77072b81d20e3380ab07152a21394637f",
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-secondary-pod-armor.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -700,17 +735,17 @@
       "bounds": {
         "max": [
           0.1499999761581421,
-          1.8500686883926392,
-          -3.4000682830810547
+          1.8500687482337597,
+          -3.40006840252682
         ],
         "min": [
           -3.0500001907348633,
-          0.5499313473701477,
-          -5.299931049346924
+          0.5499313471336719,
+          -5.299931168319738
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40b49d4166c3fef17ca3e93eb3b528b0916c29a2499f96e21fef1e64c17a7c97",
+      "geometryHash": "7b1f26f193846e26e632f11001877e485726cfa85723ea4c7c8d43a24cdf3951",
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-secondary-pod-hull-green.primitive.0",
       "indexCount": 456,
       "indexed": true,
@@ -724,18 +759,18 @@
     {
       "bounds": {
         "max": [
-          -0.4518393278121948,
-          1.8979696035385132,
+          -0.45183932660935133,
+          1.8979696105291028,
           -3.352048635482788
         ],
         "min": [
-          -0.7479148507118225,
-          0.5017848014831543,
+          -0.7479148221123436,
+          0.5017847944925646,
           -5.348243236541748
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2285441029f73b932cad57efdff9ced1727243a995389cb5a311d2bc704fc18b",
+      "geometryHash": "e01c1f6a3dceb95907a9e91e2c069bf7a64d25fa3a459af67c851922b2ffc84a",
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-secondary-pod-warning.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -749,18 +784,18 @@
     {
       "bounds": {
         "max": [
-          -2.509999990463257,
-          3.615001678466797,
+          -2.509999930858612,
+          3.6150016105691263,
           0.949999988079071
         ],
         "min": [
-          -2.609999895095825,
-          3.5449981689453125,
+          -2.60999995470047,
+          3.544998236842983,
           0.8499999642372131
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95c691ce0eb85802bbbd13e64b0caede40af59442e6aa7d967ed025447aba885",
+      "geometryHash": "dc56290add2f0f2cb7bd58c52971049ceaaad39af76845c42271a50f12403230",
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-sensor-dish-lights-cyan.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -774,18 +809,18 @@
     {
       "bounds": {
         "max": [
-          -1.6079130172729492,
-          3.7670254707336426,
+          -1.607913068085809,
+          3.7670255095932736,
           1.7568663358688354
         ],
         "min": [
-          -2.868356943130493,
-          2.1004340648651123,
+          -2.8683568923176335,
+          2.1004340260054812,
           0.04299120977520943
         ]
       },
       "drawMode": 4,
-      "geometryHash": "26cd0a599207e6cf1df19faad4a4f92b443fbb0274ea2c29536397af5cad8706",
+      "geometryHash": "e31662c29727d163c0089f8c38cbc7cf5a9fc9d2fecd4badfbc67f1af4869d5e",
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-sensor-dish-mechanical.primitive.0",
       "indexCount": 780,
       "indexed": true,
@@ -799,18 +834,18 @@
     {
       "bounds": {
         "max": [
-          -1.6080111265182495,
-          3.7677481174468994,
+          -1.6080111479153336,
+          3.7677480972100814,
           1.7568663358688354
         ],
         "min": [
-          -2.870128631591797,
-          2.345315933227539,
+          -2.8701287294040023,
+          2.345315953464357,
           0.04299120977520943
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2e284aa51397e48711efb7accf7b7cf04b40f536c648fc2bb455c2fe27f53410",
+      "geometryHash": "7f624bc6a3a1fa0f7b96ffbaab89e5c2bb5fe3779d053a119aa116702f535fe8",
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-sensor-dish-mechanicaldark.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1531,21 +1566,21 @@
     {
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-armor-port-armor",
       "localTransform": [
-        1,
+        1.7463212311267853,
         0,
         0,
         0,
         0,
-        1,
+        1.7463212311267853,
         0,
         0,
         0,
         0,
-        1,
+        1.7463212311267853,
         0,
-        0,
-        0,
-        0,
+        2.246882885694504,
+        0.6896335482597351,
+        -4.59965193271637,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1556,24 +1591,24 @@
         5
       ],
       "parentId": "sf.render.kestrel-lod1.root",
-      "role": "immutable",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.kestrel-lod1.body",
       "worldTransform": [
-        1,
+        1.7463212311267853,
         0,
         0,
         0,
         0,
-        1,
+        1.7463212311267853,
         0,
         0,
         0,
         0,
-        1,
+        1.7463212311267853,
         0,
-        0,
-        0,
-        0,
+        2.246882885694504,
+        0.6896335482597351,
+        -4.59965193271637,
         1
       ]
     },
@@ -1727,21 +1762,21 @@
     {
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-secondary-pod-armor",
       "localTransform": [
-        1,
+        0.5989757180213928,
         0,
         0,
         0,
         0,
-        1,
+        0.5989757180213928,
         0,
         0,
         0,
         0,
-        1,
+        0.5989757180213928,
         0,
-        0,
-        0,
-        0,
+        -2.0999998450279236,
+        1.880247950553894,
+        -4.349280953407288,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1752,45 +1787,45 @@
         9
       ],
       "parentId": "sf.render.kestrel-lod1.root",
-      "role": "immutable",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.kestrel-lod1.body",
       "worldTransform": [
-        1,
+        0.5989757180213928,
         0,
         0,
         0,
         0,
-        1,
+        0.5989757180213928,
         0,
         0,
         0,
         0,
-        1,
+        0.5989757180213928,
         0,
-        0,
-        0,
-        0,
+        -2.0999998450279236,
+        1.880247950553894,
+        -4.349280953407288,
         1
       ]
     },
     {
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-secondary-pod-hull-green",
       "localTransform": [
-        1,
+        1.6000000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.6000000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.6000000834465027,
         0,
-        0,
-        0,
-        0,
+        -1.4500001072883606,
+        1.2000000476837158,
+        -4.349999785423279,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1801,45 +1836,45 @@
         10
       ],
       "parentId": "sf.render.kestrel-lod1.root",
-      "role": "immutable",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.kestrel-lod1.body",
       "worldTransform": [
-        1,
+        1.6000000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.6000000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.6000000834465027,
         0,
-        0,
-        0,
-        0,
+        -1.4500001072883606,
+        1.2000000476837158,
+        -4.349999785423279,
         1
       ]
     },
     {
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-secondary-pod-warning",
       "localTransform": [
-        1,
+        0.99809730052948,
         0,
         0,
         0,
         0,
-        1,
+        0.99809730052948,
         0,
         0,
         0,
         0,
-        1,
+        0.99809730052948,
         0,
-        0,
-        0,
-        0,
+        -0.5998770743608475,
+        1.1998772025108337,
+        -4.350145936012268,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1850,45 +1885,45 @@
         11
       ],
       "parentId": "sf.render.kestrel-lod1.root",
-      "role": "immutable",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.kestrel-lod1.body",
       "worldTransform": [
-        1,
+        0.99809730052948,
         0,
         0,
         0,
         0,
-        1,
+        0.99809730052948,
         0,
         0,
         0,
         0,
-        1,
+        0.99809730052948,
         0,
-        0,
-        0,
-        0,
+        -0.5998770743608475,
+        1.1998772025108337,
+        -4.350145936012268,
         1
       ]
     },
     {
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-sensor-dish-lights-cyan",
       "localTransform": [
-        1,
+        0.050000011920928955,
         0,
         0,
         0,
         0,
-        1,
+        0.050000011920928955,
         0,
         0,
         0,
         0,
-        1,
+        0.050000011920928955,
         0,
-        0,
-        0,
-        0,
+        -2.559999942779541,
+        3.5799999237060547,
+        0.8999999761581421,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1899,45 +1934,45 @@
         12
       ],
       "parentId": "sf.render.kestrel-lod1.root",
-      "role": "immutable",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.kestrel-lod1.body",
       "worldTransform": [
-        1,
+        0.050000011920928955,
         0,
         0,
         0,
         0,
-        1,
+        0.050000011920928955,
         0,
         0,
         0,
         0,
-        1,
+        0.050000011920928955,
         0,
-        0,
-        0,
-        0,
+        -2.559999942779541,
+        3.5799999237060547,
+        0.8999999761581421,
         1
       ]
     },
     {
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-sensor-dish-mechanical",
       "localTransform": [
-        1,
+        0.856937563046813,
         0,
         0,
         0,
         0,
-        1,
+        0.856937563046813,
         0,
         0,
         0,
         0,
-        1,
+        0.856937563046813,
         0,
-        0,
-        0,
-        0,
+        -2.238134980201721,
+        2.9337297677993774,
+        0.8999287728220224,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1948,45 +1983,45 @@
         13
       ],
       "parentId": "sf.render.kestrel-lod1.root",
-      "role": "immutable",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.kestrel-lod1.body",
       "worldTransform": [
-        1,
+        0.856937563046813,
         0,
         0,
         0,
         0,
-        1,
+        0.856937563046813,
         0,
         0,
         0,
         0,
-        1,
+        0.856937563046813,
         0,
-        0,
-        0,
-        0,
+        -2.238134980201721,
+        2.9337297677993774,
+        0.8999287728220224,
         1
       ]
     },
     {
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-sensor-dish-mechanicaldark",
       "localTransform": [
-        1,
+        0.856937563046813,
         0,
         0,
         0,
         0,
-        1,
+        0.856937563046813,
         0,
         0,
         0,
         0,
-        1,
+        0.856937563046813,
         0,
-        0,
-        0,
-        0,
+        -2.239069938659668,
+        3.0565320253372192,
+        0.8999287728220224,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1997,24 +2032,24 @@
         14
       ],
       "parentId": "sf.render.kestrel-lod1.root",
-      "role": "immutable",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.kestrel-lod1.body",
       "worldTransform": [
-        1,
+        0.856937563046813,
         0,
         0,
         0,
         0,
-        1,
+        0.856937563046813,
         0,
         0,
         0,
         0,
-        1,
+        0.856937563046813,
         0,
-        0,
-        0,
-        0,
+        -2.239069938659668,
+        3.0565320253372192,
+        0.8999287728220224,
         1
       ]
     },
@@ -2363,7 +2398,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "10a279316203ca1e9ef9513592e8e15fa57d9d5ef5d1ad2a6537d59c2b65612e"
+      "sha256": "73728986303c727e749fa02b756b66e92c91eb6b059b71b1f3c2b35307376f6e"
     },
     "sourceGlb": {
       "bytes": 523696,
@@ -2371,26 +2406,26 @@
       "uri": "kestrel_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 189953,
-      "sha256": "621ae847f79c0dcf05e1d8fb59715af7a0e7375b9e292b7da4473cfb30413dca",
+      "bytes": 190438,
+      "sha256": "3a27fb172cb0d3471bff7c56964bcbc3a7bc0e07ee49bc8a3e1534d421cf7a1c",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 788556,
-    "sha256": "906d6bf435f7077c2c5cc84b9e717c1edc84ee697970c0bd080d6074c45d395c",
+    "bytes": 773300,
+    "sha256": "c323accab6f94cf37098047d41e22cbdffa5a123c8c2fabdd73441d8d49070f8",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -0.3601498603820801,
-        0.359072208404541,
+        0.359072198286132,
         0
       ],
       "max": [
         13.399700164794922,
-        3.7677481174468994,
+        3.7677480972100814,
         6.630276203155518
       ],
       "min": [
@@ -2400,7 +2435,7 @@
       ],
       "size": [
         27.519700050354004,
-        6.817351818084717,
+        6.817351797847898,
         13.260552406311035
       ]
     },
@@ -3098,21 +3133,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7463212311267853,
           0,
           0,
           0,
           0,
-          1,
+          1.7463212311267853,
           0,
           0,
           0,
           0,
-          1,
+          1.7463212311267853,
           0,
-          0,
-          0,
-          0,
+          2.246882885694504,
+          0.6896335482597351,
+          -4.59965193271637,
           1
         ],
         "name": "LOD1_HOOK_ARMOR_PORT_Armor",
@@ -3228,21 +3263,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5989757180213928,
           0,
           0,
           0,
           0,
-          1,
+          0.5989757180213928,
           0,
           0,
           0,
           0,
-          1,
+          0.5989757180213928,
           0,
-          0,
-          0,
-          0,
+          -2.0999998450279236,
+          1.880247950553894,
+          -4.349280953407288,
           1
         ],
         "name": "LOD1_HOOK_SECONDARY_POD_Armor",
@@ -3256,21 +3291,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.6000000834465027,
           0,
           0,
           0,
           0,
-          1,
+          1.6000000834465027,
           0,
           0,
           0,
           0,
-          1,
+          1.6000000834465027,
           0,
-          0,
-          0,
-          0,
+          -1.4500001072883606,
+          1.2000000476837158,
+          -4.349999785423279,
           1
         ],
         "name": "LOD1_HOOK_SECONDARY_POD_Hull_green",
@@ -3284,21 +3319,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.99809730052948,
           0,
           0,
           0,
           0,
-          1,
+          0.99809730052948,
           0,
           0,
           0,
           0,
-          1,
+          0.99809730052948,
           0,
-          0,
-          0,
-          0,
+          -0.5998770743608475,
+          1.1998772025108337,
+          -4.350145936012268,
           1
         ],
         "name": "LOD1_HOOK_SECONDARY_POD_Warning",
@@ -3312,21 +3347,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.050000011920928955,
           0,
           0,
           0,
           0,
-          1,
+          0.050000011920928955,
           0,
           0,
           0,
           0,
-          1,
+          0.050000011920928955,
           0,
-          0,
-          0,
-          0,
+          -2.559999942779541,
+          3.5799999237060547,
+          0.8999999761581421,
           1
         ],
         "name": "LOD1_HOOK_SENSOR_DISH_Lights_Cyan",
@@ -3340,21 +3375,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.856937563046813,
           0,
           0,
           0,
           0,
-          1,
+          0.856937563046813,
           0,
           0,
           0,
           0,
-          1,
+          0.856937563046813,
           0,
-          0,
-          0,
-          0,
+          -2.238134980201721,
+          2.9337297677993774,
+          0.8999287728220224,
           1
         ],
         "name": "LOD1_HOOK_SENSOR_DISH_Mechanical",
@@ -3368,21 +3403,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.856937563046813,
           0,
           0,
           0,
           0,
-          1,
+          0.856937563046813,
           0,
           0,
           0,
           0,
-          1,
+          0.856937563046813,
           0,
-          0,
-          0,
-          0,
+          -2.239069938659668,
+          3.0565320253372192,
+          0.8999287728220224,
           1
         ],
         "name": "LOD1_HOOK_SENSOR_DISH_MechanicalDark",
@@ -3560,14 +3595,14 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kestrel_lod1.glb"
   },
-  "runtimeHash": "9212dacbd284f65d8cbf4540c2c88718950f2fdcfe637aadc0d9c253e63902ff",
+  "runtimeHash": "c91cd603b5e338b97b5fe1e5b8bd9f3832df549c8895b0d0db66e0b8f67b0cf8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           13.399700164794922,
-          3.7677481174468994,
+          3.7677480972100814,
           6.630276203155518
         ],
         "min": [

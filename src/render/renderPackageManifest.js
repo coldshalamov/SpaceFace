@@ -482,12 +482,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-cradle",
-    "expectedContentHash": "fac44b7be4bcc1abe22591e60c2939db8a8925c74018627adc9474e18f072459",
+    "expectedContentHash": "2a83816d99726a6781d5fbe58caf3dbcbe7ef07c6cdfd2b756e5470683e0abd2",
     "key": "helios-cradle",
     "metadataUrl": "assets/ships/release/render-packages/helios-cradle/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_HELIOS_CRADLE",
     "slot": "hull",
-    "sourceSha256": "9defbe885168f593067b6e5dea26587841823d5f605b41da94757ae259967c1f",
+    "sourceSha256": "f5b3d635e5e347353f80b83f1ad12282ed8e19fbb8bed8e4995c48a4ce00a023",
     "sourceUrl": "assets/ships/release/parts/wholeships/helios_cradle.glb"
   },
   {
@@ -532,12 +532,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-span",
-    "expectedContentHash": "733d251b9d1aca46ef3c1d6f335cb42392cffab0f60c90ebb45acc3bc6a6a30b",
+    "expectedContentHash": "2ce33f46c6679b36fcce878a0c7921920de15679fd12b495f289a888d0102e68",
     "key": "helios-span",
     "metadataUrl": "assets/ships/release/render-packages/helios-span/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_HELIOS_SPAN",
     "slot": "hull",
-    "sourceSha256": "91e60a5784b0951e2aa76cb3b01ddf67dfa82fa7b1cf5964472c642d0f6fa59e",
+    "sourceSha256": "40fd8135d6a4a797c5b455e1e92538f9a29fb0d20a9b1e3871f06d6394957a64",
     "sourceUrl": "assets/ships/release/parts/wholeships/helios_span.glb"
   },
   {
@@ -694,7 +694,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel",
-    "expectedContentHash": "8952a6bf3faad8a59801030e83fbf56a95abcf73139a4bb801c3d3f8c118965c",
+    "expectedContentHash": "916b2660cafda64b5c35b2185622b342c2d390b2ee37a0bfae210f2cd96104d5",
     "key": "kestrel",
     "metadataUrl": "assets/ships/release/render-packages/kestrel/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
@@ -704,7 +704,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel-lod1",
-    "expectedContentHash": "94fde2098d69fcf6c58a35cca9ddaac0af24442c9b7db3e03721dacbb4da2fc1",
+    "expectedContentHash": "5cf5ed75fd0dcef15d1d0d244d2bdde2cb11833c48a16a695bc04ae3dba9fb96",
     "key": "kestrel-lod1",
     "metadataUrl": "assets/ships/release/render-packages/kestrel-lod1/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
@@ -714,7 +714,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel-lod2",
-    "expectedContentHash": "1c7649e7e21ac9be04a2b661734e953846cc9a06e7e483547e88f4e4be2c62ca",
+    "expectedContentHash": "8f552e7bc5b3c6dbe4b05ed242228f0a267ed04d357b43f00cd26fb5451d9fca",
     "key": "kestrel-lod2",
     "metadataUrl": "assets/ships/release/render-packages/kestrel-lod2/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
@@ -814,12 +814,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ore-barge",
-    "expectedContentHash": "6c74bbd88b563b2f5c241be2647a02c95461c8e1eadb7491eebbf50334c91e37",
+    "expectedContentHash": "482d9f7611a04324ca1f16334cbdfda641fcda90167e957de3aa286510635f2f",
     "key": "ore-barge",
     "metadataUrl": "assets/ships/release/render-packages/ore-barge/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_ORE_BARGE",
     "slot": "hull",
-    "sourceSha256": "2841d79ccf946edec6cceaf9264c4fc479f90a81bcc3b34a6ecc9da9c7cf7df9",
+    "sourceSha256": "830ed2ed7586afb214ccccf1cc54712a15e6b70f1431a6023b08bf160a99795e",
     "sourceUrl": "assets/ships/release/parts/wholeships/ore_barge.glb"
   },
   {

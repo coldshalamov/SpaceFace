@@ -19,7 +19,7 @@ import forge as F  # noqa: E402
 SHIP_ID = 'leviathan'
 COLORS = {
     'paint': '#151c27',    # black-blue hull (brief #1c2430, deepened so the lit ivory city carries)
-    'paint2': '#7c7666',   # ivory (brief #a8a08c, authored darker: the key light lifts ~2.5x)
+    'paint2': '#6a6557',   # ivory (brief #a8a08c, authored darker: the key light lifts ~2.5x)
     'stripe': '#7e622b',   # gold (brief #a8843a, same calibration)
     'hazard': '#7e622b',
     'dark': '#13161b',
@@ -225,6 +225,10 @@ def build():
         ], material='paint2', back_material='dark', count=32, bevel=0.03)
         F.band(s, f'Nacelle{side}', (-9.5, 0, 0), (1, 0, 0), 0.4, 'stripe')
         F.band(s, f'Nacelle{side}', (-19.8, 0, 0), (1, 0, 0), 0.3, 'stripe')
+        F.band(s, f'Nacelle{side}', (-14.6, 0, 0), (1, 0, 0), 2.4, 'paint', inset=0.02, depth=-0.03)
+        F.nozzle(s, f'NacelleDrive{side}', (-23.5, side * 15.3, 0.0), 0.62, 1.0, material='gunmetal', bell=1.1,
+                 segments=24)
+        F.windows(s, f'NacelleWin{side}', -5.8, -21.0, side * 15.3, 1.03, 14, size=(0.32, 0.16), normal='z')
     # gun gallery: a raised strip parallel to the leading edge carrying the turret row
     d = (-0.881, 0.473)
 
@@ -314,8 +318,8 @@ def build():
     s.detail = 0
 
     # --- lights ----------------------------------------------------------------------------------
-    F.light(s, 'NavPort', (-22.9, 15.3, 0.0), 'glow_red', size=0.4)
-    F.light(s, 'NavStarboard', (-22.9, -15.3, 0.0), 'glow_green', size=0.4)
+    F.light(s, 'NavPort', (-21.2, 16.36, 0.0), 'glow_red', size=0.4)
+    F.light(s, 'NavStarboard', (-21.2, -16.36, 0.0), 'glow_green', size=0.4)
     F.light(s, 'NavBowP', (29.0, 1.4, 2.4), 'glow_red', size=0.22)
     F.light(s, 'NavBowS', (29.0, -1.4, 2.4), 'glow_green', size=0.22)
     F.light(s, 'Beacon', (-11.4, 0.0, 11.32), 'glow_amber', size=0.26)
