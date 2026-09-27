@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { vfx } from '../src/render/vfx.js';
 import { FieldForcePresentation } from '../src/render/forceLanguage/fieldForcePresentation.js';
 import { FIELD_LIFECYCLES, FIELD_ROLE, sampleFieldLifecycle, sampleDischargeLifecycle } from '../src/render/forceLanguage/effectLifecycle.js';
-import { SURFACE_FLOATS, SweptSurfaceBatch } from '../src/render/forceLanguage/sweptSurfaceBatch.js';
+import { SURFACE_FLOATS, SURFACE_STATIONS, SURFACE_ACROSS, FIELD_SURFACE_ACROSS, SweptSurfaceBatch } from '../src/render/forceLanguage/sweptSurfaceBatch.js';
 
 const field=(kind,id=kind)=>({id,kind,center:{x:20,z:30},dir:{x:1,z:0},radius:kind==='seed'?42:170,halfAngleRad:.56,halfWidth:52,engaged:false});
 const state=(f)=>({simTime:0,fields:{active:f},massSeed:{seedId:3,phase:'active'},settings:{video:{}}});
@@ -104,4 +104,22 @@ test('full vfx.update integration wakes fields, ticks no-target motion, and drai
   assert.equal(system._fieldGeom.stats.releasing,1,'empty active list does not sleep the release');
   state.simTime=3.2;system.update(.016);assert.equal(system._fieldGeom.mesh.count,0);
  }finally{system.destroy();}
+});
+
+
+test('rolled field topology and real footprint channels are isolated from legacy weapon geometry',()=>{
+ const legacy=new SweptSurfaceBatch(new THREE.Scene(),{capacity:1});
+ const o=new FieldForcePresentation(new THREE.Scene());
+ try{
+  assert.equal(legacy.geometry.getAttribute('position').count,(SURFACE_STATIONS+1)*(SURFACE_ACROSS+1));
+  assert.equal(o.batch.geometry.getAttribute('position').count,(SURFACE_STATIONS+1)*(FIELD_SURFACE_ACROSS+1));
+  for(const kind of ['well','repulsor','cone','sheet']){
+   const f=field(kind),s=state([f]);step(o,s,0);step(o,s,1);
+   const finish=o.batch.attributes[5];
+   for(let i=0;i<o.mesh.count;i++){
+    assert.equal(finish.getW(i),f.radius,'rolled sections retain their real field reach for post-deformation clipping');
+    assert.ok(Math.abs(finish.getZ(i)-(kind==='cone'?f.halfAngleRad:kind==='sheet'?f.halfWidth:1))<1e-6);
+   }
+  }
+ }finally{o.dispose();legacy.dispose();}
 });

@@ -10,6 +10,7 @@ import {
 const NAMES = ['iOrigin', 'iPath', 'iShape', 'iTint', 'iMotion', 'iFinish', 'iLife', 'iBehavior', 'iPivot'];
 export const SURFACE_STATIONS = 48;
 export const SURFACE_ACROSS = 8;
+export const FIELD_SURFACE_ACROSS = 12;
 export const SURFACE_FLOATS = 36;
 const LEGACY_DEFAULTS = [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0];
 export const SURFACE_VERTEX = /* glsl */`
@@ -31,6 +32,8 @@ varying float vFront;
 varying vec4 vCycle; // kind, release, powered local time, role
 varying vec4 vMaterial; // structural flex, machined rib count, working heat, reserved
 varying vec3 vSurfaceWorld;
+varying vec3 vSurfaceNormal;
+varying float vFieldReach;
 const float PI=3.14159265359;
 void main(){
   float t=position.x;
@@ -66,24 +69,70 @@ void main(){
   }
   vec2 normal=vec2(-derivative.y,derivative.x)/max(length(derivative),0.001);
   float taper=mix(1.0,pow(max(sin(PI*t),0.0),0.65),iFinish.y);
-  // Surface fold. Lifecycle growth below acts around the owning tool's source. The separate
-  // physics-boundary role stays at its authoritative extent and vanishes on removal.
-  p+=normal*across*iShape.y*taper;
-  float height=iShape.z*sin(PI*t)+(1.0-across*across)*iShape.y*0.23*taper;
-  if(iMotion.w>0.5 && iMotion.w<1.5)height+=iShape.y*(1.0-across)*0.6*taper;
-  // Working surfaces curl THROUGH their section, not only around a fixed flat outline.
-  // Broad advected folds preserve dark channels between bright ridges at the flight camera.
+  // The legacy discharge strip keeps its exact cross-section. Deployed powers use a
+  // separate rolled profile: a genuine luminous volume with sidewalls and parallax,
+  // rather than a flat strip whose only visible feature is one narrow hot line.
   bool working=cycle && !(iBehavior.y>0.5 && iBehavior.y<1.5);
+  float height=iShape.z*sin(PI*t);
+  vec3 sectionNormal=vec3(0.0,1.0,0.0);
+  float sectionDx=1.0,sectionDy=0.0,sourceSpin=0.0;
   if(working){
-    float wave=t*10.0-motionTime*(2.2+iMotion.y*.3)+iMotion.y*6.283;
-    float crest=sin(wave+across*2.4)*sin(PI*t);
+    float family=iBehavior.x;
+    float phaseOffset=iBehavior.z*6.2831853;
+    float wave=t*8.0-motionTime*2.2+phaseOffset;
+    float section=across*PI;
+    float roll=0.36*sin(t*5.0-motionTime*1.1+phaseOffset);
+    float span=iShape.y*taper;
+    float lateral=0.0,vertical=0.0;
+    if(family<1.5){
+      // Seed: four closed, bevel-like clamp members. They stroke, never circulate.
+      lateral=sign(cos(section))*pow(abs(cos(section)),0.55)*span;
+      vertical=sign(sin(section))*pow(abs(sin(section)),0.55)*span*0.62;
+      sectionDx=-sin(section);sectionDy=cos(section)*0.62;
+    }else if(family<2.5){
+      // Accretion: a rolling, hollow crescent channel. Its raised near/far shoulders
+      // expose a dark interior instead of drawing five lines around an empty centre.
+      float curl=across*2.45;
+      lateral=sin(curl)*span;
+      vertical=(0.68-cos(curl))*span*0.90;
+      sectionDx=cos(curl)*2.45;sectionDy=sin(curl)*2.205;
+      height+=span*0.26*sin(wave);
+      roll+=0.28*sin(t*8.0-motionTime*1.6+phaseOffset);
+    }else if(family<3.5){
+      // Pressure: broad swept bowls have a vertical leading wall and a low skirt.
+      lateral=across*span;
+      vertical=(0.76*pow(0.5-0.5*across,2.0)+0.26*sin(section))*span;
+      sectionDy=-0.76*(0.5-0.5*across)+0.26*PI*cos(section);
+      roll=-0.34+0.12*sin(wave);
+    }else if(family<4.5){
+      // Directed power: closed lenticular channels with a thick central extrusion.
+      lateral=cos(section)*span;
+      vertical=sin(section)*span*0.72;
+      sectionDx=-sin(section);sectionDy=cos(section)*0.72;
+      roll=0.45*sin(t*8.0-motionTime*2.3+phaseOffset);
+    }else{
+      // Skim: standing S-folds lean into the intake; separated high and low banks
+      // occupy the same real rectangular footprint without becoming a fan or tube.
+      lateral=across*span;
+      vertical=sin(across*2.5)*span*0.78;
+      sectionDy=cos(across*2.5)*1.95;
+      roll=0.18*sin(wave);
+    }
     float flex=iBehavior.w*uMotion*(1.0-release*0.55);
-    height+=iShape.y*flex*(0.42*crest+0.18*sin(wave*.63-across*4.0));
-    p+=normal*iShape.y*flex*0.17*crest*(1.0-across*across);
+    lateral*=1.0+flex*0.13*sin(wave+across*2.0)*sin(PI*t);
+    float rolledLateral=lateral*cos(roll)-vertical*sin(roll);
+    height+=lateral*sin(roll)+vertical*cos(roll);
+    p+=normal*rolledLateral;
+    float sectionTangent=sectionDx*cos(roll)-sectionDy*sin(roll);
+    float sectionLift=sectionDx*sin(roll)+sectionDy*cos(roll);
+    sectionNormal=normalize(vec3(-normal.x*sectionLift,sectionTangent,-normal.y*sectionLift));
+  }else{
+    p+=normal*across*iShape.y*taper;
+    height+=(1.0-across*across)*iShape.y*0.23*taper;
+    if(iMotion.w>0.5 && iMotion.w<1.5)height+=iShape.y*(1.0-across)*0.6*taper;
   }
   float ca=cos(iOrigin.w),sa=sin(iOrigin.w);
-  height+=p.x*sin(iFinish.w);
-  p.x*=cos(iFinish.w);
+  if(!cycle){height+=p.x*sin(iFinish.w);p.x*=cos(iFinish.w);}
   p=mat2(ca,sa,-sa,ca)*p;
   vec2 relative = iOrigin.xz - iPivot.xy + p;
   float envelope = 1.0;
@@ -145,21 +194,43 @@ void main(){
         relative=mat2(ca,sa,-sa,ca)*q;
         height+=uMotion*iShape.y*0.22*flex*sin(motionTime*2.4+t*7.0+localPhase);
       }
+      sourceSpin=spin;
       relative=mat2(cos(spin),sin(spin),-sin(spin),cos(spin))*relative*growth;
       height*=growth;
+    }
+  }
+  if(working && iBehavior.x>1.5){
+    // Deformation cannot invent force outside the authoritative influence area.
+    float reach=max(iFinish.w,0.001);
+    if(iBehavior.x<4.5){
+      if(iBehavior.x>3.5){
+        vec2 q=mat2(ca,-sa,sa,ca)*relative;
+        float heading=clamp(atan(q.y,q.x),-iFinish.z,iFinish.z);
+        q=vec2(cos(heading),sin(heading))*length(q);
+        relative=mat2(ca,sa,-sa,ca)*q;
+      }
+      relative*=min(1.0,reach/max(length(relative),0.001));
+    }else{
+      vec2 q=mat2(ca,-sa,sa,ca)*relative;
+      q=clamp(q,vec2(0.0,-iFinish.z),vec2(reach,iFinish.z));
+      relative=mat2(ca,sa,-sa,ca)*q;
     }
   }
   vec3 world=cycle ? vec3(iPivot.x+relative.x,iOrigin.y+height,iPivot.y+relative.y)
     : iOrigin.xyz+vec3(p.x,height,p.y);
   gl_Position=projectionMatrix*modelViewMatrix*vec4(world,1.0);
   vSurfaceWorld=(modelMatrix*vec4(world,1.0)).xyz;
+  float normalAngle=iOrigin.w+sourceSpin;
+  vec2 normalXZ=mat2(cos(normalAngle),sin(normalAngle),-sin(normalAngle),cos(normalAngle))*sectionNormal.xz;
+  vSurfaceNormal=mat3(modelMatrix)*vec3(normalXZ.x,sectionNormal.y,normalXZ.y);
+  vFieldReach=cycle?length(relative)/max(iFinish.w,0.001):0.0;
   vCycle=vec4(cycle ? iBehavior.x : 0.0,release,motionTime,iBehavior.y);
   // Weapon sources keep the smooth, fully hot surface they already ship: the machined channel and
   // the cool-structure channel are lifecycle-only, so a 24-float legacy descriptor is unchanged.
   vMaterial=vec4(cycle ? iBehavior.w : 1.0, cycle ? iPivot.z : 0.0, cycle ? iPivot.w : 1.0, 0.0);
   vUv=vec2(t,across); vTint=iTint;
   vFlow=vec4(iMotion.x,iMotion.y,iMotion.w,iFinish.x);
-  vFront=(radial||conveyor ? smoothstep(0.0,0.13,phase)*(1.0-smoothstep(0.76,1.0,phase)) : 1.0)*iFinish.z*envelope;
+  vFront=(radial||conveyor ? smoothstep(0.0,0.13,phase)*(1.0-smoothstep(0.76,1.0,phase)) : 1.0)*(cycle?1.0:iFinish.z)*envelope;
 }`;
 export const SURFACE_FRAGMENT = /* glsl */`
 uniform float uTime;
@@ -172,6 +243,8 @@ varying float vFront;
 varying vec4 vCycle;
 varying vec4 vMaterial;
 varying vec3 vSurfaceWorld;
+varying vec3 vSurfaceNormal;
+varying float vFieldReach;
 // Integrate unresolved detail toward its mean instead of letting a bright comb become pixels.
 float filteredWave(float phase){
   return 0.5+0.5*sin(phase)*(1.0-smoothstep(0.7,3.14159,fwidth(phase)));
@@ -181,7 +254,85 @@ float strand(float distance,float width){
   float resolved=max(width,footprint);
   return exp(-pow(distance/resolved,2.0))*min(1.0,width/footprint);
 }
+// The energy body is emission plus absorption through a rolled section. Transport is
+// layered in body-sized folds; fine ridges decorate it instead of being the whole object.
+vec4 fieldVolume(){
+  float t=vUv.x,v=vUv.y,kind=vCycle.x,flow=vCycle.z;
+  float heat=clamp(vMaterial.z,0.0,1.0),phase=vFlow.y*6.2831853;
+  float tipAA=max(fwidth(t)*1.25,0.014);
+  float tips=smoothstep(0.0,tipAA,t)*(1.0-smoothstep(1.0-tipAA,1.0,t));
+  float reveal=1.0-smoothstep(vFlow.w-0.07,vFlow.w+0.01,t);
+  float direction=kind<2.5?-1.0:1.0;
+  float transport=t*11.0-flow*direction*3.2+phase;
+  if(kind>4.5)transport=v*4.8-flow*3.0+phase;
+  if(kind<1.5)transport=t*10.0-flow*3.7+phase;
+  float warped=v+0.20*sin(t*7.0-flow*1.4+phase);
+  float bulk=filteredWave(transport+1.6*sin(warped*3.0+t*2.0));
+  float secondary=filteredWave(t*19.0-flow*direction*4.7+warped*5.5+phase*1.3);
+  float channel=strand(warped-0.16*sin(t*13.0-flow*2.1+phase),0.24);
+  float shoulder=strand(warped+0.50,0.22)+0.72*strand(warped-0.57,0.17);
+  float ignition=pow(bulk,3.0)*(0.36+0.64*secondary);
+  float sectionMass=0.48+0.52*(1.0-abs(v)*0.42);
+  // Material separates into broad advecting charge patches and transparent wakes.
+  // A constant density made a 190-WU field a full-screen plastic object. This is
+  // continuous tearing through the body, not a global fade or tiny noisy cells.
+  float tearing=0.56*filteredWave(t*21.0-flow*direction*2.4+sin(v*6.0+phase)*1.8)
+    +0.44*filteredWave(v*9.0+t*9.0-flow*direction*1.5+phase);
+  float chargePatch=smoothstep(0.34,0.78,tearing);
+  float innerPresence=1.0-smoothstep(0.16,0.72,vFieldReach);
+  float opticalDepth=sectionMass*(0.07+chargePatch*(0.22+0.25*bulk))*(0.46+0.54*innerPresence);
+  float edge=1.0-smoothstep(0.89,1.0,abs(v));
+  // Closed clamp/extrusion sections have no artificial slit at their shared back seam.
+  if(kind<1.5||(kind>3.5&&kind<4.5))edge=1.0;
+  vec3 normal=normalize(vSurfaceNormal);
+  float facing=abs(dot(normal,normalize(cameraPosition-vSurfaceWorld)));
+  float sideLight=0.34+0.66*abs(dot(normal,normalize(vec3(-0.45,0.8,0.35))));
+  float absorbed=1.0-exp(-opticalDepth*(0.72+0.28*(1.0-facing)));
+  float coolChannel=channel*(0.40+0.60*bulk);
+  vec3 dark=vTint.rgb*vec3(0.15,0.21,0.38);
+  vec3 body=mix(dark,vTint.rgb,0.32+0.68*bulk)*sideLight;
+  body*=1.0-0.68*coolChannel;
+  float hot=(shoulder*(0.36+1.45*ignition)+0.36*ignition)*(0.24+0.76*chargePatch);
+  if(kind>2.5&&kind<3.5){
+    // Pressure light lives on the outward lip; the skirt carries compressed amber body.
+    hot=((0.35+1.85*bulk)*strand(v+0.64,0.24)+0.25*secondary)*(0.24+0.76*chargePatch);
+    body*=0.78+0.22*(1.0-v)*0.5;
+  }else if(kind>4.5){
+    // Intake banks light across their fold, exposing alternating heavy and open folds.
+    hot=(shoulder*(0.45+1.35*bulk)+0.24*secondary)*(0.24+0.76*chargePatch);
+  }else if(kind<1.5){
+    // Mechanical mass keeps a restrained body and charge that traverses its raised edges.
+    body*=0.36;hot=shoulder*(0.24+0.85*bulk);
+    absorbed=max(absorbed,0.42);
+  }
+  float fracture=1.0;
+  if(vCycle.y>0.0){
+    float tear=0.55*filteredWave(t*17.0+v*3.0+phase)+0.45*filteredWave(t*9.0-v*5.0+phase*1.7);
+    fracture=smoothstep(vCycle.y-0.20,vCycle.y+0.10,tear);
+    if(kind>3.5&&kind<4.5)fracture*=smoothstep(vCycle.y-0.12,vCycle.y+0.08,t);
+    hot*=1.0-0.90*vCycle.y;body*=1.0-0.45*vCycle.y;
+  }
+  // A substantial coloured body remains below the brightest folds; this is not a
+  // white wire with a bloom halo. The open channels and varied section normals give depth.
+  vec3 emission=vTint.rgb*(body*(0.12+0.18*heat)+hot*heat*uFlash*3.0)
+    +vec3(0.78,0.88,1.0)*pow(shoulder*0.58,3.0)*ignition*heat*uFlash*0.70;
+  // Hot folds carry light through thin material once, rather than disappearing
+  // under a second alpha multiply. Coverage stays substantial only inside the
+  // broad transported crest; background ships remain visible through the wakes.
+  float crestCoverage=clamp(hot*0.14,0.0,0.30)*(0.52+0.48*innerPresence);
+  absorbed=min(0.64,absorbed+crestCoverage);
+  vec3 color=body*0.22+emission/max(0.50,absorbed*2.4);
+  float alpha=edge*tips*reveal*vTint.a*vFront*fracture*absorbed;
+  return vec4(color,alpha);
+}
 void main(){
+  if(vCycle.x>0.5 && !(vCycle.w>0.5&&vCycle.w<1.5)){
+    vec4 fieldColor=fieldVolume();
+    if(fieldColor.a<0.003)discard;
+    gl_FragColor=fieldColor;
+    #include <colorspace_fragment>
+    return;
+  }
   float t=vUv.x; float v=vUv.y;
   float edge=1.0-smoothstep(0.90-max(fwidth(v),0.015),1.0,abs(v));
   float tipAA=max(fwidth(t)*1.3,0.018);
@@ -195,139 +346,46 @@ void main(){
   float warp=0.32*sin(t*9.0-vCycle.z*2.1+vFlow.y*8.0);
   float groove=filteredWave(t*18.0+v*4.0+vFlow.y*9.0+warp);
   float packet=pow(filteredWave(t*16.0-vCycle.z*vFlow.x*5.0+vFlow.y*6.283+1.5708),3.0);
-  // TRANSPORT SIGNATURE — which way material actually moves through this surface, which is the
-  // family's identity before any colour. Weapon sources (kind 0) keep the generic packet exactly.
-  // All of it is driven by vCycle.z, which is already scaled by uMotion, so reduced motion freezes
-  // transport without touching the lifecycle fades.
-  float kind=vCycle.x;
-  bool field=kind>0.5;
-  bool boundary=vCycle.w>0.5 && vCycle.w<1.5;
-  bool opticalField=kind>1.5 && !boundary;
-  if(kind>1.5&&kind<2.5){
-    // Well: caustic fringes run from the rim INTO the throat.
-    packet=pow(filteredWave((1.0-t)*15.0-vCycle.z*3.05+vFlow.y*6.283+1.5708),4.0);
-  }else if(kind>2.5&&kind<3.5){
-    // Repulsor: one hot leading crest with its own cooling wake trailing behind it, outward.
-    float front=t*3.9-vCycle.z*2.76+vFlow.y*6.283;
-    packet=pow(filteredWave(front),5.0);
-  }else if(kind>3.5&&kind<4.5){
-    // Cone: discrete packets carried source-to-tip inside the authoritative sector.
-    packet=pow(filteredWave(t*9.0-vCycle.z*4.15+vFlow.y*6.283+1.5708),5.0);
-  }else if(kind>4.5){
-    // Skim: intake banding runs ACROSS the bank toward the centreline, never along it.
-    packet=pow(filteredWave((v*0.5+0.5)*9.0-vCycle.z*3.4+vFlow.y*6.283+1.5708),4.0);
-  }
+  // Legacy weapon discharges and the quiet truthful footprint keep their original
+  // surface response. Deployed energy volumes have already returned above.
+  bool boundary=vCycle.x>0.5;
   float body=0.12+0.38*smoothstep(0.28,0.64,groove);
   float hot=(fold*(0.75+0.48*packet)+rim*0.58)*uFlash;
   if(vFlow.z>0.5 && vFlow.z<1.5){
-    // Compression shell: one outward-facing crest over a broad, descending pressure skirt.
     hot=(fold*0.25+rim*(1.25+0.12*packet))*uFlash;
     body=0.34+0.27*(1.0-smoothstep(-0.6,0.9,v));
   }
   if(vFlow.z>1.5 && vFlow.z<2.5){
-    // Frame-lock jaws are solid, machined force plates, not another glowing ring.
     float ratchet=pow(filteredWave(t*11.0-vCycle.z*4.4+vFlow.y*6.283+1.5708),4.0);
     body=0.48+0.20*groove;hot=(fold*(0.22+ratchet*0.70)+rim*0.68)*uFlash;
   }
   if(vFlow.z>2.5 && vFlow.z<3.5){
-    // Kinetic: torn, hard striations and dead metal between the directed explosive blades.
-    body=0.12+0.18*smoothstep(0.4,0.5,groove); hot*=0.82+0.18*filteredWave(t*87.0+v*13.0);
+    body=0.12+0.18*smoothstep(0.4,0.5,groove);hot*=0.82+0.18*filteredWave(t*87.0+v*13.0);
   }
-  // MACHINED CROSS-SECTION. Discrete ribs with a dark channel between them, filtered by fwidth so
-  // the edges stay stable at play distance instead of degenerating into noise. Members authored
-  // with zero ribs and full heat resolve to exactly the previous surface, so nothing outside the
-  // lifecycle families moves. Heat separates cool structure (collars, spars, aperture throats)
-  // from the hot working membrane, which is what makes the tool read as built hardware.
-  float ribs=vMaterial.y;
   float heat=vMaterial.z;
-  float ribU=t*ribs+vFlow.y*2.0;
-  float ribQ=abs(fract(ribU)-0.5)*2.0;
-  float ribW=clamp(fwidth(ribU)*1.6,0.004,0.45);
-  float crest=ribs>0.5 ? 1.0-smoothstep(0.16-ribW,0.16+ribW,ribQ) : 0.0;
-  float channel=ribs>0.5 ? smoothstep(0.58-ribW,0.58+ribW,ribQ) : 0.0;
-  float filmCoverage=0.0;
-  float bodyFocus=1.0;
-  if(opticalField){
-    // A full-width fract band prints rectangular plates onto a transparent strip. Metric
-    // members carry a continuous optical thickness instead: the ribs curve through the fold,
-    // and transmission integrates that thickness rather than stepping between opaque cells.
-    // Seed's lock jaws and the legacy weapon sources retain their machined cross-section.
-    float roll=v+0.22*sin(t*7.0-vCycle.z*1.8+vFlow.y*6.283)*sin(t*3.14159);
-    float ribPhase=ribU*6.2831853+1.65*sin(roll*2.6+t*3.2)+roll*1.9;
-    float interference=filteredWave(ribPhase);
-    crest=ribs>0.5 ? interference*interference*interference : 0.0;
-    channel=ribs>0.5 ? (1.0-interference)*(1.0-interference) : 0.0;
-    float foldedSection=roll/0.78;
-    bodyFocus=exp(-foldedSection*foldedSection);
-    float thickness=(0.42+0.34*bodyFocus)*(0.78+0.22*interference);
-    filmCoverage=1.0-exp(-thickness*mix(0.80,0.16,clamp(heat,0.0,1.0)));
-    if(!(vFlow.z>0.5 && vFlow.z<1.5))body=0.12+0.38*groove;
-  }
-  // A transport crest illuminates the curved folds, never the strip's entire rectangular
-  // cross-section. Full-width rib emission looked like solid tabs sliding along the field.
-  float crestFocus=mix(1.0,0.06+0.94*max(fold,rim),clamp(heat,0.0,1.0));
-  body=body*(1.0-(opticalField?0.24:0.44)*channel*bodyFocus)+0.19*crest*crestFocus*bodyFocus;
-  hot=hot*heat+crest*packet*0.34*uFlash*heat*crestFocus;
-  float filament=0.0;
-  // Interfering caustic folds are sculpted on the membrane. HDR lives in moving narrow
-  // shoulders; the broader blue/amber body stays below bloom so nearby hulls remain legible.
-  if(field && !boundary){
-    float flow=vCycle.z;
-    float bend=0.28*sin(t*11.0-flow*2.7+vFlow.y*8.0);
-    float crease=v-bend+0.16*sin(t*21.0-flow*3.4);
-    float caustic=strand(crease,0.065);
-    float braids=filteredWave(t*31.0+v*7.0-flow*3.8+vFlow.y*17.0);
-    float junction=pow(braids,5.0)*caustic;
-    vec3 normal=normalize(cross(dFdx(vSurfaceWorld),dFdy(vSurfaceWorld)));
-    float grazing=pow(1.0-abs(dot(normal,normalize(cameraPosition-vSurfaceWorld))),2.0);
-    filament=caustic*(0.55+packet*.45);
-    hot+=(caustic*(2.1+packet*2.4)+junction*1.65+grazing*rim*.6)*heat*uFlash;
-    body*=1.0-0.65*heat;
-  }
-  float fracture=1.0;
-  if(vCycle.y>0.0){
-    // Persistent fragments cool and erode; they do not remain active conveyor/force symbols.
-    // Continuous tear contours, not square hash cells that become visible pixels on shutdown.
-    float tear=0.5*filteredWave(t*23.0+v*5.0+vFlow.y*17.0+vCycle.z*.7)
-      +0.5*filteredWave(t*11.0-v*8.0+vFlow.y*9.0-vCycle.z*.4);
-    float tearAA=max(fwidth(tear),0.035);
-    fracture=smoothstep(vCycle.y-0.18-tearAA,vCycle.y+0.06+tearAA,tear);
-    if(vCycle.x>3.5 && vCycle.x<4.5)fracture*=smoothstep(vCycle.y-0.12,vCycle.y+0.08,t);
-    hot*=1.0-0.88*vCycle.y;
-    body*=1.0-0.45*vCycle.y;
-  }
-  float shadowPool=opticalField ? 1.0-groove : 1.0-smoothstep(0.20,0.55,groove);
+  hot*=heat;
+  float shadowPool=1.0-smoothstep(0.20,0.55,groove);
   vec3 pigment=mix(vTint.rgb,vTint.rgb*vec3(0.30,0.24,0.68),shadowPool*0.78);
-  // Cool members drift toward machined steel rather than a dimmer copy of the field's own colour,
-  // so hardware and working surface separate by MATERIAL, not by brightness alone.
   pigment=mix(pigment*vec3(0.46,0.50,0.60)+vec3(0.030,0.034,0.042),pigment,clamp(heat,0.0,1.0));
   vec3 emission=vTint.rgb*hot*1.5+vec3(0.55,0.68,0.78)*pow(fold,3.0)*hot*0.40;
-  // Energy has open space between filaments. Only cold source hardware retains solid coverage.
-  float coverage=0.07+0.37*fold+0.22*rim+0.35*filament;
-  if(!field)coverage=0.57+0.43*max(fold,rim);
-  if(field&&!boundary)coverage=mix(0.57+0.43*max(fold,rim),coverage,clamp(heat,0.0,1.0));
-  if(opticalField)coverage=min(0.98,filmCoverage+0.37*fold+0.22*rim+0.35*filament);
-  if(boundary)coverage=0.36+0.5*max(fold,rim);
-  // The filtered emission already contains filament coverage. Undo that factor in straight-alpha
-  // RGB so normal blending integrates it once; squaring coverage makes fine energy disappear.
-  float emissionCoverage=field&&!boundary?mix(1.0,max(coverage,0.05),clamp(heat,0.0,1.0)):1.0;
-  vec3 color=pigment*body+emission/emissionCoverage;
-  float alpha=edge*tips*reveal*vTint.a*vFront*fracture*coverage;
+  float coverage=boundary?0.36+0.5*max(fold,rim):0.57+0.43*max(fold,rim);
+  vec3 color=pigment*body+emission;
+  float alpha=edge*tips*reveal*vTint.a*vFront*coverage;
   if(alpha<0.003)discard;
   gl_FragColor=vec4(color,alpha);
   #include <colorspace_fragment>
 }`;
 
-function stripGeometry(){
+function stripGeometry(across= SURFACE_ACROSS){
   const g=new THREE.BufferGeometry();
-  const p=new Float32Array((SURFACE_STATIONS+1)*(SURFACE_ACROSS+1)*3);
-  const ix=new Uint16Array(SURFACE_STATIONS*SURFACE_ACROSS*6);
+  const p=new Float32Array((SURFACE_STATIONS+1)*(across+1)*3);
+  const ix=new Uint16Array(SURFACE_STATIONS*across*6);
   let n=0,k=0;
-  for(let s=0;s<=SURFACE_STATIONS;s++)for(let a=0;a<=SURFACE_ACROSS;a++){
-    p[n++]=s/SURFACE_STATIONS; p[n++]=a/SURFACE_ACROSS*2-1; p[n++]=0;
+  for(let s=0;s<=SURFACE_STATIONS;s++)for(let a=0;a<=across;a++){
+    p[n++]=s/SURFACE_STATIONS; p[n++]=a/across*2-1; p[n++]=0;
   }
-  for(let s=0;s<SURFACE_STATIONS;s++)for(let a=0;a<SURFACE_ACROSS;a++){
-    const j=s*(SURFACE_ACROSS+1)+a,b=j+SURFACE_ACROSS+1;
+  for(let s=0;s<SURFACE_STATIONS;s++)for(let a=0;a<across;a++){
+    const j=s*(across+1)+a,b=j+across+1;
     ix[k++]=j;ix[k++]=b;ix[k++]=j+1;ix[k++]=b;ix[k++]=b+1;ix[k++]=j+1;
   }
   g.setAttribute('position',new THREE.BufferAttribute(p,3));g.setIndex(new THREE.BufferAttribute(ix,1));
@@ -335,9 +393,9 @@ function stripGeometry(){
 }
 
 export class SweptSurfaceBatch {
-  constructor(scene,{capacity=224,name='SF_ForceSurfaces'}={}){
+  constructor(scene,{capacity=224,name='SF_ForceSurfaces',fieldVolume=false}={}){
     this.capacity=capacity;this.count=0;this.disposed=false;this.dropped=0;
-    this.geometry=stripGeometry();this.attributes=[];this.dirty=new Uint8Array(NAMES.length);
+    this.geometry=stripGeometry(fieldVolume?FIELD_SURFACE_ACROSS:SURFACE_ACROSS);this.attributes=[];this.dirty=new Uint8Array(NAMES.length);
     for(const name of NAMES){
       const attr=new THREE.InstancedBufferAttribute(new Float32Array(capacity*4),4).setUsage(THREE.DynamicDrawUsage);
       this.geometry.setAttribute(name,attr);this.attributes.push(attr);

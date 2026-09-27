@@ -30,7 +30,7 @@ const FIELD_LANGUAGE_MIN_PRESENCE = 0.30;
 /** A read-only adapter over fields.active and massSeed. No event listeners, forces or RNG. */
 export class FieldForcePresentation {
   constructor(scene,{toLocal=null}={}){
-    this.batch=new SweptSurfaceBatch(scene,{capacity:224,name:'SF_FieldForceLanguage'});
+    this.batch=new SweptSurfaceBatch(scene,{capacity:224,name:'SF_FieldForceLanguage',fieldVolume:true});
     this.mesh=this.batch.mesh;this.toLocal=toLocal;
     this.particles=new ForceParticleFlow(this.mesh,{capacity:360});
     this.particleOptions={reducedMotion:false,reducedFlash:false};
@@ -187,7 +187,12 @@ export class FieldForcePresentation {
     const working=this.role!==FIELD_ROLE.BOUNDARY;
     const variation=working?this.slot.character:0;
     d[16]=flow*(working?0.88+variation*0.24:1);d[17]=phase+variation;d[18]=travel;d[19]=style;
-    d[20]=this.reveal;d[21]=taper;d[22]=1;d[23]=0;
+    d[20]=this.reveal;d[21]=taper;
+    // Field-only shape limits occupy the legacy envelope/pitch channels. Legacy weapon
+    // descriptors are unchanged; the lifecycle branch constrains the decorative volume
+    // to its actual circle, sector or parallel intake rectangle after deformation.
+    d[22]=this.slot.kind==='cone'?this.slot.field.halfAngleRad:this.slot.kind==='sheet'?this.slot.field.halfWidth:1;
+    d[23]=this.radius;
     d[24]=this.slot.born;d[25]=this.cycle.attack;d[26]=this.slot.release;d[27]=this.cycle.release;
     d[28]=this.cycle.code;d[29]=this.role;d[30]=this.phaseOffset+variation;d[31]=this.material.flex;
     d[32]=this.local.x;d[33]=this.local.z;d[34]=this.material.ribs;d[35]=this.material.heat;
@@ -207,46 +212,50 @@ export class FieldForcePresentation {
   }
   _well(){
     const r=this.radius;this.orientation=0;
+    // Reach comes from the force record; material thickness comes from ship scale.
+    // A large radius must never turn the same current into a 50-WU cloth hose.
+    const channel=Math.min(6.5,r*.048),underflow=Math.min(2.7,r*.022);
+    const throat=Math.min(10,r*.075),collar=Math.min(18,r*.17);
     // Outer edge is exactly the physics radius. Width lies INSIDE it, never outside the range.
     this._rim(r-r*0.009,r*0.009,4,0.68,true);
-    // Five unequal scythes: working membrane, ribbed so the inward draw has something to run over.
+    // Five deep accretion channels with overlapping lower currents, not ten wire spirals.
     this._member('membrane');
     for(let i=0;i<5;i++){
       const a=i*TAU/5;this.phaseOffset=i/5;
-      this._surface(0,a,a+1.8+(i%2)*0.3,r*0.93,r*0.082,r*(0.064+(i%2)*0.014),r*0.052,0,i*0.193,0,1,0.88);
+      this._surface(0,a,a+1.8+(i%2)*0.3,r*0.90,r*0.082,channel*(.86+(i%2)*.14),Math.min(5,r*.04),0,i*0.193,0,1,0.88);
       this._member('filament');
-      this._surface(0,a+0.16,a+2.00,r*0.72,r*0.11,r*0.009,r*0.047,0,i*.19,0,1,0.78);
+      this._surface(0,a+0.16,a+2.00,r*0.66,r*0.12,underflow,-Math.min(2,r*.018),0,i*.19,0,1,0.78);
       this._member('membrane');
     }
     this.tint=COLORS.get(0xb9a2ff);
     // A machined collar around the empty throat. The throat stays EMPTY; the hardware ringing it
     // is what makes the absence read as a built aperture instead of a hole in the artwork.
-    this._rim(r*0.075,r*0.012,3,0.95,false,'frame');
+    this._rim(throat,Math.min(1.6,r*.016),3,0.62,false,'frame');
     this._member('spar');
-    this._surface(0,0.4,2.45,r*.17,r*.17,r*.017,r*.028,0,0,0,1,.92,0,0,0);
-    this._surface(0,3.15,5.65,r*.17,r*.17,r*.017,r*.028,0,0,0,1,.92,0,0,0);
+    this._surface(0,0.4,2.45,collar,collar,Math.min(2.1,r*.021),Math.min(3,r*.033),0,0,0,1,.92,0,0,0);
+    this._surface(0,3.15,5.65,collar,collar,Math.min(2.1,r*.021),Math.min(3,r*.033),0,0,0,1,.92,0,0,0);
   }
   _repulsor(){
     const r=this.radius;this.orientation=0;this.style=1;
     this._rim(r-r*.009,r*.009,4,.75,true);
-    // Pressure fronts propagate whenever the tool exists, even with no affected targets.
-    // INF-043: nested shells, each band running inner->outer, so the traveling crest physically
-    // moves outward — the shared transport cue reads push without palette. Bands stay inside the
-    // truth boundary and the throat (r<0.45r) carries no crest geometry, so covered victims stay
-    // readable. This mirrors the Well scythes, which run outer->inner for the inward verb.
+    // Three separated bowed fronts cross the field. Each arc has a constant radius
+    // along its length; radial travel moves the whole crest outward. A varying radius
+    // along the arc made diagonal spiral cloth and incorrectly resembled suction.
+    // Cross-section remains a thick pressure wall, sized against an actual hull.
     this._member('membrane');
     for(let front=0;front<3;front++)for(let sector=0;sector<4;sector++){
-      const a=sector*TAU/4+0.09+front*.19;this.phaseOffset=front/3+sector/4;
-      const r0=r*(0.45+0.15*front),r1=r*(0.63+0.15*front);
-      this._surface(0,a,a+1.19,r0,r1,r*.055,r*.075,0,front/3,this.moving?1:0,0,.92);
+      const a=sector*TAU/4+0.22+front*.09;this.phaseOffset=front/3+sector/4;
+      const reach=r*.91;
+      this._surface(0,a,a+.87,reach,reach,Math.min(4.6,r*.035),Math.min(5.5,r*.045),0,
+        front/3,this.moving?1:0,1,.86);
     }
     // The splayed ribs are the emitter's hardware: they hold the shells apart and do not breathe.
     this._member('spar');
     for(let i=0;i<4;i++){
       const a=i*TAU/4+.4;
-      this._surface(0,a,a-.2,r*.08,r*.33,r*.045,r*.07,0,i*.25,0,1,.82);
+      this._surface(0,a,a-.2,Math.min(9,r*.08),Math.min(24,r*.24),Math.min(2.6,r*.04),Math.min(3.5,r*.05),0,i*.25,0,1,.82);
     }
-    this.tint=COLORS.get(0xffe1a4);this._rim(r*.07,r*.012,3,.95,false,'frame');
+    this.tint=COLORS.get(0xffe1a4);this._rim(Math.min(9,r*.07),Math.min(1.8,r*.024),3,.72,false,'frame');
   }
   _cone(s){
     const r=this.radius,half=Math.max(.02,Math.min(1.5,finite(s.field.halfAngleRad,.56)));
@@ -256,9 +265,9 @@ export class FieldForcePresentation {
         this._surface(1,side*half,0,r*.025,r*.994,r*.005,0,0,0,0,0,.83,0,0,0);
         this.role=FIELD_ROLE.BODY;}
       this.phaseOffset=side*.21;this._member('membrane');
-      this._surface(1,side*half*.83,0,r*.035,r*.95,r*.046,r*.023,0,side*.18,0,1,.9);
+      this._surface(1,side*half*.83,0,r*.035,r*.95,Math.min(5.8,r*half*.23),Math.min(4.5,r*.04),0,side*.18,0,1,.9);
       this._member('filament');
-      this._surface(1,side*half*.46,0,r*.065,r*.88,r*.024,r*.018,0,side*.32,0,1,.72);
+      this._surface(1,side*half*.46,0,r*.065,r*.88,Math.min(2.7,r*half*.15),-Math.min(2,r*.018),0,side*.32,0,1,.72);
     }
     if(!this.releasing){this.role=FIELD_ROLE.BOUNDARY;this._member('truth');
       this._surface(0,-half,half,r*.994,r*.994,r*.005,0,0,0,0,0,.72,0,0,0);
@@ -266,12 +275,12 @@ export class FieldForcePresentation {
     this._member('membrane');
     for(let i=0;i<3;i++){
       const rr=this.moving?r*.95:r*(.28+i*.28);
-      this._surface(0,-half*.80,half*.80,rr,rr,r*.024,r*.018,0,i/3,this.moving?1:0,1,.76,0,0,this.flow,1);
+      this._surface(0,-half*.80,half*.80,rr,rr,Math.min(3.4,r*.025),Math.min(4,r*.032),0,i/3,this.moving?1:0,1,.76,0,0,this.flow,1);
     }
     this.tint=COLORS.get(0xb7f5ff);
     // Aperture throat: four short machined spars the transport curtain is extruded through.
     this._member('frame');
-    for(let i=0;i<4;i++)this._surface(1,(i%2?1:-1)*.16,0,r*.02,r*.18,r*.009,0,0,i*.25,0,1,.86);
+    for(let i=0;i<4;i++)this._surface(1,(i%2?1:-1)*.16,0,r*.02,Math.min(24,r*.18),Math.min(2.4,r*.024),0,0,i*.25,0,1,.86);
   }
   _sheet(s){
     const r=this.radius,w=Math.max(1,finite(s.field.halfWidth,52));
@@ -285,14 +294,14 @@ export class FieldForcePresentation {
       const inner=side*w*.82;
       // The long bank is a ribbed rail — its structure is what proves the two banks stay parallel.
       this._member('spar');
-      this._surface(1,0,0,r*.035,r*.965,w*.105,w*.10,0,0,0,1,.85,-sa*inner,ca*inner,0);
+      this._surface(1,0,0,r*.035,r*.965,Math.min(4.6,w*.12),Math.min(4,w*.12),0,0,0,1,.85,-sa*inner,ca*inner,0);
       this._member('membrane');
       for(let i=0;i<6;i++){
         // Cross-stream scoops point INWARD toward the axis, matching the published sheet kernel.
         const along=r*(.12+i*.14);
         const x=ca*along-sa*(side*w*.76),z=sa*along+ca*(side*w*.76);
         this.phaseOffset=i/6;
-        this._surface(1,-side*Math.PI/2,0,0,w*.43,w*.09,w*.08,w*.16,i/6,2,1,.88,x,z);
+        this._surface(1,-side*Math.PI/2,0,0,w*.60,Math.min(4.4,w*.16),Math.min(4.8,w*.18),w*.16,i/6,2,1,.88,x,z);
       }
     }
     this.tint=COLORS.get(0xd9ffe0);
@@ -316,16 +325,16 @@ export class FieldForcePresentation {
       const a=i*Math.PI/2,ca=Math.cos(a),sa=Math.sin(a),rr=r*(1+open*.65),w=r*.28;
       const radialX=ca*rr,radialZ=sa*rr;
       this._member('plate');
-      this._line(radialX+sa*w,radialZ-ca*w,radialX-sa*w,radialZ+ca*w,r*.115,r*.13);
+      this._line(radialX+sa*w,radialZ-ca*w,radialX-sa*w,radialZ+ca*w,r*.23,r*.24);
       this._member('spar');
       for(let edge=-1;edge<=1;edge+=2){
         this._line(ca*rr*.68-sa*w*edge,sa*rr*.68+ca*w*edge,
-          ca*rr-sa*w*edge,sa*rr+ca*w*edge,r*.072,r*.06);
+          ca*rr-sa*w*edge,sa*rr+ca*w*edge,r*.12,r*.11);
       }
       // The inner tooth is the only hot member: it is what the warning phase drains.
       this._member('edge');
       const tooth=r*.48,span=r*.24*remaining;
-      this._line(ca*tooth+sa*span,sa*tooth-ca*span,ca*tooth-sa*span,sa*tooth+ca*span,r*.06,r*.07);
+      this._line(ca*tooth+sa*span,sa*tooth-ca*span,ca*tooth-sa*span,sa*tooth+ca*span,r*.14,r*.13);
     }
   }
   _line(x0,z0,x1,z1,width,lift=0,alpha=1){
