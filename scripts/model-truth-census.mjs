@@ -677,7 +677,7 @@ async function measureRow(row) {
     pivot: stable(measured.bounds.center),
     forwardAxis: '+X',
     bounds: stable(measured.bounds),
-    drawScale: roundWu(worstFit.scale),
+    drawScale: roundWu(row.anchorFitScale ?? worstFit.scale),
     drawOffset: worstFit.offset.map(roundWu),
     worldSize: stable(boundsOfPoints(worldAll).size),
     gameplay: {
