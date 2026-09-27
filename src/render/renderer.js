@@ -15987,6 +15987,11 @@ function disposeObject(obj) {
     if (typeof disposePresentation === 'function') disposePresentation();
     const releaseResidency = c.userData && c.userData.releaseAuthoredAssetResidency;
     if (typeof releaseResidency === 'function') releaseResidency('render-boundary-disposed');
+    // Whole-ship LOD boundaries retain demoted-level roots detached for instant swap-back, so
+    // this traversal never reaches them. The boundary's hook re-attaches each stale retained
+    // root into the dying tree; the children loop then applies the identical teardown grammar.
+    const disposeLodRetained = c.userData && c.userData.disposeWholeShipLodRetained;
+    if (typeof disposeLodRetained === 'function') disposeLodRetained();
     // Instance-pool slots hold `slot.owner -> c`; THREE's `removed` event only reaches the
     // outermost detached root, so owner nodes nested under this tree never drain their pool
     // slots from the listener. Draining here releases the slot and lets the chunk retire.

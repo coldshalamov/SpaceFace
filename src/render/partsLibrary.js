@@ -5833,6 +5833,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
             ...options,
             renderer,
             scene,
+            committedAuthored: authored,
           });
         }
       } finally {
@@ -6057,13 +6058,27 @@ async function disposeAbandonedWholeShipLodRoot(composed) {
   }
 }
 
-function installWholeShipLodFamilyController(boundary, entity, setActive, options = {}) {  if (!boundary || !entity || entity.isPlayer === true) return false;
+export function installWholeShipLodFamilyController(boundary, entity, setActive, options = {}) {  if (!boundary || !entity || entity.isPlayer === true) return false;
   const selection = wholeShipVisualForEntity(entity, { ...options, requiredWholeShip: true });
   const family = selection && selection.lodFamily;
   if (!canInstallWholeShipLodFamily(entity, selection)) return false;
-  if (boundary.userData.wholeShipLodFamilyInstalled) return false;
+  if (boundary.userData.wholeShipLodFamilyInstalled) {
+    // The commit already swapped a fresh root in; a refresh failure must not reject this
+    // admission — the stale retained roots stay covered by the teardown hook.
+    try {
+      const refresh = boundary.userData.refreshWholeShipLodFamily;
+      if (typeof refresh === 'function') refresh(options.committedAuthored || null);
+    } catch (error) {
+      console.warn('[partsLibrary] whole-ship LOD family refresh failed', error);
+    }
+    return false;
+  }
 
   const roots = Object.create(null);
+  // Composed authored records carry resources that live outside the node tree (package-instance
+  // pins, flight-template holds, owner-local GPU objects); keep them per resident level so
+  // teardown can release them even after a swap detached the level's root.
+  const retainedComposed = new Map();
   let activeLevel = 'lod0';
   let pendingLevel = null;
   // Whole-ship LOD demotions are intentionally started from the normal per-frame selector, but
@@ -6081,11 +6096,67 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
   };
   roots.lod0 = findActiveRoot();
   if (!roots.lod0) return false;
+  if (options.committedAuthored && options.committedAuthored.root === roots.lod0) {
+    retainedComposed.set('lod0', options.committedAuthored);
+  }
 
   const baseUpdate = boundary.userData.updateLod;
   boundary.userData.wholeShipLodFamily = family;
   boundary.userData.wholeShipLodFamilyInstalled = true;
   boundary.userData.wholeShipLodActiveLevel = 'lod0';
+  // Boundary-scoped so soak probes can inspect the live swap-back cache; teardown re-detaches it.
+  boundary.userData.wholeShipLodRoots = roots;
+  boundary.userData.wholeShipLodRetainedComposed = retainedComposed;
+
+  const releaseComposedRetained = (composed) => {
+    void Promise.resolve()
+      .then(() => disposePreparedAuthoredShip(composed))
+      .catch((error) => console.info('[partsLibrary] whole-ship LOD retained-level cleanup failed', error));
+  };
+
+  // Demoted-level roots stay retained-but-detached for instant swap-back; the teardown traversal
+  // only reaches attached children, so each stale retained root re-attaches into the dying tree
+  // to take the identical per-node disposal, then its composed record releases authored-level
+  // pins once the traversal has finished.
+  boundary.userData.disposeWholeShipLodRetained = () => {
+    for (const level of Object.keys(roots)) {
+      const root = roots[level];
+      const composed = retainedComposed.get(level) || null;
+      delete roots[level];
+      retainedComposed.delete(level);
+      if (!root) continue;
+      if (root.parent !== boundary) boundary.add(root);
+      if (composed) releaseComposedRetained(composed);
+    }
+  };
+
+  // A re-commit swaps in a fresh authored root while this controller persists. Every retained
+  // root belongs to the superseded admission — dispose it rather than retaining both generations
+  // — then rebind lod0 to the freshly committed root.
+  boundary.userData.refreshWholeShipLodFamily = (committedAuthored = null) => {
+    for (const level of Object.keys(roots)) {
+      const root = roots[level];
+      const composed = retainedComposed.get(level) || null;
+      delete roots[level];
+      retainedComposed.delete(level);
+      if (!root) continue;
+      if (root.parent === boundary) boundary.remove(root);
+      if (composed) {
+        releaseComposedRetained(composed);
+      } else {
+        try { disposeDetachedObject(root); }
+        catch (error) { console.warn('[partsLibrary] whole-ship LOD stale root cleanup failed', error); }
+      }
+    }
+    const fresh = findActiveRoot();
+    roots.lod0 = fresh;
+    if (committedAuthored && committedAuthored.root === fresh) {
+      retainedComposed.set('lod0', committedAuthored);
+    }
+    activeLevel = 'lod0';
+    boundary.userData.wholeShipLodActiveLevel = 'lod0';
+    return !!fresh;
+  };
 
   const swapTo = (level) => {
     const next = roots[level];
@@ -6104,6 +6175,8 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
   };
 
   boundary.userData.updateLod = (level) => {
+    // Teardown clears the retained map; a dead boundary's selector must not schedule new loads.
+    if (!roots.lod0) return;
     const requested = normalizeRequestedLod(level);
     if (typeof baseUpdate === 'function') baseUpdate(requested);
     const transition = resolveWholeShipLodTransition(activeLevel, requested, {
@@ -6175,6 +6248,7 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
           return;
         }
         roots[requested] = composed.root;
+        retainedComposed.set(requested, composed);
         if (shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) swapTo(requested);
       } catch (error) {
         // A throw after compose abandons the same uploaded root — dispose before logging.
