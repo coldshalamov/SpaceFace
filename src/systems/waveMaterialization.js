@@ -16,6 +16,8 @@ import { makeEnemySpawnSpec } from './combat.js';
 import { swarmDoctrineStamp } from '../data/swarmMode.js';
 import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';
 import { LAGRANGE_BOSS_ROLE } from './lagrangeCrucible.js';
+import { CRYO_BOSS_ROLE } from './cryoDriftArena.js';
+import { STORM_BOSS_ROLE } from './stormLatticeArena.js';
 
 /** Ring radius for a gate. C1 engagement scale: enemies arrive inside the frame envelope. */
 export const SURVIVAL_SPAWN_DISTANCE = 260;
@@ -96,6 +98,8 @@ function spawnIdOf(spawned) {
 const LAW_ARENA_BOSS_ROLES = Object.freeze({
   [LAGRANGE_BOSS_ROLE.law]: LAGRANGE_BOSS_ROLE,
   [CINDER_BOSS_ROLE.law]: CINDER_BOSS_ROLE,
+  [CRYO_BOSS_ROLE.law]: CRYO_BOSS_ROLE,
+  [STORM_BOSS_ROLE.law]: STORM_BOSS_ROLE,
 });
 
 export function lawArenaBossDressing(arenaId, enemyId, role) {

@@ -31,10 +31,19 @@ import * as THREE from 'three';
 import { CRUSHER_CYCLE, crusherPhase, SHUTTER_CYCLE, shutterPhase } from '../data/arenaModuleLibrary.js';
 import { CINDER_ARENA_ID, stepCinderMachinery } from '../systems/cinderSluiceArena.js';
 import { LAGRANGE_ARENA_ID } from '../systems/lagrangeCrucible.js';
+import { CRYO_ARENA_ID } from '../systems/cryoDriftArena.js';
+import {
+  STORM_ARENA_ID,
+  STORM_CONDUCT_RANGE,
+  STORM_RELAY_COUNT,
+  STORM_RELAY_ORBIT,
+  STORM_RELAY_PERIOD,
+  buildConductivityGraph,
+} from '../systems/stormLatticeArena.js';
 import { WORKS_FURNACE_HEAT } from './industrialMaterialFamilies.js';
 
-const LAW_ARENA_IDS = new Set([LAGRANGE_ARENA_ID, CINDER_ARENA_ID]);
-const BOSS_DRESSING_KINDS = new Set(['tidal_engine', 'chain_tug']);
+const LAW_ARENA_IDS = new Set([LAGRANGE_ARENA_ID, CINDER_ARENA_ID, CRYO_ARENA_ID, STORM_ARENA_ID]);
+const BOSS_DRESSING_KINDS = new Set(['tidal_engine', 'chain_tug', 'manifold_warden', 'grid_tyrant']);
 
 // Cold polarity for pull machinery (wells, tide vanes); furnace ember for push/heat (repulsor,
 // sluice throat, crusher faces). Two hues keep the room readable: cyan drags, orange shoves.
@@ -52,6 +61,9 @@ const VANE_RATE = 0.7;
 const VANE_RATE_REDUCED = 0.16;
 const WINCH_RATE = 0.45;
 const WINCH_RATE_REDUCED = 0.12;
+const GIMBAL_RATE = 0.5;          // manifold_warden arm tumble
+const ORBIT_RATE = 0.4;           // grid_tyrant drone ring
+const RELAY_SPARK_RATE = 5.0;     // storm relay beam flicker cadence
 const BUILD_S = 0.9;
 const RELEASE_S = 0.55;
 const RELEASE_FLING_WU = 26;
@@ -329,6 +341,280 @@ function buildCurrentMouth(toy, isCinder, sink) {
 }
 
 // ---------------------------------------------------------------------------
+// PQ-133.09 — Cryo Drift + Storm Lattice room machinery.
+// ---------------------------------------------------------------------------
+
+/** Cryo coolant tank / heat manifold — the portable pockets the quadrant law reads. */
+function buildCryoProp(pos, isHeat, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(isHeat ? shared.emberMat : shared.tideMat, sink);
+  const root = new THREE.Group();
+  root.name = isHeat ? 'cryo_manifold' : 'cryo_tank';
+  root.position.set(pos.x, 0, pos.z);
+  const cradle = mesh(shared.boxGeo, shared.darkMat, 'cryo_prop_cradle');
+  cradle.scale.set(40, 4, 26);
+  cradle.position.y = 2;
+  root.add(cradle);
+  if (isHeat) {
+    // Heat manifold: a vertical vent stack — fins climbing out of the bay.
+    const stack = new THREE.Group();
+    stack.name = 'cryo_manifold_stack';
+    for (let i = 0; i < 4; i++) {
+      const fin = mesh(shared.boxGeo, i % 2 ? shared.metalMat : shared.darkMat, 'cryo_manifold_fin');
+      fin.scale.set(26 - i * 4, 3.2, 20 - i * 3);
+      fin.position.y = 6 + i * 5;
+      fin.rotation.y = i * 0.35;
+      stack.add(fin);
+    }
+    root.add(stack);
+    const glow = mesh(shared.boxGeo, seam, 'cryo_manifold_glow');
+    glow.scale.set(2, 26, 2);
+    glow.position.y = 15;
+    root.add(glow);
+    return {
+      root,
+      mover(elapsed, dt, reduced, calmFlash, pulse, simNow) {
+        stack.rotation.y += (reduced ? 0.05 : 0.18) * dt;
+        seam.emissiveIntensity = calmFlash ? 0.85 : 1.0 + pulse * 0.5;
+      },
+    };
+  }
+  // Coolant tank: a horizontal drum on the cradle with a slow-turning vent collar.
+  const drum = mesh(shared.cylGeo, shared.metalMat, 'cryo_tank_drum');
+  drum.rotation.z = Math.PI / 2; // axis -> X
+  drum.scale.set(11, 34, 11);
+  drum.position.y = 13;
+  root.add(drum);
+  for (const side of [-1, 1]) {
+    const cap = mesh(shared.cylGeo, shared.darkMat, 'cryo_tank_cap');
+    cap.rotation.z = Math.PI / 2;
+    cap.scale.set(12.5, 3, 12.5);
+    cap.position.set(side * 18, 13, 0);
+    root.add(cap);
+  }
+  const collar = mesh(shared.torusGeo, seam, 'cryo_tank_collar');
+  collar.rotation.y = Math.PI / 2; // ring in the YZ plane
+  collar.scale.setScalar(13);
+  collar.position.set(0, 13, 0);
+  root.add(collar);
+  return {
+    root,
+    mover(elapsed, dt, reduced, calmFlash, pulse) {
+      collar.rotation.x += (reduced ? 0.05 : 0.2) * dt;
+      seam.emissiveIntensity = calmFlash ? 0.8 : 0.9 + pulse * 0.4;
+    },
+  };
+}
+
+/** Bank plate: a tilted plate the wave can kick — pos + normal + halfWidth. */
+function buildBankPlate(toy, sink) {
+  const shared = sharedAssets();
+  const isHeat = toy.id === 'heat_plate';
+  const seam = cloneEmissive(isHeat ? shared.emberMat : shared.tideMat, sink);
+  const root = new THREE.Group();
+  root.name = `law_plate_${toy.id}`;
+  root.position.set(toy.pos.x, 0, toy.pos.z);
+  const n = toy.normal && Number.isFinite(toy.normal.x) ? toy.normal : { x: 0, z: 1 };
+  root.rotation.y = -Math.atan2(n.z, n.x); // local +Z faces the incoming body
+  const half = Math.max(6, Number.isFinite(toy.halfWidth) ? toy.halfWidth : 28);
+  const plate = mesh(shared.boxGeo, shared.plateMat, 'law_plate_face');
+  plate.scale.set(2.5, 16, half * 2);
+  plate.position.set(0, 9, 0);
+  plate.rotation.z = -0.42; // leaned back, like a banked wall
+  root.add(plate);
+  const edge = mesh(shared.boxGeo, seam, 'law_plate_edge');
+  edge.scale.set(1.2, 2.2, half * 2);
+  edge.position.set(2.4, 15.5, 0);
+  edge.rotation.z = -0.42;
+  root.add(edge);
+  const foot = mesh(shared.boxGeo, shared.darkMat, 'law_plate_foot');
+  foot.scale.set(14, 3, half * 2 + 8);
+  foot.position.set(-4, 1.5, 0);
+  root.add(foot);
+  return {
+    root,
+    mover(elapsed, dt, reduced, calmFlash, pulse) {
+      seam.emissiveIntensity = calmFlash ? 0.7 : 0.55 + pulse * 0.35;
+    },
+  };
+}
+
+/**
+ * Cryo quadrant frame: the thermal map is world-axis-aligned through `at` (cryoQuadrantKey),
+ * so the room's law is drawn as two crossing rails plus a corner post per quadrant tinted by
+ * the phase's thermal map, and the insulated island as a squat drum skirt at the centre.
+ */
+function buildCryoRoomFrame(roomSpec, sink) {
+  const shared = sharedAssets();
+  const root = new THREE.Group();
+  root.name = 'cryo_frame';
+  const at = roomSpec.at || { x: 0, z: 0 };
+  const fieldR = Math.max(60, Number.isFinite(roomSpec.fieldRadius) ? roomSpec.fieldRadius : 420);
+  root.position.set(at.x, 0, at.z);
+  const parts = { root };
+
+  for (const yaw of [0, Math.PI / 2]) {
+    const rail = mesh(shared.boxGeo, shared.darkMat, 'cryo_frame_rail');
+    rail.scale.set(fieldR * 2, 1.6, 2.6);
+    rail.position.y = 0.8;
+    rail.rotation.y = yaw;
+    root.add(rail);
+  }
+
+  // Insulated island skirt: the safe center the freeze never reaches.
+  const islandR = Number.isFinite(roomSpec.islandRadius) ? roomSpec.islandRadius : 48;
+  const island = mesh(shared.cylGeo, shared.metalMat, 'cryo_island');
+  island.scale.set(islandR, 5, islandR);
+  island.position.y = 2.5;
+  root.add(island);
+  const islandRim = mesh(shared.torusGeo, shared.plateMat, 'cryo_island_rim');
+  islandRim.rotation.x = Math.PI / 2;
+  islandRim.scale.setScalar(islandR);
+  islandRim.position.y = 5;
+  root.add(islandRim);
+
+  // One corner post per quadrant, emissive-tinted by the authored thermal map.
+  const posts = [];
+  const thermal = roomSpec.thermal || {};
+  const keys = ['nw', 'ne', 'sw', 'se'];
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    // cryoQuadrantKey convention: north = +z — nw/ne stand north, sw/se south.
+    const sx = key === 'ne' || key === 'se' ? 1 : -1;
+    const sz = key === 'nw' || key === 'ne' ? 1 : -1;
+    const post = new THREE.Group();
+    post.name = `cryo_post_${key}`;
+    post.position.set(sx * fieldR * 0.5, 0, sz * fieldR * 0.5);
+    const mast = mesh(shared.boxGeo, shared.darkMat, 'cryo_post_mast');
+    mast.scale.set(7, 30, 7);
+    mast.position.y = 15;
+    post.add(mast);
+    const lampMat = cloneEmissive(
+      thermal[key] === 'hot' ? shared.emberMat : shared.tideMat, sink);
+    const lamp = mesh(shared.cylGeo, lampMat, 'cryo_post_lamp');
+    lamp.scale.set(4, 3, 4);
+    lamp.position.y = 32;
+    post.add(lamp);
+    root.add(post);
+    posts.push({ post, lampMat, hot: thermal[key] === 'hot' });
+  }
+  return {
+    root,
+    mover(elapsed, dt, reduced, calmFlash, pulse, simNow) {
+      for (let i = 0; i < posts.length; i++) {
+        const entry = posts[i];
+        entry.lampMat.emissiveIntensity = calmFlash
+          ? 0.75
+          : (entry.hot ? 1.1 : 0.85) + (reduced ? 0 : pulse * 0.4);
+      }
+    },
+  };
+}
+
+/** Storm conductor pylon: mast + coil ring — a node of the conductivity graph. */
+function buildStormPylon(node, index, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.tideMat, sink);
+  const root = new THREE.Group();
+  root.name = `storm_pylon_${node.id || index}`;
+  root.position.set(node.pos.x, 0, node.pos.z);
+  const foot = mesh(shared.cylGeo, shared.darkMat, 'storm_pylon_foot');
+  foot.scale.set(16, 4, 16);
+  foot.position.y = 2;
+  root.add(foot);
+  const mast = mesh(shared.cylGeo, shared.metalMat, 'storm_pylon_mast');
+  mast.scale.set(4.5, 44, 4.5);
+  mast.position.y = 24;
+  root.add(mast);
+  const coil = mesh(shared.torusGeo, seam, 'storm_pylon_coil');
+  coil.rotation.x = Math.PI / 2;
+  coil.scale.setScalar(11);
+  coil.position.y = 46;
+  root.add(coil);
+  const crown = mesh(shared.cylGeo, shared.plateMat, 'storm_pylon_crown');
+  crown.scale.set(7, 4, 7);
+  crown.position.y = 50;
+  root.add(crown);
+  const phase = index * 0.7;
+  return {
+    root,
+    mover(elapsed, dt, reduced, calmFlash, pulse, simNow) {
+      coil.rotation.z += (reduced ? 0.06 : 0.3) * dt;
+      seam.emissiveIntensity = calmFlash
+        ? 0.7
+        : 0.7 + (reduced ? 0 : 0.45 * Math.max(0, Math.sin(simNow * 2.2 + phase)));
+    },
+  };
+}
+
+/**
+ * Storm relay: a buoy that rides the same orbit the sim computes. The pose math mirrors
+ * `orbitNodePose` (combat/orbitNodes.js) term-for-term on the authored storm constants —
+ * inline so the render loop allocates nothing, and exact so the buoy IS the conductive pose.
+ */
+function buildStormRelay(at, index, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.amberMat, sink);
+  const root = new THREE.Group();
+  root.name = `storm_relay_${index}`;
+  const body = mesh(shared.cylGeo, shared.darkMat, 'storm_relay_body');
+  body.scale.set(7, 8, 7);
+  body.position.y = 8;
+  root.add(body);
+  const coil = mesh(shared.torusGeo, seam, 'storm_relay_coil');
+  coil.rotation.x = Math.PI / 2;
+  coil.scale.setScalar(8.5);
+  coil.position.y = 14;
+  root.add(coil);
+  const mast = mesh(shared.boxGeo, shared.metalMat, 'storm_relay_mast');
+  mast.scale.set(2.4, 18, 2.4);
+  mast.position.y = 16;
+  root.add(mast);
+  const spark = mesh(shared.boxGeo, seam, 'storm_relay_spark');
+  spark.scale.set(1.4, 5, 1.4);
+  spark.position.y = 27;
+  root.add(spark);
+  const basePhase = (index / STORM_RELAY_COUNT) * Math.PI * 2;
+  return {
+    root,
+    mover(elapsed, dt, reduced, calmFlash, pulse, simNow) {
+      // orbitNodePose(host, index, count, radius, simTime, periodTicks) — same arithmetic:
+      // phase = (i/n)·τ + (simTime·60/periodTicks)·τ ; pos = host + r·(cos,sin).
+      const phase = basePhase
+        + ((Math.max(0, simNow || elapsed) * 60) / STORM_RELAY_PERIOD) * Math.PI * 2;
+      root.position.set(
+        at.x + Math.cos(phase) * STORM_RELAY_ORBIT,
+        0,
+        at.z + Math.sin(phase) * STORM_RELAY_ORBIT,
+      );
+      coil.rotation.z += (reduced ? 0.15 : 0.8) * dt;
+      seam.emissiveIntensity = calmFlash
+        ? 0.7
+        : 0.75 + (reduced ? 0 : 0.4 * Math.sin(simNow * RELAY_SPARK_RATE + index));
+    },
+  };
+}
+
+/** Static conductor wire between two graph nodes — a drawn edge of the lattice. */
+function buildConductorWire(aPos, bPos, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.tideMat, sink);
+  const len = Math.max(2, Math.hypot(bPos.x - aPos.x, bPos.z - aPos.z));
+  const wire = mesh(shared.boxGeo, seam, 'storm_wire');
+  wire.scale.set(len, 0.7, 0.7);
+  wire.position.set((aPos.x + bPos.x) / 2, 42, (aPos.z + bPos.z) / 2);
+  wire.rotation.y = -Math.atan2(bPos.z - aPos.z, bPos.x - aPos.x);
+  return {
+    root: wire,
+    mover(elapsed, dt, reduced, calmFlash, pulse, simNow) {
+      seam.emissiveIntensity = calmFlash
+        ? 0.45
+        : 0.35 + (reduced ? 0 : 0.2 * Math.sin(simNow * 3.1 + aPos.x * 0.01));
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Boss dressing — role assemblies over the shared dreadnought hull (+X local is the nose).
 // ---------------------------------------------------------------------------
 
@@ -415,10 +701,133 @@ function buildChainTug(radiusWu, sink) {
   return { group, drums, seamMesh: seam, seamMat, hook };
 }
 
+/**
+ * Manifold Warden (Cryo): four coolant-arm assemblies on a collar ring around the spine —
+ * `arms: 4`, `method: 'tumbling_subsystems'`. Each arm carries a tank pod and gimbals on its
+ * own phase while the collar rolls; the cold/hot split seam reads the room's two zones.
+ */
+function buildManifoldWarden(radiusWu, sink) {
+  const shared = sharedAssets();
+  const coldSeam = cloneEmissive(shared.tideMat, sink);
+  const hotSeam = cloneEmissive(shared.emberMat, sink);
+  const group = new THREE.Group();
+  group.name = 'manifold_warden_dressing';
+  const collar = new THREE.Group();
+  collar.name = 'manifold_collar';
+  collar.position.set(radiusWu * 0.08, radiusWu * 0.5, 0);
+  group.add(collar);
+  const ring = mesh(shared.torusGeo, shared.darkMat, 'manifold_collar_ring');
+  ring.rotation.y = Math.PI / 2; // ring faces the nose axis
+  ring.scale.setScalar(radiusWu * 0.5);
+  collar.add(ring);
+  const arms = [];
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    const arm = new THREE.Group();
+    arm.name = 'manifold_arm';
+    arm.rotation.x = a;
+    collar.add(arm);
+    const boom = mesh(shared.boxGeo, shared.metalMat, 'manifold_boom');
+    boom.scale.set(radiusWu * 0.05, radiusWu * 0.30, radiusWu * 0.05);
+    boom.position.y = radiusWu * 0.62;
+    arm.add(boom);
+    const pod = mesh(shared.cylGeo, shared.darkMat, 'manifold_pod');
+    pod.scale.set(radiusWu * 0.075, radiusWu * 0.16, radiusWu * 0.075);
+    pod.position.y = radiusWu * 0.80;
+    arm.add(pod);
+    const tip = mesh(shared.boxGeo, i % 2 ? hotSeam : coldSeam, 'manifold_tip');
+    tip.scale.set(radiusWu * 0.06, radiusWu * 0.05, radiusWu * 0.06);
+    tip.position.y = radiusWu * 0.92;
+    arm.add(tip);
+    arms.push({ arm, phase: a });
+  }
+  const seam = mesh(shared.torusGeo, coldSeam, 'manifold_seam');
+  seam.rotation.y = Math.PI / 2;
+  seam.position.set(radiusWu * -0.3, radiusWu * 0.1, 0);
+  seam.scale.setScalar(radiusWu * 0.34);
+  group.add(seam);
+  const drums = [{ drum: collar, dir: 1 }];
+  return {
+    group, drums, seamMat: coldSeam,
+    tick(rec, simTime, dt, reduced, calmFlash) {
+      // Tumbling subsystems: each arm gimbals on its own phase; the hot tips breathe
+      // counter-phase against the cold seam the generic driver writes.
+      const rate = reduced ? 0.15 : GIMBAL_RATE;
+      for (let i = 0; i < arms.length; i++) {
+        arms[i].arm.rotation.x = arms[i].phase + Math.sin(simTime * rate + arms[i].phase) * 0.3;
+      }
+      hotSeam.emissiveIntensity = calmFlash
+        ? 0.6
+        : 0.55 + 0.35 * Math.max(0, Math.sin(simTime * 1.7 + Math.PI));
+    },
+  };
+}
+
+/**
+ * Grid Tyrant (Storm): a conductor mast on the spine plus a ring of four relay drones
+ * orbiting the hull — `drones: 4`, `method: 'thrown_mass'`. The ring is the room's lattice
+ * carried as a body.
+ */
+function buildGridTyrant(radiusWu, sink) {
+  const shared = sharedAssets();
+  const seamMat = cloneEmissive(shared.amberMat, sink);
+  const group = new THREE.Group();
+  group.name = 'grid_tyrant_dressing';
+  const mast = mesh(shared.cylGeo, shared.metalMat, 'tyrant_mast');
+  mast.scale.set(radiusWu * 0.05, radiusWu * 0.5, radiusWu * 0.05);
+  mast.position.set(radiusWu * 0.12, radiusWu * 0.6, 0);
+  group.add(mast);
+  const crown = mesh(shared.torusGeo, seamMat, 'tyrant_crown');
+  crown.rotation.x = Math.PI / 2;
+  crown.scale.setScalar(radiusWu * 0.16);
+  crown.position.set(radiusWu * 0.12, radiusWu * 0.88, 0);
+  group.add(crown);
+  const ringGroup = new THREE.Group();
+  ringGroup.name = 'tyrant_drone_ring';
+  ringGroup.position.set(radiusWu * -0.05, radiusWu * 0.4, 0);
+  group.add(ringGroup);
+  const drones = [];
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    const holder = new THREE.Group();
+    holder.rotation.x = a;
+    ringGroup.add(holder);
+    const drone = mesh(shared.boxGeo, shared.darkMat, 'tyrant_drone');
+    const r = radiusWu * 0.55;
+    drone.scale.set(radiusWu * 0.09, radiusWu * 0.09, radiusWu * 0.09);
+    drone.position.y = r;
+    holder.add(drone);
+    const lamp = mesh(shared.boxGeo, seamMat, 'tyrant_drone_lamp');
+    lamp.scale.set(0.35, 0.35, 0.35);
+    lamp.position.y = r * 1.15;
+    holder.add(lamp);
+    drones.push({ holder, drone, phase: a });
+  }
+  const drums = [{ drum: ringGroup, dir: 1 }];
+  return {
+    group, drums, seamMat,
+    tick(rec, simTime, dt, reduced) {
+      const rate = reduced ? 0.4 : 1.4;
+      for (let i = 0; i < drones.length; i++) {
+        drones[i].drone.rotation.x += rate * dt;
+        drones[i].drone.rotation.y += rate * 0.6 * dt;
+      }
+    },
+  };
+}
+
 const BOSS_BUILDERS = {
   tidal_engine: buildTidalVanes,
   chain_tug: buildChainTug,
+  manifold_warden: buildManifoldWarden,
+  grid_tyrant: buildGridTyrant,
 };
+
+function driveBossDrums(rec) {
+  for (const d of rec.drums) {
+    d.drum.rotation[d.axis || 'x'] = rec.spinAngle * d.dir + (d.phase || 0);
+  }
+}
 
 function easeOutCubic(t) {
   const u = 1 - t;
@@ -427,7 +836,10 @@ function easeOutCubic(t) {
 
 export function createLawArenaDressing() {
   const bossRecords = new Map();
-  const room = { root: null, parts: [], clones: [], installedAtSim: 0, arenaId: null };
+  const room = {
+    root: null, parts: [], clones: [], installedAtSim: 0, arenaId: null,
+    relayWires: [], pylonPositions: [],
+  };
 
   function releaseRoom() {
     if (room.root && room.root.parent) room.root.parent.remove(room.root);
@@ -436,6 +848,8 @@ export function createLawArenaDressing() {
     room.parts = [];
     room.clones = [];
     room.arenaId = null;
+    room.relayWires = [];
+    room.pylonPositions = [];
   }
 
   function handleInstall(payload, scene) {
@@ -453,8 +867,11 @@ export function createLawArenaDressing() {
 
     // Field anchors: lagrange wells/repulsors are the pylons; cinder's cone is dressed by its
     // current mouth (deduped below) while its boss-phase ballast well gets the anchor too.
+    // Cryo/Storm fields are occupancy markers (strength 0) — their furniture comes from
+    // roomSpec, so zero-force markers never grow a pylon.
     for (const field of fields) {
       if (!field || !field.center) continue;
+      if (!(Number.isFinite(field.strength) && field.strength !== 0)) continue;
       if (field.kind === 'cone' && arenaId === CINDER_ARENA_ID) {
         const backed = toys.find((t) => t && t.kind === 'current' && t.center
           && Math.hypot(t.center.x - field.center.x, t.center.z - field.center.z) <= 12);
@@ -470,10 +887,71 @@ export function createLawArenaDressing() {
       else if (toy.kind === 'crusher' && toy.pos) part = buildCrusherPress(toy, clones);
       else if (toy.kind === 'current' && toy.center) {
         part = buildCurrentMouth(toy, arenaId === CINDER_ARENA_ID, clones);
+      } else if (toy.kind === 'plate' && toy.pos) {
+        part = buildBankPlate(toy, clones);
       }
       if (part) {
         parts.push(part);
         root.add(part.root);
+      }
+    }
+
+    // PQ-133.09 — the law-specific rooms: Cryo's quadrant frame + coolant/manifold props,
+    // Storm's pylon ring, graph wires and orbiting relays.
+    const spec = payload && payload.roomSpec;
+    if (arenaId === CRYO_ARENA_ID && spec && spec.at) {
+      const frame = buildCryoRoomFrame(spec, clones);
+      parts.push(frame);
+      root.add(frame.root);
+      const props = spec.props || { coolant: [], heat: [] };
+      for (const pos of props.coolant || []) {
+        const part = buildCryoProp(pos, false, clones);
+        parts.push(part);
+        root.add(part.root);
+      }
+      for (const pos of props.heat || []) {
+        const part = buildCryoProp(pos, true, clones);
+        parts.push(part);
+        root.add(part.root);
+      }
+    } else if (arenaId === STORM_ARENA_ID && spec && spec.at) {
+      const pylons = Array.isArray(spec.pylons) ? spec.pylons : [];
+      const relays = Array.isArray(spec.relays) ? spec.relays : [];
+      // Conductor wires are the conductivity graph drawn once at install — same edges the
+      // sim's buildConductivityGraph produces for these nodes on this island.
+      const nodes = pylons.concat(relays).map((n) => ({
+        id: n.id, pos: n.pos, conductive: true,
+        score: n.id && String(n.id).indexOf('relay') === 0 ? 2 : 1,
+      }));
+      const graph = buildConductivityGraph(nodes, {
+        at: spec.at,
+        islandRadius: Number.isFinite(spec.islandRadius) ? spec.islandRadius : undefined,
+      });
+      for (const edge of graph.edges) {
+        const a = graph.nodesById.get(edge.a);
+        const b = graph.nodesById.get(edge.b);
+        if (!a || !b) continue;
+        const wire = buildConductorWire(a.pos, b.pos, clones);
+        parts.push(wire);
+        root.add(wire.root);
+      }
+      for (let i = 0; i < pylons.length; i++) {
+        const part = buildStormPylon(pylons[i], i, clones);
+        parts.push(part);
+        root.add(part.root);
+        room.pylonPositions.push({ x: pylons[i].pos.x, z: pylons[i].pos.z });
+      }
+      for (let i = 0; i < relays.length; i++) {
+        const part = buildStormRelay(spec.at, i, clones);
+        parts.push(part);
+        root.add(part.root);
+        // A live feed wire per relay: allocated once, re-aimed every frame to the relay's
+        // nearest graph node — the lattice visibly rewires as the relays orbit.
+        const shared = sharedAssets();
+        const beam = mesh(shared.boxGeo, cloneEmissive(shared.amberMat, clones), 'storm_relay_feed');
+        beam.position.y = 30;
+        root.add(beam);
+        room.relayWires.push({ relay: part, beam });
       }
     }
     room.root = root;
@@ -494,11 +972,35 @@ export function createLawArenaDressing() {
     const dt = Math.max(0, frameDt || 0);
     const reduced = !!(options && options.reducedMotion);
     const calmFlash = !!(options && options.reducedFlash);
-    const elapsed = Math.max(0, (Number.isFinite(simTime) ? simTime : 0) - room.installedAtSim);
-    const pulse = calmFlash ? 0 : 0.5 + 0.5 * Math.sin(simTime * 1.7);
+    const simNow = Number.isFinite(simTime) ? simTime : 0;
+    const elapsed = Math.max(0, simNow - room.installedAtSim);
+    const pulse = calmFlash ? 0 : 0.5 + 0.5 * Math.sin(simNow * 1.7);
     for (let i = 0; i < room.parts.length; i++) {
       const mover = room.parts[i].mover;
-      if (mover) mover.call(room.parts[i], elapsed, dt, reduced, calmFlash, pulse);
+      if (mover) mover.call(room.parts[i], elapsed, dt, reduced, calmFlash, pulse, simNow);
+    }
+    // Relay feed wires: re-aim each live beam from its relay buoy to the nearest conductor
+    // node — same "range + conductive" rule the graph uses, without rebuilding it per frame.
+    for (let i = 0; i < room.relayWires.length; i++) {
+      const rw = room.relayWires[i];
+      const rp = rw.relay.root.position;
+      let best = null;
+      let bestD2 = STORM_CONDUCT_RANGE * STORM_CONDUCT_RANGE;
+      for (let j = 0; j < room.pylonPositions.length; j++) {
+        const p = room.pylonPositions[j];
+        const dx = p.x - rp.x;
+        const dz = p.z - rp.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 <= bestD2) { bestD2 = d2; best = p; }
+      }
+      if (!best) { rw.beam.visible = false; continue; }
+      rw.beam.visible = true;
+      const len = Math.max(1, Math.sqrt(bestD2));
+      rw.beam.scale.set(len, 0.8, 0.8);
+      rw.beam.position.set((rp.x + best.x) / 2, 30, (rp.z + best.z) / 2);
+      rw.beam.rotation.y = -Math.atan2(best.z - rp.z, best.x - rp.x);
+      rw.beam.material.emissiveIntensity = calmFlash ? 0.5
+        : 0.5 + (reduced ? 0 : 0.3 * Math.sin(simNow * RELAY_SPARK_RATE + i));
     }
   }
 
@@ -527,7 +1029,7 @@ export function createLawArenaDressing() {
     if (!rec) {
       rec = {
         boundMesh: null, group: null, drums: null, seamMat: null, hook: null, clones: [],
-        phase: 'build', clock: 0, spinAngle: 0, releaseClock: 0,
+        tick: null, phase: 'build', clock: 0, spinAngle: 0, releaseClock: 0,
       };
       bossRecords.set(entity.id, rec);
     }
@@ -542,6 +1044,7 @@ export function createLawArenaDressing() {
         rec.drums = built.drums;
         rec.seamMat = built.seamMat;
         rec.hook = built.hook || null;
+        rec.tick = built.tick || null;
       }
       parent.add(rec.group);
       rec.boundMesh = mesh_;
@@ -557,15 +1060,16 @@ export function createLawArenaDressing() {
       rec.releaseClock = 0;
     }
     const spinRate = reduced
-      ? (kind === 'chain_tug' ? WINCH_RATE_REDUCED : VANE_RATE_REDUCED)
-      : (kind === 'chain_tug' ? WINCH_RATE : VANE_RATE);
+      ? (kind === 'chain_tug' ? WINCH_RATE_REDUCED : kind === 'grid_tyrant' ? ORBIT_RATE * 0.3 : VANE_RATE_REDUCED)
+      : (kind === 'chain_tug' ? WINCH_RATE : kind === 'grid_tyrant' ? ORBIT_RATE : VANE_RATE);
 
     if (rec.phase === 'build' || rec.phase === 'spin') {
       const buildT = Math.min(1, rec.clock / BUILD_S);
       const s = easeOutCubic(buildT);
       rec.group.scale.setScalar(Math.max(0.0001, s));
       rec.spinAngle += spinRate * Math.min(1, buildT * 1.5) * dt;
-      for (const d of rec.drums) d.drum.rotation.x = rec.spinAngle * d.dir;
+      driveBossDrums(rec);
+      if (rec.tick) rec.tick(rec, simTime, dt, reduced, calmFlash);
       if (rec.seamMat) {
         rec.seamMat.emissiveIntensity = calmFlash
           ? 0.8
@@ -579,7 +1083,8 @@ export function createLawArenaDressing() {
       rec.releaseClock += dt;
       const rt = Math.min(1, rec.releaseClock / RELEASE_S);
       rec.spinAngle += spinRate * (1 - rt) * dt;
-      for (const d of rec.drums) d.drum.rotation.x = rec.spinAngle * d.dir;
+      driveBossDrums(rec);
+      if (rec.tick) rec.tick(rec, simTime, dt, reduced, calmFlash);
       rec.group.scale.setScalar(Math.max(0.0001, 1 - rt));
       rec.group.position.y += RELEASE_FLING_WU * dt * rt;
       if (rec.seamMat) rec.seamMat.emissiveIntensity = Math.max(0.08, 1.1 * (1 - rt));
@@ -613,7 +1118,10 @@ export function createLawArenaDressing() {
   }
 
   function peekRoom() {
-    return room.root ? { root: room.root, parts: room.parts, arenaId: room.arenaId } : null;
+    return room.root ? {
+      root: room.root, parts: room.parts, arenaId: room.arenaId,
+      relayWires: room.relayWires, pylonPositions: room.pylonPositions,
+    } : null;
   }
 
   function peekBoss(entityId) {

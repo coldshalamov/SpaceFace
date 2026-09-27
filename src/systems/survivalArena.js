@@ -973,6 +973,26 @@ export const survivalArena = {
       fieldSpecs: this._installedFields.map((spec) => ({ ...spec })),
       toySpecs: this._toys.map((toy) => ({ ...toy })),
       installedAtSim: this._installedAt,
+      // PQ-133.09: the cryo/storm rooms carry authored shape BEYOND fields+toys — the thermal
+      // quadrant map, prop positions, the insulated island's radius, the storm pylon ring and
+      // the relay seed poses. Passing the finished install's own keys keeps the render layer
+      // in phase with the law instead of re-deriving (or guessing) the room.
+      roomSpec: {
+        at: install.at ? { x: install.at.x, z: install.at.z } : null,
+        thermal: install.thermal ? { ...install.thermal } : null,
+        islandRadius: Number.isFinite(install.islandRadius) ? install.islandRadius : null,
+        fieldRadius: Number.isFinite(install.fieldRadius) ? install.fieldRadius : null,
+        props: install.props ? {
+          coolant: (install.props.coolant || []).map((p) => ({ x: p.x, z: p.z })),
+          heat: (install.props.heat || []).map((p) => ({ x: p.x, z: p.z })),
+        } : null,
+        pylons: Array.isArray(install.pylons)
+          ? install.pylons.map((n) => ({ id: n.id, pos: { x: n.pos.x, z: n.pos.z } }))
+          : null,
+        relays: Array.isArray(install.relays)
+          ? install.relays.map((n) => ({ id: n.id, pos: { x: n.pos.x, z: n.pos.z }, phase: n.phase }))
+          : null,
+      },
     });
   },
 

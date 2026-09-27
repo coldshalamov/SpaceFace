@@ -75,13 +75,29 @@ function roomCensus(page) {
   return page.evaluate(() => {
     const scene = window.SF.state && window.SF.state.render && window.SF.state.render.scene;
     if (!scene) return null;
-    const counts = { pylon: 0, shutter: 0, crusher: 0, mouth: 0, root: 0 };
+    const counts = {
+      pylon: 0, shutter: 0, crusher: 0, mouth: 0, root: 0,
+      cryoFrame: 0, cryoTank: 0, cryoManifold: 0, plate: 0,
+      stormPylon: 0, stormRelay: 0, wire: 0, feed: 0,
+    };
+    const roomKids = new Set();
+    scene.traverse((n) => { if (n.name === 'law_arena_room') n.children.forEach((c) => roomKids.add(c)); });
     scene.traverse((n) => {
       if (n.name === 'law_arena_room') counts.root += 1;
       else if (n.name === 'law_pylon') counts.pylon += 1;
       else if (n.name === 'law_shutter') counts.shutter += 1;
       else if (n.name === 'law_crusher') counts.crusher += 1;
       else if (n.name === 'law_current_mouth') counts.mouth += 1;
+      else if (n.name === 'cryo_frame') counts.cryoFrame += 1;
+      else if (n.name === 'cryo_tank') counts.cryoTank += 1;
+      else if (n.name === 'cryo_manifold') counts.cryoManifold += 1;
+      else if (n.name === 'storm_wire') counts.wire += 1;
+      else if (n.name === 'storm_relay_feed') counts.feed += 1;
+      // Prefixed root names (law_plate_*, storm_pylon_*, storm_relay_*) collide with child
+      // names (storm_pylon_mast, storm_relay_body, law_plate_face) — count only root children.
+      else if (roomKids.has(n) && n.name && n.name.startsWith('law_plate_')) counts.plate += 1;
+      else if (roomKids.has(n) && n.name && n.name.startsWith('storm_pylon_')) counts.stormPylon += 1;
+      else if (roomKids.has(n) && n.name && n.name.startsWith('storm_relay_')) counts.stormRelay += 1;
     });
     return counts;
   });
@@ -136,7 +152,10 @@ function bossDressingState(page, groupName) {
     if (!group) return { mesh: true, group: false };
     const drums = [];
     group.traverse((n) => {
-      if (n.name === 'tidal_vane_drum' || n.name === 'chain_winch_drum') drums.push(n.rotation.x);
+      if (n.name === 'tidal_vane_drum' || n.name === 'chain_winch_drum'
+        || n.name === 'manifold_collar' || n.name === 'tyrant_drone_ring') {
+        drums.push(n.rotation.x);
+      }
     });
     const underHull = group.parent === (e.mesh.userData && e.mesh.userData.hull);
     return { mesh: true, group: true, underHull, drums };
@@ -281,6 +300,91 @@ async function main() {
     return !group;
   }, null, { timeout: 40000 }).then(() => true).catch(() => false);
   record('BOSS RELEASE', dressingGone === true, 'chain-tug dressing detached after the kill');
+
+  // --- Cryo Drift (PQ-133.09) ---
+  await page.evaluate(() => { window.SF.bus.emit('run:waveCleared', { wave: 10 }); });
+  await page.waitForTimeout(400);
+  await installLawWave(page, 'cryo_drift', 3);
+  const cy = await roomCensus(page);
+  record('CRYO', !!(cy && cy.root === 1 && cy.cryoFrame === 1 && cy.cryoTank === 1
+    && cy.cryoManifold === 1 && cy.plate === 2 && cy.shutter === 1 && cy.pylon === 0),
+    JSON.stringify(cy));
+
+  const cySpawn = await spawnLawBoss(page, 'cryo_drift');
+  record('WARDEN SPAWN', !!(cySpawn.boss && cySpawn.boss.dressing
+    && cySpawn.boss.dressing.kind === 'manifold_warden'),
+    JSON.stringify(cySpawn.boss && cySpawn.boss.dressing));
+  await page.waitForFunction(() => {
+    const e = window.__lawBoss;
+    return e && e.mesh && e.mesh.parent;
+  }, null, { timeout: 120000 });
+  await page.waitForTimeout(1600);
+  const warden = await bossDressingState(page, 'manifold_warden_dressing');
+  const armCount = await page.evaluate(() => {
+    const e = window.__lawBoss;
+    let arms = 0;
+    if (e && e.mesh) e.mesh.traverse((n) => { if (n.name === 'manifold_arm') arms += 1; });
+    return arms;
+  });
+  record('WARDEN RIG', !!(warden.group && warden.underHull && armCount === 4),
+    `underHull=${warden.underHull} arms=${armCount}`);
+
+  await page.screenshot({ path: `${ROOT}.devshots/law-arena-dressing/cryo.png` });
+  console.log('  shot  .devshots/law-arena-dressing/cryo.png');
+
+  // --- Storm Lattice (PQ-133.09) ---
+  await page.evaluate(() => { window.SF.bus.emit('run:waveCleared', { wave: 3 }); });
+  await page.waitForTimeout(400);
+  await installLawWave(page, 'storm_lattice', 3);
+  const sm = await roomCensus(page);
+  record('STORM', !!(sm && sm.root === 1 && sm.stormPylon === 6 && sm.stormRelay === 2
+    && sm.wire > 0 && sm.feed === 2 && sm.pylon === 0),
+    JSON.stringify(sm));
+
+  // Relay buoys ride the sim orbit — assert a real positional move, not a rotation trick.
+  const relay0 = await page.evaluate(() => {
+    let p = null;
+    window.SF.state.render.scene.traverse((n) => { if (!p && n.name === 'storm_relay_0') p = n; });
+    return p ? { x: p.position.x, z: p.position.z } : null;
+  });
+  await page.waitForTimeout(900);
+  const relay1 = await page.evaluate(() => {
+    let p = null;
+    window.SF.state.render.scene.traverse((n) => { if (!p && n.name === 'storm_relay_0') p = n; });
+    return p ? { x: p.position.x, z: p.position.z } : null;
+  });
+  const relayMoved = relay0 && relay1
+    && Math.hypot(relay1.x - relay0.x, relay1.z - relay0.z) > 0.5;
+  record('RELAY ORBIT', relayMoved === true,
+    relay0 && relay1 ? `(${relay0.x.toFixed(1)},${relay0.z.toFixed(1)}) -> (${relay1.x.toFixed(1)},${relay1.z.toFixed(1)})` : 'missing');
+
+  const smSpawn = await spawnLawBoss(page, 'storm_lattice');
+  record('TYRANT SPAWN', !!(smSpawn.boss && smSpawn.boss.dressing
+    && smSpawn.boss.dressing.kind === 'grid_tyrant'),
+    JSON.stringify(smSpawn.boss && smSpawn.boss.dressing));
+  await page.waitForFunction(() => {
+    const e = window.__lawBoss;
+    return e && e.mesh && e.mesh.parent;
+  }, null, { timeout: 120000 });
+  const tyrantGroupSeen = await page.waitForFunction(() => {
+    const e = window.__lawBoss;
+    if (!e || !e.mesh) return false;
+    let g = null;
+    e.mesh.traverse((n) => { if (n.name === 'grid_tyrant_dressing') g = n; });
+    return !!g;
+  }, null, { timeout: 40000 }).then(() => true).catch(() => false);
+  await page.waitForTimeout(1600);
+  const tyrant0 = await bossDressingState(page, 'grid_tyrant_dressing');
+  await page.waitForTimeout(900);
+  const tyrant1 = await bossDressingState(page, 'grid_tyrant_dressing');
+  const ring0 = (tyrant0.drums || [])[0];
+  const ring1 = (tyrant1.drums || [])[0];
+  const ringMoves = ring0 != null && ring1 != null && Math.abs(ring1 - ring0) > 0.01;
+  record('TYRANT RIG', !!(tyrantGroupSeen && tyrant1.group && tyrant1.underHull && ringMoves),
+    `seen=${tyrantGroupSeen} state0=${JSON.stringify(tyrant0)} state1=${JSON.stringify(tyrant1)}`);
+
+  await page.screenshot({ path: `${ROOT}.devshots/law-arena-dressing/storm.png` });
+  console.log('  shot  .devshots/law-arena-dressing/storm.png');
 
   // Leave the probe run clean: end it so the arena teardown contract owns the last word.
   await page.evaluate(() => { window.SF.bus.emit('run:ended', { kind: 'survival', outcome: 'probe' }); });
