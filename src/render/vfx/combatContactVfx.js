@@ -27,6 +27,10 @@ export function combatContactExtent(radius,speed,consequence=false){
     consequence?3.4:1.6,consequence?17:8);
 }
 
+export function reflectedContactExtent(radius,speed){
+  return clamp(Math.max(1,finite(radius,6))*.22+1.5+Math.sqrt(clamp(finite(speed)/150))*2,4,10);
+}
+
 export class CombatContactVfx {
   constructor(scene,{toLocal=null,capacity=24}={}){
     this.capacity=clamp(Math.floor(capacity),1,48);
@@ -35,6 +39,24 @@ export class CombatContactVfx {
     this.composer=new ActionPrimitiveComposer(this.batch,null,toLocal);
     this.slots=Array.from({length:this.capacity},()=>({alive:false}));
     this.pose={x:0,z:0};this.time=0;this.live=0;this.dirty=false;this.disposed=false;
+    this.boundsBox=new THREE.Box3();this.boundsCache=new WeakMap();
+  }
+  _surfaceTop(root,row,scale,radius){
+    const hull=root?.userData?.hull,bounds=hull?.userData?.visualBounds||root?.userData?.visualBounds;
+    if(bounds?.size)return finite(bounds.center?.[1])+bounds.size[1]*.5;
+    if(row?.bounds?.size)return(finite(row.bounds.center?.[1])+row.bounds.size[1]*.5)*scale+finite(row.drawOffset?.[1]);
+    // Non-ship authored bodies need their actual drawn height too. Measure an
+    // unchanged root once; contacts never traverse model geometry in the frame loop.
+    if(root?.isObject3D){
+      let cached=this.boundsCache.get(root);const sy=root.scale.y,children=root.children.length;
+      if(!cached||cached.hull!==hull||cached.sy!==sy||cached.children!==children){
+        root.updateWorldMatrix(true,true);this.boundsBox.setFromObject(root);
+        cached={hull,sy,children,top:this.boundsBox.isEmpty()?radius*.4:this.boundsBox.max.y-root.position.y};
+        this.boundsCache.set(root,cached);
+      }
+      return cached.top+root.position.y;
+    }
+    return radius*.4;
   }
   emit(kind,p,state){
     if(this.disposed||!RECIPES[kind])return false;
@@ -49,12 +71,13 @@ export class CombatContactVfx {
     let nx=finite(normal?.x,1),nz=finite(normal?.z);const nl=Math.hypot(nx,nz)||1;nx/=nl;nz/=nl;
     if((kind==='contact'||kind==='consequence')&&(nx<0||nx===0&&nz<0)){nx=-nx;nz=-nz;}
     const angle=Math.atan2(nz,nx),rotation=finite(body?.rot);
-    const speed=Math.max(0,finite(p.feelDeltaV,finite(p.preSolveClosingSpeed,finite(p.deltaV))));
+    const reflected=kind==='bank'||kind==='mirror';
+    const speed=reflected?Math.max(Math.hypot(finite(p.incoming?.x),finite(p.incoming?.z)),
+      Math.hypot(finite(p.outgoing?.x),finite(p.outgoing?.z))):
+      Math.max(0,finite(p.feelDeltaV,finite(p.preSolveClosingSpeed,finite(p.deltaV))));
     const row=body?modelTruthRowForEntity(body):null,scale=row?mountDrawScale(row,body):1;
     const root=state.render?.meshes?.get?.(id)||body?.view?.root||body?.mesh;
-    const bounds=root?.userData?.hull?.userData?.visualBounds||root?.userData?.visualBounds;
-    const top=bounds?.size?finite(bounds.center?.[1])+bounds.size[1]*.5:
-      row?.bounds?.size?(finite(row.bounds.center?.[1])+row.bounds.size[1]*.5)*scale+finite(row.drawOffset?.[1]):radius*.16;
+    const top=this._surfaceTop(root,row,scale,radius);
     let ox=pos.x-finite(body?.pos?.x),oz=pos.z-finite(body?.pos?.z);
     const cs=Math.cos(rotation),sn=Math.sin(rotation),localX=ox*cs+oz*sn,localZ=-ox*sn+oz*cs;
     ox=localX;oz=localZ;
@@ -66,9 +89,11 @@ export class CombatContactVfx {
       ox=volume?.center?volume.center[0]*radius:0;oz=volume?.center?volume.center[1]*radius:0;
     }
     Object.assign(s,{alive:true,key,kind,recipe:RECIPES[kind],born:now,seed:seedOf(key),
-      x:pos.x,z:pos.z,y:subsystem?top-.85:finite(pos.y,.15),angle,body:subsystem?body:null,
+      x:pos.x,z:pos.z,y:kind==='consequence'?finite(pos.y,.15):Math.max(finite(pos.y,.15),top-.65),
+      angle,body:subsystem?body:null,
       id,ox,oz,rotation,normalAngle:angle-rotation,
-      radius:subsystem?clamp(radius*.25,3,11):combatContactExtent(radius,speed,kind==='consequence'),
+      radius:subsystem?clamp(radius*.34,3.6,11):reflected?reflectedContactExtent(radius,speed):
+        combatContactExtent(radius,speed,kind==='consequence'),
       incoming:point(p.incoming)?Math.atan2(-p.incoming.z,-p.incoming.x):angle,
       outgoing:point(p.outgoing)?Math.atan2(p.outgoing.z,p.outgoing.x):null,
       strength:clamp(Math.sqrt(speed/150),.12,1),
@@ -135,9 +160,9 @@ export class CombatContactVfx {
       for(let i=0;i<3;i++){
         const delay=i*.075,onset=smooth((age-delay)/.13),side=(i-1)*r*.36;
         const release=failed?(1-Math.exp(-motion*(2.2+i)))*r*.20:0;
-        p.piece(failed?5:2,x,z,a+Math.PI/2,-r*(.34+i*.07),r*(.43-i*.04),r*.14,r*.21,
+        p.piece(failed?5:2,x,z,a+Math.PI/2,-r*(.34+i*.07),r*(.43-i*.04),r*.20,r*.29,
           failed?(i-1)*r*.19:r*.08,side+release*(i-1),0,phase+i*1.7,
-          alpha*onset*.86,clamp((age-delay)/.22),cut+i*.08,heat*(failed?.8:.55));
+          alpha*onset*.92,clamp((age-delay)/.22),cut+i*.08,heat*(failed?.8:.85));
       }
       p.piece(3,x,z,a,-r*.45,r*.5,r*.30,r*.075,0,0,0,phase,
         alpha*.48,clamp(age/.2),cut*.8,heat*.24);

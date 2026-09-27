@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { CombatContactVfx, combatContactExtent } from '../src/render/vfx/combatContactVfx.js';
+import { CombatContactVfx, combatContactExtent, reflectedContactExtent } from '../src/render/vfx/combatContactVfx.js';
 import { createGameplayExplosion } from '../scripts/lib/vfxGameplayExplosion.mjs';
 import { createGameplayWorldEvents } from '../scripts/lib/vfxGameplayWorldEvents.mjs';
 
@@ -25,8 +25,33 @@ test('collision consequences use bounded world extents rather than dimensionless
   const h=harness(),before=structuredClone(h.body);h.pool.emit('consequence',h.p,h.state);h.update(.2);
   assert.equal(h.pool.batch.count,6);assert.ok(h.pool.slots[0].radius>6);
   assert.deepEqual(h.body,before,'presentation cannot change the collision receiver');
+  assert.equal(h.pool.slots[0].y,.15,'accepted consequence keeps its original contact plane');
   const kinds=new Set();for(let i=0;i<h.pool.batch.count;i++)kinds.add(data(h.pool)[i*36+4]);
   assert.deepEqual([...kinds].sort(),[1,3,4]);h.pool.dispose();
+});
+
+test('small contacts clear the actual authored body and reuse its measured surface',()=>{
+  const h=harness();delete h.root.userData.visualBounds;h.body.type='asteroid';
+  const geometry=new THREE.BoxGeometry(12,8,12),material=new THREE.MeshBasicMaterial();
+  const mesh=new THREE.Mesh(geometry,material);mesh.position.y=3;h.root.add(mesh);
+  const measure=h.pool.boundsBox.setFromObject;let measurements=0;
+  h.pool.boundsBox.setFromObject=function(root){measurements++;return measure.call(this,root);};
+  h.pool.emit('contact',h.p,h.state);h.update(.16);
+  assert.ok(data(h.pool)[1]>7,'drawn contact sits above the model, not at the sim plane');
+  h.pool.emit('bank',{...h.p,tick:13},h.state);h.update(.2);assert.equal(measurements,1);
+  h.root.scale.y=2;h.pool.emit('mirror',{...h.p,tick:14},h.state);h.update(.3);
+  assert.equal(measurements,2,'a changed mounted scale invalidates only the cached measurement');
+  assert.ok(h.pool.slots[2].y+1.1>14);h.pool.dispose();geometry.dispose();material.dispose();
+});
+
+test('reflected releases use native velocity and stay bounded independently of trauma',()=>{
+  const slow=harness(),fast=harness();slow.p.incoming={x:-12,z:4};slow.p.outgoing={x:12,z:4};
+  fast.p.trauma=0;slow.p.trauma=100;
+  slow.pool.emit('bank',slow.p,slow.state);fast.pool.emit('bank',fast.p,fast.state);
+  assert.ok(fast.pool.slots[0].radius>slow.pool.slots[0].radius);
+  assert.ok(reflectedContactExtent(11,96)>5);
+  assert.equal(reflectedContactExtent(1000,10000),10);
+  slow.pool.dispose();fast.pool.dispose();
 });
 
 test('unsigned collision normal reversal produces the same opposed geometry',()=>{
