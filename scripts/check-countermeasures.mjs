@@ -81,7 +81,8 @@ assert.match(inputSrc,
   'input.js must merge keyboard and gamepad countermeasure hold through the edge-trigger owner');
 assert.match(inputSrc, /inp\.deployCountermeasure/, 'input.js must set state.input.deployCountermeasure on deploy');
 assert.match(promptSrc, /\$\{counter\} countermeasure/, 'keyboard prompts must teach the bound countermeasure key (X at defaults)');
-assert.match(promptSrc, /R3 countermeasure/, 'gamepad prompts must teach R3 as countermeasure');
+// The pad prompt prints the live glyph (padGlyph reads the resolved map; R3 by default, asserted on gamepad.js above).
+assert.match(promptSrc, /R3 countermeasure|\$\{padGlyph\('countermeasure'\)\} countermeasure/,'gamepad prompts must teach the countermeasure pad button (R3 by default)');
 assert.match(helpSrc, /Countermeasure[\s\S]*X/, 'Help must document keyboard countermeasure');
 assert.match(helpSrc, /Countermeasure[\s\S]*R3/, 'Help must document gamepad countermeasure');
 assert.match(readmeSrc, /\|\s*Countermeasure\s*\|\s*\*\*X\*\* \/ \*\*R3\*\*/,
