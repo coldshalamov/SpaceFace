@@ -1238,8 +1238,8 @@ export const footprintScreen = {
     const amends = {
       enabled: false,
       reason: factionId
-        ? `No amends contract on offer — dock with ${shortFactionName(factionId)} to ask.`
-        : 'No amends contract on offer — dock with the affected faction to ask.',
+        ? `None on offer: dock with ${shortFactionName(factionId)} to ask.`
+        : 'None on offer: dock with the offended power to ask.',
     };
 
     // One "Show on chart" word: framed on the traced chain when it is tied to a place, unframed when
@@ -1348,6 +1348,8 @@ export const footprintScreen = {
     items.sort((a, b) => (b.primary ? 1 : 0) - (a.primary ? 1 : 0));
     this._foot.textContent = '';
     const source = this._tracedSource();
+    // No source and nothing to answer (a data state, an empty record): the column says it once, above.
+    if (!source && !items.some((item) => !item.disabled && item.action !== 'show-chart') && !items.some((item) => item.action === 'show-chart')) return;
     this._foot.append(el('p', 'fp-answer__k', source ? `Answer ${source.kind === 'bounty' ? 'the bounty' : 'this source'}` : 'Answer the record'));
     // Nothing open to you: the dead verbs fold into one line; only the chart stays a word.
     const live = items.filter((item) => !item.disabled && item.action !== 'show-chart');
@@ -1475,8 +1477,8 @@ export const footprintScreen = {
         if (receipt) read.append(receipt);
       } else {
         read.append(el('p', 'k-sentence', chain
-          ? 'The chain it stands on unfolds below. Paying settles the bounty and every chain it alone holds open; heat still clears by distance.'
-          : 'No chain on the record carries it. Paying settles it; heat still clears by distance.'));
+          ? 'Paying settles it, and every chain it alone holds open.'
+          : 'No chain on the record carries it; paying settles it.'));
       }
     } else {
       read.innerHTML = footprintReadoutHtml(chain, node, state);

@@ -165,10 +165,16 @@ ${S} :focus-visible { outline:none !important; }
   ${S} .fp-chain { gap:4px !important; }
   ${S} .fp-cell { gap:4px !important; }
   ${S} .fp-dossier__k, ${S} .fp-dossier__sub { display:none !important; }
-  ${S} .fp-dossier { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:8px 20px; }
+  ${S} .fp-dossier { grid-template-columns:minmax(0, .8fr) minmax(0, 1.2fr); gap:8px 20px; }
   /* the contracts take the first row, their words on one line after the count */
-  ${S} .fp-dossier__cell:first-child { grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:baseline; column-gap:14px; }
-  ${S} .fp-dossier__cell:first-child .fp-dossier__cap { margin:0 !important; }
+  ${S} .fp-dossier__cell:first-child { grid-column:1 / -1; }
+  /* each reading on one line: its caps word, then its value */
+  ${S} .fp-dossier__cell { display:flex; flex-wrap:wrap; align-items:baseline; column-gap:14px; row-gap:2px; }
+  ${S} .fp-dossier__cell .fp-dossier__cap { margin:0 !important; }
+  ${S} .fp-dossier__cell:not(:first-child) { flex-wrap:nowrap; }
+  ${S} .fp-dossier__cell:not(:first-child) .fp-dossier__cap { flex:none; }
+  ${S} .fp-dossier__v { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  ${S} .fp-drawer { padding-top:0 !important; }
   ${S} .fp-dossier__names { margin:0 !important; gap:2px 14px; }
   ${S} .fp-dossier__cap { margin-bottom:1px !important; }
   ${S} .fp-node__meta { font-size:calc(12px * var(--fp-s, 1)) !important; line-height:1.3 !important; }
