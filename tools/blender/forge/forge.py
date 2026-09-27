@@ -203,12 +203,16 @@ def superellipse_ring(w, h_top, h_bot, zc, n, count, y_off=0.0, flat_bottom=None
 
 
 def loft(ship, name, sections, material='paint', count=48, bands=None, belly=None, cap_front=True,
-         cap_back=True, bevel=0.03, back_material=None, front_material=None, smooth_angle=38.0):
+         cap_back=True, bevel=0.03, back_material=None, front_material=None, smooth_angle=38.0, mirror=False):
     """Hull loft along X. sections: list of dict(x, w, ht, hb, zc=0, n=2.4, y=0).
 
     bands: {section_index: finish} — faces between section i and i+1 get that finish (livery).
     belly: finish for downward-facing faces (two-tone hulls read solid from above).
     """
+    if mirror:
+        loft(ship, name + '_M', [{**sec, 'y': -sec.get('y', 0.0)} for sec in sections], material=material,
+             count=count, bands=bands, belly=belly, cap_front=cap_front, cap_back=cap_back, bevel=bevel,
+             back_material=back_material, front_material=front_material, smooth_angle=smooth_angle)
     bm = bmesh.new()
     rings = []
     for sec in sections:
@@ -554,7 +558,8 @@ def box_project_uvs(obj, scale=1.0):
             uv[li].uv = (u * k + 0.37, v * k + 0.19)
 
 
-def band(ship, obj_name, point, normal, width, finish, facing=None, mirror=False, min_facing=0.35):
+def band(ship, obj_name, point, normal, width, finish, facing=None, mirror=False, min_facing=0.35, inset=0.0,
+         depth=0.0):
     """Paint a livery band onto an existing part: slice it with two parallel planes and give the
     faces between them `finish`. Real geometry edges, so the stripe is crisp at any distance and
     follows the form (a wing chevron, a spine stripe, a nose ring).
@@ -585,11 +590,139 @@ def band(ship, obj_name, point, normal, width, finish, facing=None, mirror=False
             bmesh.ops.bisect_plane(bm, geom=geom, plane_co=co, plane_no=nv, dist=1e-5)
         bm.normal_update()
         fv = Vector(fdir).normalized() if fdir is not None else None
+        picked = []
         for f in bm.faces:
             c = f.calc_center_median()
             d = (c - pv).dot(nv)
             if abs(d) < width / 2.0 - 1e-4 and (fv is None or f.normal.dot(fv) > min_facing):
                 f.material_index = slot
+                picked.append(f)
+        if picked and (inset or depth):
+            # Real panel construction: a chamfered groove round the band, the band raised (depth>0)
+            # or sunk (depth<0) along its normals.
+            bmesh.ops.inset_region(bm, faces=picked, thickness=max(inset, 0.004), depth=depth,
+                                   use_even_offset=True, use_boundary=True)
         bm.to_mesh(me)
         bm.free()
     return mat
+
+
+
+def panel(ship, obj_name, center, size, finish, facing=(0, 0, 1), inset=0.03, depth=0.03, mirror=False,
+          min_facing=0.5):
+    """Rectangular raised (depth>0) or recessed (depth<0) plate cut into an existing part, seen from
+    `facing`. center/size are Blender (x, y) plan coords; the panel spans the whole height of the
+    part where it faces `facing`."""
+    cx, cy = center
+    sx, sy = size
+    mat = ship.mat(finish)
+    targets = [(obj_name, cy, facing)]
+    if mirror:
+        targets.append((obj_name + '_M', -cy, (facing[0], -facing[1], facing[2])))
+    for name, y0, fdir in targets:
+        obj = bpy.data.objects.get(name)
+        if obj is None:
+            raise KeyError(f'panel: no part {name}')
+        me = obj.data
+        if mat.name not in [m.name for m in me.materials if m]:
+            me.materials.append(mat)
+        slot = [m.name if m else None for m in me.materials].index(mat.name)
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        for co, no in (((cx - sx / 2, 0, 0), (1, 0, 0)), ((cx + sx / 2, 0, 0), (1, 0, 0)),
+                       ((0, y0 - sy / 2, 0), (0, 1, 0)), ((0, y0 + sy / 2, 0), (0, 1, 0))):
+            geom = list(bm.verts) + list(bm.edges) + list(bm.faces)
+            bmesh.ops.bisect_plane(bm, geom=geom, plane_co=co, plane_no=no, dist=1e-5)
+        bm.normal_update()
+        fv = Vector(fdir).normalized()
+        picked = []
+        for f in bm.faces:
+            c = f.calc_center_median()
+            if abs(c.x - cx) < sx / 2 - 1e-4 and abs(c.y - y0) < sy / 2 - 1e-4 and f.normal.dot(fv) > min_facing:
+                f.material_index = slot
+                picked.append(f)
+        if picked:
+            bmesh.ops.inset_region(bm, faces=picked, thickness=max(inset, 0.004), depth=depth,
+                                   use_even_offset=True, use_boundary=True)
+        bm.to_mesh(me)
+        bm.free()
+    return mat
+
+
+# --- greebles: designed hardware, placed by hand on the plan, never scattered -----------------
+
+def vent(ship, name, center, size, mirror=False, frame='gunmetal', slats=5, axis='x'):
+    """Louvred vent: a dark recess box with angled slats across it."""
+    cx, cy, cz = center
+    sx, sy, sz = size
+    box(ship, name + '_Well', (cx, cy, cz - sz * 0.3), (sx, sy, sz * 0.6), material='dark', bevel=0.0, mirror=mirror)
+    box(ship, name + '_Frame', (cx, cy, cz), (sx + 0.06, sy + 0.06, sz * 0.25), material=frame, bevel=0.008,
+        mirror=mirror, taper=0.97)
+    for i in range(slats):
+        t = (i + 0.5) / slats
+        if axis == 'x':
+            box(ship, f'{name}_Slat{i}', (cx - sx / 2 + sx * t, cy, cz + sz * 0.05), (sx / slats * 0.45, sy * 0.96, 0.03),
+                material=frame, bevel=0.0, mirror=mirror)
+        else:
+            box(ship, f'{name}_Slat{i}', (cx, cy - sy / 2 + sy * t, cz + sz * 0.05), (sx * 0.96, sy / slats * 0.45, 0.03),
+                material=frame, bevel=0.0, mirror=mirror)
+
+
+def rcs(ship, name, center, size=0.3, mirror=False, material='gunmetal'):
+    """RCS quad: a small block with four dark nozzle holes on its outboard face."""
+    cx, cy, cz = center
+    box(ship, name, center, (size, size * 0.7, size * 0.7), material=material, bevel=0.012, mirror=mirror)
+    side = 1 if cy >= 0 else -1
+    for dx in (-size * 0.22, size * 0.22):
+        for dz in (-size * 0.16, size * 0.16):
+            cylinder(ship, f'{name}_N{dx:.2f}{dz:.2f}', (cx + dx, cy + side * size * 0.33, cz + dz),
+                     (cx + dx, cy + side * size * 0.43, cz + dz), size * 0.08, material='dark', segments=10,
+                     bevel=0.0, mirror=mirror)
+
+
+def antenna(ship, name, base, height, mirror=False, tip='glow_red'):
+    bx, by, bz = base
+    cylinder(ship, name + '_Mast', (bx, by, bz), (bx, by, bz + height), 0.035, 0.02, material='gunmetal',
+             segments=10, bevel=0.0, mirror=mirror)
+    box(ship, name + '_Foot', (bx, by, bz + 0.03), (0.16, 0.16, 0.06), material='gunmetal', bevel=0.01,
+        mirror=mirror)
+    if tip:
+        light(ship, name + '_Tip', (bx, by, bz + height), tip, size=0.07, mirror=mirror)
+
+
+def windows(ship, name, x0, x1, y, z, count, size=(0.28, 0.12), finish='glow_warm', mirror=False, normal='y'):
+    """A row of lit portholes/windows on a side wall (normal y) or roof (normal z)."""
+    for i in range(count):
+        t = (i + 0.5) / count
+        x = x0 + (x1 - x0) * t
+        if normal == 'y':
+            box(ship, f'{name}_{i}', (x, y, z), (size[0], 0.05, size[1]), material=finish, bevel=0.0, mirror=mirror)
+        else:
+            box(ship, f'{name}_{i}', (x, y, z), (size[0], size[1], 0.05), material=finish, bevel=0.0, mirror=mirror)
+
+
+def sensor_dome(ship, name, center, radius, material='gunmetal', lens='glow_cyan'):
+    cx, cy, cz = center
+    loft(ship, name, [
+        dict(x=cx - radius, w=0.02, ht=0.02, hb=0.01, zc=cz, n=2.0, y=cy),
+        dict(x=cx - radius * 0.7, w=radius * 0.72, ht=radius * 0.5, hb=0.01, zc=cz, n=2.0, y=cy),
+        dict(x=cx, w=radius, ht=radius * 0.72, hb=0.01, zc=cz, n=2.0, y=cy),
+        dict(x=cx + radius * 0.7, w=radius * 0.72, ht=radius * 0.5, hb=0.01, zc=cz, n=2.0, y=cy),
+        dict(x=cx + radius, w=0.02, ht=0.02, hb=0.01, zc=cz, n=2.0, y=cy),
+    ], material=material, count=24, bevel=0.0, smooth_angle=70.0)
+    if lens:
+        light(ship, name + '_Lens', (cx + radius * 0.55, cy, cz + radius * 0.45), lens, size=radius * 0.35)
+
+
+def container(ship, name, center, size, finish='paint2', mirror=False, ribs=4):
+    """Cargo container: ribbed box with dark end frames — reads as freight at any zoom."""
+    cx, cy, cz = center
+    sx, sy, sz = size
+    box(ship, name, center, size, material=finish, bevel=0.03, mirror=mirror)
+    for i in range(ribs):
+        t = (i + 0.5) / ribs
+        box(ship, f'{name}_Rib{i}', (cx - sx / 2 + sx * t, cy, cz), (0.06, sy + 0.04, sz + 0.04), material='gunmetal',
+            bevel=0.0, mirror=mirror)
+    for e in (-1, 1):
+        box(ship, f'{name}_End{e}', (cx + e * (sx / 2 - 0.04), cy, cz), (0.1, sy + 0.06, sz + 0.06), material='dark',
+            bevel=0.01, mirror=mirror)

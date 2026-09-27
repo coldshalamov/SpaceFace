@@ -6422,18 +6422,19 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_lark.glb",
-      "tris": 36010,
-      "bytes": 25667384,
+      "tris": 21760,
+      "bytes": 1324968,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan",
-        "warm": "Material_Warm"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN",
-        "Gun_Assembly"
+        "HOOK_DRIVE_CORE"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -6444,28 +6445,30 @@
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
         "SOCKET_Weapon_Front"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.274999618530273,
-          -1.225000023841858,
-          -3.6999998092651367
+          -8.570465087890625,
+          -0.730012834072113,
+          -4.011446475982666
         ],
         "max": [
-          9.950078010559082,
-          2.119999885559082,
-          3.6999998092651367
+          9.300183296203613,
+          2.126617431640625,
+          4.011446475982666
         ],
         "dimensionsM": [
-          18.225077629089355,
-          3.34499990940094,
-          7.399999618530273
+          17.87064838409424,
+          2.856630265712738,
+          8.022892951965332
         ]
       },
-      "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Lark, live Helios traffic role courier; explicit LOD0/1/2, 8/8/8 draws, semantic 1K PBR maps, damageable drive/gun roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
+      "note": "Forge-v1 rebuild (tools/blender/forge/ships/helios_lark.py): Helios civil courier, ivory hull, teal courier band, lit cabin, swept pod drives, parcel rack."
     },
     {
       "id": "wholeship_helios_span",

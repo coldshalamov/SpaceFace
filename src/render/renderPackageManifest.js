@@ -492,12 +492,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-lark",
-    "expectedContentHash": "f0abf4fb96da3449841c151006fcea2797408e75aa78a28085ccdde550a08538",
+    "expectedContentHash": "13cfa1e629b7dcd7f835fdb94372fa9a397618099137348c77bc16c315defddd",
     "key": "helios-lark",
     "metadataUrl": "assets/ships/release/render-packages/helios-lark/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_HELIOS_LARK",
     "slot": "hull",
-    "sourceSha256": "6e7e554fe176f52f4afb29ee8f71b0e6609a61e4fce31c44518ba1c7a6deedb2",
+    "sourceSha256": "d07441a02b68b684271efa2247225852ee5187acd8eafa5a23c116bd3b475dd8",
     "sourceUrl": "assets/ships/release/parts/wholeships/helios_lark.glb"
   },
   {

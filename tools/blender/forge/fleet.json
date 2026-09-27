@@ -8,6 +8,14 @@
       "part_id": "wholeship_hornet_production_v1",
       "root": "HORNET",
       "note": "PQ-050.01 forge-v1 rebuild (tools/blender/forge/ships/hornet.py): yellow-jacket interceptor, cranked delta with flap row and tip cannon pods, twin drives, shared forge panel surface set."
+    },
+    "helios_lark": {
+      "layout": "npc",
+      "file": "helios_lark",
+      "asset_id": "SF_WHOLESHIP_HELIOS_LARK",
+      "part_id": "wholeship_helios_lark",
+      "npc_root": "SF_M4_HELIOS_LARK_ROOT",
+      "note": "Forge-v1 rebuild (tools/blender/forge/ships/helios_lark.py): Helios civil courier, ivory hull, teal courier band, lit cabin, swept pod drives, parcel rack."
     }
   }
 }

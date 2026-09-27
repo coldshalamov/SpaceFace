@@ -49,6 +49,7 @@ function blueprintToGroup(blueprint) {
     mesh.matrixAutoUpdate = false;
     mesh.matrix.copy(p.matrix);
     if (p.tags && (p.tags.collision || p.tags.collider)) continue;
+    if (p.tags && p.tags.lod && p.tags.lod !== 'lod0') continue;
     group.add(mesh);
   }
   return group;

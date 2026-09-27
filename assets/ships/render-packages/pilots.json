@@ -762,10 +762,11 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_lark",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_lark.glb",
-      "releaseSha256": "6e7e554fe176f52f4afb29ee8f71b0e6609a61e4fce31c44518ba1c7a6deedb2",
-      "releaseBytes": 14201352,
+      "releaseSha256": "d07441a02b68b684271efa2247225852ee5187acd8eafa5a23c116bd3b475dd8",
+      "releaseBytes": 618480,
       "dynamicNameIncludes": [
-        "HOOK_DRIVE"
+        "HOOK_DRIVE",
+        "HOOK_NAV"
       ],
       "outputDir": "assets/ships/release/render-packages/helios-lark",
       "metadataUrl": "assets/ships/release/render-packages/helios-lark/render-package.json",

@@ -3725,20 +3725,6 @@
       "contractNodeCount": 40
     },
     {
-      "id": "wholeship_helios_lark",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/helios_lark.glb",
-      "release": "assets/ships/release/parts/wholeships/helios_lark.glb",
-      "sourceSha256": "9043c336afdceec2c125424be6dd2bb7780ac5541d5472873701945603ba947f",
-      "releaseSha256": "6e7e554fe176f52f4afb29ee8f71b0e6609a61e4fce31c44518ba1c7a6deedb2",
-      "sourceBytes": 25667384,
-      "releaseBytes": 14201352,
-      "textures": 15,
-      "ktx2Textures": 15,
-      "meshoptBufferViews": 113,
-      "contractNodeCount": 36
-    },
-    {
       "id": "wholeship_helios_span",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/helios_span.glb",
@@ -4437,6 +4423,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 37,
       "contractNodeCount": 22
+    },
+    {
+      "id": "wholeship_helios_lark",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/helios_lark.glb",
+      "release": "assets/ships/release/parts/wholeships/helios_lark.glb",
+      "sourceSha256": "31818a3472a9c944a5d5598564df2b95de67605f74a0e589ad3321ff9ad57e00",
+      "releaseSha256": "d07441a02b68b684271efa2247225852ee5187acd8eafa5a23c116bd3b475dd8",
+      "sourceBytes": 1324968,
+      "releaseBytes": 618480,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 106,
+      "contractNodeCount": 47
     }
   ]
 }
