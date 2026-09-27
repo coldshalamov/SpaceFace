@@ -6576,6 +6576,17 @@ async function ensureEntityLibrary(renderer, entity, options = {}) {
   );
   for (let attempt = 0; attempt < 4; attempt++) {
     if (ownerInactive() && !libraryHasPreloadPlan(library, plan)) {
+      // A departure while the demand still waits in the admission lane - owner already gone before
+      // this demand's own retain/admit began (attempt 0) - is a quiet cancellation, not an
+      // incomplete asset failure: the queued job is discarded as cancelled-before-load before any
+      // compose (jobStillNeeded/cancelQueuedJob) and prefetch callers only warm the decode cache,
+      // so the untouched library Map resolves as the ordinary cancelled demand those callers
+      // already expect. A required-whole-ship demand has no such gate - the LOD demotion composes
+      // straight against the resolved Map, and resolveRequiredWholeShipRecord would throw
+      // "release mode requires . it did not pass the live authored-asset loader." on any Map
+      // missing the record (the PQ-033.02 hole the abort below closes) with no cancelled Map
+      // shape its compose reads as nothing - so that shape keeps the abort even at entry.
+      if (attempt === 0 && options.requiredWholeShip !== true) return library;
       throw new Error('Authored visual preparation owner became inactive during entity preload');
     }
     retainLibraryPlan(renderer, library, plan, options);
