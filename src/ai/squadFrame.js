@@ -469,7 +469,7 @@ function maybeAbortMorph(frame, recipe, tick) {
   }
   if (frame.integrity < 0.72 || coasting > 0) {
     frame.morphAborted = true;
-    enterPhase(frame, PHASE.RECOVER, tick);
+    enterPhase(frame, recipe, PHASE.RECOVER, tick);
   }
 }
 
@@ -483,35 +483,53 @@ function advancePhase(frame, recipe, target, tick, dt) {
   if (phase === PHASE.INGRESS) {
     if (dist <= recipe.telegraphRange) {
       lockRail(frame, target);
-      enterPhase(frame, PHASE.TELEGRAPH, tick);
+      enterPhase(frame, recipe, PHASE.TELEGRAPH, tick);
     }
   } else if (phase === PHASE.TELEGRAPH) {
     frame.morphU = saturate(age / recipe.morphTelegraphS);
     frame.spacingScale = 1 + 0.85 * frame.morphU;
     if (frame.morphU >= 1 && (dist <= recipe.commitRange || age >= recipe.morphTelegraphS + 0.15)) {
-      enterPhase(frame, PHASE.COMMIT, tick);
+      enterPhase(frame, recipe, PHASE.COMMIT, tick);
     }
   } else if (phase === PHASE.COMMIT) {
-    frame.morphU = 1;
+    // A recipe that names a strike shape morphs into it during commit (the gunline
+    // settles into its firing line before it opens up); passing runs stay in their
+    // telegraph shape, which preserves the scissors behavior bit-for-bit.
+    frame.morphU = recipe.shapes && recipe.shapes.strike
+      ? saturate(age / Math.max(0.2, recipe.morphCommitS))
+      : 1;
     frame.spacingScale = 1.85;
     if (age >= recipe.morphCommitS || dist <= recipe.strikeRange) {
       frame.strikeStartedTick = tick;
-      enterPhase(frame, PHASE.STRIKE, tick);
+      enterPhase(frame, recipe, PHASE.STRIKE, tick);
     }
   } else if (phase === PHASE.STRIKE) {
-    if (age >= recipe.strikeWindowS || passU > 12) {
+    if (recipe.strikeMode === 'hold') {
+      // Gunline hold: volley until the window expires or the target escapes the band.
+      const holdS = Number.isFinite(recipe.strikeHoldS) ? recipe.strikeHoldS : 3.5;
+      const breakRange = Number.isFinite(recipe.strikeHoldBreakRange)
+        ? recipe.strikeHoldBreakRange
+        : (recipe.strikeHoldRange || 380) * 1.9;
+      if (age >= holdS || dist > breakRange) {
+        frame.extendStartedTick = tick;
+        frame.passTick = frame.passTick == null ? tick : frame.passTick;
+        frame.passComplete = true;
+        enterPhase(frame, recipe, PHASE.EXTEND, tick);
+      }
+    } else if (age >= recipe.strikeWindowS || passU > 12) {
       frame.extendStartedTick = tick;
       frame.passTick = frame.passTick == null ? tick : frame.passTick;
       frame.passComplete = true;
-      enterPhase(frame, PHASE.EXTEND, tick);
+      enterPhase(frame, recipe, PHASE.EXTEND, tick);
     }
   } else if (phase === PHASE.EXTEND) {
     const away = passU > 40 && dist >= recipe.extendAway;
-    if ((away && age >= recipe.extendHoldS * 0.45) || age >= recipe.extendHoldS) {
-      beginReform(frame, target, tick);
+    const holdExtended = recipe.strikeMode === 'hold' && age >= recipe.extendHoldS * 0.45;
+    if ((away && age >= recipe.extendHoldS * 0.45) || age >= recipe.extendHoldS || holdExtended) {
+      beginReform(frame, recipe, target, tick);
     }
   } else if (phase === PHASE.RECOVER) {
-    if (age >= 0.45) beginReform(frame, target, tick);
+    if (age >= 0.45) beginReform(frame, recipe, target, tick);
   } else if (phase === PHASE.REFORM) {
     frame.morphU = saturate(age / recipe.morphReformS);
     frame.spacingScale = 1.85 - 0.85 * frame.morphU;
@@ -521,27 +539,37 @@ function advancePhase(frame, recipe, target, tick, dt) {
       frame.cycle += 1;
       frame.morphAborted = false;
       frame.railLocked = false;
-      enterPhase(frame, PHASE.INGRESS, tick);
+      enterPhase(frame, recipe, PHASE.INGRESS, tick);
     }
   }
 }
 
-function enterPhase(frame, phase, tick) {
+function enterPhase(frame, recipe, phase, tick) {
   if (frame.phase === phase) return;
   frame.phase = phase;
   frame.phaseStartedTick = tick;
+  const shapes = recipe && recipe.shapes ? recipe.shapes : {};
   if (phase === PHASE.TELEGRAPH) {
-    frame.morphFromId = FORMATION_SHAPE_WEDGE_4.id;
-    frame.morphToId = FORMATION_SHAPE_FAN_4.id;
+    frame.morphFromId = shapes.ingress || FORMATION_SHAPE_WEDGE_4.id;
+    frame.morphToId = shapes.telegraph || FORMATION_SHAPE_FAN_4.id;
     frame.morphU = 0;
-    frame.shapeId = FORMATION_SHAPE_FAN_4.id;
-  } else if (phase === PHASE.REFORM) {
-    frame.morphFromId = FORMATION_SHAPE_FAN_4.id;
-    frame.morphToId = FORMATION_SHAPE_WEDGE_4.id;
+    frame.shapeId = frame.morphToId;
+  } else if (phase === PHASE.COMMIT) {
+    if (shapes.strike) {
+      frame.morphFromId = frame.morphToId || frame.shapeId;
+      frame.morphToId = shapes.strike;
+      frame.morphU = 0;
+      frame.shapeId = shapes.strike;
+    }
+  } else if (phase === PHASE.REFORM || phase === PHASE.RECOVER) {
+    // Morph out of whatever shape the strike flew in (line, fan, split) back to the
+    // recipe's reform shape.
+    frame.morphFromId = frame.shapeId;
+    frame.morphToId = shapes.reform || shapes.ingress || FORMATION_SHAPE_WEDGE_4.id;
     frame.morphU = 0;
-    frame.shapeId = FORMATION_SHAPE_WEDGE_4.id;
+    frame.shapeId = frame.morphToId;
   } else if (phase === PHASE.INGRESS) {
-    frame.shapeId = FORMATION_SHAPE_WEDGE_4.id;
+    frame.shapeId = shapes.ingress || FORMATION_SHAPE_WEDGE_4.id;
     frame.morphU = 0;
     frame.spacingScale = 1;
     frame.strikeStartedTick = null;
@@ -565,7 +593,7 @@ function lockRail(frame, target) {
   frame.heading = Math.atan2(frame.railDirZ, frame.railDirX);
 }
 
-function beginReform(frame, target, tick) {
+function beginReform(frame, recipe, target, tick) {
   const turn = 2.35;
   const hx = frame.railDirX;
   const hz = frame.railDirZ;
@@ -577,7 +605,7 @@ function beginReform(frame, target, tick) {
   frame.reformHeading = Math.atan2(nz / nlen, nx / nlen);
   frame.railLocked = false;
   frame.reformStartedTick = tick;
-  enterPhase(frame, PHASE.REFORM, tick);
+  enterPhase(frame, recipe, PHASE.REFORM, tick);
 }
 
 function passParameter(frame, target) {
@@ -601,12 +629,13 @@ function assignTokensAndLanes(frame, recipe, target, tick, mutation) {
     ? Math.max(0, mutation.closeAttackTokens | 0)
     : recipe.tokens.close_attack;
   const hysteresis = !(mutation && mutation.laneHysteresis === false);
-  const defaultMap = {
-    [SQUAD_SOCKET.LEAD]: SQUAD_TOKEN.RESERVE,
-    [SQUAD_SOCKET.LEFT]: SQUAD_TOKEN.CLOSE_ATTACK,
-    [SQUAD_SOCKET.RIGHT]: SQUAD_TOKEN.CLOSE_ATTACK,
-    [SQUAD_SOCKET.REAR]: SQUAD_TOKEN.RANGED_FIRE,
-  };
+  // Socket→token defaults come from the recipe so a gunline author can declare
+  // ranged_fire squads without the engine re-arming them as close attackers.
+  const defaultMap = {};
+  for (const socket of SOCKET_ORDER) {
+    const spec = recipe.sockets && recipe.sockets[socket];
+    defaultMap[socket] = (spec && Array.isArray(spec.tokens) && spec.tokens[0]) || SQUAD_TOKEN.RESERVE;
+  }
   const closeSockets = [];
   if (closeBudget >= 1) closeSockets.push(SQUAD_SOCKET.LEFT);
   if (closeBudget >= 2) closeSockets.push(SQUAD_SOCKET.RIGHT);
@@ -703,6 +732,22 @@ function desiredFrameMotion(frame, recipe, target, maxSpeed) {
   }
   const dirX = frame.railDirX;
   const dirZ = frame.railDirZ;
+  if (frame.phase === PHASE.STRIKE && recipe.strikeMode === 'hold') {
+    // Park the frame on the approach rail at the standoff band. The frame keeps the
+    // band by drifting with the range error: it closes when the target pulls away and
+    // gives ground (slowly) when the target pushes in — a line that holds its distance
+    // instead of blowing through the mark.
+    const hold = Number.isFinite(recipe.strikeHoldRange) ? recipe.strikeHoldRange : 380;
+    const rangeErr = Math.hypot(target.x - frame.position.x, target.z - frame.position.z) - hold;
+    const drift = clamp(rangeErr * 0.5, -16, 30);
+    return {
+      x: target.x - dirX * hold,
+      z: target.z - dirZ * hold,
+      vx: dirX * drift,
+      vz: dirZ * drift,
+      heading: Math.atan2(dirZ, dirX),
+    };
+  }
   return {
     x: frame.position.x + dirX * 36,
     z: frame.position.z + dirZ * 36,
@@ -742,6 +787,11 @@ function writeSlots(frame, recipe, target, tick) {
   const omega = frame.angularVelocity || 0;
   const passU = target ? passParameter(frame, target) : -999;
   const attacking = frame.phase === PHASE.COMMIT || frame.phase === PHASE.STRIKE || frame.phase === PHASE.EXTEND;
+  // A strike-hold recipe parks its shape and volleys: the authored strike slots (firing
+  // line, pincer fan) are the pose; the passing-run lane overrides stay out of it.
+  const strikeHold = frame.phase === PHASE.STRIKE && recipe.strikeMode === 'hold' && target;
+  const volleyTokens = Array.isArray(recipe.volleyTokens) && recipe.volleyTokens.length
+    ? recipe.volleyTokens : null;
 
   for (const rec of frame.members.values()) {
     const local = blendedLocal(shapeA, shapeB, rec.socket, u);
@@ -760,16 +810,16 @@ function writeSlots(frame, recipe, target, tick) {
       rec.faceTarget = true;
       rec.fireAuthorized = rec.alive && frame.phase === PHASE.STRIKE && !rec.coast;
       continue;
-    } else if (attacking && rec.token === SQUAD_TOKEN.CLOSE_ATTACK && rec.laneSide !== 0) {
+    } else if (attacking && !strikeHold && rec.token === SQUAD_TOKEN.CLOSE_ATTACK && rec.laneSide !== 0) {
       const cross = saturate((passU + 160 - rec.laneSide * 96) / 260);
       const start = rec.laneSide * 1.55;
       const end = -rec.laneSide * 1.45;
       right = start + (end - start) * cross;
       forward = rec.laneSide * 0.72 - 0.08 + 0.12 * cross;
-    } else if (attacking && rec.socket === SQUAD_SOCKET.LEAD) {
+    } else if (attacking && !strikeHold && rec.socket === SQUAD_SOCKET.LEAD) {
       right = 0;
       forward = -0.95;
-    } else if (attacking && rec.socket === SQUAD_SOCKET.REAR) {
+    } else if (attacking && !strikeHold && rec.socket === SQUAD_SOCKET.REAR) {
       right = 0;
       forward = -2.15;
     }
@@ -804,13 +854,22 @@ function writeSlots(frame, recipe, target, tick) {
     rec.slotError = distance2(rec.pos, rec.slot);
     rec.slotReady = true;
     rec.speedFraction = speedFractionFor(frame.phase, recipe);
-    rec.faceTarget = rec.token === SQUAD_TOKEN.CLOSE_ATTACK
-      ? (frame.phase === PHASE.COMMIT || frame.phase === PHASE.STRIKE)
-      : (frame.phase === PHASE.TELEGRAPH || frame.phase === PHASE.COMMIT);
-    rec.fireAuthorized = rec.alive
-      && rec.token === SQUAD_TOKEN.CLOSE_ATTACK
-      && frame.phase === PHASE.STRIKE
-      && !rec.coast;
+    if (strikeHold) {
+      // The hold IS the firing pose: every living member faces the threat, and the
+      // recipe's volley token list decides which guns are cleared hot this window.
+      rec.faceTarget = rec.alive && !rec.coast;
+      rec.fireAuthorized = rec.alive
+        && !rec.coast
+        && (volleyTokens ? volleyTokens.includes(rec.token) : rec.token === SQUAD_TOKEN.CLOSE_ATTACK);
+    } else {
+      rec.faceTarget = rec.token === SQUAD_TOKEN.CLOSE_ATTACK
+        ? (frame.phase === PHASE.COMMIT || frame.phase === PHASE.STRIKE)
+        : (frame.phase === PHASE.TELEGRAPH || frame.phase === PHASE.COMMIT);
+      rec.fireAuthorized = rec.alive
+        && rec.token === SQUAD_TOKEN.CLOSE_ATTACK
+        && frame.phase === PHASE.STRIKE
+        && !rec.coast;
+    }
   }
   if (!(mutationSpec() && mutationSpec().laneHysteresis === false)) {
     separateSlots(frame, Math.max(72, spacing * 1.2));

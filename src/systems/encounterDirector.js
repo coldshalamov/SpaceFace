@@ -1197,6 +1197,10 @@ export const encounterDirector = {
         if (sh.cohortRecipe && ENEMY_BY_ID.get(sh.archetype)?.aiArchetype === 'swarmer') {
           ai.cohortRecipe = sh.cohortRecipe;
         }
+        // Authored squad-frame choreography outranks the auto-assigner, which never
+        // overwrites a writer-stamped recipe.
+        if (sh.squadRecipe) ai.squadRecipe = sh.squadRecipe;
+        if (sh.squadSocket) ai.squadSocket = sh.squadSocket;
         const docDef = sh.doctrine ? pirateDoctrineForEntity(sh.doctrine) : null;
         const cultureDef = sh.cultureId ? reachCultureDoctrineById(sh.cultureId) : null;
         const resolvedDoctrine = sh.factionPresenceDoctrine
@@ -3154,6 +3158,11 @@ function addSquad(ships, squad, factionId, context, zone, levelBand, rng, role) 
       factionPresenceDoctrine: squad.factionPresenceDoctrine,
       cultureId: squad.cultureId,
       cohortRecipe: squad.cohortRecipe,
+      // Authored frame choreography: squadRecipe puts the whole squad on one director;
+      // squadSockets[i] pins this member's socket (lead/left/right/rear) when the author
+      // wants a specific ship on a specific corner.
+      squadRecipe: squad.squadRecipe,
+      squadSocket: Array.isArray(squad.squadSockets) ? squad.squadSockets[i] : undefined,
     });
   }
   // A squad may name archetypes that must appear at least once — a teaching raid that needs

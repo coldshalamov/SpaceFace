@@ -1,5 +1,5 @@
 import { createEnemyMindPort } from '../ai/enemyMind/port.js';
-import { enemyMindAllowsFire } from '../ai/enemyMind/adapter.js';
+import { enemyMindAllowsFire, SPECIALIST_DOCTRINES } from '../ai/enemyMind/adapter.js';
 import { shapeNemesisManeuverRequest, nemesisFireAllowed } from '../ai/nemesisTactics.js';
 import {
   guardCapitalBossActionPort,
@@ -14,8 +14,15 @@ import { TacticalAIStack } from '../ai/stack.js';
 import {
   ManeuverKind,
   NORMALIZED_THRUSTER_REQUEST_FLAG,
+  hashUnit,
   wrapAngle,
 } from '../ai/contracts.js';
+import {
+  SQUAD_RECIPE_INTERCEPTOR_SCISSORS,
+  SQUAD_RECIPE_PINCER_SWEEP,
+  SQUAD_RECIPE_STANDOFF_GUNLINE,
+  SQUAD_SOCKET,
+} from '../data/squadChoreography.js';
 import { applyAIFiringIntent, clearAIFiringIntent } from './aiFireIntent.js';
 import {
   maintainFirstSessionAttackerOwnership,
@@ -80,6 +87,8 @@ export const PRODUCTION_ENEMY_MIND_CONFIG = Object.freeze({
     interceptor_flyby: 'raider',
     brawler_commit: 'rookie',
     ranged_disengager: 'veteran',
+    swarm_pack: 'raider',
+    pack_pursuit: 'crew',
   }),
   tuning: Object.freeze({ maxThinksPerUpdate: 8, telegraph: 0.45 }),
 });
@@ -427,6 +436,7 @@ export function createTacticalAISystem({
       bindHullResolver(liveStack);
       const tick = Number.isInteger(state && state.tick) ? state.tick : liveStack.lastTick + 1;
       const dt = Number.isFinite(_dt) && _dt > 0 ? _dt : 1 / 60;
+      assignAutoSquadRecipes(state, shipLikeList, liveStack.seed);
       stepSquadFrames(liveStack, state, tick, dt, shipLikeList);
       stepFodderCohorts(liveStack, state, tick, dt, shipLikeList);
       if (tick - lastDecisionTick < decisionIntervalTicks) {
@@ -773,6 +783,177 @@ const cohortGatherOut = [];
 const squadGatherById = new Map();
 const squadGatherOut = [];
 
+// ── Auto squad choreography (§21A) ───────────────────────────────────────────
+// A weapons-free, engaged squad — one encounter squadId, wingId, or reinforcement
+// encounterId — flies a frame recipe even when no author wrote one. The recipe reads the
+// squad's doctrine mix: a marksman anchor produces a standoff gunline, all-fast wings
+// alternate scissors/pincer by squad seed, anything else sweeps a pincer. Authored
+// squadRecipe wins; specialist/capital doctrines and fodder cohorts keep their own stacks;
+// fewer than AUTO_SQUAD_MIN_SIZE survivors releases the stamp so the frame dissolves.
+const AUTO_SQUAD_MIN_SIZE = 2;
+const AUTO_SQUAD_FLIGHT_SIZE = 4;
+const AUTO_SQUAD_FAST_DOCTRINES = new Set([
+  CombatDoctrineId.INTERCEPTOR_FLYBY,
+  CombatDoctrineId.SWARM_PACK,
+  CombatDoctrineId.PACK_PURSUIT,
+]);
+
+function autoSquadKeyFor(ai) {
+  return ai.squadId || ai.wingId || ai.encounterId || null;
+}
+
+function autoSquadEligible(entity, state) {
+  if (!entity || entity.alive === false || entity.id === (state && state.playerId)) return false;
+  const ai = entity.data && entity.data.ai;
+  if (!ai || ai.passive === true) return false;
+  if (ai.squadRecipe && ai.autoSquadRecipe !== true) return false;
+  if (ai.cohortRecipe) return false;
+  if (ai.roe !== 'weapons_free') return false;
+  const activity = ai.activity;
+  if (!activity || (activity.kind !== 'attack_run' && activity.kind !== 'engage')) return false;
+  const combat = entity.data.combat;
+  if (!combat || combat.targetId == null) return false;
+  const doctrineId = normalizeCombatDoctrineId(ai.combatDoctrineId);
+  if (doctrineId && SPECIALIST_DOCTRINES.has(doctrineId)) return false;
+  return autoSquadKeyFor(ai) != null;
+}
+
+function autoRecipeForSquad(members, squadKey, seed) {
+  let ranged = 0;
+  let fast = 0;
+  for (const member of members) {
+    const d = normalizeCombatDoctrineId(member.data && member.data.ai && member.data.ai.combatDoctrineId);
+    if (d === CombatDoctrineId.RANGED_DISENGAGER) ranged += 1;
+    else if (AUTO_SQUAD_FAST_DOCTRINES.has(d)) fast += 1;
+  }
+  // A marksman on the squad anchors everyone behind the firing line.
+  if (ranged > 0) return SQUAD_RECIPE_STANDOFF_GUNLINE;
+  if (fast === members.length) {
+    return hashUnit(seed, squadKey, 'squad_recipe') < 0.5
+      ? SQUAD_RECIPE_INTERCEPTOR_SCISSORS
+      : SQUAD_RECIPE_PINCER_SWEEP;
+  }
+  return hashUnit(seed, squadKey, 'squad_recipe') < 0.35
+    ? SQUAD_RECIPE_INTERCEPTOR_SCISSORS
+    : SQUAD_RECIPE_PINCER_SWEEP;
+}
+
+function autoSocketsFor(members) {
+  const sorted = members.slice().sort((a, b) => {
+    const ai = String(a.id);
+    const bi = String(b.id);
+    return ai < bi ? -1 : ai > bi ? 1 : 0;
+  });
+  const free = new Set([SQUAD_SOCKET.LEAD, SQUAD_SOCKET.LEFT, SQUAD_SOCKET.RIGHT, SQUAD_SOCKET.REAR]);
+  const out = new Map();
+  const take = (entity, want) => {
+    if (out.has(entity.id)) return;
+    if (want && free.has(want)) {
+      free.delete(want);
+      out.set(entity.id, want);
+    }
+  };
+  // Marksman doctrines ride the rear socket so the firing line keeps its support wing.
+  for (const m of sorted) {
+    const d = normalizeCombatDoctrineId(m.data && m.data.ai && m.data.ai.combatDoctrineId);
+    if (d === CombatDoctrineId.RANGED_DISENGAGER) take(m, SQUAD_SOCKET.REAR);
+  }
+  for (let i = 0; i < sorted.length; i++) {
+    const m = sorted[i];
+    if (out.has(m.id)) continue;
+    const want = i === 0 ? SQUAD_SOCKET.LEAD
+      : (i % 2 === 1 ? SQUAD_SOCKET.LEFT : SQUAD_SOCKET.RIGHT);
+    take(m, want);
+    if (!out.has(m.id)) {
+      const first = free.values().next();
+      if (!first.done) {
+        free.delete(first.value);
+        out.set(m.id, first.value);
+      }
+    }
+  }
+  return out;
+}
+
+const autoSquadGroupsScratch = new Map();
+
+export function assignAutoSquadRecipes(state, shipLikeList = indexedShipLikeScan(state), seed = 1) {
+  const list = shipLikeList;
+  if (!list || !list.length) return 0;
+  const byKey = autoSquadGroupsScratch;
+  byKey.clear();
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!autoSquadEligible(entity, state)) continue;
+    const ai = entity.data.ai;
+    const key = autoSquadKeyFor(ai);
+    let group = byKey.get(key);
+    if (!group) {
+      group = [];
+      byKey.set(key, group);
+    }
+    group.push(entity);
+  }
+  let stamped = 0;
+  for (const [key, members] of byKey) {
+    if (members.length < AUTO_SQUAD_MIN_SIZE) continue;
+    const recipeId = autoRecipeForSquad(members, String(key), seed);
+    const sorted = members.slice().sort((a, b) => {
+      const ai = String(a.id);
+      const bi = String(b.id);
+      return ai < bi ? -1 : ai > bi ? 1 : 0;
+    });
+    // Large spawns split into flights so each frame stays a readable formation instead
+    // of eight hulls fighting over four sockets.
+    for (let start = 0; start < sorted.length; start += AUTO_SQUAD_FLIGHT_SIZE) {
+      const flight = sorted.slice(start, start + AUTO_SQUAD_FLIGHT_SIZE);
+      if (flight.length < AUTO_SQUAD_MIN_SIZE) continue;
+      const flightId = `${key}#${Math.floor(start / AUTO_SQUAD_FLIGHT_SIZE)}`;
+      const sockets = autoSocketsFor(flight);
+      for (const entity of flight) {
+        const ai = entity.data.ai;
+        // A live recipe re-stamps nothing; a recipe change (squad attrition shifting the
+        // mix across the line) moves the whole flight at once.
+        if (ai.squadRecipe === recipeId && ai.squadFrameId === flightId) continue;
+        ai.squadRecipe = recipeId;
+        ai.autoSquadRecipe = true;
+        ai.squadFrameId = flightId;
+        const socket = sockets.get(entity.id);
+        if (socket && !ai.squadSocket) {
+          ai.squadSocket = socket;
+          ai.autoSquadSocket = true;
+        }
+        stamped += 1;
+      }
+    }
+  }
+  // Release: a member that disengaged, went passive, or watched its flight fall under
+  // the size floor drops back to solo doctrine flying.
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    const ai = entity && entity.data && entity.data.ai;
+    if (!ai || ai.autoSquadRecipe !== true) continue;
+    const flightId = ai.squadFrameId;
+    const group = autoSquadKeyFor(ai) != null ? byKey.get(autoSquadKeyFor(ai)) : null;
+    const stillAssigned = autoSquadEligible(entity, state)
+      && group != null
+      && group.length >= AUTO_SQUAD_MIN_SIZE
+      && group.some((m) => {
+        const gai = m.data && m.data.ai;
+        return gai && gai.squadFrameId === flightId;
+      });
+    if (stillAssigned) continue;
+    delete ai.squadRecipe;
+    delete ai.autoSquadRecipe;
+    delete ai.squadFrameId;
+    if (ai.autoSquadSocket === true) {
+      delete ai.squadSocket;
+      delete ai.autoSquadSocket;
+    }
+  }
+  return stamped;
+}
+
 export function gatherCohorts(state, shipLikeList = indexedShipLikeScan(state)) {
   const list = shipLikeList;
   if (!list || !list.length) return EMPTY_GROUPS;
@@ -876,7 +1057,7 @@ export function gatherRecipeSquads(state, shipLikeList = indexedShipLikeScan(sta
     const recipeId = recipeIdFromEntity(entity);
     if (!recipeId) continue;
     const ai = entity.data && entity.data.ai;
-    const squadId = String(ai.squadId || ai.wingId || recipeId);
+    const squadId = String(ai.squadFrameId || ai.squadId || ai.wingId || recipeId);
     let squad = byId.get(squadId);
     if (!squad) {
       squad = {

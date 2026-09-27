@@ -1,5 +1,5 @@
 // Pure SG-06 bridge. No imports from the game: tested independently and through the packet stack.
-const SPECIALIST_DOCTRINES = new Set([
+export const SPECIALIST_DOCTRINES = new Set([
   'tether_control_raider', 'field_anchor_controller', 'capital_broadside',
   'capital_broadside_tollman', 'capital_broadside_ala', 'escort_screen', 'mine_layer_wake', 'shield_breaker',
 ]);

@@ -50,6 +50,9 @@ const REINFORCEMENT_PACKAGES = Object.freeze({
     doctrine: 'scavenger',
     factionId: 'faction_vael',
     squadPrefix: 'sg06_vael_wing',
+    // Wing pair on a choreographed frame: the reinforcement arrives as a two-ship
+    // pincer rather than two unrelated hunters.
+    squadRecipe: 'pincer_sweep',
   }),
   scn_interceptor_pair: Object.freeze({
     typeId: 'patrol_lawman',
@@ -61,6 +64,7 @@ const REINFORCEMENT_PACKAGES = Object.freeze({
     doctrine: 'official',
     factionId: 'faction_scn',
     squadPrefix: 'sg06_scn_interceptor',
+    squadRecipe: 'interceptor_scissors',
   }),
   reaver_swarm_screen: Object.freeze({
     typeId: 'wasp_swarmer',
@@ -325,6 +329,7 @@ export const aiEncounter = {
         factionId: pkg.factionId,
         squadId,
         cohortRecipe: pkg.cohortRecipe || null,
+        squadRecipe: pkg.squadRecipe || null,
         callerId: command.callerId == null ? null : command.callerId,
       });
     }
@@ -389,6 +394,7 @@ export const aiEncounter = {
         encounterKind: 'sg06_reinforcement',
         encounterRole: 'reinforcement',
         cohortRecipe: pending.cohortRecipe || undefined,
+        squadRecipe: pending.squadRecipe || undefined,
         activity: normalizeActivity({
           kind: ActivityKind.ATTACK_RUN,
           reason: `sg06_reinforcement:${pending.packageId}`,
