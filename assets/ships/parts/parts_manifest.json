@@ -4444,11 +4444,13 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_worklight_tower.glb",
-      "tris": 768,
-      "bytes": 635028,
+      "tris": 16156,
+      "bytes": 1854368,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Struct"
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical"
       },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `worklight_tower`. LOD0/1/2 tris 768/208/108. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
@@ -4464,12 +4466,12 @@
         ],
         "max": [
           1.5,
-          15.820000648498535,
+          15.656000137329102,
           1.5
         ],
         "dimensionsM": [
           3,
-          15.820000648498535,
+          15.656000137329102,
           3
         ]
       },

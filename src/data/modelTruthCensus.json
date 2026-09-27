@@ -32252,56 +32252,56 @@
       "bounds": {
         "center": [
           0,
-          7.91,
+          7.828,
           0
         ],
         "max": [
-          1.499417,
-          15.820001,
-          1.499417
+          1.500305,
+          15.656,
+          1.500305
         ],
         "min": [
-          -1.499417,
+          -1.500305,
           0,
-          -1.499417
+          -1.500305
         ],
         "size": [
-          2.998834,
-          15.820001,
-          2.998834
+          3.000609,
+          15.656,
+          3.000609
         ]
       },
-      "bytes": 348104,
+      "bytes": 773676,
       "collider": {
-        "coverageWu": 2.120496,
-        "gapWu": 2.120496,
+        "coverageWu": 2.112411,
+        "gapWu": 2.112411,
         "id": null,
         "kind": "none",
         "outline": [
-          0,
-          0,
-          0.694501,
-          2.120496,
-          0,
-          0,
-          0,
-          0,
-          0.682395,
-          2.120496,
-          0,
-          0,
-          0,
-          0,
-          0.694501,
-          2.120496,
-          0,
-          0,
-          0,
-          0,
-          0.682395,
-          2.120496,
-          0,
-          0
+          1.510313,
+          1.61311,
+          2.112411,
+          2.112411,
+          1.670163,
+          1.491199,
+          1.491199,
+          1.670163,
+          2.112411,
+          2.112411,
+          1.61311,
+          1.510313,
+          1.529256,
+          1.702278,
+          2.112411,
+          2.112411,
+          1.462276,
+          1.343121,
+          0.667301,
+          1.073668,
+          2.112411,
+          2.112411,
+          1.702278,
+          1.529256
         ],
         "overTolerance": true,
         "stickWu": 0,
@@ -32342,7 +32342,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Hazard",
+          "name": "Material_Armor",
           "role": "opaqueHull"
         },
         {
@@ -32350,7 +32350,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_LightFlood",
+          "name": "Material_Emissive_Amber",
           "role": "emissive"
         },
         {
@@ -32358,7 +32358,23 @@
           "alphaMode": "OPAQUE",
           "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_LightSignal",
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
           "role": "emissive"
         },
         {
@@ -32366,7 +32382,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Struct",
+          "name": "Material_Hull",
           "role": "opaqueHull"
         },
         {
@@ -32374,19 +32390,43 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Truss",
+          "name": "Material_Mechanical",
           "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
         }
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 12,
-      "nodes": 15,
+      "meshes": 28,
+      "nodes": 30,
       "note": "Worklights are lamps, not hull.",
       "opening": null,
       "pivot": [
         0,
-        7.91,
+        7.828,
         0
       ],
       "proposedSkin": null,
@@ -32394,9 +32434,9 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 0,
-        "inwardFaceFraction": 0.400369,
-        "silhouetteRadius": 2.120496,
+        "boundaryEdges": 549,
+        "inwardFaceFraction": 0.4085,
+        "silhouetteRadius": 2.112411,
         "sliceY": 0
       },
       "sockets": [
@@ -32413,13 +32453,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 1084,
+      "triangles": 25571,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_worklight_tower.glb",
       "worldSize": [
-        2.998834,
-        15.820001,
-        2.998834
+        3.000609,
+        15.656,
+        3.000609
       ]
     },
     {

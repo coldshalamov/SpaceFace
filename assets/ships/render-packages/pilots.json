@@ -1808,10 +1808,16 @@
       "slot": "place",
       "releaseAssetId": "place_worklight_tower",
       "sourceUrl": "assets/ships/release/parts/places/place_worklight_tower.glb",
-      "releaseSha256": "01a32f25f2e10a1a19a359273570cacebcee59196652a2fddd9eafd4c99416d4",
-      "releaseBytes": 348104,
-      "rootNode": "place_worklight_tower",
-      "dynamicNameIncludes": [],
+      "releaseSha256": "16862cb69907088e57d1c621fe3f0fb83861bdefd2b6fe10ddb86da0074561bb",
+      "releaseBytes": 773676,
+      "rootNode": "SF_PLACE_WORKLIGHT_TOWER_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/worklight-tower",
       "metadataUrl": "assets/ships/release/render-packages/worklight-tower/render-package.json"
     },

@@ -2545,25 +2545,6 @@
       }
     },
     {
-      "id": "place_worklight_tower",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_worklight_tower.glb",
-      "release": "assets/ships/release/parts/places/place_worklight_tower.glb",
-      "sourceSha256": "9343c2474be05bbc0d58bcf8d4eeec65a7bbe3f0c85ba53a11538605d0211884",
-      "releaseSha256": "01a32f25f2e10a1a19a359273570cacebcee59196652a2fddd9eafd4c99416d4",
-      "sourceBytes": 635028,
-      "releaseBytes": 348104,
-      "textures": 20,
-      "ktx2Textures": 20,
-      "meshoptBufferViews": 11,
-      "contractNodeCount": 13,
-      "textureProfiles": {
-        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
-        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
-        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
-      }
-    },
-    {
       "id": "place_works_cargo_port",
       "kind": "part:places",
       "source": "assets/ships/parts/works/place_works_cargo_port.glb",
@@ -4432,6 +4413,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 120,
       "contractNodeCount": 34
+    },
+    {
+      "id": "place_worklight_tower",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_worklight_tower.glb",
+      "release": "assets/ships/release/parts/places/place_worklight_tower.glb",
+      "sourceSha256": "40125c35b26ffb76d84768c7b67f11d4944dc4e752369ab279e299af5763f29d",
+      "releaseSha256": "16862cb69907088e57d1c621fe3f0fb83861bdefd2b6fe10ddb86da0074561bb",
+      "sourceBytes": 1854368,
+      "releaseBytes": 773676,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 109,
+      "contractNodeCount": 28
     }
   ]
 }

@@ -1124,12 +1124,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.worklight-tower",
-    "expectedContentHash": "282996e540ed6be876cb1f72e566cecb04b7e27ad03ec9773156a3e665c46782",
+    "expectedContentHash": "2fda2bd50a8d0afdcd74daf773e66553e4721dced8f8b4ca0af0ce54199f240f",
     "key": "worklight-tower",
     "metadataUrl": "assets/ships/release/render-packages/worklight-tower/render-package.json",
     "runtimeAssetId": "place_worklight_tower",
     "slot": "place",
-    "sourceSha256": "01a32f25f2e10a1a19a359273570cacebcee59196652a2fddd9eafd4c99416d4",
+    "sourceSha256": "16862cb69907088e57d1c621fe3f0fb83861bdefd2b6fe10ddb86da0074561bb",
     "sourceUrl": "assets/ships/release/parts/places/place_worklight_tower.glb"
   },
   {
