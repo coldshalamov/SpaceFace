@@ -342,27 +342,24 @@ export function buildProofInputTape() {
   press(525, 'KeyF', true);
   press(540, 'KeyF', false);
   press(548, 'KeyF', true);
+  press(566, 'KeyF', false);
   // RMB can go down ahead of the latch: throwArm's pressed edge fires the moment the payload
-  // turns throwable, and 'arm' assist then cuts on the first real solution window.
+  // turns throwable, and 'arm' assist then cuts on the first real solution window. It stays
+  // held through the swing window — late solutions (a swing still building speed, a victim
+  // drifting into the envelope) are exactly what the arm exists to catch.
   press(512, 'Mouse2', true);
-  // Reel-in (KeyW under line control) + orbit + pump together wind the hull up — the orbit
-  // draw needs the reel axis held or the payload just dangles off the line. But a fully
-  // collapsed orbit sweeps the player's own hull circle every revolution — the reel stops
-  // once the hull is wound, keeping the swing wide enough to clear the ship.
-  press(548, 'KeyW', true);
-  press(550, 'KeyA', true);
-  press(550, 'ShiftLeft', true);
+  // The whip is a flail, not a winch: line control reels the catch into our own hull ring and
+  // leaves the rope slack forever, so the tether key stays UP and the ship flies the circle
+  // itself — full thrust + held turn lets the orbit assist hold the nose tangent to the live
+  // rope radius, and the taut line drags the hull around at real tip speed until the arm's
+  // solver sees a victim cross the sweep.
+  press(580, 'KeyW', true);
+  press(580, 'KeyA', true);
   // massline2.fireControl is live: while the pirate is on the line the guns re-solve onto OUR OWN
   // payload, so Mouse0 is off until the throw releases — the hauler hit must come off the rope.
-  press(640, 'KeyW', false);
-  press(900, 'KeyA', false);
-  press(900, 'KeyD', true);
-  press(1200, 'KeyD', false);
-  press(1200, 'KeyA', true);
-  press(1560, 'ShiftLeft', false);
-  press(1680, 'KeyA', false);
-  press(1680, 'Mouse2', false);
-  press(1680, 'KeyF', false);
+  press(1700, 'KeyA', false);
+  press(2380, 'KeyW', false);
+  press(2400, 'Mouse2', false);
 
   press(1680, 'Mouse0', true);
   press(2400, 'Mouse0', false);
@@ -428,26 +425,28 @@ export function aimTargetForTick(state, player, tick) {
     // The armed swing keeps the read on the convoy — the authored collateral victim is the
     // lawful hauler whose damage opens the spill/incident/heat chain. Never aim the payload
     // itself: a self-paint sits inside the swept disk every tick and fires the arm at a
-    // meaningless "solution". While a hull is on the line, pick the hauler the sling can
-    // actually reach: the SLOWEST one inside the solver's horizon (a hull fleeing at 150+
-    // outruns the rope; a hauler still on its lane holds a straight course the intercept
-    // solver can meet). No hauler in reach → the collateral read is the closest ship to the
-    // swinging mass.
+    // meaningless "solution". While a hull is on the line, keep the read on victims the
+    // sling can actually reach.
     const excluded = new Set([state.playerId]);
     if (payloadId != null) excluded.add(payloadId);
     if (payloadId != null) {
       const payload = state.entities && state.entities.get ? state.entities.get(payloadId) : null;
       const origin = (payload && payload.pos) || player.pos;
+      const nearestShip = nearestToPoint(state, origin,
+        (e) => e.type === 'ship' && e.alive !== false, excluded);
       let slowest = null;
       let slowestV = Infinity;
       for (const e of live(state)) {
-        if (!isHaulerEntity(e) || excluded.has(e.id)) continue;
+        if (!isHaulerEntity(e) || excluded.has(e.id) || e.alive === false) continue;
         if (dist(origin, e.pos) > THROW_AIM_REACH_WU) continue;
         const v = speedOf(e);
         if (v < slowestV) { slowest = e; slowestV = v; }
       }
-      return slowest
-        || nearestToPoint(state, origin, (e) => e.type === 'ship', excluded);
+      // A sling throw is a ballistic intercept: the solver's ~6 s moving-disk read only stays
+      // honest while the flight time stays short, so the nearest ship to the payload is the
+      // victim the rope can actually connect. The hauler fallback keeps the authored chain
+      // when nothing crosses the swing's immediate reach.
+      return nearestShip || slowest;
     }
     return nearest(state, player, (e) => isHaulerEntity(e) && !excluded.has(e.id))
       || nearest(state, player, (e) => isPatrolEntity(e) && !excluded.has(e.id))
@@ -455,7 +454,7 @@ export function aimTargetForTick(state, player, tick) {
   };
   // Once a hull is on the line inside the armed window the cursor stays on the convoy, no
   // matter what the surrounding schedule window would otherwise pick.
-  if (payloadId != null && tick >= 340 && tick < 1680) return convoy();
+  if (payloadId != null && tick >= 340 && tick < 2400) return convoy();
   if ((tick >= 560 && tick < 900) || (tick >= 1020 && tick < 1680)) return convoy();
   if (tick >= 900 && tick < 1020) {
     return nearest(state, player, (e) => isPirateEntity(e) && e.id !== payloadId)
@@ -464,9 +463,10 @@ export function aimTargetForTick(state, player, tick) {
       || nearest(state, player, (e) => e.type === 'ship' && e.id !== state.playerId);
   }
   if ((tick >= 340 && tick < 560) || (tick >= 1680 && tick < 2400) || (tick >= 3720 && tick < 4200)) {
-    return nearest(state, player, isPirateEntity)
-      || nearest(state, player, (e) => e.type === 'ship' && e.team === 1)
-      || nearest(state, player, (e) => e.type === 'ship' && e.id !== state.playerId);
+    return nearest(state, player, (e) => isPirateEntity(e) && e.id !== payloadId)
+      || nearest(state, player, isPirateEntity)
+      || nearest(state, player, (e) => e.type === 'ship' && e.team === 1 && e.id !== payloadId)
+      || nearest(state, player, (e) => e.type === 'ship' && e.id !== state.playerId && e.id !== payloadId);
   }
   return nearest(state, player, isHaulerEntity)
     || nearest(state, player, isPirateEntity)
@@ -1006,8 +1006,24 @@ function applyProofTapeTick(state, player, driver, inputSys, tick) {
   driver.apply(state, tick, SIM_DT, { playerEntity: player, tetherAttached: tether });
   syncTapeKeysToInput(inputSys, driver.snapshotKeys());
   featherSwingPump(state, driver, inputSys, tick);
+  manualSwingCut(state, driver, inputSys, tick);
+  reachLineForVictim(state, driver, inputSys, tick);
+  gateThrowArmByRange(state, driver, inputSys, tick);
+  guardFireThroughSwingPayload(state, inputSys);
   pointAt(state, player, aimTargetForTick(state, player, tick));
   markProofPointerActive(inputSys);
+}
+
+// fireControl re-solves the player's mounts onto the tethered hull: a held concussion trigger
+// during a swing is the tape shooting its own catch, which tumbles the payload, spikes the
+// strain, and breaks the line before a release window ever opens. A real hand lifts off the
+// trigger while a throwable hull is on the rope; mask the fire bit exactly then.
+export function guardFireThroughSwingPayload(state, inputSys) {
+  if (!inputSys || inputSys._m0 !== true) return;
+  const tether = state.player && state.player.tether;
+  if (!tether || !tether.active) return;
+  const payload = state.entities && state.entities.get ? state.entities.get(tether.targetId) : null;
+  if (payload && payload.type === 'ship' && payload.id !== state.playerId) inputSys._m0 = false;
 }
 
 // A pilot pumping a swing watches the strain gauge the HUD already shows (tether.phase) and
@@ -1020,13 +1036,170 @@ export function featherSwingPump(state, driver, inputSys, tick) {
   if (!inputSys || !inputSys._keys || tick < 470 || tick >= 1680) return;
   const tether = state.player && state.player.tether;
   if (!tether || !tether.active) return;
-  const feather = driver._swingFeather || (driver._swingFeather = { easeTicks: 0 });
-  if (tether.phase === 'overload') feather.easeTicks = 12;
+  const feather = driver._swingFeather || (driver._swingFeather = { easeTicks: 0, payTicks: 0 });
+  // A collapsed orbit sweeps the catch through the player's own hull ring once a revolution —
+  // each pass grinds the payload and spikes the line. A hand pumping a swing eases the pump
+  // off AND pays out line when the hull crosses the ship, opening the radius back up.
+  const payload = state.entities && state.entities.get ? state.entities.get(tether.targetId) : null;
+  const self = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  const selfRing = payload && self && payload.pos && self.pos
+    && Math.hypot(payload.pos.x - self.pos.x, payload.pos.z - self.pos.z)
+      < Math.max(34, finite(self.radius, 12) * 2.5);
+  if (selfRing) feather.payTicks = 18;
+  else if (feather.payTicks > 0) feather.payTicks -= 1;
+  if (tether.phase === 'overload' || selfRing) feather.easeTicks = 12;
   else if (feather.easeTicks > 0) feather.easeTicks -= 1;
   if (feather.easeTicks > 0) {
     inputSys._keys.ShiftLeft = false;
     inputSys._keys.KeyW = false;
   }
+  if (feather.payTicks > 0) {
+    inputSys._keys.KeyW = false;
+    inputSys._keys.KeyS = true;
+  }
+}
+
+// A sling throw is a ballistic read on the moment — the solver's swept-disk answer stays honest
+// only while the flight time stays short. Arming while every victim sits beyond the swing's
+// envelope spends the payload on a prayer (the release still counts as rope_projectile, but the
+// hull never arrives). A hand keeps a finger off the throw-arm until the flail itself is on top
+// of a victim and actually moving — the released hull inherits only what the swing built.
+const THROW_ARM_GATE_RANGE_WU = 300;   // payload↔victim, not player↔victim
+const THROW_ARM_GATE_SPEED_WU = 55;    // don't arm a hull that isn't really swinging
+
+export function gateThrowArmByRange(state, driver, inputSys, tick) {
+  if (!inputSys || tick < 500 || tick >= 2200) return;
+  const tether = state.player && state.player.tether;
+  if (!tether || !tether.active) return;             // nothing on the line — leave the press alone
+  const payload = state.entities && state.entities.get ? state.entities.get(tether.targetId) : null;
+  const self = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  if (!payload || !payload.pos || !self) return;
+  const aim = aimTargetForTick(state, self, tick);
+  if (!aim || !aim.pos) return;
+  const d = Math.hypot(aim.pos.x - payload.pos.x, aim.pos.z - payload.pos.z);
+  const v = Math.hypot(finite(payload.vel && payload.vel.x), finite(payload.vel && payload.vel.z));
+  if (d > THROW_ARM_GATE_RANGE_WU || v < THROW_ARM_GATE_SPEED_WU) inputSys._m2 = false;
+}
+
+// Reach: the swung hull circles at the rope's live span, so a victim crossing off that shell
+// only ever sees near-misses. A real hand sizes the line to the target as the flail's bearing
+// comes around — a short line-control hold (KeyF ≥ 0.16 s so release never reads as a cut tap)
+// with W/S steering the winch, shrinking or growing restLength until the sweep sits on the
+// victim's annulus. The burst is only asked for while the hull is rotating toward the victim
+// and the target sits within the slack a line change can honestly cover; overload never gets
+// more line.
+export function reachLineForVictim(state, driver, inputSys, tick) {
+  const st = driver && (driver._reachLine || (driver._reachLine = { burst: 0, dir: 0 }));
+  if (!inputSys || !inputSys._keys || tick < 560 || tick >= 2300) return;
+  const tether = state.player && state.player.tether;
+  if (!tether || !tether.active) { st.burst = 0; return; }
+  const self = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  const payload = state.entities && state.entities.get ? state.entities.get(tether.targetId) : null;
+  if (!self || !self.pos || !payload || !payload.pos || !payload.vel) { st.burst = 0; return; }
+  if (st.burst > 0) {
+    // Hold the whole burst — releasing KeyF early is the grammar's tap-to-cut.
+    if (cutInProgress(driver)) { st.burst = 0; return; }
+    inputSys._keys.KeyF = true;
+    inputSys._keys.KeyW = st.dir < 0;
+    inputSys._keys.KeyS = st.dir > 0;
+    st.burst -= 1;
+    if (st.burst === 0) { inputSys._keys.KeyF = false; inputSys._keys.KeyW = false; inputSys._keys.KeyS = false; }
+    return;
+  }
+  const victim = aimTargetForTick(state, self, tick);
+  if (!victim || !victim.pos || victim.id === payload.id) return;
+  const rx = payload.pos.x - self.pos.x, rz = payload.pos.z - self.pos.z;
+  const span = Math.hypot(rx, rz);
+  const rV = Math.hypot(victim.pos.x - self.pos.x, victim.pos.z - self.pos.z);
+  const payloadBearing = Math.atan2(rz, rx);
+  const victimBearing = Math.atan2(victim.pos.z - self.pos.z, victim.pos.x - self.pos.x);
+  let dAng = victimBearing - payloadBearing;
+  while (dAng > Math.PI) dAng -= 2 * Math.PI;
+  while (dAng < -Math.PI) dAng += 2 * Math.PI;
+  const cross = rx * payload.vel.z - rz * payload.vel.x;   // r×v — sign gives swing direction
+  const approaching = Math.abs(cross) > 1 && ((cross > 0 && dAng > 0) || (cross < 0 && dAng < 0));
+  if (!approaching || Math.abs(dAng) > 0.9) return;
+  if (tether.phase === 'overload' || Math.abs(rV - span) <= 15 || rV > span + 130) return;
+  st.dir = rV < span ? -1 : 1;                           // reel in or pay out onto the shell
+  st.burst = 16;                                         // ~0.27 s — past the hold floor, no cut
+}
+
+function cutInProgress(driver) {
+  const st = driver && driver._swingCut;
+  return !!(st && st.tap > 0);
+}
+
+// The assist solver's certification assumes the victim holds course — a braking or jinking hull
+// leaves a certified release stranded where the target no longer is. A hand on the line doesn't
+// wait for the lockout: it watches the target's own motion, leads the intercept by what the
+// target is actually doing (measured acceleration, not a guess), and taps the tether free the
+// tick the flail's velocity lines up. The cut is the honest release path — tap under 0.16 s
+// reads as a cut in the grammar, the hull leaves with exactly the speed the swing built.
+const SWING_CUT_MAX_RANGE_WU = 420;
+const SWING_CUT_MIN_RANGE_WU = 60;
+const SWING_CUT_MIN_SPEED = 55;
+const SWING_CUT_TRACK_S = 0.75;
+const SWING_CUT_HIT_WU = 30;         // predicted minimum separation that reads as contact
+const SWING_CUT_HULL_DRAG = 0.35;    // per-second velocity bleed of a recovering live hull
+
+export function manualSwingCut(state, driver, inputSys, tick) {
+  const st = driver && (driver._swingCut || (driver._swingCut = { tap: 0, vid: null, hist: [] }));
+  if (!inputSys || !inputSys._keys) return;
+  const tether = state.player && state.player.tether;
+  const active = !!(tether && tether.active && tether.targetId != null);
+  if (st.tap > 0) {
+    // The tap must complete uninterrupted: held past the floor it stops being a cut, so the
+    // reach helper is locked out for these ticks and nothing else touches KeyF.
+    inputSys._keys.KeyF = st.tap > 1;
+    st.tap -= 1;
+    if (st.tap === 0) inputSys._keys.KeyF = false;
+    return;
+  }
+  if (tick < 560 || tick >= 2300) return;
+  if (!active) { st.hist.length = 0; st.vid = null; return; }
+  const self = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  const payload = state.entities && state.entities.get ? state.entities.get(tether.targetId) : null;
+  if (!self || !payload || !payload.pos || !payload.vel) return;
+  // Never start a tap on top of a reach-line burst: the combined hold either crosses the cut
+  // floor (the release whiffs) or ends early enough to read as an accidental tap-cut.
+  if (driver._reachLine && driver._reachLine.burst > 0) return;
+  const victim = aimTargetForTick(state, self, tick);
+  if (!victim || !victim.pos || !victim.vel || victim.id === payload.id) return;
+  // Track the victim's real velocity to measure braking/curving instead of trusting a
+  // constant-velocity lead.
+  if (st.vid !== victim.id) { st.vid = victim.id; st.hist.length = 0; }
+  st.hist.push({ t: state.simTime, vx: finite(victim.vel.x), vz: finite(victim.vel.z) });
+  while (st.hist.length && state.simTime - st.hist[0].t > SWING_CUT_TRACK_S) st.hist.shift();
+  const d = Math.hypot(victim.pos.x - payload.pos.x, victim.pos.z - payload.pos.z);
+  const payV = Math.hypot(payload.vel.x, payload.vel.z);
+  if (payV < SWING_CUT_MIN_SPEED || d > SWING_CUT_MAX_RANGE_WU || d < SWING_CUT_MIN_RANGE_WU) return;
+  const oldest = st.hist[0];
+  const spanS = oldest ? Math.max(1 / 60, state.simTime - oldest.t) : 0;
+  const ax = oldest ? (finite(victim.vel.x) - oldest.vx) / spanS : 0;
+  const az = oldest ? (finite(victim.vel.z) - oldest.vz) / spanS : 0;
+  // Walk the intercept forward instead of trusting an angle read: the freed hull is a live
+  // ship that brakes to recover (measured bleed ≈ SWING_CUT_HULL_DRAG), and the victim keeps
+  // its measured acceleration. The cut only goes when the two trajectories actually meet —
+  // the same call a hand makes watching the swing, just read off the numbers the sim owns.
+  let hx = payload.pos.x, hz = payload.pos.z;
+  let hvx = payload.vel.x, hvz = payload.vel.z;
+  let vx = victim.pos.x, vz = victim.pos.z;
+  let vvx = finite(victim.vel.x), vvz = finite(victim.vel.z);
+  let best = Infinity;
+  const stepS = 1 / 15, horizonS = Math.min(4, d / payV + 1.5);
+  for (let t = stepS; t <= horizonS; t += stepS) {
+    hx += hvx * stepS; hz += hvz * stepS;
+    const bleed = Math.max(0, 1 - SWING_CUT_HULL_DRAG * stepS);
+    hvx *= bleed; hvz *= bleed;
+    vx += vvx * stepS; vz += vvz * stepS;
+    vvx += ax * stepS; vvz += az * stepS;
+    const sep = Math.hypot(vx - hx, vz - hz);
+    if (sep < best) best = sep;
+    else if (sep > best + 5) break;                      // past closest approach — done
+  }
+  if (best >= SWING_CUT_HIT_WU) return;
+  st.tap = 4;                                            // ~0.07 s hold — under the cut floor
+  inputSys._keys.KeyF = true;
 }
 
 /**

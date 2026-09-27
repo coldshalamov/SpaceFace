@@ -323,11 +323,16 @@ export const encounterDirector = {
     }
     const dir = ensureDirectorState(state);
     this._sampleCeresActivityAmbush(dir, state);
-    dir._accum = (dir._accum || 0) + dt;
+    const now = state.simTime || 0;
+    // The director is a calendar-clock owner (≈2 Hz straddle), not a per-tick system: `dt` is
+    // always one SIM_DT quantum while ~0.5 s of sim elapses between calls. A call-count
+    // accumulator would starve the 1 Hz work to ~1/30 rate — feed it the real sim-time delta.
+    const lastNow = Number.isFinite(dir._lastUpdateNow) ? dir._lastUpdateNow : now;
+    dir._lastUpdateNow = now;
+    dir._accum = (dir._accum || 0) + Math.max(0, now - lastNow);
     if (dir._accum < 1) return;                        // director runs at 1 Hz — no per-frame work
     const step = dir._accum;
     dir._accum = 0;
-    const now = state.simTime || 0;
     this._accrue(dir, state, step);
     this._tickSessionRhythm(dir, state, now);
     this._tickEscalationSeeds(dir, state, now);
@@ -709,10 +714,13 @@ export const encounterDirector = {
     // The authored Throughline crossing is still a normal paced ambush when only the player is in
     // the killbox. When the loaded pocket hauler is already inside the snare, the sector-entry
     // breath and pressure cost are what used to hold the cohort on hold-fire until the prey had
-    // already left the lane.
+    // already left the lane. Session-rhythm holds (tension_recovery, rhythm) are the same class:
+    // the pirates are springing on the hauler's transit, not on the player's combat readiness —
+    // deferring them past the hauler's crossing silently spends the authored encounter.
     if (pacingReason
       && !(authoredGuarantee && (pacingReason === 'tutorial' || pacingReason === 'pacing_gap'))
-      && !(preyInReach && (pacingReason === 'pacing_gap' || pacingReason === 'pressure'))) {
+      && !(preyInReach && (pacingReason === 'pacing_gap' || pacingReason === 'pressure'
+        || pacingReason === 'tension_recovery' || pacingReason === 'rhythm'))) {
       // A guarantee item deferring on pacing must still be bounded — plain defer() would let it
       // ride dir.pending across replans forever with no fizzle and no receipt.
       return authoredGuarantee ? gateDefer() : defer();
