@@ -31,6 +31,7 @@
 import * as THREE from 'three';
 import { modelTruthPlumeSocketName } from '../data/modelTruth.js';
 import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
+import { StationOperationVfx } from './vfx/stationOperationVfx.js';
 import { BombDetonationVfx } from './vfx/bombDetonationVfx.js';
 import { StatusMatterVfx } from './vfx/statusMatterVfx.js';
 import { CombatContactVfx } from './vfx/combatContactVfx.js';
@@ -1237,6 +1238,7 @@ export const vfx = {
     this._impactView = { x: 0, y: 0.4, z: 0, priority: 0.5, reduced: false, forcedColors: false, hero: false };
     this._arcadeStructural = null;
     this._actionVfx = null;
+    this._stationOperationVfx = null;
     this._bombDetonationVfx = null;
     this._statusMatterVfx = null;
     this._combatContactVfx = null;
@@ -1532,6 +1534,8 @@ export const vfx = {
     this._bombDetonationVfx = null;
     invokeVfxDisposer(this._actionVfx, 'action answers');
     this._actionVfx = null;
+    invokeVfxDisposer(this._stationOperationVfx, 'station operation matter');
+    this._stationOperationVfx = null;
     invokeVfxDisposer(this._emergentPools, 'emergent primitive pools');
 
     // Child presenters own their internal pools/materials. They are retired before their parent
@@ -1737,6 +1741,7 @@ export const vfx = {
     add(this._combatBeams && this._combatBeams.group);
     add(this._fieldGeom && this._fieldGeom.mesh);
     add(this._actionVfx && this._actionVfx.mesh);
+    add(this._stationOperationVfx && this._stationOperationVfx.mesh);
     add(this._bombDetonationVfx && this._bombDetonationVfx.mesh);
     add(this._statusMatterVfx && this._statusMatterVfx.mesh);
     add(this._combatContactVfx && this._combatContactVfx.mesh);
@@ -2247,7 +2252,7 @@ export const vfx = {
     const add = (name, fn) => this._subs.push(bus.on(name, fn));
     for (const name of ACTION_VFX_EVENTS) add(name, (p) => this._onActionVfx(name, p));
     for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
-      add(name, () => { this._actionVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); });
+      add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); });
     }
     const clearTumbleCadenceFor = (p) => {
       const id = p && (p.id ?? p.entityId ?? p.targetId);
@@ -2498,6 +2503,7 @@ export const vfx = {
       this._arcadeStructural?.reproject(dx, dz);
       this._fieldGeom?.reproject(ox, oz);
       this._actionVfx?.reproject(ox, oz);
+      this._stationOperationVfx?.reproject(ox, oz);
       this._bombDetonationVfx?.reproject(ox, oz);
       this._statusMatterVfx?.reproject(ox, oz);
       this._combatContactVfx?.reproject(ox, oz);
@@ -6414,6 +6420,7 @@ export const vfx = {
 
     this._stationSideEventStarts++;
     this._lastStationSideEventKind = profile.id;
+    this._getStationOperationVfx().acceptStation(slot, this.state);
     // Wake on the next render frame without waiting a whole cadence interval.
     this._cadenceStationSideEvent = Math.max(
       this._cadenceStationSideEvent || 0,
@@ -6435,6 +6442,7 @@ export const vfx = {
   },
 
   _clearStationSideEvents() {
+    this._stationOperationVfx?.clear('station');
     const slots = this._stationSideEventSlots;
     if (slots) {
       for (let i = 0; i < slots.length; i++) this._retireStationSideEvent(slots[i]);
@@ -6534,149 +6542,20 @@ export const vfx = {
     return emitted;
   },
 
-  _emitStationSideEventAccent(slot, reducedMotion) {
-    const frame = slot.frame;
-    const x = frame.x;
-    const z = frame.z;
-    const dx = frame.dirX;
-    const dz = frame.dirZ;
-    const nx = frame.normalX;
-    const nz = frame.normalZ;
-    let emitted = 0;
-
-    if (slot.kind === 'hauler_dock') {
-      // Broad parallel cargo rails + a periodic nose lamp: a heavy docking silhouette, never a
-      // fighter streak or a circular marker.
-      emitted += this._spawnStationSideEventStreak(x + nx * 0.64, 0.42, z + nz * 0.64,
-        reducedMotion ? 0.58 : 0.34, 0.26, 2.7, 0.48, '#ffb35c', 0, 0, dx, dz);
-      emitted += this._spawnStationSideEventStreak(x - nx * 0.64, 0.42, z - nz * 0.64,
-        reducedMotion ? 0.58 : 0.34, 0.26, 2.7, 0.48, '#ffb35c', 0, 0, dx, dz);
-      if (frame.accentSlot % 3 === 0 && this._spawnSprite(
-        SPR_FLASH,
-        x + dx * 1.35,
-        0.44,
-        z + dz * 1.35,
-        0.12,
-        0.32,
-        0.48,
-        0.42,
-        0,
-        '#fff2d0',
-        0,
-        0,
-        1.5,
-        Math.atan2(dz, dx),
-      )) emitted++;
-    } else if (slot.kind === 'patrol_launch') {
-      // A sharp launch chevron and a central drive trace. When entityIds are present this follows
-      // the actual neutral patrol ship instead of inventing a second hull.
-      const backX = x - dx * 0.45;
-      const backZ = z - dz * 0.45;
-      const drift = reducedMotion ? 0 : 5;
-      emitted += this._spawnStationSideEventStreak(backX + nx * 0.34, 0.5, backZ + nz * 0.34,
-        reducedMotion ? 0.42 : 0.22, 0.14, 1.7, 0.68, '#d7e6ff',
-        -dx * drift, -dz * drift, dx * 0.76 - nx * 0.65, dz * 0.76 - nz * 0.65);
-      emitted += this._spawnStationSideEventStreak(backX - nx * 0.34, 0.5, backZ - nz * 0.34,
-        reducedMotion ? 0.42 : 0.22, 0.14, 1.7, 0.68, '#d7e6ff',
-        -dx * drift, -dz * drift, dx * 0.76 + nx * 0.65, dz * 0.76 + nz * 0.65);
-      emitted += this._spawnStationSideEventStreak(x - dx * 0.9, 0.44, z - dz * 0.9,
-        reducedMotion ? 0.48 : 0.24, 0.10, 3.1, 0.48, '#39d0ff',
-        -dx * drift, -dz * drift, dx, dz);
-    } else if (slot.kind === 'repair_drone') {
-      // The crawler leaves a dotted, long-cooling stitch row. There is no ejecta: repair adds
-      // material, and that absence is part of its grayscale read.
-      const rowOffset = (frame.accentSlot - 3) * 0.34;
-      const stitchX = x + dx * rowOffset;
-      const stitchZ = z + dz * rowOffset;
-      emitted += this._spawnStationSideEventStreak(stitchX, 0.34, stitchZ,
-        1.35, 0.075, 0.52, 0.50, '#ffb35c', 0, 0, dx, dz);
-      emitted += this._spawnStationSideEventStreak(x, 0.48, z,
-        reducedMotion ? 0.52 : 0.34, 0.22, 0.92, 0.46, '#70808a', 0, 0, dx, dz);
-      if (frame.accentSlot % 2 === 0 && this._spawnSprite(
-        SPR_FLASH,
-        stitchX,
-        0.4,
-        stitchZ,
-        0.12,
-        0.30,
-        0.48,
-        0.48,
-        0,
-        '#ffc35c',
-        0,
-        0,
-      )) emitted++;
-    } else if (slot.kind === 'cargo_tractor') {
-      // A compact tractor and broad cargo pod remain physically separated by a visible straight
-      // tether. The pair orbits the docking bubble; it cannot be mistaken for an unladen ship.
-      const podGap = 2.45;
-      const podX = x - dx * podGap;
-      const podZ = z - dz * podGap;
-      emitted += this._spawnStationSideEventStreak(x, 0.44, z,
-        reducedMotion ? 0.56 : 0.34, 0.20, 1.05, 0.58, '#39d0ff', 0, 0, dx, dz);
-      emitted += this._spawnStationSideEventStreak(podX + nx * 0.34, 0.38, podZ + nz * 0.34,
-        reducedMotion ? 0.56 : 0.34, 0.25, 1.35, 0.48, '#ffb35c', 0, 0, dx, dz);
-      emitted += this._spawnStationSideEventStreak(podX - nx * 0.34, 0.38, podZ - nz * 0.34,
-        reducedMotion ? 0.56 : 0.34, 0.25, 1.35, 0.48, '#ffb35c', 0, 0, dx, dz);
-      emitted += this._spawnStationSideEventStreak(x - dx * (podGap * 0.5), 0.4, z - dz * (podGap * 0.5),
-        reducedMotion ? 0.56 : 0.34, 0.055, podGap - 0.75, 0.36, '#d7e6ff', 0, 0, dx, dz);
-    } else if (slot.kind === 'sensor_sweep') {
-      // The research array swings a slim calibration beam along the radial normal and reads a dotted
-      // telemetry return behind the boom. No ejecta, no hull: a listening instrument, not a mover —
-      // and explicitly never a launched combat ship.
-      const beamLength = reducedMotion ? 3.2 : 4.6;
-      emitted += this._spawnStationSideEventStreak(x, 0.5, z,
-        reducedMotion ? 0.72 : 0.46, 0.055, beamLength, 0.42, '#7fd6ff', 0, 0, nx, nz);
-      const rowOffset = (frame.accentSlot - 3) * 0.30;
-      emitted += this._spawnStationSideEventStreak(x + dx * rowOffset, 0.34, z + dz * rowOffset,
-        1.6, 0.06, 0.42, 0.46, '#9fb6c4', 0, 0, dx, dz);
-      if (frame.accentSlot % 3 === 0 && this._spawnSprite(
-        SPR_FLASH,
-        x,
-        0.46,
-        z,
-        0.1,
-        0.26,
-        0.38,
-        0.44,
-        0,
-        '#bfe9ff',
-        0,
-        0,
-      )) emitted++;
-    } else if (slot.kind === 'quiet_dock') {
-      // Lights-out runner: two thin cold rails at low opacity — running lights dialed down, not
-      // the hauler's warm cargo lamps. A rare dim flash is the only giveaway.
-      emitted += this._spawnStationSideEventStreak(x + nx * 0.42, 0.4, z + nz * 0.42,
-        reducedMotion ? 0.5 : 0.3, 0.16, 1.9, 0.34, '#8aa4b0', 0, 0, dx, dz);
-      emitted += this._spawnStationSideEventStreak(x - nx * 0.42, 0.4, z - nz * 0.42,
-        reducedMotion ? 0.5 : 0.3, 0.16, 1.9, 0.34, '#8aa4b0', 0, 0, dx, dz);
-      if (frame.accentSlot % 5 === 0 && this._spawnSprite(
-        SPR_FLASH,
-        x - dx * 0.8,
-        0.4,
-        z - dz * 0.8,
-        0.12,
-        0.2,
-        0.3,
-        0.42,
-        0,
-        '#7f9aa8',
-        0,
-        0,
-        1.2,
-        Math.atan2(dz, dx),
-      )) emitted++;
-    }
-    return emitted;
+  _getStationOperationVfx() {
+    if (!this._stationOperationVfx) this._stationOperationVfx = new StationOperationVfx(
+      this._scene, this._combatBeamLocalizer);
+    return this._stationOperationVfx;
   },
 
-  _spawnStationSideEventStreak(
-    x, y, z, life, width, length, opacity, color, vx, vz, axisX, axisZ,
-  ) {
-    return this._spawnProjectileTrailStreak(
-      x, y, z, life, width, length, opacity, color, vx, vz, axisX, axisZ,
-    ) ? 1 : 0;
+  _updateStationOperationVfx() {
+    return this._stationOperationVfx?.update(this.state) || 0;
+  },
+
+  _emitStationSideEventAccent() {
+    // Native cadence still owns operation timing; the retained matter owner renders
+    // continuous paths each frame instead of respawning tiny strokes at each beat.
+    return 0;
   },
 
   // -------------------------------------------------------------------------
@@ -6686,8 +6565,14 @@ export const vfx = {
   // -------------------------------------------------------------------------
 
   _onCeresJobActionReceipt(receipt) {
-    return !!(this._ceresJobActionVfx
-      && this._ceresJobActionVfx.accept(receipt, this.state, this.helpers));
+    if (!this._ceresJobActionVfx?.accept(receipt, this.state, this.helpers)) return false;
+    for (const slot of this._ceresJobActionVfx.slots) {
+      if (slot.alive && slot.receiptId === receipt.receiptId) {
+        this._getStationOperationVfx().acceptJob(slot, receipt, this.state);
+        break;
+      }
+    }
+    return true;
   },
 
   _updateCeresJobActionVfx(dt) {
@@ -6898,163 +6783,14 @@ export const vfx = {
     return this._retireEventLightSlot(this._findSustainedEventLight(key));
   },
 
-  _spawnCeresJobActionStreak(
-    x, y, z, life, width, length, opacity, color, axisX, axisZ,
-  ) {
-    const resident = this._spawnProjectileTrailStreak(
-      x, y, z, life, width, length, opacity, color, 0, 0, axisX, axisZ,
-      CERES_JOB_ACTION_VFX_ADMISSION_PRIORITY,
-    );
-    if (!resident) return 0;
-    resident.ceresJobActionOwner = true;
-    return 1;
-  },
-
-  _spawnCeresJobActionSprite(
-    kind, x, y, z, life, size0, size1, opacity, color, aspect, roll,
-  ) {
-    const resident = this._spawnSprite(
-      kind, x, y, z, life, size0, size1, opacity, 0, color, 0, 0,
-      aspect, roll, CERES_JOB_ACTION_VFX_ADMISSION_PRIORITY,
-    );
-    if (!resident) return 0;
-    resident.ceresJobActionOwner = true;
-    return 1;
-  },
-
-  _emitCeresJobActionVfx(slot, profile, pulse, reducedMotion, reducedFlash) {
-    let dx = slot.targetX - slot.sourceX;
-    let dz = slot.targetZ - slot.sourceZ;
-    let distance = Math.hypot(dx, dz);
-    if (distance < 1e-5) {
-      dx = slot.routeX - slot.sourceX;
-      dz = slot.routeZ - slot.sourceZ;
-      distance = Math.hypot(dx, dz);
-    }
-    if (distance < 1e-5) {
-      const angle = pulse * 1.5707963267948966;
-      dx = Math.cos(angle);
-      dz = Math.sin(angle);
-      distance = 1;
-    }
-    dx /= distance;
-    dz /= distance;
-    const nx = -dz;
-    const nz = dx;
-    const midX = (slot.sourceX + slot.targetX) * 0.5;
-    const midZ = (slot.sourceZ + slot.targetZ) * 0.5;
-    const opacity = reducedFlash ? 0.42 : 0.74;
-    const life = reducedMotion ? 0.42 : 0.24;
-    let emitted = 0;
-
-    if (profile.id === 'ore-cut') {
-      emitted += this._spawnCeresJobActionStreak(
-        midX, 0.65, midZ, life, profile.width,
-        Math.max(5, Math.min(profile.length, distance)), opacity, profile.color, dx, dz,
-      );
-      emitted += this._spawnCeresJobActionSprite(
-        SPR_FLASH, slot.targetX, 0.7, slot.targetZ, 0.24, 0.7, 2.6,
-        opacity, profile.color, 0.55, Math.atan2(dz, dx),
-      );
-      return emitted;
-    }
-
-    if (profile.id === 'transfer') {
-      const railLength = Math.max(5, Math.min(profile.length, distance));
-      emitted += this._spawnCeresJobActionStreak(
-        midX + nx * 0.85, 0.58, midZ + nz * 0.85, life * 1.3,
-        profile.width, railLength, opacity * 0.82, profile.color, dx, dz,
-      );
-      emitted += this._spawnCeresJobActionStreak(
-        midX - nx * 0.85, 0.58, midZ - nz * 0.85, life * 1.3,
-        profile.width, railLength, opacity * 0.82, profile.color, dx, dz,
-      );
-      emitted += this._spawnCeresJobActionSprite(
-        SPR_PUFF, slot.targetX, 0.55, slot.targetZ, 0.45, 0.7, 2.1,
-        opacity * 0.55, profile.color, 1.8, Math.atan2(dz, dx),
-      );
-      return emitted;
-    }
-
-    if (profile.id === 'survey') {
-      const sweep = (pulse % 3 - 1) * 0.34;
-      const heading = Math.atan2(dz, dx) + sweep;
-      for (let i = -1; i <= 1; i++) {
-        const angle = heading + i * 0.27;
-        const ax = Math.cos(angle);
-        const az = Math.sin(angle);
-        emitted += this._spawnCeresJobActionStreak(
-          slot.sourceX + ax * 3.2, 0.5, slot.sourceZ + az * 3.2,
-          life * 1.45, profile.width, profile.length - Math.abs(i) * 1.8,
-          opacity * (i === 0 ? 0.72 : 0.46), profile.color, ax, az,
-        );
-      }
-      emitted += this._spawnCeresJobActionSprite(
-        SPR_RING, slot.routeX, 0.4, slot.routeZ, 0.48, 0.8, 3.8,
-        opacity * 0.34, profile.color, 0.72, heading,
-      );
-      return emitted;
-    }
-
-    if (profile.id === 'salvage') {
-      for (let i = 0; i < 3; i++) {
-        const spread = i === 0 ? -0.7 : (i === 1 ? 0.08 : 0.82);
-        const angle = Math.atan2(dz, dx) + spread + (pulse & 1 ? 0.16 : -0.16);
-        const ax = Math.cos(angle);
-        const az = Math.sin(angle);
-        emitted += this._spawnCeresJobActionStreak(
-          slot.targetX + ax * 1.5, 0.72 + i * 0.08, slot.targetZ + az * 1.5,
-          life * (0.8 + i * 0.16), profile.width, profile.length - i * 1.7,
-          opacity * (0.9 - i * 0.14), profile.color, ax, az,
-        );
-      }
-      emitted += this._spawnCeresJobActionSprite(
-        SPR_FLASH, slot.targetX, 0.72, slot.targetZ, 0.21, 0.45, 1.8,
-        opacity * 0.65, profile.color, 2.4, Math.atan2(dz, dx),
-      );
-      return emitted;
-    }
-
-    if (profile.id === 'escort') {
-      const wing = (pulse & 1) === 0 ? 1 : -1;
-      emitted += this._spawnCeresJobActionStreak(
-        slot.sourceX + nx * 1.2 * wing, 0.72, slot.sourceZ + nz * 1.2 * wing,
-        life * 1.15, profile.width, profile.length, opacity, profile.color,
-        dx * 0.72 + nx * 0.7, dz * 0.72 + nz * 0.7,
-      );
-      emitted += this._spawnCeresJobActionStreak(
-        slot.sourceX - nx * 1.2 * wing, 0.72, slot.sourceZ - nz * 1.2 * wing,
-        life * 1.15, profile.width, profile.length, opacity, profile.color,
-        dx * 0.72 - nx * 0.7, dz * 0.72 - nz * 0.7,
-      );
-      emitted += this._spawnCeresJobActionSprite(
-        SPR_RING, slot.sourceX, 0.62, slot.sourceZ, 0.4, 0.75, 3.6,
-        opacity * 0.55, profile.color, 0.7, 0,
-      );
-      return emitted;
-    }
-
-    // Patrol: four rigid spokes turn one quarter per beat. Unlike the escort's paired chevrons this
-    // reads as a held measured box even when motion reduction freezes every resident in place.
-    const baseAngle = (pulse & 3) * 1.5707963267948966;
-    for (let i = 0; i < 4; i++) {
-      const angle = baseAngle + i * 1.5707963267948966;
-      const ax = Math.cos(angle);
-      const az = Math.sin(angle);
-      emitted += this._spawnCeresJobActionStreak(
-        slot.routeX + ax * 2.1, 0.54, slot.routeZ + az * 2.1,
-        life * 1.4, profile.width, profile.length, opacity * 0.72,
-        profile.color, ax, az,
-      );
-    }
-    emitted += this._spawnCeresJobActionSprite(
-      SPR_RING, slot.routeX, 0.5, slot.routeZ, 0.55, 1.2, 5.2,
-      opacity * 0.5, profile.color, 1, 0,
-    );
-    return emitted;
+  _emitCeresJobActionVfx() {
+    // The validating controller retains the original pulse/cap rhythm. Its accepted
+    // scalar slot is consumed by StationOperationVfx without another admission path.
+    return 0;
   },
 
   _clearCeresJobActionVfx() {
+    this._stationOperationVfx?.clear('job');
     if (this._ceresJobActionVfx) this._ceresJobActionVfx.clear();
     let cursor = 0;
     while (this._spr && cursor < this._liveSpriteCount) {
@@ -11585,6 +11321,7 @@ export const vfx = {
       sub.stationSideEvents = 0;
     }
     sub.ceresJobActions = this._updateCeresJobActionVfx(dt) > 0 ? 1 : 0;
+    this._updateStationOperationVfx();
     // WF-12 law/heat telegraph — scan sweep / suspicion / WANTED flip (shared event-light pool).
     sub.lawHeatTelegraph = this._updateLawHeatTelegraph(dt) > 0 ? 1 : 0;
     // "The Working Light" — civilian hulls showing what job they are on. Asleep in any sector with

@@ -54,6 +54,7 @@ function makeHarness({ motionReduce = false, flashReduce = false, patrol = false
     entityList.push(patrolEntity);
   }
   const state = {
+    simTime: 0,
     playerId: player.id,
     player: { targetId: null, tether: { active: false } },
     entities,
@@ -115,6 +116,7 @@ function captureKind(kind) {
   };
   const entityIds = harness.patrolEntity ? [harness.patrolEntity.id] : [];
   harness.bus.emit('station:sideEvent', payload(kind, { entityIds }));
+  harness.state.simTime += .1;
   harness.system.update(0.1);
   return { ...harness, sprites, streaks };
 }
@@ -166,48 +168,22 @@ test('pure path writer reuses scratch and preserves static silhouettes in reduce
     'docking orbit remains anchored to the station bubble radius');
 });
 
-test('station:sideEvent drives five bounded pooled compositions and lifecycle cleanup', () => {
+test('station:sideEvent drives bounded volumetric compositions and lifecycle cleanup', () => {
   const captures = Object.fromEntries(KINDS.map((kind) => [kind, captureKind(kind)]));
-
-  const hauler = captures.hauler_dock;
-  assert.equal(hauler.streaks.length, 2, 'hauler is two broad parallel cargo rails');
-  assert.ok(hauler.streaks.every((item) => item.width === 0.26 && item.length === 2.7));
-  assert.notEqual(hauler.streaks[0].z, hauler.streaks[1].z);
-
+  const signatures = [];
+  for (const [kind, h] of Object.entries(captures)) {
+    const owner = h.system._stationOperationVfx;
+    assert.ok(owner && owner.batch.count >= 3, kind);
+    assert.equal(h.streaks.length, 0, 'no duplicate legacy rail emitter');
+    assert.equal(h.sprites.length, 0, 'no glow card supplies the operation body');
+    signatures.push(Array.from({length:owner.batch.count}, (_,i) => owner.batch.attributes[1].getX(i)).join(','));
+  }
+  assert.ok(new Set(signatures).size >= 5, 'operations compose different physical cross-sections');
   const patrol = captures.patrol_launch;
-  assert.equal(patrol.streaks.length, 3, 'patrol is a two-stroke chevron plus drive trace');
-  assert.ok(patrol.streaks.every((item) => item.vz < 0),
-    'patrol launch decoration trails behind the real entity velocity');
-  assert.ok(patrol.streaks.every((item) => Math.abs(item.x - patrol.patrolEntity.pos.x) < 2),
-    'budgeted patrol decoration follows the live ship rather than a cosmetic duplicate');
-
-  const repair = captures.repair_drone;
-  assert.equal(repair.streaks.length, 2, 'repair is one crawler body plus one cooling stitch');
-  assert.equal(repair.sprites.length, 1, 'repair gets one accessibility-routed weld point');
-  assert.ok(repair.streaks.some((item) => item.life === 1.35 && item.width === 0.075));
-  assert.ok(repair.streaks.every((item) => item.vx === 0 && item.vz === 0),
-    'repair leaves no ejecta or free-flying debris');
-
-  const tractor = captures.cargo_tractor;
-  assert.equal(tractor.streaks.length, 4,
-    'cargo tractor is a tractor, paired pod rails, and a load-bearing tether');
-  assert.ok(tractor.streaks.some((item) => item.width === 0.055));
-  assert.equal(tractor.sprites.length, 0);
-
-  const sweep = captures.sensor_sweep;
-  assert.equal(sweep.streaks.length, 2, 'sensor sweep is a calibration beam plus one telemetry return');
-  assert.equal(sweep.sprites.length, 1, 'sensor sweep gets one accessibility-routed return blip');
-  assert.ok(sweep.streaks.some((item) => item.width === 0.055 && item.length === 4.6),
-    'the calibration beam is a slim, long radial read');
-  assert.ok(sweep.streaks.every((item) => item.vx === 0 && item.vz === 0),
-    'sensor sweep is a listening instrument: no ejecta, no launched ship');
-
-  const signatures = Object.values(captures).map(({ streaks, sprites }) => JSON.stringify({
-    streaks: streaks.map((item) => [item.width, item.length, item.life]),
-    sprites: sprites.length,
-  }));
-  assert.equal(new Set(signatures).size, KINDS.length,
-    'each operation has a distinct shape/lifetime composition before color is considered');
+  const plume = patrol.system._stationOperationVfx.inspect().instances[0];
+  assert.ok(Math.abs(plume.x - patrol.patrolEntity.pos.x) < .01);
+  assert.ok(plume.z < patrol.patrolEntity.pos.z, 'launch matter starts at the real aft surface');
+  for (const h of Object.values(captures)) h.system.destroy();
 
   const lifecycle = makeHarness();
   const event = payload('hauler_dock', { durationS: 0.26, eventId: 'dedupe' });
@@ -248,13 +224,15 @@ test('a bound patrol retires when its real entity disappears instead of becoming
     eventId: 'live-patrol',
     entityIds: [harness.patrolEntity.id],
   }));
+  harness.state.simTime += .1;
   harness.system.update(0.1);
   assert.equal(harness.system.inspect().stationSideEvents.active, 1);
-  assert.ok(spawns > 0, 'the live patrol receives its launch decoration');
+  assert.ok(harness.system._stationOperationVfx.batch.count > 0, 'the live patrol receives its launch decoration');
 
   harness.patrolEntity.alive = false;
   harness.state.entities.delete(harness.patrolEntity.id);
   const beforeRemoval = spawns;
+  harness.state.simTime += .1;
   harness.system.update(0.1);
   assert.equal(harness.system.inspect().stationSideEvents.active, 0,
     'a removed sim patrol must retire its bound cosmetic record immediately');
@@ -289,30 +267,24 @@ test('station director producer payload drives the initialized VFX consumer end 
     'the producer docking-orbit seam supplies the same radial start/end point');
   assert.equal(record.fromZ, record.toZ);
 
+  harness.state.simTime += .1;
   harness.system.update(0.1);
-  assert.equal(harness.system._liveTrailStreakCount, 4,
-    'the real producer seam reaches the four-part tractor/pod/tether pooled composition');
+  assert.ok(harness.system._stationOperationVfx.batch.count >= 5,
+    'the real producer seam reaches the rolled conductor and receiver clamp composition');
   director.destroy();
 });
 
-test('repair weld uses the real pooled SPR_FLASH accessibility choke point', () => {
+test('repair weld uses the shared material flash control without a point sprite', () => {
   function emittedWeld(flashReduce) {
-    const harness = makeHarness({ flashReduce });
-    harness.bus.emit('station:sideEvent', payload('repair_drone', {
-      eventId: flashReduce ? 'repair-reduced-flash' : 'repair-full-flash',
-    }));
-    harness.system.update(0.1);
-    assert.equal(harness.system._liveSpriteCount, 1);
-    const spriteIndex = harness.system._activeSprites[0];
-    const sprite = harness.system._spr[spriteIndex];
-    assert.equal(sprite.kind, 0, 'repair weld must use SPR_FLASH, not a ring or ungoverned sprite');
-    return sprite;
+    const h = makeHarness({ flashReduce });
+    h.bus.emit('station:sideEvent', payload('repair_drone'));
+    h.state.simTime += .1; h.system.update(.1);
+    const owner = h.system._stationOperationVfx;
+    assert.ok(owner.batch.count > 0);assert.equal(h.system._liveSpriteCount, 0);
+    const result = {opacity:owner.batch.attributes[3].getW(0), flash:owner.batch.material.uniforms.uFlash.value};
+    h.system.destroy();return result;
   }
-
-  const full = emittedWeld(false);
-  const reduced = emittedWeld(true);
-  assert.ok(reduced.op0 <= full.op0 * 0.31,
-    'reduced-flash policy scales the actual pooled weld opacity');
-  assert.ok(reduced.size0 < full.size0 && reduced.size1 < full.size1,
-    'reduced-flash policy scales the actual pooled weld footprint');
+  const full=emittedWeld(false),reduced=emittedWeld(true);
+  assert.ok(reduced.opacity < full.opacity);
+  assert.ok(reduced.flash < full.flash, 'actual HDR material receives the accessibility flash scale');
 });

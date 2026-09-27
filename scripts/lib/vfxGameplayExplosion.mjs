@@ -118,6 +118,7 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     owner._updateDoctrineTells(dt);
     owner._updateStationSideEvents(dt);
     owner._updateCeresJobActionVfx(dt);
+    owner._updateStationOperationVfx();
     owner._updateLawHeatTelegraph(dt);
     owner._updateDamageVenting(dt);
     owner._updateStatusAttachedVfx(dt);
@@ -154,6 +155,7 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
       quarksBatches: quarks.renderer.batches.length,
       structured: owner._arcadeStructural.stats(),
       action: owner._actionVfx?.inspect?.() || null,
+      stationOperations: owner._stationOperationVfx?.inspect?.() || null,
       statusMatter: owner._statusMatterVfx?.stats || null,
       combatContact: owner._combatContactVfx ? {live:owner._combatContactVfx.live,surfaces:owner._combatContactVfx.batch.count} : null,
       worldPresentation: worldPresentation.inspect(),

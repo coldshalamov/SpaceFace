@@ -582,32 +582,22 @@ test('private activity and replay pools saturate and evict within fixed bounds',
     'the 513th receipt evicts only the oldest replay identity');
 });
 
-test('six profiles produce distinct structural counts and survey stays streak-led', () => {
-  const { system } = makeVfxHarness();
-  const slot = {
-    sourceX: 10, sourceZ: 20, targetX: 34, targetZ: 48, routeX: 36, routeZ: 50,
-  };
+test('all seven validated receipts produce six distinct material compositions', () => {
   const signatures = new Map();
-  for (const profile of Object.values(CERES_JOB_ACTION_VFX_PROFILES)) {
-    const streaks = [];
-    const sprites = [];
-    system._spawnProjectileTrailStreak = (...args) => {
-      const resident = { args };
-      streaks.push(resident);
-      return resident;
-    };
-    system._spawnSprite = (...args) => {
-      const resident = { args };
-      sprites.push(resident);
-      return resident;
-    };
-    system._emitCeresJobActionVfx(slot, profile, 1, false, false);
-    assert.equal(streaks.length, profile.streakCount, profile.id);
-    assert.equal(sprites.length, profile.spriteCount, profile.id);
-    signatures.set(profile.id, `${streaks.length}:${sprites.length}:${profile.geometry}:${profile.rhythm}`);
-    if (profile.id === 'survey') assert.ok(streaks.length > sprites.length);
+  for (const contract of CERES_JOB_ACTION_VFX_CONTRACTS) {
+    const h=makeVfxHarness();
+    assert.ok(h.system._onCeresJobActionReceipt(h.receipts.get(contract.slotId)));
+    const admitted=h.system._stationOperationVfx.slots.find(s=>s.alive);
+    h.player.pos.x=admitted.x;h.player.pos.z=admitted.z;
+    h.state.simTime=.2;h.system._updateCeresJobActionVfx(.1);h.system._updateStationOperationVfx();
+    const owner=h.system._stationOperationVfx;
+    assert.ok(owner.batch.count>=3, contract.slotId);
+    const id=owner.inspect().instances[0].kind;
+    signatures.set(id,Array.from({length:owner.batch.count},(_,i)=>owner.batch.attributes[1].getX(i)).join(','));
+    assert.equal(h.system._liveTrailStreakCount,0);assert.equal(h.system._liveSpriteCount,0);
+    h.system.destroy();
   }
-  assert.equal(new Set(signatures.values()).size, 6);
+  assert.equal(signatures.size,6);assert.equal(new Set(signatures.values()).size,6);
 });
 
 test('reduced motion and flash retain static geometry at a lower cadence and amplitude', () => {
@@ -629,63 +619,28 @@ test('reduced motion and flash retain static geometry at a lower cadence and amp
   assert.equal(reducedCalls[0][3], true);
   assert.equal(reducedCalls[0][4], true);
 
-  const captures = [];
-  reduced.system._spawnProjectileTrailStreak = (...args) => {
-    const resident = { args };
-    captures.push({ type: 'streak', args });
-    return resident;
-  };
-  reduced.system._spawnSprite = (...args) => {
-    const resident = { args };
-    captures.push({ type: 'sprite', args });
-    return resident;
-  };
-  reduced.system._emitCeresJobActionVfx(
-    reducedCalls[0][0], reducedCalls[0][1], 0, true, true,
-  );
-  assert.ok(captures.some((entry) => entry.type === 'streak'),
-    'reduced motion preserves the structural relationship');
-  const reducedSprite = captures.find((entry) => entry.type === 'sprite');
-  assert.ok(reducedSprite.args[7] < 0.5, 'reduced flash lowers authored opacity before shared policy');
+  full.state.simTime=.2;reduced.state.simTime=.2;
+  full.system._updateStationOperationVfx();reduced.system._updateStationOperationVfx();
+  assert.ok(reduced.system._stationOperationVfx.batch.count>0, 'reduced motion preserves the actual structural relationship');
+  assert.equal(reduced.system._stationOperationVfx.particles.live,0);
+  assert.ok(reduced.system._stationOperationVfx.batch.material.uniforms.uFlash.value < full.system._stationOperationVfx.batch.material.uniforms.uFlash.value);
+  full.system.destroy();reduced.system.destroy();
 });
 
-test('ore-cut emits exactly three full-motion bites over its lifetime and fewer when reduced', () => {
-  const runLifetime = (options) => {
-    const harness = makeVfxHarness(options);
-    let streaks = 0;
-    let sprites = 0;
-    harness.system._spawnProjectileTrailStreak = () => {
-      streaks++;
-      return {};
-    };
-    harness.system._spawnSprite = () => {
-      sprites++;
-      return {};
-    };
-    assert.equal(harness.system._onCeresJobActionReceipt(
-      harness.receipts.get('ceres_seam_miner'),
-    ), true);
-    for (let frame = 0; frame < 10; frame++) harness.system._updateCeresJobActionVfx(0.1);
-    return {
-      pulses: harness.system.inspect().ceresJobActions.emitted,
-      streaks,
-      sprites,
-      active: harness.system.inspect().ceresJobActions.active,
-    };
+test('ore-cut retains three native full-motion bites and two reduced-motion bites', () => {
+  const runLifetime = options => {
+    const h=makeVfxHarness(options);let maxSurfaces=0;
+    assert.ok(h.system._onCeresJobActionReceipt(h.receipts.get('ceres_seam_miner')));
+    for(let frame=0;frame<10;frame++){
+      h.state.simTime=(frame+1)*.1;h.system._updateCeresJobActionVfx(.1);h.system._updateStationOperationVfx();
+      maxSurfaces=Math.max(maxSurfaces,h.system._stationOperationVfx.batch.count);
+    }
+    assert.ok(maxSurfaces>=5,'native bites supply the conductor and surface work');
+    const result={pulses:h.system.inspect().ceresJobActions.emitted,active:h.system.inspect().ceresJobActions.active,
+      surfaces:h.system._stationOperationVfx.batch.count};h.system.destroy();return result;
   };
-
-  assert.deepEqual(runLifetime({}), {
-    pulses: 3,
-    streaks: 3,
-    sprites: 3,
-    active: 0,
-  }, 'each authored bite is one contact lance plus one face flash');
-  assert.deepEqual(runLifetime({ motionReduce: true, flashReduce: true }), {
-    pulses: 2,
-    streaks: 2,
-    sprites: 2,
-    active: 0,
-  }, 'reduced motion keeps a lower bounded two-bite read');
+  assert.deepEqual(runLifetime({}),{pulses:3,active:0,surfaces:0});
+  assert.deepEqual(runLifetime({motionReduce:true,flashReduce:true}),{pulses:2,active:0,surfaces:0});
 });
 
 test('ambient admission cannot evict hero residents and owner cleanup is selective', () => {
@@ -719,9 +674,10 @@ test('ambient admission cannot evict hero residents and owner cleanup is selecti
   const receipt = selective.receipts.get('ceres_seam_miner');
   selective.bus.emit('traffic:jobActionReceipt', receipt);
   selective.system._updateCeresJobActionVfx(0.01);
-  assert.ok(selective.system._ts.some((entry) => entry.alive && entry.ceresJobActionOwner));
-  assert.ok(selective.system._spr.some((entry) => entry.alive && entry.ceresJobActionOwner));
+  selective.state.simTime=.1;selective.system._updateStationOperationVfx();
+  assert.ok(selective.system._stationOperationVfx.batch.count>0);
   selective.bus.emit('sector:exit');
+  assert.equal(selective.system._stationOperationVfx.batch.count,0);
   assert.equal(unrelatedStreak.alive, true);
   assert.equal(unrelatedSprite.alive, true);
   assert.equal(selective.system._ts.some((entry) => entry.alive && entry.ceresJobActionOwner), false);
