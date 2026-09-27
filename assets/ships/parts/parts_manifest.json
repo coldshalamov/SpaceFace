@@ -4106,12 +4106,15 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_research.glb",
-      "tris": 64876,
-      "bytes": 12898072,
+      "tris": 66360,
+      "bytes": 6706204,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Accent"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy"
       },
       "note": "Deep-Space Research Array — research_observatory; authored station family, PBR, explicit LOD0/1/2. LOD0 64876 tris / 4 draw groups.",
       "factionAccentVariants": {
@@ -4142,19 +4145,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -54.0000101361927,
-          -53.59915720023376,
-          -43.537117827873544
+          -54.503360748291016,
+          -46.55664825439453,
+          -37.599998474121094
         ],
         "max": [
-          54.00000503337799,
-          53.59916042546264,
-          21.526700973510742
+          46.599998474121094,
+          55.199337005615234,
+          37.599998474121094
         ],
         "dimensionsM": [
-          108.00001516957069,
-          107.1983176256964,
-          65.06381880138429
+          101.10335922241211,
+          101.75598526000977,
+          75.19999694824219
         ]
       },
       "triangleMetric": "lod0"

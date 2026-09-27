@@ -1490,9 +1490,15 @@
       "slot": "place",
       "releaseAssetId": "place_station_research",
       "sourceUrl": "assets/ships/release/parts/places/place_station_research.glb",
-      "releaseSha256": "0655a7207180f7afda9243f705f2cf1bf0955cd4fbd27ffcbdf7654bcb9379e6",
-      "releaseBytes": 6965936,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "ef4c86ae0f05071eaf7689ea7957855ce463c33a26c0ffc85f5b48c6ebb52919",
+      "releaseBytes": 2148260,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/research",
       "metadataUrl": "assets/ships/release/render-packages/research/render-package.json",
       "sceneRoot": true

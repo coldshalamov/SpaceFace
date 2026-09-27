@@ -25,12 +25,13 @@ SHIP_ID = 'place_landmark_resonant_cathedral'
 MAG = 'glow_cyan.magenta'
 COLORS = {
     'paint': '#6f695e',            # ash-grey concrete / pipe metal (the light value)
-    'paint2': '#4a2616',           # foundry rust, authored dark
+    'paint2': '#361a0e',           # foundry rust, authored dark (the key light lifts it)
     'stripe': '#4a1240',           # Choir magenta paint (banners, bands), authored dark
     'hazard': '#9a7418',           # old foundry notice yellow
     'paint.graphite': '#222428',   # charcoal
     'paint.spire': '#241f2a',      # violet-charcoal spire skin
     'dark': '#131417',
+    'glass': '#0b0e12',
     MAG: '#ff3ad0',
     'glow_amber': '#ff8a24',       # furnace embers
     'glow_warm': '#ffb46a',
@@ -42,7 +43,7 @@ HZ0, HZ1 = -6.0, 14.0           # wall base / eaves
 SPIRE_Y = 60.0
 SPIRE_Z0, SPIRE_Z1 = 22.0, 112.0
 ARCH_Z0 = 40.0                  # arch springs from the spires here
-ARCH_LEAN = math.radians(20.0)  # the arch leans out over the hall toward +X
+ARCH_LEAN = math.radians(27.0)  # the arch leans out over the hall toward +X
 
 
 def polar(r, a_deg, z=0.0):
@@ -225,17 +226,20 @@ def build_hall(s):
         y0 = HY0 + bay * k
         yz_prism(s, f'Tooth{k}', [(y0, HZ1), (y0 + bay, HZ1), (y0 + bay, HZ1 + 6.0), (y0 + bay - 0.6, HZ1 + 6.0)],
                  HX0 + 0.8, HX1 - 0.8, 'paint2', end_material='paint.graphite', bevel=0.08)
-    glaze = []
+    glaze, lit = [], []
     for k in range(12):
         yg = HY0 + bay * (k + 1) + 0.08
-        for j in range(8):
-            xg = HX0 + 3.2 + j * (HX1 - HX0 - 6.4) / 7
-            glaze.append(((xg, yg, HZ1 + 3.0), (4.2, 0.14, 4.0), 0.0))
-    cluster(s, 'Glazing', glaze, 'glow_warm')
+        for j in range(12):
+            xg = HX0 + 2.6 + j * (HX1 - HX0 - 5.2) / 11
+            for zz in (HZ1 + 1.9, HZ1 + 4.2):
+                pane = ((xg, yg, zz), (2.6, 0.14, 1.7), 0.0)
+                (lit if (j * 7 + k * 3 + int(zz)) % 5 == 0 else glaze).append(pane)
+    cluster(s, 'Glazing', glaze, 'glass')
+    cluster(s, 'GlazingLit', lit, 'glow_warm')
     mull = []
     for k in range(12):
         yg = HY0 + bay * (k + 1) + 0.12
-        mull.append(((0, yg, HZ1 + 3.0), (HX1 - HX0 - 2.0, 0.2, 0.35), 0.0))
+        mull.append(((0, yg, HZ1 + 3.05), (HX1 - HX0 - 2.0, 0.2, 0.3), 0.0))
     cluster(s, 'GlazingTransoms', mull, 'paint.graphite')
     # buttresses along both long walls
     for side in (1, -1):

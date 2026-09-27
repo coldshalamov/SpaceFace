@@ -2332,20 +2332,6 @@
       "contractNodeCount": 18
     },
     {
-      "id": "place_station_research",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_station_research.glb",
-      "release": "assets/ships/release/parts/places/place_station_research.glb",
-      "sourceSha256": "831e0860fc5e8458092fbe38ac23afa60674ca476b3b8aa215a976d27af464c7",
-      "releaseSha256": "0655a7207180f7afda9243f705f2cf1bf0955cd4fbd27ffcbdf7654bcb9379e6",
-      "sourceBytes": 12898072,
-      "releaseBytes": 6965936,
-      "textures": 12,
-      "ktx2Textures": 12,
-      "meshoptBufferViews": 54,
-      "contractNodeCount": 15
-    },
-    {
       "id": "place_tanker_coupling",
       "kind": "part:places",
       "source": "assets/incubator/everyday_space_kit/source/tanker_coupling.glb",
@@ -4412,6 +4398,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 149,
       "contractNodeCount": 42
+    },
+    {
+      "id": "place_station_research",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_station_research.glb",
+      "release": "assets/ships/release/parts/places/place_station_research.glb",
+      "sourceSha256": "b087ebedd1e80c1ca12af9240a00cbc973e0182b016ee810bb4c45adaaf1059c",
+      "releaseSha256": "ef4c86ae0f05071eaf7689ea7957855ce463c33a26c0ffc85f5b48c6ebb52919",
+      "sourceBytes": 6706204,
+      "releaseBytes": 2148260,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 151,
+      "contractNodeCount": 41
     }
   ]
 }
