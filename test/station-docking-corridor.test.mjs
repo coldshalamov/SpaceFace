@@ -165,7 +165,7 @@ test('default station autopilot finishes inside the manifest berth gate, not the
   };
 
   // The retained 5c5421ac failure stopped on this legacy station-center ring. At an ordinary
-  // off-corridor bearing it is outside the authored capture volume, so waiting cannot create a
+  // off-corridor bearing it is outside the resolved capture volume, so waiting cannot create a
   // physical dock prompt.
   const legacyCenterStop = { x: station.pos.x + 90, z: station.pos.z };
   assert.equal(corridorStateFor(SKIN, station, legacyCenterStop, { x: 0, z: 0 }).inCapture, false);

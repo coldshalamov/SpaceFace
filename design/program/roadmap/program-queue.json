@@ -19609,7 +19609,7 @@
       "priority": 9843,
       "title": "Blind mechanic readback percentage",
       "kind": "acceptance_review",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19618,7 +19618,9 @@
       "checks": [
         "node --test test/pq-150-01-mechanic.test.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-207.03-REPORT.md"
+      ],
       "brief": "Re-run the packet test in a live environment and produce the blind readback percentage the receipt refused to invent."
     },
     {
