@@ -259,7 +259,12 @@ What is still open, in order. Each item is a unit a fresh agent can take from th
    `wait.prepareLiveSectorBeforeFlight`, first-frame census). Keep in-round links and first-draw
    uploads at 0 (`probe:smooth-flight:crucible --with-kill`).
 3. **Belt tail** (F6 follow-up): after the bridge, ~8 bodies still compiling at 10–20 s on a busy
-   host — throughput, not ordering. Order what the opening frame shows first.
+   host — throughput, not ordering. Order what the opening frame shows first. **Ordering landed
+   (2026-09-27):** the opening-frame rung — a body the composed frame shows admits before any body
+   it does not, load window included — is in `src/render/authoredUpgradePolicy.js` and pinned by
+   `test/opening-frame-admission-order.test.mjs` + `test/authored-upgrade-policy.test.mjs`. What
+   remains is the throughput half of L2's bar: the serial lane still spends seconds per GLB
+   admission on a busy host, so "a busy-host run fires on time" is still owed.
 4. **The long-session leak** (ledger D24): re-measure at low priority on a quiet host
    (`check-release-soak-browser.mjs --cycles=40`, `SF_SOAK_HEAP_SNAPSHOTS=1`), then fix the
    retained classes.
@@ -299,3 +304,4 @@ One line per slice that landed: phase, what a stranger now sees, the number, the
 | 5 | The swarm presses: recycled entity ids no longer leave wave-1 wasps inert, and dodging a sibling no longer vetoes facing the target | passive player **survives indefinitely → dies at 58.7 s (4242) / 53.1 s (8008)**; hostile within 400 WU **mostly 0 → 100 %** of post-hold samples | `8199748ef` |
 | 5 | Demo builds record the funnel locally: boot → crucible → round 3 → results → "Take it to the belt" → end card, latched on first reach from real bus events — the adventure step keys on the run envelope at `game:started`, so the Crucible launch's own `game:new {seed}` cannot stamp it — surfaced ordered in the session report; non-demo sessions record nothing | `test/demo-funnel-telemetry.test.mjs` (6 pins: order, first-reach latch, out-of-order reach, abort predicate, real launch veto, demo-off silence); telemetry/session-report suites 23/23, `check:baseline` all green (two massline sims tripped the parallel wall-clock budget once; clean standalone) | `eeab67842` |
 | 5 | One command ships the demo package: `npm run dist:demo` bakes the demo define then packs Electron as **SpaceFace Demo** (`com.spaceface.game.demo`) into `dist/demo/` — never overwriting the full build — and a demo crash report names the flavor it came from | verified live: `SpaceFace Demo.exe` unpacked at `dist/demo/win-unpacked/`, belt bridge folded into the demo bundle and out of the normal one (crucible chunk hashes differ); `test/dist-demo-config.test.mjs` (4 pins), Electron identity suites 26/26 | — |
+| 1 | The bodies the opening frame shows admit first (belt tail ordering): the post-bridge load window had no visibility rungs at all, so staged furniture graded nearer on the arrival distance ramp buried the ~8 visible bodies until 10-20 s. A body the composed frame shows now outranks every body it does not — load window included — and the hulls-only hold hoists shown owners with the hull cohort instead of behind it | shown set dequeues before the off-frame backlog under the production hulls-only hold; fail-closed with no composed camera leaves the arrival grades bit-identical; upgrade-queue suites 51/51, hulls-only/arrival suites 35/35; `test/opening-frame-admission-order.test.mjs`, `test/authored-upgrade-policy.test.mjs` | `79b6faac2` |
