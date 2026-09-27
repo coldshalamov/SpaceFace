@@ -95,7 +95,7 @@ export class ActionVfx {
     slot.target=target;slot.source=source;slot.socket=slot.sourceSocket=null;
     slot.attached=!!target&&(!contact||p.attachToTarget===true)&&recipe.verb!=='grind';
     if(!sustained){slot.born=now;slot.particlePulse=-1;slot.seed=salt(String(id)+':'+name+':'+(p.kind??'')+':'+(++this.serial)+':'+Math.round(now*1000));}
-    slot.last=now;slot.radius=Math.max(2.5,Math.min(24,finite(target?.radius,5)));
+    slot.last=now;slot.radius=Math.max(2.5,Math.min(24,finite(target?.radius,finite(p.radius,5))));
     if(recipe.verb==='arm')slot.radius=Math.max(6,slot.radius*1.5);
     if(recipe.verb==='shove')slot.radius=Math.max(8,Math.min(24,finite(p.blastRadius,100)*.14));
     const heading=valid(p.direction)?p.direction:valid(p.dir)?p.dir:valid(p.normal)?p.normal:null;
@@ -124,14 +124,16 @@ export class ActionVfx {
       this.anchor.z=target.pos.z+Math.sin(a)*slot.radius*.82;pos=this.anchor;
       slot.angle=a;slot.provenance='body-surface';
     }
-    if(recipe.surfaceCapture&&target){
-      let a=heading?slot.angle:valid(source?.pos)&&source!==target
+    if((recipe.surfaceCapture||recipe.surfaceWork)&&target){
+      let a=recipe.surfaceWork&&valid(source?.pos)&&source!==target
+        ?Math.atan2(source.pos.z-target.pos.z,source.pos.x-target.pos.x)
+        :heading?slot.angle:valid(source?.pos)&&source!==target
         ?Math.atan2(source.pos.z-target.pos.z,source.pos.x-target.pos.x):finite(target.rot);
-      if(!contact){
+      if(!contact||p.bodySurface){
         const dx=Math.cos(a),dz=Math.sin(a),root=target.view?.root;
         if(root){root.updateWorldMatrix(true,true);this.bodyBounds.setFromObject(root,true);}
         if(root&&!this.bodyBounds.isEmpty()){
-          // Bounds are measured from the drawn pod once per receipt. Retain the resulting
+          // Bounds are measured from the drawn receiver once per receipt. Retain the resulting
           // body-local face contact so later movement/rotation requires no mesh traversal.
           const box=this.bodyBounds,center=box.getCenter(this.bodyCenter);
           const tx=Math.abs(dx)>1e-6?(box.max.x-box.min.x)*.5/Math.abs(dx):Infinity;
@@ -149,6 +151,7 @@ export class ActionVfx {
         pos=this.anchor;
       }
       slot.angle=a;
+      if(recipe.surfaceWork)slot.attached=target.alive!==false;
     }
     slot.x=pos.x;slot.y=finite(pos.y);slot.z=pos.z;
     slot.tx=slot.tz=slot.ox=slot.oz=0;

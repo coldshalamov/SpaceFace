@@ -1,8 +1,12 @@
+import { successfulPickupAmount } from '../../core/pickupAcceptance.js';
 import { WORLD_CUE_ACTION_RECIPE, resolveWorldCueReceipt } from './worldCueRecipes.js';
 // Extra responses consume confirmed simulation receipts. Resolving a receipt here is
 // cosmetic only: never discover collisions, change a body, or fabricate a successful action.
 export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
   'presentation:cue': WORLD_CUE_ACTION_RECIPE,
+  'salvage:cutComplete': {verb:'grind',primitive:'deposition',color:0xf3c286,life:.85,surfaceWork:true,continuous:false},
+  'salvage:completed': {verb:'harvest',primitive:'deposition',color:0xc9ba98,life:1.2,continuous:false},
+  'pickup:collected': {verb:'transfer',primitive:'connection',color:0xb4e0c0,life:.58,continuous:false},
   'countermeasure:deployed': { verb:'fling', primitive:'pressure', color:0xdde7bb, life:1.15,
     variants:{
       chaff:{verb:'fling',primitive:'pressure',color:0xdde7bb,life:1.15},
@@ -30,6 +34,19 @@ const copyPoint = p => ({x:p.x,z:p.z});
 
 export function resolveAdditionalActionVfxReceipt(name,p,state) {
   if(name==='presentation:cue')return resolveWorldCueReceipt(p,state);
+  if(name==='salvage:cutComplete'){
+    const plate=body(state,p.payloadId),target=body(state,p.targetId);
+    return {...p,sourceId:state.playerId,pos:plate?.pos??target?.pos,bodySurface:true,attachToTarget:true};
+  }
+  if(name==='salvage:completed')return {...p,targetId:p.wreckId,sourceId:state.playerId};
+  if(name==='pickup:collected'){
+    if(!(successfulPickupAmount(p)>0)||!point(p.pos))return null;
+    const collector=body(state,p.collectorId??state.playerId);
+    if(!point(collector?.pos))return null;
+    const a=Math.atan2(p.pos.z-collector.pos.z,p.pos.x-collector.pos.x),r=collector.radius||6;
+    return {...p,targetId:collector.id,sourceId:p.pickupId,sourcePos:copyPoint(p.pos),
+      pos:{x:collector.pos.x+Math.cos(a)*r,z:collector.pos.z+Math.sin(a)*r,y:1.5},attachToTarget:true};
+  }
   if (name === 'countermeasure:deployed') {
     const ship=body(state,p.shipId), effect=ship?.data?.cm?.effect;
     if (!ship || !effect || !Number.isFinite(effect.originX) || !Number.isFinite(effect.originZ)) return null;

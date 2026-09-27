@@ -224,8 +224,8 @@ export function createGameplayWorldEvents({state,owner,shipMesh,targetMesh}) {
           const payloadId=auxiliary('lab-world-plate',{...target,type:'cargo',pos:contact,prevPos:contact,radius:2});
           emit('salvage:cutComplete',{targetId,payloadId});break;
         }
-        case 'world-salvage-complete':emit('salvage:completed',{wreckId:targetId,markerId:null,loot:{cmdty_ore_iron:2},pos:point(t),radius:target.radius});break;
-        case 'world-pickup':emit('pickup:collected',{pickupId:targetId,collectorId:playerId,kind:'ore',amount:3,commodityId:'cmdty_ore_iron',pos:point(t)});break;
+        case 'world-salvage-complete':emit('salvage:completed',{wreckId:targetId,markerId:null,loot:{cmdty_ore_iron:2},pos:point(t),radius:target.radius});save(target,'alive',false);save(target.view?.root||targetMesh,'visible',false);break;
+        case 'world-pickup':emit('pickup:collected',{pickupId:targetId,collectorId:playerId,kind:'ore',amount:3,commodityId:'cmdty_ore_iron',pos:point(t)});save(target,'alive',false);save(target.view?.root||targetMesh,'visible',false);break;
         case 'world-law-scan':emit('player:scannedByPatrol',{hasContraband:false,source:'patrol'});break;
         case 'world-law-wanted':{
           state.player.heat=WANTED_THRESHOLD+.04;

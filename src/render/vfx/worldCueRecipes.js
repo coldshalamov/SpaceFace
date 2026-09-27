@@ -13,8 +13,17 @@ const travelVariants=Object.freeze({
   'travel.interdiction.triggered':recipe('travel-block','pressure',0xeb9277,1.1),
 });
 export const isComposedTravelCue=id=>Object.hasOwn(travelVariants,id);
+const miningVariants=Object.freeze({
+  'mining.fracture.anticipation':{...recipe('grind','deposition',0xe7b779,.8),surfaceWork:true},
+  'mining.fracture.released':{...recipe('harvest','deposition',0xd5c8a6,.95),surfaceWork:true},
+  'mining.rich_core.exposed':{...recipe('repair','deposition',0xbda3ff,1.05),surfaceWork:true},
+  'mining.rich_core.charge':{...recipe('catch','capture',0xc2d9ff,.90),surfaceWork:true,surfaceCapture:true},
+  'mining.chunk.tether_required':{...recipe('catch','capture',0xe6ba7c,.95),surfaceWork:true,surfaceCapture:true},
+  'mining.yield.collected':{...recipe('harvest','deposition',0xd4dcad,.78),surfaceWork:true},
+});
+export const isComposedMiningCue=id=>Object.hasOwn(miningVariants,id);
 const variants=Object.freeze({
-  ...travelVariants,
+  ...travelVariants,...miningVariants,
   'mining.survey.pulse':recipe('survey','pressure',0x78bdcc,1.05),
   'mining.survey.resolved':recipe('cool','deposition',0x96c2c6,.62),
   'mining.survey.classified':recipe('command','induction',0x94dcd1,.82),
@@ -22,10 +31,10 @@ const variants=Object.freeze({
   'mining.survey.investigated':recipe('cool','deposition',0xbbd3bb,.90),
   'mining.seam.reward':recipe('harvest','deposition',0xeac081,.88),
   'mining.drill.seismic_pulse':recipe('survey','pressure',0xb5b58f,.74),
-  'mining.drill.contact':recipe('grind','deposition',0xcfaa78,.40),
+  'mining.drill.contact':{...recipe('grind','deposition',0xcfaa78,.40),surfaceWork:true},
   'mining.drill.break':recipe('fling','pressure',0xdbbd89,.60),
-  'mining.drill.yield':recipe('harvest','deposition',0xd6dca0,.78),
-  'mining.drill.gas_hazard':recipe('prime','capture',0xe49a66,.75),
+  'mining.drill.yield':{...recipe('harvest','deposition',0xd6dca0,.78),surfaceWork:true},
+  'mining.drill.gas_hazard':{...recipe('prime','capture',0xe49a66,.75),surfaceWork:true,surfaceCapture:true},
   // The closed receiver is a capacity warning, never a successful pickup/yield.
   'mining.cargo.full':recipe('prime','capture',0xd9a970,.68),
   'mining.heat.overheated':recipe('prime','capture',0xf09259,.64),
@@ -80,7 +89,8 @@ export function resolveWorldCueReceipt(payload,state={}){
   if(!direction&&Number.isFinite((liveTarget||source)?.rot)){
     const angle=(liveTarget||source).rot;direction={x:Math.cos(angle),z:Math.sin(angle)};
   }
-  return {kind,targetId,sourceId,pos:copy(anchor),direction,
+  const atBodyCenter=liveTarget&&Math.hypot(anchor.x-liveTarget.pos.x,anchor.z-liveTarget.pos.z)<Math.max(1,liveTarget.radius*.20);
+  return {kind,targetId,sourceId,pos:copy(anchor),direction,bodySurface:!!atBodyCenter,
     sourcePos:point(source?.pos)?copy(source.pos):undefined,
     attachToTarget:!!liveTarget&&!DETACHED_CUES.has(kind)};
 }

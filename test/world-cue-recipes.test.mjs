@@ -12,8 +12,8 @@ function fixture(){return {simTime:1,playerId:1,entities:new Map([
 ]),settings:{video:{}}};}
 function cue(id,extra={}){return {id,sourceId:1,targetId:2,position:{x:137,y:2,z:28},...extra};}
 
-test('whitelist covers fourteen work cues and nine composed travel handoffs',()=>{
-  const entries=Object.entries(WORLD_CUE_ACTION_RECIPE.variants);assert.equal(entries.length,23);
+test('whitelist covers twenty work cues and nine composed travel handoffs',()=>{
+  const entries=Object.entries(WORLD_CUE_ACTION_RECIPE.variants);assert.equal(entries.length,29);
   for(const [id,recipe] of entries){
     assert.ok(PRESENTATION_RECIPES[id],id);assert.ok(isComposedTravelCue(id)||PRESENTATION_RECIPES[id].lanes.vfx.startsWith('vfx.direct_'),id);
     assert.equal(resolveWorldCueReceipt(cue(id),fixture()).kind,id);
@@ -28,8 +28,7 @@ test('whitelist covers fourteen work cues and nine composed travel handoffs',()=
 });
 
 test('already owned effects, bookkeeping and arbitrary cue kinds cannot enter the world consumer',()=>{
-  for(const id of ['mining.seam.quality','mining.rich_core.completed','mining.fracture.released',
-    'mining.yield.collected','mining.drill.aborted','mining.drill.retry',
+  for(const id of ['mining.seam.quality','mining.rich_core.completed','mining.drill.aborted','mining.drill.retry',
     'travel.discovery.mapped','combat.bounce','ui.open','constructor','__proto__'])
     assert.equal(resolveWorldCueReceipt(cue(id),fixture()),null,id);
   assert.equal(resolveWorldCueReceipt({kind:'mining.drill.contact'},fixture()),null);
@@ -125,4 +124,23 @@ test('travel follows the named hull, never the destination sector or arbitrary c
   state.simTime=1.4;owner.update(state);assert.equal(first.x,oldX+12);
   assert.equal(resolveWorldCueReceipt(cue('travel.jump.failed',{sourceId:99}),state),null);
   state.simTime=3;owner.update(state);assert.equal(owner.live,0);owner.dispose();
+});
+
+
+test('surface work meets the drawn receiver and accepted pickups enter the real collector',()=>{
+  const state=fixture(),owner=new ActionVfx(new THREE.Scene());
+  const root=new THREE.Mesh(new THREE.BoxGeometry(24,12,20),new THREE.MeshBasicMaterial());
+  root.position.set(140,0,32);state.entities.get(2).view={root};
+  const p=cue('mining.rich_core.exposed',{position:{x:140,z:32}});
+  assert.equal(owner.emit('presentation:cue',p,state),true);
+  const slot=owner.slots.find(s=>s.alive);
+  assert.equal(slot.provenance,'model-bounds-surface');assert.ok(slot.y>0);
+  assert.ok(Math.abs(slot.x-140)>=12||Math.abs(slot.z-32)>=10);
+  assert.equal(owner.emit('pickup:collected',{pickupId:2,collectorId:1,pos:{x:140,z:32},amount:0},state),false);
+  assert.equal(owner.emit('pickup:collected',{pickupId:2,collectorId:1,pos:{x:140,z:32},amount:3},state),true);
+  const pickup=owner.slots.find(s=>s.event==='pickup:collected');
+  assert.equal(pickup.id,1);assert.equal(pickup.sx,140);assert.equal(pickup.sz,32);
+  assert.ok(Math.abs(Math.hypot(pickup.x-80,pickup.z+12)-7)<1e-6);
+  state.entities.delete(2);state.simTime+=.2;owner.update(state);
+  assert.ok(owner.batch.count>0);owner.dispose();root.geometry.dispose();root.material.dispose();
 });
