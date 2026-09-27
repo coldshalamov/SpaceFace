@@ -33,6 +33,7 @@ import { modelTruthPlumeSocketName } from '../data/modelTruth.js';
 import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
 import { BombDetonationVfx } from './vfx/bombDetonationVfx.js';
 import { StatusMatterVfx } from './vfx/statusMatterVfx.js';
+import { CombatContactVfx } from './vfx/combatContactVfx.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { createEmergentPrimitivePools } from './forceLanguage/emergentPrimitivePools.js';
@@ -1238,6 +1239,7 @@ export const vfx = {
     this._actionVfx = null;
     this._bombDetonationVfx = null;
     this._statusMatterVfx = null;
+    this._combatContactVfx = null;
     this._arcadeStructuralSerial = 0;
     this._collisionContactTicks = new Map();
     this._collisionMediumTicks = new Map();
@@ -1524,6 +1526,8 @@ export const vfx = {
     invokeVfxDisposer(this._fieldGeom, 'field force surfaces');
     invokeVfxDisposer(this._statusMatterVfx, 'attached status matter');
     this._statusMatterVfx = null;
+    invokeVfxDisposer(this._combatContactVfx, 'combat contact matter');
+    this._combatContactVfx = null;
     invokeVfxDisposer(this._bombDetonationVfx, 'bomb material handoffs');
     this._bombDetonationVfx = null;
     invokeVfxDisposer(this._actionVfx, 'action answers');
@@ -1735,6 +1739,7 @@ export const vfx = {
     add(this._actionVfx && this._actionVfx.mesh);
     add(this._bombDetonationVfx && this._bombDetonationVfx.mesh);
     add(this._statusMatterVfx && this._statusMatterVfx.mesh);
+    add(this._combatContactVfx && this._combatContactVfx.mesh);
     add(this._emergentPools && this._emergentPools.group);
     const arcadeRoots = this._arcadeStructural && (
       this._arcadeStructural.getOwnerRoots?.() || this._arcadeStructural.getMeshes?.()
@@ -2242,7 +2247,7 @@ export const vfx = {
     const add = (name, fn) => this._subs.push(bus.on(name, fn));
     for (const name of ACTION_VFX_EVENTS) add(name, (p) => this._onActionVfx(name, p));
     for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
-      add(name, () => { this._actionVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); });
+      add(name, () => { this._actionVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); });
     }
     const clearTumbleCadenceFor = (p) => {
       const id = p && (p.id ?? p.entityId ?? p.targetId);
@@ -2340,6 +2345,9 @@ export const vfx = {
     add('ai:formationBroken', (p) => this._onAiFormationBroken(p));
     add('presentation:cue', (p) => this._onDirectMiningPresentationCue(p));
     add('presentation:cue', (p) => this._onDirectTravelPresentationCue(p));
+    add('presentation:cue', (p) => {
+      if (p?.id === 'subsystem.disabled' || p?.id === 'subsystem.restored') this._emitCombatContact(p.id, p);
+    });
     add('presentation:vfxCue', (p) => this._onPresentationCue(p));
     add('pickup:collected', (p) => this._onPickup(p));
     // Aerospace locomotion receipts, emitted render-side by shipMicroMotion (never sim).
@@ -2492,6 +2500,7 @@ export const vfx = {
       this._actionVfx?.reproject(ox, oz);
       this._bombDetonationVfx?.reproject(ox, oz);
       this._statusMatterVfx?.reproject(ox, oz);
+      this._combatContactVfx?.reproject(ox, oz);
       this._targetContour?.reproject(ox, oz);
     }
     // Prevent double-reproject when both renderer prepareFrame and vfx.update observe the same seq.
@@ -4284,6 +4293,8 @@ export const vfx = {
 
   _onPresentationCue(p) {
     if (!this._scene || !p) return;
+    // The normalized cue retains measured subsystem identity before the generic adapter drops it.
+    if (p.id === 'subsystem.disabled' || p.id === 'subsystem.restored') return;
     if (p.lane === STRUCTURAL_FX_CUE_KIND || p.kind === STRUCTURAL_FX_CUE_KIND) {
       this._onArcadeStructuralPresentationCue(p);
       return;
@@ -4865,6 +4876,7 @@ export const vfx = {
 
   _emitLowCollisionContact(p) {
     if (!this._scene || !p || !p.pos) return false;
+    if (this._emitCombatContact('contact', p)) return true;
     const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
     const reduced = accessibility.flashOpacityScale < 1;
     const base = this._collisionContactAxis(p);
@@ -5344,7 +5356,7 @@ export const vfx = {
     return !!entry;
   },
 
-  _admitAndSpawnArcadeStructural(eventName, payload, emitStructure = true) {
+  _admitAndSpawnArcadeStructural(eventName, payload, emitStructure = true, contactKind = null) {
     const admitted = admitStructuralFxCue(eventName, payload || {}, this.state);
     if (!admitted) return false;
     const req = _arcadeStructuralBurstReq;
@@ -5368,6 +5380,7 @@ export const vfx = {
       this.bus.emit('presentation:audioCue', audioPayload);
       this.bus.emit('audio:cue', audioPayload);
     }
+    if (contactKind && this._emitCombatContact(contactKind, payload)) return true;
     return emitStructure ? this._spawnArcadeStructuralBurst(req) : false;
   },
 
@@ -5444,7 +5457,9 @@ export const vfx = {
     req.magnitude = Math.max(0.6, Number(p.magnitude) || 1);
     req.dv = 0;
     req.terrain = 0;
-    return this._admitAndSpawnArcadeStructural(eventName, p);
+    const material = p.material || p.receipt?.material;
+    const contactKind = material === 'mirror' ? 'mirror' : material === 'bank_stone' ? 'bank' : null;
+    return this._admitAndSpawnArcadeStructural(eventName, p, true, contactKind);
   },
 
   _onArcadeStructuralPresentationCue(p) {
@@ -10127,17 +10142,40 @@ export const vfx = {
   _onBombFieldEnded(p) { return this._emitBombMaterial('bombs:fieldEnded', p); },
   _onBombDestroyed(p) { return this._emitBombMaterial('bombs:destroyed', p); },
 
-  // SF-10 wall-impact payoff (combat:collisionConsequence). A light hull slammed into terrain /
-  // structure by a concussion slug, a mine shove, or a massline throw. A compressive PUNCH plus
-  // directional dust skimming the contact — NOT a fireball (this is kinetic) and NOT a primary ring
-  // (graphics-checkpoint reject list). Scale tracks the receipted deltaV; a tumble reads harder.
-  // Pooled sprites/lights only; reduced-flash aware; consumes the receipt geometry (no query).
+  // Shared retained surface pool for received compression, reflected material and subsystem
+  // state. Each construction uses the native contact/body; no camera-trauma value becomes WU.
+  _emitCombatContact(kind, p) {
+    if (!this._scene?.add || !p || this.state?.render?.openingVfxFrozen === true) return false;
+    const pos = p.receipt?.point || p.position || p.pos || this._ent(p.targetId ?? p.aId)?.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+    const player = this._ent(this.state?.playerId);
+    if (player?.pos) {
+      const look = tableLookAtDelta(this.state, player.pos, pos, _tableLookAtScratch);
+      if (!shouldDrawTableVfx(look.x, look.z, this._tableVfxDrawWu || tableVfxDrawWuFromState(this.state))) return false;
+    }
+    if (!this._combatContactVfx) this._combatContactVfx = new CombatContactVfx(this._scene, {
+      toLocal: this._weaponPresenterLocalizer,
+    });
+    return this._combatContactVfx.emit(kind, p, this.state);
+  },
+
   _onCollisionConsequence(p) {
     if (!this._scene || !p || !p.pos) return false;
     const realControl = p.control === 'stagger' || p.control === 'tumble';
     const realDamage = Math.max(0, Number(p.impactDamage) || 0) > 0;
     if (!realControl && !realDamage) return false;
     this._rememberMediumCollision(p);
+    if (this._emitCombatContact('consequence', p)) {
+      // Keep receipt admission/audio and the separate physical debris event. Geometry
+      // now maps body extent and closing speed, never dimensionless camera trauma.
+      if (p.control === 'tumble') {
+        _arcadeStructuralBurstReq.x = p.pos.x; _arcadeStructuralBurstReq.z = p.pos.z;
+        this._admitAndSpawnArcadeStructural('combat:collisionConsequence', p, false);
+      }
+      const light = collisionImpactLight(p);
+      this._flashLight(p.pos, p.surface === 'terrain' ? '#ffcaa0' : '#bcd8ff', light.intensity, 9, light.range);
+      return true;
+    }
     const pos = p.pos;
     const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
     const reduced = acc.flashOpacityScale < 1;
@@ -10283,6 +10321,7 @@ export const vfx = {
   _onAiTelegraph(p) {
     this._emitJuiceCue('ai.telegraph', p, 1);
     if (!this._scene) return;
+    if (p && (p.kind === 'engine_flare' || p.kind === 'attach_spool' || p.kind === 'weapon_charge')) return;
     this._beginDoctrineTell(p || {});
   },
 
@@ -10692,40 +10731,10 @@ export const vfx = {
 
   _onAiFlee(p) {
     this._emitJuiceCue('ai.flee', p, 1);
-    if (!this._scene) return;
-    const e = this._ent(p && p.entityId);
-    if (!e || !e.pos) return;
-    // A ship breaking and running: a hot panic flash at the hull, then a ragged scatter of
-    // thruster sparks biased away from the player — the shape of flight, not a radial burst.
-    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
-    let fleeA = null;
-    if (player) {
-      const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-      if (dx * dx + dz * dz > 1) fleeA = Math.atan2(dz, dx);
-    }
-    this._c0.set('#a6f0ff'); this._c1.set('#39d0ff');
-    for (let k = 0; k < 8; k++) {
-      const a = fleeA != null
-        ? fleeA + (Math.random() - 0.5) * 1.8
-        : Math.random() * Math.PI * 2;
-      const v = 10 + Math.random() * 20;
-      this._spawnParticle(e.pos.x, e.pos.z, Math.cos(a) * v, Math.sin(a) * v,
-        0.3 + Math.random() * 0.2, 1.0, 0.0, this._c0, this._c1, 2.5, 0, 0);
-    }
-    this._spawnSprite(SPR_FLASH, e.pos.x, 0, e.pos.z, 0.30, e.radius || 8, (e.radius || 8) * 2.0, 0.6, 0.0, '#a6f0ff', 0, 0);
   },
 
   _onAiFormationBroken(p) {
     this._emitJuiceCue('ai.formation_broken', p, 1);
-    if (!this._scene) return;
-    // No specific entity id; flash at the player's position as a tactical cue. A formation
-    // breaking is a lattice shattering: two ragged orange sheets tearing across the player's
-    // heading, not a clean ring.
-    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
-    if (!player || !player.pos) return;
-    const heading = Number.isFinite(player.rot) ? player.rot : 0;
-    this._spawnSprite(SPR_COMBUSTION, player.pos.x, 0, player.pos.z, 0.60, 8.0, 24.0, 0.5, 0.0, '#ff8840', 0, 0, 0.42, heading);
-    this._spawnSprite(SPR_COMBUSTION, player.pos.x, 0, player.pos.z, 0.78, 6.0, 18.0, 0.32, 0.0, '#ffb35c', 0, 0, 0.3, heading + Math.PI / 2);
   },
 
   _onMiningTick(p) {
@@ -11638,6 +11647,7 @@ export const vfx = {
     if (this._actionVfx) this._actionVfx.update(this.state);
     if (this._bombDetonationVfx) this._bombDetonationVfx.update(this.state);
     if (this._statusMatterVfx) this._statusMatterVfx.update(this.state);
+    if (this._combatContactVfx) this._combatContactVfx.update(this.state);
     if (this.state && this.state.emergent && this.state.emergent.hot) {
       if (!this._emergentPools && this._scene) {
         this._emergentPools = createEmergentPrimitivePools();

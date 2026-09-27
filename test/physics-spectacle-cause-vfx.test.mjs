@@ -198,6 +198,9 @@ function collisionHarness() {
   ]);
   const harness = Object.create(vfx);
   harness._scene = true;
+  // This fixture records the unavailable-renderer fallback; native pooled contacts are
+  // exercised in combat-contact-vfx.test.mjs. No real structural mount exists here.
+  harness._admitAndSpawnArcadeStructural = () => false;
   harness._burst = 1;
   harness._t = 0;
   harness.state = {
@@ -213,6 +216,7 @@ function collisionHarness() {
   harness._spawnParticle = (...args) => calls.push({ type: 'particle', args });
   harness._flashLight = (...args) => calls.push({ type: 'light', args });
   harness._queueExplosion = (...args) => calls.push({ type: 'explosion', args });
+  harness._scheduleDetonation = (...args) => calls.push({ type: 'explosion', args });
   harness._emitJuiceCue = () => {};
   return { harness, calls };
 }
@@ -437,7 +441,8 @@ test('causal receipt runs through the real pooled VFX substrates with inherited 
     },
   }, 'ordinary'), true);
   system._explosions.update(0.7, system._explosionEmitter);
-  assert.ok(system._liveSpriteCount > 0);
+  system._explosionRupture.update(.2, state.settings);
+  assert.ok(system._explosionRupture.mesh.count > 0, 'causal rupture owns the volume instead of generic sprites');
   assert.ok(system._liveTrailStreakCount > 0);
   assert.ok(Array.from(system._activeTrailStreaks.slice(0, system._liveTrailStreakCount),
     (slot) => system._ts[slot].admissionPriority).every((priority) => priority === 0.91));
@@ -471,14 +476,14 @@ test('real pooled medium collision applies reduced-flash size, opacity, and ligh
     surface: 'terrain',
   }), true);
 
-  const flashes = system._spr.filter((sprite) => sprite.alive && sprite.kind === flashKind);
-  assert.equal(flashes.length, 2);
-  for (const flash of flashes) {
-    assert.ok(Math.abs(flash.size0 - 1.1 * 0.68) < 1e-12);
-    assert.ok(Math.abs(flash.size1 - 3.4 * 0.68) < 1e-12);
-    assert.ok(Math.abs(flash.op0 - 0.9 * 0.3) < 1e-12);
-  }
+  state.simTime = .2;
+  system._combatContactVfx.update(state);
+  assert.equal(system._combatContactVfx.batch.count, 6);
+  assert.equal(system._spr.filter(sprite => sprite.alive && sprite.kind === flashKind).length, 0);
+  const slot = system._combatContactVfx.slots.find(slot => slot.alive);
+  assert.ok(Math.abs(system._combatContactVfx.batch.attributes[2].getX(0) - slot.radius * .24 * .68) < 1e-5);
   const activeLights = system._lights.filter((slot) => slot.active);
   assert.equal(activeLights.length, 1);
-  assert.ok(Math.abs(activeLights[0].peak - 2.6 * 0.24) < 1e-12);
+  assert.ok(Math.abs(activeLights[0].peak - 2.6 * Math.sqrt(14/150) * 0.24) < 1e-12);
+  system.destroy();
 });

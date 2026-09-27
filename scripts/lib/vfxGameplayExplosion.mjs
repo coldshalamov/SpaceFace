@@ -132,6 +132,7 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     owner._gas.update(privateState.simTime, camera);
     owner._actionVfx?.update(privateState);
     owner._bombDetonationVfx?.update(privateState);
+    owner._combatContactVfx?.update(privateState);
     // Newer destruction builds may split the structural rupture layer from the shared phased
     // pool. Keep this adapter forward-compatible without inventing a lab-only renderer.
     // ExplosionRupture consumes the absolute simulation clock and accessibility settings.
@@ -154,6 +155,7 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
       structured: owner._arcadeStructural.stats(),
       action: owner._actionVfx?.inspect?.() || null,
       statusMatter: owner._statusMatterVfx?.stats || null,
+      combatContact: owner._combatContactVfx ? {live:owner._combatContactVfx.live,surfaces:owner._combatContactVfx.batch.count} : null,
       worldPresentation: worldPresentation.inspect(),
       bombTransients: owner._bombDetonationVfx?.stats || null,
       rupture: typeof owner._explosionRupture?.inspect === 'function'
@@ -192,6 +194,7 @@ export function createGameplayExplosion({ scene, camera, state, renderer = null,
     owner._gas.clear();
     owner._actionVfx?.clear();
     owner._bombDetonationVfx?.clear();
+    owner._combatContactVfx?.clear();
     if(owner._actionVfx)owner._actionVfx.serial=seed;
     if (typeof owner._explosionRupture?.clear === 'function') owner._explosionRupture.clear();
     else if (typeof owner._explosionRupture?.reset === 'function') owner._explosionRupture.reset();
