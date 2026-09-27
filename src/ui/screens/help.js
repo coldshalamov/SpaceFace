@@ -445,7 +445,8 @@ function ladder({ items, ariaLabel, chosenId, onPick, cls = '' }) {
         b.tabIndex = on ? 0 : -1;
         if (on) {
           if (focus && typeof b.focus === 'function') b.focus();
-          if (typeof b.scrollIntoView === 'function') b.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
+          // a pick from the instrument centres its rung; a step along the ladder only keeps it in view
+          if (typeof b.scrollIntoView === 'function') b.scrollIntoView({ block: focus ? 'nearest' : 'center', behavior: reducedMotion() ? 'auto' : 'smooth' });
         }
       }
     },
