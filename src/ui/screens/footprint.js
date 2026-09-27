@@ -283,12 +283,15 @@ function findChainIncident(chain) {
   return null;
 }
 
+/** The power whose standing the chain moved: its newest own standing receipt, else a spillover's. A
+ *  spillover is a neighbour's echo, so it never outranks the chain's own hit (Bribe answers the power
+ *  the act offended, not one its allies nudged). */
 function findChainStandingFaction(chain) {
   const nodes = Array.isArray(chain && chain.nodes) ? chain.nodes : [];
-  for (let i = nodes.length - 1; i >= 0; i -= 1) {
-    const node = nodes[i];
-    if (node && (node.k === 'standing' || node.k === 'spillover')) {
-      return asString(node.factionId) || null;
+  for (const kind of ['standing', 'spillover']) {
+    for (let i = nodes.length - 1; i >= 0; i -= 1) {
+      const node = nodes[i];
+      if (node && node.k === kind) return asString(node.factionId) || null;
     }
   }
   return null;
