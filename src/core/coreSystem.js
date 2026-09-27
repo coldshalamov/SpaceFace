@@ -467,8 +467,10 @@ function repairEntityIndex(index) {
   }
   if (!Array.isArray(index.statics)) index.statics = [];
   if (!Array.isArray(index.damageables)) index.damageables = [];
-  if (!Array.isArray(index.aiShips)) index.aiShips = [];
-  if (!Array.isArray(index.weaponShips)) index.weaponShips = [];
+  // Repairing a volatile lane leaves it valid-but-empty; force the next refresh
+  // to rebuild rather than wait out the cadence on a corrupt index.
+  if (!Array.isArray(index.aiShips)) { index.aiShips = []; index._volatileReady = false; }
+  if (!Array.isArray(index.weaponShips)) { index.weaponShips = []; index._volatileReady = false; }
   if (!Array.isArray(index.collidables)) index.collidables = [];
   if (!Array.isArray(index.spatialStatics)) index.spatialStatics = [];
   if (!Array.isArray(index.spatialDynamics)) index.spatialDynamics = [];
