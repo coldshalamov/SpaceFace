@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "bomb-bay-combat-prompts",
-      "date": "2026-09-16",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "combat help on KBM and gamepad now teaches the bomb-bay drop/cycle keys",
-      "fingerprint": "verb=teach,subject=bomb-bay,sector=any,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "133aaff91",
-      "verification": "focused_green"
-    },
-    {
       "id": "iron-maw-arena-lore",
       "date": "2026-09-16",
       "wf": "WF-04",
@@ -1635,6 +1622,19 @@
       "references": [],
       "integration": "live",
       "commit": "928e43bf1",
+      "verification": "focused_green"
+    },
+    {
+      "id": "wf02-rock-lee-ambush",
+      "date": "2026-09-27",
+      "wf": "WF-02",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Ambush wings that declare terrain:'lee' (020 ambush_snare, 334 tether-control raider) now spawn behind the best rock on your approach bearing — cover between you and the wing, formation preserved, deterministic, fail-open when no qualifying rock exists.",
+      "fingerprint": "verb=conceal,subject=ambush-squad-placement,sector=any,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "524ddb204",
       "verification": "focused_green"
     }
   ],
