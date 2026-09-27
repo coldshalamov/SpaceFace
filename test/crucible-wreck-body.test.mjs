@@ -133,7 +133,11 @@ function boundWrecks(h) {
 }
 
 for (const seed of [4242, 8008]) {
-  test(`seed ${seed}: a gunfire kill leaves exactly one wreck at the victim's pose, size and momentum`, () => {
+  test(`seed ${seed}: a gunfire kill leaves the victim's whole body and one companion shard, both moving`, () => {
+    // §25 Phase 3 "the hit you can see" (ZERO_TO_HERO 2026-09-23): within 250 ms a normal arena
+    // kill must leave at least TWO moving, lit wreck bodies at >= the victim's own size. The
+    // marker still owns exactly one durable whole hull; the second body is unbound companion
+    // debris the same kill tick throws clear.
     const h = boot(seed);
     assert.equal(h.state.world.currentSectorId, null, 'the arena has no sector — the old rejection');
     assert.equal(h.state.run.phase, 'active');
@@ -147,11 +151,15 @@ for (const seed of [4242, 8008]) {
     const { vel } = killByGunfire(h, victim);
 
     const spawnedNow = h.state.entityList.filter((e) => e && !before.has(e) && e.type === 'wreck');
-    assert.equal(spawnedNow.length, 1, 'exactly one live wreck body within the kill tick');
-    const wreck = spawnedNow[0];
+    assert.equal(spawnedNow.length, 2, 'two live wreck bodies within the kill tick');
+    const wreck = spawnedNow.find((e) => e.data && e.data.markerId);
+    const shard = spawnedNow.find((e) => e.data && e.data.arenaShardOf);
+    assert.ok(wreck && shard, 'one durable whole body and one companion shard');
+
+    // The whole body is the victim's dead hull: its pose, size and momentum, marker-bound.
     assert.equal(wreck.type, 'wreck');
     assert.ok(Math.hypot(wreck.pos.x - victim.pos.x, wreck.pos.z - victim.pos.z) < 1e-6,
-      'wreck spawns where the victim died');
+      'the whole body spawns where the victim died');
     assert.equal(wreck.radius, victimRadius, 'wreck radius is the victim radius, not the legacy 9');
     assert.ok(Math.hypot(wreck.vel.x - vel.x, wreck.vel.z - vel.z) < 1,
       `wreck keeps the dead hull's momentum (got ${JSON.stringify(wreck.vel)} vs ${JSON.stringify(vel)})`);
@@ -160,14 +168,33 @@ for (const seed of [4242, 8008]) {
     assert.equal(wreck.data.provenance && wreck.data.provenance.sectorId, ARENA_FIELD_ID);
     assert.ok(wreck.mass > 0, 'dead man mass carried');
 
+    // The shard: unbound companion debris, at least the victim's own size, carrying the death's
+    // momentum and a grabbable pool — a body, not a second whole ship.
+    assert.equal(shard.data.markerId, undefined, 'the shard is not bound to a marker');
+    assert.equal(shard.data.provenance, undefined, 'the shard carries no marker provenance');
+    assert.equal(shard.data.hulkVisual, undefined, 'the shard is not a second whole ship');
+    assert.equal(shard.data.hulkOfDefId, undefined, 'the shard draws as generic debris');
+    assert.equal(shard.data.arenaShardOf, wreck.data.markerId, 'the shard belongs to this kill');
+    assert.ok(shard.radius >= victimRadius,
+      `the shard is at least the victim's size (got ${shard.radius} vs ${victimRadius})`);
+    assert.ok(shard.mass > 0 && shard.mass <= wreck.mass, 'shard is lighter debris');
+    assert.ok(shard.data.salvagePool && shard.data.salvagePool.cmdty_scrap_metal > 0,
+      'the shard is grabbable on the beam path');
+    assert.ok(shard.vel.x * vel.x + shard.vel.z * vel.z > 0,
+      `the shard keeps the victim's momentum, not reverses it (${JSON.stringify(shard.vel)} vs ${JSON.stringify(vel)})`);
+
     // A duplicate kill receipt must not mint a second body on the same marker.
     killByGunfire(h, victim);
-    assert.equal(h.state.entityList.filter((e) => e && e.type === 'wreck').length, 1);
+    assert.equal(h.state.entityList.filter((e) => e && e.type === 'wreck').length, 2,
+      'a duplicate kill adds no body');
 
     // A full settle must not mint a second body (mining defers to the bound aftermath wreck).
     h.tick(120);
-    assert.equal(spawnedNow.length, 1);
-    assert.equal(liveWrecks(h).filter((e) => e.data && e.data.markerId === wreck.data.markerId).length, 1);
+    assert.equal(spawnedNow.length, 2);
+    assert.equal(liveWrecks(h).filter((e) => e.data && e.data.markerId === wreck.data.markerId).length, 1,
+      'still exactly one durable body for the marker');
+    assert.equal(liveWrecks(h).filter((e) => e.data && e.data.arenaShardOf === wreck.data.markerId).length, 1,
+      'still exactly one companion shard for the marker');
   });
 }
 
@@ -206,6 +233,16 @@ test('the ninth arena kill retires the wreck farthest from the player, never the
   const nearestVictim = victims[0];
   assert.ok(bound.some((row) => row.marker.victimId === nearestVictim.id
     && row.entity.alive !== false), 'the wreck beside the player survives the cap');
+  // Each surviving kill also left its companion shard; the retired wreck's shard retired with
+  // it, so the field holds eight wrecks and eight shards — never an orphan body.
+  const shards = h.state.entityList.filter((e) => e && e.alive !== false && e.type === 'wreck'
+    && e.data && e.data.arenaShardOf);
+  assert.equal(shards.length, 8, 'eight companion shards for eight surviving wrecks');
+  assert.equal(shards.some((e) => e.data.arenaShardOf === retiredEvent.payload.markerId), false,
+    'the retired wreck takes its companion shard with it');
+  const newestMarker = bound.find((row) => row.marker.victimId === newest.id);
+  assert.ok(newestMarker && shards.some((e) => e.data.arenaShardOf === newestMarker.marker.markerId),
+    'the kill that hit the cap leaves its companion shard too');
 });
 
 test('a wreck from the last round is still a grabbable body after the shop transition', () => {
@@ -215,8 +252,11 @@ test('a wreck from the last round is still a grabbable body after the shop trans
   killByGunfire(h, victim);
   const wreck = liveWrecks(h).find((e) => e.data && e.data.markerId);
   assert.ok(wreck, 'kill left a bound wreck');
-  assert.equal(liveWrecks(h).length, wreckBefore + 1);
+  const shard = liveWrecks(h).find((e) => e.data && e.data.arenaShardOf === wreck.data.markerId);
+  assert.ok(shard, 'kill left a companion shard');
+  assert.equal(liveWrecks(h).length, wreckBefore + 2);
   const wreckId = wreck.id;
+  const shardId = shard.id;
   const markerId = wreck.data.markerId;
 
   // wave 1 → cleanup → draft (the swarm's shop opens every round) → wave_intro → wave 2.
@@ -245,6 +285,9 @@ test('a wreck from the last round is still a grabbable body after the shop trans
   assert.ok(arenaMarkers(h).some((m) => m.markerId === markerId), 'the marker persisted');
   assert.ok(isAttachable(still, h.player.id, h.state),
     "the next round's Massline can latch the wreck you made last round");
+  const shardStill = h.state.entities.get(shardId);
+  assert.ok(shardStill && shardStill.alive !== false, 'the companion shard survived the round transition');
+  assert.equal(shardStill.data.arenaShardOf, markerId, 'the shard still belongs to the same kill');
 });
 
 test('a slam-fractured kill leaves its two seam pieces — never a third whole wreck', () => {
@@ -260,6 +303,8 @@ test('a slam-fractured kill leaves its two seam pieces — never a third whole w
   const fresh = h.state.entityList.filter((e) => e && !before.has(e) && e.type === 'wreck');
   assert.equal(fresh.length, 2, 'the seam and the remainder are the body — no double-spawn');
   assert.ok(fresh.every((e) => e.data && e.data.fracturePiece), 'both pieces are fracture pieces');
+  assert.equal(fresh.some((e) => e.data && e.data.arenaShardOf), false,
+    'a slam adds no companion shard — the seam pieces are the whole story');
 });
 
 test('legacy markers without a victim radius still spawn at the fallback radius', () => {
