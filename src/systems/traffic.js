@@ -49,6 +49,7 @@ import {
   buildCargoManifest,
   buildArrivalIntent,
   buildLossIntent,
+  stableManifestId,
   filterNewFreightIntents,
   mergeAppliedFreightIds,
   pressureShareRecipe,
@@ -240,6 +241,8 @@ const CIVILIAN_VIOLENCE_RING_CAP = 8;
 const CIVILIAN_ALARM_FLEE_ROLES = new Set(['hauler', 'courier', 'ore_carrier', 'shuttle', 'tug', 'miner', 'prospector', 'tourist', 'rescue']);
 const CIVILIAN_ALARM_HOLD_ROLES = new Set(['surveyor', 'tender', 'salvor']);
 const CIVILIAN_HAULER_DUMP_ROLES = new Set(['hauler', 'shuttle', 'tanker', 'arclight']);
+const CLAIM_CONVOY_MAX_LIVE = 4;              // concurrent manifested claim convoy hulls
+const CLAIM_CONVOY_DEPART_CLEARANCE_WU = 160; // spawn offset from the claim pad along the route
 const CIVILIAN_DISTRESS_RADIUS_WU = 1800;
 const CIVILIAN_DISTRESS_COOLDOWN_S = 3;
 const AMBUSH_LOADED_HAULER_COMMODITY_ID = 'cmdty_ore_iron';
@@ -1434,6 +1437,9 @@ export const traffic = {
     this.bus.on('claim:infrastructureActive', refreshClaimTravel);
     this.bus.on('claim:infrastructureStatus', refreshClaimTravel);
     this.bus.on('claim:claimed', () => this._maintainClaimDepotTraffic());
+    // Claims abandons a manifested leg (release/teardown edge) — retire the carrier here so no
+    // ownerless convoy hull ever lingers in the sector.
+    this.bus.on('claim:convoyAbandoned', (p) => this._teardownClaimConvoy(p || {}));
     this.bus.on('encounter:resolved', ({ encounterId } = {}) => {
       for (const service of this.state.traffic?.depotServices || []) {
         if (encounterId === `depot-watch:${service.bodyId}`) service.watchResolved = true;
@@ -2300,6 +2306,292 @@ export const traffic = {
       assigned += 1;
     }
     return assigned;
+  },
+
+  // ── Claim Trade Relay convoys (physical legs) ──────────────────────────────────────────────
+  // Claims owns the ledger leg (spec.convoy); traffic owns the manifested carrier: a mule that
+  // leaves the claim pad bearing the dispatched freight on a causal manifest, routed by
+  // npcJobsRuntime claim → destination berth. A kill flows through the ordinary freighter-loss
+  // path (scarcity pressure + freight:loss + headline); a berth-side unload is the honest
+  // arrival and emits claim:convoyDocked for claims to settle. A convoy leg that no hull ever
+  // manifested (player never in-sector) simply is not here — nothing modeled could touch it.
+  _maintainClaimConvoys() {
+    if (this._restoreEpochPending || this.state.mode !== 'flight') return;
+    const bodies = this.state.claims && this.state.claims.bodies;
+    const jobs = this.helpers && this.helpers.npcJobs;
+    if (!bodies || !bodies.length || !jobs || typeof jobs.assign !== 'function') return;
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (!sectorId) return;
+    this._ensureState();
+    const stations = this._sectorStations();
+    // Reap carriers whose claim-side leg is already gone (claim released, teardown, restore
+    // edge): an orphaned convoy hull would otherwise linger as unexplainable traffic. Collect
+    // first — teardown splices this same list.
+    const orphaned = [];
+    for (const rec of this.state.traffic.freighters) {
+      const ent = rec && liveEntity(this.state, rec.id);
+      const mark = ent && ent.data && ent.data.claimConvoy;
+      if (!mark) continue;
+      const body = bodies.find((b) => b && b.id === mark.bodyId);
+      const live = body && body.spec && body.spec.convoy;
+      if (!live || live.convoyId !== mark.convoyId) {
+        orphaned.push({
+          bodyId: mark.bodyId, convoyId: mark.convoyId,
+          worldRecordId: ent.data.worldRecordId, entityId: ent.id, reason: 'claim_leg_gone',
+        });
+      }
+    }
+    for (const orphan of orphaned) this._teardownClaimConvoy(orphan);
+    let manifested = 0;
+    for (const rec of this.state.traffic.freighters) {
+      const ent = rec && liveEntity(this.state, rec.id);
+      if (ent && ent.data && ent.data.claimConvoy) manifested++;
+    }
+    for (const body of bodies) {
+      const spec = body && body.spec;
+      const convoy = spec && spec.id === 'spec_relay' && spec.convoy;
+      if (!convoy || typeof convoy.convoyId !== 'string' || !convoy.convoyId) continue;
+      if (body.owned === false || body.sectorId !== sectorId) continue;
+      if (!Number.isFinite(body.x) || !Number.isFinite(body.z)) continue;
+      const station = stations.find((row) => stationIdentity(row) === convoy.destStationId);
+      if (!station || !station.pos) continue; // no in-sector berth — the leg stays abstract
+      const worldRecordId = convoy.worldRecordId;
+      if (typeof worldRecordId !== 'string' || !worldRecordId) continue;
+      let entity = entityWithWorldRecord(this.state, worldRecordId);
+      const record = this.state.world && this.state.world.records && this.state.world.records.byId
+        ? this.state.world.records.byId[worldRecordId] : null;
+      if (terminalWorldRecord(record)) continue; // claims' kill/dock paths own the conclusion
+      // World residency owns an extant offscreen hull; never spawn a second copy over its record.
+      if (record && !entity) continue;
+      let spawned = false;
+      const wasManifested = convoy.manifested === true;
+      if (!entity) {
+        if (manifested >= CLAIM_CONVOY_MAX_LIVE) continue;
+        const budget = this.helpers.spawnBudget;
+        const requester = `claim-convoy:${convoy.convoyId}`;
+        // Honor the live-ship budget when it is registered; a denied slot defers the physical
+        // leg (the abstract convoy keeps flying until capacity frees).
+        if (budget && typeof budget.request === 'function' && budget.request(1, requester) !== 1) {
+          continue;
+        }
+        const dx = station.pos.x - body.x;
+        const dz = station.pos.z - body.z;
+        const length = Math.hypot(dx, dz) || 1;
+        const shipSpec = makeShipEntitySpec(TRAFFIC_ROLES.hauler.ship, {
+          team: 2, factionId: (station.data && station.data.factionId) || 'faction_free',
+          pos: {
+            x: body.x + dx / length * CLAIM_CONVOY_DEPART_CLEARANCE_WU,
+            z: body.z + dz / length * CLAIM_CONVOY_DEPART_CLEARANCE_WU,
+          },
+          ai: { archetype: TRAFFIC_ROLES.hauler.archetype, passive: true, spawnContext: 'convoy_civilian' },
+        });
+        entity = this.helpers.spawnEntity && this.helpers.spawnEntity(shipSpec);
+        if (!entity) {
+          if (budget && typeof budget.release === 'function') budget.release(requester);
+          continue;
+        }
+        entity.data.worldRecordId = worldRecordId;
+        entity.data.identityKey = `claim-convoy:${body.id}:${convoy.convoyId}`;
+        entity.data.durable = true;
+        this._stampTrafficDurableIdentity(entity, sectorId, 'hauler', TRAFFIC_ROLES.hauler, 0);
+        entity.flags = { ...entity.flags, persistent: true };
+        entity.data.trafficLabel = `${body.name} convoy`;
+        if (budget && typeof budget.bindEntity === 'function'
+          && budget.bindEntity(entity.id, requester) !== true
+          && typeof budget.release === 'function') {
+          // Grant stayed unbound — free it so a failed bind cannot leak a reserved slot.
+          budget.release(requester);
+        }
+        manifested++;
+        spawned = true;
+      }
+      // Manifestation latch + relink in one event: a fresh spawn reports itself, and a
+      // rematerialized hull re-keys the leg's entityId (world residency owns id stability).
+      if (convoy.manifested !== true || convoy.entityId !== entity.id) {
+        this.bus.emit('claim:convoyManifested', {
+          bodyId: body.id, convoyId: convoy.convoyId,
+          entityId: entity.id, worldRecordId,
+        });
+      }
+      entity.data.claimConvoy = {
+        bodyId: body.id, convoyId: convoy.convoyId,
+        goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId,
+      };
+      entity.data.itinerary = { kind: 'claim_convoy', bodyId: body.id, convoyId: convoy.convoyId };
+      let rec = this.state.traffic.freighters.find((row) => row && row.id === entity.id);
+      if (!rec) {
+        rec = {
+          id: entity.id, role: 'hauler', targetId: station.id,
+          waitT: 0, nextTradeT: 0, orbitPhase: 0, dockSeq: 0,
+          manifest: entity.data.cargoManifest || null,
+        };
+        this.state.traffic.freighters.push(rec);
+        if (!this._active.includes(entity.id)) this._active.push(entity.id);
+      }
+      // The hold IS the dispatched freight — one causal manifest line, keyed to the convoy's
+      // durable identity. Stocking happens at first manifestation (fresh spawn or a pre-latch
+      // adoption); after that an empty or missing hold stays empty — freight spilled under fire
+      // is never silently re-topped by the next maintenance pass.
+      const manifestId = this._claimConvoyManifestId(worldRecordId);
+      const aboard = entity.data.cargoManifest;
+      if (aboard ? aboard.manifestId !== manifestId : (spawned || !wasManifested)) {
+        this._setTrafficManifest(entity, rec, this._claimConvoyManifest(convoy, worldRecordId));
+      }
+      // Idempotent every pass: assign() is keyed job:<worldRecordId> — an existing job returns
+      // immediately, a rematerialized hull relinks to its retained job, and a lost runtime job
+      // (shelved hull carrying a persisted jobId) is rebuilt on the same deterministic route.
+      const depotPoint = {
+        id: `claim:${body.id}`, pos: { x: body.x, z: body.z },
+        label: `${body.name} Pad`,
+      };
+      const stationPoint = {
+        id: `dest:${convoy.destStationId}`,
+        targetRef: `station:${convoy.destStationId}`,
+        pos: { x: station.pos.x, z: station.pos.z },
+        label: `${stationName(station, 'Station')} Berth`,
+      };
+      jobs.assign(entity, {
+        kind: 'hauler', sectorId, route: [depotPoint, stationPoint],
+        payload: {
+          manifest: entity.data.cargoManifest,
+          claimConvoy: {
+            bodyId: body.id, convoyId: convoy.convoyId, destStationId: convoy.destStationId,
+          },
+        },
+      });
+    }
+  },
+
+  /** Deterministic manifest identity for a claim convoy leg (stable per durable record id). */
+  _claimConvoyManifestId(worldRecordId) {
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    return stableManifestId(seed >>> 0 || 1, worldRecordId, 'hauler');
+  },
+
+  _claimConvoyManifest(convoy, worldRecordId) {
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const qty = Math.max(1, Math.floor(Number(convoy && convoy.qty) || 0));
+    const manifest = buildCargoManifest({
+      seed, freighterKey: worldRecordId, role: 'hauler',
+      marketKeys: [convoy.goodId], capacity: qty,
+    });
+    // The convoy carries exactly what the relay pulled from its store — the builder's seeded
+    // line split is overridden the same way the miner manifest is, keeping the stable identity.
+    manifest.lines = [{ commodityId: convoy.goodId, qty }];
+    manifest.totalQty = qty;
+    manifest.claimConvoyId = convoy.convoyId;
+    manifest.claimBodyId = convoy.bodyId || null;
+    return manifest;
+  },
+
+  /**
+   * npcjobs:unload for a claim convoy (payload.claimConvoy marks the job). Identity-checked the
+   * same way the depot unload is: the intent's jobId must resolve to the exact entity carrying
+   * the matching claimConvoy stamp. Emits claim:convoyDocked (claims settles the sale), then
+   * retires the carrier — the run is the work; a berthed convoy has no second leg.
+   */
+  _unloadClaimConvoy(intent) {
+    const marker = intent && intent.payload && intent.payload.claimConvoy;
+    if (!marker || intent.completed !== true) return false;
+    const context = this._jobTrafficContext(intent, 'hauler', ['hauler']);
+    if (!context) return false;
+    const ent = context.entity;
+    const stamp = ent.data && ent.data.claimConvoy;
+    if (!stamp || stamp.convoyId !== marker.convoyId || stamp.bodyId !== marker.bodyId) return false;
+    // The hull's stamped berth is authoritative — an intent that names a different
+    // destination station (or a payload that claims one) must not settle the leg.
+    if (marker.destStationId && marker.destStationId !== stamp.destStationId) return false;
+    const destination = typeof intent.destination === 'string' ? intent.destination : '';
+    if (destination !== `dest:${stamp.destStationId}`) return false;
+    const manifest = ent.data.cargoManifest || (context.rec && context.rec.manifest);
+    let aboard = 0;
+    for (const line of (manifest && manifest.lines) || []) {
+      if (line && line.commodityId === stamp.goodId) aboard += Math.max(0, Math.floor(Number(line.qty) || 0));
+    }
+    this.bus.emit('claim:convoyDocked', {
+      bodyId: marker.bodyId, convoyId: marker.convoyId,
+      stationId: stamp.destStationId, goodId: stamp.goodId,
+      qty: aboard, entityId: ent.id,
+    });
+    this._teardownClaimConvoy({
+      bodyId: marker.bodyId, convoyId: marker.convoyId,
+      worldRecordId: context.worldRecordId, entityId: ent.id,
+      jobId: context.jobId, reason: 'convoy_docked',
+    });
+    return true;
+  },
+
+  /**
+   * Retire a claim convoy carrier: release its job, remove the hull, drop the freighter row,
+   * and settle the durable record so a concluded leg never rematerializes. Idempotent — safe on
+   * already-gone hulls and already-cleared rows.
+   */
+  _teardownClaimConvoy(payload = {}) {
+    const ent = (payload.entityId != null && liveEntity(this.state, payload.entityId))
+      || (payload.worldRecordId && entityWithWorldRecord(this.state, payload.worldRecordId));
+    if (ent && ent.data && ent.data.jobId) {
+      const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
+      if (typeof release === 'function') release(ent.data.jobId);
+    }
+    if (payload.jobId) {
+      const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
+      if (typeof release === 'function') release(payload.jobId);
+    }
+    // Teardown is a removal, not a kill — no entity:destroyed receipt frees the spawn slot, so
+    // release the convoy's reservation explicitly (both entry points are idempotent).
+    const budget = this.helpers && this.helpers.spawnBudget;
+    if (budget && ent && typeof budget.releaseEntity === 'function') budget.releaseEntity(ent.id);
+    if (budget && payload.convoyId && typeof budget.release === 'function') {
+      budget.release(`claim-convoy:${payload.convoyId}`);
+    }
+    if (ent) {
+      ent.alive = false;
+      ent.ttl = 0;
+      const despawn = this.helpers && (this.helpers.despawnEntity || this.helpers.removeEntity);
+      if (typeof despawn === 'function') despawn(ent.id);
+    }
+    // The durable record is the anti-respawn latch: without it a shelved convoy would pop back
+    // into the sector next entry as unexplained freight. A stub keeps the delivered outcome on
+    // record even for a hull that was never shelved long enough to earn a bag entry.
+    const world = this._registry && typeof this._registry.get === 'function'
+      ? this._registry.get('world') : null;
+    if (world && typeof world.markWorldRecordDestroyed === 'function' && payload.worldRecordId) {
+      const sectorId = (ent && (ent.homeSectorId || (ent.data && ent.data.homeSectorId)))
+        || (this.state.world && this.state.world.currentSectorId) || null;
+      world.markWorldRecordDestroyed(payload.worldRecordId, {
+        outcome: payload.reason === 'convoy_docked' ? 'delivered' : 'destroyed',
+        pos: ent && ent.pos ? { x: ent.pos.x, z: ent.pos.z } : undefined,
+        stub: sectorId && ent && ent.pos ? {
+          kind: RECORD_KIND.CONVOY,
+          sectorId,
+          pos: { x: ent.pos.x, z: ent.pos.z },
+          type: 'ship',
+          shipDefId: (ent.data && ent.data.defId) || 'ship_mule',
+          team: 2,
+          trafficRole: 'hauler',
+          trafficLabel: (ent.data && ent.data.trafficLabel) || null,
+          identityKey: (ent.data && ent.data.identityKey) || null,
+          itinerary: (ent.data && ent.data.itinerary) || null,
+          cargoManifest: (ent.data && ent.data.cargoManifest) || null,
+        } : undefined,
+      });
+    }
+    const list = this.state.traffic && this.state.traffic.freighters;
+    if (Array.isArray(list)) {
+      for (let i = list.length - 1; i >= 0; i--) {
+        const rec = list[i];
+        if (!rec) continue;
+        if (ent && rec.id === ent.id) { list.splice(i, 1); continue; }
+        const recEnt = rec.id != null && this.state.entities && this.state.entities.get(rec.id);
+        const mark = recEnt && recEnt.data && recEnt.data.claimConvoy;
+        if (mark && mark.convoyId === payload.convoyId) list.splice(i, 1);
+      }
+    }
+    if (ent && Array.isArray(this._active)) {
+      const idx = this._active.indexOf(ent.id);
+      if (idx >= 0) this._active.splice(idx, 1);
+    }
+    return true;
   },
 
   // PQ-145.00: one supply hauler per owned claim, using the SAME durable hull/job owners as
@@ -3817,7 +4109,10 @@ export const traffic = {
       if (!ent.data.trafficLabel) ent.data.trafficLabel = 'Sightseer';
     }
     ent.flags = Object.assign({}, ent.flags, { persistent: true });
-    if (ent.data.worldRecordId) return;
+    if (ent.data.worldRecordId) {
+      this._indexWorldRecordId(ent);
+      return;
+    }
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const qx = ent.pos ? Math.round(ent.pos.x / 4) * 4 : 0;
     const qz = ent.pos ? Math.round(ent.pos.z / 4) * 4 : 0;
@@ -3827,6 +4122,21 @@ export const traffic = {
     ent.data.identityKey = key;
     ent.data.durable = true;
     ent.data.recordCreatedTick = this.state.tick | 0;
+    this._indexWorldRecordId(ent);
+  },
+
+  /**
+   * The entity index keys byWorldRecordId at append time, but durable identity is stamped on the
+   * entity right after spawnEntity returns — one index rebuild later the map would still miss it.
+   * Close that window directly so same-tick lookups (claim convoys, depot haulers) never see a
+   * live hull as absent and spawn a duplicate over its durable record.
+   */
+  _indexWorldRecordId(ent) {
+    const index = this.state && this.state.entityIndex;
+    const worldRecordId = ent && ent.data && ent.data.worldRecordId;
+    if (worldRecordId == null) return;
+    if (!index || !index.__spacefaceEntityIndexV1 || !(index.byWorldRecordId instanceof Map)) return;
+    if (!index.byWorldRecordId.has(worldRecordId)) index.byWorldRecordId.set(worldRecordId, ent);
   },
 
   /**
@@ -4117,6 +4427,7 @@ export const traffic = {
     if ((state.simTime || 0) >= (this._nextDepotDispatchAt || 0)) {
       this._nextDepotDispatchAt = (state.simTime || 0) + 1;
       this._maintainClaimDepotTraffic();
+      this._maintainClaimConvoys();
     }
     const list = state.traffic.freighters;
     const stations = this._sectorStations();
@@ -9785,6 +10096,7 @@ export const traffic = {
   },
 
   _onNpcJobUnload(intent) {
+    if (intent?.payload?.claimConvoy) return this._unloadClaimConvoy(intent);
     if (intent?.payload?.claimDepot) return this._unloadClaimDepot(intent);
     const ceresOwned = this._ceresActivityIntentClaimsOwnership(intent);
     const actorContext = this._ceresActivityActorContext(intent);

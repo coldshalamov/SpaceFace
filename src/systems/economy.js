@@ -46,6 +46,7 @@ import {
   treePathCost,
   verbIdsOf,
 } from '../data/techVerbLadder.js';
+import { RECIPES } from '../data/mining.js';
 import { drawSeeded, hash32, mulberry32 } from '../core/rng.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { addCargo, isUnsellableCargo, removeCargo } from './cargo.js';
@@ -337,6 +338,53 @@ function roleFor(def, stationType) {
   if ((def.consumedBy || []).includes(stationType)) return 'consume';
   return 'none';
 }
+
+// ── Station industry book (mining.js RECIPES wired live) ─────────────────────────────────────
+// The authored refine/craft chains are each industrial station's standing book: a yard runs a
+// recipe when the output's producedBy names its station type and the sector tier meets the
+// recipe's service bar. Each econ tick a fed line consumes feedstock and emits product through
+// the same stock authority NPC trades and claims use, so two stations with different books — or
+// the same book at different stock positions — visibly price apart. Recipe timeS is the
+// throttle: an 8s smelt moves more freight per minute than a 25s circuitry line. Stock gates
+// bound it: an empty feedstock hopper idles the line and a glutted output stalls it, so the
+// flows push stations APART (scarcity premium on inputs, surplus discount on outputs) while
+// recovery still owns the rest level the drift returns to.
+const INDUSTRY_RUNS_PER_MIN_BY_SIZE = { S: 1.0, M: 2.4, L: 4.8 };
+const INDUSTRY_TIME_NORM_S = 12;        // recipe.timeS divisor anchor (8s smelt -> 1.5x line rate)
+const INDUSTRY_INPUT_FULL = 1.0;        // stock/baseEq at which a fed line runs flat-out
+const INDUSTRY_OUTPUT_GLUT = 2.4;       // output stock/baseEq above which the line idles
+const INDUSTRY_BIAS_LO = 0.7;           // deterministic per-station tempo band (below)
+const INDUSTRY_BIAS_SPAN = 0.6;
+
+const STATION_INDUSTRY_BOOK = (() => {
+  const byType = new Map();
+  for (const recipe of RECIPES) {
+    const outputId = recipe && recipe.output ? Object.keys(recipe.output)[0] : null;
+    const def = outputId ? CMDTY_BY_ID.get(outputId) : null;
+    if (!def || !(def.producedBy || []).length) continue;
+    const inputs = Object.entries(recipe.inputs || {})
+      .filter(([cid, qty]) => CMDTY_BY_ID.has(cid) && Number.isFinite(qty) && qty > 0)
+      .map(([cid, qty]) => [cid, qty]);
+    if (!inputs.length) continue;
+    const job = {
+      id: recipe.id,
+      inputs,
+      outputId,
+      outputQty: Math.max(1, Number(recipe.output[outputId]) || 1),
+      stationTier: Math.max(0, Number(recipe.stationTier) || 0),
+      runsPerMin: INDUSTRY_TIME_NORM_S / Math.max(1, Number(recipe.timeS) || INDUSTRY_TIME_NORM_S),
+    };
+    for (const type of def.producedBy) {
+      let list = byType.get(type);
+      if (!list) { list = []; byType.set(type, list); }
+      list.push(job);
+    }
+  }
+  for (const list of byType.values()) {
+    list.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)); // stable catalog order
+  }
+  return byType;
+})();
 
 // ---- price math ---------------------------------------------------------------------------
 export function priceMult(stock, baseEq, elasticity) {
@@ -973,6 +1021,12 @@ export const economy = {
     // Recipe units are per simulated minute, so the identity pressure stays gentle and bounded.
     const regionalPressureListings = this.applyRegionalSupply(tickDt, { deferDerivedRefresh: true });
 
+    // Standing per-station industry: the wired mining.js recipes burn feedstock and emit product
+    // at a bounded, stock-gated tempo — the per-yard pressure that makes two sibling stations
+    // price apart. Shares the touched-listings map so each industrial listing gets its pre-drift
+    // chart observation exactly like regional pressure does.
+    this.applyStationIndustry(tickDt, regionalPressureListings);
+
     // 3) drift every station+commodity stock toward effectiveEq, recompute cached prices
     const markets = econ.markets;
     const demandProjectionCache = new Map();
@@ -1039,6 +1093,65 @@ export const economy = {
       );
     }
     return touchedListings;
+  },
+
+  /**
+   * Standing per-station industry — the wired mining.js RECIPES run as live yard lines.
+   * A station runs a job when its type is in the output's producedBy and its sector tier meets
+   * recipe.stationTier. Throughput is bounded three ways: the emptiest input leg throttles the
+   * line (a starved yard idles), a glutted output idles it, and a deterministic per-station
+   * tempo band keeps sibling yards from marching in lockstep. Everything lands through
+   * applyStockPressure, so NPC salvage intake, claims sales, and player trades see the same
+   * stock the industry moved. Returns the count of job-lines that ran this tick.
+   */
+  applyStationIndustry(tickDt, touchedListings = null) {
+    const minuteShare = Math.max(0, Number(tickDt) || 0) / 60;
+    if (!(minuteShare > 0)) return 0;
+    const state = this.state;
+    const markets = state && state.economy && state.economy.markets;
+    if (!markets) return 0;
+    const deferDerivedRefresh = touchedListings instanceof Map;
+    let ran = 0;
+    for (const stationId in markets) {
+      const info = stationInfo(state, stationId);
+      if (!info) continue;
+      const jobs = STATION_INDUSTRY_BOOK.get(info.type);
+      if (!jobs || !jobs.length) continue;
+      const tier = Math.max(0, Number(info.tier) || 0);
+      const sizeRate = INDUSTRY_RUNS_PER_MIN_BY_SIZE[info.size] || INDUSTRY_RUNS_PER_MIN_BY_SIZE.M;
+      const market = markets[stationId];
+      for (const job of jobs) {
+        if (tier < job.stationTier) continue;
+        // Feedstock gate: the hungriest leg sets the line's speed; an empty hopper idles it.
+        let available = Infinity;
+        let inputsListed = true;
+        for (const [cid] of job.inputs) {
+          const e = market[cid];
+          if (!e || !(e.baseEq > 0)) { inputsListed = false; break; }
+          available = Math.min(available, e.stock / e.baseEq);
+        }
+        if (!inputsListed || !(available > 0)) continue;
+        const outEntry = market[job.outputId];
+        if (!outEntry || !(outEntry.baseEq > 0)) continue;
+        // A glutted output idles the line — nobody keeps making what isn't being taken away.
+        const headroom = 1 - outEntry.stock / (INDUSTRY_OUTPUT_GLUT * outEntry.baseEq);
+        if (!(headroom > 0)) continue;
+        // Deterministic per-station tempo: two sibling yards never run the identical line.
+        const bias = INDUSTRY_BIAS_LO
+          + ((hash32(stationId, job.id) >>> 0) / 4294967296) * INDUSTRY_BIAS_SPAN;
+        const runs = sizeRate * job.runsPerMin
+          * Math.min(INDUSTRY_INPUT_FULL, available) * headroom * bias * minuteShare;
+        if (!(runs > 0)) continue;
+        const stockOptions = deferDerivedRefresh
+          ? { deferDerivedRefresh: true, touchedListings } : null;
+        for (const [cid, qty] of job.inputs) {
+          this.applyStockPressure(stationId, cid, 'buy', qty * runs, stockOptions);
+        }
+        this.applyStockPressure(stationId, job.outputId, 'sell', job.outputQty * runs, stockOptions);
+        ran++;
+      }
+    }
+    return ran;
   },
 
   /**

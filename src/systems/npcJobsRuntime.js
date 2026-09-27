@@ -1021,7 +1021,10 @@ export const npcJobsRuntime = {
       }
       return;
     }
-    if (intent.event === 'npcjobs:load' && intent.kind === NPC_JOB_KIND.HAULER) {
+    // Claim relay convoys run a hauler job but carry claim freight, not miner lots — their LOAD
+    // phase must never consume (or be billed as claiming) the standing handoff lot.
+    if (intent.event === 'npcjobs:load' && intent.kind === NPC_JOB_KIND.HAULER
+      && !(intent.payload && intent.payload.claimConvoy)) {
       const standing = lots[sectorId] || null;
       if (standing && standing.lotId) {
         lots[sectorId] = null;
