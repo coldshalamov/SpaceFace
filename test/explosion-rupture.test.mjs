@@ -15,7 +15,7 @@ test('material source and cause select visibly different constructions, not a sh
   const cases = [
     [entry({ sourceType: 'asteroid' }), 'mineral', new Set([0])],
     [entry({ cause: 'kinetic' }), 'armor', new Set([1])],
-    [entry(), 'reactor', new Set([1, 2])],
+    [entry(), 'reactor', new Set([2])],
     [entry({ sourceType: 'volatile_asteroid' }), 'fuel', new Set([3])],
   ];
   for (const [receipt, family, kinds] of cases) {
@@ -27,6 +27,40 @@ test('material source and cause select visibly different constructions, not a sh
     assert.equal(owner.emitPhase('debris', receipt), false, 'existing solid debris retains its phase');
     owner.dispose();
   }
+});
+
+test('mineral and reactor releases transport short broad parcels from unequal seats and times', () => {
+  for (const sourceType of ['asteroid', 'ship']) {
+    const owner = make();
+    const receipt = entry({ sourceType });
+    owner.emitPhase('rupture', receipt);
+    const parcels = owner.records.filter(r => r.alive);
+    assert.ok(parcels.every(r => r.length < receipt.radius * 1.02), 'no hull-length petal or pressure rim');
+    assert.ok(parcels.every(r => r.length / (r.width * 2) < 2.2), 'material occupies a broad cross-section');
+    assert.ok(new Set(parcels.map(r => r.x)).size > 2, 'release seats are not a mirrored two-point fan');
+    assert.ok(Math.max(...parcels.map(r => r.born)) > 0.10, 'late parcels arrive after the first throat opens');
+    assert.ok(Math.max(...parcels.map(r => r.speed)) / Math.min(...parcels.map(r => r.speed)) > 1.2,
+      'matter separates along unequal trajectories rather than moving as one object');
+    owner.update(0.045);
+    const early = owner.mesh.geometry.instanceCount;
+    owner.update(0.24);
+    assert.ok(early > 0 && early < owner.mesh.geometry.instanceCount, 'later releases survive the native clock');
+    owner.dispose();
+  }
+});
+
+test('capital pressure uses bounded local parcels while separate internal failures cover hull scale', () => {
+  const owner = make();
+  const receipt = entry({ classId: 'capital', radius: 200 });
+  owner.emitPhase('internal-secondary', receipt);
+  owner.emitPhase('rupture', receipt);
+  const parcels = owner.records.filter(r => r.alive);
+  assert.ok(parcels.every(r => r.kind === 2 && r.length < 50 && r.width < 20),
+    'capital rupture cannot restore giant cyan rims or long armor-flame substitutes');
+  const internal = parcels.filter(r => r.phase === 'internal-secondary');
+  assert.ok(internal.some(r => Math.hypot(r.x - receipt.x, r.z - receipt.z) > 15),
+    'large hulls fail at real source-scaled seats instead of magnifying each flame');
+  owner.dispose();
 });
 
 test('stable receipt reconstructs the same silhouette; seed and direction alter its transport', () => {
