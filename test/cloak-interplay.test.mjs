@@ -60,9 +60,12 @@ function makeWorld(seed = 47) {
     entityList,
     entityIndex: {
       __spacefaceEntityIndexV1: true,
+      ready: true,
+      version: 0,
       ships: entityList,
       weaponShips: [hunter],
       projectiles: [],
+      vectorMines: [],
       collidables: entityList,
     },
     tacticalAiRuntime: { quietLatched: false },
@@ -409,5 +412,153 @@ test('an uncloaked ship is untouched by the whole interplay', () => {
       : null;
     const track = tracks ? tracks.get(player.id) : null;
     assert.ok(track == null || track.lost !== true, 'an uncloaked track must never be marked lost');
+  });
+});
+
+test('save:restoring clears the fade ledger — a recycled id cannot inherit a stale ghost', () => {
+  withCloakFlag(() => {
+    const world = makeWorld();
+    const { state, bus, hunter, npcTarget } = world;
+
+    // Hunter holds the NPC ship as a live contact — that seeds a fix row under its id.
+    const frame0 = world.helpers.aiSensors.frameFor(hunter.id, state.tick);
+    assert.ok(contactOf(frame0, npcTarget.id), 'hunter must hold the contact before restore');
+    const ledger = state.massline2.cloakTracks;
+    assert.ok(ledger instanceof Map, 'the ledger must exist once a ship is seen');
+    assert.equal(ledger.get(hunter.id) && ledger.get(hunter.id).has(npcTarget.id), true,
+      'a live ship contact must seed its fix row');
+
+    // The despawn hook drops a row when its entity leaves — the same recycling hazard,
+    // handled per-removal rather than per-load.
+    bus.emit('entity:destroyed', { id: npcTarget.id, type: 'ship' });
+    assert.equal(ledger.get(hunter.id) && ledger.get(hunter.id).has(npcTarget.id), false,
+      'entity:destroyed must drop the departed target row');
+
+    // Re-seed, then restore: the whole ledger clears — id space is about to be reseated.
+    world.helpers.aiSensors.frameFor(hunter.id, state.tick);
+    assert.equal(ledger.get(hunter.id) && ledger.get(hunter.id).has(npcTarget.id), true,
+      'the fix must re-seed before restore');
+    bus.emit('save:restoring', { slot: 0, source: 'test' });
+    assert.equal(ledger.size, 0, 'save:restoring must clear every observer table');
+
+    // Recycled id: a different ship takes the departed contact's slot while cloaked. A stale
+    // row would emit a ghost at the old fix; cleared, it is simply absent (never seen dark).
+    state.entities.delete(npcTarget.id);
+    state.entityList.splice(state.entityList.indexOf(npcTarget), 1);
+    const recycled = {
+      id: npcTarget.id, type: 'ship', alive: true, team: 1, mass: 20,
+      pos: { x: 800, z: 1100 }, vel: { x: 0, z: 0 }, rot: 0, radius: 8, flags: {},
+      data: { ai: {}, weapons: [], combat: {} },
+    };
+    state.entities.set(recycled.id, recycled);
+    state.entityList.push(recycled); // ships/collidables share this array in the fixture
+    engageEntityCloak(recycled, 300, state.simTime);
+    step(world);
+    const frame = world.helpers.aiSensors.frameFor(hunter.id, state.tick);
+    assert.equal(contactOf(frame, recycled.id), null,
+      'a recycled id with no live sighting must emit no ghost');
+  });
+});
+
+test('a sleeping NPC holding a lock on a darkened target still bleeds it — quiet latch must not freeze locks', () => {
+  withCloakFlag(() => {
+    const world = makeWorld();
+    const { state, bus, hunter } = world;
+    const lockEvents = [];
+    bus.on('combat:lockChanged', (p) => lockEvents.push(p));
+
+    // Build the lock the ordinary way first — uncloaked player, hunter inside the cone.
+    for (let i = 0; i < 120 && (hunter.data.combat.lockProgress || 0) < 1; i++) {
+      step(world);
+      world.guns.update(DT, state);
+    }
+    assert.equal(hunter.data.combat.lockTarget, 1);
+    assert.ok(hunter.data.combat.lockProgress >= 1, 'lock must complete before the cloak test');
+    assert.ok(lockEvents.some((p) => p.locked === true), 'the incoming-lock warning must arm');
+
+    // Quiet-latch preconditions: the hunter sleeps, tactical AI reports quiet, the index is
+    // ready with empty typed lanes. Pre-fix the latch armed anyway — a live lock was never
+    // counted — and the bleed froze with the warning lit.
+    hunter.physicsSleeping = true;
+    state.tacticalAiRuntime.quietLatched = true;
+
+    engagePlayerCloak(world);
+    let droppedAt = -1;
+    let latchedDuringBleed = false;
+    for (let i = 1; i <= 180; i++) {
+      step(world);
+      world.guns.update(DT, state);
+      if (hunter.data.combat.lockTarget != null && world.guns._weaponsQuiet) latchedDuringBleed = true;
+      if (hunter.data.combat.lockTarget == null && droppedAt < 0) droppedAt = i;
+    }
+    assert.equal(latchedDuringBleed, false, 'a mid-bleed lock must refuse the quiet latch');
+    assert.ok(droppedAt > 0 && droppedAt <= Math.ceil(1.0 / DT) + 2,
+      `the darkened lock must bleed out inside the hold window, droppedAt=${droppedAt}`);
+    assert.ok(lockEvents.some((p) => p.locked === false),
+      'the incoming-lock warning must clear when the bleed ends');
+  });
+});
+
+test('re-engaging inside a scan burn keeps the reveal — cloak-flicker cannot dodge the window', () => {
+  withCloakFlag(() => {
+    const world = makeWorld();
+    const { state, bus, hunter, player, npcTarget } = world;
+
+    engagePlayerCloak(world);
+    bus.emit('scan:pulse', { pos: { x: player.pos.x, z: player.pos.z } });
+    const rt = state.massline2.cloak;
+    const until = rt.revealUntil;
+    assert.ok(Number.isFinite(until) && until > state.simTime, 'the pulse must open a burn window');
+
+    // Toggle flicker inside the window: off, then straight back on.
+    state.input.actions.cloakToggle = true;
+    world.cloakSys.update(DT, state);
+    state.input.actions.cloakToggle = false;
+    assert.equal(rt.active, false, 'the toggle must drop the cloak');
+    state.input.actions.cloakToggle = true;
+    world.cloakSys.update(DT, state);
+    state.input.actions.cloakToggle = false;
+    assert.equal(rt.active, true, 'the toggle must re-engage');
+    assert.equal(rt.revealUntil, until, 'the burn stamp must survive the re-engage');
+    assert.equal(cloakHidesEntityFrom(state, hunter, player), false,
+      'the ship stays revealed for the rest of the window');
+
+    // Producer-side parity: an NPC re-engaged inside its burn keeps it too.
+    engageEntityCloak(npcTarget, 300, state.simTime);
+    bus.emit('scan:pulse', { pos: { x: npcTarget.pos.x, z: npcTarget.pos.z } });
+    const npcUntil = npcTarget.data.cloak.revealUntil;
+    assert.ok(Number.isFinite(npcUntil) && npcUntil > state.simTime, 'the NPC burn must stamp');
+    engageEntityCloak(npcTarget, 300, state.simTime);
+    assert.equal(npcTarget.data.cloak.revealUntil, npcUntil,
+      'a producer re-engage inside the window must carry the burn');
+
+    // After expiry the cloak is dark again — the stamp is a window, not a pardon.
+    while (state.simTime <= until) step(world);
+    step(world);
+    assert.equal(cloakHidesEntityFrom(state, hunter, player), true,
+      'an expired burn must not leak a reveal');
+  });
+});
+
+test('non-ship contacts never seed fade-ledger rows', () => {
+  withCloakFlag(() => {
+    const world = makeWorld();
+    const { state, hunter, player } = world;
+    const rock = {
+      id: 40, type: 'asteroid', alive: true, mass: 900,
+      pos: { x: 900, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 30, flags: {},
+      data: {},
+    };
+    state.entities.set(rock.id, rock);
+    state.entityList.push(rock); // ships/collidables share this array in the fixture
+
+    const frame = world.helpers.aiSensors.frameFor(hunter.id, state.tick);
+    assert.ok(contactOf(frame, rock.id), 'the rock must read as a hazard contact');
+    const tracks = state.massline2.cloakTracks instanceof Map
+      ? state.massline2.cloakTracks.get(hunter.id)
+      : null;
+    assert.ok(tracks && tracks.has(rock.id) === false,
+      'a contact that can never cloak must not eat a ledger row');
+    assert.ok(tracks && tracks.has(player.id), 'ship contacts still seed the ledger');
   });
 });

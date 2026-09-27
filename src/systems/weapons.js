@@ -1969,6 +1969,11 @@ function npcWeaponsNeedTick(e, state) {
   const plant = data && data.momentumSinkPlant;
   if (plant && plant.active) return true;
   if (data && data.weaponVentUntil && (state && state.simTime || 0) < data.weaponVentUntil) return true;
+  // A live missile lock is mid-bleed business: a darkened target's lock decays on the cloak
+  // window inside _tickLock, so the ship cannot sleep through it — and _publishIncomingLock
+  // must see the drop or the player's MISSILE LOCK warning stays lit for good.
+  const combat = data && data.combat;
+  if (combat && combat.lockTarget != null && (combat.lockProgress || 0) > 0) return true;
   const ws = data && data.weapons;
   if (!ws) return false;
   for (const w of ws) {

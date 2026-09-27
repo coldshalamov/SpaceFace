@@ -60,16 +60,31 @@ export const cloak = {
             : null;
           const rt = entity && cloakRuntimeFor(this.state, entity);
           if (rt && rt.active === true) {
+            // The burn stamp (revealUntil) stays: inert while decloaked, still binding on a
+            // re-engage inside the window — firing cannot flicker-dodge the pulse.
             rt.active = false;
-            delete rt.revealUntil;
           }
         }));
       }
-      for (const event of ['save:restoring', 'game:started', 'dock:docked', 'player:death']) {
+      // save:restoring reseats the whole entity-id space AND rewinds the sim clock: a leftover
+      // burn stamp could land back inside its own window on the next engage, and a ledger row
+      // filed under an old id would ghost whoever inherits it. Drop the cloak, the time
+      // stamps, and the fade ledger together.
+      this._unsubs.push(this.bus.on('save:restoring', () => {
+        this._drop(null);
+        const rt = this.state && this.state.massline2 && this.state.massline2.cloak;
+        if (rt) { delete rt.revealUntil; delete rt.engagedAt; }
+        this._clearCloakTracks();
+      }));
+      for (const event of ['game:started', 'dock:docked', 'player:death']) {
         this._unsubs.push(this.bus.on(event, () => this._drop(null)));
       }
       this._unsubs.push(this.bus.on('game:new', () => this.newGame()));
       this._unsubs.push(this.bus.on('game:newGame', () => this.newGame()));
+      // Id recycling is the ledger's failure mode for the whole run, not only on load: every
+      // removal (swept corpse, sector despawn, TTL) queues this receipt. Drop the departed
+      // observer's own table plus every other observer's fix filed under that id.
+      this._unsubs.push(this.bus.on('entity:destroyed', (p) => this._dropCloakTrack(p && p.id)));
       // Scanner counterplay (another lane owns scanner.js — cloak only listens): an active
       // pulse burns every cloak inside its sweep open for a bounded window.
       this._unsubs.push(this.bus.on('scan:pulse', (p) => this._onScanPulse(p)));
@@ -84,11 +99,29 @@ export const cloak = {
     runtime.radius = 0;
     runtime.available = false;
     delete runtime.revealUntil;
+    delete runtime.engagedAt;
     // The per-observer contact-fade ledger is perception runtime, not memory — a fresh run
     // starts with nobody holding a ghost of a ship that no longer exists.
-    const root = this.state.massline2;
-    if (root && root.cloakTracks && typeof root.cloakTracks.clear === 'function') {
-      root.cloakTracks.clear();
+    this._clearCloakTracks();
+  },
+
+  /** The fade ledger is sim-runtime truth keyed by recycled entity ids — never serialized,
+   *  cleared wholesale on new game and save restore. */
+  _clearCloakTracks() {
+    const root = this.state && this.state.massline2;
+    const ledger = root && root.cloakTracks;
+    if (ledger && typeof ledger.clear === 'function') ledger.clear();
+  },
+
+  /** One entity left the world — drop its observer table and every fix filed under its id
+   *  before a different hull inherits them. */
+  _dropCloakTrack(id) {
+    if (id == null) return;
+    const ledger = this.state && this.state.massline2 && this.state.massline2.cloakTracks;
+    if (!ledger || typeof ledger.delete !== 'function') return;
+    ledger.delete(id);
+    for (const tracks of ledger.values()) {
+      if (tracks && typeof tracks.delete === 'function') tracks.delete(id);
     }
   },
 
@@ -150,7 +183,12 @@ export const cloak = {
     const runtime = ensureCloak(state);
     runtime.active = true;
     runtime.radius = baseRadius;
-    delete runtime.revealUntil;
+    runtime.engagedAt = cloakTimeS(state);
+    // A still-open scan burn rides the re-engage — flicking the cloak off and on inside the
+    // window cannot shake the pulse's fix. Expired stamps are dead weight.
+    if (!(Number.isFinite(runtime.revealUntil) && cloakTimeS(state) < runtime.revealUntil)) {
+      delete runtime.revealUntil;
+    }
     if (this.bus) {
       this.bus.emit('cloak:engaged', { radius: baseRadius, energy: runtime.energy });
       this.bus.emit('audio:cue', { id: 'massline.cloakOn' });
@@ -162,7 +200,8 @@ export const cloak = {
     const runtime = state ? ensureCloak(state) : null;
     if (!runtime || !runtime.active) return;
     runtime.active = false;
-    delete runtime.revealUntil;
+    // revealUntil survives the drop: inert while decloaked, still binding if the pilot
+    // re-engages inside the burn window — a toggle flicker cannot dodge the pulse.
     if (this.bus && reason) {
       this.bus.emit('cloak:dropped', { reason, energy: runtime.energy });
       this.bus.emit('audio:cue', { id: 'massline.cloakOff' });
@@ -265,12 +304,19 @@ export function cloakRuntimeFor(state, entity) {
 }
 
 /** NPC-side engage seam: a producer (spawner, mission, AI rule) calls this once to put a ship
- *  dark; every interplay seam below then treats it exactly like the player's module cloak. */
-export function engageEntityCloak(entity, radius = 320) {
+ *  dark; every interplay seam below then treats it exactly like the player's module cloak.
+ *  `nowS` (state.simTime) stamps engagedAt for the fade ledger when the caller has the sim
+ *  clock; an unexpired revealUntil rides the re-engage, so re-cloaking inside a scan burn
+ *  stays lit rather than dodging the window. */
+export function engageEntityCloak(entity, radius = 320, nowS) {
   const data = entity.data || (entity.data = {});
   const base = Number.isFinite(radius) && radius > 0 ? radius : 320;
-  data.cloak = { active: true, radius: base, baseRadius: base };
-  return data.cloak;
+  const prev = data.cloak;
+  const rt = { active: true, radius: base, baseRadius: base };
+  if (Number.isFinite(nowS)) rt.engagedAt = nowS;
+  if (prev && Number.isFinite(prev.revealUntil)) rt.revealUntil = prev.revealUntil;
+  data.cloak = rt;
+  return rt;
 }
 
 /** The cloak system's clock: simTime everywhere it exists; tick/60 keeps headless fixtures that

@@ -19,7 +19,7 @@ import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { massline2Flag } from '../data/featureFlags.js';
-import { cloakHidesEntityFrom, cloakTimeS } from './cloak.js';
+import { cloakHidesEntityFrom, cloakRuntimeFor, cloakTimeS } from './cloak.js';
 import { modelTruthPlanarRadius } from '../data/modelTruth.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import {
@@ -1047,7 +1047,15 @@ function emitCloakFadeContact(state, self, other, kind, now, attachmentIndex, fr
   // No stored fix (never actually seen, e.g. cloaked before first detection) or already faded:
   // the contact is simply absent — no ghost appears out of thin air.
   if (!track || !Number.isFinite(track.seenAt) || track.lost) return;
-  if (track.hideStart < 0) track.hideStart = now;
+  if (track.hideStart < 0) {
+    // Anchor the bleed at the true go-dark moment when the cloak runtime stamps one and this
+    // observer has not sighted the ship since (a sighting newer than the engage means the hull
+    // was still inside the ring — the read itself is then the honest mark). First hidden read
+    // stays the fallback; a lazy sensor cadence must not stretch the fade past its window.
+    const rt = cloakRuntimeFor(state, other);
+    const engagedAt = rt && Number.isFinite(rt.engagedAt) ? rt.engagedAt : -Infinity;
+    track.hideStart = (engagedAt > track.seenAt && engagedAt <= now) ? engagedAt : now;
+  }
   const age = Math.max(0, now - track.hideStart);
   const fraction = 1 - age / CLOAK_CONTACT_FADE_S;
   if (fraction <= 0) {
@@ -1229,10 +1237,11 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
         hostile,
       });
     }
-    // Keep the per-observer last fix for every live contact — any ship may go dark next tick
-    // (an NPC's data.cloak only exists from the moment its producer engages it), and the fade
-    // ledger needs the fix that was current at that moment. A never-seen target has no ghost.
-    if (cloakLive) noteCloakTrackSeen(state, self, other, confidence, cloakNow);
+    // Keep the per-observer last fix for every live SHIP contact — any ship may go dark next
+    // tick (an NPC's data.cloak only exists from the moment its producer engages it), and the
+    // fade ledger needs the fix that was current at that moment. A never-seen target has no
+    // ghost; hazards, pickups and rounds can never cloak, so they never eat a ledger row.
+    if (cloakLive && kind === ContactKind.SHIP) noteCloakTrackSeen(state, self, other, confidence, cloakNow);
   }
   // The Crucible pilot is the cohort's broadcast objective. Track that one ship beyond
   // ordinary sensor range so boosting creates a chase, not abandoned enemies. Cloaking
