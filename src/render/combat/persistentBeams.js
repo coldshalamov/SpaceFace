@@ -218,6 +218,7 @@ export class PersistentCombatBeamPool {
       bornAt: -Infinity,
       lastSeen: -Infinity,
       stopping: false,
+      explicitStop: false,
       stopAt: -Infinity,
       coreR: 1,
       coreG: 1,
@@ -313,12 +314,21 @@ export class PersistentCombatBeamPool {
       entry = this._claimEntry(key);
       entry.bornAt = finite(timeS, 0);
       this.startCount++;
-    }
-    // A receipt arriving during the short drain re-latches the same loaded volume. It does not
-    // restart the source animation or allocate another slot.
-    if (entry.stopping) {
-      entry.stopping = false;
-      entry.stopAt = -Infinity;
+    } else if (entry.stopping) {
+      if (entry.explicitStop) {
+        // An explicit stop is a real source transition. Retire the draining slot before claiming
+        // it again so the new receipt gets a fresh birth clock and one new source ignition. Lost
+        // update receipts use the non-explicit drain below and keep their original lifecycle.
+        this._release(entry);
+        entry = this._claimEntry(key);
+        entry.bornAt = finite(timeS, 0);
+        this.startCount++;
+      } else {
+        // A receipt arriving during a timeout drain re-latches the same loaded volume. It does not
+        // restart the source animation or allocate another slot.
+        entry.stopping = false;
+        entry.stopAt = -Infinity;
+      }
     }
     entry.fromX = finite(from.x, entry.fromX);
     entry.fromZ = finite(from.z, entry.fromZ);
@@ -372,7 +382,7 @@ export class PersistentCombatBeamPool {
     const key = beamKey(payload);
     const entry = key ? this._byKey.get(key) : null;
     if (!entry) return false;
-    this._beginRelease(entry, finite(timeS, entry.lastSeen));
+    this._beginRelease(entry, finite(timeS, entry.lastSeen), true);
     return true;
   }
 
@@ -399,7 +409,7 @@ export class PersistentCombatBeamPool {
       if (!entry.stopping && now - entry.lastSeen > this.timeoutS) {
         // A lost receipt is still a release, not an instantaneous delete. This keeps the pool
         // honest under packet loss while preserving a visible source-to-contact drain.
-        this._beginRelease(entry, entry.lastSeen);
+        this._beginRelease(entry, entry.lastSeen, false);
       }
       if (entry.stopping && now - entry.stopAt >= BEAM_COOLING_S) {
         this._release(entry);
@@ -504,6 +514,7 @@ export class PersistentCombatBeamPool {
     entry.lastSeen = -Infinity;
     entry.bornAt = -Infinity;
     entry.stopping = false;
+    entry.explicitStop = false;
     entry.stopAt = -Infinity;
     this.activeCount = Math.max(0, this.activeCount - 1);
     this._clearSlot(this._coreBatch, entry.slot);
@@ -513,9 +524,10 @@ export class PersistentCombatBeamPool {
     this.group.visible = this.activeCount > 0;
   }
 
-  _beginRelease(entry, timeS) {
+  _beginRelease(entry, timeS, explicitStop = false) {
     if (!entry || !entry.active || entry.stopping) return;
     entry.stopping = true;
+    entry.explicitStop = explicitStop;
     entry.stopAt = finite(timeS, entry.lastSeen);
     this._writeSlotLifecycle(this._coreBatch, entry.slot, entry.bornAt, entry.stopAt);
     this._writeSlotLifecycle(this._haloBatch, entry.slot, entry.bornAt, entry.stopAt);

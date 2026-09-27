@@ -76,8 +76,20 @@ test('persistent combat beams retire on bounded timeout if a stop event is lost'
   pool.upsert({ beamKey: 'npc:1', from: { x: 0, z: 0 }, to: { x: 5, z: 5 } }, 2);
   pool.update(2.2, identityLocal);
   assert.equal(pool.activeCount, 1, 'lost receipts enter the same visible drain as explicit stops');
-  pool.update(2 + BEAM_COOLING_S + 0.01, identityLocal);
+  pool.upsert({ beamKey: 'npc:1', from: { x: 0, z: 0 }, to: { x: 6, z: 5 } }, 2.21);
+  assert.equal(pool.startCount, 1, 'a timeout drain re-latches without restarting the source');
+  pool.update(2.21 + BEAM_COOLING_S + 0.01, identityLocal);
   assert.equal(pool.activeCount, 0);
+  pool.dispose();
+});
+
+test('persistent combat beams restart the source after an explicit stop', () => {
+  const pool = new PersistentCombatBeamPool(THREE, { maxBeams: 2, timeoutS: 0.2 });
+  pool.upsert({ beamKey: 'ship:0', from: { x: 0, z: 0 }, to: { x: 5, z: 0 } }, 1);
+  pool.stop({ beamKey: 'ship:0' }, 1.02);
+  pool.upsert({ beamKey: 'ship:0', from: { x: 0, z: 0 }, to: { x: 6, z: 0 } }, 1.04);
+  assert.equal(pool.startCount, 2, 'an explicit stop followed by a start gets a new source ignition');
+  assert.equal(pool._byKey.get('ship:0').bornAt, 1.04, 'the restarted beam receives a fresh birth clock');
   pool.dispose();
 });
 
