@@ -27,6 +27,12 @@
 //
 // Pure data + pure functions. No bus, no state, no registry, no DOM, no RNG source but the seed
 // it is handed. Same (seed, wave) always yields the same wave.
+//
+// ONE DELIBERATE EXCEPTION: `livePressure`/`livePressureCtx` below are the live run's pressure
+// reservoir + census hooks, bound by swarmArena at init and unbound/reset at destroy and newGame.
+// Every pressure function takes an explicit `state` argument — the singleton is only the default
+// for the arena's own calls. Tests must pass their own createSwarmPressureState() or bind first;
+// forgetting the bind shares the live reservoir silently.
 
 import { SPAWN_BUDGET_DEFAULT_MAX, SPAWN_BUDGET_HARD_MAX } from './survivalActs.js';
 import { ENEMY_TYPES } from './enemies.js';
