@@ -16,6 +16,12 @@ import {
   wrapAngle,
 } from './contracts.js';
 import { createSquadFrameDirector } from './squadFrame.js';
+import { temperamentFor } from './temperament.js';
+import {
+  emptyReflexState,
+  evaluateReflexes,
+  reflexAllowedForIntent,
+} from './reflexes.js';
 
 function bodyRadius(body) {
   const measured = Number(body && body.planarRadius);
@@ -142,6 +148,8 @@ export class ManeuverPlanner {
         smoothedRight: 0,
         smoothedTorqueYaw: 0,
         collisionPasses: new Map(),
+        reflex: emptyReflexState(),
+        lastReflex: null,
       };
       this.byEntity.set(entityId, runtime);
     }
@@ -206,6 +214,14 @@ export class ManeuverPlanner {
     const rejoinDistance = formationBound * this.config.formationRejoinFraction;
     const mustRejoin = !intent.breakFormation && !choreo && formationDistance > rejoinDistance;
     const hullScale = hullScaleFor(selfPose, entityId, this.resolveHull);
+    // Per-pilot flight character (§21A variety): verve/poise/weave/dash/aim, deterministic
+    // per entity + doctrine. Every hull feels like its own pilot instead of the same
+    // steering gain cloned N times.
+    const temperament = temperamentFor(entityId, {
+      seed: this.seed,
+      doctrineId: selfPose.combatDoctrineId,
+      massBand: selfPose.operationalMassBand,
+    });
     let desired;
     if (choreo && choreo.coast) {
       desired = coastHold(selfPose);
@@ -218,6 +234,29 @@ export class ManeuverPlanner {
     } else {
       desired = desiredForIntent(intent, selfPose, target, contactSource, this.seed, entityId, this.config, this.workCounters, hullScale);
     }
+
+    // Pilot reflexes (bounded trigger→impulse reactions: volley jink, hit weave, marked
+    // weave, brake-check, pounce, scatter, heat management). Choreographed and
+    // enemy-mind-owned hulls are already speaking with intent; emergency kinds already
+    // ARE the reaction. Reflexes shape the desired point, never write the thruster
+    // request directly, and never bypass ROE or fire authority.
+    let reflex = null;
+    if (!choreo && !mindOwned && reflexAllowedForIntent(intent.kind)) {
+      reflex = evaluateReflexes(this.seed, {
+        entityId,
+        tick,
+        self: selfPose,
+        contacts,
+        events: perception && perception.events,
+        target,
+        intent,
+        temperament,
+        reflexState: runtime.reflex || (runtime.reflex = emptyReflexState()),
+      });
+      if (reflex && reflex.lateral) desired = applyReflexToDesired(desired, selfPose, reflex);
+      runtime.lastReflex = reflex ? reflex.kind : null;
+    }
+    if (desired.obstacleAvoidance === true) reflex = null; // a rock in the dodge cone owns the hull
 
     if (!(choreo && choreo.coast)) {
       desired = applyFriendlySeparation(desired, selfPose, contactSource.ships, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
@@ -251,7 +290,9 @@ export class ManeuverPlanner {
     // whatever the nose points at, so a rock in the dodge cone must not steal the firing face.
     // Vetoing it made every ring pass through arena cover a firing blackout: the nose chased the
     // whipping dodge route and fixed mounts sprayed past a stationary target (D38).
-    const facingUnit = intent.faceTarget === true && target
+    // A dodging pilot sacrifices the firing face during the jink; a gunner keeps the nose
+    // on target through everything short of an obstacle dodge.
+    const facingUnit = intent.faceTarget === true && target && !(reflex && reflex.dropAim)
       ? unit2(target.pos.x - selfPose.pos.x, target.pos.z - selfPose.pos.z, desiredUnit.x, desiredUnit.z)
       : desiredUnit;
     const heading = Math.atan2(facingUnit.z, facingUnit.x);
@@ -277,6 +318,16 @@ export class ManeuverPlanner {
     if (choreo && !choreo.coast) {
       const frac = Number.isFinite(choreo.speedFraction) ? choreo.speedFraction : 0.8;
       envelope.maxSpeed = this.config.interceptSpeed * (hullScale && hullScale.speed > 0 ? hullScale.speed : 1) * frac;
+    }
+    if (!choreo) {
+      // Verve is the pilot's speed appetite; reflex bursts and hot plates gate it further.
+      envelope.maxSpeed *= 0.88 + 0.24 * temperament.verve;
+      if (reflex) {
+        envelope.maxSpeed = Math.max(6, envelope.maxSpeed * reflex.speedScale);
+        if (Number.isFinite(envelope.maxClosingSpeed)) {
+          envelope.maxClosingSpeed *= Math.min(1, reflex.speedScale);
+        }
+      }
     }
     const closing = target ? closingSpeed(selfPose, target) : 0;
     const localClosingLimit = target
@@ -328,21 +379,25 @@ export class ManeuverPlanner {
     const rawTorqueYaw = choreo && choreo.coast && !desired.obstacleAvoidance
       ? 0
       : yawRateTorqueFor(angleError, measuredWy, headingRate, kind, this.config, hullScale);
+    // Poise scales control slew: a calm pilot leans into inputs, a twitchy one snaps.
+    const poiseSlew = 1.18 - 0.7 * temperament.poise;
     const smooth = smoothControls(runtime, tick, {
       forward: rawForward,
       right: rawRight,
       torqueYaw: rawTorqueYaw,
-    }, this.config, { emergency: emergencyManeuver, slew: hullScale.slew });
+    }, this.config, { emergency: emergencyManeuver, slew: hullScale.slew * poiseSlew });
 
-    const boostWanted = (kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
-      speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78;
-    const boost = boostWanted && !desired.obstacleAvoidance && selfPose.energyFraction >= this.config.minBoostEnergyFraction && selfPose.heatFraction <= this.config.maxBoostHeatFraction;
+    const boostWanted = ((kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
+      speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78)
+      || (reflex != null && reflex.boost === true && Math.abs(angleError) < 0.9);
+    const boost = boostWanted && !desired.obstacleAvoidance && !(reflex && reflex.simmer)
+      && selfPose.energyFraction >= this.config.minBoostEnergyFraction && selfPose.heatFraction <= this.config.maxBoostHeatFraction;
     const slotSpeed = choreo && choreo.slotVel
       ? Math.hypot(choreo.slotVel.x || 0, choreo.slotVel.z || 0)
       : 0;
     const brake = desired.obstacleBrake || (choreo && choreo.coast
       ? false
-      : (intent.crossingLane ? speedLimited : (speedLimited || closingLimited)) || (!desired.contactSeek && !(choreo && slotSpeed > 12) && (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
+      : (intent.crossingLane ? speedLimited : (speedLimited || closingLimited)) || (reflex != null && reflex.brake === true) || (!desired.contactSeek && !(choreo && slotSpeed > 12) && (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
         arrival < slowRadius && speed > Math.max(4, arrival / 2)));
     const trajectory = this.includeTrajectory
       ? buildTrajectory(selfPose, desiredUnit, speed, tick, this.config.trajectoryHorizonTicks, envelope.maxSpeed)
@@ -392,6 +447,8 @@ export class ManeuverPlanner {
           faceTarget: intent.faceTarget === true && !!target,
           obstacleAvoidance: desired.obstacleAvoidance === true,
           heading,
+          reflex: reflex ? reflex.kind : null,
+          temperament: temperament.id,
         },
       });
     }
@@ -1082,6 +1139,39 @@ function stampDesired(source, next) {
   next.desiredVel = source.desiredVel;
   next.contactSeek = source.contactSeek;
   return next;
+}
+
+/**
+ * Displace the desired state sideways by the reflex's signed lateral offset (world units).
+ * Tracked desireds shift the setpoint and feed a lateral velocity term so the PD solver
+ * actually flies the weave instead of just bending the heading; direction-only desireds
+ * rotate by the offset angle.
+ */
+function applyReflexToDesired(desired, self, reflex) {
+  if (!desired || !reflex || !Number.isFinite(reflex.lateral) || Math.abs(reflex.lateral) < 0.5) {
+    return desired;
+  }
+  const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
+  const perpX = -dir.z;
+  const perpZ = dir.x;
+  const lat = reflex.lateral;
+  // desired.x/z is a distance-scaled vector (the solver re-normalizes it), so adding the
+  // full lateral term rotates the commanded direction by ~atan(lat / dist) — the jink.
+  const out = { ...desired, x: desired.x + perpX * lat, z: desired.z + perpZ * lat };
+  if (desired.desiredPos) {
+    out.control = 'track';
+    out.desiredPos = {
+      x: desired.desiredPos.x + perpX * lat,
+      z: desired.desiredPos.z + perpZ * lat,
+    };
+    const vel = desired.desiredVel || ZERO_VEL;
+    out.desiredVel = {
+      x: vel.x + perpX * lat * 1.1,
+      z: vel.z + perpZ * lat * 1.1,
+    };
+    out.contactSeek = desired.contactSeek;
+  }
+  return out;
 }
 
 function overlaySelf(self, live) {
