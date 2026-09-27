@@ -33,7 +33,7 @@ import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialR
 import { canonicalizeObjectSurfaceProgramKeys, installIllustratedSurface } from './illustratedSurface.js';
 import { opticCellGeometry, opticCellBodyMaterial, opticCellKindOf, dressOpticCell } from './opticCellPresentation.js';
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
-import { freezeStaticChildMatrices } from './staticChildMatrices.js';
+import { freezeStaticChildMatrices, freezeStaticTransformRoot } from './staticChildMatrices.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture,
   makeHullNormalMap, makeGreebleDetailTexture, makeDecalSheet,
@@ -378,6 +378,9 @@ function freezeStaticPresentation(root, options = {}) {
   // upload inside the fight; shared children upload once at warm time and never again.
   if (options.merge !== false) optimizeStaticBatchesForRoot(root);
   freezeStaticChildMatrices(root);
+  // The root itself only transforms at mount/seat/repose — those writers call updateMatrix()
+  // through the matrixAutoUpdate === false dirty hook (PERF-59).
+  freezeStaticTransformRoot(root);
   return root;
 }
 
