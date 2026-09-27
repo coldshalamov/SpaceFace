@@ -1953,6 +1953,7 @@ async function armProbeInstrumentation(targetPage) {
     const perf = window.SF?.state?.perfRuntime;
     const previousRenderWorkEnabled = perf?.renderWorkEnabled === true;
     const previousHitchAttributionEnabled = perf?.hitchAttributionEnabled === true;
+    const previousSimAttributionEnabled = perf?.simAttributionEnabled === true;
     const previousSystemTimingEnabled = perf?.systemTimingEnabled === true;
     const previousSystemTimingFullCoverage = perf?.systemTimingFullCoverage === true;
     const available = typeof perf?.setRenderWorkEnabled === 'function'
@@ -1966,16 +1967,21 @@ async function armProbeInstrumentation(targetPage) {
       perf.setRenderWorkEnabled(true);
       perf.setHitchAttributionEnabled(true);
       perf.setSystemTimingEnabled(true);
+      // PERF-89: per-frame sim max-owner attribution. Feature-detected so the probe
+      // still runs against builds that predate the flag.
+      if (typeof perf.setSimAttributionEnabled === 'function') perf.setSimAttributionEnabled(true);
       if (fullSystemTiming) perf.setSystemTimingFullCoverage(true);
     }
     return {
       available,
       previousRenderWorkEnabled,
       previousHitchAttributionEnabled,
+      previousSimAttributionEnabled,
       previousSystemTimingEnabled,
       previousSystemTimingFullCoverage,
       renderWorkEnabled: perf?.renderWorkEnabled === true,
       hitchAttributionEnabled: perf?.hitchAttributionEnabled === true,
+      simAttributionEnabled: perf?.simAttributionEnabled === true,
       systemTimingEnabled: perf?.systemTimingEnabled === true,
       systemTimingFullCoverage: perf?.systemTimingFullCoverage === true,
     };
@@ -3756,6 +3762,7 @@ try {
       const perf = window.SF?.state?.perfRuntime;
       perf?.setRenderWorkEnabled?.(previous.renderWorkEnabled === true);
       perf?.setHitchAttributionEnabled?.(previous.hitchAttributionEnabled === true);
+      perf?.setSimAttributionEnabled?.(previous.simAttributionEnabled === true);
       perf?.setSystemTimingEnabled?.(previous.systemTimingEnabled === true);
       if (previous.restoreSystemTimingFullCoverage === true) {
         perf?.setSystemTimingFullCoverage?.(previous.systemTimingFullCoverage === true);
@@ -3769,6 +3776,7 @@ try {
     }, {
       renderWorkEnabled: probeInstrumentation.previousRenderWorkEnabled,
       hitchAttributionEnabled: probeInstrumentation.previousHitchAttributionEnabled,
+      simAttributionEnabled: probeInstrumentation.previousSimAttributionEnabled,
       systemTimingEnabled: probeInstrumentation.previousSystemTimingEnabled,
       systemTimingFullCoverage: probeInstrumentation.previousSystemTimingFullCoverage,
       restoreSystemTimingFullCoverage: FULL_SYSTEM_TIMING,
