@@ -179,6 +179,7 @@ ${C} #gm-engage-route-btn.orr-lampkey:disabled { color:rgb(${BONE} / .66) !impor
 ${C} #gm-engage-route-btn.orr-lampkey.is-locking { color:#1c1406 !important; }
 ${C} #gm-engage-route-btn.orr-lampkey.is-locking::before { background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 22px 2px rgb(242 185 80 / .45) !important; }
 ${C} #gm-engage-route-btn.orr-lampkey.is-locking .orr-lampkey__rim { display:none !important; }
+${C} #gm-engage-route-btn.is-locking + #gm-engage-reason { ${SR} }
 /* ENGAGE ROUTE: the one Lamp Key — its natural width, not a bar */
 ${C} #gm-engage-route-btn.orr-lampkey { width:auto !important; align-self:flex-start !important; margin-top:6px !important; }
 ${C} #gm-engage-route-btn.orr-lampkey[data-engage-state="nav:abortRoute"]:not(:disabled)::before { background:var(--dp-danger, #ff5038) !important; }
