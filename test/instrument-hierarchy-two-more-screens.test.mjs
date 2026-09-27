@@ -173,10 +173,12 @@ test('codex model still gates by beat and reports honest progress', () => {
     'traps must never unlock by beat alone');
 
   assert.ok(Object.isFrozen(SIGNAL_ARCHIVE));
-  assert.equal(SIGNAL_ARCHIVE.length, 4);
+  // four recovered intro signals plus the full-length boot relay (c377105fb, 2026-09-25: the baked intro
+  // visualizer replaced the live boot tableaux and joined the archive as its fifth signal)
+  assert.equal(SIGNAL_ARCHIVE.length, 5);
   for (const signal of SIGNAL_ARCHIVE) {
-    assert.match(signal.poster, /^assets\/cinematics\/C-INTRO-\d+\.jpg$/);
-    assert.match(signal.video, /^assets\/cinematics\/C-INTRO-\d+_6s\.mp4$/);
+    assert.match(signal.poster, /^assets\/cinematics\/(C-INTRO-\d+|intro-visualizer)\.jpg$/);
+    assert.match(signal.video, /^assets\/cinematics\/(C-INTRO-\d+_6s|intro-visualizer)\.mp4$/);
     assert.ok(signal.caption && signal.title);
   }
 });
