@@ -395,6 +395,121 @@
       "file": "place_station_trade_hub",
       "asset_id": "SF_PLACE_STATION_TRADE_HUB",
       "part_id": "place_station_trade_hub"
+    },
+    "var_station_trade_hub_free_overlay_v01": {
+      "layout": "place",
+      "file": "var_station_trade_hub_free_overlay_v01",
+      "asset_id": "SF_PLACE_STATION_TRADE_HUB_FREE_OVERLAY",
+      "part_id": "var_station_trade_hub_free_overlay_v01",
+      "note": "Forge rebuild of the Free Frontier claim on the Helios hub: welded habitat pods, wall patch plates and a stern lean-to, lash trusses, cyan bands and slit lights. Ships/var file."
+    },
+    "var_station_trade_hub_mts_overlay_v01": {
+      "layout": "place",
+      "file": "var_station_trade_hub_mts_overlay_v01",
+      "asset_id": "SF_PLACE_STATION_TRADE_HUB_MTS_OVERLAY",
+      "part_id": "var_station_trade_hub_mts_overlay_v01",
+      "note": "Forge rebuild of the Meridian claim on the Helios hub: elevated halo ring on crowns and pylons, gold bands, lit text-free ad faces, gate arch over the harbour mouth."
+    },
+    "var_station_trade_hub_scn_overlay_v01": {
+      "layout": "place",
+      "file": "var_station_trade_hub_scn_overlay_v01",
+      "asset_id": "SF_PLACE_STATION_TRADE_HUB_SCN_OVERLAY",
+      "part_id": "var_station_trade_hub_scn_overlay_v01",
+      "note": "Forge rebuild of the Concord claim on the Helios hub: armoured cladding band with a blue rail, four diagonal bastion keeps, six masts, terminal docking-boom gate."
+    },
+    "place_dead_hulk": {
+      "layout": "place",
+      "file": "place_dead_hulk",
+      "asset_id": "place_dead_hulk",
+      "part_id": "place_dead_hulk",
+      "note": "Forge rebuild of the dead hulk landmark: gutted freighter with a blown-open starboard-dorsal rupture, exposed frame rings, torn plates, dark interior, one dying beacon."
+    },
+    "place_debris_chunk": {
+      "layout": "place",
+      "file": "place_debris_chunk",
+      "asset_id": "place_debris_chunk",
+      "part_id": "place_debris_chunk",
+      "note": "Forge rebuild of the debris chunk landmark: a sheared hull section, torn plate shells on a bent frame, embedded pressure tank, drifting shrapnel."
+    },
+    "place_station_billboard": {
+      "layout": "place",
+      "file": "place_station_billboard",
+      "asset_id": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
+      "part_id": "place_station_billboard",
+      "note": "Forge rebuild of the station information billboard: a framed twin-face lit display on a truss mast with service platform, no text."
+    },
+    "place_lane_pin": {
+      "layout": "place",
+      "file": "place_lane_pin",
+      "asset_id": "SF_PLACE_LANE_PIN",
+      "part_id": "place_lane_pin",
+      "note": "Forge rebuild of the lane pin: a tall navigation mast on a tripod ballast foot, chevron light housing, vane rings, speed lamps."
+    },
+    "place_tally_post": {
+      "layout": "place",
+      "file": "place_tally_post",
+      "asset_id": "SF_PLACE_TALLY_POST",
+      "part_id": "place_tally_post",
+      "note": "Forge rebuild of the tally post: a cargo-weigh gantry with a mast, hung yoke and tongs, operator deck with rails, scale house and invoice lamp."
+    },
+    "place_claim_mark": {
+      "layout": "place",
+      "file": "place_claim_mark",
+      "asset_id": "SF_PLACE_CLAIM_MARK",
+      "part_id": "place_claim_mark",
+      "note": "Forge rebuild of the claim mark: a prospector's staked beacon — driven shaft, weld collar, cage frame, lamp lens and streamer tabs."
+    },
+    "place_ash_pin": {
+      "layout": "place",
+      "file": "place_ash_pin",
+      "asset_id": "SF_PLACE_ASH_PIN",
+      "part_id": "place_ash_pin",
+      "note": "Forge rebuild of the ash pin: a squat memorial cairn — ballast base, offering cage, hung tokens, name plate, one warm lamp."
+    },
+    "place_whistle": {
+      "layout": "place",
+      "file": "place_whistle",
+      "asset_id": "SF_PLACE_WHISTLE",
+      "part_id": "place_whistle",
+      "note": "Forge rebuild of the whistle: a message-drum buoy on a tripod boot, chain-hung basket cage, crank, whip antennae and signal lamp."
+    },
+    "place_cold_locker": {
+      "layout": "place",
+      "file": "place_cold_locker",
+      "asset_id": "SF_PLACE_COLD_LOCKER",
+      "part_id": "place_cold_locker",
+      "note": "Forge rebuild of the cold locker: a tall vacuum-insulated storage rack — latticed tower of locked cryo drawers on a bond-ring foot."
+    },
+    "place_memorial_array": {
+      "layout": "place",
+      "file": "place_memorial_array",
+      "asset_id": "SF_PLACE_MEMORIAL_ARRAY",
+      "part_id": "place_memorial_array",
+      "note": "Forge rebuild of the memorial array prop: a low spine carrying a row of vigil lamps and name plates with truss outriggers."
+    },
+    "place_quiessence_freighter_a": {
+      "layout": "place",
+      "file": "place_quiessence_freighter_a",
+      "asset_id": "SF_PLACE_QUIESSENCE_FREIGHTER_A",
+      "part_id": "place_quiessence_freighter_a",
+      "new_place": true,
+      "note": "Quiessence becalmed freighter A (new place): long intact hauler, charcoal-violet hull, cold engines, rows of warm bunk windows, one faint violet beacon."
+    },
+    "place_quiessence_freighter_b": {
+      "layout": "place",
+      "file": "place_quiessence_freighter_b",
+      "asset_id": "SF_PLACE_QUIESSENCE_FREIGHTER_B",
+      "part_id": "place_quiessence_freighter_b",
+      "new_place": true,
+      "note": "Quiessence becalmed freighter B (new place): shorter container-spine hauler, stacked box rows, cold engines, warm bunk windows, faint violet beacon."
+    },
+    "place_quiessence_freighter_c": {
+      "layout": "place",
+      "file": "place_quiessence_freighter_c",
+      "asset_id": "SF_PLACE_QUIESSENCE_FREIGHTER_C",
+      "part_id": "place_quiessence_freighter_c",
+      "new_place": true,
+      "note": "Quiessence becalmed freighter C (new place): tank-line hauler with saddle tanks and aft bridge, cold engines, warm bunk windows, faint violet beacon."
     }
   }
 }

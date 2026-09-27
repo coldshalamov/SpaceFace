@@ -24,9 +24,9 @@
       "nodeName": "SOCKET_Hazard_Core",
       "nodePath": [
         0,
-        3
+        25
       ],
-      "parentNodeId": "sf.render.dead-hulk.node.place-dead-hulk",
+      "parentNodeId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
       "worldTransform": [
         1,
         0,
@@ -70,9 +70,9 @@
       "nodeName": "SOCKET_Salvage_Core",
       "nodePath": [
         0,
-        4
+        26
       ],
-      "parentNodeId": "sf.render.dead-hulk.node.place-dead-hulk",
+      "parentNodeId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
       "worldTransform": [
         1,
         0,
@@ -94,563 +94,644 @@
     }
   ],
   "assetId": "sf.render.dead-hulk",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.dead-hulk.collision",
+      "nodeId": "sf.render.dead-hulk.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "62932aff7bdf812aff8f30317863adb919f572aeb291a8e69f931f32b2a02e15",
+  "contentHash": "4bf27a99a749d1822cc562c05fda7fe137499dc2a0199d6aafdbd62d25224816",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          21.327251434326172,
-          6.331446170806885,
-          6.361457347869873
+          28,
+          8.764549255371094,
+          7.533808708190918
         ],
         "min": [
-          -24.865739822387695,
-          -5.50051212310791,
-          -6.361457347869873
+          -27.600000381469727,
+          -6.189605712890625,
+          -7.6714768409729
         ]
       },
       "drawMode": 4,
-      "geometryHash": "671fba1787938f55d48ca66cf3d84faef881540c4137173820ee1d6db104306d",
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-armor.primitive.0",
-      "indexCount": 7392,
+      "geometryHash": "fb6ef791389b55dbd01980533cc1593be65ccbbcd07a0bac5bd940e1be5a73ce",
+      "id": "sf.render.dead-hulk.node.collision-hull.primitive.0",
+      "indexCount": 900,
       "indexed": true,
-      "materialHash": "867c9ec88f8d01e1dadc2525efc29058c2d9ea45b6ba341f67d319762caf06f0",
-      "materialPipelineKey": "opaque",
-      "meshName": "Torus.003",
-      "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-armor",
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.dead-hulk.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 2106
+      "vertexCount": 782
     },
     {
       "bounds": {
         "max": [
-          21.625,
-          5.4101457595825195,
-          4.07991886138916
+          13.25,
+          7.575008392333984,
+          0.25
         ],
         "min": [
-          15.174999237060547,
-          4.629854202270508,
-          3.92008113861084
+          12.75,
+          7.224991798400879,
+          -0.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "013f25d9c9d735bade816acd7a3f140d88b32e22998aba3926089a0bdfbcae9b",
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-glass.primitive.0",
-      "indexCount": 564,
+      "geometryHash": "b01e3191842b7f4e144ea2cccc82b6f7852ac73f57e1a441cb283eae8d4a278b",
+      "id": "sf.render.dead-hulk.node.lod0-beacon-amber.primitive.0",
+      "indexCount": 36,
       "indexed": true,
-      "materialHash": "92928075fd33d8df328d5a554ffab230570f169ac8912ed318762c149cfc8d5d",
-      "materialPipelineKey": "blend",
-      "meshName": "Cube.037",
-      "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-glass",
-      "primitiveIndex": 0,
-      "vertexCount": 148
-    },
-    {
-      "bounds": {
-        "max": [
-          7.32988166809082,
-          4.354687690734863,
-          4.2502336502075195
-        ],
-        "min": [
-          -27.17500114440918,
-          -3.7789745330810547,
-          -5.004913806915283
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a293885db4f79f7a3f0c025ab6a6a620e3ae0efdd0e64ebe3ad9a061a143cc5a",
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-heat.primitive.0",
-      "indexCount": 2556,
-      "indexed": true,
-      "materialHash": "025b45c2e3418ef52af1c047256cd975e44c6557ade5ed3ce292d28b3b632dc3",
+      "materialHash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-heat",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.dead-hulk.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 628
+      "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          27.250001907348633,
-          6.426342964172363,
-          5.649525165557861
+          26.22989273071289,
+          8.764854431152344,
+          7.533008575439453
         ],
         "min": [
-          -27.25,
-          -4.6243486404418945,
-          -6.4057745933532715
+          -5.506217956542969,
+          -6.1903533935546875,
+          -6.349058151245117
         ]
       },
       "drawMode": 4,
-      "geometryHash": "066966c34acc842536033a71574af236fabeb4d30c74466decbfb6b9a0e83a36",
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-hull.primitive.0",
-      "indexCount": 11412,
+      "geometryHash": "786db70823ca38ffd2f9f863879715d9944fa99d961b698b20d4383a620e65fd",
+      "id": "sf.render.dead-hulk.node.lod0-brushedmetal.primitive.0",
+      "indexCount": 4860,
       "indexed": true,
-      "materialHash": "1d04f389b4985286db05102e9548f182ca4a16110d0250d2aa208398c2b593c6",
+      "materialHash": "1d743927e07b4dd6476bf320bf8bf03383fd0940aa6c89118ffab8a5732c770a",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-hull",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.dead-hulk.node.lod0-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 2942
+      "vertexCount": 1742
     },
     {
       "bounds": {
         "max": [
-          16.680822372436523,
-          4.849573612213135,
-          4.029510974884033
+          8.176313400268555,
+          5.449731826782227,
+          5.449731826782227
         ],
         "min": [
-          -15.892437934875488,
-          3.083192825317383,
-          -2.224342107772827
+          -5.176313877105713,
+          -5.449731826782227,
+          -5.449731826782227
         ]
       },
       "drawMode": 4,
-      "geometryHash": "69281722b069339e1486ec025712174df698537f7f778bff5ea915704af864a4",
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-hull.primitive.1",
-      "indexCount": 126,
+      "geometryHash": "9cb853c5cc6a744141a7573ace1f6b37f96b75de11dececa0de8c216517c1007",
+      "id": "sf.render.dead-hulk.node.lod0-ceramic.primitive.0",
+      "indexCount": 864,
       "indexed": true,
-      "materialHash": "0201dc563f1fe9ecb227eb2358d9abb94d35a0ec9b7956a18b872bdd0bf10b0d",
+      "materialHash": "6356757b9322a4565b29c60d3d24254c2d1090de6860d9572b7ae43c74957ada",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-hull",
-      "primitiveIndex": 1,
-      "vertexCount": 60
-    },
-    {
-      "bounds": {
-        "max": [
-          6.800000190734863,
-          4.289767742156982,
-          -3.34269380569458
-        ],
-        "min": [
-          -3.549999952316284,
-          0.8831468224525452,
-          -5.356659412384033
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "6282a8f6c66ac3f93fc63309ac131a36c8dcf05b45955cb58f768c7be197eda7",
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-insulation.primitive.0",
-      "indexCount": 1776,
-      "indexed": true,
-      "materialHash": "2b307e45b0ccb046981276a284aaa7d6dc2d5cbc6e2caa7ed2c118502afcdc59",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Hulk_RuptureInsulationMesh",
-      "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-insulation",
+      "meshName": "LOD0_Ceramic",
+      "nodeId": "sf.render.dead-hulk.node.lod0-ceramic",
       "primitiveIndex": 0,
-      "vertexCount": 415
+      "vertexCount": 288
     },
     {
       "bounds": {
         "max": [
-          6.54832124710083,
-          3.1700141429901123,
-          -2.580477237701416
+          27.80000114440918,
+          8.039892196655273,
+          5.7687554359436035
         ],
         "min": [
-          -10.50401496887207,
-          -0.8517289161682129,
-          -5.817439079284668
+          -27.600000381469727,
+          -6.001584053039551,
+          -5.7687554359436035
         ]
       },
       "drawMode": 4,
-      "geometryHash": "085a99b36453674d545f39f1c60a9e3e54c3f051d60fbd86c5828f4e80592395",
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-service.primitive.0",
-      "indexCount": 1692,
+      "geometryHash": "d6ee91b459cda355b0c712e7d24031e70c25ff6101c618775795b3eac3abb8fa",
+      "id": "sf.render.dead-hulk.node.lod0-deadmetal-deep.primitive.0",
+      "indexCount": 4896,
       "indexed": true,
-      "materialHash": "ccab517728be35a268043230f3d6a50845469fa5f07600dd3764cb498444541f",
+      "materialHash": "2d4cf91d4ec5ece80aa6afc8884004c123e1dbe9b2e368206649e9d3a7e0fddf",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.062",
-      "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-service",
+      "meshName": "LOD0_deadmetal_deep",
+      "nodeId": "sf.render.dead-hulk.node.lod0-deadmetal-deep",
       "primitiveIndex": 0,
-      "vertexCount": 440
+      "vertexCount": 1978
     },
     {
       "bounds": {
         "max": [
-          21.099998474121094,
-          5.752408027648926,
-          5.8757123947143555
+          22,
+          8.05567741394043,
+          6.848986625671387
         ],
         "min": [
-          -27.44499969482422,
-          -4.156004905700684,
-          -5.8757123947143555
+          -27.200000762939453,
+          -5.549510955810547,
+          -5.548986911773682
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0338d76c59fca49fff8ad72f8471e8f87567cc0eafaa6531a8ed04485429d81b",
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-structural.primitive.0",
-      "indexCount": 29628,
+      "geometryHash": "792540b5256f2aa73b7206b042f94b1e8d939a1e7d3464ca389c5fb7b0c4e50d",
+      "id": "sf.render.dead-hulk.node.lod0-deadmetal.primitive.0",
+      "indexCount": 2520,
       "indexed": true,
-      "materialHash": "0d9cc0ae16420f4bbf38f61515b00ce2a5f085891d28e465a99d775f9dff4fcf",
+      "materialHash": "519c02f683125e22ef81033651632276f213725ce139b98a6a29f6e92b34efb1",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.010",
-      "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-structural",
+      "meshName": "LOD0_deadmetal",
+      "nodeId": "sf.render.dead-hulk.node.lod0-deadmetal",
       "primitiveIndex": 0,
-      "vertexCount": 7882
+      "vertexCount": 832
     },
     {
       "bounds": {
         "max": [
-          17.797847747802734,
-          4.2892608642578125,
-          4.144055366516113
+          16.433012008666992,
+          6.04439115524292,
+          6.199243545532227
         ],
         "min": [
-          -15.873580932617188,
-          0.1829640120267868,
-          -2.3709402084350586
+          -20.876314163208008,
+          -6.04439115524292,
+          -6.199243545532227
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ebf72082dea0593dfa21788ae8136a608b5f0ed59ab501891ddd870ecb245e3",
-      "id": "sf.render.dead-hulk.node.lod0-remaster-material-rubber-heatscale.primitive.0",
-      "indexCount": 144,
+      "geometryHash": "9e01f70dec72d7af177227f99846b6b1c157a95fec3358ed035de040171303e7",
+      "id": "sf.render.dead-hulk.node.lod0-livery.primitive.0",
+      "indexCount": 1008,
       "indexed": true,
-      "materialHash": "0201dc563f1fe9ecb227eb2358d9abb94d35a0ec9b7956a18b872bdd0bf10b0d",
+      "materialHash": "fbd11c0b7143f69035d0c50fd872963884420f32d1feb4641ce7c830c450fcea",
       "materialPipelineKey": "opaque",
-      "meshName": "Remaster_ServiceWell_Inner",
-      "nodeId": "sf.render.dead-hulk.node.lod0-remaster-material-rubber-heatscale",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          21.328598022460938,
-          6.331612586975098,
-          6.361123561859131
-        ],
-        "min": [
-          -24.882450103759766,
-          -5.499329566955566,
-          -6.361123561859131
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "59d22ebf9214fe81b57fc132ad6facf53ea87ba701c075096dc5f8b5a0eb1b88",
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-armor.primitive.0",
-      "indexCount": 3804,
-      "indexed": true,
-      "materialHash": "867c9ec88f8d01e1dadc2525efc29058c2d9ea45b6ba341f67d319762caf06f0",
-      "materialPipelineKey": "opaque",
-      "meshName": "Torus.001",
-      "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-armor",
-      "primitiveIndex": 0,
-      "vertexCount": 1068
-    },
-    {
-      "bounds": {
-        "max": [
-          21.625,
-          5.4101457595825195,
-          4.07991886138916
-        ],
-        "min": [
-          15.174999237060547,
-          4.629854202270508,
-          3.92008113861084
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "1bfa26b50060eea738ce23f24b8b5d188dc6660fd4484f2faed241ab14770ba5",
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-glass.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "92928075fd33d8df328d5a554ffab230570f169ac8912ed318762c149cfc8d5d",
-      "materialPipelineKey": "blend",
-      "meshName": "Cube.104",
-      "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-glass",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          7.332685470581055,
-          4.355605125427246,
-          4.156956672668457
-        ],
-        "min": [
-          -27.17500114440918,
-          -3.7787179946899414,
-          -5.006267547607422
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "79caaf0f67296e16a5463ebeaae11dcf8d0131b6f1bbfa3245c329677a0a0bc1",
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-heat.primitive.0",
-      "indexCount": 1176,
-      "indexed": true,
-      "materialHash": "025b45c2e3418ef52af1c047256cd975e44c6557ade5ed3ce292d28b3b632dc3",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.006",
-      "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-heat",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.dead-hulk.node.lod0-livery",
       "primitiveIndex": 0,
       "vertexCount": 328
     },
     {
       "bounds": {
         "max": [
-          27.250001907348633,
-          6.427181720733643,
-          5.6499834060668945
+          27.600000381469727,
+          7.429261207580566,
+          5.570118427276611
         ],
         "min": [
-          -27.25,
-          -4.623509883880615,
-          -6.3986639976501465
+          -23.80337142944336,
+          -5.599243640899658,
+          -7.671736717224121
         ]
       },
       "drawMode": 4,
-      "geometryHash": "04718d375aca34f69269abdcb76096eae1305556fa16cd414be0ae10ad3288bf",
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-hull.primitive.0",
-      "indexCount": 5460,
+      "geometryHash": "a6336b76318a94665f8be10633e06877a48eab614d9a5879e21b0d6992a8f7e7",
+      "id": "sf.render.dead-hulk.node.lod0-mechanical.primitive.0",
+      "indexCount": 12828,
       "indexed": true,
-      "materialHash": "1d04f389b4985286db05102e9548f182ca4a16110d0250d2aa208398c2b593c6",
+      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
-      "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-hull",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.dead-hulk.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1443
+      "vertexCount": 3849
     },
     {
       "bounds": {
         "max": [
-          6.800000190734863,
-          4.286726951599121,
-          -3.3400189876556396
+          28,
+          4.3490705490112305,
+          4.3490705490112305
         ],
         "min": [
-          -3.549999952316284,
-          0.8813692927360535,
-          -5.348930358886719
+          -19.25,
+          -4.3490705490112305,
+          -4.3490705490112305
         ]
       },
       "drawMode": 4,
-      "geometryHash": "454bedbeb9e437f45c92219cf8bcd758a853ecb5636fb727de2943833cf9b870",
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-insulation.primitive.0",
-      "indexCount": 852,
+      "geometryHash": "88c64b42ddaa227b36ad6a24191d17d5807e8e7c6ce838124653f476a220264e",
+      "id": "sf.render.dead-hulk.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 1212,
       "indexed": true,
-      "materialHash": "2b307e45b0ccb046981276a284aaa7d6dc2d5cbc6e2caa7ed2c118502afcdc59",
+      "materialHash": "449de964dfc439d3f91a5397528a9f680220104cf033457cdccb000c10c55115",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Hulk_RuptureInsulationMesh",
-      "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-insulation",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.dead-hulk.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 208
+      "vertexCount": 656
     },
     {
       "bounds": {
         "max": [
-          3.4185452461242676,
-          3.172154664993286,
-          -2.5803873538970947
+          13.25,
+          7.575008392333984,
+          0.25
         ],
         "min": [
-          -10.50437068939209,
-          1.280470371246338,
-          -5.819875717163086
+          12.75,
+          7.224991798400879,
+          -0.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "feea8b67acf2380ae303ba4a11a4984746437df081e3cb013208556695703fe5",
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-service.primitive.0",
-      "indexCount": 648,
+      "geometryHash": "b4988695070fdf4dd13f2dd7ff72cfae6a6f53303a2c6470fade557207cc2c6f",
+      "id": "sf.render.dead-hulk.node.lod1-beacon-amber.primitive.0",
+      "indexCount": 36,
       "indexed": true,
-      "materialHash": "ccab517728be35a268043230f3d6a50845469fa5f07600dd3764cb498444541f",
+      "materialHash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.119",
-      "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-service",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.dead-hulk.node.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 194
+      "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          21.099998474121094,
-          5.759112358093262,
-          5.8757123947143555
+          26.246063232421875,
+          8.763772964477539,
+          7.5271525382995605
         ],
         "min": [
-          -27.44499969482422,
-          -4.15522575378418,
-          -5.8757123947143555
+          -5.506217956542969,
+          -6.1913018226623535,
+          -6.3503594398498535
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b8cd34c6baf564c2bac99880508338680c869e62a5ad342f9858604b006b238",
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-structural.primitive.0",
-      "indexCount": 15444,
+      "geometryHash": "8b4c3587e9648e41775f39aa4448e03198f50ce7a3a6e52e2ecf7bf143de4b01",
+      "id": "sf.render.dead-hulk.node.lod1-brushedmetal.primitive.0",
+      "indexCount": 1992,
       "indexed": true,
-      "materialHash": "0d9cc0ae16420f4bbf38f61515b00ce2a5f085891d28e465a99d775f9dff4fcf",
+      "materialHash": "1d743927e07b4dd6476bf320bf8bf03383fd0940aa6c89118ffab8a5732c770a",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.077",
-      "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-structural",
+      "meshName": "LOD1_BrushedMetal",
+      "nodeId": "sf.render.dead-hulk.node.lod1-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 4534
+      "vertexCount": 902
     },
     {
       "bounds": {
         "max": [
-          17.797847747802734,
-          4.2892608642578125,
-          4.144055366516113
+          8.176313400268555,
+          5.449731826782227,
+          5.449731826782227
         ],
         "min": [
-          -15.873580932617188,
-          0.1829640120267868,
-          -2.3709402084350586
+          -5.176313877105713,
+          -5.449731826782227,
+          -5.449731826782227
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ebf72082dea0593dfa21788ae8136a608b5f0ed59ab501891ddd870ecb245e3",
-      "id": "sf.render.dead-hulk.node.lod1-remaster-material-rubber-heatscale.primitive.0",
-      "indexCount": 144,
+      "geometryHash": "53365c349b2b190aee752aadb419c8f3d53e0603fc7a67e952a66d2a3f5a5779",
+      "id": "sf.render.dead-hulk.node.lod1-ceramic.primitive.0",
+      "indexCount": 864,
       "indexed": true,
-      "materialHash": "0201dc563f1fe9ecb227eb2358d9abb94d35a0ec9b7956a18b872bdd0bf10b0d",
+      "materialHash": "6356757b9322a4565b29c60d3d24254c2d1090de6860d9572b7ae43c74957ada",
       "materialPipelineKey": "opaque",
-      "meshName": "Remaster_ServiceWell_Inner.004",
-      "nodeId": "sf.render.dead-hulk.node.lod1-remaster-material-rubber-heatscale",
+      "meshName": "LOD1_Ceramic",
+      "nodeId": "sf.render.dead-hulk.node.lod1-ceramic",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 288
     },
     {
       "bounds": {
         "max": [
-          21.32958984375,
-          6.332915306091309,
-          6.201060771942139
+          27.781003952026367,
+          8.036511421203613,
+          5.770157337188721
         ],
         "min": [
-          -24.865739822387695,
-          -5.4996418952941895,
-          -6.201060771942139
+          -27.600000381469727,
+          -5.986627101898193,
+          -5.770157337188721
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac52bec06299ff65c51bf32a23b470299ecc299dd5a5b71c3cdfcfe7bf54f9df",
-      "id": "sf.render.dead-hulk.node.lod2-hulk-material-armor.primitive.0",
-      "indexCount": 684,
+      "geometryHash": "d00553ce5cc795fdcf2930057e38dfddd283d709c5720f79f6fa44807040637b",
+      "id": "sf.render.dead-hulk.node.lod1-deadmetal-deep.primitive.0",
+      "indexCount": 2628,
       "indexed": true,
-      "materialHash": "867c9ec88f8d01e1dadc2525efc29058c2d9ea45b6ba341f67d319762caf06f0",
+      "materialHash": "2d4cf91d4ec5ece80aa6afc8884004c123e1dbe9b2e368206649e9d3a7e0fddf",
       "materialPipelineKey": "opaque",
-      "meshName": "Torus.002",
-      "nodeId": "sf.render.dead-hulk.node.lod2-hulk-material-armor",
+      "meshName": "LOD1_deadmetal_deep",
+      "nodeId": "sf.render.dead-hulk.node.lod1-deadmetal-deep",
       "primitiveIndex": 0,
-      "vertexCount": 258
+      "vertexCount": 1331
     },
     {
       "bounds": {
         "max": [
-          7.35154914855957,
-          4.44770622253418,
-          4.242764472961426
+          22,
+          8.053450584411621,
+          6.838414192199707
         ],
         "min": [
-          -27.17500114440918,
-          -3.619412422180176,
-          -5.098275661468506
+          -27.191328048706055,
+          -5.5493388175964355,
+          -5.5513691902160645
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4f08fe975cf851b181904f3a47fa674a4fef3bb977c1a807a2fcd748a26fdcb",
-      "id": "sf.render.dead-hulk.node.lod2-hulk-material-heat.primitive.0",
-      "indexCount": 612,
+      "geometryHash": "b19dcd4f29264ed8986fb885b90d757f7a9566179362dc06c97e3e41b9688c2c",
+      "id": "sf.render.dead-hulk.node.lod1-deadmetal.primitive.0",
+      "indexCount": 558,
       "indexed": true,
-      "materialHash": "025b45c2e3418ef52af1c047256cd975e44c6557ade5ed3ce292d28b3b632dc3",
+      "materialHash": "519c02f683125e22ef81033651632276f213725ce139b98a6a29f6e92b34efb1",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.011",
-      "nodeId": "sf.render.dead-hulk.node.lod2-hulk-material-heat",
+      "meshName": "LOD1_deadmetal",
+      "nodeId": "sf.render.dead-hulk.node.lod1-deadmetal",
       "primitiveIndex": 0,
-      "vertexCount": 232
+      "vertexCount": 241
     },
     {
       "bounds": {
         "max": [
-          27.250001907348633,
-          6.430212020874023,
-          5.649438858032227
+          16.433012008666992,
+          6.04439115524292,
+          6.199243545532227
         ],
         "min": [
-          -27.25,
-          -4.427541732788086,
-          -6.399208068847656
+          -20.876314163208008,
+          -6.04439115524292,
+          -6.199243545532227
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa6ab455e4631fa0c0f5ed3eefe6813a502cf07d766b441ac3c85e746a26d8dc",
-      "id": "sf.render.dead-hulk.node.lod2-hulk-material-hull.primitive.0",
-      "indexCount": 2484,
+      "geometryHash": "cb17cb89479e95e9426566f427a6a75aab4f6d14cfecec402c7cb5e96727ff2a",
+      "id": "sf.render.dead-hulk.node.lod1-livery.primitive.0",
+      "indexCount": 1008,
       "indexed": true,
-      "materialHash": "1d04f389b4985286db05102e9548f182ca4a16110d0250d2aa208398c2b593c6",
+      "materialHash": "fbd11c0b7143f69035d0c50fd872963884420f32d1feb4641ce7c830c450fcea",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.010",
-      "nodeId": "sf.render.dead-hulk.node.lod2-hulk-material-hull",
+      "meshName": "LOD1_Livery",
+      "nodeId": "sf.render.dead-hulk.node.lod1-livery",
       "primitiveIndex": 0,
-      "vertexCount": 800
+      "vertexCount": 328
     },
     {
       "bounds": {
         "max": [
-          21.099998474121094,
-          5.809574604034424,
-          5.874763488769531
+          27.586936950683594,
+          7.428602695465088,
+          5.5694074630737305
         ],
         "min": [
-          -23.850000381469727,
-          -4.15523099899292,
-          -5.874763488769531
+          -23.80470848083496,
+          -5.584381580352783,
+          -7.663153171539307
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d14854a81db7b095cd93c469ba4d9faa85e2a5d38aedbe90d920dab4b48b8d1c",
-      "id": "sf.render.dead-hulk.node.lod2-hulk-material-structural.primitive.0",
-      "indexCount": 4488,
+      "geometryHash": "58b28d1567f51e3a83e151c99f9b26655d94665549c1aff10feb6c6d56fa5a62",
+      "id": "sf.render.dead-hulk.node.lod1-mechanical.primitive.0",
+      "indexCount": 2988,
       "indexed": true,
-      "materialHash": "0d9cc0ae16420f4bbf38f61515b00ce2a5f085891d28e465a99d775f9dff4fcf",
+      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.133",
-      "nodeId": "sf.render.dead-hulk.node.lod2-hulk-material-structural",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.dead-hulk.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1888
+      "vertexCount": 1128
     },
     {
       "bounds": {
         "max": [
-          17.797847747802734,
-          4.2892608642578125,
-          4.144055366516113
+          28,
+          4.3490705490112305,
+          4.3490705490112305
         ],
         "min": [
-          -15.873580932617188,
-          0.1829640120267868,
-          -2.3709402084350586
+          -19.25,
+          -4.3490705490112305,
+          -4.3490705490112305
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ebf72082dea0593dfa21788ae8136a608b5f0ed59ab501891ddd870ecb245e3",
-      "id": "sf.render.dead-hulk.node.lod2-remaster-material-rubber-heatscale.primitive.0",
-      "indexCount": 144,
+      "geometryHash": "28e0c78f3bd3b289e795a23574bb091afbab204a8813d6c6361316a0b83bec59",
+      "id": "sf.render.dead-hulk.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 1212,
       "indexed": true,
-      "materialHash": "0201dc563f1fe9ecb227eb2358d9abb94d35a0ec9b7956a18b872bdd0bf10b0d",
+      "materialHash": "449de964dfc439d3f91a5397528a9f680220104cf033457cdccb000c10c55115",
       "materialPipelineKey": "opaque",
-      "meshName": "Remaster_ServiceWell_Inner.005",
-      "nodeId": "sf.render.dead-hulk.node.lod2-remaster-material-rubber-heatscale",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.dead-hulk.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 656
+    },
+    {
+      "bounds": {
+        "max": [
+          13.25,
+          7.4583210945129395,
+          0.25
+        ],
+        "min": [
+          12.75,
+          7.341679096221924,
+          -0.25
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9c2308d7e6063509b2a8a8c08d4dfc329a2246225b087336e2ab5a0155c36f92",
+      "id": "sf.render.dead-hulk.node.lod2-beacon-amber.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.dead-hulk.node.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          26.201501846313477,
+          8.731901168823242,
+          7.413407325744629
+        ],
+        "min": [
+          -5.591196060180664,
+          -6.2693772315979,
+          -6.349812030792236
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e006838ba2abed8c8001cccc06392f817d0f4a1cd9467ec3f8754fab62fc1745",
+      "id": "sf.render.dead-hulk.node.lod2-brushedmetal.primitive.0",
+      "indexCount": 846,
+      "indexed": true,
+      "materialHash": "1d743927e07b4dd6476bf320bf8bf03383fd0940aa6c89118ffab8a5732c770a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.dead-hulk.node.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 398
+    },
+    {
+      "bounds": {
+        "max": [
+          8.275672912597656,
+          5.4241766929626465,
+          5.44978666305542
+        ],
+        "min": [
+          -5.259262561798096,
+          -5.4241766929626465,
+          -5.44978666305542
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5bd498bcea25efaa9f2e4e7c42831d4b28939194e2ac7f8196b9e38e7c99277a",
+      "id": "sf.render.dead-hulk.node.lod2-ceramic.primitive.0",
+      "indexCount": 420,
+      "indexed": true,
+      "materialHash": "6356757b9322a4565b29c60d3d24254c2d1090de6860d9572b7ae43c74957ada",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Ceramic",
+      "nodeId": "sf.render.dead-hulk.node.lod2-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 210
+    },
+    {
+      "bounds": {
+        "max": [
+          27.778759002685547,
+          8.022902488708496,
+          5.749473571777344
+        ],
+        "min": [
+          -27.533334732055664,
+          -5.969283103942871,
+          -5.749473571777344
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "23dde3bbc20c4c9bd9d472bb484ffe0356abaa8d7b705e57e1f86b6bf16b3c10",
+      "id": "sf.render.dead-hulk.node.lod2-deadmetal-deep.primitive.0",
+      "indexCount": 1194,
+      "indexed": true,
+      "materialHash": "2d4cf91d4ec5ece80aa6afc8884004c123e1dbe9b2e368206649e9d3a7e0fddf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal_deep",
+      "nodeId": "sf.render.dead-hulk.node.lod2-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 782
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          7.9717230796813965,
+          6.702878475189209
+        ],
+        "min": [
+          -27.20298957824707,
+          -5.550201416015625,
+          -5.659809112548828
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0f62279f81c8a02348943988aa7362d131e540e884cf71ac5c6c2cfa940318ad",
+      "id": "sf.render.dead-hulk.node.lod2-deadmetal.primitive.0",
+      "indexCount": 276,
+      "indexed": true,
+      "materialHash": "519c02f683125e22ef81033651632276f213725ce139b98a6a29f6e92b34efb1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal",
+      "nodeId": "sf.render.dead-hulk.node.lod2-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 140
+    },
+    {
+      "bounds": {
+        "max": [
+          16.475786209106445,
+          6.017306327819824,
+          5.925866603851318
+        ],
+        "min": [
+          -20.976789474487305,
+          -6.017306327819824,
+          -5.925866603851318
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "085e0e35c92e65d2e3a659dacb198ff7cb0d54bfe04451a8de905c13ee68ad68",
+      "id": "sf.render.dead-hulk.node.lod2-livery.primitive.0",
+      "indexCount": 456,
+      "indexed": true,
+      "materialHash": "fbd11c0b7143f69035d0c50fd872963884420f32d1feb4641ce7c830c450fcea",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Livery",
+      "nodeId": "sf.render.dead-hulk.node.lod2-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 226
+    },
+    {
+      "bounds": {
+        "max": [
+          27.59195899963379,
+          7.430990219116211,
+          5.570415019989014
+        ],
+        "min": [
+          -23.852624893188477,
+          -5.582839488983154,
+          -7.600415229797363
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "06135adbb0a1d047af87dd04b853065a2e78be4ee5b05b6889611d05078a7164",
+      "id": "sf.render.dead-hulk.node.lod2-mechanical.primitive.0",
+      "indexCount": 1452,
+      "indexed": true,
+      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.dead-hulk.node.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 738
+    },
+    {
+      "bounds": {
+        "max": [
+          28,
+          4.349207878112793,
+          4.349207878112793
+        ],
+        "min": [
+          -5,
+          -4.349207878112793,
+          -4.349207878112793
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "48b60c459856c8b3df7b6aac73560c2294fbc0adcd7c33869bb52e221cb6b2c3",
+      "id": "sf.render.dead-hulk.node.lod2-mechanicaldark.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "449de964dfc439d3f91a5397528a9f680220104cf033457cdccb000c10c55115",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.dead-hulk.node.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 152
     }
   ],
   "hlods": [],
@@ -658,256 +739,231 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0201dc563f1fe9ecb227eb2358d9abb94d35a0ec9b7956a18b872bdd0bf10b0d",
-      "id": "material:0201dc563f1fe9ecb227eb23",
-      "name": "Material_Rubber_HeatScale",
+      "hash": "1d743927e07b4dd6476bf320bf8bf03383fd0940aa6c89118ffab8a5732c770a",
+      "id": "material:1d743927e07b4dd6476bf320",
+      "name": "Material_BrushedMetal",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "Material_Rubber_HeatScale_base",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Rubber_HeatScale_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "025b45c2e3418ef52af1c047256cd975e44c6557ade5ed3ce292d28b3b632dc3",
-      "id": "material:025b45c2e3418ef52af1c047",
-      "name": "Material_Heat",
+      "hash": "2d4cf91d4ec5ece80aa6afc8884004c123e1dbe9b2e368206649e9d3a7e0fddf",
+      "id": "material:2d4cf91d4ec5ece80aa6afc8",
+      "name": "Material_Hull_deep",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "hulk_heat_affected_basecolor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_heat_affected_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_heat_affected_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_heat_affected_orm",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "0d9cc0ae16420f4bbf38f61515b00ce2a5f085891d28e465a99d775f9dff4fcf",
-      "id": "material:0d9cc0ae16420f4bbf38f615",
-      "name": "Material_Structural",
+      "hash": "449de964dfc439d3f91a5397528a9f680220104cf033457cdccb000c10c55115",
+      "id": "material:449de964dfc439d3f91a5397",
+      "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "hulk_structural_alloy_basecolor",
+          "name": "forge_machinery_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_structural_alloy_orm",
+          "name": "forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_structural_alloy_normal",
+          "name": "forge_machinery_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_structural_alloy_orm",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "1d04f389b4985286db05102e9548f182ca4a16110d0250d2aa208398c2b593c6",
-      "id": "material:1d04f389b4985286db05102e",
+      "hash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
+      "id": "material:486547a174710d4494bcbd4e",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "519c02f683125e22ef81033651632276f213725ce139b98a6a29f6e92b34efb1",
+      "id": "material:519c02f683125e22ef810336",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "hulk_painted_hull_basecolor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_painted_hull_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_painted_hull_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_painted_hull_orm",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "2b307e45b0ccb046981276a284aaa7d6dc2d5cbc6e2caa7ed2c118502afcdc59",
-      "id": "material:2b307e45b0ccb046981276a2",
-      "name": "Material_Insulation",
+      "hash": "6356757b9322a4565b29c60d3d24254c2d1090de6860d9572b7ae43c74957ada",
+      "id": "material:6356757b9322a4565b29c60d",
+      "name": "Material_Ceramic",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "hulk_rupture_insulation_basecolor",
+          "name": "forge_machinery_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_rupture_insulation_orm",
+          "name": "forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_rupture_insulation_normal",
+          "name": "forge_machinery_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_rupture_insulation_orm",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "867c9ec88f8d01e1dadc2525efc29058c2d9ea45b6ba341f67d319762caf06f0",
-      "id": "material:867c9ec88f8d01e1dadc2525",
-      "name": "Material_Armor",
+      "hash": "fab3eefb927c4e588f15130e5632bfea212c99669836460bfd0f41325b1bd5a4",
+      "id": "material:fab3eefb927c4e588f15130e",
+      "name": "Material_Emissive_Amber",
       "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hulk_armor_dark_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_armor_dark_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_armor_dark_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_armor_dark_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
+      "textures": []
     },
     {
-      "hash": "92928075fd33d8df328d5a554ffab230570f169ac8912ed318762c149cfc8d5d",
-      "id": "material:92928075fd33d8df328d5a55",
-      "name": "Material_Glass",
+      "hash": "fbd11c0b7143f69035d0c50fd872963884420f32d1feb4641ce7c830c450fcea",
+      "id": "material:fbd11c0b7143f69035d0c50f",
+      "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "hulk_dead_glass_basecolor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_dead_glass_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_dead_glass_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "hulk_dead_glass_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "ccab517728be35a268043230f3d6a50845469fa5f07600dd3764cb498444541f",
-      "id": "material:ccab517728be35a268043230",
-      "name": "Material_Service",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hulk_service_trunks_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_service_trunks_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_service_trunks_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_service_trunks_orm",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -916,7 +972,7 @@
   ],
   "nodes": [
     {
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-armor",
+      "id": "sf.render.dead-hulk.node.collision-hull",
       "localTransform": [
         1,
         0,
@@ -935,15 +991,14 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Hulk_Material_Armor",
-      "nodeName": "LOD0_Hulk_Material_Armor",
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
       "nodePath": [
-        0,
         0,
         0
       ],
-      "parentId": "sf.render.dead-hulk.node.lod0-place-dead-hulk",
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.dead-hulk.body",
       "worldTransform": [
@@ -966,57 +1021,7 @@
       ]
     },
     {
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-glass",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD0_Hulk_Material_Glass",
-      "nodeName": "LOD0_Hulk_Material_Glass",
-      "nodePath": [
-        0,
-        0,
-        1
-      ],
-      "parentId": "sf.render.dead-hulk.node.lod0-place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-heat",
+      "id": "sf.render.dead-hulk.node.lod0-beacon-amber",
       "localTransform": [
         1,
         0,
@@ -1036,14 +1041,62 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Hulk_Material_Heat",
-      "nodeName": "LOD0_Hulk_Material_Heat",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
       "nodePath": [
         0,
+        1
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod0-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
+      "nodePath": [
         0,
         2
       ],
-      "parentId": "sf.render.dead-hulk.node.lod0-place-dead-hulk",
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.dead-hulk.body",
       "worldTransform": [
@@ -1066,7 +1119,7 @@
       ]
     },
     {
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-hull",
+      "id": "sf.render.dead-hulk.node.lod0-ceramic",
       "localTransform": [
         1,
         0,
@@ -1086,14 +1139,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Hulk_Material_Hull",
-      "nodeName": "LOD0_Hulk_Material_Hull",
+      "mergeBoundary": "LOD0_Ceramic",
+      "nodeName": "LOD0_Ceramic",
       "nodePath": [
-        0,
         0,
         3
       ],
-      "parentId": "sf.render.dead-hulk.node.lod0-place-dead-hulk",
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.dead-hulk.body",
       "worldTransform": [
@@ -1116,7 +1168,7 @@
       ]
     },
     {
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-insulation",
+      "id": "sf.render.dead-hulk.node.lod0-deadmetal",
       "localTransform": [
         1,
         0,
@@ -1136,14 +1188,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Hulk_Material_Insulation",
-      "nodeName": "LOD0_Hulk_Material_Insulation",
+      "mergeBoundary": "LOD0_deadmetal",
+      "nodeName": "LOD0_deadmetal",
       "nodePath": [
-        0,
         0,
         4
       ],
-      "parentId": "sf.render.dead-hulk.node.lod0-place-dead-hulk",
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.dead-hulk.body",
       "worldTransform": [
@@ -1166,7 +1217,7 @@
       ]
     },
     {
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-service",
+      "id": "sf.render.dead-hulk.node.lod0-deadmetal-deep",
       "localTransform": [
         1,
         0,
@@ -1186,14 +1237,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Hulk_Material_Service",
-      "nodeName": "LOD0_Hulk_Material_Service",
+      "mergeBoundary": "LOD0_deadmetal_deep",
+      "nodeName": "LOD0_deadmetal_deep",
       "nodePath": [
-        0,
         0,
         5
       ],
-      "parentId": "sf.render.dead-hulk.node.lod0-place-dead-hulk",
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.dead-hulk.body",
       "worldTransform": [
@@ -1216,7 +1266,7 @@
       ]
     },
     {
-      "id": "sf.render.dead-hulk.node.lod0-hulk-material-structural",
+      "id": "sf.render.dead-hulk.node.lod0-livery",
       "localTransform": [
         1,
         0,
@@ -1236,14 +1286,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Hulk_Material_Structural",
-      "nodeName": "LOD0_Hulk_Material_Structural",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
       "nodePath": [
-        0,
         0,
         6
       ],
-      "parentId": "sf.render.dead-hulk.node.lod0-place-dead-hulk",
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.dead-hulk.body",
       "worldTransform": [
@@ -1266,7 +1315,889 @@
       ]
     },
     {
-      "id": "sf.render.dead-hulk.node.lod0-place-dead-hulk",
+      "id": "sf.render.dead-hulk.node.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod0-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod1-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod1-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_BrushedMetal",
+      "nodeName": "LOD1_BrushedMetal",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod1-ceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Ceramic",
+      "nodeName": "LOD1_Ceramic",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod1-deadmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal",
+      "nodeName": "LOD1_deadmetal",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod1-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deadmetal_deep",
+      "nodeName": "LOD1_deadmetal_deep",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod1-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Livery",
+      "nodeName": "LOD1_Livery",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod2-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod2-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod2-ceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Ceramic",
+      "nodeName": "LOD2_Ceramic",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod2-deadmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal",
+      "nodeName": "LOD2_deadmetal",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod2-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deadmetal_deep",
+      "nodeName": "LOD2_deadmetal_deep",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod2-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Livery",
+      "nodeName": "LOD2_Livery",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dead-hulk.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
       "localTransform": [
         1,
         0,
@@ -1286,849 +2217,8 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "LOD0_place_dead_hulk",
-      "nodeName": "LOD0_place_dead_hulk",
-      "nodePath": [
-        0,
-        0
-      ],
-      "parentId": "sf.render.dead-hulk.node.place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod0-remaster-material-rubber-heatscale",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Remaster_Material_Rubber_HeatScale",
-      "nodeName": "LOD0_Remaster_Material_Rubber_HeatScale",
-      "nodePath": [
-        1
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-armor",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Hulk_Material_Armor",
-      "nodeName": "LOD1_Hulk_Material_Armor",
-      "nodePath": [
-        0,
-        1,
-        0
-      ],
-      "parentId": "sf.render.dead-hulk.node.lod1-place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-glass",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD1_Hulk_Material_Glass",
-      "nodeName": "LOD1_Hulk_Material_Glass",
-      "nodePath": [
-        0,
-        1,
-        1
-      ],
-      "parentId": "sf.render.dead-hulk.node.lod1-place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-heat",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Hulk_Material_Heat",
-      "nodeName": "LOD1_Hulk_Material_Heat",
-      "nodePath": [
-        0,
-        1,
-        2
-      ],
-      "parentId": "sf.render.dead-hulk.node.lod1-place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-hull",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Hulk_Material_Hull",
-      "nodeName": "LOD1_Hulk_Material_Hull",
-      "nodePath": [
-        0,
-        1,
-        3
-      ],
-      "parentId": "sf.render.dead-hulk.node.lod1-place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-insulation",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Hulk_Material_Insulation",
-      "nodeName": "LOD1_Hulk_Material_Insulation",
-      "nodePath": [
-        0,
-        1,
-        4
-      ],
-      "parentId": "sf.render.dead-hulk.node.lod1-place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-service",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Hulk_Material_Service",
-      "nodeName": "LOD1_Hulk_Material_Service",
-      "nodePath": [
-        0,
-        1,
-        5
-      ],
-      "parentId": "sf.render.dead-hulk.node.lod1-place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod1-hulk-material-structural",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Hulk_Material_Structural",
-      "nodeName": "LOD1_Hulk_Material_Structural",
-      "nodePath": [
-        0,
-        1,
-        6
-      ],
-      "parentId": "sf.render.dead-hulk.node.lod1-place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod1-place-dead-hulk",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "root",
-      "mergeBoundary": "LOD1_place_dead_hulk",
-      "nodeName": "LOD1_place_dead_hulk",
-      "nodePath": [
-        0,
-        1
-      ],
-      "parentId": "sf.render.dead-hulk.node.place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod1-remaster-material-rubber-heatscale",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Remaster_Material_Rubber_HeatScale",
-      "nodeName": "LOD1_Remaster_Material_Rubber_HeatScale",
-      "nodePath": [
-        2
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod2-hulk-material-armor",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Hulk_Material_Armor",
-      "nodeName": "LOD2_Hulk_Material_Armor",
-      "nodePath": [
-        0,
-        2,
-        0
-      ],
-      "parentId": "sf.render.dead-hulk.node.lod2-place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod2-hulk-material-heat",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Hulk_Material_Heat",
-      "nodeName": "LOD2_Hulk_Material_Heat",
-      "nodePath": [
-        0,
-        2,
-        1
-      ],
-      "parentId": "sf.render.dead-hulk.node.lod2-place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod2-hulk-material-hull",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Hulk_Material_Hull",
-      "nodeName": "LOD2_Hulk_Material_Hull",
-      "nodePath": [
-        0,
-        2,
-        2
-      ],
-      "parentId": "sf.render.dead-hulk.node.lod2-place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod2-hulk-material-structural",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Hulk_Material_Structural",
-      "nodeName": "LOD2_Hulk_Material_Structural",
-      "nodePath": [
-        0,
-        2,
-        3
-      ],
-      "parentId": "sf.render.dead-hulk.node.lod2-place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod2-place-dead-hulk",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "root",
-      "mergeBoundary": "LOD2_place_dead_hulk",
-      "nodeName": "LOD2_place_dead_hulk",
-      "nodePath": [
-        0,
-        2
-      ],
-      "parentId": "sf.render.dead-hulk.node.place-dead-hulk",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.lod2-remaster-material-rubber-heatscale",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Remaster_Material_Rubber_HeatScale",
-      "nodeName": "LOD2_Remaster_Material_Rubber_HeatScale",
-      "nodePath": [
-        3
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.dead-hulk.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.dead-hulk.node.place-dead-hulk",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "root",
-      "mergeBoundary": "place_dead_hulk",
-      "nodeName": "place_dead_hulk",
+      "mergeBoundary": "SF_PLACE_DEAD_HULK_ROOT",
+      "nodeName": "SF_PLACE_DEAD_HULK_ROOT",
       "nodePath": [
         0
       ],
@@ -2179,9 +2269,9 @@
       "nodeName": "SOCKET_Hazard_Core",
       "nodePath": [
         0,
-        3
+        25
       ],
-      "parentId": "sf.render.dead-hulk.node.place-dead-hulk",
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.dead-hulk.body",
       "worldTransform": [
@@ -2228,9 +2318,9 @@
       "nodeName": "SOCKET_Salvage_Core",
       "nodePath": [
         0,
-        4
+        26
       ],
-      "parentId": "sf.render.dead-hulk.node.place-dead-hulk",
+      "parentId": "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.dead-hulk.body",
       "worldTransform": [
@@ -2255,48 +2345,50 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "7e8c419f054da9590a8d13175c4b0b82619a16b1329d115a7c7749ec7bc2ed6a"
+      "sha256": "5aa5c58a5b7240f99a30f5f0d89681741b3ae7a02f656e3192cd1b790266cc2c"
     },
     "sourceGlb": {
-      "bytes": 1944604,
-      "sha256": "9d91cf33190c8379b3355dac1215e51cc75ba847ed95b5d61ef79b82c7bf3f1b",
+      "bytes": 603032,
+      "sha256": "38b5f74fcce32608b7712ff3f8bc3d157b15d603c7333cb85bb04700135c28fd",
       "uri": "place_dead_hulk.glb"
     },
     "sourceManifest": {
-      "bytes": 199725,
-      "sha256": "a5883860a66e59255af94ff3d3335dcf35d95e02a77f65747199d5bee0b78bcd",
+      "bytes": 203788,
+      "sha256": "8361e46abf91eba0b1e694e7dae87b812124bb990cf1bc562a95382c7c8d23b3",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2489352,
-    "sha256": "d18eb1415c20aa512992cb79b3417309a74498054496b966d2e4ed1c006158f9",
+    "bytes": 937484,
+    "sha256": "a354d88fb50efaf98e885a668d6234695cf1606ff44706fd75a8409af4619521",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.09749889373779297,
-        0.46484994888305664,
-        -0.02215862274169922
+        0.19999980926513672,
+        1.2477385997772217,
+        -0.06896400451660156
       ],
       "max": [
-        27.250001907348633,
-        6.430212020874023,
-        6.361457347869873
+        28,
+        8.764854431152344,
+        7.533808708190918
       ],
       "min": [
-        -27.44499969482422,
-        -5.50051212310791,
-        -6.4057745933532715
+        -27.600000381469727,
+        -6.2693772315979,
+        -7.671736717224121
       ],
       "size": [
-        54.69500160217285,
-        11.930724143981934,
-        12.767231941223145
+        55.60000038146973,
+        15.034231662750244,
+        15.205545425415039
       ]
     },
-    "hidden": [],
+    "hidden": [
+      2
+    ],
     "legacyPart": false,
     "markers": [
       {
@@ -2319,7 +2411,7 @@
           1
         ],
         "name": "SOCKET_Hazard_Core",
-        "planIndex": 25,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2373,7 +2465,7 @@
           1
         ],
         "name": "SOCKET_Salvage_Core",
-        "planIndex": 26,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2409,28 +2501,37 @@
       }
     ],
     "materialProfileRoles": {
-      "ceramic": 2,
-      "glass": 2,
-      "hull": 6,
-      "mechanical": 6,
-      "rubber": 4,
-      "service": 2
+      "accent": 3,
+      "ceramic": 3,
+      "hull": 7,
+      "mechanical": 9,
+      "signal": 3
     },
     "materialProfiles": [
       {
-        "allowTextures": true,
-        "planIndex": 3,
+        "allowTextures": false,
+        "planIndex": 2,
         "role": "hull"
       },
       {
         "allowTextures": true,
+        "planIndex": 3,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 4,
-        "role": "glass"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "mechanical"
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -2440,67 +2541,77 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "rubber"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "ceramic"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "service"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 17,
         "role": "ceramic"
       },
       {
         "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 18,
-        "role": "service"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -2510,25 +2621,20 @@
       {
         "allowTextures": true,
         "planIndex": 24,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 27,
-        "role": "rubber"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 28,
-        "role": "rubber"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 29,
-        "role": "rubber"
+        "planIndex": 26,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 30,
+    "nodeCount": 29,
     "primitives": [
       {
         "canopy": false,
@@ -2550,7 +2656,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hulk_Material_Armor",
+        "name": "LOD0_Beacon_Amber",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -2577,7 +2683,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hulk_Material_Glass",
+        "name": "LOD0_BrushedMetal",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -2604,7 +2710,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hulk_Material_Heat",
+        "name": "LOD0_Ceramic",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -2631,7 +2737,34 @@
           0,
           1
         ],
-        "name": "Cylinder002",
+        "name": "LOD0_deadmetal",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deadmetal_deep",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -2658,7 +2791,7 @@
           0,
           1
         ],
-        "name": "Cylinder002_1",
+        "name": "LOD0_Livery",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -2685,7 +2818,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hulk_Material_Insulation",
+        "name": "LOD0_Mechanical",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -2712,7 +2845,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hulk_Material_Service",
+        "name": "LOD0_MechanicalDark",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -2739,11 +2872,11 @@
           0,
           1
         ],
-        "name": "LOD0_Hulk_Material_Structural",
+        "name": "LOD1_Beacon_Amber",
         "planIndex": 11,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
+          "lod": "lod1"
         }
       },
       {
@@ -2766,7 +2899,34 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Armor",
+        "name": "LOD1_BrushedMetal",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Ceramic",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -2793,7 +2953,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Glass",
+        "name": "LOD1_deadmetal",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -2820,7 +2980,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Heat",
+        "name": "LOD1_deadmetal_deep",
         "planIndex": 15,
         "tags": {
           "canopy": false,
@@ -2847,7 +3007,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Hull",
+        "name": "LOD1_Livery",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -2874,7 +3034,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Insulation",
+        "name": "LOD1_Mechanical",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -2901,7 +3061,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Service",
+        "name": "LOD1_MechanicalDark",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -2928,11 +3088,11 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Structural",
+        "name": "LOD2_Beacon_Amber",
         "planIndex": 19,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod2"
         }
       },
       {
@@ -2955,7 +3115,34 @@
           0,
           1
         ],
-        "name": "LOD2_Hulk_Material_Armor",
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Ceramic",
         "planIndex": 21,
         "tags": {
           "canopy": false,
@@ -2982,7 +3169,7 @@
           0,
           1
         ],
-        "name": "LOD2_Hulk_Material_Heat",
+        "name": "LOD2_deadmetal",
         "planIndex": 22,
         "tags": {
           "canopy": false,
@@ -3009,7 +3196,7 @@
           0,
           1
         ],
-        "name": "LOD2_Hulk_Material_Hull",
+        "name": "LOD2_deadmetal_deep",
         "planIndex": 23,
         "tags": {
           "canopy": false,
@@ -3036,7 +3223,7 @@
           0,
           1
         ],
-        "name": "LOD2_Hulk_Material_Structural",
+        "name": "LOD2_Livery",
         "planIndex": 24,
         "tags": {
           "canopy": false,
@@ -3063,12 +3250,11 @@
           0,
           1
         ],
-        "name": "LOD0_Remaster_Material_Rubber_HeatScale",
-        "planIndex": 27,
+        "name": "LOD2_Mechanical",
+        "planIndex": 25,
         "tags": {
           "canopy": false,
-          "chamfered": true,
-          "lod": "lod0"
+          "lod": "lod2"
         }
       },
       {
@@ -3091,39 +3277,10 @@
           0,
           1
         ],
-        "name": "LOD1_Remaster_Material_Rubber_HeatScale",
-        "planIndex": 28,
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 26,
         "tags": {
           "canopy": false,
-          "chamfered": true,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_Remaster_Material_Rubber_HeatScale",
-        "planIndex": 29,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
           "lod": "lod2"
         }
       }
@@ -3132,49 +3289,50 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_dead_hulk.glb"
   },
-  "runtimeHash": "93b9926492025164c880652a9c11f903d41c4aceeabb46aadbe7d65a7b46e593",
+  "runtimeHash": "fef3f1d7276c0dfd75189eea6833f925b5c697701e3d4a16b4afc24887e2f171",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          27.250001907348633,
-          6.430212020874023,
-          6.361457347869873
+          28,
+          8.764854431152344,
+          7.533808708190918
         ],
         "min": [
-          -27.44499969482422,
-          -5.50051212310791,
-          -6.4057745933532715
+          -27.600000381469727,
+          -6.2693772315979,
+          -7.671736717224121
         ]
       },
       "id": "sf.render.dead-hulk.body",
       "nodeIds": [
-        "sf.render.dead-hulk.node.lod0-hulk-material-armor",
-        "sf.render.dead-hulk.node.lod0-hulk-material-glass",
-        "sf.render.dead-hulk.node.lod0-hulk-material-heat",
-        "sf.render.dead-hulk.node.lod0-hulk-material-hull",
-        "sf.render.dead-hulk.node.lod0-hulk-material-insulation",
-        "sf.render.dead-hulk.node.lod0-hulk-material-service",
-        "sf.render.dead-hulk.node.lod0-hulk-material-structural",
-        "sf.render.dead-hulk.node.lod0-place-dead-hulk",
-        "sf.render.dead-hulk.node.lod0-remaster-material-rubber-heatscale",
-        "sf.render.dead-hulk.node.lod1-hulk-material-armor",
-        "sf.render.dead-hulk.node.lod1-hulk-material-glass",
-        "sf.render.dead-hulk.node.lod1-hulk-material-heat",
-        "sf.render.dead-hulk.node.lod1-hulk-material-hull",
-        "sf.render.dead-hulk.node.lod1-hulk-material-insulation",
-        "sf.render.dead-hulk.node.lod1-hulk-material-service",
-        "sf.render.dead-hulk.node.lod1-hulk-material-structural",
-        "sf.render.dead-hulk.node.lod1-place-dead-hulk",
-        "sf.render.dead-hulk.node.lod1-remaster-material-rubber-heatscale",
-        "sf.render.dead-hulk.node.lod2-hulk-material-armor",
-        "sf.render.dead-hulk.node.lod2-hulk-material-heat",
-        "sf.render.dead-hulk.node.lod2-hulk-material-hull",
-        "sf.render.dead-hulk.node.lod2-hulk-material-structural",
-        "sf.render.dead-hulk.node.lod2-place-dead-hulk",
-        "sf.render.dead-hulk.node.lod2-remaster-material-rubber-heatscale",
-        "sf.render.dead-hulk.node.place-dead-hulk",
+        "sf.render.dead-hulk.node.collision-hull",
+        "sf.render.dead-hulk.node.lod0-beacon-amber",
+        "sf.render.dead-hulk.node.lod0-brushedmetal",
+        "sf.render.dead-hulk.node.lod0-ceramic",
+        "sf.render.dead-hulk.node.lod0-deadmetal",
+        "sf.render.dead-hulk.node.lod0-deadmetal-deep",
+        "sf.render.dead-hulk.node.lod0-livery",
+        "sf.render.dead-hulk.node.lod0-mechanical",
+        "sf.render.dead-hulk.node.lod0-mechanicaldark",
+        "sf.render.dead-hulk.node.lod1-beacon-amber",
+        "sf.render.dead-hulk.node.lod1-brushedmetal",
+        "sf.render.dead-hulk.node.lod1-ceramic",
+        "sf.render.dead-hulk.node.lod1-deadmetal",
+        "sf.render.dead-hulk.node.lod1-deadmetal-deep",
+        "sf.render.dead-hulk.node.lod1-livery",
+        "sf.render.dead-hulk.node.lod1-mechanical",
+        "sf.render.dead-hulk.node.lod1-mechanicaldark",
+        "sf.render.dead-hulk.node.lod2-beacon-amber",
+        "sf.render.dead-hulk.node.lod2-brushedmetal",
+        "sf.render.dead-hulk.node.lod2-ceramic",
+        "sf.render.dead-hulk.node.lod2-deadmetal",
+        "sf.render.dead-hulk.node.lod2-deadmetal-deep",
+        "sf.render.dead-hulk.node.lod2-livery",
+        "sf.render.dead-hulk.node.lod2-mechanical",
+        "sf.render.dead-hulk.node.lod2-mechanicaldark",
+        "sf.render.dead-hulk.node.sf-place-dead-hulk-root",
         "sf.render.dead-hulk.node.socket-hazard-core",
         "sf.render.dead-hulk.node.socket-salvage-core"
       ]

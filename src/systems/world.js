@@ -2545,12 +2545,12 @@ export const world = {
             : 1600,
           memorialHull: true,
           scanRange: finitePositive(poi.scanRange) ? Number(poi.scanRange) : SCAN_RANGE,
-          // PQ-153.02 still review: carriers that render as nothing fail the shipping-camera
-          // bar — the census saw the ring, the camera saw one hull and bare space. The
-          // shared dead-hulk GLB at half scale is the stand-in silhouette (H1c owns the
-          // bespoke dark-freighter art); `hidden` keeps them off contacts as before.
-          placeId: 'place_dead_hulk',
-          placeScale: 0.5,
+          // PQ-153.02 carriers render as the bespoke Quiessence dark freighters — intact,
+          // becalmed hulls cycling three variants around the ring. placeTargetRadius pins the
+          // drawn size so the fleet reads without hulls overlapping; `hidden` keeps them off
+          // contacts as before.
+          placeId: `place_quiessence_freighter_${'abc'[shipIndex % 3]}`,
+          placeTargetRadius: 21,
           visualRadius: 21,
         });
         for (let shipIndex = 1; shipIndex <= fleetCount; shipIndex += 1) {

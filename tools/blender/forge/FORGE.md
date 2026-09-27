@@ -79,11 +79,16 @@ absolute metres.
 | `s.detail = 1` / `2` | parts added while set are dropped at LOD2 / LOD1+ |
 | `s.hook('HOOK_DRIVE_CORE', pos)`, `s.socket(name, pos)` | override default drive / socket positions |
 
-Finishes (`FINISHES` in forge.py): `paint`, `paint2`, `stripe`, `gunmetal`, `dark`, `bare`, `ceramic`,
-`hazard`, `glass`, `stone`, `glow_drive`, `glow_cyan`, `glow_red`, `glow_green`, `glow_warm`,
-`glow_amber`. Roughness/metalness are calibrated per finish; ships choose colours, not material
-physics. `stone` is a plain untiled rock surface (role `geology`), for `rock()` and natural
-surfaces — no machinery panel tile.
+Finishes (`FINISHES` in forge.py): `paint`, `paint2`, `deadmetal`, `stripe`, `gunmetal`, `dark`,
+`bare`, `ceramic`, `hazard`, `glass`, `stone`, `glow_drive`, `glow_cyan`, `glow_red`, `glow_green`,
+`glow_warm`, `glow_amber`. Roughness/metalness are calibrated per finish; ships choose colours, not
+material physics. `stone` is a plain untiled rock surface (role `geology`), for `rock()` and
+natural surfaces — no machinery panel tile. `deadmetal` is a hull-role skin (exports as
+`Material_Hull`, so tint slots and name-based routes still apply) for surfaces that must read
+near-black on screen: ordinary `paint` at a dark hex still lifts several stops under the sector
+key light + env wash and reads pale, and high-metal skins mirror the bright warm env; `deadmetal`
+is dielectric, near-black-albedo and rough, so derelicts and becalmed hulls stay charcoal-dark.
+Variant suffixes work too (`deadmetal.deep` → `Material_Hull_deep`).
 
 `ship.finish()` bevels every hard edge (3 segments, harden normals), applies weighted normals,
 triangulates n-gons, and projects world-locked UVs. Every part is treated identically.

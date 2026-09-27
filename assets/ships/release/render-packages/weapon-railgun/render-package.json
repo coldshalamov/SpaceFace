@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a988c61265a811f1e7141ae871024467ee318fff761e814322075375cf1a5d77",
+  "contentHash": "265b41e6e6b2132834f7a8920806797b2472e9379969fe20e77b1a8f05115291",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1434,8 +1434,8 @@
       "uri": "weapon_railgun.glb"
     },
     "sourceManifest": {
-      "bytes": 199725,
-      "sha256": "a5883860a66e59255af94ff3d3335dcf35d95e02a77f65747199d5bee0b78bcd",
+      "bytes": 203788,
+      "sha256": "8361e46abf91eba0b1e694e7dae87b812124bb990cf1bc562a95382c7c8d23b3",
       "uri": "pilots.json"
     }
   },
@@ -1791,7 +1791,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_railgun.glb"
   },
-  "runtimeHash": "a87a208dd7e7b3750501fa15485b30158b749249e625924ad4d070ed1ecb9eb0",
+  "runtimeHash": "396d3eb8ca3b3bdbe017cf219f6f9d9c104735b0e2385eefcd351e8947f723a3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

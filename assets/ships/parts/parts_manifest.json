@@ -1858,29 +1858,35 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_ash_pin.glb",
-      "tris": 1192,
-      "bytes": 196772,
+      "tris": 5994,
+      "bytes": 570468,
       "textureSize": 128,
-      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py.",
+      "note": "Forge rebuild of the ash pin: a squat memorial cairn — ballast base, offering cage, hung tokens, name plate, one warm lamp.",
       "bounds": {
         "min": [
-          -2.4283730025746664,
-          -0.05616000294685364,
-          -2.501255171123816
+          -1.5483916997909546,
+          -0.25,
+          -1.548136830329895
         ],
         "max": [
-          2.4283730025746664,
-          12.481041467104873,
-          2.501255171123816
+          1.5483916997909546,
+          3.30570387840271,
+          1.5483916997909546
         ],
         "dimensionsM": [
-          4.856746005149333,
-          12.537201470051727,
-          5.002510342247632
+          3.096783399581909,
+          3.55570387840271,
+          3.0965285301208496
         ]
       },
       "mount": "origin",
-      "sockets": []
+      "sockets": [],
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical"
+      },
+      "hooks": []
     },
     {
       "id": "place_asteroid_graffiti",
@@ -2195,32 +2201,35 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_claim_mark.glb",
-      "tris": 1356,
-      "bytes": 204104,
+      "tris": 5582,
+      "bytes": 525880,
       "textureSize": 128,
       "tintable": {
-        "accent": "furniture_signal_lens"
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical"
       },
-      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py.",
+      "note": "Forge rebuild of the claim mark: a prospector's staked beacon — driven shaft, weld collar, cage frame, lamp lens and streamer tabs.",
       "bounds": {
         "min": [
-          -1.1886365089836446,
-          -0.3887999653816223,
-          -1.2059294075235099
+          -0.8844301104545593,
+          -0.4400000274181366,
+          -0.9018946886062622
         ],
         "max": [
-          1.3119701276658589,
-          9.76478018854995,
-          1.611296953549306
+          0.8696647882461548,
+          6.777063369750977,
+          0.7852773070335388
         ],
         "dimensionsM": [
-          2.5006066366495032,
-          10.153580153931573,
-          2.817226361072816
+          1.7540948987007141,
+          7.217063397169113,
+          1.687171995639801
         ]
       },
       "mount": "origin",
-      "sockets": []
+      "sockets": [],
+      "hooks": []
     },
     {
       "id": "place_claim_outpost_base",
@@ -2659,32 +2668,36 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_cold_locker.glb",
-      "tris": 1784,
-      "bytes": 161300,
+      "tris": 16996,
+      "bytes": 1240620,
       "textureSize": 0,
       "tintable": {
-        "accent": "furniture_signal_lens"
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
       },
-      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=de17d9e996bf0b6f",
+      "note": "Forge rebuild of the cold locker: a tall vacuum-insulated storage rack — latticed tower of locked cryo drawers on a bond-ring foot.",
       "bounds": {
         "min": [
-          -2.9683549762540364,
-          -0.7838041502424746,
-          -3.060000466346743
+          -3.4000000953674316,
+          -0.7000000476837158,
+          -3.4000000953674316
         ],
         "max": [
-          3.0365312918071647,
-          32.52604688942211,
-          3.2810000028610204
+          3.4000000953674316,
+          21.100000381469727,
+          3.4000000953674316
         ],
         "dimensionsM": [
-          6.004886268061201,
-          33.309851039664586,
-          6.3410004692077635
+          6.800000190734863,
+          21.800000429153442,
+          6.800000190734863
         ]
       },
       "mount": "origin",
-      "sockets": []
+      "sockets": [],
+      "hooks": []
     },
     {
       "id": "place_container_rack",
@@ -2821,13 +2834,15 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
-      "tris": 30518,
-      "bytes": 5456528,
+      "tris": 15099,
+      "bytes": 1159332,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Hull"
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
       },
-      "note": "Opening-route dead hulk v1 — deterministic Blender-authored commercial carrier/drill-tender with one rooted starboard-dorsal rupture, semantic PBR maps, and authored LOD0/1/2.",
+      "note": "Forge rebuild of the dead hulk landmark: gutted freighter with a blown-open starboard-dorsal rupture, exposed frame rings, torn plates, dark interior, one dying beacon.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2854,19 +2869,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -27.44499969482422,
-          -5.49999962002039,
-          -6.406249523162842
+          -27.600000381469727,
+          -6.270188331604004,
+          -7.671618461608887
         ],
         "max": [
-          27.250001907348633,
-          6.429977796971798,
-          6.359999656677246
+          28,
+          8.765735626220703,
+          7.533950328826904
         ],
         "dimensionsM": [
-          54.69500160217285,
-          11.929977416992188,
-          12.766249179840088
+          55.60000038146973,
+          15.035923957824707,
+          15.205568790435791
         ]
       }
     },
@@ -2875,14 +2890,15 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_debris_chunk.glb",
-      "tris": 19250,
-      "bytes": 4220408,
+      "tris": 6100,
+      "bytes": 577180,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"
       },
-      "note": "Opening-route wreckage v4 — deterministic Blender-authored Meridian pressure-module fragment with one causal rupture, semantic PBR maps, and authored LOD0/1/2.",
+      "note": "Forge rebuild of the debris chunk landmark: a sheared hull section, torn plate shells on a bent frame, embedded pressure tank, drifting shrapnel.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2908,19 +2924,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          0.15000057220458984,
-          -3.9518349170684814,
-          -5.0017876625061035
+          -0.6297717690467834,
+          -3.8986997604370117,
+          -5.400000095367432
         ],
         "max": [
-          24.048377990722656,
-          3.703914165496826,
-          5.499457359313965
+          23.5,
+          4.27500057220459,
+          5.400000095367432
         ],
         "dimensionsM": [
-          23.898377418518066,
-          7.655749082565308,
-          10.501245021820068
+          24.129771769046783,
+          8.173700332641602,
+          10.800000190734863
         ]
       }
     },
@@ -3430,32 +3446,36 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_lane_pin.glb",
-      "tris": 740,
-      "bytes": 76532,
+      "tris": 10124,
+      "bytes": 786164,
       "textureSize": 0,
       "tintable": {
-        "accent": "furniture_signal_lens"
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
       },
-      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=9c6c1c565bb8875d",
+      "note": "Forge rebuild of the lane pin: a tall navigation mast on a tripod ballast foot, chevron light housing, vane rings, speed lamps.",
       "bounds": {
         "min": [
-          -2.8587056484981304,
-          -1.9439998865127563,
-          -4.3375052715050515
+          -1.4299999475479126,
+          -2.1500000953674316,
+          -1.4299999475479126
         ],
         "max": [
-          4.930000300407414,
-          31.620008156777025,
-          4.3375052715050515
+          1.4299999475479126,
+          31.399999618530273,
+          1.4299999475479126
         ],
         "dimensionsM": [
-          7.788705948905545,
-          33.56400804328978,
-          8.675010543010103
+          2.859999895095825,
+          33.549999713897705,
+          2.859999895095825
         ]
       },
       "mount": "origin",
-      "sockets": []
+      "sockets": [],
+      "hooks": []
     },
     {
       "id": "place_maintenance_gantry",
@@ -3499,10 +3519,10 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_memorial_array.glb",
-      "tris": 3820,
-      "bytes": 817024,
+      "tris": 14952,
+      "bytes": 1494660,
       "textureSize": 256,
-      "note": "PQ-022 navigation-infrastructure material-truth V2 — admitted candidate fd18cf6619f9, promoted source 9cb774d83ea0; LOD0/1/2 2816/932/180 render tris across five semantic PBR groups. Browser/Electron route and performance remain separate gates.",
+      "note": "Forge rebuild of the memorial array prop: a low spine carrying a row of vigil lamps and name plates with truss outriggers.",
       "hooks": [],
       "sockets": [
         "SOCKET_Structure_Core"
@@ -3510,22 +3530,27 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.5,
-          -1.2148610353469849,
-          -1.5
+          -0.550000011920929,
+          -0.7750000357627869,
+          -1.2000000476837158
         ],
         "max": [
-          13.300000190734863,
-          1.850000023841858,
-          1.5
+          13.549999237060547,
+          1.8450000286102295,
+          1.2000000476837158
         ],
         "dimensionsM": [
-          14.800000190734863,
-          3.0648610591888428,
-          3
+          14.099999248981476,
+          2.6200000643730164,
+          2.4000000953674316
         ]
       },
-      "triangleMetric": "lod0"
+      "triangleMetric": "lod0",
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical"
+      }
     },
     {
       "id": "place_landmark_skerris_throne",
@@ -3890,11 +3915,11 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_billboard.glb",
-      "tris": 7168,
+      "tris": 5720,
       "triangleMetric": "lod0",
-      "bytes": 1409564,
+      "bytes": 927476,
       "textureSize": 256,
-      "note": "PQ-022 navigation-infrastructure material-truth V3 — WIP candidate source 9245e7275b36; LOD0/1/2 6832/2864/780 render tris across five semantic PBR groups. Parent visual review, Browser/Electron route, and performance remain separate gates.",
+      "note": "Forge rebuild of the station information billboard: a framed twin-face lit display on a truss mast with service platform, no text.",
       "hooks": [],
       "sockets": [
         "SOCKET_Structure_Core"
@@ -3902,20 +3927,26 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -7.110000133514404,
-          -3.069999933242798,
-          -3.810147285461426
+          -7.449999809265137,
+          -7.349999904632568,
+          -4.2000041007995605
         ],
         "max": [
-          7.110000133514404,
-          2.680000066757202,
-          3.810147285461426
+          7.449999809265137,
+          5,
+          4.2000250816345215
         ],
         "dimensionsM": [
-          14.220000267028809,
-          5.75,
-          7.620294570922852
+          14.899999618530273,
+          12.349999904632568,
+          8.400029182434082
         ]
+      },
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
       }
     },
     {
@@ -4348,34 +4379,36 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_trade_hub_free_overlay_v01.glb",
-      "tris": 3024,
-      "bytes": 297116,
+      "tris": 20356,
+      "bytes": 1709020,
       "textureSize": 1024,
       "tintable": {
-        "hull": "SF_HullMid_K0PBR",
-        "mechanical": "SF_Machinery_K0PBR"
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
       },
       "hooks": [],
       "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
-          -67.71522521972656,
-          14.534955978393555,
-          -59.585636138916016
+          -60.77259826660156,
+          13,
+          -51.91768264770508
         ],
         "max": [
-          65.43138885498047,
-          39.69185256958008,
-          72.6036148071289
+          57.77967071533203,
+          40.03000259399414,
+          55.298744201660156
         ],
         "dimensionsM": [
-          133.14661407470703,
-          25.156896591186523,
-          132.18925094604492
+          118.5522689819336,
+          27.03000259399414,
+          107.21642684936523
         ]
       },
-      "note": "PQ-193.09 — Free-ports trade-hub overlay at donor origin on place_station_trade_hub. Existing overlay identity. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_station_trade_hub_free_overlay_v01.glb."
+      "note": "Forge rebuild of the Free Frontier claim on the Helios hub: welded habitat pods, wall patch plates and a stern lean-to, lash trusses, cyan bands and slit lights. Ships/var file."
     },
     {
       "id": "var_station_trade_hub_mts_overlay_v01",
@@ -4383,34 +4416,36 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_trade_hub_mts_overlay_v01.glb",
-      "tris": 4800,
-      "bytes": 220688,
+      "tris": 22248,
+      "bytes": 1715972,
       "textureSize": 1024,
       "tintable": {
-        "hull": "SF_HullMid_K0PBR",
-        "mechanical": "SF_Machinery_K0PBR"
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
       },
       "hooks": [],
       "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
-          -73.35761260986328,
-          26.676998138427734,
-          -66.22205352783203
+          -69.5,
+          26.299999237060547,
+          -72.5
         ],
         "max": [
-          79.35661315917969,
-          49.22699737548828,
-          66.21805572509766
+          75.5,
+          47.75,
+          72.5
         ],
         "dimensionsM": [
-          152.71422576904297,
-          22.549999237060547,
-          132.4401092529297
+          145,
+          21.450000762939453,
+          145
         ]
       },
-      "note": "PQ-193.09 — MTS trade-hub overlay at donor origin on place_station_trade_hub. Existing overlay identity. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_station_trade_hub_mts_overlay_v01.glb."
+      "note": "Forge rebuild of the Meridian claim on the Helios hub: elevated halo ring on crowns and pylons, gold bands, lit text-free ad faces, gate arch over the harbour mouth."
     },
     {
       "id": "var_station_trade_hub_scn_overlay_v01",
@@ -4418,66 +4453,72 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_trade_hub_scn_overlay_v01.glb",
-      "tris": 3008,
-      "bytes": 267996,
+      "tris": 28583,
+      "bytes": 2359564,
       "textureSize": 1024,
       "tintable": {
-        "hull": "SF_HullMid_K0PBR",
-        "mechanical": "SF_Machinery_K0PBR"
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
       },
       "hooks": [],
       "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
-          -94.40049743652344,
-          11.230690002441406,
-          -65.4020004272461
+          -89.11943054199219,
+          15.699999809265137,
+          -57.32283401489258
         ],
         "max": [
-          76.39950561523438,
-          56.176998138427734,
-          65.39799499511719
+          57.44990539550781,
+          53.12606430053711,
+          56.92214584350586
         ],
         "dimensionsM": [
-          170.8000030517578,
-          44.94630813598633,
-          130.79999542236328
+          146.5693359375,
+          37.42606449127197,
+          114.24497985839844
         ]
       },
-      "note": "PQ-193.09 — SCN trade-hub overlay at donor origin on place_station_trade_hub. Existing overlay identity. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_station_trade_hub_scn_overlay_v01.glb."
+      "note": "Forge rebuild of the Concord claim on the Helios hub: armoured cladding band with a blue rail, four diagonal bastion keeps, six masts, terminal docking-boom gate."
     },
     {
       "id": "place_tally_post",
       "category": "places",
       "priority": "P2",
       "file": "places/place_tally_post.glb",
-      "tris": 1350,
-      "bytes": 225012,
+      "tris": 8618,
+      "bytes": 757008,
       "textureSize": 128,
       "tintable": {
-        "accent": "furniture_signal_lens"
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
       },
-      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py.",
+      "note": "Forge rebuild of the tally post: a cargo-weigh gantry with a mast, hung yoke and tongs, operator deck with rails, scale house and invoice lamp.",
       "bounds": {
         "min": [
-          -5.1000001430511475,
-          -0.8639999628067017,
-          -5.1000001430511475
+          -2.450000047683716,
+          -1.1800000667572021,
+          -1.7599999904632568
         ],
         "max": [
-          9.569304971034978,
-          20.366004074156383,
-          5.1000001430511475
+          2.359999895095825,
+          15.997304916381836,
+          1.7599999904632568
         ],
         "dimensionsM": [
-          14.669305114086125,
-          21.230004036963084,
-          10.200000286102295
+          4.809999942779541,
+          17.177304983139038,
+          3.5199999809265137
         ]
       },
       "mount": "origin",
-      "sockets": []
+      "sockets": [],
+      "hooks": []
     },
     {
       "id": "place_transfer_arm",
@@ -4558,32 +4599,36 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_whistle.glb",
-      "tris": 1618,
-      "bytes": 251236,
+      "tris": 5765,
+      "bytes": 564108,
       "textureSize": 128,
       "tintable": {
-        "accent": "furniture_signal_lens"
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
       },
-      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py.",
+      "note": "Forge rebuild of the whistle: a message-drum buoy on a tripod boot, chain-hung basket cage, crank, whip antennae and signal lamp.",
       "bounds": {
         "min": [
-          -2.6707374561916346,
-          -0.47519996762275696,
-          -2.1026606017045566
+          -1.4136455059051514,
+          -0.6200000047683716,
+          -1.4500000476837158
         ],
         "max": [
-          2.7574914312148286,
-          11.59554671323219,
-          2.750914485222511
+          1.540000081062317,
+          7.860000133514404,
+          1.4500000476837158
         ],
         "dimensionsM": [
-          5.428228887406464,
-          12.070746680854947,
-          4.8535750869270675
+          2.9536455869674683,
+          8.480000138282776,
+          2.9000000953674316
         ]
       },
       "mount": "origin",
-      "sockets": []
+      "sockets": [],
+      "hooks": []
     },
     {
       "id": "place_worklight_tower",
@@ -8273,6 +8318,126 @@
           1.0856200456619263
         ]
       }
+    },
+    {
+      "id": "place_quiessence_freighter_a",
+      "assetId": "SF_PLACE_QUIESSENCE_FREIGHTER_A",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_quiessence_freighter_a.glb",
+      "tris": 10560,
+      "bytes": 849732,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -23.100000381469727,
+          -5.400000095367432,
+          -5.400000095367432
+        ],
+        "max": [
+          21.10494613647461,
+          5.400000095367432,
+          5.400000095367432
+        ],
+        "dimensionsM": [
+          44.204946517944336,
+          10.800000190734863,
+          10.800000190734863
+        ]
+      },
+      "note": "Quiessence becalmed freighter A (new place): long intact hauler, charcoal-violet hull, cold engines, rows of warm bunk windows, one faint violet beacon."
+    },
+    {
+      "id": "place_quiessence_freighter_b",
+      "assetId": "SF_PLACE_QUIESSENCE_FREIGHTER_B",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_quiessence_freighter_b.glb",
+      "tris": 26240,
+      "bytes": 1746440,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -21.100000381469727,
+          -2.299999952316284,
+          -5.559999942779541
+        ],
+        "max": [
+          19.549999237060547,
+          4.718999862670898,
+          5.559999942779541
+        ],
+        "dimensionsM": [
+          40.64999961853027,
+          7.018999814987183,
+          11.119999885559082
+        ]
+      },
+      "note": "Quiessence becalmed freighter B (new place): shorter container-spine hauler, stacked box rows, cold engines, warm bunk windows, faint violet beacon."
+    },
+    {
+      "id": "place_quiessence_freighter_c",
+      "assetId": "SF_PLACE_QUIESSENCE_FREIGHTER_C",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_quiessence_freighter_c.glb",
+      "tris": 12165,
+      "bytes": 906364,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -21.700002670288086,
+          -2.299999952316284,
+          -3.549999952316284
+        ],
+        "max": [
+          20.42973518371582,
+          8.719000816345215,
+          4.259999752044678
+        ],
+        "dimensionsM": [
+          42.129737854003906,
+          11.019000768661499,
+          7.809999704360962
+        ]
+      },
+      "note": "Quiessence becalmed freighter C (new place): tank-line hauler with saddle tanks and aft bridge, cold engines, warm bunk windows, faint violet beacon."
     }
   ],
   "runtimeSlots": {

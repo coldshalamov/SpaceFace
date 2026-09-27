@@ -145,7 +145,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "73d401b55a1eb3e870f5a84383cac8d6c2bc59a6366c162a6d8426422b7aac07",
+  "contentHash": "35f4982557ecf7265f0f48e8e675341f0d01819e2bb959db2c9a0e4ee22a67e7",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2282,8 +2282,8 @@
       "uri": "place_landmark_wreck_cathedral.glb"
     },
     "sourceManifest": {
-      "bytes": 199725,
-      "sha256": "a5883860a66e59255af94ff3d3335dcf35d95e02a77f65747199d5bee0b78bcd",
+      "bytes": 203788,
+      "sha256": "8361e46abf91eba0b1e694e7dae87b812124bb990cf1bc562a95382c7c8d23b3",
       "uri": "pilots.json"
     }
   },
@@ -3259,7 +3259,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb"
   },
-  "runtimeHash": "4ce5eb5f132e7b05523e692975f06a8f64044c7e03e89e7a4067984194d65e38",
+  "runtimeHash": "df94877694b1a1c05d5cb731f03b7b79d3038846427065f2dffa77d18f27dbc6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
