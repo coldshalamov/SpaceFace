@@ -199,6 +199,7 @@ import {
 import { markKindForMaterial } from './weapons/contactMarks.js';
 import { ArcadeStructuralFx } from './combat/arcadeStructuralFx.js';
 import { createGasSystem } from './combat/gas/gasVolumeField.js';
+import { ExplosionRupture, explosionRuptureFamily, explosionSourceMaterial } from './combat/explosionRupture.js';
 import { TetherWebFx } from './combat/tetherWebFx.js';
 import {
   commitInstancedSpriteBuckets,
@@ -1533,6 +1534,8 @@ export const vfx = {
     this._arcadeStructural = null;
     invokeVfxDisposer(this._gas, 'gas volumes');
     this._gas = null;
+    invokeVfxDisposer(this._explosionRupture, 'explosion rupture sheets');
+    this._explosionRupture = null;
     invokeVfxDisposer(this._tetherWebFx, 'Snarl cables');
     this._tetherWebFx = null;
 
@@ -1709,6 +1712,7 @@ export const vfx = {
     add(this._spriteBatches && this._spriteBatches.ring.mesh);
     add(this._spriteBatches && this._spriteBatches.smoke.mesh);
     add(this._spriteBatches && this._spriteBatches.combustion.mesh);
+    add(this._explosionRupture && this._explosionRupture.mesh);
     if (this._miningBeam) { add(this._miningBeam.mesh); add(this._miningBeam.glow); }
     if (this._tetherCable) {
       for (const key of ['mesh', 'glow', 'band', 'anchorCore']) add(this._tetherCable[key]);
@@ -2024,6 +2028,9 @@ export const vfx = {
     this._gas = createGasSystem(scene, {
       localize: (x, z, out) => this._toLocalXZ(x, z, out),
     });
+    this._explosionRupture = new ExplosionRupture(scene, {
+      localize: (x, z, out) => this._toLocalXZ(x, z, out),
+    });
     this._gasVentTick = 0;
     this._gasAblationAt = new Map();
     for (let i = 0; i < SPRITE_CAP; i++) {
@@ -2283,12 +2290,12 @@ export const vfx = {
     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
     add('heat:changed', (p) => this._onLawHeatChanged(p));
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('save:restoring', () => this._resetRibbonTrails());
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('world:playerRelocated', () => this._resetRibbonTrails());
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
@@ -2394,6 +2401,7 @@ export const vfx = {
     const oz = Number.isFinite(dz) ? dz : 0;
     if (ox !== 0 || oz !== 0) {
       if (this._gas) this._gas.reproject(ox, oz);
+      if (this._explosionRupture) this._explosionRupture.reproject(ox, oz);
       // Particles
       if (this._px && this._pz && this._alive) {
         const n = this._cap || 0;
@@ -3202,7 +3210,7 @@ export const vfx = {
     // this moment -- usually null -- for the rest of the session. Both calls inside emitImpact are
     // guarded, so a layer that never arrives costs nothing.
     this._arcadeStructural.attachSupportingLayers({
-      gas: () => this._gas || null,
+      gas: () => this._suppressBreakupGas ? null : this._gas || null,
       debris: () => (this._weaponPresenter && this._weaponPresenter.quarks) || null,
     });
     this._tetherWebFx = new TetherWebFx(this._scene, this._combatBeamLocalizer);
@@ -5189,7 +5197,9 @@ export const vfx = {
 
   _queueExplosion(p, classId, radiusOverride, causeOverride) {
     if (!this._scene || !this._explosions) return false;
-    this._emitGasAftermath(
+    // The rupture owner supplies cause-specific cooling matter. The legacy volume envelope is
+    // only a fallback; stacking it here made every rock, fuel tank and reactor the same puff.
+    if (!this._explosionRupture) this._emitGasAftermath(
       p,
       Number.isFinite(radiusOverride) ? radiusOverride : Math.max(3, (p && p.radius) || 6),
       classId === 'capital',
@@ -5214,6 +5224,8 @@ export const vfx = {
     const radius = Number.isFinite(radiusOverride)
       ? Math.max(2, radiusOverride)
       : Math.max(2, Number(p && p.radius) || 6);
+    const sourceMaterial = explosionSourceMaterial(p || {}, p?.entity || this._ent(p?.id));
+    const mineralSource = sourceMaterial === 'rock' || sourceMaterial === 'ice';
     const entry = this._explosions.start({
       classId,
       x: pos.x,
@@ -5228,6 +5240,7 @@ export const vfx = {
       priority: admission.admissionPriority,
     });
     if (entry) {
+      entry.materialId = sourceMaterial;
       entry.hasDirection = !!(direction && Number.isFinite(direction.x)
         && Number.isFinite(direction.z) && Math.hypot(direction.x, direction.z) > 1e-8);
     }
@@ -5262,24 +5275,32 @@ export const vfx = {
     req.magnitude = 1;
     req.dv = 0;
     req.terrain = 0;
-    this._admitAndSpawnArcadeStructural('entity:killed', p || {});
+    // Mineral spall owns rock/ice fragments, and fuel gas has no solid material to throw.
+    // Keep admitted audio without adding the generic hull shards to these material families.
+    this._admitAndSpawnArcadeStructural('entity:killed', p || {}, !mineralSource && sourceMaterial !== 'fuel');
     // IMPACTS: a large death EXPOSES structure. The breakup sheet parts plates first, shows the hot
     // interior between them, parts more, and only then settles -- instead of hiding the ship inside
     // a white ball. Only ordinary and capital classes qualify; a small hull keeps its existing
     // phased beats untouched.
-    if (classId !== 'small') {
+    if (classId !== 'small' && !mineralSource && sourceMaterial !== 'fuel') {
       _impactOpts.vx = req.velX; _impactOpts.vy = req.velY; _impactOpts.vz = req.velZ;
       _impactOpts.serial = mixArcadeVictimId(p && p.id);
       _impactOpts.targetId = (p && p.id) ?? null;
       _impactOpts.eventClass = 'breakup';
       _impactOpts.priority = admission.admissionPriority;
       _impactOpts.hero = classId === 'capital';
-      this._composeImpact(
-        pos.x, 0.4, pos.z,
-        direction && Number.isFinite(direction.x) ? direction.x : 0, 0,
-        direction && Number.isFinite(direction.z) ? direction.z : 1,
-        false, classId === 'capital' ? 0.95 : 0.84, 'hull', radius, _impactOpts,
-      );
+      this._suppressBreakupGas = !!this._explosionRupture;
+      try {
+        this._composeImpact(
+          pos.x, 0.4, pos.z,
+          direction && Number.isFinite(direction.x) ? direction.x : 0, 0,
+          direction && Number.isFinite(direction.z) ? direction.z : 1,
+          false, classId === 'capital' ? 0.95 : 0.84, 'armor',
+          Math.min(radius * 0.36, 5 + Math.sqrt(radius) * 0.65), _impactOpts,
+        );
+      } finally {
+        this._suppressBreakupGas = false;
+      }
     }
     if (this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
@@ -5292,16 +5313,23 @@ export const vfx = {
       const killedRole = String((killedData && (killedData.trafficRole || killedData.role || killedData.shipClass))
         || (killedEntity && killedEntity.ai && killedEntity.ai.role) || '').toLowerCase();
       const cargoShare = /haul|trade|freight|transport|barge|tanker|miner/.test(killedRole) ? 0.55 : 0;
-      this._weaponPresenter.quarks.spawnExplosion(
-        local.x, 0.4, local.z,
-        Math.min(48, Math.max(12, Math.round(radius * 2.5))),
-        cargoShare > 0 ? { cargoShare } : null,
-      );
+      if (mineralSource) {
+        this._weaponPresenter.quarks.spawnCollisionSpall(
+          local.x, 0.4, local.z, entry?.dirX || 1, 0.25, entry?.dirZ || 0,
+          Math.min(24, Math.max(8, Math.round(radius))), sourceMaterial,
+        );
+      } else if (sourceMaterial !== 'fuel') {
+        this._weaponPresenter.quarks.spawnExplosion(
+          local.x, 0.4, local.z,
+          Math.min(48, Math.max(12, Math.round(radius * 2.5))),
+          cargoShare > 0 ? { cargoShare } : null,
+        );
+      }
     }
     return !!entry;
   },
 
-  _admitAndSpawnArcadeStructural(eventName, payload) {
+  _admitAndSpawnArcadeStructural(eventName, payload, emitStructure = true) {
     const admitted = admitStructuralFxCue(eventName, payload || {}, this.state);
     if (!admitted) return false;
     const req = _arcadeStructuralBurstReq;
@@ -5325,7 +5353,7 @@ export const vfx = {
       this.bus.emit('presentation:audioCue', audioPayload);
       this.bus.emit('audio:cue', audioPayload);
     }
-    return this._spawnArcadeStructuralBurst(req);
+    return emitStructure ? this._spawnArcadeStructuralBurst(req) : false;
   },
 
   // First voice per cue id per tick wins; a massacre tick adds at most one causal voice per
@@ -5566,6 +5594,23 @@ export const vfx = {
   },
 
   _emitExplosionPhase(phase, entry) {
+    if (this._explosionRupture?.emitPhase(phase, entry, this.state?.settings)) {
+      // Solid spall remains in the existing debris phase. Primary material is now a fracture
+      // fan, armor throat, open reactor cavity or rolling fuel sheet; never stacked ball lobes.
+      const accessibility = resolveVfxAccessibilityProfile(this.state?.settings);
+      if (phase === 'ignition' || phase === 'contact-compression' || phase === 'rupture') {
+        const family = explosionRuptureFamily(entry);
+        if (accessibility.eventLightPeakScale > 0) {
+          this._flashLight({ x: entry.x, z: entry.z }, family === 'reactor' ? '#91dfff' : '#ffb05b',
+            (phase === 'rupture' ? 8 : 5) * accessibility.eventLightPeakScale, 10, 100 + entry.radius * 4);
+        }
+        if (phase === 'rupture') this.bus.emit('camera:shake', {
+          amount: (accessibility.id === 'full' ? 0.28 : 0.12) * (entry.classId === 'capital' ? 1.5 : 1),
+          position: { x: entry.x, z: entry.z },
+        });
+      }
+      return;
+    }
     if (entry && entry.cause && entry.cause !== 'generic') {
       this._emitCausalExplosionPhase(phase, entry);
       return;
@@ -11902,6 +11947,7 @@ export const vfx = {
     this._updatePendingDetonations();
     this._updateTransitSweep(dt);
     sub.explosions = this._explosions.update(dt, this._explosionEmitter) > 0 ? 1 : 0;
+    this._explosionRupture?.update(Number.isFinite(this.state?.simTime) ? this.state.simTime : this._t, this.state?.settings);
     const cam = this.state && this.state.render && this.state.render.camera;
     const viewportH = this.state && this.state.render && this.state.render.viewport
       && this.state.render.viewport.height || 1000;
@@ -15505,6 +15551,15 @@ export function createVfxPrecompileSalvo() {
   gasWarm.emitAmbient({ x: 6, y: 1.2, z: -11, scale: 5, severity: 1 });
   gasWarm.update(0, null);
   gasWarm.update(0.016, null);
+
+  // Admit the same program key during startup, so the first real rupture does not compile it
+  // inside a combat frame. All four material constructions share this single instanced shader.
+  const ruptureWarm = new ExplosionRupture(group, { capacity: 8 });
+  ruptureWarm.emitPhase('rupture', {
+    sourceType: 'ship', cause: 'generic', serial: 7, classId: 'ordinary',
+    x: 0, z: -8, radius: 3, dirX: 1, dirZ: 0,
+  });
+  ruptureWarm.update(0.16);
 
   const weaponBolts = createEnergyBoltPrecompileMesh();
   weaponBolts.name = 'SF_Precompile_WeaponEnergyBolts';
