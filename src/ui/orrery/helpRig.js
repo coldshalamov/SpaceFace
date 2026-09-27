@@ -91,6 +91,11 @@ const CSS = `
 .orr-hrig.is-off > :not(.orr-hrig__foot) { display:none; }
 .orr-hrig__pool { position:absolute; pointer-events:none; border-radius:50%; z-index:0;
   background:radial-gradient(closest-side, rgb(5 7 10 / .84), rgb(5 7 10 / .66) 62%, rgb(5 7 10 / 0)); }
+/* the pointer carries a soft inspection light across the berth (off under reduced motion) */
+.orr-hrig__spot { position:absolute; inset:0; z-index:1; pointer-events:none; opacity:0; transition:opacity .3s linear;
+  background:radial-gradient(circle 220px at var(--orr-spot-x, 50%) var(--orr-spot-y, 50%), rgb(${BONE} / .07), rgb(${BONE} / .025) 55%, rgb(${BONE} / 0)); }
+.orr-hrig.is-spot .orr-hrig__spot { opacity:1; }
+html.sf-reduce-motion .orr-hrig__spot { display:none; }
 .orr-hrig__floor { position:absolute; pointer-events:none; border-radius:50%; z-index:1;
   background:radial-gradient(closest-side, rgb(${BONE} / .10), rgb(${BONE} / .035) 58%, rgb(${BONE} / 0)); }
 .orr-hrig > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
@@ -315,6 +320,16 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
 
   const pool = doc.createElement('i'); pool.className = 'orr-hrig__pool';
   const floor = doc.createElement('i'); floor.className = 'orr-hrig__floor';
+  const spot = doc.createElement('i'); spot.className = 'orr-hrig__spot';
+  const onSpot = (e) => {
+    const r = host.getBoundingClientRect();
+    spot.style.setProperty('--orr-spot-x', `${Math.round(e.clientX - r.left)}px`);
+    spot.style.setProperty('--orr-spot-y', `${Math.round(e.clientY - r.top)}px`);
+    host.classList.add('is-spot');
+  };
+  const offSpot = () => host.classList.remove('is-spot');
+  host.addEventListener('pointermove', onSpot, { passive: true });
+  host.addEventListener('pointerleave', offSpot);
   const under = svg('svg', { class: 'orr-svg orr-hrig__under', 'aria-hidden': 'true', focusable: 'false' });
   const hull = doc.createElement('img');
   hull.className = 'orr-hrig__hull'; hull.alt = ''; hull.decoding = 'async'; hull.draggable = false;
@@ -336,7 +351,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
   // so the berth keeps its size when the device changes; else it takes the foot
   if (padHost && typeof padHost.appendChild === 'function') { foot.append(dev, echoLine); padHost.appendChild(pad.root); }
   else foot.append(dev, pad.root, echoLine);
-  host.append(pool, floor, under, hull, ghost, glows, over, foot);
+  host.append(pool, spot, floor, under, hull, ghost, glows, over, foot);
   const whisperEl = doc.createElement('div'); whisperEl.className = 'orr-hrig__whisper'; whisperEl.setAttribute('aria-hidden', 'true');
   (doc.body || host).appendChild(whisperEl);
 
@@ -900,6 +915,8 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
     relayout: schedule,
     dispose() {
       if (ro) ro.disconnect();
+      host.removeEventListener('pointermove', onSpot);
+      host.removeEventListener('pointerleave', offSpot);
       if (frame && typeof globalThis.cancelAnimationFrame === 'function') globalThis.cancelAnimationFrame(frame);
       frame = 0;
       for (const t of timers.values()) clearTimeout(t);
