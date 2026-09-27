@@ -31,7 +31,7 @@ test('destroying power disables dependent drive and weapons', () => {
     assert.equal(runtime.capabilities.drive, true);
     assert.equal(runtime.capabilities.weapon, true);
     assert.equal(entityWeaponBlocked(context.state, entity), false);
-    scheduleSubsystemTransition(runtime.subsystems.subsystem_power, context.state.tick, true, 'core_hit', 1);
+    scheduleSubsystemTransition(runtime.subsystems.subsystem_power, context.state.tick, true, 'core_hit', 1, runtime);
     const changed = applyPendingSubsystemTransitions(context, entity, runtime);
     assert.equal(changed, true);
     assert.equal(runtime.subsystems.subsystem_power.destroyed, true);
@@ -51,7 +51,7 @@ test('a lone weapon kill does not take the drive offline', () => {
   const { entity, runtime, context, bus } = bootShip();
   try {
     assert.equal(entityWeaponBlocked(context.state, entity), false);
-    scheduleSubsystemTransition(runtime.subsystems.subsystem_weapon, context.state.tick, true, 'gun_hit', 1);
+    scheduleSubsystemTransition(runtime.subsystems.subsystem_weapon, context.state.tick, true, 'gun_hit', 1, runtime);
     applyPendingSubsystemTransitions(context, entity, runtime);
     assert.equal(runtime.subsystems.subsystem_weapon.destroyed, true);
     assert.equal(runtime.capabilities.weapon, false);
@@ -67,7 +67,7 @@ test('sensor destruction blocks weapon bursts through derived runtime capabiliti
   const { entity, runtime, context, bus } = bootShip();
   try {
     assert.equal(entityWeaponBlocked(context.state, entity), false);
-    scheduleSubsystemTransition(runtime.subsystems.subsystem_sensor, context.state.tick, true, 'sensor_hit', 1);
+    scheduleSubsystemTransition(runtime.subsystems.subsystem_sensor, context.state.tick, true, 'sensor_hit', 1, runtime);
     applyPendingSubsystemTransitions(context, entity, runtime);
     assert.equal(runtime.subsystems.subsystem_sensor.destroyed, true);
     assert.equal(runtime.capabilities.sensor, false);

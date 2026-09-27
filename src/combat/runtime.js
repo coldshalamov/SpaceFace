@@ -156,6 +156,7 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
     subsystems: {},
     statuses: {},
     pendingStatuses: [],
+    pendingSubsystemTransitionCount: 0,
     sockets: {},
     revision: previous && Number.isInteger(previous.revision) ? previous.revision + 1 : 1,
   };
@@ -166,13 +167,15 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
     const old = previous && previous.subsystems && previous.subsystems[subsystemId];
     const maxHealth = Math.max(0, Number(def.health) || 0);
     const oldFraction = old && old.maxHealth > 0 ? clamp(old.health / old.maxHealth, 0, 1) : 1;
+    const pendingTransition = old && old.pendingTransition ? cloneData(old.pendingTransition) : null;
+    if (pendingTransition) runtime.pendingSubsystemTransitionCount += 1;
     runtime.subsystems[subsystemId] = {
       id: subsystemId,
       health: maxHealth * oldFraction,
       maxHealth,
       destroyed: old ? !!old.destroyed : false,
       effectiveDisabled: old ? !!old.effectiveDisabled : false,
-      pendingTransition: old && old.pendingTransition ? cloneData(old.pendingTransition) : null,
+      pendingTransition,
       lastDamageTick: old && Number.isInteger(old.lastDamageTick) ? old.lastDamageTick : -1,
     };
   }

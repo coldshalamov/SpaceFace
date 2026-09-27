@@ -18,23 +18,33 @@ const EMPTY_ID_LIST = [];
 export function applyPendingSubsystemTransitions(context, entity, runtime) {
   const { state, catalog, attachments } = context;
   const tick = state.tick >>> 0;
+  // Quiet combatants: no pending transitions and no dirty modifier flag → skip the
+  // sorted-subsystem walk entirely (profile: applyPending under combat prePhysics).
+  const hasPending = (runtime.pendingSubsystemTransitionCount | 0) > 0;
+  const dirty = runtime.statusModifiersDirty === true;
+  if (!hasPending && !dirty) return false;
   let changed = false;
   let transitionAttackerId = null;
-  for (const subsystemId of sortedSubsystemIds(runtime)) {
-    const subsystem = runtime.subsystems[subsystemId];
-    const pending = subsystem.pendingTransition;
-    if (!pending || pending.atTick > tick) continue;
-    subsystem.pendingTransition = null;
-    if (subsystem.destroyed !== !!pending.destroyed) {
-      subsystem.destroyed = !!pending.destroyed;
-      changed = true;
-      if (pending.destroyed && pending.attackerId != null) transitionAttackerId = pending.attackerId;
-      appendCombatTrace(state.combat, tick, subsystem.destroyed ? 'subsystem.destroyed' : 'subsystem.repaired', {
-        targetId: entity.id,
-        subsystemId,
-        reason: pending.reason || null,
-        health: subsystem.health,
-      });
+  if (hasPending) {
+    for (const subsystemId of sortedSubsystemIds(runtime)) {
+      const subsystem = runtime.subsystems[subsystemId];
+      const pending = subsystem.pendingTransition;
+      if (!pending || pending.atTick > tick) continue;
+      subsystem.pendingTransition = null;
+      if ((runtime.pendingSubsystemTransitionCount | 0) > 0) {
+        runtime.pendingSubsystemTransitionCount -= 1;
+      }
+      if (subsystem.destroyed !== !!pending.destroyed) {
+        subsystem.destroyed = !!pending.destroyed;
+        changed = true;
+        if (pending.destroyed && pending.attackerId != null) transitionAttackerId = pending.attackerId;
+        appendCombatTrace(state.combat, tick, subsystem.destroyed ? 'subsystem.destroyed' : 'subsystem.repaired', {
+          targetId: entity.id,
+          subsystemId,
+          reason: pending.reason || null,
+          health: subsystem.health,
+        });
+      }
     }
   }
   if (changed) {
@@ -42,7 +52,7 @@ export function applyPendingSubsystemTransitions(context, entity, runtime) {
     recomputeCombatantModifiers(context, entity, runtime, attachments);
     delete runtime.transitionAttackerId;
   }
-  else if (runtime.statusModifiersDirty === true) {
+  else if (dirty) {
     // Statuses cleared outside advance() still change modifier inputs; statuses.advance would
     // recompute after consuming this flag anyway, so derive here once instead.
     delete runtime.statusModifiersDirty;
@@ -139,7 +149,7 @@ export function damageSubsystem(context, entity, runtime, subsystemId, incomingD
   const overflow = Math.max(0, incomingDamage - rawConsumed);
 
   if (before > 0 && subsystem.health <= 0) {
-    scheduleSubsystemTransition(subsystem, state.tick + 1, true, 'health_zero', context.currentAttackerId);
+    scheduleSubsystemTransition(subsystem, state.tick + 1, true, 'health_zero', context.currentAttackerId, runtime);
   }
   appendCombatTrace(state.combat, state.tick, 'subsystem.damage', {
     attackerId: context.currentAttackerId == null ? null : context.currentAttackerId,
@@ -162,7 +172,7 @@ export function repairSubsystem(context, entity, runtime, subsystemId, amount, r
   subsystem.health = Math.min(subsystem.maxHealth, subsystem.health + amount);
   const applied = subsystem.health - before;
   if (subsystem.destroyed && subsystem.health > 0) {
-    scheduleSubsystemTransition(subsystem, context.state.tick + 1, false, reason);
+    scheduleSubsystemTransition(subsystem, context.state.tick + 1, false, reason, null, runtime);
   }
   appendCombatTrace(context.state.combat, context.state.tick, 'subsystem.repair', {
     targetId: entity.id,
@@ -184,7 +194,7 @@ export function actionBlockedByCombatant(runtime, actionDef) {
   return null;
 }
 
-export function scheduleSubsystemTransition(subsystem, atTick, destroyed, reason, attackerId = null) {
+export function scheduleSubsystemTransition(subsystem, atTick, destroyed, reason, attackerId = null, runtime = null) {
   const next = {
     atTick: Math.max(0, Math.floor(atTick)),
     destroyed: !!destroyed,
@@ -192,7 +202,14 @@ export function scheduleSubsystemTransition(subsystem, atTick, destroyed, reason
     attackerId: attackerId == null ? null : attackerId,
   };
   const current = subsystem.pendingTransition;
-  if (!current || next.atTick < current.atTick || (next.atTick === current.atTick && next.destroyed)) subsystem.pendingTransition = next;
+  if (!current || next.atTick < current.atTick || (next.atTick === current.atTick && next.destroyed)) {
+    const wasPending = !!current;
+    subsystem.pendingTransition = next;
+    // Count only freshly armed pendings so quiet applyPending can skip the walk.
+    if (!wasPending && runtime && typeof runtime === 'object') {
+      runtime.pendingSubsystemTransitionCount = (runtime.pendingSubsystemTransitionCount | 0) + 1;
+    }
+  }
 }
 
 function applyEffects(runtime, blocked, effects, stacks) {

@@ -43,49 +43,72 @@ export function createStatusService(context) {
     return { ok: true };
   }
 
+  // Quiet combatants dominate prePhysics: empty statuses + empty pending still paid
+  // Object.keys().sort() twice and a fresh due[] every tick. for-in emptiness is O(1) on {}.
+  function hasActiveStatusKeys(statuses) {
+    if (!statuses) return false;
+    for (const _ in statuses) return true;
+    return false;
+  }
+
+  const dueScratch = [];
+
   function advance(targetEntity, runtime, routeDamage) {
     const tick = state.tick >>> 0;
+    const statuses = runtime.statuses || (runtime.statuses = {});
+    const pending = Array.isArray(runtime.pendingStatuses)
+      ? runtime.pendingStatuses
+      : (runtime.pendingStatuses = []);
     let changed = runtime.statusModifiersDirty === true;
+    // Quiet empty path: no dirty flag, no pending apply, no active keys → return.
+    if (!changed && pending.length === 0 && !hasActiveStatusKeys(statuses)) {
+      return false;
+    }
     if (changed) delete runtime.statusModifiersDirty;
 
-    for (const statusId of Object.keys(runtime.statuses || {}).sort()) {
-      const active = runtime.statuses[statusId];
-      if (active.expiresTick > tick) continue;
-      delete runtime.statuses[statusId];
-      changed = true;
-      appendCombatTrace(state.combat, tick, 'status.expired', { targetId: targetEntity.id, statusId });
-      if (bus) bus.emit('combat:statusExpired', { targetId: targetEntity.id, statusId });
+    if (hasActiveStatusKeys(statuses)) {
+      for (const statusId of Object.keys(statuses).sort()) {
+        const active = statuses[statusId];
+        if (active.expiresTick > tick) continue;
+        delete statuses[statusId];
+        changed = true;
+        appendCombatTrace(state.combat, tick, 'status.expired', { targetId: targetEntity.id, statusId });
+        if (bus) bus.emit('combat:statusExpired', { targetId: targetEntity.id, statusId });
+      }
     }
 
-    const due = [];
-    while (runtime.pendingStatuses.length && runtime.pendingStatuses[0].applyTick <= tick) due.push(runtime.pendingStatuses.shift());
-    for (const pending of due) {
-      if (applyActive(targetEntity, runtime, pending)) changed = true;
+    const due = dueScratch;
+    due.length = 0;
+    while (pending.length && pending[0].applyTick <= tick) due.push(pending.shift());
+    for (let i = 0; i < due.length; i++) {
+      if (applyActive(targetEntity, runtime, due[i])) changed = true;
     }
 
-    for (const statusId of Object.keys(runtime.statuses || {}).sort()) {
-      const active = runtime.statuses[statusId];
-      const def = catalog.statuses.get(statusId);
-      if (!active || !def || !def.periodic || !(def.periodic.everyTicks > 0)) continue;
-      while (active.nextPeriodicTick != null && active.nextPeriodicTick <= tick && active.expiresTick > active.nextPeriodicTick) {
-        if (typeof routeDamage === 'function') {
-          const packet = scalePacket(def.periodic.packet, Math.max(1, active.stacks || 1));
-          packet.flags = { ...(packet.flags || {}), ignoreFriendlyFire: true, statusPeriodic: true };
-          packet.source = { statusId, attackerId: active.attackerId };
-          routeDamage({
-            attackerId: active.attackerId,
+    if (hasActiveStatusKeys(statuses)) {
+      for (const statusId of Object.keys(statuses).sort()) {
+        const active = statuses[statusId];
+        const def = catalog.statuses.get(statusId);
+        if (!active || !def || !def.periodic || !(def.periodic.everyTicks > 0)) continue;
+        while (active.nextPeriodicTick != null && active.nextPeriodicTick <= tick && active.expiresTick > active.nextPeriodicTick) {
+          if (typeof routeDamage === 'function') {
+            const packet = scalePacket(def.periodic.packet, Math.max(1, active.stacks || 1));
+            packet.flags = { ...(packet.flags || {}), ignoreFriendlyFire: true, statusPeriodic: true };
+            packet.source = { statusId, attackerId: active.attackerId };
+            routeDamage({
+              attackerId: active.attackerId,
+              targetId: targetEntity.id,
+              packet,
+              origin: { kind: 'status', id: statusId },
+            });
+          }
+          appendCombatTrace(state.combat, active.nextPeriodicTick, 'status.periodic', {
+            actorId: active.attackerId,
             targetId: targetEntity.id,
-            packet,
-            origin: { kind: 'status', id: statusId },
+            statusId,
+            stacks: active.stacks,
           });
+          active.nextPeriodicTick += def.periodic.everyTicks;
         }
-        appendCombatTrace(state.combat, active.nextPeriodicTick, 'status.periodic', {
-          actorId: active.attackerId,
-          targetId: targetEntity.id,
-          statusId,
-          stacks: active.stacks,
-        });
-        active.nextPeriodicTick += def.periodic.everyTicks;
       }
     }
     return changed;
