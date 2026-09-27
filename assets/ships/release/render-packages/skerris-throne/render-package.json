@@ -1,0 +1,6112 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.skerris-throne.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        22,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentNodeId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        22,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        6,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentNodeId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        6,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.skerris-throne",
+  "collisions": [
+    {
+      "id": "sf.render.skerris-throne.collision",
+      "nodeId": "sf.render.skerris-throne.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "8e6623d21de4d5088eb960be9a05ff887f3995f87d9000b21f3b63d235e489a7",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          99.9255599975586,
+          74.74586486816406,
+          82.36487579345703
+        ],
+        "min": [
+          -117.10203552246094,
+          -12.000261306762695,
+          -107.50695037841797
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c412d02016c33afc758fb3754e0943dcc7ea5b977bdbc91a130156860a814fdb",
+      "id": "sf.render.skerris-throne.node.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.skerris-throne.node.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 838
+    },
+    {
+      "bounds": {
+        "max": [
+          97.94562530517578,
+          74.74394226074219,
+          82.36760711669922
+        ],
+        "min": [
+          -117.0999984741211,
+          -11.99753189086914,
+          -107.50284576416016
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "653a5a68e23c3531f703b78b9e873067792c923d1ae3235129d39125e7aa92f4",
+      "id": "sf.render.skerris-throne.node.lod0-armor.primitive.0",
+      "indexCount": 38232,
+      "indexed": true,
+      "materialHash": "43d8178f6d060a050c96fdd5acbf68788c110c6abeedcabfd090af24330b41e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.skerris-throne.node.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 14854
+    },
+    {
+      "bounds": {
+        "max": [
+          97.94999694824219,
+          67.72887420654297,
+          74.45182037353516
+        ],
+        "min": [
+          -116.74400329589844,
+          -2.0448780059814453,
+          -106.74762725830078
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f0b5d210cffb8f957ca01d94a4ee4d4532b7fbd9d9e21145465f9c7145ea0174",
+      "id": "sf.render.skerris-throne.node.lod0-beacon-amber.primitive.0",
+      "indexCount": 26508,
+      "indexed": true,
+      "materialHash": "e440fea2fdfe012a79c5fccbc289f11d4603a07edb018d280f5177887669f18d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.skerris-throne.node.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 16191
+    },
+    {
+      "bounds": {
+        "max": [
+          62.760616302490234,
+          17.074115753173828,
+          68.42658233642578
+        ],
+        "min": [
+          -76.90166473388672,
+          3.843985080718994,
+          -68.54193878173828
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c7dacd386885e66b78c34186751d101058ecc661482ca98f46f81e99e7935539",
+      "id": "sf.render.skerris-throne.node.lod0-canopy.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_CANOPY",
+      "nodeId": "sf.render.skerris-throne.node.lod0-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 240
+    },
+    {
+      "bounds": {
+        "max": [
+          99.67886352539062,
+          28.734580993652344,
+          54.596736907958984
+        ],
+        "min": [
+          -68.34392547607422,
+          -0.35033121705055237,
+          -61.466007232666016
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "43eb090ad12fb0383dbc03afb6f5040476019246bdce6ec6e417eb9be91e917a",
+      "id": "sf.render.skerris-throne.node.lod0-hull-bone.primitive.0",
+      "indexCount": 4086,
+      "indexed": true,
+      "materialHash": "31d454132aedf11ceb19d2932a2dbf2ba1ba162b102757fc936df9525a7aeaac",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_bone",
+      "nodeId": "sf.render.skerris-throne.node.lod0-hull-bone",
+      "primitiveIndex": 0,
+      "vertexCount": 1350
+    },
+    {
+      "bounds": {
+        "max": [
+          83.3187255859375,
+          61.157649993896484,
+          74.4549560546875
+        ],
+        "min": [
+          -116,
+          -7.998955726623535,
+          -106.00675964355469
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f00861aec2f4cc633d994ec678b9abaf9cf91cf6729caa1f8b2e0ad7f33bd8d3",
+      "id": "sf.render.skerris-throne.node.lod0-hull-graphite.primitive.0",
+      "indexCount": 46758,
+      "indexed": true,
+      "materialHash": "69db4b7e15ee0b5aaeed446a78f6eb0be07b972d6f55905b797bcca498dab8d1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_graphite",
+      "nodeId": "sf.render.skerris-throne.node.lod0-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 17655
+    },
+    {
+      "bounds": {
+        "max": [
+          99.44973754882812,
+          51.898311614990234,
+          72.88363647460938
+        ],
+        "min": [
+          -81.43644714355469,
+          -5.298313617706299,
+          -76.3597412109375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c682a973bfdad426cbb75ef0be6321b970cbf8c34bb85c0030b12be48ee82097",
+      "id": "sf.render.skerris-throne.node.lod0-hull-helios.primitive.0",
+      "indexCount": 12714,
+      "indexed": true,
+      "materialHash": "09ef07fe3867b6d6ce3e5d0511ba70793abd08025c7051d3d7eb87673831e4fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_helios",
+      "nodeId": "sf.render.skerris-throne.node.lod0-hull-helios",
+      "primitiveIndex": 0,
+      "vertexCount": 4240
+    },
+    {
+      "bounds": {
+        "max": [
+          99.39556121826172,
+          59.70305633544922,
+          73.19281005859375
+        ],
+        "min": [
+          -74.7281494140625,
+          -5.30305814743042,
+          -72.68169403076172
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "25d6229882fc02710db247879a6d4139a9f4f06d651ce783527ce4fef1ad2b65",
+      "id": "sf.render.skerris-throne.node.lod0-hull-navy.primitive.0",
+      "indexCount": 7122,
+      "indexed": true,
+      "materialHash": "b96d7c55794ce3be57ee8c76b40c6a93b7c7c20fd3160984bb1e64f5ec45bf41",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_navy",
+      "nodeId": "sf.render.skerris-throne.node.lod0-hull-navy",
+      "primitiveIndex": 0,
+      "vertexCount": 2243
+    },
+    {
+      "bounds": {
+        "max": [
+          99.92508697509766,
+          54.50564193725586,
+          67.42866516113281
+        ],
+        "min": [
+          -85.43729400634766,
+          -5.305642604827881,
+          -64.43561553955078
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "82ba12795c4c380171f8754418c244e7a41254a1e9106818ea26f1e4d1f32d34",
+      "id": "sf.render.skerris-throne.node.lod0-hull-teal.primitive.0",
+      "indexCount": 6882,
+      "indexed": true,
+      "materialHash": "f00db1522cb0bafdf39c410553bbff09459f2cd1ad33dab5cc1ea55352e803f3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_teal",
+      "nodeId": "sf.render.skerris-throne.node.lod0-hull-teal",
+      "primitiveIndex": 0,
+      "vertexCount": 2153
+    },
+    {
+      "bounds": {
+        "max": [
+          99.46200561523438,
+          59.70219421386719,
+          73.54203796386719
+        ],
+        "min": [
+          -84.14274597167969,
+          -5.302196025848389,
+          -75.32199096679688
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d87d00a9f287e6df36c882b9dee25bc7916d4fd191fb93133d920b2d5f5c529d",
+      "id": "sf.render.skerris-throne.node.lod0-hull-work.primitive.0",
+      "indexCount": 7026,
+      "indexed": true,
+      "materialHash": "9041debcff8d54679f362a4807a181f1fe37fec590cbbbc99ebec18bb14c9a83",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_work",
+      "nodeId": "sf.render.skerris-throne.node.lod0-hull-work",
+      "primitiveIndex": 0,
+      "vertexCount": 2194
+    },
+    {
+      "bounds": {
+        "max": [
+          79.13813781738281,
+          64.89791870117188,
+          82.00523376464844
+        ],
+        "min": [
+          -117.0999984741211,
+          -5.297924041748047,
+          -107.50138092041016
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "613a0471ea9c26e48cc726e4adf90367feaca4ec714618a6b14326995288adbb",
+      "id": "sf.render.skerris-throne.node.lod0-hull.primitive.0",
+      "indexCount": 14766,
+      "indexed": true,
+      "materialHash": "d2b281a7378d1b1137342c07327a92618f86771ef3fa48c2048677a6ca683637",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.skerris-throne.node.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 6249
+    },
+    {
+      "bounds": {
+        "max": [
+          87.91390228271484,
+          16.167665481567383,
+          8.19999885559082
+        ],
+        "min": [
+          86.74673461914062,
+          15.000492095947266,
+          -8.200000762939453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cc89bc6fa72ae2339791eabdcb9698a8fb01cae71078086a345b522e18246de2",
+      "id": "sf.render.skerris-throne.node.lod0-lights-warm.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "b869ffe880c51c206f5697072e1e9c2035901727159d0c2dbd3754b82978bc7a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Warm",
+      "nodeId": "sf.render.skerris-throne.node.lod0-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          74.53679656982422,
+          61.15583419799805,
+          71.33489227294922
+        ],
+        "min": [
+          -111.0999984741211,
+          -4.137418746948242,
+          -101.49819946289062
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ff171836bb42404f4d1497ff176159cb53a15dfe1c2a86171a9bef80a02fc19b",
+      "id": "sf.render.skerris-throne.node.lod0-livery.primitive.0",
+      "indexCount": 6882,
+      "indexed": true,
+      "materialHash": "8be52376a17c8e344d857858ba2585927d797851edaa4bbdfd9c483e50a51216",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.skerris-throne.node.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 2610
+    },
+    {
+      "bounds": {
+        "max": [
+          79.69046783447266,
+          66.15721130371094,
+          76.31745910644531
+        ],
+        "min": [
+          -116.93190002441406,
+          -3.9360461235046387,
+          -106.95951843261719
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e970550090f80f5f658aa3d3623a867aa63fc642cc54d8562d0e73f0f9ad6dfb",
+      "id": "sf.render.skerris-throne.node.lod0-mechanical.primitive.0",
+      "indexCount": 19806,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.skerris-throne.node.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 6818
+    },
+    {
+      "bounds": {
+        "max": [
+          90.40037536621094,
+          -3.9959685802459717,
+          64.75456237792969
+        ],
+        "min": [
+          -76.329345703125,
+          -4.097735404968262,
+          -66.68241119384766
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a9709f14af278fd0d7fb82700aa8b9ae8faaa3485f066c181314db337392aa13",
+      "id": "sf.render.skerris-throne.node.lod0-mechanicaldark-deck.primitive.0",
+      "indexCount": 222,
+      "indexed": true,
+      "materialHash": "477919a404255dfc4c2b4d8a82298913a2c0806d105ef93adee87571ce38dd85",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark_deck",
+      "nodeId": "sf.render.skerris-throne.node.lod0-mechanicaldark-deck",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          99.05061340332031,
+          58.36221694946289,
+          73.54117584228516
+        ],
+        "min": [
+          -102.65999603271484,
+          -5.296019554138184,
+          -93.05614471435547
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4256183182160d96d3e12bc2827bc01dfbb3347dc6ae3ca3b06e8b5fa485eb6f",
+      "id": "sf.render.skerris-throne.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 13518,
+      "indexed": true,
+      "materialHash": "b4c5efd16f228e2b14ba475763c05fb240eba0d5fb04d361589058fe8f8eb297",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.skerris-throne.node.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 4848
+    },
+    {
+      "bounds": {
+        "max": [
+          33.64255142211914,
+          15.336849212646484,
+          56.695560455322266
+        ],
+        "min": [
+          -82.37044525146484,
+          -4.139409065246582,
+          -73.2267837524414
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d0e92f23a7a9c0f991bc2e3374bacf8ce1365e7959e9b1a4aa372cb98f303f03",
+      "id": "sf.render.skerris-throne.node.lod0-warning.primitive.0",
+      "indexCount": 2592,
+      "indexed": true,
+      "materialHash": "2160bb9541925b979551905f3afd4cbb23cf53272351cb3adbef0753344c6688",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.skerris-throne.node.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 928
+    },
+    {
+      "bounds": {
+        "max": [
+          97.94007873535156,
+          74.74300384521484,
+          82.36490631103516
+        ],
+        "min": [
+          -117.10086822509766,
+          -11.996588706970215,
+          -107.50140380859375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "09de1cbfbbdec75dec1b4e59684e8b1ac839bcab30b69f5527ab5eeadc38fb87",
+      "id": "sf.render.skerris-throne.node.lod1-armor.primitive.0",
+      "indexCount": 14271,
+      "indexed": true,
+      "materialHash": "43d8178f6d060a050c96fdd5acbf68788c110c6abeedcabfd090af24330b41e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.skerris-throne.node.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 7784
+    },
+    {
+      "bounds": {
+        "max": [
+          97.94999694824219,
+          67.72032165527344,
+          74.44676971435547
+        ],
+        "min": [
+          -116.7463150024414,
+          -2.054180145263672,
+          -106.78083801269531
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b3a7058dc66735e20eeb4ff46a56c5236c6881cf7dd46d58629b0f308db4b5e5",
+      "id": "sf.render.skerris-throne.node.lod1-beacon-amber.primitive.0",
+      "indexCount": 10725,
+      "indexed": true,
+      "materialHash": "e440fea2fdfe012a79c5fccbc289f11d4603a07edb018d280f5177887669f18d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.skerris-throne.node.lod1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 7057
+    },
+    {
+      "bounds": {
+        "max": [
+          62.70420837402344,
+          17.070566177368164,
+          68.42990112304688
+        ],
+        "min": [
+          -76.8983154296875,
+          3.8460946083068848,
+          -68.53113555908203
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f5ee33defa9cfbb8a525543cd939890456d3e9d666d6a87e02fc4619263015fc",
+      "id": "sf.render.skerris-throne.node.lod1-canopy.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_CANOPY",
+      "nodeId": "sf.render.skerris-throne.node.lod1-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 104
+    },
+    {
+      "bounds": {
+        "max": [
+          99.68623352050781,
+          28.76778221130371,
+          54.584049224853516
+        ],
+        "min": [
+          -68.34233856201172,
+          -0.3386419117450714,
+          -61.46217727661133
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "58cad8e24def73acc663ffe835f8ad433743350d1bec02473debfbd79d39a7d4",
+      "id": "sf.render.skerris-throne.node.lod1-hull-bone.primitive.0",
+      "indexCount": 1389,
+      "indexed": true,
+      "materialHash": "31d454132aedf11ceb19d2932a2dbf2ba1ba162b102757fc936df9525a7aeaac",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_bone",
+      "nodeId": "sf.render.skerris-throne.node.lod1-hull-bone",
+      "primitiveIndex": 0,
+      "vertexCount": 599
+    },
+    {
+      "bounds": {
+        "max": [
+          83.312744140625,
+          61.080440521240234,
+          74.4522476196289
+        ],
+        "min": [
+          -116,
+          -8.001100540161133,
+          -106.0040512084961
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a103d2494dfc43ed732bc25c6b619f182312ae375167b59b0fc05295d35598a3",
+      "id": "sf.render.skerris-throne.node.lod1-hull-graphite.primitive.0",
+      "indexCount": 17349,
+      "indexed": true,
+      "materialHash": "69db4b7e15ee0b5aaeed446a78f6eb0be07b972d6f55905b797bcca498dab8d1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_graphite",
+      "nodeId": "sf.render.skerris-throne.node.lod1-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 8844
+    },
+    {
+      "bounds": {
+        "max": [
+          99.43599700927734,
+          51.90607833862305,
+          72.7979507446289
+        ],
+        "min": [
+          -81.42446899414062,
+          -5.304492473602295,
+          -76.35797882080078
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7ca5fae4fb158e44cd16c05af328903d39048d23a0caa02382d11aac726eb07f",
+      "id": "sf.render.skerris-throne.node.lod1-hull-helios.primitive.0",
+      "indexCount": 5349,
+      "indexed": true,
+      "materialHash": "09ef07fe3867b6d6ce3e5d0511ba70793abd08025c7051d3d7eb87673831e4fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_helios",
+      "nodeId": "sf.render.skerris-throne.node.lod1-hull-helios",
+      "primitiveIndex": 0,
+      "vertexCount": 2148
+    },
+    {
+      "bounds": {
+        "max": [
+          99.40786743164062,
+          59.70597839355469,
+          73.16020965576172
+        ],
+        "min": [
+          -74.7281494140625,
+          -5.304729461669922,
+          -72.66084289550781
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0716e85a0e0b87691b85d798f342d4f9ed1d93583287877520b23bf17bd80563",
+      "id": "sf.render.skerris-throne.node.lod1-hull-navy.primitive.0",
+      "indexCount": 2790,
+      "indexed": true,
+      "materialHash": "b96d7c55794ce3be57ee8c76b40c6a93b7c7c20fd3160984bb1e64f5ec45bf41",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_navy",
+      "nodeId": "sf.render.skerris-throne.node.lod1-hull-navy",
+      "primitiveIndex": 0,
+      "vertexCount": 1079
+    },
+    {
+      "bounds": {
+        "max": [
+          99.85984802246094,
+          54.50142288208008,
+          67.40164947509766
+        ],
+        "min": [
+          -85.4050064086914,
+          -5.301013946533203,
+          -64.4158706665039
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b6023bbb5ba54d4c5d80a4913e77f05ff7b0ace028674e7d71c9c4e42e547d15",
+      "id": "sf.render.skerris-throne.node.lod1-hull-teal.primitive.0",
+      "indexCount": 2340,
+      "indexed": true,
+      "materialHash": "f00db1522cb0bafdf39c410553bbff09459f2cd1ad33dab5cc1ea55352e803f3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_teal",
+      "nodeId": "sf.render.skerris-throne.node.lod1-hull-teal",
+      "primitiveIndex": 0,
+      "vertexCount": 932
+    },
+    {
+      "bounds": {
+        "max": [
+          99.47583770751953,
+          59.70036315917969,
+          73.51498413085938
+        ],
+        "min": [
+          -84.1166000366211,
+          -5.299665927886963,
+          -75.29422760009766
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8e67d32f17990e5592050612a09672c348f73d0375bbb94ca0c5acf394746679",
+      "id": "sf.render.skerris-throne.node.lod1-hull-work.primitive.0",
+      "indexCount": 2655,
+      "indexed": true,
+      "materialHash": "9041debcff8d54679f362a4807a181f1fe37fec590cbbbc99ebec18bb14c9a83",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_work",
+      "nodeId": "sf.render.skerris-throne.node.lod1-hull-work",
+      "primitiveIndex": 0,
+      "vertexCount": 1028
+    },
+    {
+      "bounds": {
+        "max": [
+          79.13813781738281,
+          64.89888000488281,
+          82.00505065917969
+        ],
+        "min": [
+          -117.10091400146484,
+          -5.297290325164795,
+          -107.50244903564453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2ea4b32d658f9c1a5d75daa09e72774ab74ec507cf37ee2c25f84582f9dc4a3b",
+      "id": "sf.render.skerris-throne.node.lod1-hull.primitive.0",
+      "indexCount": 10314,
+      "indexed": true,
+      "materialHash": "d2b281a7378d1b1137342c07327a92618f86771ef3fa48c2048677a6ca683637",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.skerris-throne.node.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 4969
+    },
+    {
+      "bounds": {
+        "max": [
+          87.86085510253906,
+          16.11461067199707,
+          8.19999885559082
+        ],
+        "min": [
+          86.7997817993164,
+          15.053544044494629,
+          -8.200000762939453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "40d4ca3483fccd4b031194d386c52228e525103cfadb44e34a756ae34244f8a7",
+      "id": "sf.render.skerris-throne.node.lod1-lights-warm.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "b869ffe880c51c206f5697072e1e9c2035901727159d0c2dbd3754b82978bc7a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Warm",
+      "nodeId": "sf.render.skerris-throne.node.lod1-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 28
+    },
+    {
+      "bounds": {
+        "max": [
+          74.51394653320312,
+          61.161800384521484,
+          71.33023071289062
+        ],
+        "min": [
+          -111.0999984741211,
+          -4.123416900634766,
+          -101.5042495727539
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "16c9bdbd12e4e9dea316690e02274e6fb6d725aa606277ba7212e630659e86f9",
+      "id": "sf.render.skerris-throne.node.lod1-livery.primitive.0",
+      "indexCount": 3018,
+      "indexed": true,
+      "materialHash": "8be52376a17c8e344d857858ba2585927d797851edaa4bbdfd9c483e50a51216",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Livery",
+      "nodeId": "sf.render.skerris-throne.node.lod1-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 1224
+    },
+    {
+      "bounds": {
+        "max": [
+          79.68489074707031,
+          66.1551513671875,
+          76.29720306396484
+        ],
+        "min": [
+          -116.931884765625,
+          -3.93611741065979,
+          -106.9505615234375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "be46f801595880acd8e40ea94816fb7131757b9255a9f8bdde26ec34881c1218",
+      "id": "sf.render.skerris-throne.node.lod1-mechanical.primitive.0",
+      "indexCount": 6069,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.skerris-throne.node.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 2699
+    },
+    {
+      "bounds": {
+        "max": [
+          90.40314483642578,
+          -4.026737213134766,
+          64.73332214355469
+        ],
+        "min": [
+          -76.32198333740234,
+          -4.067442417144775,
+          -66.63897705078125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "762eb4a497ab38ddb9f9c2bef4dac409a9b147c00ed4c244d99305f0d60a92c3",
+      "id": "sf.render.skerris-throne.node.lod1-mechanicaldark-deck.primitive.0",
+      "indexCount": 30,
+      "indexed": true,
+      "materialHash": "477919a404255dfc4c2b4d8a82298913a2c0806d105ef93adee87571ce38dd85",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark_deck",
+      "nodeId": "sf.render.skerris-throne.node.lod1-mechanicaldark-deck",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          99.05061340332031,
+          58.525726318359375,
+          73.51160430908203
+        ],
+        "min": [
+          -102.66156005859375,
+          -5.305367946624756,
+          -93.0623779296875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "909899c404200a86dd486bc78fa041ee7bf063d9ac06d0f84ef61718c6e0f526",
+      "id": "sf.render.skerris-throne.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 5307,
+      "indexed": true,
+      "materialHash": "b4c5efd16f228e2b14ba475763c05fb240eba0d5fb04d361589058fe8f8eb297",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.skerris-throne.node.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 2198
+    },
+    {
+      "bounds": {
+        "max": [
+          33.62837600708008,
+          15.339364051818848,
+          56.66981506347656
+        ],
+        "min": [
+          -82.34028625488281,
+          -4.1214704513549805,
+          -73.14964294433594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "41ebed358dbf8d912314fc4911bb87aee4132d8fee9bf493de703fe9f6ee9899",
+      "id": "sf.render.skerris-throne.node.lod1-warning.primitive.0",
+      "indexCount": 1230,
+      "indexed": true,
+      "materialHash": "2160bb9541925b979551905f3afd4cbb23cf53272351cb3adbef0753344c6688",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.skerris-throne.node.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 500
+    },
+    {
+      "bounds": {
+        "max": [
+          97.90975952148438,
+          74.751953125,
+          82.36166381835938
+        ],
+        "min": [
+          -117.11862182617188,
+          -12.035063743591309,
+          -107.51980590820312
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9efc1186ac666999e0f5eb8506932576dd5f5ed4802ec31e427b8e9d2abe7572",
+      "id": "sf.render.skerris-throne.node.lod2-armor.primitive.0",
+      "indexCount": 7386,
+      "indexed": true,
+      "materialHash": "43d8178f6d060a050c96fdd5acbf68788c110c6abeedcabfd090af24330b41e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.skerris-throne.node.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 4479
+    },
+    {
+      "bounds": {
+        "max": [
+          88.62078857421875,
+          67.78767395019531,
+          74.32359313964844
+        ],
+        "min": [
+          -116.75360870361328,
+          -0.5618199110031128,
+          -106.75711822509766
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "92670367d59148ff8832a959fd7642356c23156047e3000096dd0eec2e0d93aa",
+      "id": "sf.render.skerris-throne.node.lod2-beacon-amber.primitive.0",
+      "indexCount": 612,
+      "indexed": true,
+      "materialHash": "e440fea2fdfe012a79c5fccbc289f11d4603a07edb018d280f5177887669f18d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.skerris-throne.node.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 478
+    },
+    {
+      "bounds": {
+        "max": [
+          62.70420837402344,
+          17.070110321044922,
+          68.42280578613281
+        ],
+        "min": [
+          -76.88870239257812,
+          3.8465497493743896,
+          -68.52879333496094
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0f876b1189a465eb68060a7789d831b75ce1a97431b19c53d71b2f92d246de17",
+      "id": "sf.render.skerris-throne.node.lod2-canopy.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD2_CANOPY",
+      "nodeId": "sf.render.skerris-throne.node.lod2-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 84
+    },
+    {
+      "bounds": {
+        "max": [
+          99.59226989746094,
+          29.127174377441406,
+          17.975910186767578
+        ],
+        "min": [
+          51.893653869628906,
+          -0.32727041840553284,
+          -18.240219116210938
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "40dd5121c9592da48436acc6effd48dae0123dc9321f2a32c152cf50aa5b2f8a",
+      "id": "sf.render.skerris-throne.node.lod2-hull-bone.primitive.0",
+      "indexCount": 732,
+      "indexed": true,
+      "materialHash": "31d454132aedf11ceb19d2932a2dbf2ba1ba162b102757fc936df9525a7aeaac",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_bone",
+      "nodeId": "sf.render.skerris-throne.node.lod2-hull-bone",
+      "primitiveIndex": 0,
+      "vertexCount": 352
+    },
+    {
+      "bounds": {
+        "max": [
+          83.15277862548828,
+          61.15141296386719,
+          74.018798828125
+        ],
+        "min": [
+          -116,
+          -7.996243953704834,
+          -106.00092315673828
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5477a367f366520fa8586a0c8543eaafc306f0e05b533d5bdc21db814539a83d",
+      "id": "sf.render.skerris-throne.node.lod2-hull-graphite.primitive.0",
+      "indexCount": 6933,
+      "indexed": true,
+      "materialHash": "69db4b7e15ee0b5aaeed446a78f6eb0be07b972d6f55905b797bcca498dab8d1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_graphite",
+      "nodeId": "sf.render.skerris-throne.node.lod2-hull-graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 4065
+    },
+    {
+      "bounds": {
+        "max": [
+          99.36389923095703,
+          51.93702697753906,
+          72.78721618652344
+        ],
+        "min": [
+          -81.28939819335938,
+          -5.296219348907471,
+          -76.04348754882812
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0cfa46c5b7e2b535407f1a3ae20d483ebbb072c806d5ce32c044d3883a20143f",
+      "id": "sf.render.skerris-throne.node.lod2-hull-helios.primitive.0",
+      "indexCount": 1788,
+      "indexed": true,
+      "materialHash": "09ef07fe3867b6d6ce3e5d0511ba70793abd08025c7051d3d7eb87673831e4fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_helios",
+      "nodeId": "sf.render.skerris-throne.node.lod2-hull-helios",
+      "primitiveIndex": 0,
+      "vertexCount": 857
+    },
+    {
+      "bounds": {
+        "max": [
+          99.30914306640625,
+          59.72419738769531,
+          73.07061004638672
+        ],
+        "min": [
+          -74.63397216796875,
+          -5.2994303703308105,
+          -72.48272705078125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "60f26b9b8cb8c9657555ec8af0a51315d048a9a86d7065a110424f3311db3d24",
+      "id": "sf.render.skerris-throne.node.lod2-hull-navy.primitive.0",
+      "indexCount": 1134,
+      "indexed": true,
+      "materialHash": "b96d7c55794ce3be57ee8c76b40c6a93b7c7c20fd3160984bb1e64f5ec45bf41",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_navy",
+      "nodeId": "sf.render.skerris-throne.node.lod2-hull-navy",
+      "primitiveIndex": 0,
+      "vertexCount": 540
+    },
+    {
+      "bounds": {
+        "max": [
+          99.83789825439453,
+          54.50035858154297,
+          67.23281860351562
+        ],
+        "min": [
+          -85.34142303466797,
+          -5.297075271606445,
+          -64.32039642333984
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fb73fcabf06b0fe70086aa01c7f1aadc2c797c480d7bb90cd66aa42b7bdf17c5",
+      "id": "sf.render.skerris-throne.node.lod2-hull-teal.primitive.0",
+      "indexCount": 843,
+      "indexed": true,
+      "materialHash": "f00db1522cb0bafdf39c410553bbff09459f2cd1ad33dab5cc1ea55352e803f3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_teal",
+      "nodeId": "sf.render.skerris-throne.node.lod2-hull-teal",
+      "primitiveIndex": 0,
+      "vertexCount": 433
+    },
+    {
+      "bounds": {
+        "max": [
+          99.37584686279297,
+          59.70185852050781,
+          73.36274719238281
+        ],
+        "min": [
+          -83.96826934814453,
+          -5.299777507781982,
+          -75.11090087890625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa35300840a6fde4fa3ba0d4791c11492079fc49b30c4f0906065f653d987eb1",
+      "id": "sf.render.skerris-throne.node.lod2-hull-work.primitive.0",
+      "indexCount": 963,
+      "indexed": true,
+      "materialHash": "9041debcff8d54679f362a4807a181f1fe37fec590cbbbc99ebec18bb14c9a83",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_work",
+      "nodeId": "sf.render.skerris-throne.node.lod2-hull-work",
+      "primitiveIndex": 0,
+      "vertexCount": 471
+    },
+    {
+      "bounds": {
+        "max": [
+          79.04742431640625,
+          64.91422271728516,
+          81.99496459960938
+        ],
+        "min": [
+          -117.11862182617188,
+          -5.303731441497803,
+          -107.51388549804688
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5bfabcbf517871ef1caba1827da9742238558b40ca9bcdc3b5093d028735f725",
+      "id": "sf.render.skerris-throne.node.lod2-hull.primitive.0",
+      "indexCount": 3363,
+      "indexed": true,
+      "materialHash": "d2b281a7378d1b1137342c07327a92618f86771ef3fa48c2048677a6ca683637",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.skerris-throne.node.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 1921
+    },
+    {
+      "bounds": {
+        "max": [
+          87.86085510253906,
+          16.11461067199707,
+          8.19999885559082
+        ],
+        "min": [
+          86.7997817993164,
+          15.053544044494629,
+          -8.200000762939453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "40d4ca3483fccd4b031194d386c52228e525103cfadb44e34a756ae34244f8a7",
+      "id": "sf.render.skerris-throne.node.lod2-lights-warm.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "b869ffe880c51c206f5697072e1e9c2035901727159d0c2dbd3754b82978bc7a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Warm",
+      "nodeId": "sf.render.skerris-throne.node.lod2-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 28
+    },
+    {
+      "bounds": {
+        "max": [
+          74.51394653320312,
+          61.09711837768555,
+          71.2474136352539
+        ],
+        "min": [
+          -111.0999984741211,
+          -4.074808120727539,
+          -101.49641418457031
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4e11abc0c48a9fe6267de2aa7bbd33d7b2750a0b4a74f92e5b13280dfc8f7589",
+      "id": "sf.render.skerris-throne.node.lod2-livery.primitive.0",
+      "indexCount": 1047,
+      "indexed": true,
+      "materialHash": "8be52376a17c8e344d857858ba2585927d797851edaa4bbdfd9c483e50a51216",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Livery",
+      "nodeId": "sf.render.skerris-throne.node.lod2-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 491
+    },
+    {
+      "bounds": {
+        "max": [
+          79.64573669433594,
+          66.16077423095703,
+          76.19293212890625
+        ],
+        "min": [
+          -116.88432312011719,
+          -2.7240099906921387,
+          -106.95002746582031
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d6e7e658bb12e854b7f7dbc8d707521f48fe6d22ba8cc3637608bd1358795039",
+      "id": "sf.render.skerris-throne.node.lod2-mechanical.primitive.0",
+      "indexCount": 1746,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.skerris-throne.node.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 978
+    },
+    {
+      "bounds": {
+        "max": [
+          90.40314483642578,
+          -4.026737213134766,
+          64.73332214355469
+        ],
+        "min": [
+          -76.32198333740234,
+          -4.067442417144775,
+          -66.63897705078125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eda5ae2fa6fc94dae07a8d6a776bee285966b72746d7d253573430b6495a6ff4",
+      "id": "sf.render.skerris-throne.node.lod2-mechanicaldark-deck.primitive.0",
+      "indexCount": 30,
+      "indexed": true,
+      "materialHash": "477919a404255dfc4c2b4d8a82298913a2c0806d105ef93adee87571ce38dd85",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark_deck",
+      "nodeId": "sf.render.skerris-throne.node.lod2-mechanicaldark-deck",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          99.05061340332031,
+          58.54043197631836,
+          73.36339569091797
+        ],
+        "min": [
+          -102.6739730834961,
+          -5.294593334197998,
+          -93.07307434082031
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e59e1117c1d818fe26cf4a1c247467e264eb889267ee862f1814a5b91a23ceda",
+      "id": "sf.render.skerris-throne.node.lod2-mechanicaldark.primitive.0",
+      "indexCount": 2058,
+      "indexed": true,
+      "materialHash": "b4c5efd16f228e2b14ba475763c05fb240eba0d5fb04d361589058fe8f8eb297",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.skerris-throne.node.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 984
+    },
+    {
+      "bounds": {
+        "max": [
+          33.55970764160156,
+          15.312962532043457,
+          56.58428955078125
+        ],
+        "min": [
+          -82.2745361328125,
+          -4.011869430541992,
+          -73.06697845458984
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e219bec216fee83b571b0b1da6c756a8f424cf5661fc02e456fc6b94527ff78b",
+      "id": "sf.render.skerris-throne.node.lod2-warning.primitive.0",
+      "indexCount": 387,
+      "indexed": true,
+      "materialHash": "2160bb9541925b979551905f3afd4cbb23cf53272351cb3adbef0753344c6688",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.skerris-throne.node.lod2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 177
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "09ef07fe3867b6d6ce3e5d0511ba70793abd08025c7051d3d7eb87673831e4fe",
+      "id": "material:09ef07fe3867b6d6ce3e5d05",
+      "name": "Material_Hull_helios",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "id": "material:1ee807a3355d83d28693fa8c",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "2160bb9541925b979551905f3afd4cbb23cf53272351cb3adbef0753344c6688",
+      "id": "material:2160bb9541925b979551905f",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "31d454132aedf11ceb19d2932a2dbf2ba1ba162b102757fc936df9525a7aeaac",
+      "id": "material:31d454132aedf11ceb19d293",
+      "name": "Material_Hull_bone",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "43d8178f6d060a050c96fdd5acbf68788c110c6abeedcabfd090af24330b41e9",
+      "id": "material:43d8178f6d060a050c96fdd5",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "477919a404255dfc4c2b4d8a82298913a2c0806d105ef93adee87571ce38dd85",
+      "id": "material:477919a404255dfc4c2b4d8a",
+      "name": "Material_MechanicalDark_deck",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "69db4b7e15ee0b5aaeed446a78f6eb0be07b972d6f55905b797bcca498dab8d1",
+      "id": "material:69db4b7e15ee0b5aaeed446a",
+      "name": "Material_Hull_graphite",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "id": "material:7dbce0f058ce69aeee64664b",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8be52376a17c8e344d857858ba2585927d797851edaa4bbdfd9c483e50a51216",
+      "id": "material:8be52376a17c8e344d857858",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9041debcff8d54679f362a4807a181f1fe37fec590cbbbc99ebec18bb14c9a83",
+      "id": "material:9041debcff8d54679f362a48",
+      "name": "Material_Hull_work",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b4c5efd16f228e2b14ba475763c05fb240eba0d5fb04d361589058fe8f8eb297",
+      "id": "material:b4c5efd16f228e2b14ba4757",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b869ffe880c51c206f5697072e1e9c2035901727159d0c2dbd3754b82978bc7a",
+      "id": "material:b869ffe880c51c206f569707",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "b96d7c55794ce3be57ee8c76b40c6a93b7c7c20fd3160984bb1e64f5ec45bf41",
+      "id": "material:b96d7c55794ce3be57ee8c76",
+      "name": "Material_Hull_navy",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d2b281a7378d1b1137342c07327a92618f86771ef3fa48c2048677a6ca683637",
+      "id": "material:d2b281a7378d1b1137342c07",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e440fea2fdfe012a79c5fccbc289f11d4603a07edb018d280f5177887669f18d",
+      "id": "material:e440fea2fdfe012a79c5fccb",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f00db1522cb0bafdf39c410553bbff09459f2cd1ad33dab5cc1ea55352e803f3",
+      "id": "material:f00db1522cb0bafdf39c4105",
+      "name": "Material_Hull_teal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.skerris-throne.node.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_CANOPY",
+      "nodeName": "LOD0_CANOPY",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-hull-bone",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_bone",
+      "nodeName": "LOD0_Hull_bone",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_graphite",
+      "nodeName": "LOD0_Hull_graphite",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-hull-helios",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_helios",
+      "nodeName": "LOD0_Hull_helios",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-hull-navy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_navy",
+      "nodeName": "LOD0_Hull_navy",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-hull-teal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_teal",
+      "nodeName": "LOD0_Hull_teal",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-hull-work",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_work",
+      "nodeName": "LOD0_Hull_work",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Warm",
+      "nodeName": "LOD0_Lights_Warm",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-mechanicaldark-deck",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark_deck",
+      "nodeName": "LOD0_MechanicalDark_deck",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod0-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_CANOPY",
+      "nodeName": "LOD1_CANOPY",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-hull-bone",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_bone",
+      "nodeName": "LOD1_Hull_bone",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_graphite",
+      "nodeName": "LOD1_Hull_graphite",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-hull-helios",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_helios",
+      "nodeName": "LOD1_Hull_helios",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-hull-navy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_navy",
+      "nodeName": "LOD1_Hull_navy",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-hull-teal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_teal",
+      "nodeName": "LOD1_Hull_teal",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-hull-work",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_work",
+      "nodeName": "LOD1_Hull_work",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Warm",
+      "nodeName": "LOD1_Lights_Warm",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Livery",
+      "nodeName": "LOD1_Livery",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-mechanicaldark-deck",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark_deck",
+      "nodeName": "LOD1_MechanicalDark_deck",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_CANOPY",
+      "nodeName": "LOD2_CANOPY",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-hull-bone",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_bone",
+      "nodeName": "LOD2_Hull_bone",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-hull-graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_graphite",
+      "nodeName": "LOD2_Hull_graphite",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-hull-helios",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_helios",
+      "nodeName": "LOD2_Hull_helios",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-hull-navy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_navy",
+      "nodeName": "LOD2_Hull_navy",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-hull-teal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_teal",
+      "nodeName": "LOD2_Hull_teal",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-hull-work",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_work",
+      "nodeName": "LOD2_Hull_work",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Warm",
+      "nodeName": "LOD2_Lights_Warm",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Livery",
+      "nodeName": "LOD2_Livery",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-mechanicaldark-deck",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark_deck",
+      "nodeName": "LOD2_MechanicalDark_deck",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.lod2-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        48
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_PLACE_LANDMARK_SKERRIS_THRONE_ROOT",
+      "nodeName": "SF_PLACE_LANDMARK_SKERRIS_THRONE_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        22,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        22,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skerris-throne.node.socket-structure-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        6,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Structure_Core",
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentId": "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skerris-throne.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        6,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "33382f327c833253770e16e61f6d0d3e8c7e06279f7c07f28efb5cc6c9f8d6a3"
+    },
+    "sourceGlb": {
+      "bytes": 2411520,
+      "sha256": "d3c01ecc79c544aa77394d334d54537e2443a65c706ba7fb9add01fcf177ebdd",
+      "uri": "place_landmark_skerris_throne.glb"
+    },
+    "sourceManifest": {
+      "bytes": 199726,
+      "sha256": "7637b7f5ceea5ba4b8791c17a98e7bc67a8125fdeaafe3714950e8679ad2ba26",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 4776260,
+    "sha256": "26653c78a3bf3d2b511f79291db699ed3ddcc6f2fd6d03cc71bf3c9fd9abc999",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -8.59653091430664,
+        31.358444690704346,
+        -12.576099395751953
+      ],
+      "max": [
+        99.9255599975586,
+        74.751953125,
+        82.36760711669922
+      ],
+      "min": [
+        -117.11862182617188,
+        -12.035063743591309,
+        -107.51980590820312
+      ],
+      "size": [
+        217.04418182373047,
+        86.78701686859131,
+        189.88741302490234
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4,
+          22,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 51,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.skerris-throne.anchor.socket-camera-focus",
+              "sf.render.skerris-throne.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          6,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 52,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Structure_Core",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.skerris-throne.anchor.socket-structure-core",
+              "sf.render.skerris-throne.node.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "glass": 3,
+      "hull": 25,
+      "mechanical": 9,
+      "signal": 6,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "warning"
+      }
+    ],
+    "nodeCount": 53,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_CANOPY",
+        "planIndex": 5,
+        "tags": {
+          "canopy": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_bone",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_graphite",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_helios",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_navy",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_teal",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_work",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Lights_Warm",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Livery",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark_deck",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Beacon_Amber",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_CANOPY",
+        "planIndex": 21,
+        "tags": {
+          "canopy": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull_bone",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull_graphite",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull_helios",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull_navy",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull_teal",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull_work",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Lights_Warm",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Livery",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark_deck",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_CANOPY",
+        "planIndex": 37,
+        "tags": {
+          "canopy": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull_bone",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull_graphite",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull_helios",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull_navy",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull_teal",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull_work",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Lights_Warm",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Livery",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark_deck",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_landmark_skerris_throne.glb"
+  },
+  "runtimeHash": "0e0918ebe395dc7143727da492ad0d35267585ef84dec9080a4e97d96daf7b9e",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          99.9255599975586,
+          74.751953125,
+          82.36760711669922
+        ],
+        "min": [
+          -117.11862182617188,
+          -12.035063743591309,
+          -107.51980590820312
+        ]
+      },
+      "id": "sf.render.skerris-throne.body",
+      "nodeIds": [
+        "sf.render.skerris-throne.node.collision-hull",
+        "sf.render.skerris-throne.node.lod0-armor",
+        "sf.render.skerris-throne.node.lod0-beacon-amber",
+        "sf.render.skerris-throne.node.lod0-canopy",
+        "sf.render.skerris-throne.node.lod0-hull",
+        "sf.render.skerris-throne.node.lod0-hull-bone",
+        "sf.render.skerris-throne.node.lod0-hull-graphite",
+        "sf.render.skerris-throne.node.lod0-hull-helios",
+        "sf.render.skerris-throne.node.lod0-hull-navy",
+        "sf.render.skerris-throne.node.lod0-hull-teal",
+        "sf.render.skerris-throne.node.lod0-hull-work",
+        "sf.render.skerris-throne.node.lod0-lights-warm",
+        "sf.render.skerris-throne.node.lod0-livery",
+        "sf.render.skerris-throne.node.lod0-mechanical",
+        "sf.render.skerris-throne.node.lod0-mechanicaldark",
+        "sf.render.skerris-throne.node.lod0-mechanicaldark-deck",
+        "sf.render.skerris-throne.node.lod0-warning",
+        "sf.render.skerris-throne.node.lod1-armor",
+        "sf.render.skerris-throne.node.lod1-beacon-amber",
+        "sf.render.skerris-throne.node.lod1-canopy",
+        "sf.render.skerris-throne.node.lod1-hull",
+        "sf.render.skerris-throne.node.lod1-hull-bone",
+        "sf.render.skerris-throne.node.lod1-hull-graphite",
+        "sf.render.skerris-throne.node.lod1-hull-helios",
+        "sf.render.skerris-throne.node.lod1-hull-navy",
+        "sf.render.skerris-throne.node.lod1-hull-teal",
+        "sf.render.skerris-throne.node.lod1-hull-work",
+        "sf.render.skerris-throne.node.lod1-lights-warm",
+        "sf.render.skerris-throne.node.lod1-livery",
+        "sf.render.skerris-throne.node.lod1-mechanical",
+        "sf.render.skerris-throne.node.lod1-mechanicaldark",
+        "sf.render.skerris-throne.node.lod1-mechanicaldark-deck",
+        "sf.render.skerris-throne.node.lod1-warning",
+        "sf.render.skerris-throne.node.lod2-armor",
+        "sf.render.skerris-throne.node.lod2-beacon-amber",
+        "sf.render.skerris-throne.node.lod2-canopy",
+        "sf.render.skerris-throne.node.lod2-hull",
+        "sf.render.skerris-throne.node.lod2-hull-bone",
+        "sf.render.skerris-throne.node.lod2-hull-graphite",
+        "sf.render.skerris-throne.node.lod2-hull-helios",
+        "sf.render.skerris-throne.node.lod2-hull-navy",
+        "sf.render.skerris-throne.node.lod2-hull-teal",
+        "sf.render.skerris-throne.node.lod2-hull-work",
+        "sf.render.skerris-throne.node.lod2-lights-warm",
+        "sf.render.skerris-throne.node.lod2-livery",
+        "sf.render.skerris-throne.node.lod2-mechanical",
+        "sf.render.skerris-throne.node.lod2-mechanicaldark",
+        "sf.render.skerris-throne.node.lod2-mechanicaldark-deck",
+        "sf.render.skerris-throne.node.lod2-warning",
+        "sf.render.skerris-throne.node.sf-place-landmark-skerris-throne-root",
+        "sf.render.skerris-throne.node.socket-camera-focus",
+        "sf.render.skerris-throne.node.socket-structure-core"
+      ]
+    }
+  ]
+}

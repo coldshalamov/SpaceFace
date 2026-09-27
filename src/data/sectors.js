@@ -232,7 +232,7 @@ const CORE_SECTORS = [
         name: 'The Resonant Cathedral',
         landmark: true,
         pos: { x: -330, z: 1060 },
-        landmarkGlb: 'place_maintenance_gantry',
+        landmarkGlb: 'place_landmark_resonant_cathedral',
         visualRadius: 30,
         // D54 hero-landmark scale: twin spires read ~110 WU, not a ship-sized prop.
         placeTargetRadius: 110,
@@ -393,7 +393,7 @@ const CORE_SECTORS = [
       // — both clear), so a pilot arriving from Pallas flies past the fortress on final approach.
       // The 2026-09-25 landmark still review parked at (-1500,1350) — 1170 WU BEYOND the Bazaar,
       // off every approach, framed against bare black. A fortress welded from captured hulls, so
-      // the shared dead-hulk silhouette is the honest one. Inline `pos` for the same reason as the
+      // it now has its own Forge body (tools/blender/forge). Inline `pos` for the same reason as the
       // Vesta landmark above.
       {
         id: 'poi_sker_throne',
@@ -401,7 +401,7 @@ const CORE_SECTORS = [
         name: 'The Skerris Throne',
         landmark: true,
         pos: { x: 300, z: -550 },
-        landmarkGlb: 'place_dead_hulk',
+        landmarkGlb: 'place_landmark_skerris_throne',
         visualRadius: 34,
         // D54 hero-landmark scale: the welded-hull fortress reads ~150 WU.
         placeTargetRadius: 150,

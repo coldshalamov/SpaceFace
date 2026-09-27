@@ -248,7 +248,7 @@ procedure:
 | "unify the picture", "one art direction", "graphics aren't one game", "convergence", "creative campaigns", "superpower pass", "make it A-list" | **§27** → the lane that owns the area (the §23 campaigns are absorbed into the lanes); §23 stays the detailed wording. §22 is the measured list, not this door |
 | "it's hitching / stuttering" | **§21** → `npm run probe:smooth-flight:crucible` names each freeze and what paid for it, with the whole-machine CPU line; then `--id PQ-210.00`–`.02`. §8.4 / `PQ-129` holds the earlier campaign; measure first, never cut quality |
 | "the mining board is unreadable / ugly" | `--id PQ-130` (board law) and `PQ-131` (authored objects); `PQ-185` accepts |
-| "the ships / objects look like toys" | **§13D** → `--id PQ-193`; flyable remaster stays `PQ-050`; unused packs stay `PQ-136` |
+| "the ships / objects look like toys" | **§13D** → ships: `PQ-050` (Forge, `tools/blender/forge/FORGE.md`); places: `--id PQ-193`; unused packs stay `PQ-136` |
 | "NPC ships look like another game / floating parts / reverse jets are needles" | **§13D** → `--id PQ-193` leaves `.01` / `.02`. Law: [`design/program/VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md). Hitch stays frozen. |
 | "ships don't render / pieces missing / empty targeting lock" | **§13D** → `--id PQ-193` leaf `.00`. Complete packaged body, not a procedural fallback. Do not unhide a box while waiting. Process: [`design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md`](./design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md). |
 | "the world feels dead / nobody reacts" | §13C `PQ-138`, then §15 `PQ-149`–`PQ-151` |
@@ -1850,8 +1850,8 @@ process (blank lock, box-then-ship, “shave a little”):
 3. **Jets are jets.** Reverse/brake is force leaving a nozzle, the same family as the main drive.
 4. **A valid file is not accepted art.** Packaged and wired is not Hitch-plus.
 
-Hitch is the floor, not the photocopy. Do not dump Hitch. Do not paste Hitch panels onto NPCs.
-Chase camera only. No seats.
+Hitch is rebuilt in Forge from the owner's design (2026-09-27); the Forge bar, not Hitch, is the
+floor. Graphics workflows and the open backlog: [`GRAPHICS_PROGRAM.md`](./design/program/GRAPHICS_PROGRAM.md) (Wave GFX below). Do not paste Hitch panels onto NPCs. Chase camera only. No seats.
 
 ### What is true now (live census 2026-09-09)
 
@@ -1883,9 +1883,9 @@ Also true:
 
 ### The order (law)
 
-Do not start Waves C–E until Wave A is true on the Helios / Kessler opening flyby. Do not start a
-second buyable-ship remaster until Hornet's chase-camera form closes (`PQ-050.01` residual). Never
-commission a new hull for a slot an unused authored body already fills.
+Wave C (the Forge fleet) runs in parallel with the others: a forged body replaces the live one in
+the same slot, so it never opens a blank lock. Never commission a new hull for a slot an unused
+authored body already fills.
 
 ### Wave A — opening flyby never broken
 
@@ -1906,17 +1906,43 @@ Upgrade the existing object. Do not invent a parallel prop.
 | **`PQ-193.04`** | 47-A spindle, rescue capsule, Kessler beacon, Bourse wreck, and the generic TOW can are designed objects. | Code-built family gone from that mission slot. Model first if hitch still owns the 47-A wiring file. |
 | **`PQ-193.05`** | Mining-drone entity, jump gate, disc mine, generic wreck, and mass seed stop being primitives. Gate: upgrade live `place_gate_jump_ring.glb`. Drone entity: point at `place_mining_drone.glb` after it looks like hardware. | Default route no longer shows those census-A shapes as cylinder stacks. |
 
-### Wave C — buyable ships to Hitch-plus (already queued)
+### Wave C — the whole fleet in Forge (owner, 2026-09-27) — LIVE
 
-Do not duplicate these as `PQ-193` leaves. One ship at a time. Chase camera. No cabins.
+The owner lifted the Hitch freeze and asked for every hull to meet one bar. Every flyable body is
+built in [`tools/blender/forge/FORGE.md`](./tools/blender/forge/FORGE.md). That means one kit, one
+surface set and one publish command, and review means looking at the live renderer
+(`scripts/fleet-look.mjs`, `scripts/flight-look.mjs`). Registry: `tools/blender/forge/fleet.json`.
 
-| Leaf | Ship | Note |
-|---|---|---|
-| `PQ-050.01` | Hornet | Wired candidate, Hitch-plus unmet. Next: form + texture density, not garnish. |
-| `PQ-050.02` | Drifter | After Hornet closes. |
-| `PQ-050.03`–`.09` | Ranger, Ironback, Bastion, Atlas, Warden, Colossus, Leviathan | Factory bodies are mapped and packaged; they are not required and not accepted. |
-| `PQ-050.10`–`.12` | Pelican, Mule, Wasp | Dedicated packages, not factory clones. Wasp is the only accepted non-Hitch hull; still in the sequence if Hitch still wins on matched stills. |
-| `PQ-050.13`–`.22` | Ashline Dart/Lode/Rig, Helios Lark/Cradle/Span, ore barge, tender, salvage cutter, survey pin | Remaster the **live** body. Do not swap the unused factory `*_production_v1` files onto traffic until packaged and better. |
+**Live (2026-09-27):**
+- All 47 ship bodies. That is the 14 player hulls, Ashline, Helios civil, the work fleet, the faction variants and the Massline liner.
+- Stations: refinery, mining rig, fab yard, military bastion, research array, black-market warren, jump gate.
+- Props: cargo pod, lane beacon, nav buoy, mining drone, worklight tower, container rack, sensor mast.
+- Interface art: HUD silhouettes and hull posters regenerated from the forged hulls.
+
+Workflows, rules and budgets: [`design/program/GRAPHICS_PROGRAM.md`](./design/program/GRAPHICS_PROGRAM.md).
+The open work is Wave GFX below.
+
+### Wave GFX — the graphics backlog after Forge (2026-09-27) — READY
+
+Full rows, "done when" and order: [`GRAPHICS_PROGRAM.md` §4](./design/program/GRAPHICS_PROGRAM.md).
+Agent brief templates: [`tools/blender/forge/briefs/`](./tools/blender/forge/briefs/). Delete a row
+here and there in the fixing commit.
+
+| Row | Outcome |
+|---|---|
+| **GFX-1** | Forge trade hub published; the three faction overlays verified sitting on it. |
+| **GFX-3** | Remaining pre-Forge places rebuilt, in order: opening route → claim outposts / conveyor / industry props → law & travel → the rest. |
+| **GFX-4** | Quiessence dark freighters as a Forge family (replaces the dead-hulk stand-ins). |
+| **GFX-5** | Posters for all 14 player hulls enabled in `src/ui/hullPosters.js` (assets rendered; **ORRERY lane owns `src/ui`**). |
+| **GFX-6** | Kit upgrades the agents asked for. Builders: truss, multi-box/beam, annulus, sphere, ladder. Plates and bands: vertical plate, region band. Also a rock primitive + stone finish, a front-lens work lamp, and a place look view. |
+| **GFX-7** | Wrecks derived from the Forge ships replace the pre-Forge aftermath pack. |
+| **GFX-8** | Rocks: procedural geology + authored rock places reviewed and rebuilt to the Forge material language. |
+| **GFX-9** | Bolt-on parts audit: no pre-Forge weapon, pod or engine draws on the default route. |
+| **GFX-10** | Forge performance pass. Dedupe the shared tile textures in the loader, instance repeated hulls, and record frame p50/p95 and texture MB in §21.4. |
+| **GFX-11** | Runtime attachments on Forge hulls: retro shells on the nozzles, damage hooks shedding, player paint on all 14 hulls. |
+| **GFX-12** | Wave F F3: the pending-body stand-in is the hull's own Forge LOD2. |
+| **GFX-13** | Finish master's C8 wreck import (pack builder rejects the eighth file; receipts red). |
+| **GFX-14** | Shipworks dock interiors rebuilt in Forge, keeping the composition check at 0 hits. |
 
 ### Wave D — shelf that beats live
 
@@ -1978,7 +2004,7 @@ not queued.
 Wiring an unpackaged factory remaster and calling the blank lock a renderer bug. Starting Corsair
 or Arclight while the opening NPC is still a kitbash. Hornet interiors. Lowering texture size to
 dodge a Blender crash. Dispatching from `needed-assets.md`. Filename-grep "unused" counts. A glow
-blob or a second needle trail. Editing Hitch. Cutting default quality.
+blob or a second needle trail. Building a ship outside Forge. Cutting default quality.
 
 ## 14. Fleet orchestration law for the 2026-08-21 final run
 

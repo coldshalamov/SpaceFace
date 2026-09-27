@@ -22,7 +22,7 @@ the named outcome of the job you were given, then stop. Full working agreement:
 | Long-horizon VM / Blender / cloud agent work | **`design/program/VM_LANES.md`** |
 | Implement a feature/fix | `docs/MODULE_MAP.md` → nearest nested `AGENTS.md` |
 | Product or system design | `design/GDD_2_0.md` → relevant spec2/spec3 slice |
-| Player-facing graphics / Blender/GLB | `docs/visual-assets/README.md` → `assets/AGENTS.md` |
+| Player-facing graphics / Blender/GLB / any ship, station, prop or landmark model | `tools/blender/forge/FORGE.md` + `design/program/GRAPHICS_PROGRAM.md` (workflows, backlog GFX-n); skill `.claude/skills/forge-graphics` |
 | UI/HUD / frontend looks cheap / make the UI A-list / any menu, HUD or screen redesign | **CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane (owner).** Unless the owner put you on that lane, do not start frontend work — no queue unit, lane, gap row or packet that touches a screen, menu, HUD, map or `src/ui/**` / `styles/**`; the old frontend briefs in `build_map.md` §11/§18/§20 and the PQ-162…PQ-194 packets are superseded and marked CLAIMED. Route a frontend defect as one row in the demo defect ledger (§7). Lane status: [`design/frontend/ORRERY_HANDOFF.md`](design/frontend/ORRERY_HANDOFF.md) §2. For the lane: **`docs/UI_VISUAL_ITERATION.md`** — the frontend iteration system. Shoot the real screen over a still (`node scripts/ui-bench.mjs --shot=<id>`), open that PNG yourself, fix what you see, and `--walk` every control on the screens you changed before you call them done. Do not leave stills for a later pass. **Direction: [`design/frontend/ORRERY.md`](design/frontend/ORRERY.md) (owner, 2026-09-22 late) — the one plan for the whole interface: an instrument of light, the Hand, the ORRERY library in `src/ui/orrery/`; screens compose library elements and never hand-roll boxes.** It supersedes FIELD_HARDWARE_PROGRAM, ONE_PHOTOGRAPH and "printed and lit" as direction (their no-material-imitation law stays). Then `src/ui/AGENTS.md` and `styles/AGENTS.md`. **OWNER RULING 2026-09-18:** nothing under `design/frontend/direction/approved/` carries owner authority. The bar: *consistent, high-detail, creative, interactive, non-generic — and the live game currently reads cheap.* The picture you opened is the evidence. |
 | Recurring bug | `docs/COMMON_BUGS.md` |
 | Saw a defect that is not your task | **§7 total-fix mode** — small: fix it now; medium: call a subagent; otherwise one row in the demo defect ledger |
@@ -138,14 +138,13 @@ them casually. Confirm selection in `src/core/registry.js` and defaults in `src/
   report, or hidden flag is not completion.
 - **Assets:** exact manifests, release metadata, and runtime maps outrank prose inventories.
   Historical lane documents are not permanent ownership.
-- **Visual craft:** start at `docs/visual-assets/README.md` and
-  `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. VFX also obeys
-  `VFX_TECHNIQUE_STANDARD.md`. A camera-facing soft square/disc is never a designed object — distant
-  background stars are the only exception, and only while tiny, bright, and at sky depth. Blender/GLB
-  work must complete the material-truth **preflight** in
-  `.grok/skills/spaceface-blender-material-truth/SKILL.md`. Tier A/B uses component-level records. A
-  technical receipt cannot close G1/G2/G4; a **component-scoped** pass never implies a **whole-asset**
-  pass; missing hash-bound visual review keeps the gate open.
+- **Visual craft:** start at `docs/visual-assets/README.md`. Every ship body is built with Forge
+  (`tools/blender/forge/FORGE.md`) — one kit, one surface language, one publish command. Judge
+  models by looking at the live renderer's picture (`scripts/fleet-look.mjs`, `scripts/flight-look.mjs`)
+  at the gameplay camera and fixing what you see; receipts and gate records never substitute. VFX
+  also obeys `VFX_TECHNIQUE_STANDARD.md`. A camera-facing soft square/disc is never a designed
+  object — distant background stars are the only exception, and only while tiny, bright, and at sky
+  depth.
 - **Performance:** optimize algorithms, allocation, batching, cadence, culling, residency, and frame
   pacing. Do not pass gates by removing authored visuals or lowering default quality.
 - **Accessibility:** preserve input reachability, reduced-motion/flash behavior, legibility, and

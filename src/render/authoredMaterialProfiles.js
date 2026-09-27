@@ -105,9 +105,45 @@ const SOLID_ENV_ROLES = new Set(['hull', 'mechanical', 'accent', 'ceramic', 'rad
 const SOLID_ENV_INTENSITY = 2.1;
 const SOLID_ENV_INTENSITY_METAL = 2.8;
 
+// Forge hulls (tools/blender/forge) author their final surface: calibrated paint/metal factors over
+// the fleet's shared panel textures, at one world-locked texel density. The runtime restyling layers
+// below (roughness noise, family multipliers, occupational pigment, synthetic panel wells) exist to
+// rescue older exports; stacked on a finished surface they are what read as leather and scraped tin.
+export const FORGE_FINISH = 'forge-v1';
+const FORGE_ENV_INTENSITY = Object.freeze({
+  hull: 1.15, accent: 1.1, mechanical: 1.6, warning: 1.0, ceramic: 0.7, drive: 0.6, signal: 0.4,
+});
+
+export function isForgeMaterial(material) {
+  return !!material && material.userData && material.userData.spacefaceFinish === FORGE_FINISH;
+}
+
+function applyForgeFinish(material, role) {
+  material.userData = {
+    ...(material.userData || {}), spacefaceMaterialRole: role,
+    spacefaceAuthoredMaterialName: material.userData?.spacefaceAuthoredMaterialName || material.name,
+    spacefaceRemasterGeometry: true,
+    spacefacePbrCoverage: inspectAuthoredPbrCoverage(material),
+    spacefacePbrRemasterRequired: false,
+  };
+  delete material.userData.spacefaceHullLayout;
+  material.dithering = true;
+  if ('envMapIntensity' in material && FORGE_ENV_INTENSITY[role] != null) {
+    material.envMapIntensity = FORGE_ENV_INTENSITY[role];
+  }
+  if (role !== 'glass' && role !== 'drive' && role !== 'signal'
+    && globalThis.__SF_FORGE_ILLUSTRATED__ !== false) installIllustratedSurface(material);
+  material.needsUpdate = true;
+  return true;
+}
+
 export function applyAuthoredMaterialProfile(material, explicitRole = null, options = {}) {
   if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)) return false;
   let role = explicitRole || authoredMaterialRole(material.name);
+  if (isForgeMaterial(material)) {
+    const authored = String(material.userData.spacefaceMaterialRole || '').trim().toLowerCase();
+    return applyForgeFinish(material, authored || role || 'hull');
+  }
   // The liner's release table predates these descriptive material names. Ceramic *paint* is a
   // coating, not a heat shield; its safety glazing and forged frame are separate substances.
   if (/massline_express_liner/i.test(options.assetId || '')) {

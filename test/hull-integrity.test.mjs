@@ -132,7 +132,7 @@ test('critical recovery does not replace the safety warning with a repair label'
 });
 test('the first sample can have a different hull than the initial markup',()=>{
   const i=instrument();updateShipCondition(i.host,sample(86,72,'ship_mule'),1/60);
-  assert.equal(i.stats.rebuilds,1);assert.match(i.q('geometry').innerHTML,/M4 9h11/);
+  assert.equal(i.stats.rebuilds,1);assert.ok(i.q('geometry').innerHTML.includes(SHIP_SILHOUETTES.ship_mule));
   assert.equal(i.host.getAttribute('data-hull-id'),'ship_mule');
 });
 test('disappearance clears accessible ranges; reappearance restores valid meters',()=>{

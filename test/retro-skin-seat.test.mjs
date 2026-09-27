@@ -110,11 +110,44 @@ function randomSoup(rand, triCount = 700) {
   return Float32Array.from(soup);
 }
 
+// Only geometry matters here. Release hulls carry KTX2 textures, which need a transcoder this node
+// test does not have: drop every texture reference from the GLB JSON before parsing.
+function stripGlbTextures(buffer) {
+  const jsonLength = buffer.readUInt32LE(12);
+  const doc = JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8'));
+  delete doc.images;
+  delete doc.textures;
+  delete doc.samplers;
+  for (const material of doc.materials || []) {
+    delete material.normalTexture;
+    delete material.occlusionTexture;
+    delete material.emissiveTexture;
+    if (material.pbrMetallicRoughness) {
+      delete material.pbrMetallicRoughness.baseColorTexture;
+      delete material.pbrMetallicRoughness.metallicRoughnessTexture;
+    }
+  }
+  const drop = new Set(['KHR_texture_basisu', 'KHR_texture_transform']);
+  if (doc.extensionsRequired) doc.extensionsRequired = doc.extensionsRequired.filter((e) => !drop.has(e));
+  if (doc.extensionsUsed) doc.extensionsUsed = doc.extensionsUsed.filter((e) => !drop.has(e));
+  let json = Buffer.from(JSON.stringify(doc), 'utf8');
+  const pad = (4 - (json.length % 4)) % 4;
+  json = Buffer.concat([json, Buffer.alloc(pad, 0x20)]);
+  const rest = buffer.subarray(20 + jsonLength);
+  const header = Buffer.alloc(20);
+  header.writeUInt32LE(buffer.readUInt32LE(0), 0);
+  header.writeUInt32LE(buffer.readUInt32LE(4), 4);
+  header.writeUInt32LE(20 + json.length + rest.length, 8);
+  header.writeUInt32LE(json.length, 12);
+  header.writeUInt32LE(buffer.readUInt32LE(16), 16);
+  return Buffer.concat([header, json, rest]);
+}
+
 // Bake a real authored wholeship GLB into the same normalized soup collectHullSkinMesh
 // produces: GLB-scene-space triangles scaled to the 1.72-unit hull frame.
 async function realHullSoup(file) {
   await MeshoptDecoder.ready;
-  const bytes = readFileSync(new URL(`../assets/ships/release/parts/wholeships/${file}`, import.meta.url));
+  const bytes = stripGlbTextures(readFileSync(new URL(`../assets/ships/release/parts/wholeships/${file}`, import.meta.url)));
   const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
     .parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
   const scene = gltf.scene;

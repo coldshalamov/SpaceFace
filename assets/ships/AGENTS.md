@@ -1,46 +1,46 @@
 # assets/ships/ agent notes
 
-Ship/place authoring inputs, release outputs, evidence, and the manifests that bridge them to
-runtime. Exact machine records outrank prose inventories.
+Ship/place authoring inputs, release outputs and the manifests that bridge them to runtime. Exact
+machine records (`parts/parts_manifest.json`, `release/release_manifest.json`,
+`render-packages/pilots.json`, the maps in `src/render/partsLibrary.js`) outrank prose inventories.
 
-## Before editing or exporting
+## Ship bodies: Forge only
 
-- Check active lock, building, previous-release, and authoring signals. Coordinate rather than
-  deleting, rebuilding, or promoting over live work.
-- Read `assets/ships/parts/parts_manifest.json`, the generated release manifest, and the maps in
-  `src/render/partsLibrary.js`. Source is authoring input; default runtime loads **release**.
-- For visual authoring or remaster work, read `docs/visual-assets/README.md` and
-  `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` (G0–G7 is the definition of done).
-- For every Blender/GLB form or surfacing change, load
-  `.grok/skills/spaceface-blender-material-truth/SKILL.md` and complete its **preflight** before
-  modeling. Follow `docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md` and fill a
-  `TECHNIQUE_LEDGER.json`. When the packet cites
-  `docs/visual-assets/MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md` (including PQ-050), run its required
-  cycles. A factory loft, tinted shared sheet, zoomed gray crop, or script success does not
-  implement an MTX row. No changed visible zone may inherit a DCC default. The skill may add
-  techniques but never weaken G0–G7.
+Every whole-ship body — player, NPC, traffic, faction variant — is built and published with
+[`tools/blender/forge/FORGE.md`](../../tools/blender/forge/FORGE.md):
 
-Never copy the current ship roster into instructions. Inspect exact manifest IDs and live
-def/role/archetype/modular maps. Never infer family status from an old filename or prose summary.
+```
+blender -b --python tools/blender/forge/ships/<ship>.py        # preview into assets/ships/forge/preview/
+node scripts/fleet-look.mjs --file=assets/ships/forge/preview/<file>.glb --views=inspect,close,top
+node tools/blender/forge/publish.mjs <ship>                     # parts GLB -> manifest sync -> release -> package -> census
+```
 
-Canonical states: `blockout`, `design_candidate`, `production_model`, `bake_candidate`,
-`surfaced_candidate`, `integration_candidate`, `accepted`, `blocked`, `deprecated`.
-`done` / `finished` / `production-ready` / `shippable` mean `accepted`.
+`tools/blender/forge/fleet.json` names the live file each forge ship replaces. Publish runs the repo's
+own release tools for exactly that ship. Commit the ship file, the three (or one) GLBs, and the
+regenerated manifest/package/census rows together with pathspecs.
 
-## Promotion contract
+Do not hand-edit a GLB, do not add per-ship baked texture sets, do not wire a body that has not been
+looked at in `fleet-look` at chase/close zoom.
 
-Technical validity, performance validity, and visual acceptance are separate proofs. A valid GLB or
-green exporter cannot set final visual acceptance. A technical receipt may mark `evidence_ready`; it
-cannot close G1, G2, or G4. Every gate result names its scope (`component`, `zone`, or
-`whole_asset`). A **component-scoped** pass never implies a **whole-asset** pass.
+## The pipeline, for when something breaks
 
-For remasters, generated references are quality targets under a frozen identity contract — not
-replacement blueprints. A visual mismatch authorizes revision of the deficient axis, never wholesale
-deletion. Whole-asset G1/G2/G4 needs an exact-candidate, hash-bound visual review of
-original-resolution matched views, including dominant inherited/retained zones;
-`keep|revise|revert|blocked`.
+1. Source: `parts/wholeships/<file>.glb` (player families: `<file>`, `_lod1`, `_lod2`; NPC bodies: one
+   file with `LOD0_/LOD1_/LOD2_` meshes).
+2. `node scripts/check-parts-manifest.mjs --sync` refreshes bytes/tris/bounds/sockets rows.
+3. `node scripts/build-sg04-release-assets.mjs --no-clean --only wholeship_<file>[,...]` writes the
+   release copy (KTX2 + meshopt) and its release-manifest row.
+4. `node scripts/refresh-render-package-pilots.mjs --only=<key>` then
+   `node scripts/build-render-package-pilots.mjs --only=<key>` rebuild the render package the game
+   actually loads (`src/render/renderPackageManifest.js` is generated).
+5. `node scripts/model-truth-census.mjs` then `node scripts/lib/splice-census-rows.mjs --match=/<file>.glb`
+   keeps the census change to the rows on that model (the full regeneration churns float noise).
 
-Geometry, texture density, material count, and LOD are screen-space/profile decisions, not global
-ceilings. Tier A/B needs independent G7 review against the exact candidate hash. Never edit
-generated release metadata by hand, weaken a check to ship a candidate, or wire an unaccepted
-candidate merely to make a check pass. Missing evidence → mark the exact gate `blocked`.
+The identity (`spacefaceAsset.assetId`) must equal the pilot's `runtimeAssetId` and the partsLibrary
+maps. Never edit generated release metadata by hand or weaken a check to ship a body; if a check
+pins an old body (triangle bands, material names), update the pin to the new body in the same commit
+and say so.
+
+## Places, stations, props
+
+Existing builders stay until Forge covers them. Hold them to the FORGE.md look bar and review them
+with `scripts/fleet-look.mjs --files=places/<file>.glb`.

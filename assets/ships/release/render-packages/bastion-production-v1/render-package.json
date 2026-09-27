@@ -16,15 +16,15 @@
         0,
         1,
         0,
-        0.800000011920929,
-        0.25,
+        1.3203874826431274,
+        1.439500093460083,
         0,
         1
       ],
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
-        4,
-        10
+        0,
+        17
       ],
       "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "worldTransform": [
@@ -40,8 +40,8 @@
         0,
         1,
         0,
-        0.800000011920929,
-        0.25,
+        1.3203874826431274,
+        1.439500093460083,
         0,
         1
       ]
@@ -62,15 +62,15 @@
         0,
         1,
         0,
-        -0.4000000059604645,
-        -1.2000000476837158,
+        -0.36794185638427734,
+        -1.0500000715255737,
         0,
         1
       ],
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
-        4,
-        11
+        0,
+        18
       ],
       "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "worldTransform": [
@@ -86,8 +86,8 @@
         0,
         1,
         0,
-        -0.4000000059604645,
-        -1.2000000476837158,
+        -0.36794185638427734,
+        -1.0500000715255737,
         0,
         1
       ]
@@ -108,15 +108,15 @@
         0,
         1,
         0,
-        -8.050000190734863,
-        0.07999999821186066,
+        -10.600000381469727,
+        -0.10000000149011612,
         0,
         1
       ],
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
-        4,
-        12
+        0,
+        19
       ],
       "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "worldTransform": [
@@ -132,8 +132,8 @@
         0,
         1,
         0,
-        -8.050000190734863,
-        0.07999999821186066,
+        -10.600000381469727,
+        -0.10000000149011612,
         0,
         1
       ]
@@ -154,15 +154,15 @@
         0,
         1,
         0,
-        8.649999618530273,
-        -0.15000000596046448,
+        9.68411636352539,
+        1.2894999980926514,
         0,
         1
       ],
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
-        4,
-        13
+        0,
+        20
       ],
       "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "worldTransform": [
@@ -178,8 +178,8 @@
         0,
         1,
         0,
-        8.649999618530273,
-        -0.15000000596046448,
+        9.68411636352539,
+        1.2894999980926514,
         0,
         1
       ]
@@ -200,15 +200,15 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        2.299999952316284,
+        -0.36794185638427734,
+        1.439500093460083,
+        -2.580000162124634,
         1
       ],
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
-        4,
-        14
+        0,
+        21
       ],
       "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "worldTransform": [
@@ -224,9 +224,9 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        2.299999952316284,
+        -0.36794185638427734,
+        1.439500093460083,
+        -2.580000162124634,
         1
       ]
     },
@@ -246,15 +246,15 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        -2.299999952316284,
+        -0.36794185638427734,
+        1.439500093460083,
+        2.580000162124634,
         1
       ],
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
-        4,
-        15
+        0,
+        22
       ],
       "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "worldTransform": [
@@ -270,9 +270,9 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        -2.299999952316284,
+        -0.36794185638427734,
+        1.439500093460083,
+        2.580000162124634,
         1
       ]
     },
@@ -292,16 +292,17 @@
         0,
         1,
         0,
-        -4.983199999999999,
-        0.490127,
+        -5.010847568511963,
+        1.9895000457763672,
         0,
         1
       ],
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
-        5
+        0,
+        23
       ],
-      "parentNodeId": "sf.render.bastion-production-v1.node.socket-tether-massline",
+      "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "worldTransform": [
         1,
         0,
@@ -315,8 +316,8 @@
         0,
         1,
         0,
-        -4.983199999999999,
-        0.490127,
+        -5.010847568511963,
+        1.9895000457763672,
         0,
         1
       ]
@@ -337,15 +338,15 @@
         0,
         1,
         0,
-        -8.449999809265137,
-        0.07999999821186066,
+        -11.020000457763672,
+        -0.10000000149011612,
         0,
         1
       ],
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
-        4,
-        16
+        0,
+        24
       ],
       "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "worldTransform": [
@@ -361,8 +362,8 @@
         0,
         1,
         0,
-        -8.449999809265137,
-        0.07999999821186066,
+        -11.020000457763672,
+        -0.10000000149011612,
         0,
         1
       ]
@@ -383,15 +384,15 @@
         0,
         1,
         0,
-        -8.25,
-        0.07999999821186066,
-        1.4700000286102295,
+        -11.020000457763672,
+        -0.10000000149011612,
+        -1.0750000476837158,
         1
       ],
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
-        4,
-        17
+        0,
+        25
       ],
       "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "worldTransform": [
@@ -407,9 +408,9 @@
         0,
         1,
         0,
-        -8.25,
-        0.07999999821186066,
-        1.4700000286102295,
+        -11.020000457763672,
+        -0.10000000149011612,
+        -1.0750000476837158,
         1
       ]
     },
@@ -429,15 +430,15 @@
         0,
         1,
         0,
-        -8.25,
-        0.07999999821186066,
-        -1.4700000286102295,
+        -11.020000457763672,
+        -0.10000000149011612,
+        1.0750000476837158,
         1
       ],
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
-        4,
-        18
+        0,
+        26
       ],
       "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "worldTransform": [
@@ -453,9 +454,9 @@
         0,
         1,
         0,
-        -8.25,
-        0.07999999821186066,
-        -1.4700000286102295,
+        -11.020000457763672,
+        -0.10000000149011612,
+        1.0750000476837158,
         1
       ]
     },
@@ -475,15 +476,15 @@
         0,
         1,
         0,
-        0.6000000238418579,
-        1.600000023841858,
+        -0.36794185638427734,
+        3.92900013923645,
         0,
         1
       ],
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
-        4,
-        19
+        0,
+        27
       ],
       "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "worldTransform": [
@@ -499,8 +500,8 @@
         0,
         1,
         0,
-        0.6000000238418579,
-        1.600000023841858,
+        -0.36794185638427734,
+        3.92900013923645,
         0,
         1
       ]
@@ -521,15 +522,15 @@
         0,
         1,
         0,
-        8.050000190734863,
-        0.25,
+        9.784116744995117,
+        1.439500093460083,
         0,
         1
       ],
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
-        4,
-        20
+        0,
+        28
       ],
       "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "worldTransform": [
@@ -545,8 +546,8 @@
         0,
         1,
         0,
-        8.050000190734863,
-        0.25,
+        9.784116744995117,
+        1.439500093460083,
         0,
         1
       ]
@@ -564,358 +565,474 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0d8334249ee6beae89aeec85c2e89c53c0e58d8c92de1db513412b8bdf656264",
-  "dynamicGroups": [],
+  "contentHash": "a7450d46dd857e2a51ea2d139bf1faf2127333c596eab566b2cc8dc678c0b749",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-armor-port-hull.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-armor-port-hull"
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-armor-port-livery.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-armor-port-livery"
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-drive-core"
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-nav-port"
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-beacon-amber.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-beacon-amber"
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-mechanical"
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-mechanicaldark.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-mechanicaldark"
+    }
+  ],
   "geometry": [
     {
       "bounds": {
         "max": [
-          8.949999809265137,
-          1.0495193004608154,
-          2.3003053665161133
+          10.18378734588623,
+          3.978548526763916,
+          4.29995059967041
         ],
         "min": [
-          -8.850000381469727,
-          -1.0495193004608154,
-          -2.3003053665161133
+          -10.92003345489502,
+          -1.0991981029510498,
+          -4.300144195556641
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6fea90507404fdfe1607decb9ebf0b06e6917bed6cd10d2fb3c64a056fcfd9f",
+      "geometryHash": "6a7e480131210ad7cd57bfd7cd60805a040ef958314f54e540491f2bd554b398",
       "id": "sf.render.bastion-production-v1.node.collision-hull.primitive.0",
-      "indexCount": 30,
+      "indexCount": 900,
       "indexed": true,
       "materialHash": null,
       "materialPipelineKey": "non-render",
-      "meshName": "COLLISION_HULL_MESH",
+      "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.bastion-production-v1.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 26
+      "vertexCount": 753
     },
     {
       "bounds": {
         "max": [
-          0.9125450849533081,
-          1.1499779224395752,
-          2.0399999618530273
+          10.18411636352539,
+          2.420355796813965,
+          3.6963183879852295
         ],
         "min": [
-          -0.9600452184677124,
-          0.230022132396698,
-          -0.4560000002384186
+          -9.899999618530273,
+          -1.100355863571167,
+          -3.6963183879852295
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39d1ce4224c5bd4cb1c4c35cf4d567a7a5c206e304b75b5c697d2f447a2abb2c",
-      "id": "sf.render.bastion-production-v1.node.lod0-accent.primitive.0",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "0f6709c975c696d9afc8566e328599aaa8d39390c5584a9015759db08df05d79",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.067",
-      "nodeId": "sf.render.bastion-production-v1.node.lod0-accent",
-      "primitiveIndex": 0,
-      "vertexCount": 226
-    },
-    {
-      "bounds": {
-        "max": [
-          4.294999599456787,
-          2.1502187252044678,
-          2.350013256072998
-        ],
-        "min": [
-          -10.381999969482422,
-          -0.7702195048332214,
-          -2.350013256072998
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "88f77d68e06162f9de5347f681209647759035da07f437baadf2c7b590bb35a2",
+      "geometryHash": "fac49326016cc12e4cd02d8201bbafcd31931bd3fdfed258c1477b1c033e37a5",
       "id": "sf.render.bastion-production-v1.node.lod0-armor.primitive.0",
-      "indexCount": 21060,
+      "indexCount": 6135,
       "indexed": true,
-      "materialHash": "f8c46474d4c935d5b317a236a85d19aa38744f079e60fac66b239c62d564fda2",
+      "materialHash": "7c690d3be8f3ceac392e087f27d1e4bb3b91c560ea7def6400f94782f6c52607",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder",
+      "meshName": "LOD0_Armor",
       "nodeId": "sf.render.bastion-production-v1.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 5074
+      "vertexCount": 1910
     },
     {
       "bounds": {
         "max": [
-          4.440000057220459,
-          2.179966926574707,
-          0.7200247645378113
+          9.8100004196167,
+          0.6420023441314697,
+          0.06000041961669922
         ],
         "min": [
-          0.7400000095367432,
-          1.131067156791687,
-          -0.7200247645378113
+          9.6899995803833,
+          0.5579977035522461,
+          -0.06000041961669922
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1cff58ab81f3047a0ceca57eed7d49f492d3c49bd5cccccf859578dcf35c6584",
-      "id": "sf.render.bastion-production-v1.node.lod0-canopy.primitive.0",
-      "indexCount": 1128,
+      "geometryHash": "cc5fc6ff867e1e3c909b8c8e1a23c3c14c18fd0adf34952973b71d240d6e200a",
+      "id": "sf.render.bastion-production-v1.node.lod0-beacon-amber.primitive.0",
+      "indexCount": 36,
       "indexed": true,
-      "materialHash": "e6c3a55ca9fec0f5967eb6ecb79b1e29c898d5f9c6b4a6f7bd79406abdab911b",
-      "materialPipelineKey": "blend",
-      "meshName": "Canopy_Glass_Mesh",
-      "nodeId": "sf.render.bastion-production-v1.node.lod0-canopy",
-      "primitiveIndex": 0,
-      "vertexCount": 336
-    },
-    {
-      "bounds": {
-        "max": [
-          -9.75306510925293,
-          0.7260856628417969,
-          2.1459999084472656
-        ],
-        "min": [
-          -9.990934371948242,
-          -0.5660856366157532,
-          -2.1459999084472656
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "3100e64283180dc69e166676321101bdb5cff67f4ec833b008cbc5b31cd9af52",
-      "id": "sf.render.bastion-production-v1.node.lod0-ceramic.primitive.0",
-      "indexCount": 1128,
-      "indexed": true,
-      "materialHash": "48c4130fcb57091dfdbd487374a6f0ceb3d240464957408d01cd68561bb28605",
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
-      "nodeId": "sf.render.bastion-production-v1.node.lod0-ceramic",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 284
+      "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          9.25,
-          1.1438345909118652,
-          2.0996642112731934
+          -2.503103017807007,
+          0.4039236525811554,
+          -2.6124989430737835
         ],
         "min": [
-          -8.399999618530273,
-          -0.9698346257209778,
-          -2.0996642112731934
+          -5.597657680511475,
+          -0.5575821618356109,
+          -3.399855192439522
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da6b3bffba4aa7ada12a783cbb21ffafc589fc062089dec1c2607cf70797d369",
-      "id": "sf.render.bastion-production-v1.node.lod0-hull.primitive.0",
-      "indexCount": 5964,
+      "geometryHash": "5c1017c07d9178605b819afa490b1411cf3ca001b07ff3123fb9854eb2bac7cf",
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-armor-port-hull.primitive.0",
+      "indexCount": 1800,
       "indexed": true,
-      "materialHash": "9b2843038b6689805c4997b829ba9fae7b3b4eb89225055832a4b233994e8043",
+      "materialHash": "e9d0269c6a7d32b15466bbd4bbd39b5fd1f9befe5dab3186788c7ce5b30c7a1d",
       "materialPipelineKey": "opaque",
-      "meshName": "Pressure_Hull_Mesh",
-      "nodeId": "sf.render.bastion-production-v1.node.lod0-hull",
+      "meshName": "LOD0_HOOK_ARMOR_PORT_Hull",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-armor-port-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1417
+      "vertexCount": 531
     },
     {
       "bounds": {
         "max": [
-          6.9375,
-          1.8827741146087646,
-          2.5002224445343018
+          -3.90610679169297,
+          0.4150310456752777,
+          -2.605010203088767
         ],
         "min": [
-          -10.135499954223633,
-          -1.1997134685516357,
-          -2.5002224445343018
+          -4.193874277871849,
+          -0.5650414228439331,
+          -3.3913832390651635
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb100636f099585e5deb548f540c4f2387bf30fc808864f0b654f2a09b3721d9",
-      "id": "sf.render.bastion-production-v1.node.lod0-mechanical.primitive.0",
-      "indexCount": 69756,
+      "geometryHash": "54784b93150bb3adddc37d4b3a0250e515e9d6e1281118f60e75ec77e85e4e94",
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-armor-port-livery.primitive.0",
+      "indexCount": 1548,
       "indexed": true,
-      "materialHash": "c52ed0462ef3e44dff49231d7cdeb18d508bb938693344e82d6209d0ee917c44",
+      "materialHash": "9755815f10f5be5e4e968a60715bde26fa3cc1ec24465b0f3ce27304cf3158e9",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.010",
-      "nodeId": "sf.render.bastion-production-v1.node.lod0-mechanical",
+      "meshName": "LOD0_HOOK_ARMOR_PORT_Livery",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-armor-port-livery",
       "primitiveIndex": 0,
-      "vertexCount": 21835
+      "vertexCount": 498
     },
     {
       "bounds": {
         "max": [
-          -0.5129996538162231,
-          1.3276289701461792,
-          2.4181885719299316
+          -10.47249984741211,
+          0.5909836611648499,
+          1.7963999509811401
         ],
         "min": [
-          -9.67650032043457,
-          -0.8380292057991028,
-          -2.4181885719299316
+          -10.47249984741211,
+          -0.5463836102684437,
+          -1.7963999509811401
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b2c4fa277a6005f881493cebcf809100de64166eb28d4548c87600e2dca5544b",
-      "id": "sf.render.bastion-production-v1.node.lod0-radiator.primitive.0",
-      "indexCount": 9876,
+      "geometryHash": "202d206429c87447cc1be8983dcc4dc36e28794f41d11526d9346cfaa5189d6a",
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-drive-core.primitive.0",
+      "indexCount": 270,
       "indexed": true,
-      "materialHash": "806a0c1ef0859068c61ee4fcf64a0a6ff3ce09aa519160824914a47ba45e204d",
+      "materialHash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.008",
-      "nodeId": "sf.render.bastion-production-v1.node.lod0-radiator",
-      "primitiveIndex": 0,
-      "vertexCount": 3324
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.6299999952316284,
-          1.0716263055801392,
-          1.320104718208313
-        ],
-        "min": [
-          -6.320000171661377,
-          0.42524299025535583,
-          -1.320104718208313
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5f6eae7cc91ee8d944dccf5e3c2bbddd1ce99862755baccfc77cb96a4cfbe56b",
-      "id": "sf.render.bastion-production-v1.node.lod0-remaster-material-brushedmetal-remasternickel.primitive.0",
-      "indexCount": 4740,
-      "indexed": true,
-      "materialHash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Remaster_PortGunService_NickelSeam",
-      "nodeId": "sf.render.bastion-production-v1.node.lod0-remaster-material-brushedmetal-remasternickel",
-      "primitiveIndex": 0,
-      "vertexCount": 3088
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.1327993869781494,
-          0.8568414449691772,
-          1.1744611263275146
-        ],
-        "min": [
-          -6.267216205596924,
-          0.6806994676589966,
-          0.48553887009620667
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "1dacaae5a9e9aa3ce08f1fbc089944fdbc2174397dcc6a2b0179565096952d80",
-      "id": "sf.render.bastion-production-v1.node.lod0-remaster-material-engineceramic-remasterglazed.primitive.0",
-      "indexCount": 1980,
-      "indexed": true,
-      "materialHash": "85cd1cc6ee3ad65354a3709fac5c848c14ae790418aab5d8cd12d12774f849e0",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Remaster_PortGunService_FoldedLeaf",
-      "nodeId": "sf.render.bastion-production-v1.node.lod0-remaster-material-engineceramic-remasterglazed",
-      "primitiveIndex": 0,
-      "vertexCount": 1296
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.0081000328063965,
-          0.8017795085906982,
-          1.1197184324264526
-        ],
-        "min": [
-          -5.795799732208252,
-          0.5243515968322754,
-          -0.7818184494972229
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0fb98ce2e2e1f408c1f4400d324957ae44c785b5650a867874f9013978ac58c1",
-      "id": "sf.render.bastion-production-v1.node.lod0-remaster-material-mechanical-remasterheatcopper.primitive.0",
-      "indexCount": 360,
-      "indexed": true,
-      "materialHash": "e2c2872893bc0866953560229c31637afcfe3e27a902cc96c1a08afec4e3142d",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Remaster_PortGunService_CoolantReturn",
-      "nodeId": "sf.render.bastion-production-v1.node.lod0-remaster-material-mechanical-remasterheatcopper",
-      "primitiveIndex": 0,
-      "vertexCount": 288
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.75,
-          0.6231029033660889,
-          1.2001296281814575
-        ],
-        "min": [
-          -6.199999809265137,
-          0.4101569652557373,
-          -1.2001296281814575
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "6c593654c45ca12ab905cce25925a177bce079bd317c8b0640c5a881df22294d",
-      "id": "sf.render.bastion-production-v1.node.lod0-remaster-material-mechanical-remasteroxidized.primitive.0",
-      "indexCount": 168,
-      "indexed": true,
-      "materialHash": "696124402638cc23b4c1165321f8c0fe5461aab6e62c9713410ab671dfecd7d5",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Remaster_PortGunService_OxidizedLiner",
-      "nodeId": "sf.render.bastion-production-v1.node.lod0-remaster-material-mechanical-remasteroxidized",
+      "meshName": "LOD0_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-drive-core",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          -1.1726725101470947,
-          0.32874706387519836,
-          2.519807815551758
+          -4.382498683317007,
+          2.4744397006763164,
+          1.9524999856948853
         ],
         "min": [
-          -10.229000091552734,
-          -0.16874706745147705,
-          -2.519807815551758
+          -8.490001259462534,
+          0.23706025855410684,
+          -3.509999990463257
         ]
       },
       "drawMode": 4,
-      "geometryHash": "21eb81973cd814d960c8c2bd0f0ca6fb75ee2fadd9a237bbca5967004aafeab0",
-      "id": "sf.render.bastion-production-v1.node.lod0-thruster.primitive.0",
-      "indexCount": 4944,
+      "geometryHash": "518ec22e85dd31798fdbd8cc2f424010ae59d407baa91413e670556dee8345bb",
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-nav-port.primitive.0",
+      "indexCount": 144,
       "indexed": true,
-      "materialHash": "1862618cc668036602c2f268bd533e2052e9d348d3eaa5a94b7ba2998823799b",
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.007",
-      "nodeId": "sf.render.bastion-production-v1.node.lod0-thruster",
+      "meshName": "LOD0_HOOK_NAV_PORT",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 1340
+      "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          0.8350000381469727,
-          1.151997447013855,
-          0.5580127835273743
+          -8.309999465942383,
+          0.36300314007001294,
+          3.510000228881836
         ],
         "min": [
-          0.2750000059604645,
-          1.1280025243759155,
-          0.1979871690273285
+          -8.489999771118164,
+          0.23699688377184497,
+          3.3299999237060547
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05e448d1dea21defd03f4d6420b822c2c7544bbeffd2f0a617d8426afcd9ad46",
-      "id": "sf.render.bastion-production-v1.node.lod0-warning.primitive.0",
-      "indexCount": 324,
+      "geometryHash": "3f96b889bbaef6845bf4fe861d42454b42a3bf9a10cc1d2b52a2221dc07cb40f",
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
       "indexed": true,
-      "materialHash": "d1d8159f599b9ad02e3dbf841591f9f4262753d207a4c05bfde4fbc6c8823f7f",
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.066",
-      "nodeId": "sf.render.bastion-production-v1.node.lod0-warning",
+      "meshName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-nav-starboard",
       "primitiveIndex": 0,
-      "vertexCount": 114
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.1300000473856926,
+          3.979002416891058,
+          0.07000000029802322
+        ],
+        "min": [
+          -3.270000047981739,
+          3.8809977166233462,
+          -0.07000000029802322
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4b55b354809415eed091a5d34ff7bcd784f6aa0a50f14f53f0e4e090e258f3fb",
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-beacon-amber.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SENSOR_MAST_Beacon_Amber",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.13374436604157,
+          3.90001073099563,
+          0.6499999761581421
+        ],
+        "min": [
+          -3.2662557293258616,
+          2.6999894120555177,
+          -0.6499999761581421
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "37234f62a923c460425b48a9780c02697868893796df1d273afe0112e2d07106",
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-mechanical.primitive.0",
+      "indexCount": 1464,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SENSOR_MAST_Mechanical",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 436
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.1100192767283623,
+          3.36997745948384,
+          0.44999998807907104
+        ],
+        "min": [
+          -3.2899808186390693,
+          3.0300226358835918,
+          -0.44999998807907104
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "68636e4f38cb81e7b7e1139e883f4f3335059a160a1e26aaf90a3e4f6215ce9b",
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-mechanicaldark.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SENSOR_MAST_MechanicalDark",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          6.0492844581604,
+          2.75015926361084,
+          1.5479986667633057
+        ],
+        "min": [
+          -7.398029804229736,
+          0.6998408436775208,
+          -1.5479986667633057
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "32c882ac98ac73296dddd825160484b66d4a7d91e974af78e5dd0fd72309fbfe",
+      "id": "sf.render.bastion-production-v1.node.lod0-hull-upper.primitive.0",
+      "indexCount": 7185,
+      "indexed": true,
+      "materialHash": "6744e7a04e0f229c84de27f23097ee38c0d94f097004fe24968aee7ce6a075b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_upper",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hull-upper",
+      "primitiveIndex": 0,
+      "vertexCount": 2339
+    },
+    {
+      "bounds": {
+        "max": [
+          9.597522735595703,
+          1.974676251411438,
+          3.400096893310547
+        ],
+        "min": [
+          -9.399999618530273,
+          -0.5577855706214905,
+          -3.400096893310547
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7635a305236e9ab5cf97516e44744bffa856a212bb40c117d19c5e59ae9dec8b",
+      "id": "sf.render.bastion-production-v1.node.lod0-hull.primitive.0",
+      "indexCount": 20130,
+      "indexed": true,
+      "materialHash": "e9d0269c6a7d32b15466bbd4bbd39b5fd1f9befe5dab3186788c7ce5b30c7a1d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 5862
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.9999321699142456,
+          2.520040273666382,
+          1.0549999475479126
+        ],
+        "min": [
+          -3.800067901611328,
+          1.7799595594406128,
+          -1.0549999475479126
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4ac65396676f6a9554c432350748c9201eab1c9499160dd0aa0892d24f2921a9",
+      "id": "sf.render.bastion-production-v1.node.lod0-lights-warm.primitive.0",
+      "indexCount": 348,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Warm",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          9.29000473022461,
+          2.3246281147003174,
+          3.390970468521118
+        ],
+        "min": [
+          -7.54386043548584,
+          -0.5646710395812988,
+          -3.390970468521118
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0e1c1b119344aa4db98c20fa887486f879fc3167b4e6c6b0fad5d04318fb3590",
+      "id": "sf.render.bastion-production-v1.node.lod0-livery.primitive.0",
+      "indexCount": 11604,
+      "indexed": true,
+      "materialHash": "9755815f10f5be5e4e968a60715bde26fa3cc1ec24465b0f3ce27304cf3158e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 3846
+    },
+    {
+      "bounds": {
+        "max": [
+          8.5,
+          2.489818811416626,
+          4.292408466339111
+        ],
+        "min": [
+          -10.920000076293945,
+          -0.9998188614845276,
+          -4.292408466339111
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a9054271a8505c65cd5b949e4bd876423a95f37edc8da379e93186c40f82342d",
+      "id": "sf.render.bastion-production-v1.node.lod0-mechanical.primitive.0",
+      "indexCount": 17094,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 5631
+    },
+    {
+      "bounds": {
+        "max": [
+          9.59999942779541,
+          2.0872485637664795,
+          4.300075531005859
+        ],
+        "min": [
+          -10.920000076293945,
+          -0.9462571740150452,
+          -4.300075531005859
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e1c873166df7fa69177acf1364aeab47fdd65a48f33ac8c2415ab4438e9b4f7b",
+      "id": "sf.render.bastion-production-v1.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 17742,
+      "indexed": true,
+      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.bastion-production-v1.node.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 5851
     }
   ],
   "hlods": [],
@@ -923,93 +1040,229 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0f6709c975c696d9afc8566e328599aaa8d39390c5584a9015759db08df05d79",
-      "id": "material:0f6709c975c696d9afc8566e",
-      "name": "Material_Accent",
+      "hash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "id": "material:1596da2f23e2c1dd543b727e",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
       "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "1862618cc668036602c2f268bd533e2052e9d348d3eaa5a94b7ba2998823799b",
-      "id": "material:1862618cc668036602c2f268",
-      "name": "Material_Thruster",
-      "pipelineKey": "opaque:double",
-      "textures": []
+      "hash": "6744e7a04e0f229c84de27f23097ee38c0d94f097004fe24968aee7ce6a075b7",
+      "id": "material:6744e7a04e0f229c84de27f2",
+      "name": "Material_Hull_upper",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "48c4130fcb57091dfdbd487374a6f0ceb3d240464957408d01cd68561bb28605",
-      "id": "material:48c4130fcb57091dfdbd4873",
-      "name": "Material_Ceramic",
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
       "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "696124402638cc23b4c1165321f8c0fe5461aab6e62c9713410ab671dfecd7d5",
-      "id": "material:696124402638cc23b4c11653",
-      "name": "Material_Mechanical_RemasterOxidized",
+      "hash": "7c690d3be8f3ceac392e087f27d1e4bb3b91c560ea7def6400f94782f6c52607",
+      "id": "material:7c690d3be8f3ceac392e087f",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "806a0c1ef0859068c61ee4fcf64a0a6ff3ce09aa519160824914a47ba45e204d",
-      "id": "material:806a0c1ef0859068c61ee4fc",
-      "name": "Material_Radiator",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "85cd1cc6ee3ad65354a3709fac5c848c14ae790418aab5d8cd12d12774f849e0",
-      "id": "material:85cd1cc6ee3ad65354a3709f",
-      "name": "Material_EngineCeramic_RemasterGlazed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "9b2843038b6689805c4997b829ba9fae7b3b4eb89225055832a4b233994e8043",
-      "id": "material:9b2843038b6689805c4997b8",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
-      "id": "material:afa0d31269441b13f937c930",
-      "name": "Material_BrushedMetal_RemasterNickel",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "c52ed0462ef3e44dff49231d7cdeb18d508bb938693344e82d6209d0ee917c44",
-      "id": "material:c52ed0462ef3e44dff49231d",
+      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "id": "material:7dbce0f058ce69aeee64664b",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "d1d8159f599b9ad02e3dbf841591f9f4262753d207a4c05bfde4fbc6c8823f7f",
-      "id": "material:d1d8159f599b9ad02e3dbf84",
-      "name": "Material_Warning",
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
       "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "e2c2872893bc0866953560229c31637afcfe3e27a902cc96c1a08afec4e3142d",
-      "id": "material:e2c2872893bc086695356022",
-      "name": "Material_Mechanical_RemasterHeatCopper",
+      "hash": "9755815f10f5be5e4e968a60715bde26fa3cc1ec24465b0f3ce27304cf3158e9",
+      "id": "material:9755815f10f5be5e4e968a60",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
       "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "e6c3a55ca9fec0f5967eb6ecb79b1e29c898d5f9c6b4a6f7bd79406abdab911b",
-      "id": "material:e6c3a55ca9fec0f5967eb6ec",
-      "name": "Material_Canopy",
-      "pipelineKey": "opaque:double",
-      "textures": []
+      "hash": "e9d0269c6a7d32b15466bbd4bbd39b5fd1f9befe5dab3186788c7ce5b30c7a1d",
+      "id": "material:e9d0269c6a7d32b15466bbd4",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "f8c46474d4c935d5b317a236a85d19aa38744f079e60fac66b239c62d564fda2",
-      "id": "material:f8c46474d4c935d5b317a236",
-      "name": "Material_Armor",
+      "hash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "id": "material:f64dcbc7e999cc81995955b9",
+      "name": "Material_Thruster",
       "pipelineKey": "opaque:front",
       "textures": []
     }
@@ -1039,7 +1292,7 @@
       "mergeBoundary": "BASTION_LOD0_ROOT",
       "nodeName": "BASTION_LOD0_ROOT",
       "nodePath": [
-        4
+        0
       ],
       "parentId": null,
       "role": "immutable",
@@ -1087,57 +1340,8 @@
       "mergeBoundary": "COLLISION_HULL",
       "nodeName": "COLLISION_HULL",
       "nodePath": [
-        4,
+        0,
         0
-      ],
-      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.bastion-production-v1.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.bastion-production-v1.node.lod0-accent",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Accent",
-      "nodeName": "LOD0_Accent",
-      "nodePath": [
-        4,
-        1
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -1185,7 +1389,56 @@
       "mergeBoundary": "LOD0_Armor",
       "nodeName": "LOD0_Armor",
       "nodePath": [
-        4,
+        0,
+        1
+      ],
+      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.bastion-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
         2
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
@@ -1211,99 +1464,393 @@
       ]
     },
     {
-      "id": "sf.render.bastion-production-v1.node.lod0-canopy",
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-armor-port-hull",
       "localTransform": [
-        1,
+        1.5472773313522339,
         0,
         0,
         0,
         0,
-        1,
+        1.5472773313522339,
         0,
         0,
         0,
         0,
-        1,
+        1.5472773313522339,
         0,
-        0,
-        0,
-        0,
+        -4.050380349159241,
+        -0.07682925462722778,
+        -3.006177067756653,
         1
       ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD0_Canopy",
-      "nodeName": "LOD0_Canopy",
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_ARMOR_PORT_Hull",
+      "nodeName": "LOD0_HOOK_ARMOR_PORT_Hull",
       "nodePath": [
-        4,
+        0,
         3
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
-      "role": "immutable",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.bastion-production-v1.body",
       "worldTransform": [
-        1,
+        1.5472773313522339,
         0,
         0,
         0,
         0,
-        1,
+        1.5472773313522339,
         0,
         0,
         0,
         0,
-        1,
+        1.5472773313522339,
+        0,
+        -4.050380349159241,
+        -0.07682925462722778,
+        -3.006177067756653,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-armor-port-livery",
+      "localTransform": [
+        0.4900362342596054,
         0,
         0,
         0,
+        0,
+        0.4900362342596054,
+        0,
+        0,
+        0,
+        0,
+        0.4900362342596054,
+        0,
+        -4.04999053478241,
+        -0.0750051885843277,
+        -2.9981967210769653,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_ARMOR_PORT_Livery",
+      "nodeName": "LOD0_HOOK_ARMOR_PORT_Livery",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.bastion-production-v1.body",
+      "worldTransform": [
+        0.4900362342596054,
+        0,
+        0,
+        0,
+        0,
+        0.4900362342596054,
+        0,
+        0,
+        0,
+        0,
+        0.4900362342596054,
+        0,
+        -4.04999053478241,
+        -0.0750051885843277,
+        -2.9981967210769653,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-drive-core",
+      "localTransform": [
+        1.7963999509811401,
+        0,
+        0,
+        0,
+        0,
+        1.7963999509811401,
+        0,
+        0,
+        0,
+        0,
+        1.7963999509811401,
+        0,
+        -10.47249984741211,
+        0.022300025448203087,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_DRIVE_CORE",
+      "nodeName": "LOD0_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.bastion-production-v1.body",
+      "worldTransform": [
+        1.7963999509811401,
+        0,
+        0,
+        0,
+        0,
+        1.7963999509811401,
+        0,
+        0,
+        0,
+        0,
+        1.7963999509811401,
+        0,
+        -10.47249984741211,
+        0.022300025448203087,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.bastion-production-v1.node.lod0-ceramic",
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-nav-port",
       "localTransform": [
-        1,
+        2.731249988079071,
         0,
         0,
         0,
         0,
-        1,
+        2.731249988079071,
         0,
         0,
         0,
         0,
-        1,
+        2.731249988079071,
+        0,
+        -6.4362499713897705,
+        1.3557499796152115,
+        -0.7787500023841858,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+      "nodeName": "LOD0_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.bastion-production-v1.body",
+      "worldTransform": [
+        2.731249988079071,
         0,
         0,
         0,
+        0,
+        2.731249988079071,
+        0,
+        0,
+        0,
+        0,
+        2.731249988079071,
+        0,
+        -6.4362499713897705,
+        1.3557499796152115,
+        -0.7787500023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-nav-starboard",
+      "localTransform": [
+        0.09000015258789062,
+        0,
+        0,
+        0,
+        0,
+        0.09000015258789062,
+        0,
+        0,
+        0,
+        0,
+        0.09000015258789062,
+        0,
+        -8.399999618530273,
+        0.30000001192092896,
+        3.4200000762939453,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.bastion-production-v1.body",
+      "worldTransform": [
+        0.09000015258789062,
+        0,
+        0,
+        0,
+        0,
+        0.09000015258789062,
+        0,
+        0,
+        0,
+        0,
+        0.09000015258789062,
+        0,
+        -8.399999618530273,
+        0.30000001192092896,
+        3.4200000762939453,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-beacon-amber",
+      "localTransform": [
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        -3.200000047683716,
+        3.930000066757202,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Ceramic",
-      "nodeName": "LOD0_Ceramic",
+      "mergeBoundary": "LOD0_HOOK_SENSOR_MAST_Beacon_Amber",
+      "nodeName": "LOD0_HOOK_SENSOR_MAST_Beacon_Amber",
       "nodePath": [
-        4,
-        4
+        0,
+        8
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
-      "role": "immutable",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.bastion-production-v1.body",
       "worldTransform": [
-        1,
+        0.07000000029802322,
         0,
         0,
         0,
         0,
-        1,
+        0.07000000029802322,
         0,
         0,
         0,
         0,
-        1,
+        0.07000000029802322,
+        0,
+        -3.200000047683716,
+        3.930000066757202,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-mechanical",
+      "localTransform": [
+        0.6499999761581421,
         0,
         0,
         0,
+        0,
+        0.6499999761581421,
+        0,
+        0,
+        0,
+        0,
+        0.6499999761581421,
+        0,
+        -3.200000047683716,
+        3.3000000715255737,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SENSOR_MAST_Mechanical",
+      "nodeName": "LOD0_HOOK_SENSOR_MAST_Mechanical",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.bastion-production-v1.body",
+      "worldTransform": [
+        0.6499999761581421,
+        0,
+        0,
+        0,
+        0,
+        0.6499999761581421,
+        0,
+        0,
+        0,
+        0,
+        0.6499999761581421,
+        0,
+        -3.200000047683716,
+        3.3000000715255737,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-mechanicaldark",
+      "localTransform": [
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        -3.200000047683716,
+        3.200000047683716,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SENSOR_MAST_MechanicalDark",
+      "nodeName": "LOD0_HOOK_SENSOR_MAST_MechanicalDark",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.bastion-production-v1.body",
+      "worldTransform": [
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        -3.200000047683716,
+        3.200000047683716,
         0,
         1
       ]
@@ -1332,8 +1879,155 @@
       "mergeBoundary": "LOD0_Hull",
       "nodeName": "LOD0_Hull",
       "nodePath": [
-        4,
-        5
+        0,
+        11
+      ],
+      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.bastion-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-hull-upper",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_upper",
+      "nodeName": "LOD0_Hull_upper",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.bastion-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Warm",
+      "nodeName": "LOD0_Lights_Warm",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.bastion-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.bastion-production-v1.node.lod0-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
+      "nodePath": [
+        0,
+        14
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -1381,8 +2075,8 @@
       "mergeBoundary": "LOD0_Mechanical",
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
-        4,
-        6
+        0,
+        15
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -1407,7 +2101,7 @@
       ]
     },
     {
-      "id": "sf.render.bastion-production-v1.node.lod0-radiator",
+      "id": "sf.render.bastion-production-v1.node.lod0-mechanicaldark",
       "localTransform": [
         1,
         0,
@@ -1427,301 +2121,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Radiator",
-      "nodeName": "LOD0_Radiator",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
-        4,
-        7
-      ],
-      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.bastion-production-v1.body",
-      "worldTransform": [
-        1,
         0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.bastion-production-v1.node.lod0-remaster-material-brushedmetal-remasternickel",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
-      "nodeName": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
-      "nodePath": [
-        0
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.bastion-production-v1.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.bastion-production-v1.node.lod0-remaster-material-engineceramic-remasterglazed",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Remaster_Material_EngineCeramic_RemasterGlazed",
-      "nodeName": "LOD0_Remaster_Material_EngineCeramic_RemasterGlazed",
-      "nodePath": [
-        2
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.bastion-production-v1.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.bastion-production-v1.node.lod0-remaster-material-mechanical-remasterheatcopper",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
-      "nodeName": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
-      "nodePath": [
-        3
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.bastion-production-v1.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.bastion-production-v1.node.lod0-remaster-material-mechanical-remasteroxidized",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
-      "nodeName": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
-      "nodePath": [
-        1
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.bastion-production-v1.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.bastion-production-v1.node.lod0-thruster",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Thruster",
-      "nodeName": "LOD0_Thruster",
-      "nodePath": [
-        4,
-        8
-      ],
-      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.bastion-production-v1.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.bastion-production-v1.node.lod0-warning",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Warning",
-      "nodeName": "LOD0_Warning",
-      "nodePath": [
-        4,
-        9
+        16
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -1760,8 +2164,8 @@
         0,
         1,
         0,
-        0.800000011920929,
-        0.25,
+        1.3203874826431274,
+        1.439500093460083,
         0,
         1
       ],
@@ -1769,8 +2173,8 @@
       "mergeBoundary": "SOCKET_Camera_Focus",
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
-        4,
-        10
+        0,
+        17
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -1788,8 +2192,8 @@
         0,
         1,
         0,
-        0.800000011920929,
-        0.25,
+        1.3203874826431274,
+        1.439500093460083,
         0,
         1
       ]
@@ -1809,8 +2213,8 @@
         0,
         1,
         0,
-        -0.4000000059604645,
-        -1.2000000476837158,
+        -0.36794185638427734,
+        -1.0500000715255737,
         0,
         1
       ],
@@ -1818,8 +2222,8 @@
       "mergeBoundary": "SOCKET_Cargo_Ventral",
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
-        4,
-        11
+        0,
+        18
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -1837,8 +2241,8 @@
         0,
         1,
         0,
-        -0.4000000059604645,
-        -1.2000000476837158,
+        -0.36794185638427734,
+        -1.0500000715255737,
         0,
         1
       ]
@@ -1858,8 +2262,8 @@
         0,
         1,
         0,
-        -8.050000190734863,
-        0.07999999821186066,
+        -10.600000381469727,
+        -0.10000000149011612,
         0,
         1
       ],
@@ -1867,8 +2271,8 @@
       "mergeBoundary": "SOCKET_Engine_Main",
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
-        4,
-        12
+        0,
+        19
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -1886,8 +2290,8 @@
         0,
         1,
         0,
-        -8.050000190734863,
-        0.07999999821186066,
+        -10.600000381469727,
+        -0.10000000149011612,
         0,
         1
       ]
@@ -1907,8 +2311,8 @@
         0,
         1,
         0,
-        8.649999618530273,
-        -0.15000000596046448,
+        9.68411636352539,
+        1.2894999980926514,
         0,
         1
       ],
@@ -1916,8 +2320,8 @@
       "mergeBoundary": "SOCKET_Mining_Front",
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
-        4,
-        13
+        0,
+        20
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -1935,8 +2339,8 @@
         0,
         1,
         0,
-        8.649999618530273,
-        -0.15000000596046448,
+        9.68411636352539,
+        1.2894999980926514,
         0,
         1
       ]
@@ -1956,17 +2360,17 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        2.299999952316284,
+        -0.36794185638427734,
+        1.439500093460083,
+        -2.580000162124634,
         1
       ],
       "materialPipelineKey": "root",
       "mergeBoundary": "SOCKET_RCS_Port",
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
-        4,
-        14
+        0,
+        21
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -1984,9 +2388,9 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        2.299999952316284,
+        -0.36794185638427734,
+        1.439500093460083,
+        -2.580000162124634,
         1
       ]
     },
@@ -2005,17 +2409,17 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        -2.299999952316284,
+        -0.36794185638427734,
+        1.439500093460083,
+        2.580000162124634,
         1
       ],
       "materialPipelineKey": "root",
       "mergeBoundary": "SOCKET_RCS_Starboard",
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
-        4,
-        15
+        0,
+        22
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -2033,9 +2437,9 @@
         0,
         1,
         0,
-        -1.2000000476837158,
-        0.15000000596046448,
-        -2.299999952316284,
+        -0.36794185638427734,
+        1.439500093460083,
+        2.580000162124634,
         1
       ]
     },
@@ -2054,8 +2458,8 @@
         0,
         1,
         0,
-        -4.983199999999999,
-        0.490127,
+        -5.010847568511963,
+        1.9895000457763672,
         0,
         1
       ],
@@ -2063,9 +2467,10 @@
       "mergeBoundary": "SOCKET_Tether_Massline",
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
-        5
+        0,
+        23
       ],
-      "parentId": null,
+      "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.bastion-production-v1.body",
       "worldTransform": [
@@ -2081,8 +2486,8 @@
         0,
         1,
         0,
-        -4.983199999999999,
-        0.490127,
+        -5.010847568511963,
+        1.9895000457763672,
         0,
         1
       ]
@@ -2102,8 +2507,8 @@
         0,
         1,
         0,
-        -8.449999809265137,
-        0.07999999821186066,
+        -11.020000457763672,
+        -0.10000000149011612,
         0,
         1
       ],
@@ -2111,8 +2516,8 @@
       "mergeBoundary": "SOCKET_Trail_Main",
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
-        4,
-        16
+        0,
+        24
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -2130,8 +2535,8 @@
         0,
         1,
         0,
-        -8.449999809265137,
-        0.07999999821186066,
+        -11.020000457763672,
+        -0.10000000149011612,
         0,
         1
       ]
@@ -2151,17 +2556,17 @@
         0,
         1,
         0,
-        -8.25,
-        0.07999999821186066,
-        1.4700000286102295,
+        -11.020000457763672,
+        -0.10000000149011612,
+        -1.0750000476837158,
         1
       ],
       "materialPipelineKey": "root",
       "mergeBoundary": "SOCKET_Trail_Port",
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
-        4,
-        17
+        0,
+        25
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -2179,9 +2584,9 @@
         0,
         1,
         0,
-        -8.25,
-        0.07999999821186066,
-        1.4700000286102295,
+        -11.020000457763672,
+        -0.10000000149011612,
+        -1.0750000476837158,
         1
       ]
     },
@@ -2200,17 +2605,17 @@
         0,
         1,
         0,
-        -8.25,
-        0.07999999821186066,
-        -1.4700000286102295,
+        -11.020000457763672,
+        -0.10000000149011612,
+        1.0750000476837158,
         1
       ],
       "materialPipelineKey": "root",
       "mergeBoundary": "SOCKET_Trail_Starboard",
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
-        4,
-        18
+        0,
+        26
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -2228,9 +2633,9 @@
         0,
         1,
         0,
-        -8.25,
-        0.07999999821186066,
-        -1.4700000286102295,
+        -11.020000457763672,
+        -0.10000000149011612,
+        1.0750000476837158,
         1
       ]
     },
@@ -2249,8 +2654,8 @@
         0,
         1,
         0,
-        0.6000000238418579,
-        1.600000023841858,
+        -0.36794185638427734,
+        3.92900013923645,
         0,
         1
       ],
@@ -2258,8 +2663,8 @@
       "mergeBoundary": "SOCKET_Utility_Dorsal",
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
-        4,
-        19
+        0,
+        27
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -2277,8 +2682,8 @@
         0,
         1,
         0,
-        0.6000000238418579,
-        1.600000023841858,
+        -0.36794185638427734,
+        3.92900013923645,
         0,
         1
       ]
@@ -2298,8 +2703,8 @@
         0,
         1,
         0,
-        8.050000190734863,
-        0.25,
+        9.784116744995117,
+        1.439500093460083,
         0,
         1
       ],
@@ -2307,8 +2712,8 @@
       "mergeBoundary": "SOCKET_Weapon_Front",
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
-        4,
-        20
+        0,
+        28
       ],
       "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
       "role": "immutable",
@@ -2326,8 +2731,8 @@
         0,
         1,
         0,
-        8.050000190734863,
-        0.25,
+        9.784116744995117,
+        1.439500093460083,
         0,
         1
       ]
@@ -2335,49 +2740,49 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "a81108fc31b3834527a083a6357896b5a81ed38a5b6c86ca8c094309f495ff5f"
+      "sha256": "ddaf532eb58052d10aa30b3515828a82d2826bcece251b40c3fefc37f8539fe6"
     },
     "sourceGlb": {
-      "bytes": 495208,
-      "sha256": "916672c86e0b4cc703911130b6fa5a3c71f66c7db8db1aedc1d147799cf650dd",
+      "bytes": 711804,
+      "sha256": "446fca2e2b52bae1d7631291c210ac3e4903f425717caf1f22b5cb0cbbea1c42",
       "uri": "bastion_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 189651,
-      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
+      "bytes": 199726,
+      "sha256": "7637b7f5ceea5ba4b8791c17a98e7bc67a8125fdeaafe3714950e8679ad2ba26",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1254892,
-    "sha256": "9af43816d79687bfb9699b1659438a5b855992d45602069b0444226092d5f613",
+    "bytes": 1191480,
+    "sha256": "d4f4c80b9dd94a19d07bafa108b4d07df67383536537d645a337ad2db48780f1",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.5659999847412109,
-        0.49012672901153564,
-        0
+        -0.36795854568481445,
+        1.4393232766599455,
+        -0.000034332275390625
       ],
       "max": [
-        9.25,
-        2.179966926574707,
-        2.519807815551758
+        10.18411636352539,
+        3.979002416891058,
+        4.300075531005859
       ],
       "min": [
-        -10.381999969482422,
-        -1.1997134685516357,
-        -2.519807815551758
+        -10.92003345489502,
+        -1.100355863571167,
+        -4.300144195556641
       ],
       "size": [
-        19.631999969482422,
-        3.3796803951263428,
-        5.039615631103516
+        21.10414981842041,
+        5.079358280462225,
+        8.6002197265625
       ]
     },
     "hidden": [
-      6
+      2
     ],
     "legacyPart": false,
     "markers": [
@@ -2395,20 +2800,34 @@
           0,
           1,
           0,
-          0.800000011920929,
-          0.25,
+          1.3203874826431274,
+          1.439500093460083,
           0,
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 16,
+        "planIndex": 19,
         "tags": {
           "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
           "socketRole": "camera"
         },
         "userData": {
           "name": "SOCKET_Camera_Focus",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Camera_Focus",
             "recordIds": [
@@ -2433,20 +2852,34 @@
           0,
           1,
           0,
-          -0.4000000059604645,
-          -1.2000000476837158,
+          -0.36794185638427734,
+          -1.0500000715255737,
           0,
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 17,
+        "planIndex": 20,
         "tags": {
           "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
           "socketRole": "cargo"
         },
         "userData": {
           "name": "SOCKET_Cargo_Ventral",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Cargo_Ventral",
             "recordIds": [
@@ -2471,20 +2904,34 @@
           0,
           1,
           0,
-          -8.050000190734863,
-          0.07999999821186066,
+          -10.600000381469727,
+          -0.10000000149011612,
           0,
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 18,
+        "planIndex": 21,
         "tags": {
           "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
           "socketRole": "engine"
         },
         "userData": {
           "name": "SOCKET_Engine_Main",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Engine_Main",
             "recordIds": [
@@ -2509,20 +2956,34 @@
           0,
           1,
           0,
-          8.649999618530273,
-          -0.15000000596046448,
+          9.68411636352539,
+          1.2894999980926514,
           0,
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 19,
+        "planIndex": 22,
         "tags": {
           "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
           "socketRole": "mining"
         },
         "userData": {
           "name": "SOCKET_Mining_Front",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Mining_Front",
             "recordIds": [
@@ -2547,20 +3008,34 @@
           0,
           1,
           0,
-          -1.2000000476837158,
-          0.15000000596046448,
-          2.299999952316284,
+          -0.36794185638427734,
+          1.439500093460083,
+          -2.580000162124634,
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 20,
+        "planIndex": 23,
         "tags": {
           "socket": true,
-          "socketRole": "attachment"
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
         },
         "userData": {
           "name": "SOCKET_RCS_Port",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_RCS_Port",
             "recordIds": [
@@ -2585,20 +3060,34 @@
           0,
           1,
           0,
-          -1.2000000476837158,
-          0.15000000596046448,
-          -2.299999952316284,
+          -0.36794185638427734,
+          1.439500093460083,
+          2.580000162124634,
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 21,
+        "planIndex": 24,
         "tags": {
           "socket": true,
-          "socketRole": "attachment"
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
         },
         "userData": {
           "name": "SOCKET_RCS_Starboard",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_RCS_Starboard",
             "recordIds": [
@@ -2623,20 +3112,86 @@
           0,
           1,
           0,
-          -8.449999809265137,
-          0.07999999821186066,
+          -5.010847568511963,
+          1.9895000457763672,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.bastion-production-v1.anchor.socket-tether-massline",
+              "sf.render.bastion-production-v1.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -11.020000457763672,
+          -0.10000000149011612,
           0,
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 22,
+        "planIndex": 26,
         "tags": {
           "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
           "socketRole": "vfx"
         },
         "userData": {
           "name": "SOCKET_Trail_Main",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Main",
             "recordIds": [
@@ -2661,20 +3216,34 @@
           0,
           1,
           0,
-          -8.25,
-          0.07999999821186066,
-          1.4700000286102295,
+          -11.020000457763672,
+          -0.10000000149011612,
+          -1.0750000476837158,
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 23,
+        "planIndex": 27,
         "tags": {
           "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
           "socketRole": "vfx"
         },
         "userData": {
           "name": "SOCKET_Trail_Port",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Port",
             "recordIds": [
@@ -2699,20 +3268,34 @@
           0,
           1,
           0,
-          -8.25,
-          0.07999999821186066,
-          -1.4700000286102295,
+          -11.020000457763672,
+          -0.10000000149011612,
+          1.0750000476837158,
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 24,
+        "planIndex": 28,
         "tags": {
           "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
           "socketRole": "vfx"
         },
         "userData": {
           "name": "SOCKET_Trail_Starboard",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Starboard",
             "recordIds": [
@@ -2737,20 +3320,34 @@
           0,
           1,
           0,
-          0.6000000238418579,
-          1.600000023841858,
+          -0.36794185638427734,
+          3.92900013923645,
           0,
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 25,
+        "planIndex": 29,
         "tags": {
           "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
           "socketRole": "utility"
         },
         "userData": {
           "name": "SOCKET_Utility_Dorsal",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Utility_Dorsal",
             "recordIds": [
@@ -2775,20 +3372,34 @@
           0,
           1,
           0,
-          8.050000190734863,
-          0.25,
+          9.784116744995117,
+          1.439500093460083,
           0,
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 26,
+        "planIndex": 30,
         "tags": {
           "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
           "socketRole": "weapon"
         },
         "userData": {
           "name": "SOCKET_Weapon_Front",
           "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Weapon_Front",
             "recordIds": [
@@ -2798,100 +3409,60 @@
             "schema": "spaceface.renderPackageSemantic.v1"
           }
         }
-      },
-      {
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          -4.983199999999999,
-          0.490127,
-          0,
-          1
-        ],
-        "name": "SOCKET_Tether_Massline",
-        "planIndex": 27,
-        "tags": {
-          "socket": true,
-          "socketRole": "attachment"
-        },
-        "userData": {
-          "name": "SOCKET_Tether_Massline",
-          "spacefaceRenderPackageSemantic": {
-            "rawNodeName": "SOCKET_Tether_Massline",
-            "recordIds": [
-              "sf.render.bastion-production-v1.anchor.socket-tether-massline",
-              "sf.render.bastion-production-v1.node.socket-tether-massline"
-            ],
-            "schema": "spaceface.renderPackageSemantic.v1"
-          }
-        }
       }
     ],
     "materialProfileRoles": {
-      "accent": 1,
-      "ceramic": 2,
+      "accent": 2,
       "drive": 1,
-      "glass": 1,
-      "hull": 2,
+      "hull": 4,
       "mechanical": 4,
-      "radiator": 1,
-      "warning": 1
+      "signal": 5
     },
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 2,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 3,
-        "role": "ceramic"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 7,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
         "role": "accent"
       },
       {
         "allowTextures": true,
+        "planIndex": 7,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "glass"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "ceramic"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2901,20 +3472,35 @@
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "radiator"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "drive"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "warning"
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 28,
+    "nodeCount": 31,
     "primitives": [
       {
         "canopy": false,
@@ -2936,61 +3522,7 @@
           0,
           1
         ],
-        "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
-        "planIndex": 1,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Remaster_Material_EngineCeramic_RemasterGlazed",
+        "name": "LOD0_Armor",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -3017,7 +3549,7 @@
           0,
           1
         ],
-        "name": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+        "name": "LOD0_Beacon_Amber",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -3027,108 +3559,242 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5472773313522339,
           0,
           0,
           0,
           0,
-          1,
+          1.5472773313522339,
           0,
           0,
           0,
           0,
-          1,
+          1.5472773313522339,
+          0,
+          -4.050380349159241,
+          -0.07682925462722778,
+          -3.006177067756653,
+          1
+        ],
+        "name": "LOD0_HOOK_ARMOR_PORT_Hull",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "damageRole": "armor",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4900362342596054,
           0,
           0,
           0,
+          0,
+          0.4900362342596054,
+          0,
+          0,
+          0,
+          0,
+          0.4900362342596054,
+          0,
+          -4.04999053478241,
+          -0.0750051885843277,
+          -2.9981967210769653,
+          1
+        ],
+        "name": "LOD0_HOOK_ARMOR_PORT_Livery",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "damageRole": "armor",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.7963999509811401,
+          0,
+          0,
+          0,
+          0,
+          1.7963999509811401,
+          0,
+          0,
+          0,
+          0,
+          1.7963999509811401,
+          0,
+          -10.47249984741211,
+          0.022300025448203087,
           0,
           1
         ],
-        "name": "LOD0_Accent",
+        "name": "LOD0_HOOK_DRIVE_CORE",
         "planIndex": 7,
         "tags": {
           "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.7963999509811401,
+            0,
+            0,
+            0,
+            0,
+            1.7963999509811401,
+            0,
+            0,
+            0,
+            0,
+            1.7963999509811401,
+            0,
+            -10.47249984741211,
+            0.022300025448203087,
+            0,
+            1
+          ],
           "lod": "lod0"
         }
       },
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.731249988079071,
           0,
           0,
           0,
           0,
-          1,
+          2.731249988079071,
           0,
           0,
           0,
           0,
-          1,
+          2.731249988079071,
           0,
-          0,
-          0,
-          0,
+          -6.4362499713897705,
+          1.3557499796152115,
+          -0.7787500023841858,
           1
         ],
-        "name": "LOD0_Armor",
+        "name": "LOD0_HOOK_NAV_PORT",
         "planIndex": 8,
         "tags": {
           "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": true,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Canopy",
-        "planIndex": 9,
-        "tags": {
-          "canopy": true,
+          "damageRole": "navLight",
           "lod": "lod0"
         }
       },
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.09000015258789062,
           0,
           0,
           0,
           0,
-          1,
+          0.09000015258789062,
           0,
           0,
           0,
           0,
-          1,
+          0.09000015258789062,
+          0,
+          -8.399999618530273,
+          0.30000001192092896,
+          3.4200000762939453,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07000000029802322,
           0,
           0,
           0,
+          0,
+          0.07000000029802322,
+          0,
+          0,
+          0,
+          0,
+          0.07000000029802322,
+          0,
+          -3.200000047683716,
+          3.930000066757202,
           0,
           1
         ],
-        "name": "LOD0_Ceramic",
+        "name": "LOD0_HOOK_SENSOR_MAST_Beacon_Amber",
         "planIndex": 10,
         "tags": {
           "canopy": false,
+          "damageRole": "sensor",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6499999761581421,
+          0,
+          0,
+          0,
+          0,
+          0.6499999761581421,
+          0,
+          0,
+          0,
+          0,
+          0.6499999761581421,
+          0,
+          -3.200000047683716,
+          3.3000000715255737,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_SENSOR_MAST_Mechanical",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.44999998807907104,
+          0,
+          0,
+          0,
+          0,
+          0.44999998807907104,
+          0,
+          0,
+          0,
+          0,
+          0.44999998807907104,
+          0,
+          -3.200000047683716,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_SENSOR_MAST_MechanicalDark",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
           "lod": "lod0"
         }
       },
@@ -3153,7 +3819,88 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 11,
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_upper",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Lights_Warm",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Livery",
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3180,7 +3927,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 12,
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3206,62 +3953,8 @@
           0,
           1
         ],
-        "name": "LOD0_Radiator",
-        "planIndex": 13,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Thruster",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Warning",
-        "planIndex": 15,
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3272,39 +3965,42 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/bastion_production_v1.glb"
   },
-  "runtimeHash": "a62c328ed9eec4b45ca4b91f220348218d45722a7535d7d900fe2af17790d19b",
+  "runtimeHash": "58336e87a113faf915643f9740e52eb148eaefe86b55fb98d8ae342d8538bea0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          9.25,
-          2.179966926574707,
-          2.519807815551758
+          10.18411636352539,
+          3.979002416891058,
+          4.300075531005859
         ],
         "min": [
-          -10.381999969482422,
-          -1.1997134685516357,
-          -2.519807815551758
+          -10.92003345489502,
+          -1.100355863571167,
+          -4.300144195556641
         ]
       },
       "id": "sf.render.bastion-production-v1.body",
       "nodeIds": [
         "sf.render.bastion-production-v1.node.bastion-lod0-root",
         "sf.render.bastion-production-v1.node.collision-hull",
-        "sf.render.bastion-production-v1.node.lod0-accent",
         "sf.render.bastion-production-v1.node.lod0-armor",
-        "sf.render.bastion-production-v1.node.lod0-canopy",
-        "sf.render.bastion-production-v1.node.lod0-ceramic",
+        "sf.render.bastion-production-v1.node.lod0-beacon-amber",
+        "sf.render.bastion-production-v1.node.lod0-hook-armor-port-hull",
+        "sf.render.bastion-production-v1.node.lod0-hook-armor-port-livery",
+        "sf.render.bastion-production-v1.node.lod0-hook-drive-core",
+        "sf.render.bastion-production-v1.node.lod0-hook-nav-port",
+        "sf.render.bastion-production-v1.node.lod0-hook-nav-starboard",
+        "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-beacon-amber",
+        "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-mechanical",
+        "sf.render.bastion-production-v1.node.lod0-hook-sensor-mast-mechanicaldark",
         "sf.render.bastion-production-v1.node.lod0-hull",
+        "sf.render.bastion-production-v1.node.lod0-hull-upper",
+        "sf.render.bastion-production-v1.node.lod0-lights-warm",
+        "sf.render.bastion-production-v1.node.lod0-livery",
         "sf.render.bastion-production-v1.node.lod0-mechanical",
-        "sf.render.bastion-production-v1.node.lod0-radiator",
-        "sf.render.bastion-production-v1.node.lod0-remaster-material-brushedmetal-remasternickel",
-        "sf.render.bastion-production-v1.node.lod0-remaster-material-engineceramic-remasterglazed",
-        "sf.render.bastion-production-v1.node.lod0-remaster-material-mechanical-remasterheatcopper",
-        "sf.render.bastion-production-v1.node.lod0-remaster-material-mechanical-remasteroxidized",
-        "sf.render.bastion-production-v1.node.lod0-thruster",
-        "sf.render.bastion-production-v1.node.lod0-warning",
+        "sf.render.bastion-production-v1.node.lod0-mechanicaldark",
         "sf.render.bastion-production-v1.node.socket-camera-focus",
         "sf.render.bastion-production-v1.node.socket-cargo-ventral",
         "sf.render.bastion-production-v1.node.socket-engine-main",

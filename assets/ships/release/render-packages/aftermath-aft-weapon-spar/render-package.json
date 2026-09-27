@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ba021b873035987c44e610130137629c1a9634b8d86d5585779ec678bc932f1d",
+  "contentHash": "3014a79ed7921afabbcceb78ef21a7e64ab7b73fac2b7350d701b586b23e09ac",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -648,8 +648,8 @@
       "uri": "place_aftermath_aft_weapon_spar.glb"
     },
     "sourceManifest": {
-      "bytes": 189651,
-      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
+      "bytes": 199726,
+      "sha256": "7637b7f5ceea5ba4b8791c17a98e7bc67a8125fdeaafe3714950e8679ad2ba26",
       "uri": "pilots.json"
     }
   },
@@ -899,7 +899,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_weapon_spar.glb"
   },
-  "runtimeHash": "37d3310c5bbe142c518e9eb4fc37fb1b10353cb39bc4dc8e4eca1cd5eac678cd",
+  "runtimeHash": "847bb21e72c47b1eb31a9444d1931f748d8f6d1e8e740379da86e766fd61ff7d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

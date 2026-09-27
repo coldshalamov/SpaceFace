@@ -1,70 +1,56 @@
-# SpaceFace Visual Asset Production Standard
+# SpaceFace graphics — front door
 
-This directory is the front door for every player-facing graphics task. It routes each visual class
-to one compatible quality contract so an agent cannot bypass professional craft by entering through
-a dated sprint prompt, an old automation script, or a runtime folder.
+Rewritten 2026-09-27 by the graphics owner after the owner's review: the fleet read as "simply ok",
+inconsistent, leather-and-scraped-tin surfaces, a box stuck on Hitch's nose. The old front door
+routed every model through a stack of gates (G0–G7 records, five-cycle adversarial reviews,
+hash-bound acceptance, per-asset material-truth preflights). It produced paperwork and a fleet
+where every hull came from a different pipeline. The replacement is short on purpose.
 
-Current rendering direction and asset tutorial: [Illustrated industrial space](ILLUSTRATED_GRAPHICS_STANDARD.md).
-Use its shared lighting treatment while preserving each model's construction, textures and identity.
+Graphics program (workflows, rules, backlog): [`design/program/GRAPHICS_PROGRAM.md`](../../design/program/GRAPHICS_PROGRAM.md); skill: `.claude/skills/forge-graphics/SKILL.md`.
 
-| Visual work | Mandatory route |
+## The rule
+
+**Look at the real picture, fix what you see, keep one system.** The picture is the game's own
+renderer, lights and post at the gameplay camera — not a Blender studio render, not a receipt.
+
+## Routes
+
+| Work | Go to |
 |---|---|
-| Blender/glTF/GLB ship, station, place, prop, or VFX-support geometry | `VISUAL_ASSET_PRODUCTION_STANDARD.md`, then `.grok/skills/spaceface-blender-material-truth/SKILL.md` and `ADVANCED_MODEL_TECHNIQUE_CONTRACT.md` for every form or surfacing change. Flyable remasters use `FLYABLE_SHIP_WORKFLOW.md` (one ship, chase camera, reference handoff, no cabin kits). When the activated packet cites `MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md` (including PQ-050), its chase-camera cycles, still reviews, and cleanup are mandatory. Tier C/D may group a repeated manufactured family |
-| Portrait/contact art | `assets/portraits/AGENTS.md` and its canonical character/capture direction |
-| Concept or generated construction/material reference | `assets/concept/AGENTS.md`; component handoff contract in `AGENT_PROMPTS.md` § E |
-| Cinematic, key art, runtime VFX, compositor, or presentation imagery | `VFX_TECHNIQUE_STANDARD.md` first (bans the blurry-square stand-in; distant background stars are the only exception), then `VFX_LIFECYCLE_STANDARD.md` for any deployed effect's birth/sustain/retirement, then `design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md`, then the owning `src/render/AGENTS.md`, `src/ui/AGENTS.md`, or asset registry. Live cheap-card instances: `SOFT_CARD_INVENTORY.json` |
-| Live-route mixed-game NPCs, floating hull parts, or needle reverse jets | `build_map.md` §13D → `PQ-193.01` / `.02`. Law: `design/program/VISUAL_WORLD_CLEANUP.md`. Taste-led; Hitch frozen; do not execute a pixel recipe |
-| Repository-wide inventory/prioritization | Live stocktake: `design/program/MODEL_STOCKTAKE.md` (operator `MODEL_STOCKTAKE_GOAL.txt`). Dated companion: `design/graphics-sprints/VISUAL_ASSET_CATALOG.md` plus live manifests/runtime maps |
+| Any ship body (player, NPC, traffic, faction variant) | [`tools/blender/forge/FORGE.md`](../../tools/blender/forge/FORGE.md) — the one kit, look bar and publish command. No ship is built any other way. |
+| Stations, places, props, wrecks, rocks | Until Forge covers them: keep each asset's existing builder, but meet the FORGE.md look bar (plan silhouette, three values, manufactured not noisy surfaces, nothing floating) and review with `scripts/fleet-look.mjs --files=places/<file>.glb`. |
+| Runtime look (lighting, post, material response) | `src/render/` — `authoredMaterialProfiles.js`, `illustratedSurface.js`, `bloom.js`, `src/data/sectorVisualProfiles.js`. Change the shared layer when the defect is shared. |
+| VFX (plumes, impacts, beams, trails) | [`VFX_TECHNIQUE_STANDARD.md`](VFX_TECHNIQUE_STANDARD.md), then [`VFX_LIFECYCLE_STANDARD.md`](VFX_LIFECYCLE_STANDARD.md). No soft square/disc stands in for an object; distant stars are the only exception. |
+| Portraits / concept art | `assets/portraits/AGENTS.md`, `assets/concept/AGENTS.md` |
 
-Across every class:
+## Seeing the picture
 
-- begin with the fictional identity, player-facing role, supported camera/crop, and exact runtime
-  owner rather than a software preset or generic genre treatment. Flyable ships are judged on the
-  live 60° chase camera (`tools/blender/spaceface_chase_camera.py`), not a cockpit or studio three-quarter;
-- preserve provenance and editable source, and distinguish reference, candidate, evidence, release,
-  and live runtime assets;
-- judge the exact output in its real context and size; technical validity never grants visual
-  acceptance;
-- if a selected image-generation method is unavailable to the assigned worker, use the bounded
-  Codex terminal handoff in `AGENT_PROMPTS.md` § E or record
-  `blocked:image-generation-capability`; do not silently lower the brief.
+```
+node scripts/fleet-look.mjs --file=<release path or any .glb> --views=inspect,close,top   # one model, live pipeline
+node scripts/fleet-look.mjs --fleet --views=close                                         # every live hull, contact sheet
+node scripts/flight-look.mjs [--ship=ship_<id>]                                           # real New Game flight
+```
 
-For substantive Blender asset work, read the production standard first, then load only the
-task-relevant routed material:
+Open the PNGs yourself. `close` is the chase camera at close zoom (the ship ≈ 450 px); `chase` is
+the default 144 WU framing. A still is a working tool, not a deliverable: delete stale ones.
 
-1. `VISUAL_ASSET_PRODUCTION_STANDARD.md` - always required: states, craft outcomes, G0-G7 gates,
-   budgets, and execution.
-2. `.grok/skills/spaceface-blender-material-truth/SKILL.md` - required for every Blender/GLB form or
-   surfacing change, including new assets and remasters; it contains the proportional
-   fiction/material preflight and anti-toy workflow.
-3. `SPACEFACE_MIGRATION.md` - only for repository-wide audit or migration work.
-4. `AGENT_PROMPTS.md` - only when dispatching one-asset, family, image-generation, or independent
-   review work.
-5. `TEMPLATES.md` - only when creating the corresponding brief, performance, review, or acceptance
-   record.
+## What "done" means
 
-The central rule:
+A model is done when, at the gameplay camera, nothing obvious is wrong (floating parts, clipped or
+z-fighting details, blown or muddy values, noisy surfaces, an unreadable silhouette), it is
+unmistakably its job, and it holds its own next to the best hulls in the fleet. Technical validity
+(the loader contract, manifests, packages, tests) is necessary and is automated by the publish
+tools; it never substitutes for looking.
 
-> A valid GLB is not accepted art. An asset is finished only when its form, construction, UV/bake,
-> material response, LOD/cost, exact runtime presentation, and required independent review pass.
+## Performance
 
-Canonical production states:
+Optimise cost without removing authored visuals: shared textures, one draw per material, honest
+LODs, culling. Forge hulls use six shared texture images for the whole fleet.
 
-`blockout` -> `design_candidate` -> `production_model` -> `bake_candidate` ->
-`surfaced_candidate` -> `integration_candidate` -> `accepted`.
+## Older documents
 
-`blocked` and `deprecated` are explicit non-acceptance states. `done`, `finished`,
-`production-ready`, and `shippable` mean `accepted` only.
-
-There is no universal triangle ceiling, texture size, material count, bevel recipe, or percentage of
-techniques to use. Budget the complete measured runtime cost at supported camera sizes and
-representative scene density. Select techniques from visible defects, not fashion.
-
-Focused Blender skills are technique routers, not alternate quality bars. They must cite this
-directory, preserve the same production states and G0-G7 evidence semantics, and stop at
-`blocked`/candidate state when exact runtime or independent proof is unavailable.
-
-Legacy skill identifiers are descriptive routes, not literal pass names:
-`spaceface-blender-hardsurface` owns material/surfacing defects, while
-`spaceface-blender-surface-pass` owns life, state, and integration defects. Use their declared
-descriptions and scope; do not infer the task from the folder name alone.
+`VISUAL_ASSET_PRODUCTION_STANDARD.md`, `ADVANCED_MODEL_TECHNIQUE_CONTRACT.md`,
+`MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md`, `FLYABLE_SHIP_WORKFLOW.md`, `AGENT_PROMPTS.md`,
+`TEMPLATES.md` and the `.grok` material-truth skill are **reference only**. They are no longer gates
+and never apply to Forge ship bodies. Useful craft ideas in them (chamfer every hard edge, recesses
+read darker than casings, detail the camera cannot see does not count) are already in FORGE.md.

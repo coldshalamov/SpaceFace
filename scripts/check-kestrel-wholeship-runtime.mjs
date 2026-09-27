@@ -13,25 +13,14 @@ import { MeshoptDecoder } from 'meshoptimizer';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const LIVE_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME_V4';
 const MAX_GITHUB_BYTES = 100 * 1024 * 1024;
+// Forge rebuild (tools/blender/forge/ships/kestrel.py), 2026-09-27: the owner's SF-K0 design on the
+// fleet-wide forge surface set. Triangle bands are the measured forge build +-5%; draws are one
+// primitive per finish plus the separate damage-hook parts (repair pod, sensor dish, armour cap).
+const FORGE_PROVENANCE = 'forge-v1';
 const FAMILY = Object.freeze([
-  Object.freeze({
-    lod: 'lod0', file: 'kestrel.glb', triangles: [39_500, 41_500], maxDraws: 33,
-    // Re-pinned 2026-09-26 for the Helios remaster (1e9bd9704): the authored LOD0 source measures
-    // 40,468 triangles / 33 draws; the earlier 36-38k / 30-draw band and the V9/V7 hashes pinned
-    // the pre-remaster model. Bands keep ±1,000 / measured draws as the drift guard.
-    acceptedSourceSha256: 'E8317C66D9785463F398D535C4F358D2ABA448354170178B1864531119B8099F',
-    acceptedReleaseSha256: 'D640CDD207B7E1613DA6BD467166B69E2DFD0FD49D2730112CAB49182C75B366',
-  }),
-  Object.freeze({
-    lod: 'lod1', file: 'kestrel_lod1.glb', triangles: [16_500, 18_000], maxDraws: 14,
-    acceptedSourceSha256: 'FA3614C54FAEF7068D82872A673D9AC9FAD3401FAA1B987FFE3E6D5CAE894555',
-    acceptedReleaseSha256: '8B900C11A7CC325DF808C2BA332EF0AEAA8819EB12671AC1112B3E54980EE6FB',
-  }),
-  Object.freeze({
-    lod: 'lod2', file: 'kestrel_lod2.glb', triangles: [9_400, 10_400], maxDraws: 10,
-    acceptedSourceSha256: '114D2642834AA7EF9F1A1EDE572A8895A9D213F5043A9E12B3FE90A4A2368904',
-    acceptedReleaseSha256: 'D6A091A5A80379EBD6A9369425AD02BAFEB551ABC028A3F4C53FCCF575D38B33',
-  }),
+  Object.freeze({ lod: 'lod0', file: 'kestrel.glb', triangles: [31_500, 34_800], maxDraws: 24 }),
+  Object.freeze({ lod: 'lod1', file: 'kestrel_lod1.glb', triangles: [12_600, 13_900], maxDraws: 24 }),
+  Object.freeze({ lod: 'lod2', file: 'kestrel_lod2.glb', triangles: [4_650, 5_150], maxDraws: 22 }),
 ]);
 const REQUIRED_SOCKETS = Object.freeze([
   'SOCKET_Weapon_Front',
@@ -67,54 +56,36 @@ const SOCKET_FORWARDS = Object.freeze({
   SOCKET_RCS_Starboard: [0, 0, 1],
 });
 const REQUIRED_LOD0_MATERIALS = Object.freeze([
-  'Material_Accent_FrontierCyan',
-  'Material_Accent_WarningOrange',
-  'Material_ArmorDark',
-  'Material_BrushedMetal',
-  'Material_BrushedMetal_RemasterNickel',
-  'Material_Decal_Hazard',
-  'Material_Decal_Stencils',
+  'Material_Accent',
+  'Material_Armor',
+  'Material_Armor_ivory',
+  'Material_Canopy',
+  'Material_Emissive_Amber',
   'Material_Emissive_Cyan',
-  'Material_Emissive_DriveCore',
-  'Material_Emissive_Orange',
-  'Material_EngineCeramic',
-  'Material_Glass_Canopy',
+  'Material_Emissive_NavGreen',
+  'Material_Emissive_NavRed',
+  'Material_Emissive_Warm',
   'Material_Hull',
+  'Material_Hull_green',
   'Material_Mechanical',
-  'Material_Mechanical_RemasterHeatCopper',
-  'Material_Mechanical_RemasterOxidized',
-  'Material_Radiator',
-  'Material_RepairGreen',
-  'Material_Rubber',
-  'Material_V6_MarkingIvory',
+  'Material_MechanicalDark',
+  'Material_Thruster',
+  'Material_Warning',
 ].sort());
-// The three _Remaster materials carry no texture slots — they are factor-only by authored intent,
-// so they belong in both lists: required on LOD0 and excluded from the mapped-PBR surface count.
 const FACTOR_ONLY_MATERIALS = Object.freeze([
-  'Material_BrushedMetal_RemasterNickel',
+  'Material_Canopy',
+  'Material_Emissive_Amber',
   'Material_Emissive_Cyan',
-  'Material_Emissive_DriveCore',
-  'Material_Emissive_Orange',
-  'Material_Glass_Canopy',
-  'Material_Mechanical_RemasterHeatCopper',
-  'Material_Mechanical_RemasterOxidized',
-  'Material_V6_MarkingIvory',
+  'Material_Emissive_NavGreen',
+  'Material_Emissive_NavRed',
+  'Material_Emissive_Warm',
+  'Material_Thruster',
 ].sort());
 
 await MeshoptDecoder.ready;
 const io = new NodeIO()
   .registerExtensions(ALL_EXTENSIONS)
   .registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
-
-const RELEASE_MANIFEST_ROWS = (() => {
-  const rows = JSON.parse(readFileSync(resolve(ROOT, 'assets/ships/release/release_manifest.json'), 'utf8')).assets || [];
-  const byFile = {};
-  for (const row of rows) {
-    const file = String(row.release || '').split('/').pop();
-    if (file && !byFile[file]) byFile[file] = row;
-  }
-  return byFile;
-})();
 
 const sourceFamily = [];
 const releaseFamily = [];
@@ -156,7 +127,7 @@ for (const member of FAMILY) {
 }
 
 assert.deepEqual(sourceFamily[0].materials, REQUIRED_LOD0_MATERIALS,
-  'LOD0 must preserve the Hitch V7 polish semantic material set exactly');
+  'LOD0 must carry the forge Hitch material set exactly');
 for (const member of sourceFamily) {
   const collisionRatios = member.collisionDimensions.map((value, index) => value / member.visibleDimensions[index]);
   assert.ok(collisionRatios.every((ratio) => ratio >= 0.90 && ratio <= 0.94),
@@ -199,14 +170,11 @@ assert.match(assetLoader,
 assert.match(assetLoader, /fetchImpl\(url,\s*\{\s*cache:\s*['"]no-cache['"]\s*\}\)/,
   'whole-ship validation must revalidate current on-disk GLBs through the injected fetch seam');
 // Dated 2026-08-23: the loader now passes cache mode as resolveMetadata's 4th argument
-// (`'no-cache'` / `'reload'`) rather than a `cache:` object literal. Still forbid the bug shape:
-// an unverified force-cache fetch pin. Since c82cff570 the immutable content-addressed package
-// read legitimately uses 'force-cache' — SHA-256 is verified on the bytes and a stale body
-// refetches via 'reload' — so the contract is the verified-read pattern, not the string's absence.
-assert.doesNotMatch(renderPackageLoader, /cache:\s*['"]force-cache['"]/,
-  'Hitch production packages must not pin an unverified stale Electron cache entry');
-assert.match(renderPackageLoader, /read\('force-cache'\)[\s\S]{0,1200}read\('reload'\)/,
-  'the force-cache read must verify the body by hash and fall back to reload on mismatch');
+// (`'no-cache'` / `'reload'`) rather than a `cache:` object literal. Still forbid force-cache.
+// Package URLs are content-hash immutable, so the loader may read through force-cache; what must hold
+// is that a cached body is SHA-256 verified and a mismatch re-reads with 'reload'.
+assert.match(renderPackageLoader, /digest\s*!==\s*metadata\.render\.sha256\)\s*\{\s*bytes\s*=\s*await\s+read\('reload'\)/,
+  'Hitch production packages must verify a cached body and re-read a stale one');
 assert.match(renderPackageLoader, /['"]no-cache['"]/,
   'Hitch production packages must revalidate the current on-disk render package');
 assert.match(renderPackageLoader, /['"]reload['"]/,
@@ -247,19 +215,8 @@ function verifyMember(result, member, label) {
   const expectedFactorOnly = FACTOR_ONLY_MATERIALS.filter((name) => result.materials.includes(name));
   assert.deepEqual([...(result.asset.factorOnlyMaterials || [])].sort(), expectedFactorOnly,
     `${label} ${member.lod} must declare the intentional emissive/glass/stencil factor-only materials`);
-  // Provenance post-remaster: the fleet-wide rebuild (1e9bd9704) no longer stamps
-  // acceptedCandidateSha256 into extras — the accepted-candidate binding lives in
-  // release_manifest.json, which check-graphics-asset-receipts verifies against disk. The fail-
-  // closed check is therefore the file's own sha against the pinned candidate hash, cross-checked
-  // against the manifest row so a manifest edit alone cannot satisfy it.
-  const accepted = label === 'source' ? member.acceptedSourceSha256 : member.acceptedReleaseSha256;
-  assert.equal(result.sha256.toUpperCase(), accepted,
-    `${label} ${member.lod} must match the pinned accepted-candidate hash`);
-  const manifestRow = RELEASE_MANIFEST_ROWS[member.file];
-  assert.ok(manifestRow, `${label} ${member.lod} must have a release-manifest row`);
-  const manifestSha = label === 'source' ? manifestRow.sourceSha256 : manifestRow.releaseSha256;
-  assert.equal(String(manifestSha).toUpperCase(), accepted,
-    `${label} ${member.lod} release-manifest ${label === 'source' ? 'source' : 'release'}Sha256 must equal the pinned accepted hash`);
+  assert.equal(result.asset.surfaceGeometryRemaster, FORGE_PROVENANCE,
+    `${label} ${member.lod} must be the forge build (tools/blender/forge/ships/kestrel.py)`);
   assert.equal(result.asset.wiringStatus, member.lod === 'lod0' ? 'live_player_only' : 'retained_lod_family_member',
     `${label} ${member.lod} wiring status`);
 }

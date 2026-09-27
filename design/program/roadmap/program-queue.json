@@ -2377,7 +2377,7 @@
       "id": "PQ-050",
       "priority": 50,
       "title": "Non-Hitch flyable fleet remaster to Hitch-plus",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "GFX-FLEET-REMASTER-HITCHPLUS"
       ],
@@ -13790,7 +13790,7 @@
       "priority": 318,
       "title": "Finish and wire Drifter (player multirole)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.01"
       ],
@@ -13818,7 +13818,7 @@
       "priority": 319,
       "title": "Finish and wire Ranger (player explorer)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.02"
       ],
@@ -13846,7 +13846,7 @@
       "priority": 320,
       "title": "Finish and wire Ironback (player barge)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.03"
       ],
@@ -13874,7 +13874,7 @@
       "priority": 321,
       "title": "Finish and wire Bastion (player corvette)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.04"
       ],
@@ -13902,7 +13902,7 @@
       "priority": 322,
       "title": "Finish and wire Atlas (player bulk hauler)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.05"
       ],
@@ -13930,7 +13930,7 @@
       "priority": 323,
       "title": "Finish and wire Warden (player gunship)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.06"
       ],
@@ -13958,7 +13958,7 @@
       "priority": 324,
       "title": "Finish and wire Colossus (player capital)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.07"
       ],
@@ -13986,7 +13986,7 @@
       "priority": 325,
       "title": "Finish and wire Leviathan (player flagship)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.08"
       ],
@@ -14014,7 +14014,7 @@
       "priority": 326,
       "title": "Finish and wire Pelican (player miner)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.09"
       ],
@@ -14041,7 +14041,7 @@
       "priority": 327,
       "title": "Finish and wire Mule (player hauler)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.10"
       ],
@@ -14068,7 +14068,7 @@
       "priority": 328,
       "title": "Finish and wire Wasp (player fighter)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.11"
       ],
@@ -14095,7 +14095,7 @@
       "priority": 329,
       "title": "Finish and wire Ashline dart (hostile swarmer)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.12"
       ],
@@ -14123,7 +14123,7 @@
       "priority": 330,
       "title": "Finish and wire Ashline lode (hostile bruiser)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.13"
       ],
@@ -14151,7 +14151,7 @@
       "priority": 331,
       "title": "Finish and wire Ashline rig (hostile reaver/corsair body)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.14"
       ],
@@ -14179,7 +14179,7 @@
       "priority": 332,
       "title": "Finish and wire Helios lark (traffic courier)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.15"
       ],
@@ -14207,7 +14207,7 @@
       "priority": 333,
       "title": "Finish and wire Helios cradle (traffic miner)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.16"
       ],
@@ -14235,7 +14235,7 @@
       "priority": 334,
       "title": "Finish and wire Helios span (traffic hauler)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.17"
       ],
@@ -14263,7 +14263,7 @@
       "priority": 335,
       "title": "Finish and wire Ore barge (traffic ore carrier)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.18"
       ],
@@ -14291,7 +14291,7 @@
       "priority": 336,
       "title": "Finish and wire Repair tender (traffic tender)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.19"
       ],
@@ -14319,7 +14319,7 @@
       "priority": 337,
       "title": "Finish and wire Salvage cutter (traffic salvor)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.20"
       ],
@@ -14347,7 +14347,7 @@
       "priority": 338,
       "title": "Finish and wire Survey pin (traffic surveyor)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.21"
       ],

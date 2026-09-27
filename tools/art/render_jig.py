@@ -70,7 +70,11 @@ for o in meshes:
     o.data.materials.clear()
     o.data.materials.append(fill)
 
-sc.render.engine = 'BLENDER_EEVEE'
+# Cycles, not EEVEE: Freestyle is engine-independent, and EEVEE needs a GPU/EGL context headless
+# machines lack. The fill is flat emission, so a few samples are exact.
+sc.render.engine = 'CYCLES'
+sc.cycles.samples = 8
+sc.cycles.use_denoising = False
 sc.render.resolution_x = S
 sc.render.resolution_y = S
 sc.render.film_transparent = True

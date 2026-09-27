@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9432eaee9643c1e5e6cb2d67174d62e13cb6144faff1102f263d0d22db97e9d8",
+  "contentHash": "eecd0f16e0e9af1976c878fac5ddafc5bce04deb8e62db71613dde338cdc9f47",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2258,19 +2258,19 @@
       "sha256": "7e8c419f054da9590a8d13175c4b0b82619a16b1329d115a7c7749ec7bc2ed6a"
     },
     "sourceGlb": {
-      "bytes": 1944660,
-      "sha256": "d853fac0e90653976e7127619f6b941f75a18ebfd16b37bd2a08283838253b2b",
+      "bytes": 1944604,
+      "sha256": "9d91cf33190c8379b3355dac1215e51cc75ba847ed95b5d61ef79b82c7bf3f1b",
       "uri": "place_dead_hulk.glb"
     },
     "sourceManifest": {
-      "bytes": 189651,
-      "sha256": "e745229615df2d3c453cb32a06ef731ea789c051b09b599e29c263c78345b5e1",
+      "bytes": 199726,
+      "sha256": "7637b7f5ceea5ba4b8791c17a98e7bc67a8125fdeaafe3714950e8679ad2ba26",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2489248,
-    "sha256": "636cde65f1ef67515825d70158c29a0c8d896b37e7f69c46423a2a9ca2d9fcde",
+    "bytes": 2489352,
+    "sha256": "d18eb1415c20aa512992cb79b3417309a74498054496b966d2e4ed1c006158f9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3132,7 +3132,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_dead_hulk.glb"
   },
-  "runtimeHash": "f8c9a16b39acf6ead5c26adf334848609fc81b122e06e3bb616521c3569a1c2b",
+  "runtimeHash": "aa490a96c835682cd6bf7d45ed3801e4776ca29ffc7158ff4b991fdfab2b800a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
