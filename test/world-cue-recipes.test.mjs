@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { WORLD_CUE_ACTION_RECIPE, resolveWorldCueReceipt } from '../src/render/vfx/worldCueRecipes.js';
 import { PRESENTATION_RECIPES } from '../src/presentation/cueRecipes.js';
 import { ActionVfx } from '../src/render/actionVfx.js';
+import { createGameplayExplosion } from '../scripts/lib/vfxGameplayExplosion.mjs';
 
 function fixture(){return {simTime:1,playerId:1,entities:new Map([
   [1,{id:1,alive:true,type:'ship',pos:{x:80,z:-12},radius:7,rot:.5}],
@@ -11,8 +12,8 @@ function fixture(){return {simTime:1,playerId:1,entities:new Map([
 ]),settings:{video:{}}};}
 function cue(id,extra={}){return {id,sourceId:1,targetId:2,position:{x:137,y:2,z:28},...extra};}
 
-test('whitelist fills thirteen unhandled physical cues using distinct existing matter families',()=>{
-  const entries=Object.entries(WORLD_CUE_ACTION_RECIPE.variants);assert.equal(entries.length,13);
+test('whitelist fills fourteen unhandled physical cues using distinct existing matter families',()=>{
+  const entries=Object.entries(WORLD_CUE_ACTION_RECIPE.variants);assert.equal(entries.length,14);
   for(const [id,recipe] of entries){
     assert.ok(PRESENTATION_RECIPES[id],id);assert.ok(PRESENTATION_RECIPES[id].lanes.vfx.startsWith('vfx.direct_'),id);
     assert.equal(resolveWorldCueReceipt(cue(id),fixture()).kind,id);
@@ -28,7 +29,7 @@ test('whitelist fills thirteen unhandled physical cues using distinct existing m
 
 test('already owned effects, bookkeeping and arbitrary cue kinds cannot enter the world consumer',()=>{
   for(const id of ['mining.seam.quality','mining.rich_core.completed','mining.fracture.released',
-    'mining.yield.collected','mining.cargo.full','mining.drill.aborted','mining.drill.retry',
+    'mining.yield.collected','mining.drill.aborted','mining.drill.retry',
     'travel.cruise.engaged','combat.bounce','ui.open','constructor','__proto__'])
     assert.equal(resolveWorldCueReceipt(cue(id),fixture()),null,id);
   assert.equal(resolveWorldCueReceipt({kind:'mining.drill.contact'},fixture()),null);
@@ -57,14 +58,31 @@ test('scanner return is local and classified virtual signals require their actua
   classified.position=null;assert.equal(resolveWorldCueReceipt(classified,state),null);
 });
 
-test('heat and vent edges stay on the miner when the normalized context names the mined rock',()=>{
+test('heat, vent and capacity edges stay on the miner when the context names the mined rock',()=>{
   const state=fixture();
-  for(const id of ['mining.heat.overheated','mining.vent.ready']){
+  for(const id of ['mining.heat.overheated','mining.vent.ready','mining.cargo.full']){
     const p=cue(id,{position:{x:140,z:32},targetId:2,sourceId:1});
     const result=resolveWorldCueReceipt(p,state);
     assert.equal(result.targetId,1);assert.deepEqual(result.pos,{x:80,y:0,z:-12});
     p.sourceId=99;assert.equal(resolveWorldCueReceipt(p,state),null,'absent tool cannot borrow the mined rock');
   }
+});
+
+test('native cargo-full cue draws a local closed clamp without faking a yield',()=>{
+  const state=fixture(),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(50,16/9,.1,1000);
+  camera.position.set(80,90,65);camera.lookAt(80,0,-12);camera.updateMatrixWorld();
+  Object.assign(state,{mode:'flight',tick:60,player:{},world:{},drill:{asteroidId:2},render:{scene,camera}});
+  const owner=createGameplayExplosion({scene,camera,state});
+  try{
+    owner.fireEvent('drill:cargoFull',{commodityId:'cmdty_ore_iron',qty:3,pos:{col:3,row:4}});
+    state.simTime=1.16;state.tick=70;owner.update(.16);
+    const action=owner.inspect().action;
+    assert.equal(action.active,1);assert.ok(action.surfaces>0,'actual native material geometry is admitted');
+    const s=action.instances[0];assert.equal(s.kind,'mining.cargo.full');assert.equal(s.primitive,'capture');
+    assert.equal(s.id,1);assert.equal(s.sourceId,1);assert.equal(s.x,80);assert.equal(s.z,-12);
+    assert.equal(WORLD_CUE_ACTION_RECIPE.variants[s.kind].verb,'prime','warning does not use harvest or collection');
+    state.simTime=2.5;state.tick=150;owner.update(1.34);assert.equal(owner.inspect().action.active,0);
+  }finally{owner.dispose();}
 });
 
 test('resolver snapshots anchors without mutating envelopes, simulation or borrowed identities',()=>{

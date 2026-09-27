@@ -1,5 +1,5 @@
 // Only semantic world cues whose direct-VFX lane had no render consumer belong here.
-// Existing fracture/core/extraction, cargo, travel, combat and screen feedback retain
+// Existing fracture/core/extraction, cargo collection, travel, combat and screen feedback retain
 // their owners. A drill tile coordinate is never a world-space contact.
 const recipe=(verb,primitive,color,life)=>Object.freeze({verb,primitive,color,life,continuous:false});
 const variants=Object.freeze({
@@ -14,6 +14,8 @@ const variants=Object.freeze({
   'mining.drill.break':recipe('fling','pressure',0xdbbd89,.60),
   'mining.drill.yield':recipe('harvest','deposition',0xd6dca0,.78),
   'mining.drill.gas_hazard':recipe('prime','capture',0xe49a66,.75),
+  // The closed receiver is a capacity warning, never a successful pickup/yield.
+  'mining.cargo.full':recipe('prime','capture',0xd9a970,.68),
   'mining.heat.overheated':recipe('prime','capture',0xf09259,.64),
   // Ready means cooled and available; it does not claim that the pilot vented.
   'mining.vent.ready':recipe('cool','deposition',0x86bbc3,.62),
@@ -26,8 +28,8 @@ export const WORLD_CUE_ACTION_RECIPE=Object.freeze({
 });
 
 const SOURCE_CUES=new Set(['mining.survey.pulse','mining.survey.resolved',
-  'mining.heat.overheated','mining.vent.ready']);
-const HEAT_CUES=new Set(['mining.heat.overheated','mining.vent.ready']);
+  'mining.heat.overheated','mining.vent.ready','mining.cargo.full']);
+const HARDWARE_CUES=new Set(['mining.heat.overheated','mining.vent.ready','mining.cargo.full']);
 const DETACHED_CUES=new Set(['mining.survey.pulse','mining.drill.seismic_pulse','mining.drill.break']);
 const point=p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.z);
 const body=(state,id)=>id==null?null:state.entities?.get?.(id);
@@ -43,9 +45,9 @@ export function resolveWorldCueReceipt(payload,state={}){
   const sourceId=payload.sourceId??null,source=body(state,sourceId);
   const targetId=SOURCE_CUES.has(kind)?sourceId:payload.targetId??null;
   const target=body(state,targetId),liveTarget=target?.alive!==false&&point(target?.pos)?target:null;
-  // Heat-edge envelopes name the mined rock as context, so their normalized position
-  // can be that rock. The overheating hardware is the explicitly named source miner.
-  const anchor=HEAT_CUES.has(kind)?liveTarget?.pos:
+  // Heat/capacity envelopes name the mined rock as context, so their normalized
+  // position can be that rock. The affected hardware belongs to the named source miner.
+  const anchor=HARDWARE_CUES.has(kind)?liveTarget?.pos:
     kind==='mining.survey.resolved'&&liveTarget?liveTarget.pos:
     point(payload.position)?payload.position:liveTarget?.pos;
   if(!point(anchor))return null;
