@@ -22,12 +22,12 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_station_military'
 COLORS = {
-    'paint': '#2a323b',       # Coalition slate (brief #39434f, deepened: the key light lifts ~2.5x)
-    'paint2': '#171b21',      # dark armour: battle-deck, glacis, keel
+    'paint': '#1f2935',       # Coalition blue-slate (brief #39434f, deepened: the key light lifts ~2.5x)
+    'paint2': '#10141a',      # dark armour: battle-deck, glacis, keel
     'stripe': '#6e1812',      # warning red
     'hazard': '#6e5214',
     'dark': '#121518',
-    'paint.pale': '#434b55',  # pale armour facings (citadel crown, landing apron, bastion caps)
+    'paint.pale': '#394350',  # pale armour facings (citadel crown, landing apron, bastion caps)
 }
 
 # Tiers: (name, x0, x1, half-width, corner cut, z0, thickness, chamfer). Upper keep and lower keel.
@@ -279,7 +279,7 @@ def build():
     # --- lit windows: armoured slits, set on each tier's (sloped) wall ------------------------------
     win = []
     for name, x0, x1, hw, c, z0, th, ch in UPPER:
-        rows = {'T1': (8.4, 10.2, 12.6), 'T2': (18.3, 20.0), 'T3': (26.3,)}[name]
+        rows = {'T1': (8.6, 10.6), 'T2': (19.0,), 'T3': (26.3,)}[name]
         for z in rows:
             y = wall_y(hw, z0, th, z, cht=ch)
             win += wall_windows(x0 + c + 0.8, x1 - c - 0.8, y, z, int((x1 - x0 - 2 * c) / 1.9), size=(1.2, 0.32))
@@ -287,7 +287,7 @@ def build():
             xe = x1 - (hw - wall_y(hw, z0, th, z, cht=ch))
             win += end_windows(xe, -hw + c + 0.6, hw - c - 0.6, z, int((2 * hw - 2 * c) / 1.9), size=(1.2, 0.32))
     for name, x0, x1, hw, c, z0, th, ch in LOWER:
-        rows = {'B1': (-8.4, -10.2, -12.6), 'B2': (-18.3, -20.0), 'B3': (-26.3,)}[name]
+        rows = {'B1': (-8.6, -10.6), 'B2': (-19.0,), 'B3': (-26.3,)}[name]
         for z in rows:
             y = wall_y(hw, z0, th, z, chb=ch)
             win += wall_windows(x0 + c + 0.8, x1 - c - 0.8, y, z, int((x1 - x0 - 2 * c) / 1.9), size=(1.2, 0.32))
@@ -307,6 +307,17 @@ def build():
     # hangar control room windows in the back wall
     win += [((16.62, y, 1.6), (0.1, 1.4, 0.7)) for y in (-4.5, -2.25, 0.0, 2.25, 4.5)]
     boxes(s, 'Windows', win, 'glow_warm')
+    # armour pilasters: dark buttress ribs up the keep walls, breaking the window courses
+    pil = []
+    for name, x0, x1, hw, c, z0, th, ch in UPPER[:2] + LOWER[:2]:
+        zt = z0 + 0.45 * th if z0 > 0 else z0 + 0.35 * th
+        za, zb = (z0, zt + 0.6) if z0 > 0 else (zt - 0.6, z0 + th)
+        nx = int((x1 - x0 - 2 * c) / 7.0)
+        for k in range(nx + 1):
+            x = x0 + c + (x1 - x0 - 2 * c) * k / nx
+            for sy in (1, -1):
+                pil.append(((x, sy * (hw + 0.25), (za + zb) / 2), (1.1, 0.7, zb - za)))
+    boxes(s, 'Pilasters', pil, 'paint2', bevel=0.08)
 
     # --- landing lights: approach strings on the apron, bay lights, red edge lights --------------
     lamps_amber = [((18.0 + i * 1.8, sy * 5.3, -3.52), (0.4, 0.4, 0.12)) for i in range(10) for sy in (1, -1)]

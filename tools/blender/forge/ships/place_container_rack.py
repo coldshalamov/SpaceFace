@@ -22,9 +22,9 @@ COLORS = {
     'paint2': '#23282e',         # charcoal rack steel
     'stripe': '#9c7a2a',
     'hazard': '#b88a22',
-    'paint.teal': '#1c5552',     # container colours
-    'paint.ochre': '#7a561a',
-    'paint.rust': '#5c2520',
+    'paint.teal': '#17494a',     # container colours
+    'paint.ochre': '#6a4a18',
+    'paint.rust': '#4c201c',
     'paint.blue': '#1f3a5c',
 }
 
@@ -45,7 +45,7 @@ def container(s, name, cx, cz, finish):
     """Intermodal container, long axis along Y, doors on the +/-Y ends (cargo-pod build)."""
     F.box(s, name, (cx, 0, cz), (CW - 0.2, CL - 0.3, CH - 0.2), material=finish, bevel=0.04)
     for sy in (-1, 1):
-        F.band(s, name, (cx, sy * 1.75, cz), (0, 1, 0), 0.32, 'hazard')
+        F.band(s, name, (cx, sy * 1.75, cz), (0, 1, 0), 0.24, 'hazard')
     s.detail = 1
     for i in range(7):
         y = -CL / 2 + 0.6 + i * (CL - 1.2) / 6
@@ -115,8 +115,8 @@ def build():
         for sy in (-1, 1):
             F.box(s, f'Up{i}{sy}', (x, sy * UY, (Z_BASE + Z_TOP) / 2), (0.34, 0.34, Z_TOP - Z_BASE + 0.3),
                   material='paint2', bevel=0.03)
-            F.band(s, f'Up{i}{sy}', (0, 0, Z_BASE + 0.6), (0, 0, 1), 0.5, 'hazard', inset=0.01, depth=0.01)
-            F.band(s, f'Up{i}{sy}', (0, 0, Z_TOP - 0.2), (0, 0, 1), 0.3, 'hazard', inset=0.01, depth=0.01)
+            F.band(s, f'Up{i}{sy}', (0, 0, Z_BASE + 0.6), (0, 0, 1), 0.5, 'hazard')
+            F.band(s, f'Up{i}{sy}', (0, 0, Z_TOP - 0.2), (0, 0, 1), 0.3, 'hazard')
             F.box(s, f'Foot{i}{sy}', (x, sy * UY, Z_BASE + 0.08), (0.7, 0.7, 0.16), material='gunmetal', bevel=0.0)
     for k, z in enumerate(Z_FLOORS + (Z_TOP,)):
         for sy in (-1, 1):
@@ -173,6 +173,13 @@ def build():
                    segments=6, bevel=0.0)
     F.box(s, 'HookBlock', (BX, 0.8, 4.9), (0.5, 0.35, 0.45), material='hazard', bevel=0.04)
     F.ring(s, 'Hook', (BX, 0.8, 4.45), 0.2, 0.06, axis=(1, 0, 0), material='gunmetal', segments=16, sides=6)
+    # operator cab slung under the bridge end, warm lit windows
+    F.box(s, 'Cab', (BX - 0.55, -UY + 0.9, ZR + 0.05), (0.7, 1.1, 0.8), material='paint2', bevel=0.05)
+    F.box(s, 'CabWinF', (BX - 0.55, -UY + 1.46, ZR + 0.12), (0.5, 0.04, 0.3), material='glow_warm', bevel=0.0)
+    for sx in (-1, 1):
+        F.box(s, f'CabWin{sx}', (BX - 0.55 + sx * 0.36, -UY + 0.9, ZR + 0.12), (0.04, 0.8, 0.3), material='glow_warm',
+              bevel=0.0)
+    F.box(s, 'CabRoof', (BX - 0.55, -UY + 0.9, ZR + 0.48), (0.8, 1.2, 0.08), material='paint', bevel=0.02)
     F.beacon(s, 'CraneBeacon', (BX, -1.6, ZR + 0.7), finish='glow_amber', size=0.3)
 
     # --- lights ---------------------------------------------------------------------------------------

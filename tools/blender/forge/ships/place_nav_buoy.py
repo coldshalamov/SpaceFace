@@ -96,16 +96,19 @@ def build():
         F.box(s, f'Rung{k}', polar(r, 0.0, z), (0.04, 0.34, 0.04), material='gunmetal', bevel=0.0)
     s.detail = 0
 
-    # --- reflector fins: four swept blades crossing the spire --------------------------------------
+    # --- reflector fins: four swept vanes, ivory frames round polished mirror panels --------------
     for k in range(4):
         a = k * math.pi / 2 + math.pi / 4
-        vfin(s, f'Fin{k}', [(0.3, 1.0), (0.55, 1.0), (1.3, 3.2), (1.3, 5.6), (0.28, 6.4)], 0.1, a,
+        vfin(s, f'Fin{k}', [(0.3, 1.6), (0.5, 1.6), (1.3, 3.3), (1.3, 5.2), (0.26, 6.0)], 0.07, a,
              material='paint')
-        # reflector strip along the fin's outer edge (lit amber, catches the lane light)
-        vfin(s, f'FinRefl{k}', [(1.24, 3.4), (1.38, 3.4), (1.38, 5.4), (1.24, 5.4)], 0.14, a, material='glow_amber',
+        vfin(s, f'Mirror{k}', [(0.62, 2.35), (1.12, 3.4), (1.12, 5.0), (0.62, 5.35)], 0.1, a, material='bare',
              bevel=0.0)
-        vfin(s, f'FinBand{k}', [(0.5, 1.2), (0.7, 1.2), (1.3, 3.05), (1.1, 3.05)], 0.13, a, material='stripe',
+        # amber retro-reflector strip along the vane's outer edge
+        vfin(s, f'FinRefl{k}', [(1.26, 3.45), (1.38, 3.45), (1.38, 5.05), (1.26, 5.05)], 0.12, a,
+             material='glow_amber', bevel=0.0)
+        vfin(s, f'FinBand{k}', [(0.46, 1.75), (0.62, 1.75), (1.2, 3.1), (1.04, 3.1)], 0.1, a, material='stripe',
              bevel=0.0)
+        F.box(s, f'FinRoot{k}', polar(0.38, a, 3.8), (0.22, 0.14, 4.2), material='paint2', bevel=0.02, rot_z=a)
 
     # --- lantern head ----------------------------------------------------------------------------
     F.cylinder(s, 'LampSeat', (0, 0, Z_SPIRE1 - 0.05), (0, 0, Z_LAMP0), 0.4, 0.95, material='paint2', segments=32,

@@ -18,11 +18,12 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_mining_drone'
 COLORS = {
-    'paint': '#8a5418',       # safety orange (key light lifts it)
+    'paint': '#7a3c12',       # safety orange (key light lifts it)
     'paint2': '#23282e',      # charcoal
     'stripe': '#23282e',
     'hazard': '#b88a22',
     'glow_warm': '#ffb060',
+    'glow_amber': '#ff8a2a',  # orange work light
 }
 
 ZC = 0.45
@@ -41,10 +42,10 @@ def build():
         dict(x=2.85, w=0.7, ht=0.4, hb=0.32, zc=ZC, n=3.4),
         dict(x=3.05, w=0.55, ht=0.32, hb=0.28, zc=ZC, n=3.0),
     ], material='paint', belly='paint2', count=40, back_material='paint2', front_material='gunmetal')
-    # hazard shoulder behind the cutter: yellow band with charcoal diagonals
-    F.band(s, 'Body', (2.55, 0, ZC), (1, 0, 0), 0.62, 'hazard', facing=(0, 0, 1), min_facing=0.2)
-    for k in range(-3, 4):
-        F.band(s, 'Body', (2.55, k * 0.3, ZC), (0.6, 0.8, 0), 0.12, 'paint2', facing=(0, 0, 1), min_facing=0.2)
+    # hazard collar behind the cutter: yellow with charcoal diagonals
+    F.box(s, 'Collar', (2.55, 0, ZC + 0.03), (0.42, 1.62, 0.88), material='hazard', bevel=0.04)
+    for k in range(-4, 5):
+        F.band(s, 'Collar', (2.55, k * 0.3, ZC), (0.5, 0.866, 0), 0.12, 'paint2')
     # dark spine band and raised deck plates
     F.band(s, 'Body', (0.35, 0, ZC), (1, 0, 0), 0.12, 'paint2', inset=0.01, depth=-0.015)
     F.panel(s, 'Body', (1.2, 0), (1.2, 0.9), 'paint2', inset=0.04, depth=-0.04)   # ore intake well
@@ -74,25 +75,28 @@ def build():
         F.box(s, f'Cutter{k}', (4.2, 0.26 * math.cos(a), ZC + 0.26 * math.sin(a)), (0.1, 0.36, 0.1),
               material='bare', bevel=0.0, rot=(a + math.pi / 2, 0.0, 0.0))
     F.cylinder(s, 'Spike', (4.1, 0, ZC), (4.6, 0, ZC), 0.2, 0.03, material='bare', segments=16, bevel=0.0)
-    # side guards over the drum
-    F.box(s, 'Guard', (3.55, 0, ZC + 0.62), (0.9, 0.9, 0.08), material='paint', bevel=0.02, rot=(0, 0.25, 0))
 
     # --- four thruster pods ------------------------------------------------------------------------
     for i, px in enumerate((0.25, 2.1)):
         for sy in (-1, 1):
             y = sy * 0.98
             F.box(s, f'Pylon{i}{sy}', (px + 0.2, sy * 0.78, ZC), (0.38, 0.36, 0.16), material='gunmetal', bevel=0.02)
-            F.cylinder(s, f'Pod{i}{sy}', (px - 0.05, y, ZC), (px + 0.55, y, ZC), 0.23, 0.2, material='paint',
+            F.cylinder(s, f'Pod{i}{sy}', (px - 0.05, y, ZC), (px + 0.55, y, ZC), 0.23, 0.2, material='paint2',
                        segments=20, bevel=0.02)
-            F.band(s, f'Pod{i}{sy}', (px + 0.42, 0, 0), (1, 0, 0), 0.1, 'paint2')
+            F.band(s, f'Pod{i}{sy}', (px + 0.36, 0, 0), (1, 0, 0), 0.22, 'paint')
             F.nozzle(s, f'Noz{i}{sy}', (px - 0.05, y, ZC), 0.17, 0.2, glow='glow_drive')
             F.light(s, f'PodLamp{i}{sy}', (px + 0.3, y + sy * 0.03, ZC + 0.21),
                     'glow_red' if sy > 0 else 'glow_green', size=0.08)
     # --- sensors and lamp --------------------------------------------------------------------------
     F.box(s, 'Brow', (2.45, 0, ZC + 0.5), (0.36, 0.7, 0.12), material='paint2', bevel=0.02)
     F.box(s, 'BrowLens', (2.64, 0, ZC + 0.5), (0.04, 0.56, 0.06), material='glow_cyan', bevel=0.0)
-    F.work_lamp(s, 'WorkLamp', (2.35, 0.38, ZC + 0.66), aim=(1.0, 0.0, 0.35), size=0.3, lens='glow_amber')
-    F.work_lamp(s, 'WorkLamp2', (2.35, -0.38, ZC + 0.66), aim=(1.0, 0.0, 0.35), size=0.3, lens='glow_amber')
+    # orange work lamp on a yoke over the brow, aimed at the cut
+    F.box(s, 'LampYoke', (2.3, 0, ZC + 0.62), (0.2, 0.5, 0.14), material='paint2', bevel=0.0)
+    F.cylinder(s, 'LampCan', (2.12, 0, ZC + 0.68), (2.5, 0, ZC + 0.8), 0.14, 0.2, material='gunmetal', segments=16)
+    F.cylinder(s, 'LampBezel', (2.49, 0, ZC + 0.8), (2.53, 0, ZC + 0.81), 0.23, material='dark', segments=16,
+               bevel=0.0)
+    F.cylinder(s, 'LampLens', (2.5, 0, ZC + 0.8), (2.55, 0, ZC + 0.815), 0.18, material='glow_amber', segments=16,
+               bevel=0.0)
     F.beacon(s, 'Beacon', (0.75, 0, ZC + 0.45), finish='glow_amber', size=0.22)
     s.detail = 2
     F.antenna(s, 'Ant', (-0.15, 0.4, ZC + 0.36), 0.42, tip='glow_red')

@@ -49,7 +49,7 @@ def build():
         F.box(s, f'Pad{k}', polar(1.8, a, 0.12), (0.62, 0.62, 0.24), material='paint.graphite', bevel=0.03, rot_z=a)
         F.box(s, f'PadHaz{k}', polar(1.8, a, 0.27), (0.5, 0.5, 0.08), material='hazard', bevel=0.01, rot_z=a)
         F.band(s, f'PadHaz{k}', polar(1.8, a, 0.27), (math.cos(a + 0.8), math.sin(a + 0.8), 0), 0.12, 'paint.graphite')
-        strut(s, f'Leg{k}', polar(0.32, a, Z_HUB + 0.2), foot, 0.2, material='paint', bevel=0.02)
+        strut(s, f'Leg{k}', polar(0.32, a, Z_HUB + 0.2), foot, 0.27, material='paint', bevel=0.02)
         F.cylinder(s, f'Knee{k}', polar(1.75, a, 0.25), polar(1.75, a, 0.55), 0.12, material='gunmetal', segments=10)
         # ties between legs
         b = angles[(k + 1) % 3]
@@ -73,10 +73,10 @@ def build():
     for z in (Z_HUB + 1.5, 5.2, 7.2):
         F.ring(s, f'MastFlange{z:.1f}', (0, 0, z), 0.27, 0.05, axis=(0, 0, 1), material='gunmetal', segments=20,
                sides=6)
-    F.cylinder(s, 'Cable', (-0.3, 0, Z_HUB + 1.3), (-0.3, 0, Z_RADAR - 0.4), 0.05, material='paint.graphite',
+    F.cylinder(s, 'Cable', (0, -0.3, Z_HUB + 1.3), (0, -0.3, Z_RADAR - 0.4), 0.05, material='paint.graphite',
                segments=8)
     for z in (4.0, 6.0, 8.0):
-        F.box(s, f'Clamp{z}', (-0.26, 0, z), (0.16, 0.14, 0.1), material='gunmetal', bevel=0.0)
+        F.box(s, f'Clamp{z}', (0, -0.26, z), (0.14, 0.16, 0.1), material='gunmetal', bevel=0.0)
 
     # --- relay dish on a side arm ------------------------------------------------------------------
     ZD = 6.4
@@ -85,8 +85,28 @@ def build():
     strut(s, 'ArmStay', (0.2, 0, ZD - 1.2), (2.2, 0, ZD + 0.22), 0.1)
     F.box(s, 'DishYoke', (2.75, 0, ZD + 0.35), (0.36, 0.6, 0.36), material='paint2', bevel=0.03)
     ax = (0.8, 0.0, 0.6)
-    F.dish(s, 'Dish', (3.0, 0, ZD + 0.55), 0.78, 0.26, axis=ax, material='paint', face='gunmetal', segments=28,
+    F.dish(s, 'Dish', (3.0, 0, ZD + 0.55), 0.78, 0.26, axis=ax, material='paint2', face='paint', segments=28,
            feed='glow_cyan')
+
+    # --- service platform under the turntable ---------------------------------------------------
+    ZP = 8.2
+    F.cylinder(s, 'Platform', (0, 0, ZP - 0.06), (0, 0, ZP + 0.06), 1.0, 1.0, material='paint.graphite', segments=32)
+    F.ring(s, 'PlatformEdge', (0, 0, ZP + 0.06), 0.98, 0.05, axis=(0, 0, 1), material='hazard', segments=32, sides=6)
+    F.ring(s, 'Railing', (0, 0, ZP + 0.62), 0.95, 0.035, axis=(0, 0, 1), material='paint', segments=32, sides=6)
+    for k in range(6):
+        a = k * math.pi / 3 + math.pi / 6
+        F.box(s, f'RailPost{k}', polar(0.95, a, ZP + 0.34), (0.06, 0.06, 0.56), material='paint', bevel=0.0)
+    for k in range(3):
+        a = k * 2 * math.pi / 3 + math.pi / 3
+        strut(s, f'PlatBrace{k}', polar(0.22, a, ZP - 0.9), polar(0.85, a, ZP - 0.05), 0.09)
+    # ladder up the mast to the platform
+    s.detail = 2
+    for sy in (-1, 1):
+        F.box(s, f'LadRail{sy}', (-0.34, sy * 0.16, (Z_HUB + 1.4 + ZP) / 2), (0.05, 0.05, ZP - Z_HUB - 1.4),
+              material='gunmetal', bevel=0.0)
+    for k in range(12):
+        F.box(s, f'LadRung{k}', (-0.34, 0, Z_HUB + 1.6 + k * 0.36), (0.04, 0.34, 0.04), material='gunmetal', bevel=0.0)
+    s.detail = 0
 
     # --- radar turntable and array -------------------------------------------------------------
     F.cylinder(s, 'TurntableBase', (0, 0, Z_RADAR - 0.45), (0, 0, Z_RADAR - 0.15), 0.34, 0.6, material='paint2',
@@ -97,9 +117,9 @@ def build():
     F.box(s, 'Pedestal', (0, 0, Z_RADAR + 0.35), (0.5, 0.6, 0.5), material='paint2', bevel=0.04)
     tilt = 0.28
     ZA = Z_RADAR + 0.95
-    F.box(s, 'Array', (0.1, 0, ZA), (0.26, 4.0, 0.95), material='paint', bevel=0.04, rot=(0.0, -tilt, 0.0))
-    F.band(s, 'Array', (0, 1.75, 0), (0, 1, 0), 0.3, 'paint2')
-    F.band(s, 'Array', (0, -1.75, 0), (0, 1, 0), 0.3, 'paint2')
+    F.box(s, 'Array', (0.1, 0, ZA), (0.26, 4.0, 0.95), material='paint2', bevel=0.04, rot=(0.0, -tilt, 0.0))
+    F.band(s, 'Array', (0, 1.8, 0), (0, 1, 0), 0.34, 'paint')
+    F.band(s, 'Array', (0, -1.8, 0), (0, 1, 0), 0.34, 'paint')
     # emitter row on the front face (tilted with the array)
     fx, fz = math.cos(tilt), math.sin(tilt)
     for i in range(9):

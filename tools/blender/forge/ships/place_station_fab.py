@@ -25,8 +25,8 @@ SHIP_ID = 'place_station_fab'
 COLORS = {
     'paint': '#a69d8a',           # Helios ivory (brightest allowed): new plating, workshop trim
     'paint2': '#2c3b4c',          # yard blue-grey #34465a, authored a touch darker
-    'stripe': '#9a4418',          # safety orange
-    'hazard': '#a84a18',          # safety orange bands
+    'stripe': '#7c3614',          # safety orange, authored dark
+    'hazard': '#8a3c14',          # safety orange bands
     'paint.graphite': '#23282e',  # charcoal
     'paint.primer': '#4f5448',    # primer-grey hull panels (unfinished plating)
     'dark': '#15181c',
@@ -37,16 +37,17 @@ WALL_X0, WALL_X1 = -58.0, 19.0
 Z_BOT, Z_TOP = -9.0, 15.0
 CRANES = (-40.0, -22.0, -5.0)
 # the ship under construction: bow +X (toward the workshop), stern -X (the open end)
-HULL_W, HULL_HT, HULL_HB, HULL_N = 7.2, 5.2, 4.8, 2.6
-BOW_X, PLATED_X, STERN_X = 12.0, -14.0, -43.0
+HULL_W, HULL_HT, HULL_HB, HULL_N = 8.4, 5.8, 5.2, 2.6
+BOW_X, PLATED_X, STERN_X = 14.5, -14.0, -43.0
 
 
 def hull_sec(x):
     """Section (w, ht, hb, zc) of the new ship at x: constant midbody, rounded bow taper."""
-    if x > 2.0:
-        t = min((x - 2.0) / (BOW_X - 2.0), 1.0)
-        k = math.sqrt(max(1.0 - t * t, 0.0))
-        return max(HULL_W * k, 0.3), max(HULL_HT * (0.35 + 0.65 * k), 0.3), max(HULL_HB * k, 0.3), -0.2 * t
+    if x > -4.0:
+        t = min((x + 4.0) / (BOW_X + 4.0), 1.0)
+        k = 1.0 - t ** 2.2
+        return (max(HULL_W * k, 0.35), max(HULL_HT * (0.4 + 0.6 * k), 0.35), max(HULL_HB * (0.25 + 0.75 * k), 0.35),
+                -0.6 * t)
     return HULL_W, HULL_HT, HULL_HB, 0.0
 
 
@@ -279,6 +280,19 @@ def build_workshop(s):
     F.box(s, 'TugPad', (37.5, -4.0, -2.0), (4.0, 1.4, 5.0), material='paint.graphite', bevel=0.05)
 
 
+def build_shop_roof(s):
+    for k, (x, y) in enumerate(((22.0, 13.0), (22.0, -13.0), (32.0, 13.0), (32.0, -13.0))):
+        F.vent(s, f'ShopVent{k}', (x, y, 6.55), (3.2, 4.2, 0.4), slats=6)
+    for k, y in enumerate((16.8, -16.8)):
+        F.box(s, f'JibPost{k}', (20.2, y, 8.5), (1.2, 1.2, 4.0), material='paint.graphite', bevel=0.0)
+        beam(s, f'Jib{k}', (20.2, y, 10.4), (13.0, y * 0.72, 10.4), 0.8, material='stripe')
+        F.cylinder(s, f'JibLine{k}', (13.4, y * 0.72, 10.0), (13.4, y * 0.72, 7.0), 0.1, material='gunmetal',
+                   segments=6, bevel=0.0)
+        F.box(s, f'JibHook{k}', (13.4, y * 0.72, 6.8), (0.8, 0.8, 0.5), material='hazard', bevel=0.0)
+    F.panel(s, 'Shop', (27.0, 0.0), (6.0, 12.0), 'dark', inset=0.08, depth=-0.1)
+    F.panel(s, 'Shop', (34.5, 0.0), (2.0, 30.0), 'paint', inset=0.06, depth=0.08)
+
+
 def build_workshop_details(s):
     win = []
     for z in (-5.0, -2.6, -0.2, 2.2, 4.8):
@@ -322,13 +336,21 @@ def build_workshop_details(s):
 def build_ship(s):
     # plated bow: a real hull loft from the plating line to the bow, ivory with a primer belt
     secs = []
-    for x in (PLATED_X, -6.0, 2.0, 5.0, 8.0, 10.5, BOW_X):
+    for x in (PLATED_X, -4.0, 0.0, 3.5, 6.5, 9.0, 11.0, 12.6, 13.8, BOW_X):
         w, ht, hb, zc = hull_sec(x)
         secs.append(dict(x=x, w=w, ht=ht, hb=hb, zc=zc, n=HULL_N))
     F.loft(s, 'Bow', secs, material='paint', belly='paint.primer', back_material='dark', count=40, bevel=0.0)
     F.band(s, 'Bow', (-10.5, 0, 0), (1, 0, 0), 1.8, 'paint.primer', inset=0.04, depth=0.06)
     F.band(s, 'Bow', (-1.0, 0, 0), (1, 0, 0), 0.8, 'stripe', inset=0.04, depth=0.06)
-    F.band(s, 'Bow', (9.8, 0, 0), (1, 0, 0), 1.6, 'glass', facing=(0.6, 0, 0.8), min_facing=0.35)
+    F.band(s, 'Bow', (12.2, 0, 0), (1, 0, 0), 1.8, 'glass', facing=(0.6, 0, 0.8), min_facing=0.35)
+    for (px, py, sx, sy) in ((-8.0, 2.6, 5.0, 3.0), (-1.0, -3.0, 4.0, 2.6), (4.5, 1.8, 3.0, 2.4), (-12.0, -2.2, 2.4, 3.4)):
+        F.panel(s, 'Bow', (px, py), (sx, sy), 'paint.primer', inset=0.04, depth=0.04)
+    # deckhouse on the plated bow: finished, glazed and lived in
+    F.plate(s, 'Deckhouse', [(1.0, 3.6), (-11.5, 3.6), (-12.5, 2.6), (-12.5, -2.6), (-11.5, -3.6), (1.0, -3.6),
+                             (2.6, -2.2), (2.6, 2.2)], z0=HULL_HT - 0.6, thickness=2.9, material='paint', chamfer=0.3,
+            bevel=0.08)
+    F.band(s, 'Deckhouse', (2.0, 0, 0), (1, 0, 0), 1.2, 'glass', facing=(1, 0, 0.3), min_facing=0.3)
+    F.band(s, 'Deckhouse', (-5.0, 0, 0), (1, 0, 0), 0.6, 'stripe', inset=0.03, depth=0.05)
     # ribs, stringers and keel of the unplated midships and stern
     rib_x = [PLATED_X - 3.0 * (i + 1) for i in range(9)]
     for i, x in enumerate(rib_x):
@@ -414,7 +436,7 @@ def build_sparks(s, heads):
     sparks = []
     for tip, side in heads:
         for j, (dx, dz) in enumerate(((0.0, 0.0), (0.5, 0.4), (-0.4, 0.5), (0.3, -0.5), (-0.6, -0.2))):
-            sz = 0.55 if j == 0 else 0.25
+            sz = 0.8 if j == 0 else 0.35
             sparks.append(((tip.x + dx, tip.y - side * 0.95, tip.z + dz), (sz, sz, sz), 0.0))
     # rib-joint welds along the unplated midships
     for i, x in enumerate((-17.0, -23.0, -29.0, -35.0)):
@@ -450,12 +472,16 @@ def build_sparks(s, heads):
     # portholes and a few lit bays on the plated bow (the crew already living aboard)
     bw = []
     for side in (1, -1):
-        for i in range(8):
-            x = -12.0 + i * 1.8
+        for i in range(12):
+            x = -12.8 + i * 1.6
             w, ht, hb, zc = hull_sec(x)
-            bw.append(((x, side * (w - 0.02), 1.2), (0.6, 0.12, 0.4), 0.0))
+            for z in (0.4, 1.8):
+                wy = w * (1 - (abs(z - zc) / ht) ** HULL_N) ** (1 / HULL_N)
+                bw.append(((x, side * (wy - 0.02), z), (0.7, 0.14, 0.45), 0.0))
+        for i in range(6):
+            bw.append(((-11.0 + i * 2.0, side * 3.62, HULL_HT + 0.6), (0.9, 0.12, 0.5), 0.0))
     cluster(s, 'BowWin', bw, 'glow_warm')
-    F.light(s, 'HullBeacon', (0.0, 0, HULL_HT + 0.1), 'glow_amber', size=0.5)
+    F.beacon(s, 'HullBeacon', (-6.0, 0, HULL_HT + 2.3), 'glow_amber', size=0.6)
 
 
 def build():
@@ -466,6 +492,7 @@ def build():
     build_ship(s)
     build_cranes(s)
     heads = build_arms(s)
+    build_shop_roof(s)
     s.detail = 1
     build_workshop_details(s)
     build_sparks(s, heads)

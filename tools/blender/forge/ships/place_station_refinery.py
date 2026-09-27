@@ -23,7 +23,7 @@ import forge as F  # noqa: E402
 SHIP_ID = 'place_station_refinery'
 COLORS = {
     'paint': '#a69d8a',           # Helios ivory (brightest allowed)
-    'paint2': '#6a4414',          # furnace ochre #8a5a1c, authored darker (key light lifts it)
+    'paint2': '#5c3b12',          # furnace ochre #8a5a1c, authored darker (key light lifts it)
     'stripe': '#8a5a1c',
     'hazard': '#b0841f',
     'paint.graphite': '#23282e',  # charcoal
@@ -249,8 +249,9 @@ def build_crown(s):
     for i, (a, r, h) in enumerate(TOWERS):
         x, y, _ = polar(R_CROWN, a)
         top = DECK_Z1 + h
-        F.cylinder(s, f'Sump{i}', (x, y, -6.5), (x, y, DECK_Z1), r + 0.6, r + 0.9, material='paint.graphite',
+        F.cylinder(s, f'Sump{i}', (x, y, DECK_Z0), (x, y, -4.5), r + 0.5, r * 0.45, material='paint.graphite',
                    segments=24, bevel=0.0)
+        F.cylinder(s, f'Drain{i}', (x, y, -4.5), (x, y, -6.0), 0.6, material='gunmetal', segments=10, bevel=0.0)
         F.cylinder(s, f'Col{i}', (x, y, DECK_Z1), (x, y, top), r, material='paint', segments=24, bevel=0.0)
         for j, zb in enumerate(range(int(DECK_Z1 + 4.5), int(top - 1.5), 5)):
             F.band(s, f'Col{i}', (x, y, zb), (0, 0, 1), 0.55, 'paint2' if j % 2 == 0 else 'paint.graphite',
@@ -288,6 +289,35 @@ def build_crown(s):
         hx, hy, _ = polar(R_CROWN, a)
         F.cylinder(s, f'HoopClamp{i}', (hx, hy, 14.3), (hx, hy, 15.7), r + 0.35, material='gunmetal', segments=24,
                    bevel=0.0)
+
+
+def build_deck_plant(s):
+    """Pump skids and horizontal drums on the deck between the columns (the top view's texture)."""
+    for k in range(4):
+        a = 45 + 90 * k
+        x, y, _ = polar(R_CROWN, a)
+        tang = Vector((-math.sin(math.radians(a)), math.cos(math.radians(a)), 0))
+        rad = Vector((math.cos(math.radians(a)), math.sin(math.radians(a)), 0))
+        c = Vector((x, y, DECK_Z1 + 1.9))
+        F.cylinder(s, f'Drum{k}', tuple(c - tang * 3.0 + rad * 0.6), tuple(c + tang * 3.0 + rad * 0.6), 1.5,
+                   material='paint', segments=20, bevel=0.0, cap_material='paint2')
+        F.band(s, f'Drum{k}', tuple(c), tuple(tang), 0.5, 'paint2')
+        for e in (-1.8, 1.8):
+            q = c + tang * e + rad * 0.6
+            F.box(s, f'DrumSaddle{k}{e:+.0f}', (q.x, q.y, DECK_Z1 + 0.35), (1.0, 2.4, 0.7), material='gunmetal',
+                  rot_z=math.radians(a), bevel=0.0)
+        q = c - rad * 2.1
+        F.box(s, f'Pump{k}', (q.x, q.y, DECK_Z1 + 0.8), (1.6, 3.6, 1.6), material='paint.graphite',
+              rot_z=math.radians(a), bevel=0.0)
+        F.cylinder(s, f'PumpMotor{k}', (q.x, q.y, DECK_Z1 + 1.6), (q.x, q.y, DECK_Z1 + 2.6), 0.6, material='paint2',
+                   segments=12, bevel=0.0)
+    for k in range(4):
+        a = 90 * k + 11.0
+        for sgn in (1, -1):
+            aa = 90 * k + sgn * 11.0
+            x, y, _ = polar(R_CROWN - 0.4, aa)
+            F.box(s, f'Valve{k}{sgn}', (x, y, DECK_Z1 + 0.6), (1.4, 1.4, 1.2), material='gunmetal',
+                  rot_z=math.radians(aa), bevel=0.0)
 
 
 def build_crown_details(s):
@@ -505,6 +535,7 @@ def build():
     build_tanks(s)
     build_exchanger(s)
     build_hab(s)
+    build_deck_plant(s)
     s.detail = 1
     build_core_details(s)
     build_crown_details(s)

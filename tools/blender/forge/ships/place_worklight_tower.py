@@ -37,16 +37,22 @@ def strut(s, name, p0, p1, w, material='paint2', bevel=0.0):
 
 
 def flood(s, name, pos, aim, r=0.3, lens='glow_warm'):
-    """Floodlight can: gunmetal body, dark bezel, lit lens, hinge yoke back to the crown."""
+    """Floodlight can: matte charcoal body, yellow sun visor, dark bezel, lit lens with an LED halo
+    ring (the halo is what the top-down camera catches when the lamp is aimed down and out)."""
     p = Vector(pos)
     a = Vector(aim).normalized()
     back, front = p - a * r * 0.8, p + a * r * 0.9
-    F.cylinder(s, name + 'Can', tuple(back), tuple(front), r * 0.72, r, material='gunmetal', segments=18,
+    F.cylinder(s, name + 'Can', tuple(back), tuple(front), r * 0.72, r, material='paint2', segments=18,
                bevel=0.015)
-    F.cylinder(s, name + 'Bezel', tuple(front - a * 0.02), tuple(front + a * 0.05), r * 1.1, material='dark',
+    F.cylinder(s, name + 'Bezel', tuple(front - a * 0.02), tuple(front + a * 0.05), r * 1.12, material='dark',
                segments=18, bevel=0.0)
-    F.cylinder(s, name + 'Lens', tuple(front), tuple(front + a * 0.08), r * 0.92, material=lens, segments=18,
+    F.cylinder(s, name + 'Lens', tuple(front), tuple(front + a * 0.08), r * 0.9, material=lens, segments=18,
                bevel=0.0)
+    F.ring(s, name + 'Halo', tuple(front + a * 0.06), r * 1.1, 0.05, axis=tuple(a), material=lens, segments=18,
+           sides=5)
+    up = Vector((0, 0, 1))
+    F.sweep(s, name + 'Visor', [tuple(back + up * r * 1.0), tuple(front + a * 0.15 + up * r * 1.12)], r * 2.1, 0.05,
+            material='paint', bevel=0.0)
     F.box(s, name + 'Back', tuple(back - a * 0.05), (0.16, 0.16, 0.16), material='dark', bevel=0.0)
 
 

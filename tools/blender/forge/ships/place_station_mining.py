@@ -22,19 +22,20 @@ import forge as F  # noqa: E402
 SHIP_ID = 'place_station_mining'
 COLORS = {
     'paint': '#a69d8a',           # Helios ivory (brightest allowed)
-    'paint2': '#6e5418',          # mining ochre, authored dark (the key light lifts it ~2.5x)
-    'stripe': '#6e5418',
+    'paint2': '#584418',          # mining ochre, authored dark (the key light lifts it ~2.5x)
+    'stripe': '#584418',
     'hazard': '#a8861c',
     'paint.graphite': '#26292d',  # graphite
     'dark': '#16191d',
-    'ceramic': '#2a2622',         # the captive rock
-    'ceramic.cut': '#4a4239',     # sawn rock face, lighter
-    'ceramic.ore': '#4a2e14',     # rusty ore seams
+    'ceramic': '#181512',         # the captive rock, near black
+    'ceramic.cut': '#3e372f',     # sawn rock face, lighter
+    'ceramic.ore': '#3c2410',     # rusty ore seams
 }
 
 RC = Vector((-26.0, 0.0, 0.0))   # rock centre
-RX, RY, RZ = 19.0, 17.0, 13.0    # rock radii
-XCUT = RC.x + RX * 0.74          # sawn face plane (the cutter side, +X)
+RX, RY, RZ = 19.5, 18.0, 14.0    # rock radii
+XCUT = RC.x + RX * 0.64          # sawn face plane (the cutter side, +X)
+DRUM_X = XCUT + 2.0
 RAIL_Y, RAIL_Z = 25.0, -3.0
 GANTRIES = (-36.0, -20.5)
 
@@ -262,8 +263,8 @@ def build_cutter(s):
     F.band(s, 'Housing', (0, 0, 5.2), (0, 0, 1), 0.8, 'paint2', inset=0.05, depth=0.12)
     F.band(s, 'Housing', (-7.6, 0, 0), (1, 0, 0), 0.8, 'hazard', facing=(0, 0, 1))
     for side in (1, -1):
-        F.box(s, f'DrumArm{side}', (-9.0, side * 7.6, 0.0), (5.6, 1.4, 3.4), material='paint2', bevel=0.1)
-    F.cylinder(s, 'Drum', (-10.4, -7.0, 0.0), (-10.4, 7.0, 0.0), 3.3, material='bare', segments=24, bevel=0.0,
+        F.box(s, f'DrumArm{side}', ((DRUM_X - 8.2) / 2, side * 7.6, 0.0), (abs(DRUM_X + 8.2) + 0.6, 1.4, 3.4), material='paint2', bevel=0.1)
+    F.cylinder(s, 'Drum', (DRUM_X, -7.0, 0.0), (DRUM_X, 7.0, 0.0), 3.3, material='bare', segments=24, bevel=0.0,
                cap_material='paint.graphite')
     for yb in (-3.5, 0.0, 3.5):
         F.band(s, 'Drum', (0, yb, 0), (0, 1, 0), 0.5, 'paint.graphite', inset=0.03, depth=0.12)
@@ -272,11 +273,11 @@ def build_cutter(s):
         a = 2 * math.pi * i / 16
         for j in range(6):
             y = -6.0 + j * 2.4 + (0.6 if i % 2 else 0.0)
-            teeth.append(((-10.4 + 3.5 * math.cos(a), y, 3.5 * math.sin(a)), (0.9, 0.5, 0.5), 0.0))
+            teeth.append(((DRUM_X + 3.5 * math.cos(a), y, 3.5 * math.sin(a)), (0.9, 0.5, 0.5), 0.0))
     cluster(s, 'Teeth', teeth, 'dark')
     # hot bite: glowing seams on the sawn face where the drum cuts
-    F.box(s, 'BiteTop', (XCUT + 0.08, 0, 3.2), (0.14, 13.0, 0.35), material='glow_amber', bevel=0.0)
-    F.box(s, 'BiteLow', (XCUT + 0.08, 0, -3.2), (0.14, 13.0, 0.35), material='glow_amber', bevel=0.0)
+    F.box(s, 'BiteTop', (XCUT + 0.1, 0, 3.75), (0.3, 13.4, 0.5), material='glow_amber', bevel=0.0)
+    F.box(s, 'BiteLow', (XCUT + 0.1, 0, -3.75), (0.3, 13.4, 0.5), material='glow_amber', bevel=0.0)
     # conveyors up into the mill (on top of the housing and riding up to the crusher towers)
     for side in (1, -1):
         y = side * 4.2
@@ -361,6 +362,19 @@ def build_mill(s):
     F.dish(s, 'Dish', (-2.0, -16.0, 7.6), 2.8, 0.9, axis=(0.3, -0.5, 1.0), material='gunmetal', face='paint')
 
 
+def build_roofs(s):
+    F.panel(s, 'Mill', (6.0, 0.0), (8.0, 9.0), 'dark', inset=0.1, depth=-0.12)
+    for k, (x, y) in enumerate(((4.0, -2.4), (4.0, 2.4), (8.2, -2.4), (8.2, 2.4))):
+        F.cylinder(s, f'Fan{k}', (x, y, 5.9), (x, y, 6.5), 1.6, material='gunmetal', segments=16, bevel=0.0,
+                   cap_material='dark')
+        F.box(s, f'FanHub{k}', (x, y, 6.55), (0.7, 0.7, 0.15), material='paint2', bevel=0.0)
+    F.box(s, 'MillCab', (12.4, 0.0, 6.6), (2.8, 3.4, 1.6), material='paint', bevel=0.06)
+    F.panel(s, 'Housing', (-4.2, -4.5), (5.0, 4.0), 'paint2', inset=0.08, depth=0.1)
+    F.panel(s, 'Housing', (-4.2, 4.5), (5.0, 4.0), 'paint2', inset=0.08, depth=0.1)
+    F.panel(s, 'FwdBeam', (-1.5, 14.0), (2.4, 8.0), 'dark', inset=0.06, depth=-0.08)
+    F.panel(s, 'FwdBeam', (-1.5, -14.0), (2.4, 8.0), 'dark', inset=0.06, depth=-0.08)
+
+
 def build_mill_details(s):
     wins = []
     for z in (-1.6, 0.8, 3.2):
@@ -436,6 +450,7 @@ def build():
     build_cutter(s)
     build_mill(s)
     build_dock(s)
+    build_roofs(s)
     s.detail = 1
     build_cradle_details(s)
     build_cutter_details(s)
