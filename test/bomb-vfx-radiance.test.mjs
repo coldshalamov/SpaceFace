@@ -252,3 +252,25 @@ test('bomb fields build from their source and stop transport during the authored
     batch.dispose();
   }
 });
+
+
+test('singularity has a deep open channel and goo keeps a connected heavy membrane at maximum occupancy',()=>{
+ const state=world(),batch=new BombPresentationBatch(state.render.scene);
+ try{
+  const section=batch.sectionA;
+  batch.sampleSection(section,.45,0,0,100,1,1,.3,0,0);
+  // Seven section vertices run from one raised shoulder, down through an exposed
+  // cavity, and back up the other side. A flat hump or centreline cannot satisfy this.
+  const leftY=section[1],middleY=section[10],rightY=section[19];
+  assert.ok(leftY-middleY>15 && rightY-middleY>15);
+  let lowX=Infinity,highX=-Infinity,lowZ=Infinity,highZ=-Infinity;
+  for(let j=0;j<7;j++){lowX=Math.min(lowX,section[j*3]);highX=Math.max(highX,section[j*3]);lowZ=Math.min(lowZ,section[j*3+2]);highZ=Math.max(highZ,section[j*3+2]);}
+  assert.ok(Math.hypot(highX-lowX,highZ-lowZ)>25,'the channel carries substantial width at its working scale');
+  const entities=Array.from({length:BOMB_DRIFT.maxWorldActive},(_,i)=>bomb(i%2?'bomb_goo':'bomb_singularity',i));
+  batch.update(state,entities,1);
+  assert.equal(batch.stats.bombs,BOMB_DRIFT.maxWorldActive);
+  assert.equal(batch.stats.overflow,0);
+  assert.ok(positions(batch).every(Number.isFinite));
+  assert.ok(batch.count<=batch.positions.length/3);
+ }finally{batch.dispose();}
+});
