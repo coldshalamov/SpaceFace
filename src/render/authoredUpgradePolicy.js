@@ -81,6 +81,72 @@ export function isInsideSectorArrivalBand(distanceWU) {
     && distanceWU <= SECTOR_ARRIVAL_NEAR_PUBLISH_WU;
 }
 
+// The opening frame outranks the queue (ZERO_TO_HERO 7.3 - the belt tail).
+//
+// After the results-to-belt bridge the ~8 bodies the opening frame showed still compiled at
+// 10-20 s on a busy host: the flight-only rungs never applied while the sector was loading, so
+// the arrival distance grade was the only ordering left and ~50 jobs of staged station furniture
+// graded nearer than the visible set. Admission follows the law of the glass (ZERO_TO_HERO 5.12):
+// a body the composed frame shows admits before any body it does not - in the load window too.
+// Re-graded on every pick, exactly like the combatant rung: a body the camera settles on
+// promotes itself while it waits.
+export const OPENING_FRAME_ADMISSION_PRIORITY = 1.75;
+
+const _openingFrameDelta = { x: 0, z: 0 };
+
+/**
+ * Opening-frame rung for one body, or null when the composed frame cannot be proven to show it.
+ * Fails closed: with no composed camera (no live/composed zoom, no look-at anchor) the ordinary
+ * rungs and the arrival distance grades apply exactly as before. The band is the strict glass
+ * rectangle of the frame being opened — live picture or the zoom it is opening toward, never the
+ * player's requested wheel — and the body's own radius counts, so an edge-crossing hull promotes
+ * while provably-off-glass dressing keeps waiting its turn. The returned rung is the signature
+ * in the upgrade queue's diagnostics: a busy-host pass confirms the law fired in the wild by
+ * reading `priority === 1.75` off the admission dump.
+ */
+export function openingFrameAdmissionPriority(entity, liveState) {
+  if (!entity || entity.alive === false || !liveState) return null;
+  const pos = entity.pos;
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+  const camera = liveState.camera || {};
+  const live = Number(camera.liveZoom);
+  const composed = Number(camera.composedZoom);
+  const zoom = Number.isFinite(live) || Number.isFinite(composed)
+    ? Math.max(Number.isFinite(live) ? live : 0, Number.isFinite(composed) ? composed : 0)
+    : null;
+  if (zoom === null || !(zoom > 0)) return null;
+  const player = livePlayerEntity(liveState);
+  const playerPos = player && player.pos;
+  const hasPlayer = !!(playerPos && Number.isFinite(playerPos.x) && Number.isFinite(playerPos.z));
+  const focus = camera.focus || {};
+  // tableLookAtOrigin reads the focus only when BOTH axes are finite; a half-written
+  // focus must not count as an anchor or the glass silently re-centers on the world
+  // origin and fails open exactly where this function promises fail-closed.
+  const hasFocus = Number.isFinite(focus.x) && Number.isFinite(focus.z);
+  if (!hasFocus && !hasPlayer) return null;
+  const video = liveState.settings && liveState.settings.video || {};
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : Number.isFinite(video.fov) ? video.fov : 50;
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  const glass = glassHalfExtents(zoom, fov, aspect, tilt);
+  const delta = tableLookAtDelta(
+    liveState,
+    hasPlayer ? playerPos : null,
+    pos,
+    _openingFrameDelta,
+  );
+  const band = classifyTableBand({
+    dx: delta.x,
+    dz: delta.z,
+    radius: Math.max(0, Number(entity.radius) || 0),
+    glassHalfX: glass.halfX,
+    glassHalfZ: glass.halfZ,
+    runwayWu: 0,
+  });
+  return band === TABLE_BAND.GLASS ? OPENING_FRAME_ADMISSION_PRIORITY : null;
+}
+
 // The fight outranks the furniture.
 //
 // A hostile ship inside the camera's active-attacker fit range is part of the picture the player
