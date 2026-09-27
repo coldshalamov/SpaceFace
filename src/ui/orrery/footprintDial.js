@@ -125,13 +125,13 @@ const CSS = `
 .fp-cut--major { stroke-width:2.5; }
 .fp-stop { fill:none; stroke:rgb(${BONE} / .82); stroke-width:2; stroke-linecap:butt; }
 .fp-cut--wanted { stroke:var(--dp-danger, #ff5038); stroke-width:2.5; }
-.fp-tier text { font-size:12px; letter-spacing:.14em; fill:${INK}; }
+.fp-tier text { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.14em; fill:${INK}; }
 .fp-tier.is-lit text { fill:${DARK}; }
 .fp-tier.is-cool text { fill:rgb(8 14 22); }
 .fp-needle { fill:none; stroke:rgb(255 255 255); stroke-width:3; stroke-linecap:round; }
 .fp-needle-bloom { fill:none; stroke:rgb(255 244 222 / .32); stroke-width:11; stroke-linecap:round; }
 .fp-dial.is-cold .fp-needle, .fp-dial.is-cold .fp-needle-bloom { display:none; }
-.fp-engrave text { font-size:12px; letter-spacing:.26em; fill:rgb(${BONE} / .76); }
+.fp-engrave text { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.26em; fill:rgb(${BONE} / .76); }
 .fp-engrave--rule text { fill:rgb(${BONE} / .7); }
 .fp-engrave--wanted text { fill:rgb(255 128 106); letter-spacing:.22em; }
 .fp-engrave--rule.is-preview text { fill:rgb(196 226 255); letter-spacing:.2em; }
@@ -142,7 +142,7 @@ const CSS = `
 /* THE SOURCE RING: one sector per source, lit while it holds the record open, cold once settled */
 .fp-srcring { fill:none; stroke:rgb(${BONE} / .09); }
 .fp-sector { transition:transform .32s var(--dp-ease-over, ease-out), opacity .24s linear; }
-.fp-sector__band { fill:none; stroke:rgb(${BONE} / .2); stroke-linecap:butt; transition:stroke .2s linear; }
+.fp-sector__band { fill:none; stroke:rgb(${BONE} / .245); stroke-linecap:butt; transition:stroke .2s linear; }
 .fp-sector__edge { fill:none; stroke:rgb(${BONE} / .46); stroke-width:1.5; stroke-linecap:butt; }
 .fp-sector.is-open .fp-sector__band { stroke:rgb(${BONE} / .6); }
 .fp-sector.is-open .fp-sector__edge { stroke:rgb(252 249 240 / .92); stroke-width:2; }
@@ -151,14 +151,14 @@ const CSS = `
 .fp-sector.is-traced .fp-sector__edge { stroke:rgb(255 255 255); stroke-width:2.5; }
 .fp-sector__bloom { fill:none; stroke:rgb(255 240 214 / 0); stroke-linecap:butt; transition:stroke .2s linear; }
 .fp-sector.is-traced .fp-sector__bloom { stroke:rgb(255 240 214 / .15); }
-.fp-sector__label text { font-size:12px; letter-spacing:.16em; fill:rgb(${BONE} / .86); }
+.fp-sector__label text { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.16em; fill:rgb(${BONE} / .86); }
 .fp-sector.is-open .fp-sector__label text, .fp-sector.is-traced .fp-sector__label text { fill:${DARK}; }
 .fp-sector.is-hover:not(.is-traced) .fp-sector__band { stroke:rgb(${BONE} / .38); }
 .fp-sector.is-open.is-hover:not(.is-traced) .fp-sector__band { stroke:rgb(${BONE} / .76); }
 /* the cold rest of the ring when nothing is open: the clean record, engraved */
-.fp-clear__band { fill:none; stroke:rgb(${BONE} / .14); stroke-linecap:butt; }
+.fp-clear__band { fill:none; stroke:rgb(${BONE} / .245); stroke-linecap:butt; }
 .fp-clear__edge { fill:none; stroke:rgb(${BONE} / .42); stroke-width:1.5; }
-.fp-clear text { font-size:12px; letter-spacing:.3em; fill:rgb(${BONE} / .8); }
+.fp-clear text { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.3em; fill:rgb(${BONE} / .8); }
 /* a verb preview: the sectors it would settle go dark and hollow, an ice edge round them (data in motion) */
 .fp-sector.is-settles .fp-sector__band { stroke:rgb(5 7 10 / .6); }
 .fp-sector.is-settles .fp-sector__edge { stroke:var(--dp-ice, #8fcbff); stroke-width:2; stroke-dasharray:7 5; animation:fp-settle-march 1.2s linear infinite; }
@@ -191,27 +191,27 @@ const CSS = `
 .fp-bearing__core { fill:none; stroke:var(--dp-ice, #8fcbff); stroke-width:2; stroke-linecap:round; }
 .fp-bearing__bloom { fill:none; stroke:rgb(143 203 255 / .18); stroke-width:8; stroke-linecap:round; }
 .fp-bearing__pip { fill:var(--dp-ice, #8fcbff); }
-.fp-bearing text { font-size:12px; letter-spacing:.2em; fill:rgb(200 228 255); paint-order:stroke; stroke:rgb(5 7 10 / .9); stroke-width:5px; stroke-linejoin:round; dominant-baseline:auto; }
+.fp-bearing text { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.2em; fill:rgb(200 228 255); paint-order:stroke; stroke:rgb(5 7 10 / .9); stroke-width:5px; stroke-linejoin:round; dominant-baseline:auto; }
 /* the hub: your heat as the thin numeral, its tier, the clock, the bounty; a preview line in ice */
 .fp-hub { position:absolute; left:0; top:0; transform:translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; text-align:center; pointer-events:none; z-index:1;
   width:var(--fp-hub-w, 260px); }
-.fp-hub__k { margin:0 0 4px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; font-size:12px;
+.fp-hub__k { margin:0 0 4px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; font-size:calc(12px * var(--fp-ts, 1));
   letter-spacing:.3em; text-transform:uppercase; color:rgb(${BONE} / .78); }
 .fp-hub__n { margin:0; font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250; font-weight:250;
   font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.03em; line-height:.84; color:rgb(223 238 255); font-size:var(--fp-hub-n, 128px); }
-.fp-hub__tier { margin:10px 0 0; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 700; font-weight:700; font-size:13px;
+.fp-hub__tier { margin:10px 0 0; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 700; font-weight:700; font-size:calc(13px * var(--fp-ts, 1));
   letter-spacing:.2em; text-transform:uppercase; color:${INK}; white-space:nowrap; }
 .fp-hub__clears { margin:6px 0 0; display:flex; align-items:baseline; justify-content:center; gap:.45em; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
-  font-variation-settings:"wdth" 112, "wght" 600; font-weight:600; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:rgb(${BONE} / .82); white-space:nowrap; }
-.fp-hub__clears-n { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 400; font-weight:400; font-size:19px; letter-spacing:0; color:rgb(223 238 255); }
+  font-variation-settings:"wdth" 112, "wght" 600; font-weight:600; font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.18em; text-transform:uppercase; color:rgb(${BONE} / .82); white-space:nowrap; }
+.fp-hub__clears-n { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 400; font-weight:400; font-size:calc(19px * var(--fp-ts, 1)); letter-spacing:0; color:rgb(223 238 255); }
 .fp-hub__clears-n:empty, .fp-hub__clears-n:empty + .fp-hub__clears-u { display:none; }
-.fp-hub__clears-u { font-size:12px; letter-spacing:.1em; color:rgb(223 238 255 / .86); margin-left:-.2em; }
-.fp-hub__bounty { margin:8px 0 0; font-family:var(--dp-face-body, "Instrument Sans"), sans-serif; font-size:13px; letter-spacing:.01em; color:rgb(${BONE} / .86); white-space:nowrap; }
+.fp-hub__clears-u { font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.1em; color:rgb(223 238 255 / .86); margin-left:-.2em; }
+.fp-hub__bounty { margin:8px 0 0; font-family:var(--dp-face-body, "Instrument Sans"), sans-serif; font-size:calc(13px * var(--fp-ts, 1)); letter-spacing:.01em; color:rgb(${BONE} / .86); white-space:nowrap; }
 .fp-hub__bounty:empty { display:none; }
 .fp-hub__bounty b { font-weight:600; color:${INK}; font-variant-numeric:tabular-nums; }
 .fp-hub__bounty i { font-style:normal; font-weight:600; color:rgb(196 226 255); }
 .fp-hub__preview { display:none; margin:8px 0 0; max-width:100%; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650;
-  font-size:12px; letter-spacing:.12em; line-height:1.35; text-transform:uppercase; color:rgb(196 226 255); text-wrap:balance; }
+  font-size:calc(12px * var(--fp-ts, 1)); letter-spacing:.12em; line-height:1.35; text-transform:uppercase; color:rgb(196 226 255); text-wrap:balance; }
 .fp-hub__preview:empty { display:none; }
 /* the sector keys: one real button per source, on the band (the band itself shows focus) */
 .fp-key { position:absolute; left:0; top:0; width:var(--fp-key, 40px); height:var(--fp-key, 40px); margin:calc(var(--fp-key, 40px) / -2) 0 0 calc(var(--fp-key, 40px) / -2);
@@ -256,7 +256,8 @@ export function dialGeometry(w, h) {
   const hubR = clamp(R * 0.5, 96, 260);
   const arm0 = hubR + 4;
   const arm1 = rTok - tok * 0.62 - 3;
-  return { S, M, cx: w / 2, cy: h / 2, R, B, gap, SB, rB, rShoe, rS, tok, rTok, hubR, arm0, arm1 };
+  const ts = clamp(R / 380, 1, 1.35);
+  return { S, M, cx: w / 2, cy: h / 2, R, B, gap, SB, rB, rShoe, rS, tok, rTok, hubR, arm0, arm1, ts };
 }
 
 /** Shortest signed turn from a to b, degrees. */
@@ -378,6 +379,8 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     host.style.setProperty('--fp-hub-w', `${Math.round(g.hubR * 1.56)}px`);
     host.style.setProperty('--fp-key', `${Math.round(g.SB + 18)}px`);
     host.style.setProperty('--fp-tok', `${g.tok}px`);
+    // the dial's words grow with it past the 1920 size (never below the 12 px floor)
+    host.style.setProperty('--fp-ts', String(f(g.ts)));
 
     // ---- the bezel ----
     const bz = svg('g', { class: 'fp-dial__bezel' });
@@ -526,7 +529,7 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
       // the source's word rides inside its band when the band is long enough to hold it
       const word = String(src.label || '').toUpperCase();
       const arcLen = (g.rS * Math.PI * Math.max(0, a1 - a0)) / 180;
-      if (word && arcLen >= word.length * 12 * 0.86 + 14) sgEl.appendChild(along(g.rS, sec.mid, word, 'fp-sector__label'));
+      if (word && arcLen >= word.length * 12 * g.ts * 0.86 + 14) sgEl.appendChild(along(g.rS, sec.mid, word, 'fp-sector__label'));
       bezel.sourcesG.appendChild(sgEl);
       sectorEls.set(sec.id, sgEl);
     }
@@ -546,26 +549,33 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
   }
 
   function buildTokens() {
-    tokensHost.textContent = '';
+    // a rebuild (a resize, new sources) keeps each token's image element, so nothing re-decodes or blinks
+    const old = tokenEls;
     tokenEls = new Map();
-    if (!geo) return;
+    if (!geo) { tokensHost.textContent = ''; return; }
     const g = geo;
     for (const sec of sectors) {
       const src = sources.find((s) => s.id === sec.id) || {};
       const room = (g.rTok * Math.PI * sec.span) / 180;
       if (!src.token || room < g.tok + 6) continue;
-      const img = doc.createElement('img');
+      let img = old.get(sec.id);
+      if (img && img.getAttribute('src') !== src.token) img = null;
+      if (!img) {
+        img = doc.createElement('img');
+        img.alt = '';
+        img.decoding = 'async';
+        img.src = src.token;
+        img.addEventListener('error', () => { img.hidden = true; });
+      }
+      old.delete(sec.id);
       img.className = `fp-token${src.open ? ' is-open' : ''}`;
-      img.alt = '';
-      img.decoding = 'async';
-      img.src = src.token;
-      img.addEventListener('error', () => { img.hidden = true; });
       const [x, y] = polar(g.cx, g.cy, g.rTok, sec.mid);
       img.style.left = `${f(x)}px`;
       img.style.top = `${f(y)}px`;
-      tokensHost.appendChild(img);
+      if (img.parentNode !== tokensHost) tokensHost.appendChild(img);
       tokenEls.set(sec.id, img);
     }
+    for (const img of old.values()) img.remove();
   }
 
   function buildKeys() {

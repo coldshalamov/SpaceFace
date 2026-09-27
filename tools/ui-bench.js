@@ -394,6 +394,9 @@ window.__benchFootprint = (kind) => {
   if (current === 'footprint' && currentScreen) currentScreen.refresh?.({ state, bus, screenManager: manager, registry });
   return kind;
 };
+/** Refresh the mounted screen once, the way uiRoot's cadence does in the game (a probe that moves state
+ *  the screen reads — the heat system's escape clock, say — calls this to see the screen follow it). */
+window.__benchRefresh = () => { currentScreen?.refresh?.({ state, bus, screenManager: manager, registry }); return current; };
 const manager = {
   pushScreen(id) { void goto(id); },
   popScreen() { void back(); },

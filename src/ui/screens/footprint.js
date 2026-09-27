@@ -633,6 +633,8 @@ export const footprintScreen = {
     const provenance = state.provenance;
     if (provenance == null) {
       this._chains = [];
+      // The heat does not wait on the ledger: the header and the dial still read it.
+      this._paintHeader(state, [], 'Indexing the record');
       this._showDataState('loading', {
         code: 'LEDGER_SYNC',
         headline: 'Footprint is indexing your recent activity.',
@@ -650,6 +652,7 @@ export const footprintScreen = {
       && provenance.openIncidents && typeof provenance.openIncidents === 'object';
     if (!valid) {
       this._chains = [];
+      this._paintHeader(state, [], 'The record could not be read');
       this._showDataState('error', {
         code: 'LEDGER_FAULT',
         headline: 'Footprint could not read this ledger snapshot.',
@@ -667,29 +670,8 @@ export const footprintScreen = {
       .slice()
       .sort((left, right) => chainStamp(right) - chainStamp(left));
     this._chains = chains;
-    const player = state.player;
-    const bounty = Math.max(0, asNumber(player.bounty, 0));
-    const display = DISPLAY_BY_STATE[wantedState(state)];
-    const heatLevel = heatLevelFor(asNumber(player.heat, 0));
-    const openChains = chains.filter((entry) => entry.open === true).length;
-    // The heat as the heat system left it (read only): the header, the hub and the bezel all say it.
-    const reading = heatReading(state);
-    const said = heatWords(reading);
-
-    this._titleWord.textContent = display.word;
-    this._titleWord.classList.toggle('fp-display--foe', display.tone === 'foe');
-    this._titleWord.classList.toggle('fp-display--goal', display.tone === 'goal');
-    this._titleWord.classList.toggle('fp-display--calm', display.tone === 'calm');
-    const settledChains = chains.length - openChains;
-    const chainWords = openChains
-      ? `${openChains} open chain${openChains === 1 ? '' : 's'}`
-      : `${settledChains} chain${settledChains === 1 ? '' : 's'} settled`;
-    this._titleLine.textContent = heatLevel > 0
-      ? `${bounty > 0 ? `${creditsText(bounty)} bounty · ` : ''}heat T${heatLevel} · ${said.clears} · ${chainWords}`
-      : `${bounty > 0 ? `${creditsText(bounty)} bounty` : 'No bounty'} · ${said.clears} · ${chainWords}`;
-    this._heatN.textContent = heatLevel > 0 ? `T${heatLevel} · ${String(reading.tierLabel || '').split('/')[0]}` : 'T0 · clean';
-    this._heatW.textContent = said.short;
-    this._paintHeat(reading, state, chains);
+    const bounty = Math.max(0, asNumber(state.player.bounty, 0));
+    this._paintHeader(state, chains, null);
 
     if (chains.length === 0 && bounty <= 0 && !isPlayerWanted(state)) {
       this._showDataState('empty', {
@@ -721,6 +703,35 @@ export const footprintScreen = {
     this._renderRecord();
     this._renderVerbs({ chart: true });
     this._queueEdgeDraw();
+  },
+
+  /** The live part of the page, rewritten every pass: the display word, its sentence, the hub, the bezel.
+   *  `recordWord` stands in for the record when the ledger is not readable yet. */
+  _paintHeader(state, chains, recordWord) {
+    const player = state.player;
+    const bounty = Math.max(0, asNumber(player.bounty, 0));
+    const display = DISPLAY_BY_STATE[wantedState(state)];
+    const heatLevel = heatLevelFor(asNumber(player.heat, 0));
+    const openChains = chains.filter((entry) => entry.open === true).length;
+    // The heat as the heat system left it (read only): the header, the hub and the bezel all say it.
+    const reading = heatReading(state);
+    const said = heatWords(reading);
+
+    this._titleWord.textContent = display.word;
+    this._titleWord.classList.toggle('fp-display--foe', display.tone === 'foe');
+    this._titleWord.classList.toggle('fp-display--goal', display.tone === 'goal');
+    this._titleWord.classList.toggle('fp-display--calm', display.tone === 'calm');
+    const settledChains = chains.length - openChains;
+    const chainWords = recordWord ? recordWord.toLowerCase()
+      : openChains ? `${openChains} open chain${openChains === 1 ? '' : 's'}`
+        : settledChains ? `${settledChains} chain${settledChains === 1 ? '' : 's'} settled`
+          : 'no chain on the record';
+    this._titleLine.textContent = heatLevel > 0
+      ? `${bounty > 0 ? `${creditsText(bounty)} bounty · ` : ''}heat T${heatLevel} · ${said.clears} · ${chainWords}`
+      : `${bounty > 0 ? `${creditsText(bounty)} bounty` : 'No bounty'} · ${said.clears} · ${chainWords}`;
+    this._heatN.textContent = heatLevel > 0 ? `T${heatLevel} · ${String(reading.tierLabel || '').split('/')[0]}` : 'T0 · clean';
+    this._heatW.textContent = said.short;
+    this._paintHeat(reading, state, chains, recordWord);
   },
 
   _showDataState(kind, opts) {
@@ -812,7 +823,7 @@ export const footprintScreen = {
   },
 
   /** The heat on the dial: the bezel, the hub's numeral and clock, and the rim's words. */
-  _paintHeat(reading, state, chains) {
+  _paintHeat(reading, state, chains, recordWord = null) {
     if (!this._dial) return;
     const bounty = Math.max(0, asNumber(state && state.player && state.player.bounty, 0));
     const settled = (chains || []).filter((chain) => chain && chain.open !== true).length;
@@ -820,8 +831,8 @@ export const footprintScreen = {
     let top = '';
     let rule = '';
     if (!reading || reading.level <= 0) {
-      top = bounty > 0 ? 'No search on you · the bounty stands' : 'Clean record · no search on you';
-      rule = settled ? `${settled} chain${settled === 1 ? '' : 's'} settled${older ? ` · ${older} older` : ''}` : 'Nothing stands against you';
+      top = bounty > 0 ? 'No search on you · the bounty stands' : (recordWord ? 'No search on you' : 'Clean record · no search on you');
+      rule = recordWord ? '' : (settled ? `${settled} chain${settled === 1 ? '' : 's'} settled${older ? ` · ${older} older` : ''}` : 'No chain on the record');
     } else {
       const zone = `Search zone ${Math.round(reading.radius).toLocaleString('en-US')} wu`;
       if (reading.held === 'impound') top = 'Impounded · recover the hull at the pound';
@@ -831,7 +842,7 @@ export const footprintScreen = {
       rule = 'Heat clears by distance, not by payment';
     }
     const open = (chains || []).some((chain) => chain && chain.open === true) || bounty > 0;
-    const clear = open ? '' : ((chains || []).length ? 'No source holds the record open' : 'Nothing stands against you');
+    const clear = recordWord || (open ? '' : ((chains || []).length ? 'No source holds the record open' : 'Nothing stands against you'));
     this._dial.setReading(reading, { top, rule, clear });
     if (!this._previewAction) this._dial.setBountyHtml(this._bountyHtml(bounty));
   },
@@ -1348,7 +1359,8 @@ export const footprintScreen = {
       const name = el('span');
       name.append(`${sentenceCase(asString(entry.k) || 'entry')} · `);
       name.append(entityNode(faction, factionId ? 'faction:' + factionId : null));
-      const sub = [`${cycleText(entry.t)} · tick ${asInteger(entry.tick, 0)}`, reason, tier, note].filter(Boolean).join(' · ');
+      // The receipt's why already names its reason and tier when it has one; say each once.
+      const sub = [`${cycleText(entry.t)} · tick ${asInteger(entry.tick, 0)}`, ...(note ? [note] : [reason, tier])].filter(Boolean).join(' · ');
       list.append(staticRow(name, sub, deltaText(entry.delta)));
     }
     record.append(list);
