@@ -49385,70 +49385,70 @@
     {
       "bounds": {
         "center": [
-          0,
-          -1.529385,
-          -2.975901
+          -4.305,
+          4.0875,
+          0.000193
         ],
         "max": [
-          55.210716,
-          54.170784,
-          21.049896
+          42.889999,
+          25.100343,
+          26.800683
         ],
         "min": [
-          -55.210716,
-          -57.229554,
-          -27.001699
+          -51.5,
+          -16.925344,
+          -26.800296
         ],
         "size": [
-          110.421432,
-          111.400338,
-          48.051595
+          94.389999,
+          42.025688,
+          53.600979
         ]
       },
-      "bytes": 7482952,
+      "bytes": 1537984,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_station_mining",
         "kind": "proxy",
         "outline": [
-          52.09817,
-          53.648271,
-          17.366905,
-          11.037278,
-          10.17931,
-          11.123459,
-          10.109967,
-          8.742977,
-          13.702762,
-          15.189126,
-          53.64964,
-          52.099582,
-          82.036523,
-          85.480537,
-          59.401719,
-          44.166156,
-          39.02912,
-          36.637056,
-          36.767958,
-          40.053824,
-          44.165652,
-          49.121546,
-          46.459291,
-          45.947495
+          90.045568,
+          102.935827,
+          101.680138,
+          68.845255,
+          56.952596,
+          51.922321,
+          52.252565,
+          41.518117,
+          46.567934,
+          36.038127,
+          41.466039,
+          90.155827,
+          90.155783,
+          83.882523,
+          38.45758,
+          46.881028,
+          45.006468,
+          52.252437,
+          51.921606,
+          56.951941,
+          68.844716,
+          101.680138,
+          102.935468,
+          90.045544
         ],
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 10.257664,
+        "toleranceWu": 12.352299,
         "worstSize": "L"
       },
       "drawOffset": [
+        8.209557,
         0,
-        0,
-        4.808443
+        -0.000369
       ],
-      "drawScale": 1.615794,
+      "drawScale": 1.906982,
       "family": "station",
       "forwardAxis": "+X",
       "frozenMesh": false,
@@ -49484,7 +49484,7 @@
         "lod2": true,
         "outlineDeltaWu": {},
         "overTolerance": false,
-        "toleranceWu": 6.838443
+        "toleranceWu": 8.234866
       },
       "materials": [
         {
@@ -49492,7 +49492,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Accent",
+          "name": "Material_Armor",
           "role": "opaqueHull"
         },
         {
@@ -49500,7 +49500,15 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Glass",
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "Material_Canopy",
           "role": "glass"
         },
         {
@@ -49508,7 +49516,79 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
+          "name": "Material_Ceramic",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Ceramic_cut",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Ceramic_ore",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
           "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_graphite",
           "role": "opaqueHull"
         },
         {
@@ -49524,236 +49604,260 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Warm",
+          "name": "Material_MechanicalDark",
           "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Thruster",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
         }
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 16,
-      "nodes": 21,
+      "meshes": 50,
+      "nodes": 55,
       "note": null,
       "opening": "dock-mouth",
       "pivot": [
-        0,
-        -1.529385,
-        -2.975901
+        -4.305,
+        4.0875,
+        0.000193
       ],
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 10.257664,
+        "cellWu": 12.352299,
         "gapWu": 0,
-        "mouthBearingDeg": 292.5,
+        "mouthBearingDeg": 322.5,
         "primitiveCount": 22,
         "primitives": [
           {
             "id": "core",
             "kind": "circle",
-            "r": 0.050897,
+            "r": 0.192288,
             "x": 0,
             "z": 0
           },
           {
-            "ax": -0.050461,
-            "az": -0.006643,
-            "bx": -0.571713,
-            "bz": -0.075267,
+            "ax": -0.190643,
+            "az": -0.025099,
+            "bx": -0.989744,
+            "bz": -0.130302,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.047022,
-            "az": -0.019477,
-            "bx": -0.548664,
-            "bz": -0.227264,
+            "ax": -0.177651,
+            "az": -0.073585,
+            "bx": -1.054617,
+            "bz": -0.436837,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.040379,
-            "az": -0.030984,
-            "bx": -0.151327,
-            "bz": -0.116117,
+            "ax": -0.152552,
+            "az": -0.117057,
+            "bx": -0.894551,
+            "bz": -0.686413,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.030984,
-            "az": -0.040379,
-            "bx": -0.073304,
-            "bz": -0.095531,
+            "ax": -0.117057,
+            "az": -0.152552,
+            "bx": -0.464318,
+            "bz": -0.60511,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.019477,
-            "az": -0.047022,
-            "bx": -0.042432,
-            "bz": -0.102441,
+            "ax": -0.073585,
+            "az": -0.177651,
+            "bx": -0.241314,
+            "bz": -0.582584,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.006643,
-            "az": -0.050461,
-            "bx": -0.015842,
-            "bz": -0.120333,
+            "ax": -0.025099,
+            "az": -0.190643,
+            "bx": -0.075012,
+            "bz": -0.569776,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.040379,
-            "az": -0.030984,
-            "bx": 0.13213,
-            "bz": -0.101387,
-            "id": "arm-9",
+            "ax": 0.025099,
+            "az": -0.190643,
+            "bx": 0.075491,
+            "bz": -0.573414,
+            "id": "arm-6",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.047022,
-            "az": -0.019477,
-            "bx": 0.548678,
-            "bz": -0.22727,
-            "id": "arm-10",
+            "ax": 0.073585,
+            "az": -0.177651,
+            "bx": 0.175686,
+            "bz": -0.424144,
+            "id": "arm-7",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.050461,
-            "az": -0.006643,
-            "bx": 0.571729,
-            "bz": -0.075269,
+            "ax": 0.190643,
+            "az": -0.025099,
+            "bx": 0.990958,
+            "bz": -0.130462,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.050461,
-            "az": 0.006643,
-            "bx": 0.901516,
-            "bz": 0.118687,
+            "ax": 0.190643,
+            "az": 0.025099,
+            "bx": 0.990958,
+            "bz": 0.130462,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.047022,
-            "az": 0.019477,
-            "bx": 0.875433,
-            "bz": 0.362616,
+            "ax": 0.177651,
+            "az": 0.073585,
+            "bx": 0.859029,
+            "bz": 0.355821,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.040379,
-            "az": 0.030984,
-            "bx": 0.521865,
-            "bz": 0.400441,
+            "ax": 0.152552,
+            "az": 0.117057,
+            "bx": 0.337242,
+            "bz": 0.258775,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.030984,
-            "az": 0.040379,
-            "bx": 0.297388,
-            "bz": 0.387563,
+            "ax": 0.117057,
+            "az": 0.152552,
+            "bx": 0.315751,
+            "bz": 0.411495,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.019477,
-            "az": 0.047022,
-            "bx": 0.165103,
-            "bz": 0.398594,
+            "ax": 0.073585,
+            "az": 0.177651,
+            "bx": 0.190519,
+            "bz": 0.459953,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.006643,
-            "az": 0.050461,
-            "bx": 0.052844,
-            "bz": 0.401393,
+            "ax": 0.025099,
+            "az": 0.190643,
+            "bx": 0.075491,
+            "bz": 0.573412,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.006643,
-            "az": 0.050461,
-            "bx": -0.053034,
-            "bz": 0.402835,
+            "ax": -0.025099,
+            "az": 0.190643,
+            "bx": -0.075011,
+            "bz": 0.569768,
             "id": "arm-18",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.019477,
-            "az": 0.047022,
-            "bx": -0.16946,
-            "bz": 0.409113,
+            "ax": -0.073585,
+            "az": 0.177651,
+            "bx": -0.241311,
+            "bz": 0.582577,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.030984,
-            "az": 0.040379,
-            "bx": -0.297384,
-            "bz": 0.387559,
+            "ax": -0.117057,
+            "az": 0.152552,
+            "bx": -0.464314,
+            "bz": 0.605106,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.040379,
-            "az": 0.030984,
-            "bx": -0.431245,
-            "bz": 0.330906,
+            "ax": -0.152552,
+            "az": 0.117057,
+            "bx": -0.894551,
+            "bz": 0.686413,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.047022,
-            "az": 0.019477,
-            "bx": -0.474867,
-            "bz": 0.196696,
+            "ax": -0.177651,
+            "az": 0.073585,
+            "bx": -1.054613,
+            "bz": 0.436835,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.050461,
-            "az": 0.006643,
-            "bx": -0.503957,
-            "bz": 0.066347,
+            "ax": -0.190643,
+            "az": 0.025099,
+            "bx": -0.989743,
+            "bz": 0.130302,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.005
           }
         ],
-        "silhouetteRadius": 85.480537,
-        "toleranceWu": 10.257664
+        "silhouetteRadius": 102.935827,
+        "toleranceWu": 12.352299
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 0,
-        "inwardFaceFraction": 0.46975,
-        "silhouetteRadius": 85.480537,
+        "boundaryEdges": 7392,
+        "inwardFaceFraction": 0.30925,
+        "silhouetteRadius": 102.935827,
         "sliceY": 0
       },
       "sockets": [
@@ -49794,13 +49898,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 39764,
+      "triangles": 62201,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_station_mining.glb",
       "worldSize": [
-        178.41829,
         180,
-        77.64148
+        80.142217,
+        102.216085
       ]
     },
     {

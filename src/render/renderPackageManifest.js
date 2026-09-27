@@ -92,12 +92,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ceres-refinery",
-    "expectedContentHash": "8deccecd60cc6bfd402a8ab604e9aa130831dbceee43a65646e66b46dd31379e",
+    "expectedContentHash": "d46701b968ca82f1101a60b10fb52c13389b6e2e423cfb078fa6f26fd41a9d16",
     "key": "ceres-refinery",
     "metadataUrl": "assets/ships/release/render-packages/ceres-refinery/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_REFINERY",
     "slot": "place",
-    "sourceSha256": "94f0c2abfcf0871df3b769c3f543ff861e11c65814f7ca671e76993d20cfad03",
+    "sourceSha256": "c80b32fd853380512695ce7b945459cf485679f247ed18add8b13df82e28a32f",
     "sourceUrl": "assets/ships/release/parts/places/place_station_refinery.glb"
   },
   {
@@ -322,12 +322,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.fab",
-    "expectedContentHash": "d8cbb5a7e0aae8768a524139e6795ed04eceb41b2010f505d7af4034b15fafa6",
+    "expectedContentHash": "d5a6059f7a8162b7e6c95eed4add103bfb17c72ccdb6380d1a8ce5eecd138335",
     "key": "fab",
     "metadataUrl": "assets/ships/release/render-packages/fab/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_FAB",
     "slot": "place",
-    "sourceSha256": "ad84f979c60b081b74397a40a4c70125b2f71e4da09b1e93f415473836223d9d",
+    "sourceSha256": "eed468e134333d1474ccef8048fc7f32777b7d3eb38c57baf48050df723107b7",
     "sourceUrl": "assets/ships/release/parts/places/place_station_fab.glb"
   },
   {
@@ -784,12 +784,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.mining",
-    "expectedContentHash": "70020ffaffa8585d9526a12f784e49965403122d6f6afe245cd9fb809eb02b77",
+    "expectedContentHash": "a72bc7b7a0815fd4d9a80f092d7d8cdc9b5d5a5ebcd930f023b4af338370a2b2",
     "key": "mining",
     "metadataUrl": "assets/ships/release/render-packages/mining/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_MINING",
     "slot": "place",
-    "sourceSha256": "2efd99866cf82c2d3bfd1656b93cd058b1facf670a23ca82888a6e737216de8a",
+    "sourceSha256": "fabe201858e0bc73c43b2da16bc34383c3b76c7b501b6591f72bd23ee3702145",
     "sourceUrl": "assets/ships/release/parts/places/place_station_mining.glb"
   },
   {

@@ -368,6 +368,33 @@
       "file": "place_sensor_mast",
       "asset_id": "place_sensor_mast",
       "part_id": "place_sensor_mast"
+    },
+    "place_landmark_candle_fleet": {
+      "layout": "place",
+      "file": "place_landmark_candle_fleet",
+      "asset_id": "SF_PLACE_LANDMARK_CANDLE_FLEET",
+      "part_id": "place_landmark_candle_fleet",
+      "new_place": true
+    },
+    "place_landmark_resonant_cathedral": {
+      "layout": "place",
+      "file": "place_landmark_resonant_cathedral",
+      "asset_id": "SF_PLACE_LANDMARK_RESONANT_CATHEDRAL",
+      "part_id": "place_landmark_resonant_cathedral",
+      "new_place": true
+    },
+    "place_landmark_skerris_throne": {
+      "layout": "place",
+      "file": "place_landmark_skerris_throne",
+      "asset_id": "SF_PLACE_LANDMARK_SKERRIS_THRONE",
+      "part_id": "place_landmark_skerris_throne",
+      "new_place": true
+    },
+    "place_station_trade_hub": {
+      "layout": "place",
+      "file": "place_station_trade_hub",
+      "asset_id": "SF_PLACE_STATION_TRADE_HUB",
+      "part_id": "place_station_trade_hub"
     }
   }
 }

@@ -3862,12 +3862,16 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_fab.glb",
-      "tris": 20732,
-      "bytes": 7540800,
+      "tris": 49896,
+      "bytes": 5637264,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Accent"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "note": "Orbital Fabrication Yard — fabrication_drydock; authored station family, PBR, explicit LOD0/1/2. LOD0 20732 tris / 5 draw groups.",
       "factionAccentVariants": {
@@ -3898,19 +3902,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -57.399999260902405,
-          -29,
-          -22.5
+          -60.20000076293945,
+          -10.25,
+          -25.200000762939453
         ],
         "max": [
-          45.179996490478516,
-          29,
-          14.75999927520752
+          44.30000305175781,
+          20.799999237060547,
+          25.200000762939453
         ],
         "dimensionsM": [
-          102.57999575138092,
-          58,
-          37.25999927520752
+          104.50000381469727,
+          31.049999237060547,
+          50.400001525878906
         ]
       },
       "triangleMetric": "lod0"
@@ -3977,12 +3981,15 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_mining.glb",
-      "tris": 26660,
-      "bytes": 8451032,
+      "tris": 40140,
+      "bytes": 4590784,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Accent"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "note": "Belt Mining Rig — ore_processing_rig; authored station family, PBR, explicit LOD0/1/2. LOD0 26660 tris / 5 draw groups.",
       "factionAccentVariants": {
@@ -4013,19 +4020,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -55.210716247558594,
-          -57.22955419413422,
-          -27
+          -51.5,
+          -16.92500114440918,
+          -26.799999237060547
         ],
         "max": [
-          55.210716247558594,
-          54.17078398140766,
-          21.047868728637695
+          42.88999938964844,
+          25.100000381469727,
+          26.799999237060547
         ],
         "dimensionsM": [
-          110.42143249511719,
-          111.40033817554188,
-          48.047868728637695
+          94.38999938964844,
+          42.025001525878906,
+          53.599998474121094
         ]
       },
       "triangleMetric": "lod0"
@@ -4035,12 +4042,15 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_refinery.glb",
-      "tris": 138840,
-      "bytes": 23088760,
+      "tris": 59568,
+      "bytes": 6326188,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Accent"
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "note": "Refinery Process Crown material-truth V2 integration candidate — admitted candidate 49d6a50f24fd, promoted source 9faf59a697a9; connected feed, crusher/transfer, differentiated separation, thermal/recovery, storage and dock/control construction; LOD0/1/2 138840/31684/568 tris across 5 semantic PBR groups. Browser/Electron route and performance remain separate gates.",
       "factionAccentVariants": {
@@ -4071,19 +4081,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -44.099998474121094,
-          -25,
-          -58.099998474121094
+          -51.45000457763672,
+          -23.5,
+          -47
         ],
         "max": [
-          59,
-          30.5,
-          28.732500076293945
+          47.75,
+          33.05750274658203,
+          42.003875732421875
         ],
         "dimensionsM": [
-          103.0999984741211,
-          55.5,
-          86.83249855041504
+          99.20000457763672,
+          56.55750274658203,
+          89.00387573242188
         ]
       },
       "triangleMetric": "lod0"

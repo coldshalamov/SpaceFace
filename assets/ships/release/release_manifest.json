@@ -2332,53 +2332,6 @@
       "contractNodeCount": 18
     },
     {
-      "id": "place_station_fab",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_station_fab.glb",
-      "release": "assets/ships/release/parts/places/place_station_fab.glb",
-      "sourceSha256": "001cd16309e46ed8794e3d119fe8688209374d7fade7cd55c79b158d49cb7c60",
-      "releaseSha256": "ad84f979c60b081b74397a40a4c70125b2f71e4da09b1e93f415473836223d9d",
-      "sourceBytes": 7540800,
-      "releaseBytes": 7233824,
-      "textures": 15,
-      "ktx2Textures": 15,
-      "meshoptBufferViews": 65,
-      "contractNodeCount": 18
-    },
-    {
-      "id": "place_station_mining",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_station_mining.glb",
-      "release": "assets/ships/release/parts/places/place_station_mining.glb",
-      "sourceSha256": "cef292150fc0a078d970350c872dc654d92656efcb069afd4034165501933cc4",
-      "releaseSha256": "2efd99866cf82c2d3bfd1656b93cd058b1facf670a23ca82888a6e737216de8a",
-      "sourceBytes": 8451032,
-      "releaseBytes": 7482952,
-      "textures": 15,
-      "ktx2Textures": 15,
-      "meshoptBufferViews": 65,
-      "contractNodeCount": 18
-    },
-    {
-      "id": "place_station_refinery",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_station_refinery.glb",
-      "release": "assets/ships/release/parts/places/place_station_refinery.glb",
-      "sourceSha256": "60c51d0fcc0de519f5d398989fadc25b0bca2ba6883a7f05cd5b2d2d19b986ba",
-      "releaseSha256": "94f0c2abfcf0871df3b769c3f543ff861e11c65814f7ca671e76993d20cfad03",
-      "sourceBytes": 23088760,
-      "releaseBytes": 5725348,
-      "textures": 15,
-      "ktx2Textures": 15,
-      "meshoptBufferViews": 66,
-      "contractNodeCount": 18,
-      "textureProfiles": {
-        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
-        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
-        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
-      }
-    },
-    {
       "id": "place_station_research",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_station_research.glb",
@@ -4417,6 +4370,48 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 115,
       "contractNodeCount": 32
+    },
+    {
+      "id": "place_station_refinery",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_station_refinery.glb",
+      "release": "assets/ships/release/parts/places/place_station_refinery.glb",
+      "sourceSha256": "83f6872393d478cbb1ab9a6f31ff39e585c08737c6cd0a65b1a92a2d3eb2e6ca",
+      "releaseSha256": "c80b32fd853380512695ce7b945459cf485679f247ed18add8b13df82e28a32f",
+      "sourceBytes": 6326188,
+      "releaseBytes": 2009800,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 153,
+      "contractNodeCount": 42
+    },
+    {
+      "id": "place_station_mining",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_station_mining.glb",
+      "release": "assets/ships/release/parts/places/place_station_mining.glb",
+      "sourceSha256": "3c4fdae720b69d4d790ec6c932f265f0cc79de00a413c567c3e67ac38d3a1d18",
+      "releaseSha256": "fabe201858e0bc73c43b2da16bc34383c3b76c7b501b6591f72bd23ee3702145",
+      "sourceBytes": 4590784,
+      "releaseBytes": 1537984,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 195,
+      "contractNodeCount": 53
+    },
+    {
+      "id": "place_station_fab",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_station_fab.glb",
+      "release": "assets/ships/release/parts/places/place_station_fab.glb",
+      "sourceSha256": "d9ba53e31876f1c975284339f3fea450624614fd9c325ad3b2fd2f18164ab7ef",
+      "releaseSha256": "eed468e134333d1474ccef8048fc7f32777b7d3eb38c57baf48050df723107b7",
+      "sourceBytes": 5637264,
+      "releaseBytes": 1742936,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 175,
+      "contractNodeCount": 48
     }
   ]
 }

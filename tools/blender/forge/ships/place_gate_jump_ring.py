@@ -138,15 +138,17 @@ def build():
                 ac = gc + d * (GAP / 2 + math.radians(off))
                 lst = coil_glow if fin == 'glow' else coil_clamp
                 e = 0.28 if fin == 'glow' else 0.45
-                w = 0.55 if fin == 'glow' else 1.0
+                w = 0.38 if fin == 'glow' else 1.0
                 lst += [(polar(R_OUT + 1.05 + e / 2, ac), (2 * HX + 2 * e, e, w), (ac, 0.0, 0.0)),
                         (polar(R_IN - e / 2 - 0.35, ac), (2 * HX + 2 * e, e, w), (ac, 0.0, 0.0))]
                 for sx in (1, -1):
                     lst.append((polar((R_IN - 0.35 + R_OUT + 1.05) / 2, ac, sx * (HX + e / 2)),
                                 (e, R_OUT + 1.4 - R_IN + 2 * e, w), (ac, 0.0, 0.0)))
         # hazard band across the housing's outer face
-        sector(s, f'CoilHaz{i}', R_OUT + (2.55 if big else 1.75), R_OUT + (2.8 if big else 2.0), gc - 0.02,
-               gc + 0.02, -HX - 1.2, HX + 1.2, material='hazard', steps=2, bevel=0.0)
+        if big:
+            for e in (-1, 1):
+                sector(s, f'CoilHaz{i}{e}', R_OUT + 2.55, R_OUT + 2.75, gc + e * 0.016 - 0.006, gc + e * 0.016 + 0.006,
+                       -HX - 1.2, HX + 1.2, material='hazard', steps=1, bevel=0.0)
 
     boxes(s, 'Windows', win, 'glow_warm')
     boxes(s, 'EmitterGlow', glow_tips, 'glow_cyan')

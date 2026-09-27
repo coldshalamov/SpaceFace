@@ -179,9 +179,15 @@
       "slot": "place",
       "releaseAssetId": "place_station_refinery",
       "sourceUrl": "assets/ships/release/parts/places/place_station_refinery.glb",
-      "releaseSha256": "94f0c2abfcf0871df3b769c3f543ff861e11c65814f7ca671e76993d20cfad03",
-      "releaseBytes": 5725348,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "c80b32fd853380512695ce7b945459cf485679f247ed18add8b13df82e28a32f",
+      "releaseBytes": 2009800,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/ceres-refinery",
       "metadataUrl": "assets/ships/release/render-packages/ceres-refinery/render-package.json",
       "sceneRoot": true
@@ -530,9 +536,15 @@
       "slot": "place",
       "releaseAssetId": "place_station_fab",
       "sourceUrl": "assets/ships/release/parts/places/place_station_fab.glb",
-      "releaseSha256": "ad84f979c60b081b74397a40a4c70125b2f71e4da09b1e93f415473836223d9d",
-      "releaseBytes": 7233824,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "eed468e134333d1474ccef8048fc7f32777b7d3eb38c57baf48050df723107b7",
+      "releaseBytes": 1742936,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/fab",
       "metadataUrl": "assets/ships/release/render-packages/fab/render-package.json",
       "sceneRoot": true
@@ -1262,9 +1274,15 @@
       "slot": "place",
       "releaseAssetId": "place_station_mining",
       "sourceUrl": "assets/ships/release/parts/places/place_station_mining.glb",
-      "releaseSha256": "2efd99866cf82c2d3bfd1656b93cd058b1facf670a23ca82888a6e737216de8a",
-      "releaseBytes": 7482952,
-      "dynamicNameIncludes": [],
+      "releaseSha256": "fabe201858e0bc73c43b2da16bc34383c3b76c7b501b6591f72bd23ee3702145",
+      "releaseBytes": 1537984,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
       "outputDir": "assets/ships/release/render-packages/mining",
       "metadataUrl": "assets/ships/release/render-packages/mining/render-package.json",
       "sceneRoot": true

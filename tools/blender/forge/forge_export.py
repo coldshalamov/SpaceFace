@@ -343,7 +343,9 @@ def live_place_contract(file):
 def export_place(ship, spec, preview=False):
     out_dir = PREVIEW_DIR if preview else PLACE_DIR
     os.makedirs(out_dir, exist_ok=True)
-    live = live_place_contract(spec['file'])
+    # A brand-new place (no live body yet) carries its own sockets (s.socket / s.socket_names).
+    new_place = not os.path.exists(os.path.join(PLACE_DIR, f"{spec['file']}.glb")) or spec.get('new_place')
+    live = {'sockets': [], 'root': None, 'meta': {}} if new_place else live_place_contract(spec['file'])
     _rename_materials(ship)
     root = _root_empty(live['root'] or f"SF_{spec['file'].upper()}_ROOT", {})
     meshes_all = []
@@ -360,17 +362,21 @@ def export_place(ship, spec, preview=False):
         for k, v in (extras or {}).items():
             e[k] = v
         e.parent = root
+    if new_place:
+        _add_sockets(ship, root)
     path = os.path.join(out_dir, f"{spec['file']}.glb")
     _export([root] + list(root.children), path)
     # Identity only: descriptive fields of the old body (triangle counts, material lists, texture
     # notes) would be false for the forged one.
     keep = ('contractVersion', 'assetId', 'partId', 'liveId', 'category', 'family', 'role')
     identity = {k: live['meta'][k] for k in keep if k in live['meta']}
+    if new_place:
+        identity.update({'contractVersion': 2, 'liveId': spec['file'], 'category': 'places'})
     identity.update({'assetId': spec['asset_id'], 'partId': spec.get('part_id', spec['file']), 'slot': 'place',
                      'forge': {'version': 1, 'ship': ship.id}})
     _stamp(path, identity, 'lod0')
     tris = sum(sum(len(p.vertices) - 2 for p in m.data.polygons) for m in meshes_all if m.name.startswith('LOD0_'))
-    print(f'[forge] {path} place lod0 tris={tris} sockets={len(live["sockets"])}')
+    print(f'[forge] {path} place lod0 tris={tris} sockets={len(live["sockets"]) or "own"}')
     return [(path, tris)]
 
 

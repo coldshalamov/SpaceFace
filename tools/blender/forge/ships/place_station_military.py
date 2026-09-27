@@ -139,18 +139,19 @@ def pd_mount(s, name, x, y, z, yaw=0.0):
                    bevel=0.0)
 
 
-def parked_fighter(s, name, x, y, z, yaw=0.0):
-    """A small parked interceptor on a pad: scale reference from the chase camera."""
+def parked_fighter(s, name, x, y, z, yaw=0.0, sc=0.75):
+    """A small parked interceptor sitting on a pad: scale reference from the chase camera."""
     c, sn = math.cos(yaw), math.sin(yaw)
 
     def P(dx, dy):
-        return (x + dx * c - dy * sn, y + dx * sn + dy * c)
+        return (x + (dx * c - dy * sn) * sc, y + (dx * sn + dy * c) * sc)
     F.plate(s, name + '_Wing', [P(1.6, 0.3), P(-1.2, 1.9), P(-1.6, 1.9), P(-1.4, 0.0), P(-1.6, -1.9), P(-1.2, -1.9),
-                                P(1.6, -0.3)], z0=z + 0.25, thickness=0.18, material='paint.pale', chamfer=0.06,
-            bevel=0.01)
-    F.box(s, name + '_Body', (*P(0.0, 0.0), z + 0.5), (3.6, 0.7, 0.5), material='paint2', rot_z=yaw, bevel=0.06,
-          taper=0.8)
-    F.box(s, name + '_Canopy', (*P(0.9, 0.0), z + 0.78), (0.9, 0.4, 0.14), material='glass', rot_z=yaw, bevel=0.03)
+                                P(1.6, -0.3)], z0=z + 0.12 * sc, thickness=0.18 * sc, material='paint.pale',
+            chamfer=0.05, bevel=0.01)
+    F.box(s, name + '_Body', (*P(0.0, 0.0), z + 0.28 * sc), (3.6 * sc, 0.7 * sc, 0.5 * sc), material='paint2',
+          rot_z=yaw, bevel=0.05, taper=0.8)
+    F.box(s, name + '_Canopy', (*P(0.9, 0.0), z + 0.56 * sc), (0.9 * sc, 0.4 * sc, 0.14 * sc), material='glass',
+          rot_z=yaw, bevel=0.02)
 
 
 def build():
@@ -355,10 +356,12 @@ def build():
         F.antenna(s, f'WhipT1{sy}', (-31.0, sy * 9.8, 17.0), 4.0)
     # parked interceptors on the stern pads of T1
     for sy in (1, -1):
-        F.cylinder(s, f'Pad{sy}', (-4.5, sy * 9.4, 17.0), (-4.5, sy * 9.4, 17.12), 1.9, material='hazard',
+        F.cylinder(s, f'Pad{sy}', (-4.5, sy * 9.0, 17.0), (-4.5, sy * 9.0, 17.1), 1.3, material='paint2',
                    segments=24, bevel=0.0)
-    parked_fighter(s, 'Fighter1', -4.5, 9.4, 17.1, yaw=0.3)
-    parked_fighter(s, 'Fighter2', -4.5, -9.4, 17.1, yaw=-0.3)
+        F.ring(s, f'PadRing{sy}', (-4.5, sy * 9.0, 17.1), 1.2, 0.07, axis=(0, 0, 1), material='hazard', segments=24,
+               sides=4)
+    parked_fighter(s, 'Fighter1', -4.5, 9.0, 17.1, yaw=0.0)
+    parked_fighter(s, 'Fighter2', -4.5, -9.0, 17.1, yaw=0.0)
     s.detail = 0
     return s
 
