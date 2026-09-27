@@ -3,7 +3,8 @@
  *
  * A broken contract must not dead-end in a red toast: the situation the player is standing in
  * (a dead convoy, a confiscated manifest) becomes the next objective. This suite pins the rule at
- * the `_failMission` choke point: descriptor-less failures (abandoned, busted) stay plain failures,
+ * the `_failMission` choke point: descriptor-less failures (abandoned, escort_abandoned) stay
+ * plain failures,
  * descriptor failures post+accept a LIVE successor through postAndAcceptAuthoredOffer, and a
  * refused successor falls back to the ordinary failure with no orphan left behind.
  *
@@ -233,18 +234,36 @@ test('a mutated failure skips the Mission FAILED toast; a descriptor-less failur
   );
   mutated.clauseSystem.destroy();
 
-  // busted: a smuggling run scanned with contraband has no mutation descriptor — plain failure.
+  // busted: a smuggling run scanned with contraband mutates into a restitution leg — customs
+  // took the lot, the client keeps the book open.
   const { state, bus, clauseSystem } = initSystems(makeSmugglingOffer());
   bus.emit('ui:acceptMission', { missionId: 'offer_smuggle_1' });
   assert.equal(state.missions.active.length, 1);
   bus.emit('player:scannedByPatrol', { hasContraband: true, patrolId: 9 });
-  assert.equal(state.missions.active.length, 0, 'busted settles and removes the run');
+  const successor = state.missions.active.find((m) => m && m.mutatedFromMissionId);
+  assert.ok(successor, 'busted mutates: the confiscated manifest becomes a restitution debt');
+  assert.equal(successor.mutationTag, 'restitution');
+  assert.equal(successor.type, 'cargo_delivery');
+  assert.equal(successor.mutationDepth, 1, 'successor is one hop deep — a second failure cannot chain');
+  assert.equal(state.missions.active.length, 1, 'the failed run left; its successor remains');
   assert.equal(count(bus, 'mission:failed'), 1);
-  assert.equal(failureToastCount(bus), 1, 'a failure with no descriptor still scolds');
+  assert.equal(failureToastCount(bus), 0, 'a mutated failure names the follow-up, not a scolding');
   const failed = bus.log.find((entry) => entry.name === 'mission:failed');
-  assert.equal('mutatedToMissionId' in failed.payload, false,
-    'descriptor-less failures keep the exact legacy mission:failed payload shape');
+  assert.equal(failed.payload.mutatedToMissionId, successor.id);
   clauseSystem.destroy();
+
+  // A reason with no descriptor row still settles plainly (escort_abandoned — the player chose
+  // to leave the convoy outside coverage; nothing physically broke to salvage).
+  const plain = initSystems(makeCargoIntactOffer({ id: 'offer_plain_fail', clauses: [] }));
+  plain.bus.emit('ui:acceptMission', { missionId: 'offer_plain_fail' });
+  const live = plain.state.missions.active[0];
+  plain.missionSystem._failMission(live, 0, 'escort_abandoned');
+  assert.equal(plain.state.missions.active.length, 0);
+  assert.equal(failureToastCount(plain.bus), 1, 'a failure with no descriptor still scolds');
+  const plainFailed = plain.bus.log.find((entry) => entry.name === 'mission:failed');
+  assert.equal('mutatedToMissionId' in plainFailed.payload, false,
+    'descriptor-less failures keep the exact legacy mission:failed payload shape');
+  plain.clauseSystem.destroy();
 });
 
 test('abandonMission does NOT mutate — quitting on purpose is still a plain failure', () => {

@@ -10,6 +10,7 @@ Current save version: `14`
 - `player`
 - `cargo`
 - `salvage`
+- `survivorPod`
 - `economy`
 - `economyContracts`
 - `factions`
@@ -389,6 +390,7 @@ Current save version: `14`
 | `$.sites` | object | {} |
 | `$.stationServices` | object | {} |
 | `$.stunts` | null | null |
+| `$.survivorPod` | object | {} |
 | `$.tensionDirector` | null | null |
 | `$.traffic` | object | {} |
 | `$.uiScreenMemory` | object | {} |

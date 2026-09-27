@@ -423,6 +423,10 @@ export const save = {
       // Salvage must restore before world enterSector rematerializes an authored wreck. Its own
       // serializer owns the bounded source ledger; save only preserves the dependency order.
       ['salvage', () => this._callSerialize('salvage') || {}],
+      // survivorPod rides the same boundary: its promoted/stripped records must be present before
+      // enterSector's salvage replan (and the survivorPod promotion listener) runs — otherwise a
+      // stripped pod re-promotes as a live one.
+      ['survivorPod', () => this._callSerialize('survivorPod') || {}],
       ['economy', () => this._callSerialize('economy') || {}],
       ['economyContracts', () => this._callSerialize('economyContracts') || {}],
       ['factions', () => this._callSerialize('factions') || {}],
@@ -494,6 +498,7 @@ export const save = {
     data.player = this._serializePlayer();
     data.cargo = this._serializeCargo();
     data.salvage = this._callSerialize('salvage') || {};
+    data.survivorPod = this._callSerialize('survivorPod') || {};
     data.economy = this._callSerialize('economy') || {};
     data.economyContracts = this._callSerialize('economyContracts') || {};
     data.factions = this._callSerialize('factions') || {};
@@ -2960,6 +2965,10 @@ export const save = {
       this._restorePlayer(data.player);
       this._restoreCargo(data.cargo);
       this._callDeserialize('salvage', data.salvage);
+      // Before enterSector: the sector replan re-derives points/entities and the promotion
+      // listener must already see durable pod records (stripped stays stripped, oxygen keeps
+      // its clock). Absent key (pre-pod saves) → deserialize seeds an empty table.
+      this._callDeserialize('survivorPod', data.survivorPod);
       this._callDeserialize('economy', data.economy);
       this._callDeserialize('economyContracts', data.economyContracts);
       this._callDeserialize('factions', data.factions);

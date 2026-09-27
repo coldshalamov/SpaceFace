@@ -154,7 +154,7 @@ export const COMMS = {
     { id: 'amb_pit_filter_recall', sender: 'CONCORD ALA DIVISION',
       text: 'FILTER RECALL NOTICE: SECTOR 0 BATCH R3-CARRIER WITHDRAWN. REPLACEMENT SCHEDULE: PENDING ALLOCATION REVIEW.',
       note: 'The replacement never comes because the allocation review never closes. The recall line is the only record the replacement existed. R3-CARRIER is the grid now shelved in Helios Bay 7.' },
-    { id: 'amb_d shaft_collapse', sender: 'DRIFT MINERS COLLECTIVE',
+    { id: 'amb_d_shaft_collapse', sender: 'DRIFT MINERS COLLECTIVE',
       text: 'SHAFT 7 STATUS: OPERATIONAL. CREW RETURN: 9 / 11. MOISTURE LOSS: 0.7T LOGGED.',
       note: 'Two miners did not return. The discrepancy is filed as 0.7t moisture loss — the sub-tonne skim column that keeps the real number off the casualty line. The 0.7t is lawful. The two are not on the casualty line because they were never on the crew line.' },
     { id: 'amb_quiet_count', sender: '[UNCORROBORATED RELAY]',

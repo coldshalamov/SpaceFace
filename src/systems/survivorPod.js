@@ -45,6 +45,7 @@ const STRIP_POOL = Object.freeze({
 });
 const STRIP_BASE_CREDITS = 260;
 const STRIP_REP_DELTA = -8;
+const SURVIVOR_POD_SCHEMA = 'spaceface.survivorPod.v1';
 
 // ── Causal eject dials ─────────────────────────────────────────────────────────────────────────
 export const CAUSAL_SURVIVOR_PAYLOAD_TYPE = 'survivor_pod';
@@ -180,6 +181,40 @@ function mirrorMeta(state, rec, point, ent) {
 
 function stripCreditsFor(seed, pointId) {
   return STRIP_BASE_CREDITS + (hash32(seed || 1, pointId || '', 'survivorPodStrip') % 90);
+}
+
+// Normalize one durable promoted-pod record. Anything unverifiable (missing point id, malformed
+// pool) is dropped to defaults rather than trusted — a stale save can only lose the pod, never
+// resurrect a stripped one.
+function normalizePromotedRecord(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const salvagePointId = typeof raw.salvagePointId === 'string' && raw.salvagePointId
+    ? raw.salvagePointId : null;
+  if (!salvagePointId) return null;
+  const oxygenStartedAt = Number(raw.oxygenStartedAt);
+  const oxygenDueAt = Number(raw.oxygenDueAt);
+  const stripPool = clone(raw.stripPool);
+  return {
+    salvagePointId,
+    entityId: raw.entityId != null ? raw.entityId : null,
+    sectorId: typeof raw.sectorId === 'string' && raw.sectorId ? raw.sectorId : null,
+    zoneId: raw.zoneId || null,
+    wreckMissionId: raw.wreckMissionId || MISSION_ID,
+    factionId: raw.factionId || CONCORD_FACTION_ID,
+    destStationId: raw.destStationId || null,
+    destSectorId: raw.destSectorId || null,
+    oxygenStartedAt: Number.isFinite(oxygenStartedAt) ? oxygenStartedAt : 0,
+    oxygenDueAt: Number.isFinite(oxygenDueAt) ? oxygenDueAt : 0,
+    oxygenDecayWindow_s: Number.isFinite(Number(raw.oxygenDecayWindow_s))
+      ? Number(raw.oxygenDecayWindow_s) : OXYGEN_DECAY_WINDOW_S,
+    minRewardMultiplier: Number.isFinite(Number(raw.minRewardMultiplier))
+      ? Number(raw.minRewardMultiplier) : MIN_REWARD_MULTIPLIER,
+    rewardMultiplier: Number.isFinite(Number(raw.rewardMultiplier)) ? Number(raw.rewardMultiplier) : 1,
+    stripPool: stripPool && Object.keys(stripPool).length ? stripPool : clone(STRIP_POOL),
+    stripCredits: Math.max(0, Math.floor(Number(raw.stripCredits) || STRIP_BASE_CREDITS)),
+    rescueSelected: raw.rescueSelected === true,
+    stripped: raw.stripped === true,
+  };
 }
 
 // ── Causal helpers ─────────────────────────────────────────────────────────────────────────────
@@ -398,7 +433,10 @@ export const survivorPod = {
     this._onPlayerDeath = (p) => this._onPlayerWreckDeath(p || {});
     this._onLatched = (p) => this._onTetherLatched(p || {});
     this._onSaveLoaded = () => {
-      this.newGame();
+      // Continue must keep the pod's history: reconcile restored promoted/stripped records onto
+      // the sector's re-planned salvage points (stable ids) instead of wiping them and letting a
+      // spent pod re-promote. Causal pods re-adopt from entity stamps inside _tickCausal.
+      this._reconcilePromoted(this._state);
       this._rematerializePlayerWreckPod();
     };
     if (this._bus && this._bus.on) {
@@ -417,6 +455,61 @@ export const survivorPod = {
 
   newGame() {
     if (this._state) this._state.survivorPod = freshState();
+  },
+
+  // ── Save seam ──────────────────────────────────────────────────────────────────────────────
+  // Promoted pod records (which salvage point became a pod, its oxygen clock, and the terminal
+  // stripped flag) are durable state: a stripped pod must stay stripped across Continue and a live
+  // pod keeps its oxygen clock. Causal pods are NOT serialized here — persistent-flagged pod
+  // entities carry their own survivorPodCausal stamp and re-adopt on the next _tickCausal.
+  serialize() {
+    const own = ensureState(this._state);
+    const promotedByPoint = {};
+    for (const raw of Object.values(own.promotedByPoint)) {
+      const rec = normalizePromotedRecord(raw);
+      if (rec) promotedByPoint[rec.salvagePointId] = rec;
+    }
+    const promotedBySector = {};
+    for (const [sectorId, raw] of Object.entries(own.promotedBySector)) {
+      // Fold sector rows whose record only lives in bySector into the point table first.
+      const rec = normalizePromotedRecord(raw);
+      if (!rec) continue;
+      if (!promotedByPoint[rec.salvagePointId]) promotedByPoint[rec.salvagePointId] = rec;
+      promotedBySector[sectorId] = rec.salvagePointId;
+    }
+    return {
+      schema: SURVIVOR_POD_SCHEMA,
+      promotedBySector,
+      promotedByPoint,
+      causalReceipts: (own.causal.receipts || []).slice(-CAUSAL_RECEIPT_CAP).map((r) => clone(r)),
+    };
+  },
+
+  deserialize(data) {
+    const own = ensureState(this._state);
+    if (!own) return;
+    const src = data && !Array.isArray(data) && data.schema === SURVIVOR_POD_SCHEMA ? data : {};
+    const promotedByPoint = {};
+    for (const raw of Object.values(src.promotedByPoint || {})) {
+      const rec = normalizePromotedRecord(raw);
+      if (rec) promotedByPoint[rec.salvagePointId] = rec;
+    }
+    const promotedBySector = {};
+    for (const [sectorId, value] of Object.entries(src.promotedBySector || {})) {
+      // v1 writes point-id strings; tolerate a whole-record row the same way.
+      const rec = typeof value === 'string' ? promotedByPoint[value] : normalizePromotedRecord(value);
+      if (!rec) continue;
+      promotedByPoint[rec.salvagePointId] = rec;
+      promotedBySector[sectorId] = rec;
+    }
+    own.promotedBySector = promotedBySector;
+    own.promotedByPoint = promotedByPoint;
+    own.causal = {
+      byEntityId: {},
+      receipts: Array.isArray(src.causalReceipts)
+        ? src.causalReceipts.slice(-CAUSAL_RECEIPT_CAP).map((r) => clone(r))
+        : [],
+    };
   },
 
   update(_dt, state) {
@@ -859,12 +952,69 @@ export const survivorPod = {
 
   // ── Salvage communicator path (unchanged ownership) ──────────────────────────────────────────
 
+  // Re-stamp a durable promoted record onto its (possibly re-planned) salvage point + entity.
+  // Called on promote, sector re-entry, and Continue reconcile — idempotent by salvagePointId.
+  // A stripped record is terminal: the point stays offered, the entity stays dead, and the
+  // strip pool it left is all that remains — no second rescue, no second strip payout.
+  _reconcilePointRecord(state, rec) {
+    if (!state || !rec || !rec.salvagePointId) return false;
+    const point = pointForRec(state, rec);
+    if (!point) return false;
+    point.isCommunicator = true;
+    point.wreckMissionId = rec.wreckMissionId || MISSION_ID;
+    // The sector replan may have re-spawned the wreck under a fresh entity id — rebind.
+    if (point.entityId != null && rec.entityId !== point.entityId) rec.entityId = point.entityId;
+    const ent = entityForPoint(state, point);
+    if (rec.stripped) {
+      point.offered = true;
+      point.survivorPod = { ...publicMeta(state, rec), stripped: true };
+      if (ent) {
+        ent.alive = false;
+        if (ent.data) {
+          ent.data.survivorPod = { ...publicMeta(state, rec), stripped: true };
+          ent.data.salvagePool = clone(rec.stripPool || STRIP_POOL);
+          ent.data.scanLabel = 'Survivor Pod - stripped';
+        }
+      }
+      return true;
+    }
+    point.survivorPod = publicMeta(state, rec);
+    if (ent && ent.data) {
+      ent.data.parentType = 'survivor_pod';
+      ent.data.isCommunicator = true;
+      ent.data.wreckMissionId = rec.wreckMissionId || MISSION_ID;
+      ent.data.salvagePointId = point.id;
+      ent.data.salvagePool = clone(rec.stripPool || STRIP_POOL);
+      ent.data.tetherRole = 'survivor_pod';
+      ent.data.survivorPod = { ...point.survivorPod };
+      ent.data.scanLabel = `Survivor Pod - ${countdownLabel(state, rec)}`;
+    }
+    return true;
+  },
+
+  _reconcilePromoted(state) {
+    const own = ensureState(state);
+    if (!own) return 0;
+    let stamped = 0;
+    for (const rec of Object.values(own.promotedByPoint)) {
+      if (this._reconcilePointRecord(state, rec)) stamped += 1;
+    }
+    return stamped;
+  },
+
   _promoteSector(sectorId) {
     const state = this._state;
     if (!state || !sectorId) return null;
     const own = ensureState(state);
     const existing = own.promotedBySector[sectorId];
-    if (existing && own.promotedByPoint[existing.salvagePointId]) return existing;
+    if (existing) {
+      // A sector promotes at most one pod — ever. Reconcile the durable record against the
+      // (re-)planned point rather than promote a second one when the point table lacks the key
+      // (older saves, dropped record rows, or a stripped pod the caller wants to re-exploit).
+      own.promotedByPoint[existing.salvagePointId] = existing;
+      this._reconcilePointRecord(state, existing);
+      return existing;
+    }
 
     const points = state.salvage && Array.isArray(state.salvage.points) ? state.salvage.points : [];
     const eligible = points.filter((p) => {
@@ -953,7 +1103,8 @@ export const survivorPod = {
     offer.choice = clone(template.choice);
     offer.tag = template.tag || 'wreck_salvage';
     offer.factionId = CONCORD_FACTION_ID;
-    offer.stationId = offer.stationId || null;
+    // salvage._buildOffer already bound a board station; the rescue desk is the fallback.
+    offer.stationId = offer.stationId || rec.destStationId || null;
     offer.destStationId = rec.destStationId;
     offer.destSectorId = rec.destSectorId || rec.sectorId;
     offer.distance = offer.distance || RESCUE_DISTANCE_WU;
@@ -965,6 +1116,12 @@ export const survivorPod = {
       taskTime: 20,
       passengers: 1,
       survivorPodId: rec.salvagePointId,
+      // Keep the wreck-mission provenance the offer builder stamped so the accepted
+      // instance still traces back to the physical point after serialize/restore.
+      salvagePointId: rec.salvagePointId,
+      wreckMissionId: MISSION_ID,
+      ...(offer.params && offer.params.wreckPos ? { wreckPos: clone(offer.params.wreckPos) } : {}),
+      ...(offer.params && offer.params.wreckSectorId ? { wreckSectorId: offer.params.wreckSectorId } : {}),
     };
     offer.survivorPod = {
       ...meta,
