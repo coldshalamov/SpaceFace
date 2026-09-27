@@ -24,6 +24,7 @@ attribute vec4 iLife; attribute vec4 iBehavior; attribute vec4 iPivot;
 uniform float uTime; uniform float uMotion;
 varying vec2 vUv; varying vec4 vTint; varying vec4 vAction;
 varying vec3 vNormal; varying vec3 vWorld; varying vec2 vLocal;
+varying float vConductor;
 const float PI=3.14159265359;
 vec3 actionPoint(float t,float v){
   float kind=iPath.x,age=max(0.0,uTime-iLife.x)*uMotion;
@@ -40,10 +41,19 @@ vec3 actionPoint(float t,float v){
     p.y=(.56-cos(section))*lift+sin(PI*t)*lift*.28*sin(t*8.0-age*3.1+phase);
     p.z+=sin(t*6.2-age*2.7+phase)*bow*.28*belly;
   }else if(kind<2.5){
-    // Closed loaded conductor: changing elliptical section with a dark lumen.
+    // Two open rolled shoulders leave a real gap through a loaded connection.
+    // Independent waves transport their folds; local charge parcels remain closed.
     float twist=.35*sin(t*7.0-age*2.2+phase);
-    p.z+=cos(curl+twist)*width*(.75+.25*belly);
-    p.y=sin(curl+twist)*lift;
+    float taper=.18+.82*pow(max(0.0,sin(PI*t)),.35);
+    if(abs(iShape.z)>.5){
+      float section=v*2.12+twist;
+      float load=.68+.32*(.5+.5*sin(t*12.0-age*3.4+phase));
+      p.z+=iShape.z*width*(.60+.40*(1.0-cos(section)))*load*taper;
+      p.y=sin(section)*lift*taper;
+    }else{
+      p.z+=cos(curl+twist)*width*taper;
+      p.y=sin(curl+twist)*lift*taper;
+    }
     p.z+=sin(t*11.0-age*3.3+phase)*width*.12*belly;
   }else if(kind<3.5){
     // A deposited lenticular patch has area and a raised wet/welded rim.
@@ -86,12 +96,14 @@ void main(){
   vAction=vec4(iPath.x,max(0.0,uTime-iLife.x)*uMotion*iMotion.x,iShape.w,iMotion.y);
   // vLocal is material arrival and independent source cutoff, not shape scaling.
   vLocal=iFinish.xy;
+  vConductor=iShape.z;
 }`;
 
 const FRAGMENT = /* glsl */`
 uniform float uFlash;
 varying vec2 vUv; varying vec4 vTint; varying vec4 vAction;
 varying vec3 vNormal; varying vec3 vWorld; varying vec2 vLocal;
+varying float vConductor;
 float wave(float phase){return mix(.5,.5+.5*sin(phase),1.0-smoothstep(.8,3.14159,fwidth(phase)));}
 float band(float distance,float width){
   float pixel=max(.001,fwidth(distance));
@@ -109,7 +121,10 @@ void main(){
   float dark=band(v+.04+.17*sin(t*9.0-time*2.8+phase),.22);
   float edge=1.0-smoothstep(.90,1.0,abs(v));
   if(kind>1.5&&kind<2.5){
-    edge=1.0;hot*=.72;
+    bool shoulder=abs(vConductor)>.5;
+    edge=shoulder?1.0-smoothstep(.82,1.0,abs(v)):1.0;
+    body=shoulder?.05+.13*flow:.14+.18*flow;
+    hot*=shoulder?.94:1.08;
     dark=band(v-.15*sin(t*13.0-time*2.6+phase),.32);
   }else if(kind>2.5&&kind<3.5){
     float front=sin(t*8.0+v*3.0+phase)+.45*sin(v*7.0-t*4.0-time*1.2);
@@ -216,12 +231,14 @@ export class ActionPrimitiveComposer {
       if(len>.5&&s.hasSource){
         const width=clamp(Math.min(r*.24,len*.075),1.15,3.3);
         const cut=verb==='cut';
-        // The sheath remains loaded while staggered packets cross its dark interior.
-        this._piece(2,s.sx,s.sz,axis,0,len,width,width*.72,width*.7,0,0,seed,
-          alpha*(cut?.64:.76),feed,cut?clamp(progress*1.6)-.1:cutoff,.72);
-        for(let i=0;i<3;i++){
-          const at=cut?(.17+i*.28)+motion*.16:(flowTime*(.52+s.seed*.15)+i*.31)%1;
-          const from=clamp(at),to=Math.min(1,from+.19);
+        // Unequal rolled shoulders remain loaded around an open centre; broad packets
+        // cross that gap independently. The six-piece budget includes the end clamps.
+        for(let side=-1;side<=1;side+=2)this._piece(2,s.sx,s.sz,axis,0,len,
+          width,width*.68,width*.28,0,side,seed+side*1.8,alpha*(cut?.64:.82),
+          clamp(feed-(side+1)*.065),(cut?clamp(progress*1.6)-.1:cutoff)+(side+1)*.035,.86);
+        for(let i=0;i<2;i++){
+          const at=cut?(.17+i*.43)+motion*.16:(flowTime*(.52+s.seed*.15)+i*.49)%1;
+          const from=clamp(at),to=Math.min(1,from+.23);
           const opacity=alpha*smooth(from/.08)*(1-smooth((from-.78)/.22));
           this._piece(2,s.sx,s.sz,axis,len*from,len*to,width*.82,width*.62,
             width*.45*Math.sin(i+seed+flowTime*2),cut?(i-1)*w*motion*1.5:0,0,i*2.2,
@@ -284,14 +301,29 @@ export class ActionPrimitiveComposer {
         const heading=a+(i-1)*(catching?.58:2.08),arrived=smooth((age-i*.045)/.16);
         const load=reduced?.65:1-arrived;
         const shear=reduced?0:smooth((progress-.57-i*.035)/.38);
-        const distance=r*(.56+load*.42),x=s.x+Math.cos(heading)*distance,z=s.z+Math.sin(heading)*distance;
-        this._piece(6,x,z,heading+Math.PI/2,-r*.48,r*.38,w*.58,w*.56,w*.83,
-          shear*w*(i-1),0,seed+i*1.7,alpha*arrived,1,cutoff+i*.065,locked?.92:.72);
+        if(s.recipe.surfaceCapture){
+          // The source-facing contact is on an opaque cargo face. All hooks and their
+          // release shear stay outside its outward half-space, including their folds.
+          const outward=w*(.80+load*.60),tangent=(i-1)*w*.90;
+          const x=s.x+Math.cos(a)*outward-Math.sin(a)*tangent;
+          const z=s.z+Math.sin(a)*outward+Math.cos(a)*tangent;
+          this._piece(6,x,z,a+Math.PI/2,-w*.72,w*.62,w*.42,w*.44,-w*.38,
+            -shear*w*(.6+i*.25),0,seed+i*1.7,alpha*arrived,1,cutoff+i*.065,.72);
+        }else{
+          const distance=r*(.56+load*.42),x=s.x+Math.cos(heading)*distance,z=s.z+Math.sin(heading)*distance;
+          this._piece(6,x,z,heading+Math.PI/2,-r*.48,r*.38,w*.58,w*.56,w*.83,
+            shear*w*(i-1),0,seed+i*1.7,alpha*arrived,1,cutoff+i*.065,locked?.92:.72);
+        }
       }
       // Inward-curving material bridges only emerge once jaws have taken the load.
       const meet=smooth((age-.14)/.16);
-      for(let i=0;i<2;i++)this._piece(1,s.x,s.z,a+(i?1:-1)*.60,-r*.72,r*.38,
-        w*.75,w*.52,w*(i?1:-1),0,0,seed+i*2,alpha*meet*.83,1,cutoff,.95);
+      for(let i=0;i<2;i++){
+        if(s.recipe.surfaceCapture)this._piece(1,s.x+Math.cos(a)*w*.6,s.z+Math.sin(a)*w*.6,
+          a+(i?1:-1)*.42,w*.12,w*1.7,w*.50,w*.40,w*.42*(i?1:-1),0,0,
+          seed+i*2,alpha*meet*.83,1,cutoff,.95);
+        else this._piece(1,s.x,s.z,a+(i?1:-1)*.60,-r*.72,r*.38,
+          w*.75,w*.52,w*(i?1:-1),0,0,seed+i*2,alpha*meet*.83,1,cutoff,.95);
+      }
       this._matter(s,age,reduced,locked?'seed':'well',a,r*1.45);
     }
   }

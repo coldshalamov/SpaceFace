@@ -174,6 +174,53 @@ test('cut connection retains loaded geometry while a cutoff and separate parcels
   out.dispose();
 });
 
+test('loaded connection has open opposing shoulders and independently travelling charge parcels',()=>{
+  const s=fixture(),out=new ActionVfx(new THREE.Scene());
+  try{
+    out.emit('beam:transferred',payload,s);s.simTime+=.15;out.update(s);
+    const path=out.batch.attributes[1],shape=out.batch.attributes[2],finish=out.batch.attributes[5];
+    assert.equal(out.mesh.count,6,'two shoulders, two travelling parcels and two receiver clamps');
+    assert.deepEqual([shape.getZ(0),shape.getZ(1)],[-1,1],'open shoulders occupy opposite sides of the conductor');
+    assert.equal(path.getY(0),0);assert.equal(path.getY(1),0);assert.equal(path.getZ(0),path.getZ(1));
+    assert.notEqual(shape.getW(0),shape.getW(1),'independent fold phases');
+    assert.notEqual(finish.getY(0),finish.getY(1),'supply leaves the shoulders at different times');
+    assert.deepEqual([shape.getZ(2),shape.getZ(3)],[0,0],'local charge parcels retain closed sections');
+    const parcel=path.getY(2),length=path.getZ(0);
+    s.simTime+=.09;out.update(s);
+    assert.notEqual(path.getY(2),parcel);assert.equal(path.getZ(0),length,'transport does not change endpoint reach');
+  }finally{out.dispose();}
+});
+
+test('cargo catch contacts the drawn pod face and its members remain outside as the pod rotates',()=>{
+  const s=fixture(),out=new ActionVfx(new THREE.Scene()),target=s.entities.get(2),source=s.entities.get(1);
+  source.pos={x:-30,z:30};target.rot=0;
+  const root=new THREE.Mesh(new THREE.BoxGeometry(18,8,12),new THREE.MeshBasicMaterial());
+  root.position.set(20,0,30);target.view={root};
+  try{
+    out.emit('cargo:caughtByNet',{podId:2,netId:1},s);s.simTime+=.22;out.update(s);
+    const slot=out.slots[0];
+    assert.equal(slot.provenance,'model-bounds-surface');
+    assert.deepEqual([slot.x,slot.z],[11,30],'contact is on the actual visible face, beyond the smaller physics radius');
+    assert.ok(slot.y>0,'contact occupies the visible upper flank');
+    const verifyOutward=()=>{
+      const origin=out.batch.attributes[0],shape=out.batch.attributes[2],path=out.batch.attributes[1];
+      for(let i=0;i<3;i++){
+        const outward=(origin.getX(i)-slot.x)*Math.cos(slot.angle)+(origin.getZ(i)-slot.z)*Math.sin(slot.angle);
+        assert.ok(outward>shape.getX(i),'entire hook cross-section clears the opaque surface');
+        assert.ok(path.getW(i)<0,'hook bow bends away from the pod');
+      }
+      for(let i=3;i<5;i++)assert.ok(path.getY(i)>0,'late bridges begin outward from the surface');
+    };
+    verifyOutward();
+    target.pos.x=24;target.rot=Math.PI/2;s.simTime+=.1;out.update(s);
+    assert.ok(Math.abs(slot.x-24)<1e-8);assert.ok(Math.abs(slot.z-21)<1e-8);verifyOutward();
+    out.clear();out.emit('cargo:caughtByNet',{podId:2,netId:1,contactPoint:{x:7,y:3,z:9},normal:{x:0,z:1}},s);
+    assert.deepEqual([out.slots[0].x,out.slots[0].y,out.slots[0].z],[7,3,9],'an authoritative contact remains exact');
+    out.clear();out.emit('well:capture',{victimId:2},s);
+    assert.equal(out.slots[0].y,0,'a recycled scratch anchor cannot leak cargo contact height');
+  }finally{out.dispose();root.geometry.dispose();root.material.dispose();}
+});
+
 test('movement, salvage and cargo receipts resolve their actual payload body and retire transport',()=>{
   const s=fixture(),out=new ActionVfx(new THREE.Scene());
   const receipts=[['ship:boostPreKick',{shipId:2}],['salvage:reactorVented',{targetId:2}],

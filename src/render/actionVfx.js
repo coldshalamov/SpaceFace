@@ -34,7 +34,7 @@ export const ACTION_VFX_RECIPES=Object.freeze({
   'bombs:commanded':recipe('command',0xffca86,.55),
   'ship:boostPreKick':recipe('ignition',0xa9eaff,.24),
   'salvage:reactorVented':recipe('vent',0xffb271,1.15),
-  'cargo:caughtByNet':recipe('catch',0x85e7cf,.65),
+  'cargo:caughtByNet':recipe('catch',0x85e7cf,.65,{surfaceCapture:true}),
   'mining:richCoreCompleted':recipe('harvest',0xffdf96,.85),
   'mining:richCoreFizzle':recipe('cool',0x8cacca,.6),
   'weapons:mineArmed':recipe('arm',0x80d4ff,.75),
@@ -63,6 +63,7 @@ export class ActionVfx {
     this.particleOptions={reducedMotion:false,reducedFlash:false};
     this.composer=new ActionPrimitiveComposer(this.batch,this.particles,toLocal);
     this.anchor={x:0,z:0};this.origin={x:0,z:0};this.socketWorld=new THREE.Vector3();
+    this.bodyBounds=new THREE.Box3();this.bodyCenter=new THREE.Vector3();
     this.time=0;this.serial=0;this.live=0;this.disposed=false;
     this.slots=Array.from({length:32},()=>({alive:false,event:null,kind:null,id:null,sourceId:null,attached:false,born:0,last:0,
       x:0,y:0,z:0,sx:0,sz:0,radius:1,angle:0,angleOffset:0,seed:0,recipe:null,particlePulse:-1,
@@ -98,6 +99,7 @@ export class ActionVfx {
     if(recipe.verb==='arm')slot.radius=Math.max(6,slot.radius*1.5);
     if(recipe.verb==='shove')slot.radius=Math.max(8,Math.min(24,finite(p.blastRadius,100)*.14));
     const heading=valid(p.direction)?p.direction:valid(p.dir)?p.dir:valid(p.normal)?p.normal:null;
+    this.anchor.y=0;
     slot.angle=heading?Math.atan2(heading.z,heading.x):Math.hypot(finite(target?.vel?.x),finite(target?.vel?.z))>1
       ?Math.atan2(target.vel.z,target.vel.x):finite(target?.rot,finite(source?.rot));
     slot.provenance=contact?'receipt':target?'body':'field';
@@ -121,6 +123,32 @@ export class ActionVfx {
       this.anchor.x=target.pos.x+Math.cos(a)*slot.radius*.82;
       this.anchor.z=target.pos.z+Math.sin(a)*slot.radius*.82;pos=this.anchor;
       slot.angle=a;slot.provenance='body-surface';
+    }
+    if(recipe.surfaceCapture&&target){
+      let a=heading?slot.angle:valid(source?.pos)&&source!==target
+        ?Math.atan2(source.pos.z-target.pos.z,source.pos.x-target.pos.x):finite(target.rot);
+      if(!contact){
+        const dx=Math.cos(a),dz=Math.sin(a),root=target.view?.root;
+        if(root){root.updateWorldMatrix(true,true);this.bodyBounds.setFromObject(root,true);}
+        if(root&&!this.bodyBounds.isEmpty()){
+          // Bounds are measured from the drawn pod once per receipt. Retain the resulting
+          // body-local face contact so later movement/rotation requires no mesh traversal.
+          const box=this.bodyBounds,center=box.getCenter(this.bodyCenter);
+          const tx=Math.abs(dx)>1e-6?(box.max.x-box.min.x)*.5/Math.abs(dx):Infinity;
+          const tz=Math.abs(dz)>1e-6?(box.max.z-box.min.z)*.5/Math.abs(dz):Infinity;
+          const travel=Math.min(tx,tz);readFrameOrigin(state,this.origin);
+          this.anchor.x=center.x+dx*travel+this.origin.x;
+          this.anchor.z=center.z+dz*travel+this.origin.z;
+          this.anchor.y=box.min.y+(box.max.y-box.min.y)*.60;
+          a=tx<=tz?(dx<0?Math.PI:0):(dz<0?-Math.PI/2:Math.PI/2);
+          slot.provenance='model-bounds-surface';
+        }else{
+          this.anchor.x=target.pos.x+dx*slot.radius;this.anchor.z=target.pos.z+dz*slot.radius;
+          slot.provenance='body-surface';
+        }
+        pos=this.anchor;
+      }
+      slot.angle=a;
     }
     slot.x=pos.x;slot.y=finite(pos.y);slot.z=pos.z;
     slot.tx=slot.tz=slot.ox=slot.oz=0;

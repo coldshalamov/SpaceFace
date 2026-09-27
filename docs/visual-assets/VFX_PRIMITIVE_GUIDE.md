@@ -19,7 +19,7 @@ Use this with [the technique standard](VFX_TECHNIQUE_STANDARD.md),
 | Primitive | Construction and motion | Suitable use |
 | --- | --- | --- |
 | Compression | Open rolled exhaust folds, uneven downstream sections, a separately loaded throat | Ignition, venting, hot ejection, short singularity inlets |
-| Connection | Closed elliptical conductor with a dark lumen and independently travelling packets | Transfer, loaded line, field hitch, induction paths to real receivers |
+| Connection | Two unequal open rolled shoulders around a real gap, with independently travelling closed charge parcels | Transfer, loaded line, field hitch, induction paths to real receivers |
 | Deposition | Broad lenticular patch, raised seam, unequal rim, local travelling reaction | Repair, grinding, cooling, goo, corrosion, thermite adhesion |
 | Pressure | Bowed standing front with depth, folded skirt, independent front travel and tearing | Shoves, concussion, expulsion, cryo/kinetic response |
 | Induction | Branching prismatic channels with a diamond section and delayed forks | ECM, disruption, optical contact, command transmission |
@@ -103,6 +103,8 @@ in decorative reach. Keep a separate inspectable gameplay range.
    into a rotating local offset; otherwise it remains the world snapshot that was published.
 3. If the event names only a body, use a bounded body-facing surface approximation and call it
    that in diagnostics. It is not a mesh-triangle contact. A shunt receipt has no manifold point.
+   Cargo net catches measure the drawn pod bounds once, retain the source-facing contact in
+   body-local coordinates, and keep their hooks and release folds outside that opaque face.
 4. Use the true source field, owner, or emitter; never borrow the player for an NPC effect.
    Player-only publishers are explicitly resolved by event type. Chaff/decoy use `cm.effect`
    diversion coordinates, because the receipt's x/z identifies the hull centre.
