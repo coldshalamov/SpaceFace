@@ -970,8 +970,11 @@ function runHauler(horizonS, options = {}) {
         }
         if (qty <= 0) continue;
         const buyLot = ctx.econ.quote(buyStationId, c.id, 'buy', qty);
-        const sellLot = ctx.econ.quote(sellStationId, c.id, 'sell', qty);
-        if (!buyLot.ok || !sellLot.ok) continue;
+        if (!buyLot.ok) continue;
+        // Buy quotes clamp to live stock (partial fill); price the sell leg at the
+        // same executable qty or selection compares full-lot proceeds vs partial cost.
+        const sellLot = ctx.econ.quote(sellStationId, c.id, 'sell', buyLot.qty);
+        if (!sellLot.ok) continue;
         const projectedProfit = sellLot.total - buyLot.total - cycleToll;
         if (!(projectedProfit > 0)) continue;
         const margin = sellLot.unitAvg - buyLot.unitAvg;
@@ -1097,6 +1100,15 @@ function runHauler(horizonS, options = {}) {
       markBottleneck(receipt, 'capital_bind', 'Cannot afford next buy lot');
       break;
     }
+    // Never buy cargo the horizon cannot sell: the buy action (8s) plus the sell
+    // leg must fit before the buy executes, or earnedValue books a full lot as
+    // pure loss (no free liquidation at horizon end).
+    const sellSector = STATION_TO_SECTOR.get(best.sellStationId);
+    const leg2S = stationTravelTimeS(buyStationId, best.sellStationId) + DOCK_OVERHEAD_S;
+    if (t + 8 + leg2S > horizonS) {
+      receipt.loops.push({ loop: loops, note: 'buy_skipped_horizon_before_sell', t: round1(t) });
+      break;
+    }
     const buyRes = ctx.econ.execute(buyStationId, best.cmdtyId, 'buy', want);
     if (!buyRes.ok) {
       receipt.loops.push({ loop: loops, fail: buyRes.reason || 'buy_failed' });
@@ -1108,12 +1120,6 @@ function runHauler(horizonS, options = {}) {
     advanceTime(ctx, 8, budget, 'actionS');
     t = ctx.state.simTime;
 
-    const sellSector = STATION_TO_SECTOR.get(best.sellStationId);
-    const leg2S = stationTravelTimeS(buyStationId, best.sellStationId) + DOCK_OVERHEAD_S;
-    if (t + leg2S > horizonS) {
-      receipt.loops.push({ loop: loops, partial: true, bought: buyRes.qty, note: 'horizon_before_sell' });
-      break;
-    }
     const move2 = tryTravel(ctx, {
       fromSectorId: currentSectorId,
       toSectorId: sellSector.id,

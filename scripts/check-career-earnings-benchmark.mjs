@@ -488,8 +488,11 @@ function runHauler() {
         }
         if (qty <= 0) continue;
         const buyLot = ctx.econ.quote(buyStationId, c.id, 'buy', qty);
-        const sellLot = ctx.econ.quote(sellStationId, c.id, 'sell', qty);
-        if (!buyLot.ok || !sellLot.ok) continue;
+        if (!buyLot.ok) continue;
+        // Buy quotes clamp to live stock (partial fill); price the sell leg at the
+        // same executable qty or selection compares full-lot proceeds vs partial cost.
+        const sellLot = ctx.econ.quote(sellStationId, c.id, 'sell', buyLot.qty);
+        if (!sellLot.ok) continue;
         const projectedProfit = sellLot.total - buyLot.total - cycleToll;
         if (!(projectedProfit > 0)) continue;
         const margin = sellLot.unitAvg - buyLot.unitAvg;
@@ -608,6 +611,14 @@ function runHauler() {
       receipt.loops.push({ loop: loops, fail: 'cannot_afford_or_fit', credits: ctx.state.player.credits });
       break;
     }
+    // Never buy cargo the horizon cannot sell: the sell leg must fit before the buy
+    // executes, or earnedValue books a full lot as pure loss (no free liquidation).
+    const sellSector = STATION_TO_SECTOR.get(best.sellStationId);
+    const leg2 = stationTravelTimeS(buyStationId, best.sellStationId) + DOCK_OVERHEAD_S;
+    if (t + leg2 > HORIZON_S) {
+      receipt.loops.push({ loop: loops, note: 'buy_skipped_horizon_before_sell', t: r1(t) });
+      break;
+    }
     const stockBeforeBuy = entry.stock;
     const buyRes = ctx.econ.execute(buyStationId, best.cmdtyId, 'buy', want);
     if (!buyRes.ok) {
@@ -619,21 +630,7 @@ function runHauler() {
     receipt.purchaseSpend += buyRes.total;
     const stockAfterBuy = entry.stock;
 
-    // Travel sell station
-    const sellSector = STATION_TO_SECTOR.get(best.sellStationId);
-    const leg2 = stationTravelTimeS(buyStationId, best.sellStationId) + DOCK_OVERHEAD_S;
-    if (t + leg2 > HORIZON_S) {
-      // stuck with cargo; no free liquidation
-      receipt.loops.push({
-        loop: loops,
-        partial: true,
-        bought: buyRes.qty,
-        buyTotal: buyRes.total,
-        buyImpactPct: r2(buyRes.priceImpactPct),
-        note: 'horizon_before_sell',
-      });
-      break;
-    }
+    // Travel sell station (leg2 already verified to fit above).
     const toll2 = routeToll(seed, currentSectorId, sellSector.id, dayIndex).amount;
     receipt.tollCost += chargeRouteToll(ctx, toll2, `gate_toll:hauler:${loops}:to_sell`);
     advanceEconomy(ctx, leg2);
