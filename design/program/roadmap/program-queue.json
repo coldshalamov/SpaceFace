@@ -19628,6 +19628,8 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-208.00-REPORT.md"
       ],
+      "integratedCommit": "43187e532",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-208-REPORT.md",
       "brief": "Extend the existing audit so a declared verb key with no implemented capability fails, rather than silently classifying as a verb."
     },
     {
@@ -19649,6 +19651,8 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-208.01-REPORT.md"
       ],
+      "integratedCommit": "43187e532",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-208-REPORT.md",
       "brief": "DONE: both keys are wired — src/systems/uniqueLootAbilities.js consumes them via fittedVerbSpec (pale-coil blink; choir-bell missile knockback, both usesPerEncounter), and check-progression-verb-audit.mjs VERB_MOD_KEYS carries live {file,symbol} consumer evidence for each, upgraded from the declaredOnly label. Original task: microJumpBlink (unique_pale_coil_warp_drive) and reactiveMissileKnockback (unique_choir_bell_aegis) are declared as verbs but name no shipped capability; wire them or reclassify honestly."
     },
     {
