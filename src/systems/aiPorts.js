@@ -115,6 +115,8 @@ export const aiPorts = {
     this._pendingFlushScratch = [];
     this._rosterCandidateScratch = [];
     this._rosterSquadsScratch = new Map();
+    this._liveRosterScratch = null;
+    this._liveRosterMembershipKey = '';
     ensureEncounterState(this.state);
     this._diag = {
       schemaVersion: AI_CONTRACT_VERSION,
@@ -445,7 +447,8 @@ export const aiPorts = {
   _listSquads(tick, options = {}) {
     const state = this.state;
     ensureActivityClassified(state);
-    const freeze = options.freezeResults === false ? identity : Object.freeze;
+    const live = options.freezeResults === false;
+    const freeze = live ? identity : Object.freeze;
     const squads = this._rosterSquadsScratch || (this._rosterSquadsScratch = new Map());
     squads.clear();
     const source = getActivityOwnerEntities(state, 'ai');
@@ -468,6 +471,24 @@ export const aiPorts = {
       candidates.push(entity);
     }
     candidates.sort((a, b) => compareIds(a && a.id, b && b.id));
+
+    // Quiet live path: when membership + signature identity fields are unchanged, keep the
+    // retained roster and only refresh per-tick mutable fields (pos/activity/alive/authority).
+    // Avoids re-allocating members and rebuilding rosterSignature strings every tactical tick.
+    if (live) {
+      const membershipKey = liveRosterMembershipKey(candidates, (entity) => this._capabilitiesFor(entity, tick));
+      const retained = this._liveRosterScratch;
+      if (retained && membershipKey === this._liveRosterMembershipKey) {
+        refreshLiveRosterMembers(retained, candidates, playerId, playerTeam, authorityOrigin, authorityRadius);
+        candidates.length = 0;
+        return retained;
+      }
+      this._liveRosterMembershipKey = membershipKey;
+    } else {
+      this._liveRosterScratch = null;
+      this._liveRosterMembershipKey = '';
+    }
+
     for (const entity of candidates) {
       const ai = (entity.data && entity.data.ai) || entity.ai;
       const factionBehavior = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
@@ -527,6 +548,7 @@ export const aiPorts = {
     Object.defineProperty(roster, NORMALIZED_ROSTER_FLAG, { value: true });
     candidates.length = 0;
     squads.clear();
+    if (live) this._liveRosterScratch = roster;
     return freeze(roster);
   },
 
@@ -1459,6 +1481,59 @@ function addAttachment(byEntity, entityId, attachment) {
 function attachmentsFor(index, entityId) {
   if (!index || !index.byEntity || entityId == null) return EMPTY_ATTACHMENTS;
   return index.byEntity.get(entityId) || EMPTY_ATTACHMENTS;
+}
+
+
+/** Membership + signature identity for live roster retain (excludes pos/activity/authority). */
+function liveRosterMembershipKey(candidates, capabilitiesFor) {
+  let key = '';
+  for (let i = 0; i < candidates.length; i++) {
+    const entity = candidates[i];
+    const ai = (entity.data && entity.data.ai) || entity.ai;
+    const doctrine = String(ai.doctrine || doctrineFor(entity));
+    const faction = String(entity.factionId || ai.faction || `team_${entity.team == null ? 'unknown' : entity.team}`);
+    const squadId = String(ai.squadId || ai.wingId || `${doctrine}:${faction}`);
+    const formation = String(ai.formation || defaultFormation(doctrine));
+    const preferredRole = ai.preferredRole || ai.role || '';
+    const combatDoctrineId = normalizeCombatDoctrineId(ai.combatDoctrineId) || '';
+    const caps = capabilitiesFor(entity) || [];
+    const factionBehavior = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
+    key += `${entity.id}:${squadId}:${doctrine}:${faction}:${formation}:`;
+    key += `${positive(ai.formationSpacing, DEFAULT_FORMATION_SPACING)}:`;
+    key += `${positive(ai.formationBound, DEFAULT_FORMATION_BOUND)}:`;
+    key += `${preferredRole}:${combatDoctrineId}:${caps.join('+')}:`;
+    key += `${profileSignature(factionBehavior)}:${entity.team == null ? '' : entity.team};`;
+  }
+  return key;
+}
+
+function refreshLiveRosterMembers(roster, candidates, playerId, playerTeam, authorityOrigin, authorityRadius) {
+  // Candidates are sorted by id; roster members within each squad are sorted by id.
+  // Walk candidates once via id map for O(n) refresh.
+  const byId = refreshLiveRosterMembers._byId || (refreshLiveRosterMembers._byId = new Map());
+  byId.clear();
+  for (let i = 0; i < candidates.length; i++) {
+    const entity = candidates[i];
+    byId.set(entity.id, entity);
+  }
+  for (let s = 0; s < roster.length; s++) {
+    const members = roster[s].members;
+    for (let m = 0; m < members.length; m++) {
+      const member = members[m];
+      const entity = byId.get(member.id);
+      if (!entity) continue;
+      const ai = (entity.data && entity.data.ai) || entity.ai;
+      member.alive = entity.alive !== false;
+      member.pos = entity.pos || null;
+      member.activity = entity.activity || null;
+      member.team = entity.team;
+      member.passive = !!(ai && ai.passive === true);
+      member.playerId = playerId;
+      member.playerTeam = playerTeam;
+      member.authorityOrigin = authorityOrigin;
+      member.authorityRadius = authorityRadius;
+    }
+  }
 }
 
 function rosterSignature(squad) {

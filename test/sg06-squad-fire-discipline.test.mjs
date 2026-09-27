@@ -156,6 +156,28 @@ test('squad command aggregation leaves member-only hazard perception untouched',
     'the member perception remains intact for ManeuverPlanner obstacle avoidance');
 });
 
+test('live roster retain keeps identity while propagating pos/activity refreshes', () => {
+  const h = squadHarness();
+  const first = h.helpers.aiRoster.liveListSquads(60);
+  const member = first[0].members[0];
+  const entity = h.attackers.find((e) => e.id === member.id);
+  const movedPos = { x: 999, z: -999 };
+  entity.pos = movedPos;
+  entity.activity = { kind: 'loiter' };
+  const second = h.helpers.aiRoster.liveListSquads(61);
+  assert.equal(second, first, 'unchanged membership retains the roster object');
+  assert.equal(second[0].members[0].pos, movedPos, 'mutable pos refreshes onto the retained member');
+  assert.equal(second[0].members[0].activity, entity.activity, 'mutable activity refreshes');
+
+  entity.data.ai.squadId = 'reassigned_wing';
+  const third = h.helpers.aiRoster.liveListSquads(62);
+  assert.notEqual(third, second, 'an identity change rebuilds rather than retains');
+
+  h.helpers.aiRoster.listSquads(63); // frozen call clears the live retain cache
+  const fourth = h.helpers.aiRoster.liveListSquads(64);
+  assert.notEqual(fourth, third, 'a frozen listSquads between live calls invalidates the cache');
+});
+
 test('production firing adapter holds fire for an ally in the predicted lane and recovers cleanly', () => {
   const state = createGameState(91);
   state.tick = 90;
