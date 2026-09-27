@@ -79,7 +79,7 @@ export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', 
               <div class="gm-rail-legend k-rows">
                 <div class="gm-rail-title k-caps">Chart marks</div>${markLegendHtml}
               </div>
-              <div class="gm-hint-text k-t-fine k-38">A working instrument, not a picture: <b>double-click any mark to lay a course</b>. <b>Controls</b> in the corner shows the full control key.</div>
+              <div class="gm-hint-text k-t-fine k-38">A working instrument, not a picture: <b>drag from your ship to lay a course</b> (or double-click any mark). <b>Controls</b> in the corner shows the full control key.</div>
             </div>
           </details>
         </div>
@@ -112,7 +112,7 @@ export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', 
               <div class="gm-frame-reason k-t-fine k-38" id="gm-frame-reason" aria-live="polite"></div>
             </div>
             <div class="gm-inspector-details" id="gm-tabpanel" role="tabpanel" tabindex="0">
-              <div class="gm-inspector-empty">No target selected. <b>Click</b> a sector, station or contact to inspect it — <b>double-click</b> to lay a course.</div>
+              <div class="gm-inspector-empty">No target selected. <b>Drag from your ship</b> to lay a course, or <b>click</b> a sector, station or contact to inspect it.</div>
             </div>
           </div>
           <!-- The action cluster is a pinned band under the scrollable detail, never part of its
