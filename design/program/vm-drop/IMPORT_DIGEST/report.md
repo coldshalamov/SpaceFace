@@ -1,3 +1,52 @@
+# IMPORT ledger — 20260928 owner-side import (devin-w3-vm-latche, board §1C row 26)
+
+Quiet-latch render/sim wave E — the remaining quiet-latch vein folders the earlier
+latch waves left. Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `seam-markers-quiet-hide-latch` | `32a171444` | dynamic-buffer-ranges 24/24 + trail-streak-instancing + vfx-additive-single-pass + `check:thruster:propulsion-family` 68/68 |
+| `status-attached-quiet-empty-latch` | `ed26d8d5b` | focused `status-attached-vfx` 4/4 (DONE-named `inf-045-target-contour.test.mjs` does not exist on this checkout) |
+| `tumble-body-language-quiet-skip` | `7e5af81ee` | pitch/tumble battery 42/42 (hand-merged onto master's newer `updateShipPitchPresentation` signature) |
+| `trail-emit-idle-drive-walk` | `4d4813380` | trail/thruster battery 74/74 (hand-merged) |
+| `npc-job-signatures-quiet-sleep-latch` | `8def07219` | focused 4/4 (hand-merged; the row-20/24 trap cleared once sibling latch resets + fatlist refactor were both on master) |
+| `projectile-trails-quiet-empty-latch` | `a58d7807e` | focused 4/4 |
+| `overlay-quartet-quiet-empty-latch` | `4bf905096` | focused 6/6 (the row-22 deferral resolved — its #122 dependency landed above) |
+| `speed-lines-quiet-idle-latch` | `3cdf60fc0` | focused latch 3/3 + named 9-file battery 29 pass/0 fail |
+
+Already on master before this pass (verified by marker/commit, no re-import):
+
+- `sanctuary-empty-quiet-latch` — `892cb7150`
+- `pending-detonations-quiet-empty-latch` — `a98e4cd99`
+- `countermeasures-quiet-empty-latch` — `180372926` (+ sibling-contract hardening
+  `cf3f8272f`); focused `countermeasures-quiet-empty-latch` 8/8 on master
+- `pirate-disengage-empty-quiet-latch` — `5a90fb13b` (+ hardening `f758ba0ca`)
+- `pirate-parley-empty-quiet-latch` — `c3ef771e2` (+ hardening `f758ba0ca`)
+- `salvage-unstable-quiet-empty-latch` — `47af49265`
+- `tactical-ai-quiet-latch` — `371c52dcb`
+- `tumble-states-quiet-latch` — `833ca50f0` (incl. `impulseProvenanceGeneration`
+  wake in `src/combat/impulseKernel.js`)
+
+Skipped this pass:
+
+- `poi-scan-all-identified-quiet-latch` — sole src hunk edits `src/systems/world.js`,
+  which is under a live foreign claim this pass; left untouched for that lane.
+
+Merge notes:
+
+- `tumble-body-language-quiet-skip`: patch predates master's two-argument
+  `updateShipPitchPresentation`; only the pitch-presentation epoch + vfx wake hunks
+  were ported, master's signature/behavior preserved.
+- `trail-emit-idle-drive-walk` and `npc-job-signatures-quiet-sleep-latch`:
+  hand-merged onto drifted `vfx.js` reset lines / `npcJobsRuntime` fatlist-era
+  dispatch; `+` insertions preserved, master's newer resets kept.
+- `countermeasures-quiet-empty-latch` apply was aborted mid-3way on discovering the
+  package already landed hardened; tree restored clean, nothing re-applied.
+
+Every `*-quiet-latch` vein folder is now dispositioned across waves A–E: landed,
+verified already-on-master, or recorded as skipped-with-reason. Remaining
+`*-skip`/HOLD/report folders belong to rows 27/28/30 or the HOLD list — untouched.
+
 # IMPORT ledger — 20260928 owner-side import (devin-w2-vm-latchb, board §1C row 23)
 
 Quiet-latch vein B (`combat-*` / `weapon-*` / `bombs-*` / `bomb-*` / `quarks-*` /
