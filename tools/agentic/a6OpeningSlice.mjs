@@ -341,6 +341,47 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
     return best;
   }
 
+  // A confident hand cuts on its own read, not only the solver's beep: walk the freed hull
+  // (post-release bleed ≈0.35/s — a live ship recovering) and the victim (its OWN measured
+  // acceleration, not a constant-velocity promise) forward, and cut the tick the two
+  // trajectories actually meet inside the contact pad. The solver's window certifies the
+  // crossing for a steady target; this read is what a pilot sees on a braking one.
+  const swingCutTrack = new Map(); // victimId -> recent [{t,vx,vz}] — the measured accel source
+  const SWING_CUT_MIN_SPEED = 150;   // below the lethal band a meeting is a nudge
+  const SWING_CUT_MAX_D = 700;       // beyond this the forward read is a guess, not a call
+  const SWING_CUT_PAD_SLACK = 12;
+  const num = (v) => (Number.isFinite(v) ? v : 0);
+  function swingCutRead(payload, victim) {
+    if (!victim || !victim.pos || !victim.vel) return false;
+    let hist = swingCutTrack.get(victim.id);
+    if (!hist) { hist = []; swingCutTrack.set(victim.id, hist); }
+    hist.push({ t: state.simTime, vx: num(victim.vel.x), vz: num(victim.vel.z) });
+    while (hist.length && state.simTime - hist[0].t > 0.75) hist.shift();
+    const pv = payload.vel || { x: 0, z: 0 };
+    const payV = Math.hypot(pv.x, pv.z);
+    const d = dist(payload.pos, victim.pos);
+    if (payV < SWING_CUT_MIN_SPEED || d > SWING_CUT_MAX_D || d < 40) return false;
+    const oldest = hist[0];
+    const spanS = oldest ? Math.max(1 / 60, state.simTime - oldest.t) : 0;
+    const ax = oldest ? (num(victim.vel.x) - oldest.vx) / spanS : 0;
+    const az = oldest ? (num(victim.vel.z) - oldest.vz) / spanS : 0;
+    const pad = (payload.radius || 0) + (victim.radius || 0) + SWING_CUT_PAD_SLACK;
+    let hx = payload.pos.x, hz = payload.pos.z, hvx = pv.x, hvz = pv.z;
+    let vx = victim.pos.x, vz = victim.pos.z, vvx = num(victim.vel.x), vvz = num(victim.vel.z);
+    let best = Infinity;
+    const stepS = 1 / 15, horizonS = Math.min(4, d / payV + 1.5);
+    for (let tt = stepS; tt <= horizonS; tt += stepS) {
+      hx += hvx * stepS; hz += hvz * stepS;
+      const bleed = Math.max(0, 1 - 0.35 * stepS);
+      hvx *= bleed; hvz *= bleed;
+      vx += vvx * stepS; vz += vvz * stepS;
+      vvx += ax * stepS; vvz += az * stepS;
+      const sep = Math.hypot(vx - hx, vz - hz);
+      if (sep < best) best = sep; else if (sep > best + 5) break;
+    }
+    return best < pad;
+  }
+
   function tryEmergencyDock() {
     // docking is the honest escape — only when the hull is actually going. The patrol beat
     // logs before this runs each tick, so beat order survives a hot landing.
@@ -365,7 +406,7 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
   let lastPhase = phase;
   let payloadId = null, haulerId = null, swingStart = null, armPressedAt = null, throwTries = 0;
   let docked = false, bought = false, collectTargetId = null, resumePhase = null, lastPos = null;
-  let lastFrameOrigin = null, lastAct = null, sweepCovered = false;
+  let lastFrameOrigin = null, lastAct = null, sweepCovered = false, flyMin = null;
   // Zero-accept embargo: a target parked in contact range that yields nothing for a few
   // seconds is uncollectable (hold volume full, forbidden cargo class, dry pool the value
   // filter misjudged). A real pilot doesn't park on a container that won't open — strike
@@ -526,6 +567,8 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       // the day-0 guarantee is [60,170]s; a silent no_budget waits 14 min otherwise
       if (t - phaseStart > 240) { log('raid never fired'); phase = 'fail_raid'; break; }
     } else if (phase === 'latch') {
+      pinnedAimId = null; // a pin belongs to the throw that earned it — never survives a cycle
+      swingCutTrack.clear(); // same for a victim's measured motion — last cycle's target is gone
       let target = payloadId != null ? state.entities.get(payloadId) : null;
       if (!target || target.alive === false) {
         const alt = raiders().filter(e => (e.mass || 1e9) < player.mass).sort((a, b) => a.mass - b.mass)[0];
@@ -590,12 +633,25 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
         input.aimIntentActive = true;
         state.player.targetId = aim.id;
       }
-      // Never steer INTO the aim during the swing: in the starter field the nearest heavy
-      // body is usually a rock, and dragging the shortening arc across its face kills the
-      // payload on terrain (self-attributed — no kill burst) before the meeting develops.
-      // A player keeps the arc clear instead: put distance between the hull and the
-      // nearest rock face, hauling the tethered payload toward open space.
-      if (phase === 'swing') {
+      const kin = payload.vel || {};
+      // short line = fast orbit; pump builds the swing
+      const rx = payload.pos.x - player.pos.x, rz = payload.pos.z - player.pos.z;
+      const rl = Math.hypot(rx, rz) || 1;
+      const rvx = (kin.x || 0) - (player.vel.x || 0), rvz = (kin.z || 0) - (player.vel.z || 0);
+      const tangential = rvx * (-rz / rl) + rvz * (rx / rl);
+      const orbitSign = tangential >= 0 ? 1 : -1;
+      // the designed throw: a taut tangential release sends the hull where the swing actually
+      // sent it. firstHitScan names what the release ray meets; nothing steers it there.
+      const pair = readCadencePair(player, payload, tether.restLength || 0);
+      const taut = !!(pair && pair.valid
+        && (tether.phase === 'capture' || tether.phase === 'loaded' || tether.phase === 'overload')
+        && pair.tangency >= 0.85 && Math.abs(pair.tangentialSpeed) >= 25);
+      const vtNow = Math.abs(pair && pair.tangentialSpeed || 0);
+      // While the swing is still weak the arc stays off rock faces — a dud tip-in spends the
+      // catch for nothing. Once the flail is hot the whip IS the weapon: a hull swept through
+      // a rock at line speed is a kill the throw owns, so the pilot holds the arc and lets the
+      // sweep work instead of hauling the payload toward empty space.
+      if (phase === 'swing' && vtNow < 150) {
         let rock = null, rd = Infinity;
         for (const e of state.entityList || []) {
           if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
@@ -611,38 +667,68 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       } else {
         clearAutopilot();
       }
-      const kin = payload.vel || {};
-      // short line = fast orbit; pump builds the swing
-      const rx = payload.pos.x - player.pos.x, rz = payload.pos.z - player.pos.z;
-      const rl = Math.hypot(rx, rz) || 1;
-      const rvx = (kin.x || 0) - (player.vel.x || 0), rvz = (kin.z || 0) - (player.vel.z || 0);
-      const tangential = rvx * (-rz / rl) + rvz * (rx / rl);
-      const orbitSign = tangential >= 0 ? 1 : -1;
-      // lineLength is the reel axis the control law reads (negative = haul in); reelIn is dead
-      // weight — the swing used to run the full latch distance out on a wide arc and the payload
-      // could slam a field rock before the meeting geometry developed.
-      masslineCmd({ lineControl: true, lineLength: -1, orbitDirection: orbitSign, pump: true });
+      // The throw lives in a band: below ~150 a ship-meeting is a nudge, above ~450 the release
+      // ray rotates whole degrees between the measured tick and the cut tick — a scan already
+      // stale. A hand eases the pump once the tip is live; if the swing overspeeds anyway it
+      // pays line out, and the longer lever slows the tip back into the band.
+      const overspeed = vtNow > 450;
+      masslineCmd({ lineControl: true, lineLength: overspeed ? 1 : -1, orbitDirection: orbitSign, pump: !overspeed });
       if (swingStart == null) swingStart = t;
-      // the designed throw: a taut tangential release sends the hull where the swing actually
-      // sent it. firstHitScan names what the release ray meets; nothing steers it there.
-      const pair = readCadencePair(player, payload, tether.restLength || 0);
-      const taut = !!(pair && pair.valid
-        && (tether.phase === 'capture' || tether.phase === 'loaded' || tether.phase === 'overload')
-        && pair.tangency >= 0.85 && Math.abs(pair.tangentialSpeed) >= 25);
       const scan = firstHitScan(payload);
+      // The solver's window certifies a crossing on constant velocity; a hand sees the
+      // victim brake. When the swing's own forward read says the freed hull actually meets
+      // a body — the ray-crossed one, or one closing into the path — cut now rather than
+      // wait for a beep aimed at where the target was.
+      {
+        const cands = [];
+        if (scan && scan.e && scan.e.id !== payloadId) cands.push(scan.e);
+        for (const e of state.entityList || []) {
+          if (!e || e.alive === false || e.id === payloadId || e.id === playerId || !e.pos || !e.vel) continue;
+          if (e.type !== 'ship' && e.type !== 'drone' && e.type !== 'asteroid') continue;
+          if (e === scan?.e) continue;
+          if (dist(payload.pos, e.pos) <= SWING_CUT_MAX_D) cands.push(e);
+        }
+        let cutVictim = null;
+        for (const e of cands) { if (swingCutRead(payload, e)) { cutVictim = e; break; } }
+        if (cutVictim) {
+          const pv = payload.vel || {};
+          log(`  CUT ON READ t=${t.toFixed(1)} victim=${cutVictim.id}:${cutVictim.type} payV=${Math.hypot(pv.x || 0, pv.z || 0).toFixed(0)}`);
+          expectedVictimId = cutVictim.id; flyMin = null;
+          pinnedAimId = cutVictim.id;
+          state.player.targetId = cutVictim.id;
+          input.aimWorld = { x: cutVictim.pos.x, z: cutVictim.pos.z };
+          input.aimIntentActive = true;
+          masslineCmd({ cut: true });
+          phase = 'post_throw'; phaseStart = t; continue;
+        }
+      }
       if (phase === 'swing' && (taut || t - swingStart > 12)) { phase = 'release'; phaseStart = t; }
       if (phase === 'release') {
-        if (taut && armPressedAt == null) {
-          log(`  TAUT THROW t=${t.toFixed(1)} phase=${String(tether.phase)} scan=${scan ? `${scan.e.id}:${scan.e.type}@${scan.c.impactTime.toFixed(2)}s` : 'none'}`);
+        // The freed hull is a live ship that brakes to recover — a window certified on a far
+        // aim fires a ray that lands where nothing is. A hand waits for the swing's own read:
+        // arm only while the release ray already crosses a body whose meeting is close enough
+        // that the post-cut bleed cannot walk the hull off it, and pin the aim there so the
+        // solver's certified cut is the same meeting the scan measured. Ships get the tightest
+        // read (they manoeuvre through a long flight); a rock holds still — the bleeder just
+        // arrives slower and the light payload still dies on it.
+        const tof = scan ? scan.c.impactTime : Infinity;
+        const tofCap = scan && (scan.e.type === 'ship' || scan.e.type === 'drone') ? 1.5 : 2.5;
+        const honestHit = scan && tof <= tofCap && vtNow >= 150 && !overspeed;
+        if (taut && armPressedAt == null && honestHit) {
+          pinnedAimId = scan.e.id;
+          input.aimWorld = { x: scan.e.pos.x, z: scan.e.pos.z };
+          input.aimIntentActive = true;
+          state.player.targetId = scan.e.id;
+          log(`  TAUT THROW t=${t.toFixed(1)} phase=${String(tether.phase)} scan=${scan.e.id}:${scan.e.type}@${scan.c.impactTime.toFixed(2)}s`);
           input.actions.throwArm = true; armPressedAt = t;
-          expectedVictimId = scan ? scan.e.id : null; // ballistics decide; the scan only names it
+          expectedVictimId = scan.e.id; flyMin = null; // ballistics decide; the scan only names it
         } else if (!taut && t - phaseStart > 25 && scan && armPressedAt == null) {
           // fallback: the ballistic cut — the released payload keeps its velocity and
           // dies on whatever the ray crosses. Still a real throw-kill, un-attributed.
           input.aimWorld = { x: scan.e.pos.x, z: scan.e.pos.z };
           input.aimIntentActive = true;
           state.player.targetId = scan.e.id;
-          expectedVictimId = scan.e.id;
+          expectedVictimId = scan.e.id; flyMin = null;
           input.actions.throwArm = true; armPressedAt = t;
           log(`  BALLISTIC THROW -> ${scan.e.id}:${scan.e.type} impact in ${scan.c.impactTime.toFixed(2)}s`);
         }
@@ -656,6 +742,14 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
         }
       }
     } else if (phase === 'post_throw') {
+      // Track the flyby: min distance from the freed hull to its named victim, so a miss
+      // reports how it missed instead of just "no kill".
+      const flyP = state.entities.get(payloadId);
+      const flyV = expectedVictimId != null ? state.entities.get(expectedVictimId) : null;
+      if (flyP && flyP.pos && flyV && flyV.pos) {
+        const d = dist(flyP.pos, flyV.pos);
+        if (flyMin == null || d < flyMin.d) flyMin = { d, t: state.simTime };
+      }
       if (releasedAt == null) {
         // a break is a release too — the payload leaves the line with whatever
         // the swing gave it, and the kill window should follow it ballistically.
@@ -676,6 +770,10 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
         phase = 'collect'; phaseStart = t;
       } else if (releasedAt != null && t - releasedAt > 14) {
         log('release produced no kill');
+        const liveP = state.entities.get(payloadId);
+        log(`  payload fate: ${liveP ? `alive pos=(${liveP.pos.x.toFixed(0)},${liveP.pos.z.toFixed(0)}) v=${Math.hypot(liveP.vel?.x || 0, liveP.vel?.z || 0).toFixed(0)}` : 'gone'} expected=${expectedVictimId} flyMin=${flyMin ? `${flyMin.d.toFixed(0)}@${flyMin.t.toFixed(1)}` : 'n/a'}`);
+        for (const e of events.filter(e2 => e2.t >= releasedAt - 0.5 && e2.t <= releasedAt + 12 && (e2.ev === 'entity:killed' || e2.ev === 'physics:impact' || e2.ev === 'combat:damage')))
+          log(`    evt ${e.t.toFixed(2)} ${e.ev} ${JSON.stringify(e.p).slice(0, 180)}`);
         // survived the meeting — re-latch the same payload if it's still alive
         const live = state.entities.get(payloadId);
         if (live && live.alive !== false) { armPressedAt = null; expectedVictimId = null; releasedAt = null; phase = 'latch'; phaseStart = t; }
