@@ -480,7 +480,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 73 | PB-JOBS-A | SF-076+089 Ceres handoff: reproduce D89 drop scenario, then repair first missing real transition + stale-pin audit | PB | OPEN — CHECK pair; verify boards-3x3 claim staleness on traffic.js first |
 | 74 | PB-ECON-A | SF-106+120 hauler viability re-measure post-D80 + cohort-vs-live reconciliation instrument | PB | OPEN — CHECK pair |
 | 75 | PB-PERF-A | SF-256 one draw path per material family — kill the instancing/direct shader twin (deep-dive 04; ~half the ship-job GPU gate) | PB | OPEN — seam renderer.js |
-| 76 | PB-SLICE-A | SF-286 first victory becomes the first useful wreck — combat→salvage→upgrade loop closes | PB | OPEN |
+| 76 | PB-SLICE-A | SF-286 first victory becomes the first useful wreck — combat→salvage→upgrade loop closes | PB | DONE — bound-wreck pool reattach + classified-mint idempotence fix; 3/3 focused + 116/116 adjacent; receipt SF-286-FIRST-VICTORY-WRECK.md |
 | 77 | PB-SLICE-B | SF-289+290 customs crossing three honest approaches + refinery shortage solved by visible delivery | PB | OPEN — must-share pair |
 | 78 | PB-SLICE-C | SF-288+292 bad throw creates a recoverable problem + failed robbery becomes pursuit over real cargo | PB | OPEN — must-share pair |
 | 79 | PB-SLICE-D | SF-291+293 same rope proves two careers + heavy enemy becomes temporary terrain | PB | OPEN |

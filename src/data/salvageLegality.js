@@ -42,7 +42,13 @@ export function salvagePoolForWreck(wreck, basePool = {}) {
 
   const electronics = Math.max(0, Math.floor(out[COMMON_SALVAGE_COMMODITY_ID] || 0));
   if (electronics > 0) delete out[COMMON_SALVAGE_COMMODITY_ID];
-  out[CLASSIFIED_SALVAGE_COMMODITY_ID] = (out[CLASSIFIED_SALVAGE_COMMODITY_ID] || 0) + Math.max(1, electronics);
+  // The +1 floor is the guaranteed classified yield on a restricted wreck — mint it once.
+  // Re-remapping a live pool (bound wreck pools are shared with the durable marker) must be
+  // idempotent, so the floor fires only when the pool has not been remapped yet.
+  const bonus = electronics > 0
+    ? Math.max(1, electronics)
+    : (CLASSIFIED_SALVAGE_COMMODITY_ID in out ? 0 : 1);
+  out[CLASSIFIED_SALVAGE_COMMODITY_ID] = (out[CLASSIFIED_SALVAGE_COMMODITY_ID] || 0) + bonus;
   return out;
 }
 
