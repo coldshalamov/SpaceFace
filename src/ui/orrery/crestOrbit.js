@@ -58,7 +58,14 @@ const CSS = `
 .orr-crestorbit__centre > img { display:block; width:100%; height:100%; opacity:1; filter:grayscale(1) drop-shadow(0 0 18px rgb(0 0 0 / .7)); transition:opacity .22s linear; }
 .orr-crestorbit__centre.is-pivot > img { opacity:.3; }
 .orr-crestorbit.is-pivoted .orr-crestorbit__sunrings { opacity:.28; }
-.orr-svg .orr-crestorbit__sunring { --orr-edge-a:.56; --orr-band-a:.26; --orr-w-band:6px; }
+.orr-svg .orr-crestorbit__sunring { --orr-edge-a:.58; --orr-band-a:.34; --orr-w-band:6px; }
+/* the sun's inner ring is a band too (it was a 2px wire at 1.3:1) */
+.orr-svg .orr-crestorbit__sunring--inner { --orr-edge-a:.5; --orr-band-a:.34; --orr-w-band:5px; --orr-w-edge:1.5px; }
+/* hovering a power in the list ghosts the Hand toward its crest: the orbit previews what a pick would do */
+.orr-svg .orr-crestorbit__preview { stroke:var(--dp-hand, #f2b950); opacity:0; transition:opacity .16s linear; }
+.orr-svg .orr-crestorbit__preview.is-on { opacity:.42; }
+.orr-crest.is-previewed > img { opacity:.9; }
+.orr-crest.is-previewed .orr-crest__name { color:rgb(248 244 234); }
 .orr-crestorbit__armlayer { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
 .orr-crestorbit__centre { z-index:1; }
 .orr-crestorbit.is-armunder .orr-crestorbit__armlayer { z-index:2; }
@@ -177,6 +184,9 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
   let relG = null;
   // the set of chords last drawn: they are built (and drawn in) once per set, and only moved on later frames
   let relKey = '';
+  let previewId = null;
+  let previewPath = null;
+  let previewSeat = null;
   const spring = createSpring({ value: 0, preset: 'swing', onUpdate: (v) => paintHand(v) });
 
   const schedule = () => {
@@ -264,6 +274,33 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
     for (const [id, el] of crestEls) el.classList.toggle('is-related', related.has(id));
   }
 
+  // the preview: a 40% amber arm from the sun's ring toward a hovered power's crest, never replacing the Hand
+  function paintPreview() {
+    for (const [id, el] of crestEls) el.classList.toggle('is-previewed', !!previewId && id === previewId && !el.classList.contains('is-chosen'));
+    if (!geo || !data || !Array.isArray(data.items)) return;
+    const i = previewId ? data.items.findIndex((it) => it.id === previewId) : -1;
+    const chosen = data.items.findIndex((it) => it.id === data.selectedId);
+    if (!previewPath || previewPath.parentNode !== armLayer) {
+      previewPath = svg('path', { class: 'orr-core orr-crestorbit__preview', 'stroke-width': 3, 'stroke-linecap': 'round', fill: 'none' });
+      armLayer.insertBefore(previewPath, armLayer.firstChild);
+      // and a ghost of the seat ring the Hand would land in, so the preview reads even along a relation chord
+      previewSeat = svg('circle', { class: 'orr-core orr-crestorbit__preview', 'stroke-width': 2, fill: 'none' });
+      armLayer.insertBefore(previewSeat, previewPath);
+    }
+    if (i < 0 || i === chosen) { previewPath.classList.remove('is-on'); previewSeat.classList.remove('is-on'); return; }
+    const { cx, cy, R, cs, centreNow } = geo;
+    const deg = (360 * i) / data.items.length;
+    const [x0, y0] = polar(cx, cy, centreNow / 2 + 18, deg);
+    const [x1, y1] = polar(cx, cy, R - cs / 2 - 13, deg);
+    previewPath.setAttribute('d', `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)}`);
+    previewPath.classList.add('is-on');
+    const [sx, sy] = polar(cx, cy, R, deg);
+    previewSeat.setAttribute('cx', f(sx));
+    previewSeat.setAttribute('cy', f(sy));
+    previewSeat.setAttribute('r', f(cs / 2 + 11));
+    previewSeat.classList.add('is-on');
+  }
+
   function standDown() {
     on = false;
     host.classList.add('is-off');
@@ -316,7 +353,8 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
       drift.appendChild(svg('path', { d: ticksD(cx, cy, R - cs / 2 - 12, 56, { len: 3, major: 4, majorLen: 8, inward: true }), class: 'orr-tick', style: 'stroke:rgb(236 230 216 / .26)' }));
       rings.appendChild(drift);
       const sunRings = svg('g', { class: 'orr-crestorbit__sunrings' });
-      sunRings.appendChild(svg('path', { d: arcD(cx, cy, centreNow / 2 + 4, 0, 360), class: 'orr-edge', style: '--orr-edge-a:.22' }));
+      sunRings.appendChild(svg('path', { d: arcD(cx, cy, centreNow / 2 + 4, 0, 360), class: 'orr-band orr-crestorbit__sunring--inner' }));
+      sunRings.appendChild(svg('path', { d: arcD(cx, cy, centreNow / 2 + 4, 0, 360), class: 'orr-edge orr-crestorbit__sunring--inner' }));
       sunRings.appendChild(svg('path', { d: arcD(cx, cy, centreNow / 2 + 18, 0, 360), class: 'orr-band orr-crestorbit__sunring' }));
       sunRings.appendChild(svg('path', { d: arcD(cx, cy, centreNow / 2 + 18, 0, 360), class: 'orr-edge orr-crestorbit__sunring' }));
       rings.appendChild(sunRings);
@@ -441,6 +479,7 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
     while (t - handDeg < -180) t += 360;
     spring.set(t, { instant: rebuilt && !data.swing });
     paintHand(spring.value);
+    paintPreview();
   }
 
   return {
@@ -448,6 +487,8 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
     /** @param {{ items: {id:string,name:string,short?:string,rep:number,tierName?:string}[], selectedId: string, authorityId?: string, swing?: boolean }} next */
     set(next) { data = next ? { ...next } : null; schedule(); },
     relayout: schedule,
+    /** Ghost the Hand toward a power without choosing it (null clears). */
+    preview(id) { previewId = id || null; paintPreview(); },
     active: () => on,
     dispose() {
       if (ro) ro.disconnect();
@@ -570,7 +611,7 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
       }
       const rowY = y + rungTop + row * pitch;
       // the leader: down from the rule, a 45-degree elbow of 12px, the word after it
-      out += `<path class="orr-core orr-standing__rung-leader" d="M ${f(x)} ${y + 10} L ${f(x)} ${rowY - 15} L ${f(x + 12)} ${rowY - 3}" stroke-width="1.5"/>`;
+      out += `<path class="orr-core orr-standing__rung-leader" d="M ${f(x)} ${y + 29} L ${f(x)} ${rowY - 15} L ${f(x + 12)} ${rowY - 3}" stroke-width="1.5"/>`;
       out += `<text class="orr-standing__rung ${state}${Array.isArray(rung.detail) && rung.detail.length ? ' is-next' : ''}" x="${f(x + 15)}" y="${rowY}" text-anchor="start">${lines.map((l, li) => `<tspan x="${f(x + 15)}" dy="${li ? 11 : 0}">${l}</tspan>`).join('')}</text>`;
       if (Array.isArray(rung.detail) && rung.detail.length) {
         out += `<text class="orr-standing__rung-detail" x="${f(x + 15)}" y="${rowY + lines.length * 11 + 4}" text-anchor="start">${rung.detail.map((l, li) => `<tspan x="${f(x + 15)}" dy="${li ? 11 : 0}">${String(l)}</tspan>`).join('')}</text>`;
