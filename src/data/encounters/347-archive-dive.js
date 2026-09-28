@@ -13,8 +13,10 @@ export const trigger = deepFreeze({
   deck: 'civilian',
   weight: 1.5,
   zoneTypes: ['derelict_field'],
-  script: 'haunted',
-  fallbackScript: 'haunted',
+  // Self-registered runtime (below) dispatches by shapeId, and scanPulse reaches it through
+  // _routeToSelfRegistered — no script label needed. The legacy labels must still name real
+  // ENCOUNTER_SCRIPTS keys for check tooling — 'haunted' is not one.
+  script: 'selfRegistered',
   pressureCost: 20,
   cooldownS: 600,
   proximity: true,

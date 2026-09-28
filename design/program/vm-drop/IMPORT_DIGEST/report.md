@@ -1,3 +1,80 @@
+# IMPORT ledger — 20260928 owner-side import (devin-w3-vm-hitch, board §1C row 28)
+
+Hitch/admission/budget vein — the remaining hitch, opening-admission, residency,
+shader-admission, dynamic-resolution, and integrated-quality folders. Landed this
+pass (5 folders across 5 commits, plus one schema follow-up):
+
+| Folder | Commit | Check |
+|---|---|---|
+| `hitch-opening-drain` | `c9d8d6dd7` | opening-soft-gpu-drain-skip 4/4 |
+| `opening-residency-deadline` | `a26419170` | opening-residency-deadline focused 3/3 (in a 10/10 trio run) |
+| `shader-admission-slice` | `2e5d2d824` | check:shader-admission-slice suite 54/54 |
+| `dynres-target-pool` | `cce73672c` | dynres-target-pool 4/4 + settings-truth/scratch batch 23/23 + bloom/distortion/admission batch 36/36 |
+| `integrated-quality-preset` | `d95e2d707` | integrated-quality-preset 7/7 + pq-165-00-presets 7/7 (batch 30/30) |
+| (follow-up) SAVE_SCHEMA regen | `331595200` | `generate-save-schema --check` OK (310 paths) |
+
+Already on master — not re-imported:
+
+- `hitch-asteroid-cell-key` — master's numeric cell key (`CELL_KEY_OFFSET`/`CELL_KEY_STRIDE`
+  packing in `src/world/asteroidField.js`) supersedes the remote 18-bit encoding; the intent
+  (allocation-free numeric grid keys) is already live. Asteroid suite 9/9.
+- `hitch-shed-floor` — `c333a0da9` already carries `HITCH_FRAME_TICKS = 6.5`;
+  simulation/presentation covering tests 37/37.
+
+Skipped:
+
+- `hitch-opening-admission` — deliberate skip: the folder's own DONE.md records a measured
+  miss. Removing `planWait` moved the cost into residency (4→571 ms) and drainWait
+  (0→1888 ms); total opening wall and launch-to-flight unchanged (~10.2 s). No patches ship.
+- `integrated-quality-preset` → `src/ui/screens/settings.js` hunk only — ORRERY-owned
+  `src/ui/**`. It swapped the hardcoded Frame cap options list for `FRAME_CAP_OPTIONS`;
+  deferred to the ORRERY lane. The Quality preset dropdown is data-driven off
+  `QUALITY_PRESETS`, so the Integrated GPU tier is still reachable; 45 fps stays a legal
+  `normalizeFrameCap` value and preset payload, it just is not a dropdown option yet.
+
+Merge notes:
+
+- `shader-admission-slice`: package patches predate master's first-present/admission
+  architecture — hand-merged. `postTaskAtBackgroundPriority` prefers `scheduler.yield()`;
+  in-flight ship/rock pipeline compile is time-sliced through `yieldAfterPresent`; opening
+  receipt `before` absorbs live resources including `plan.textureRefs`. Player-route shader
+  checks stay owned by `installShaderLinkReporter` (no inline checkShaderErrors=false).
+- `opening-residency-deadline`: `git apply --3way` conflicted on renderer.js — hand-merged
+  onto master's `residentTextures`/detached-package residency counters and sliced-yield
+  cadence. `deadlineMs` is checked before and after each yield inside
+  `prepareStartupGpuResidency`; on expiry it returns `{ skipped:false, partial:true,
+  reason:'loading-deadline-partial' }` so the opening still cooks to receipt.
+- `dynres-target-pool`: hand-merged onto master's CAS sharpen + native DistortionField
+  composite and the 4-arg `setSize(w,h,displayW,displayH)`. `blit()` gained optional
+  viewW/viewH sub-rect writes (scene pass + pyramid levels); the composite stays a
+  full-buffer blit stretching content via `uUvScale`/`uUvOffset`; distortion displacement is
+  scaled into content UV space by `uUvScale`. `applyRendererSize` no longer multiplies
+  `dynResScale` into pixelRatio; `_applySize` forwards it to `bloom.setContentScale`, and
+  `_dynResAllowed` now admits `integrated` alongside `software`. The CAS display footprint
+  is cached (`casDisplayW/H`) so internal `setSize` re-entry keeps the gate's inputs.
+- `integrated-quality-preset`: hand-merged onto master's `igpu60` tier — the new
+  `PRESET_VIDEO_KEYS` (bloomStrength/bloomLevels/frameCap/dynamicResolution/postFx/sharpen)
+  are defined on every tier so `applyQualityPreset` never writes `undefined`; the
+  `integrated` QUALITY_PRESETS row carries `stays`/`substitutes` note metadata to match the
+  `igpu60` row the settings screen renders. `SAVE_SCHEMA.md` regenerated for the three new
+  `settings.video` defaults (follow-up `331595200`; save-schema baseline red is closed).
+- `test/integrated-quality-preset.test.mjs` adapted: the settings.js `FRAME_CAP_OPTIONS`
+  source assert was swapped for a data-source assert (ORRERY skip above); dropdown
+  reachability is proven via the `QUALITY_PRESETS` assert instead.
+
+Focused tests (this wave): opening-soft-gpu-drain-skip 4/4; opening-residency-deadline
+3/3; shader-admission suite 54/54; dynres-target-pool 4/4; bloom-pass-timing-scratch,
+bloom-distortion, bloom-unready-draw-guard, post-opening-pipeline-admission,
+admission-slice-budget 36/36; renderer-settings-runtime-truth + bloom-scratch + dynres
+23/23; integrated-quality-preset + pq-165-00-presets batch 30/30.
+`npm run check:baseline` 15/16 — the sole red was `save-schema` stale after the new
+video defaults; fixed by `331595200` (now `SAVE_SCHEMA.md OK, 310 paths`).
+
+New defects: none observed this wave.
+
+Board §1C row 28 and the devin-w3-vm-hitch NOW row are deleted in the bookkeeping
+commit closing this wave.
+
 # IMPORT ledger — 20260928 owner-side import (devin-w3-vm-skips, board §1C row 27)
 
 Quiet `*-skip` vein — the remaining live/empty/callsite skip-class folders: live-count
