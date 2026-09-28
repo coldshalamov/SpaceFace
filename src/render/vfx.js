@@ -1412,6 +1412,11 @@ export const vfx = {
     };
     this._npcJobSignatureActive = 0;
     this._npcJobSignatureDrawn = 0;
+    // Quiet settled flight: empty npcJobs bag still paid existence probe +
+    // 12-slot sleep clear every tick. Latch after first empty sleep when
+    // npcJobs.revision is trustworthy; wake on revision bump. Soft-GPU fps not claimed.
+    this._npcJobSignaturesQuietAsleep = false;
+    this._npcJobSignaturesQuietRev = -1;
     this._lastNpcJobSignatureId = null;
     // R6B is event-driven rather than phase-pulled. The controller owns only fixed scalar slots;
     // this bound emitter is allocated once so the render loop never creates a callback.
@@ -2368,12 +2373,12 @@ export const vfx = {
     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
     add('heat:changed', (p) => this._onLawHeatChanged(p));
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('save:restoring', () => this._resetRibbonTrails());
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('world:playerRelocated', () => this._resetRibbonTrails());
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
@@ -6921,6 +6926,43 @@ export const vfx = {
   },
 
   /**
+   * Pull/sleep NPC job signatures with quiet-empty latch.
+   * Empty bag still paid existence probe + 12-slot sleep every tick; latch after first
+   * empty sleep when npcJobs.revision is trustworthy; wake on revision bump.
+   * Soft-GPU fps not claimed.
+   * @returns {boolean} true when the subsystem drew this frame
+   */
+  _syncNpcJobSignatures(dt) {
+    if (this._npcJobSignaturesQuietAsleep) {
+      const bag = this.state && this.state.npcJobs;
+      const rev = bag && Number.isInteger(bag.revision) ? bag.revision : null;
+      if (rev != null && rev === this._npcJobSignaturesQuietRev) {
+        return false;
+      }
+      this._npcJobSignaturesQuietAsleep = false;
+    }
+    if (this._npcJobSignaturesRelevant()) {
+      const jobStep = this._consumeCadence(
+        '_cadenceNpcJobSignature',
+        dt,
+        VFX_NPC_JOB_SIGNATURE_HZ,
+      );
+      return jobStep > 0 && this._updateNpcJobSignatures(jobStep) > 0;
+    }
+    this._sleepNpcJobSignatures();
+    const bag = this.state && this.state.npcJobs;
+    const rev = bag && Number.isInteger(bag.revision) ? bag.revision : null;
+    if (rev != null) {
+      this._npcJobSignaturesQuietAsleep = true;
+      this._npcJobSignaturesQuietRev = rev;
+    } else {
+      this._npcJobSignaturesQuietAsleep = false;
+      this._npcJobSignaturesQuietRev = -1;
+    }
+    return false;
+  },
+
+  /**
    * Is this hull heavy?
    *
    * Derived from the PHASE GRAPH, never from `job.payload`. The kernel treats payload as a static
@@ -11306,19 +11348,8 @@ export const vfx = {
     this._updateStationOperationVfx();
     // WF-12 law/heat telegraph — scan sweep / suspicion / WANTED flip (shared event-light pool).
     sub.lawHeatTelegraph = this._updateLawHeatTelegraph(dt) > 0 ? 1 : 0;
-    // "The Working Light" — civilian hulls showing what job they are on. Asleep in any sector with
-    // no live NPC job, which costs one existence probe per frame and nothing else.
-    if (this._npcJobSignaturesRelevant()) {
-      const jobStep = this._consumeCadence(
-        '_cadenceNpcJobSignature',
-        dt,
-        VFX_NPC_JOB_SIGNATURE_HZ,
-      );
-      sub.npcJobSignatures = jobStep > 0 && this._updateNpcJobSignatures(jobStep) > 0 ? 1 : 0;
-    } else {
-      this._sleepNpcJobSignatures();
-      sub.npcJobSignatures = 0;
-    }
+    // "The Working Light" — civilian hulls showing what job they are on.
+    sub.npcJobSignatures = this._syncNpcJobSignatures(dt) ? 1 : 0;
     // Quiet-hidden residual: consecutive irrelevant ticks still paid full
     // `_seamMarkersRelevant` asteroid walk + `_sleepSeamMarkers` commit. Cheap
     // dirty wake first; false-wake falls through to full relevant (sleep latch

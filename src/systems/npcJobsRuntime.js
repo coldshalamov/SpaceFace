@@ -956,7 +956,10 @@ export const npcJobsRuntime = {
   // ── owned state ────────────────────────────────────────────────────────────────────────────
   _ensureState() {
     const state = this.state;
-    if (!state.npcJobs || typeof state.npcJobs !== 'object') state.npcJobs = { byId: {}, siteCouriers: {} };
+    if (!state.npcJobs || typeof state.npcJobs !== 'object') {
+      state.npcJobs = { byId: {}, siteCouriers: {}, revision: 0 };
+    }
+    if (!Number.isInteger(state.npcJobs.revision)) state.npcJobs.revision = 0;
     if (!state.npcJobs.byId || typeof state.npcJobs.byId !== 'object') {
       state.npcJobs.byId = {};
       this._invalidateJobIds();
@@ -976,7 +979,15 @@ export const npcJobsRuntime = {
   },
   _byId() { return this._ensureState().byId; },
   _lots() { return this._ensureState().lots; },
-  _invalidateJobIds() { this._jobIdsDirty = true; },
+  _invalidateJobIds() {
+    this._jobIdsDirty = true;
+    // Membership dirty wake for VFX quiet-empty latch (prepareFrame residual).
+    // Soft-GPU fps not claimed.
+    const bag = this.state && this.state.npcJobs;
+    if (bag && typeof bag === 'object') {
+      bag.revision = ((bag.revision | 0) + 1) | 0;
+    }
+  },
   _jobIdList() {
     const byId = this._byId();
     if (this._jobIdsDirty !== true
@@ -1865,7 +1876,7 @@ export const npcJobsRuntime = {
   },
 
   newGame() {
-    this.state.npcJobs = { byId: {}, siteCouriers: {}, lots: {} };
+    this.state.npcJobs = { byId: {}, siteCouriers: {}, lots: {}, revision: 0 };
     this._invalidateJobIds();
     this._pendingMinerFieldRetargets = new Map();
     this._heaveToLease = null;
@@ -1889,7 +1900,7 @@ export const npcJobsRuntime = {
    */
   noteSiteCourier(spec) {
     if (!spec || typeof spec.worldRecordId !== 'string' || !spec.worldRecordId) return null;
-    if (!this.state.npcJobs) this.state.npcJobs = { byId: {}, siteCouriers: {} };
+    if (!this.state.npcJobs) this.state.npcJobs = { byId: {}, siteCouriers: {}, revision: 0 };
     if (!this.state.npcJobs.siteCouriers || typeof this.state.npcJobs.siteCouriers !== 'object'
       || Array.isArray(this.state.npcJobs.siteCouriers)) {
       this.state.npcJobs.siteCouriers = {};
@@ -4798,7 +4809,7 @@ export const npcJobsRuntime = {
         towNextScanSimT: 0,
       };
     }
-    this.state.npcJobs = { byId, siteCouriers: {}, lots: {} };
+    this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, revision: 0 };
     this._invalidateJobIds();
     if (data && data.siteCouriers && typeof data.siteCouriers === 'object' && !Array.isArray(data.siteCouriers)) {
       this.state.npcJobs.siteCouriers = JSON.parse(JSON.stringify(data.siteCouriers));
