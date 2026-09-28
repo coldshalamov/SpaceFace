@@ -55,6 +55,31 @@ export function ensureCombatState(state) {
 
 export function ensureCombatant(state, entity, catalog) {
   if (!entity || entity.id == null) return null;
+  // Quiet hit: warm combat table + stable profile id skips ensureCombatState's
+  // property walk, resolveCombatProfile (Map get), and syncCombatantBounds.
+  // Status/subsystem changes still sync via the kernel's statusChanged gate (#83);
+  // damage/actions clamp at mutation sites. Cold/missing table falls through.
+  const warm = state.combat;
+  const warmEntities = warm && warm.entities;
+  if (warmEntities) {
+    const warmKey = entityKey(entity.id);
+    const warmRuntime = warmEntities[warmKey];
+    if (warmRuntime) {
+      const explicit = entity.data && entity.data.combatProfileId;
+      const expectedId = (typeof explicit === 'string' && explicit)
+        ? explicit
+        : (DEFAULT_COMBAT_PROFILE_BY_TYPE[entity.type] || null);
+      if (warmRuntime.profileId === expectedId) {
+        if (!Number.isFinite(warmRuntime.heatDissipationPerTick)) {
+          const warmProfile = expectedId ? catalog.profiles.get(expectedId) : null;
+          warmRuntime.heatDissipationPerTick = warmProfile && warmProfile.heat
+            ? Number(warmProfile.heat.dissipationPerTick) || 0
+            : 0;
+        }
+        return warmRuntime;
+      }
+    }
+  }
   const combat = ensureCombatState(state);
   // Property access with the raw id is the identical key to entityKey(entity.id) — object
   // property keys are strings, so `entities[5]` and `entities['5']` are the same slot; this

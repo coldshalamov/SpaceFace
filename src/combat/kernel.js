@@ -4,6 +4,7 @@ import { createDamageRouter } from './damage.js';
 import { createCombatCatalog, ensureCombatant, ensureCombatState, entityKey, removeCombatantRuntime, resolveCombatProfile, syncCombatantBounds } from './runtime.js';
 import { createStatusService } from './statuses.js';
 import { applyMomentumSink } from './momentumSink.js';
+import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSubsystem } from './subsystems.js';
 import { appendCombatTrace, canonicalize, readCombatTrace } from './trace.js';
 import { assertValidCombatCatalog } from './validate.js';
@@ -248,12 +249,17 @@ export function createCombatKernel(ctx, options = {}) {
       const response = runtime.physicsResponse;
       const scaledResponse = !!(response
         && (response.massScale !== 1 || response.inertiaScale !== 1));
-      if (isDynamicPhysicsBodyEntity(entity) && scaledResponse) {
-        sawBusy = true;
-        writePhysicsBodyResponse(entity, response);
-      }
-      if (isDynamicPhysicsBodyEntity(entity)) {
-        applyMomentumSink(state, entity, runtime, dt, momentumSinkImpulse);
+      const sinkActive = !!(runtime.statuses && runtime.statuses[MOMENTUM_SINK_STATUS_ID]);
+      // Quiet fleets keep identity mass/inertia and no momentum-sink status — skip the
+      // isDynamicPhysicsBodyEntity walk (authoredPhysicsBody) and sink miss entirely.
+      if (scaledResponse || sinkActive) {
+        if (isDynamicPhysicsBodyEntity(entity)) {
+          if (scaledResponse) {
+            sawBusy = true;
+            writePhysicsBodyResponse(entity, response);
+          }
+          if (sinkActive) applyMomentumSink(state, entity, runtime, dt, momentumSinkImpulse);
+        }
       }
       coolCombatHeat(entity, runtime, dt);
       // ensureCombatant already clamped vitals/heat; cool only lowers heat (Math.max 0).
@@ -396,6 +402,8 @@ export function createCombatKernel(ctx, options = {}) {
   }
 
   function coolCombatHeat(entity, runtime, dt) {
+    // Quiet combatants sit at heat 0 — skip dissipation arithmetic until heat is applied.
+    if (!(runtime.heat > 0)) return;
     // Dissipation is stashed on the runtime at ensureCombatant (profile is tick-stable).
     const basePerTick = Number.isFinite(runtime.heatDissipationPerTick)
       ? runtime.heatDissipationPerTick
