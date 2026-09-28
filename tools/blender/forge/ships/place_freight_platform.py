@@ -21,8 +21,13 @@ def build():
     s = F.Ship(SHIP_ID, COLORS)
 
     # --- apron deck on stub columns --------------------------------------------------------------
-    F.box(s, 'Apron', (0, 0, 4.4), (24.0, 12.0, 1.0), material='paint', bevel=0.08)
+    F.box(s, 'Apron', (0, 0, 4.4), (24.0, 12.0, 1.0), material='paint2', bevel=0.08)
     F.box(s, 'ApronUnder', (0, 0, 3.6), (23.0, 11.0, 0.8), material='paint2', bevel=0.05)
+    # dark grating lanes between the rack rows — the apron reads as grate + racks, not a slab
+    s.detail = 1
+    for k, gy in enumerate((-4.4, -1.0, 2.2, 4.8)):
+        F.box(s, f'Grate{k}', (0, gy, 4.95), (21.0, 1.6, 0.16), material='dark', bevel=0.0)
+    s.detail = 0
     for k in range(6):
         for e in (-1, 1):
             F.cylinder(s, f'Column{k}{e:+d}', (-10.0 + k * 4.0, e * 4.8, 0.2),

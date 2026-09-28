@@ -24,7 +24,7 @@ COLORS = dict(K.COLORS, **{
 })
 
 N_PYLONS = 10
-PYLON_R = 47.5
+PYLON_R = 44.0
 PYLON_TIP = 12.0     # depth (d) the emitter head stands off the deck plane
 
 
@@ -37,13 +37,13 @@ def build():
     for k in range(N_PYLONS):
         a = k * (360.0 / N_PYLONS) + 18.0
         u, v, _ = K.polar_plan(PYLON_R, a)
-        # splayed three-strut foot welded to the ring rim, mast rising out of the wheel plane
-        u2, v2, _ = K.polar_plan(PYLON_R - 4.5, a - 5.0)
-        u3, v3, _ = K.polar_plan(PYLON_R - 4.5, a + 5.0)
+        # splayed three-strut foot welded to the frame chords, mast rising out of the plane
+        u2, v2, _ = K.polar_plan(K.FRAME_R - 2.0, a - 5.0)
+        u3, v3, _ = K.polar_plan(K.FRAME_R - 2.0, a + 5.0)
         K.plan_beams(s, f'FenceFoot{k}', [((u2, v2, 1.2), (u, v, 4.0)),
                                           ((u3, v3, 1.2), (u, v, 4.0))],
                      0.7, material='paint2')
-        K.plan_cyl(s, f'FenceMast{k}', u, v, 2.0, u, v, PYLON_TIP, 0.9, material='paint',
+        K.plan_cyl(s, f'FenceMast{k}', u, v, 2.0, u, v, PYLON_TIP, 0.9, material='paint2',
                    segments=12)
         K.plan_cyl(s, f'FenceBand{k}', u, v, 6.2, u, v, 7.6, 1.05, material='hazard',
                    segments=12)
@@ -67,7 +67,7 @@ def build():
                                        (6, -26, 'paint.role'), (-26, 8, 'paint.aged'),
                                        (-27, 1, 'paint2'), (-26, -6, 'paint.role'))):
         K.plan_box(s, f'Bin{k}', bu, bv, 3.6, 5.4, 4.4, 3.0, material=mat, bevel=0.1)
-        K.plan_box(s, f'BinLid{k}', bu, bv, 5.3, 5.8, 4.8, 0.4, material='hazard',
+        K.plan_box(s, f'BinLid{k}', bu, bv, 5.3, 5.8, 4.8, 0.4, material='paint.aged',
                    bevel=0.02)
     K.plan_truss(s, 'SortArm', (-4.0, -12.0, 3.0), (-14.0, -22.0, 8.0), 1.6, 3,
                  material='paint.role', chord=0.4, web=0.24)

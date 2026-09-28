@@ -615,6 +615,69 @@
       "asset_id": "place_maintenance_gantry",
       "note": "Forge rebuild: portal gantry a small hull parks under, trolley hoist and tool booms.",
       "part_id": "place_maintenance_gantry"
+    },
+    "place_transponder_gate": {
+      "layout": "place",
+      "file": "place_transponder_gate",
+      "asset_id": "place_transponder_gate",
+      "note": "Forge rebuild: lane-reader gate — twin pylons, lit crossbar, lane-centre beacon.",
+      "part_id": "place_transponder_gate"
+    },
+    "place_interdiction_buoy": {
+      "layout": "place",
+      "file": "place_interdiction_buoy",
+      "asset_id": "place_interdiction_buoy",
+      "note": "Forge rebuild: Concord field buoy — octagonal drum, emitter cage, authority lights.",
+      "part_id": "place_interdiction_buoy"
+    },
+    "place_ceres_bait_wreck": {
+      "layout": "place",
+      "file": "place_ceres_bait_wreck",
+      "asset_id": "SF_PLACE_CERES_BAIT_WRECK",
+      "note": "Forge rebuild: Throughline bait wreck — gutted liner bow, torn boatbay, deadmetal derelict.",
+      "part_id": "place_ceres_bait_wreck"
+    },
+    "place_ceres_grave_shard": {
+      "layout": "place",
+      "file": "place_ceres_grave_shard",
+      "asset_id": "SF_PLACE_CERES_GRAVE_SHARD",
+      "note": "Forge rebuild: Cathedral grave shard — leaning torn plate with rib arches, tether mast.",
+      "part_id": "place_ceres_grave_shard"
+    },
+    "place_scrap_cage": {
+      "layout": "place",
+      "file": "place_scrap_cage",
+      "asset_id": "place_scrap_cage",
+      "note": "Forge rebuild: driller's scrap cage — corner-post pen with gate leaf and heaped salvage.",
+      "part_id": "place_scrap_cage"
+    },
+    "place_improvised_dock": {
+      "layout": "place",
+      "file": "place_improvised_dock",
+      "asset_id": "place_improvised_dock",
+      "note": "Forge rebuild: stolen berth — leaning truss arm with clamp cradle, improvised teal/rust.",
+      "part_id": "place_improvised_dock"
+    },
+    "place_47a_rescue_capsule": {
+      "layout": "place",
+      "file": "place_47a_rescue_capsule",
+      "asset_id": "SF_PLACE_47A_RESCUE_CAPSULE",
+      "note": "Forge rebuild: the 47-A lifeboat — ceramic pressure hull, distress band, airlock collar.",
+      "part_id": "place_47a_rescue_capsule"
+    },
+    "place_breakaway_fork": {
+      "layout": "place",
+      "file": "place_breakaway_fork",
+      "asset_id": "SF_PLACE_BREAKAWAY_FORK",
+      "note": "Forge rebuild: capture fork — mouth frame at origin, two diverging tines, seat + service.",
+      "part_id": "place_breakaway_fork"
+    },
+    "place_breakaway_sp07": {
+      "layout": "place",
+      "file": "place_breakaway_sp07",
+      "asset_id": "SF_PLACE_BREAKAWAY_SP07",
+      "note": "Forge rebuild: SP-07 flywheel — spoked wheel in a cradle cage, tow eyes fore/aft.",
+      "part_id": "place_breakaway_sp07"
     }
   }
 }

@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "35931b32c88cdbedef4edd9ae02486d6ad40e746f4d30d65a107cbcda12f06ea",
+  "contentHash": "0d3fee080dc96ef8335e324c0b7fa160ee84d5b2b40ccfbf054bf417306795b1",
   "dynamicGroups": [
     {
       "id": "sf.render.drill-platform.mesh.lod0-hook-nav-port.dynamic",
@@ -152,27 +152,27 @@
     {
       "bounds": {
         "max": [
-          7.065434455871582,
-          11.223843574523926,
-          7.03352165222168
+          8,
+          11.224309921264648,
+          8
         ],
         "min": [
-          -7.065434455871582,
-          0.16177134215831757,
-          -7.03352165222168
+          -8,
+          -0.050448790192604065,
+          -8
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3bd95f76740f0700625ce2bc479ecd1fcb13960f1d7c96bda88d16bb41274478",
+      "geometryHash": "c212d7ed5a140e79e5557c2b11d53e571f0d2ae7a6183fbb350b7f32482f0cc5",
       "id": "sf.render.drill-platform.mesh.lod0-armor.primitive.0",
-      "indexCount": 3024,
+      "indexCount": 6408,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.drill-platform.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2016
+      "vertexCount": 3024
     },
     {
       "bounds": {
@@ -252,52 +252,52 @@
     {
       "bounds": {
         "max": [
-          8,
-          5.572087287902832,
-          8
+          7,
+          5.572420597076416,
+          6.300149440765381
         ],
         "min": [
-          -8,
-          -0.04966653883457184,
-          -8
+          -7,
+          3.427579641342163,
+          -6.300149440765381
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c316dada4d878cfa647cacfb76d6d93996239234289ecc3d6e17563e525896b",
+      "geometryHash": "be10509040a0de1c5a4289c9507069299cabf22f42740babce3ece3750314561",
       "id": "sf.render.drill-platform.mesh.lod0-hull-aged.primitive.0",
-      "indexCount": 4704,
+      "indexCount": 2448,
       "indexed": true,
       "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_aged",
       "nodeId": "sf.render.drill-platform.mesh.lod0-hull-aged",
       "primitiveIndex": 0,
-      "vertexCount": 1464
+      "vertexCount": 792
     },
     {
       "bounds": {
         "max": [
-          6.999685764312744,
-          7.499942302703857,
-          7.300000190734863
+          -2.4109702110290527,
+          7.500060081481934,
+          6.690540790557861
         ],
         "min": [
-          -6.999685764312744,
-          3.5000579357147217,
-          -7.300000190734863
+          -6.789029598236084,
+          4.499939918518066,
+          2.909459352493286
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef5c955d77153eb53a727e5655acdd15c09bec55e7a1a2ed06d3b942d63505c7",
+      "geometryHash": "5960ae0436cc6be6a804cc04ff12617b4c2dfb874988856418643b18f098f512",
       "id": "sf.render.drill-platform.mesh.lod0-hull.primitive.0",
-      "indexCount": 1692,
+      "indexCount": 564,
       "indexed": true,
       "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.drill-platform.mesh.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 504
+      "vertexCount": 168
     },
     {
       "bounds": {
@@ -352,27 +352,27 @@
     {
       "bounds": {
         "max": [
-          2.200195789337158,
-          9.600000381469727,
-          4.696775913238525
+          5.500213623046875,
+          9.600442886352539,
+          6.5
         ],
         "min": [
-          -3.6855127811431885,
-          2.5999999046325684,
-          -2.1998276710510254
+          -5.500213623046875,
+          2.599557399749756,
+          -6.5
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0dc1e91269a232cee740656c44d72824748247d7ff6c8a2975114cd046254eae",
+      "geometryHash": "058888788347e5e43c238615e3c0ea5e3268e6aea4c2324ffad85b5d72d58b49",
       "id": "sf.render.drill-platform.mesh.lod0-mechanicaldark.primitive.0",
-      "indexCount": 1992,
+      "indexCount": 2064,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.drill-platform.mesh.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 580
+      "vertexCount": 628
     },
     {
       "bounds": {
@@ -392,7 +392,7 @@
       "id": "sf.render.drill-platform.mesh.lod0-warning.primitive.0",
       "indexCount": 852,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.drill-platform.mesh.lod0-warning",
@@ -402,27 +402,27 @@
     {
       "bounds": {
         "max": [
-          7.065434455871582,
-          11.223843574523926,
-          7.03352165222168
+          7.996270656585693,
+          11.223546028137207,
+          7.996270656585693
         ],
         "min": [
-          -7.065434455871582,
-          0.16177134215831757,
-          -7.03352165222168
+          -7.996270656585693,
+          -0.045956071466207504,
+          -7.996270656585693
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8880a0479a62986f4eb0230126059f2955dec11da947ea5a0b12406b20ceabd2",
+      "geometryHash": "6a71ae454fbfafdd09edf5923ee134553c8b82b0cc1ac8fb58e35f00460a0dba",
       "id": "sf.render.drill-platform.mesh.lod1-armor.primitive.0",
-      "indexCount": 3024,
+      "indexCount": 4506,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.drill-platform.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2016
+      "vertexCount": 2580
     },
     {
       "bounds": {
@@ -502,52 +502,52 @@
     {
       "bounds": {
         "max": [
-          7.996270656585693,
-          5.569222927093506,
-          7.996270656585693
+          6.997203350067139,
+          5.569221019744873,
+          6.29771089553833
         ],
         "min": [
-          -7.996270656585693,
-          -0.046005744487047195,
-          -7.996270656585693
+          -6.997203350067139,
+          3.4303619861602783,
+          -6.2975544929504395
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f6f9750c482295e64cb47b69b9a8cd700efa7605d7c4c4adc2a96e5246ef94c0",
+      "geometryHash": "d54458cb772a86cd7f9df09d9140a9fd90dbf1cb4570ceed165b7f8dff6771b8",
       "id": "sf.render.drill-platform.mesh.lod1-hull-aged.primitive.0",
-      "indexCount": 1836,
+      "indexCount": 672,
       "indexed": true,
       "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_aged",
       "nodeId": "sf.render.drill-platform.mesh.lod1-hull-aged",
       "primitiveIndex": 0,
-      "vertexCount": 700
+      "vertexCount": 260
     },
     {
       "bounds": {
         "max": [
-          6.997200965881348,
-          7.500014781951904,
-          7.295551300048828
+          -2.4109702110290527,
+          7.500060081481934,
+          6.690540790557861
         ],
         "min": [
-          -6.997200965881348,
-          3.5061306953430176,
-          -7.295551300048828
+          -6.789029598236084,
+          4.499939918518066,
+          2.909459352493286
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64e3cd15d04ce661d77eeb10e2866f2252e5b8d76796f0f2d848f879627a660c",
+      "geometryHash": "b0bd3fd209b153cd934594ade2f5df1cd3084eb80974258f35c90d5a9c48b2bc",
       "id": "sf.render.drill-platform.mesh.lod1-hull.primitive.0",
-      "indexCount": 840,
+      "indexCount": 480,
       "indexed": true,
       "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.drill-platform.mesh.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 282
+      "vertexCount": 148
     },
     {
       "bounds": {
@@ -602,27 +602,27 @@
     {
       "bounds": {
         "max": [
-          2.197601079940796,
-          9.595921516418457,
-          4.6961822509765625
+          5.500213623046875,
+          9.596202850341797,
+          6.5
         ],
         "min": [
-          -3.6820790767669678,
-          2.60512113571167,
-          -2.197330951690674
+          -5.500213623046875,
+          2.60483980178833,
+          -6.5
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30fed00820b0330cfcdf9176ab6a0204bd4e64e262722c0255692c902608990e",
+      "geometryHash": "84b62e90f4339389bcb1459c8473c0d70ced1b35f32ada0d875fd9a92eef0107",
       "id": "sf.render.drill-platform.mesh.lod1-mechanicaldark.primitive.0",
-      "indexCount": 288,
+      "indexCount": 360,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.drill-platform.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 110
+      "vertexCount": 158
     },
     {
       "bounds": {
@@ -642,7 +642,7 @@
       "id": "sf.render.drill-platform.mesh.lod1-warning.primitive.0",
       "indexCount": 468,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.drill-platform.mesh.lod1-warning",
@@ -652,27 +652,27 @@
     {
       "bounds": {
         "max": [
-          7.065434455871582,
-          11.223843574523926,
-          7.03352165222168
+          7.974652290344238,
+          11.224268913269043,
+          7.9736785888671875
         ],
         "min": [
-          -7.065434455871582,
-          0.16177134215831757,
-          -7.03352165222168
+          -7.974652290344238,
+          -0.024500267580151558,
+          -7.9736785888671875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1965c3e2888994e1466b0735a9fc82e49e4bc829c9bb580d81a7d74ac936663a",
+      "geometryHash": "fc549daaa209ed077114baec7cc9598d34fe0b9a18fa363045f70d0b38c6f924",
       "id": "sf.render.drill-platform.mesh.lod2-armor.primitive.0",
-      "indexCount": 1752,
+      "indexCount": 1968,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.drill-platform.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1280
+      "vertexCount": 1424
     },
     {
       "bounds": {
@@ -752,52 +752,52 @@
     {
       "bounds": {
         "max": [
-          7.974652290344238,
-          5.569800853729248,
-          7.9736785888671875
+          6.980990409851074,
+          5.569299697875977,
+          6.298458099365234
         ],
         "min": [
-          -7.974652290344238,
-          -0.024405278265476227,
-          -7.9736785888671875
+          -6.980990409851074,
+          3.430283308029175,
+          -6.298301696777344
         ]
       },
       "drawMode": 4,
-      "geometryHash": "401aa9910b8238020ef98b35cc359f7a57d83dc39cec728fb4d2d67bba4c2468",
+      "geometryHash": "b718458eedc6b6ff115905274d0337841d0b14a422f7ae03875878d3d2057b97",
       "id": "sf.render.drill-platform.mesh.lod2-hull-aged.primitive.0",
-      "indexCount": 528,
+      "indexCount": 384,
       "indexed": true,
       "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_aged",
       "nodeId": "sf.render.drill-platform.mesh.lod2-hull-aged",
       "primitiveIndex": 0,
-      "vertexCount": 272
+      "vertexCount": 176
     },
     {
       "bounds": {
         "max": [
-          6.981054306030273,
-          7.451850414276123,
-          7.280569076538086
+          -2.443786859512329,
+          7.451928615570068,
+          6.66956901550293
         ],
         "min": [
-          -6.981054306030273,
-          3.51949405670166,
-          -7.280569076538086
+          -6.7562127113342285,
+          4.537320137023926,
+          2.9304311275482178
         ]
       },
       "drawMode": 4,
-      "geometryHash": "83f1dd9bbcf86fd158eb7f5f73e412c80bffd017afd942548f9732b2e560bec4",
+      "geometryHash": "1145ee2a9f2c7e16610e2a03c476976a895b1cdee436f69e048201d5c2347696",
       "id": "sf.render.drill-platform.mesh.lod2-hull.primitive.0",
-      "indexCount": 120,
+      "indexCount": 48,
       "indexed": true,
       "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.drill-platform.mesh.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 76
+      "vertexCount": 28
     },
     {
       "bounds": {
@@ -867,7 +867,7 @@
       "id": "sf.render.drill-platform.mesh.lod2-warning.primitive.0",
       "indexCount": 228,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.drill-platform.mesh.lod2-warning",
@@ -912,22 +912,8 @@
       ]
     },
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "id": "material:6a5417b004bdbc8e05e1f1ee",
-      "name": "Material_Emissive_NavRed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
-      "id": "material:7c9a3daaaa00f25157b72e50",
+      "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "id": "material:333a696e723d180dee93b90e",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -956,6 +942,20 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
@@ -2650,19 +2650,19 @@
       "sha256": "8561d90831b66b23386eb3bc4db7ed1e923279336b02c7759a26c68b3364c560"
     },
     "sourceGlb": {
-      "bytes": 542512,
-      "sha256": "cf5a86ddc2d9a26e1fcbeff9c177df5a413cd3e4746b1f3826c034beeb57a116",
+      "bytes": 549228,
+      "sha256": "b4ce7c9525a68ef8c31313ed143dfc1029ba5cc51c2be62c51ba8230f54fa625",
       "uri": "place_drill_platform.glb"
     },
     "sourceManifest": {
-      "bytes": 205647,
-      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
+      "bytes": 206766,
+      "sha256": "a8ffe0c535bcbca523ec7221e0d2eb2c9dddb4592c00d3ec606a5fe7c1bdac0e",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 771508,
-    "sha256": "98ac24b83d5df42406730c312349e068abc6d32069c11eee53cbb069b453af01",
+    "bytes": 771976,
+    "sha256": "9a57007b67e65f08b3929793bdb8158b106939ad2d9ea245aa75575f4d422b3f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3727,7 +3727,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_drill_platform.glb"
   },
-  "runtimeHash": "f7e7803cc6e4cf134598e195fec3186b88a1014fcd36e8b21c8221294748b3d1",
+  "runtimeHash": "965495371843ea7672b4cd8559404e87b7fcd5865285c6d34f542aea1057e0da",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

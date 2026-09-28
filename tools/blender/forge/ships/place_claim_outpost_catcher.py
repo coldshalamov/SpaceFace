@@ -35,12 +35,12 @@ def build():
                segments=24)
 
     # --- articulated arm: shoulder -> elbow -> cradle root ------------------------------------
-    K.plan_truss(s, 'ArmA', (28.0, 0.0, 5.0), (34.0, 2.0, 11.0), 3.2, 4, material='paint',
-                 chord=0.5, web=0.28)
+    K.plan_truss(s, 'ArmA', (28.0, 0.0, 5.0), (34.0, 2.0, 11.0), 3.2, 4,
+                 material='paint2', chord=0.5, web=0.28)
     K.plan_cyl(s, 'Elbow', 34.0, 2.0, 10.0, 34.0, 2.0, 12.4, 2.6, material='paint2',
                segments=16)
-    K.plan_truss(s, 'ArmB', (34.0, 2.0, 11.6), (38.0, 0.0, 14.0), 2.6, 3, material='paint',
-                 chord=0.42, web=0.24)
+    K.plan_truss(s, 'ArmB', (34.0, 2.0, 11.6), (38.0, 0.0, 14.0), 2.6, 3,
+                 material='paint2', chord=0.42, web=0.24)
 
     # --- catch cradle: U of padded jaws around a capture mouth (inside live depth ≈17) ---------
     cx, cv, cd = 40.0, 0.0, 11.0

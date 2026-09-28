@@ -36,8 +36,9 @@ def build():
     for k, fx in enumerate(fin_x):
         F.cylinder(s, f'Riser{k}', (fx, 0, 1.4), (fx, 0, 2.4), 0.35, material='gunmetal',
                    segments=10)
-        F.box(s, f'Fin{k}', (fx, 0, 4.6), (0.5, 0.7, 5.6), material='paint', bevel=0.04)
-        F.box(s, f'FinEdge{k}', (fx, 0, 7.3), (0.56, 0.78, 0.4), material='paint.aged',
+        F.box(s, f'Fin{k}', (fx, 0, 4.6), (0.5, 0.7, 5.6), material='paint2', bevel=0.04)
+        # the hot edge: a thin warm glow strip along the fin tip — the only emissive on the fin
+        F.box(s, f'FinEdge{k}', (fx, 0, 7.3), (0.56, 0.2, 0.24), material='glow_amber',
               bevel=0.0)
         # edge ribs on each fin face so the fin reads as folded plate, not a card
         s.detail = 1
@@ -45,15 +46,15 @@ def build():
             F.box(s, f'FinRib{k}{e:+d}', (fx, e * 0.42, 4.6), (0.42, 0.1, 4.8),
                   material='paint2', bevel=0.0)
         s.detail = 0
-    # furnace cores glowing in the five gaps
+    # furnace cores glowing in the five gaps — narrow slits, not emissive panels
     for k in range(5):
         gx = (fin_x[k] + fin_x[k + 1]) / 2
-        F.box(s, f'Core{k}', (gx, 0, 4.4), (1.6, 0.3, 4.4), material='glow_amber',
+        F.box(s, f'Core{k}', (gx, 0, 4.4), (0.45, 0.3, 3.6), material='glow_amber',
               bevel=0.02)
 
     # --- end houses widening the plan at both ends ---------------------------------------------------
     for k, ex in enumerate((-8.0, 8.0)):
-        F.box(s, f'EndHouse{k}', (ex, 0, 3.0), (1.8, 1.9, 4.2), material='paint.aged',
+        F.box(s, f'EndHouse{k}', (ex, 0, 3.0), (1.8, 1.9, 4.2), material='paint2',
               bevel=0.12, taper=0.9)
         F.box(s, f'EndBand{k}', (ex, 0, 4.6), (1.9, 2.0, 0.5), material='hazard',
               bevel=0.0)

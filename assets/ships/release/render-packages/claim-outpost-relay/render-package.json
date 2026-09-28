@@ -335,7 +335,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "41453e4b5ab113cee470774cc8b9ef7c5a03db8a74075cd5b7a72d80650d9628",
+  "contentHash": "e71a2f1ef74e7304b4861f58034a93c19de1c0358e8cd393d94c2560dc3b6752",
   "dynamicGroups": [
     {
       "id": "sf.render.claim-outpost-relay.mesh.lod0-hook-nav-port.dynamic",
@@ -372,18 +372,18 @@
     {
       "bounds": {
         "max": [
-          56.499691009521484,
-          45.66046905517578,
-          15.865046501159668
+          56.5,
+          46.85179901123047,
+          15.85958194732666
         ],
         "min": [
-          -44.76504898071289,
-          -45.2079963684082,
-          -13.398415565490723
+          -41.70000076293945,
+          -43.32844924926758,
+          -13.393330574035645
         ]
       },
       "drawMode": 4,
-      "geometryHash": "db34b9846dedce3fa1e4aff73d793e3f2b5e6d9da7cf7813647555e33b70dc6d",
+      "geometryHash": "a54c65a461a0dbda9e83a548abd4a0fa39187adf35357410d0dc61262ac7bab6",
       "id": "sf.render.claim-outpost-relay.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -392,48 +392,48 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.claim-outpost-relay.mesh.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 810
+      "vertexCount": 790
     },
     {
       "bounds": {
         "max": [
-          51.637611389160156,
-          45.17308807373047,
-          3.0992345809936523
+          51.63751983642578,
+          44.95842361450195,
+          1.573972463607788
         ],
         "min": [
-          -30.900089263916016,
-          -45.17308807373047,
-          -12.894082069396973
+          -41.599998474121094,
+          -43.2938346862793,
+          -12.893820762634277
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8bb437485bd1bcbab232a4e491679ea7f7d78db3fa74d926f68c3a50cac2f2a",
+      "geometryHash": "a1ac1ba59c0235c5b42d9bff617efb52f2d5aa2663307f2997c7468e8b22dc9d",
       "id": "sf.render.claim-outpost-relay.mesh.lod0-armor.primitive.0",
-      "indexCount": 24924,
+      "indexCount": 35628,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 9152
+      "vertexCount": 13882
     },
     {
       "bounds": {
         "max": [
-          26.174999237060547,
-          26.123279571533203,
-          -3.124955892562866
+          25.57499885559082,
+          25.523279190063477,
+          -2.425232172012329
         ],
         "min": [
-          -14.175000190734863,
-          -14.12328052520752,
-          -13.31004524230957
+          -14.77500057220459,
+          -14.723280906677246,
+          -13.309769630432129
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a739a7fae6e6ee88383abc7a04b4c9fdfb3f22ffdf2ca40623e3aa5094d4738e",
+      "geometryHash": "b984057e439adcea6180ff77c29415be69c695d19c0a4fdd1f6fcf13d05876fa",
       "id": "sf.render.claim-outpost-relay.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 828,
       "indexed": true,
@@ -447,18 +447,18 @@
     {
       "bounds": {
         "max": [
-          51.80147269113892,
-          44.13999938964844,
-          -2.301480801340447
+          51.80212453066294,
+          40.13999938964844,
+          -2.3006812188136885
         ],
         "min": [
-          -0.2014734570586043,
-          -44.13999938964844,
-          -5.798518626454963
+          -0.20212529658262568,
+          -40.13999938964844,
+          -5.799318208981722
         ]
       },
       "drawMode": 4,
-      "geometryHash": "796c2871c010281c1910fe051455e5a40f683f775d449818f463d1d19f218964",
+      "geometryHash": "842f4c445983ae0035cb37bf6fcc5333f4fca928620e766d62e403e4b0fed203",
       "id": "sf.render.claim-outpost-relay.mesh.lod0-hook-nav-port.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -473,17 +473,17 @@
       "bounds": {
         "max": [
           51.79999923706055,
-          4.5379619545656835,
-          -2.300922898809354
+          4.541624175702803,
+          -2.30080082477145
         ],
         "min": [
-          -44.20000076293945,
-          -0.13796199330870262,
-          -5.799076528986056
+          -40.20000076293945,
+          -0.14162421444582218,
+          -5.79919860302396
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d60174a60e1d02a6801713287bd92e26bee42af4c6a668cdf0222446740fa87",
+      "geometryHash": "acda89c7707046523fdffc1df008137e65bb98046242eedff3e8287b4271e454",
       "id": "sf.render.claim-outpost-relay.mesh.lod0-hook-nav-starboard.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -498,26 +498,26 @@
       "bounds": {
         "max": [
           56.5,
-          27.413375854492188,
-          0.10045330226421356
+          3.999420166015625,
+          -1.40008544921875
         ],
         "min": [
-          -40.93907165527344,
-          -40.93998336791992,
-          -3.075453281402588
+          38.5,
+          -3.999420166015625,
+          -2.1999144554138184
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ec196c1f3836884bd8359a572d28bdd0961c04e91e73bf35681d2e00648ad3da",
+      "geometryHash": "bb12cff382a4cb018ad88174684e5ab255c9c1fa733ee6eb8511b748c6b0fc3e",
       "id": "sf.render.claim-outpost-relay.mesh.lod0-hull-aged.primitive.0",
-      "indexCount": 7656,
+      "indexCount": 564,
       "indexed": true,
       "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_aged",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod0-hull-aged",
       "primitiveIndex": 0,
-      "vertexCount": 2356
+      "vertexCount": 168
     },
     {
       "bounds": {
@@ -548,42 +548,42 @@
       "bounds": {
         "max": [
           54.5,
-          45.66243362426758,
-          1.5994486808776855
+          46.85443115234375,
+          -1.499922513961792
         ],
         "min": [
-          -44,
-          -43.99971389770508,
-          -13.053655624389648
+          -10,
+          -7.0002217292785645,
+          -11.862794876098633
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d8e863baff84816966408c9b27b2aa39e9d0a5ceb13b24b5b057674a51e63975",
+      "geometryHash": "87dbf4f03716d18b7bc9fcd2eb9ea6b507ae113e5ea706211b31aaac1819d35f",
       "id": "sf.render.claim-outpost-relay.mesh.lod0-hull.primitive.0",
-      "indexCount": 15528,
+      "indexCount": 3300,
       "indexed": true,
       "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 5026
+      "vertexCount": 814
     },
     {
       "bounds": {
         "max": [
-          41.71919250488281,
-          45.21024703979492,
-          -2.050154685974121
+          39.98789596557617,
+          44.34000015258789,
+          -2.050755023956299
         ],
         "min": [
-          -16.566940307617188,
-          -45.21024703979492,
-          -12.999845504760742
+          -15.883648872375488,
+          -43.33086013793945,
+          -12.999244689941406
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ac216c6d2c60c583779b23ba5e0a005b1cf5c02dddd88f0de22dbe9179bb8ad",
+      "geometryHash": "d468f630b86f63dbcac87d467750fb58131d8a00c5390cd7253d71b3e5e626cc",
       "id": "sf.render.claim-outpost-relay.mesh.lod0-lights-cyan.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -597,18 +597,18 @@
     {
       "bounds": {
         "max": [
-          44.37336349487305,
-          44.37336349487305,
-          -2.1543726921081543
+          40.37336349487305,
+          40.37336349487305,
+          -2.1564786434173584
         ],
         "min": [
-          -44.37336349487305,
-          -44.37336349487305,
-          -10.62088680267334
+          -40.37336349487305,
+          -40.37336349487305,
+          -10.618781089782715
         ]
       },
       "drawMode": 4,
-      "geometryHash": "caf0f4ee5cfb2908caf056d1c05af0d47925eb3ace5d32ec8f3d275820604262",
+      "geometryHash": "8eeb59a01b4707b8d2362fb0c8fd2b5ccc6821547748854ff128d6d49123ca50",
       "id": "sf.render.claim-outpost-relay.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 7572,
       "indexed": true,
@@ -617,7 +617,7 @@
       "meshName": "LOD0_Lights_Warm",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod0-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 2851
+      "vertexCount": 2848
     },
     {
       "bounds": {
@@ -647,18 +647,18 @@
     {
       "bounds": {
         "max": [
-          44.763973236083984,
-          44.76397705078125,
-          -2.253138780593872
+          40.763206481933594,
+          44.130767822265625,
+          -2.2532312870025635
         ],
         "min": [
-          -44.763973236083984,
-          -44.76396942138672,
-          -13.395293235778809
+          -40.763206481933594,
+          -40.763755798339844,
+          -13.395200729370117
         ]
       },
       "drawMode": 4,
-      "geometryHash": "138d7f0a2ae734d988aa4d9256a489e00a4c229bad47c4dbb43a32e207d5ea69",
+      "geometryHash": "9209404ef2ed029c567f358985c57aef142c16b978cc31cb668aeae79a502cdb",
       "id": "sf.render.claim-outpost-relay.mesh.lod0-mechanical.primitive.0",
       "indexCount": 2712,
       "indexed": true,
@@ -672,27 +672,27 @@
     {
       "bounds": {
         "max": [
-          44.766754150390625,
-          44.76675796508789,
-          -1.0009644031524658
+          40.766754150390625,
+          40.76675796508789,
+          8.519647598266602
         ],
         "min": [
-          -44.766754150390625,
-          -44.76675033569336,
-          -4.891943454742432
+          -40.766754150390625,
+          -40.76675033569336,
+          -4.893431663513184
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3989f0f69e9f72d9d2e79cb18ee0753f714156d98d6cb0a36442de47a22481f2",
+      "geometryHash": "a932c353eada75a79529b73e1377f5985b4b44bdac1b3efcdc289f74325b8b2d",
       "id": "sf.render.claim-outpost-relay.mesh.lod0-mechanicaldark.primitive.0",
-      "indexCount": 2628,
+      "indexCount": 5748,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1040
+      "vertexCount": 2331
     },
     {
       "bounds": {
@@ -723,67 +723,67 @@
       "bounds": {
         "max": [
           52.5,
-          44.003257751464844,
-          2.199514389038086
+          41.70104217529297,
+          -1.0013951063156128
         ],
         "min": [
-          -44,
-          -44.003257751464844,
-          -6.69449520111084
+          -41.70000076293945,
+          -41.70104217529297,
+          -6.693585395812988
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da2ad0eb2022df429b2c7dd89755938408c8d43b92befddf9e52c941fa5c42d0",
+      "geometryHash": "50bbf65b2b8f4fce7ee159845f255d0ea8f55fc1129ddc4e6ee00dd7edfe5b0c",
       "id": "sf.render.claim-outpost-relay.mesh.lod0-warning.primitive.0",
-      "indexCount": 8784,
+      "indexCount": 8256,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 2986
+      "vertexCount": 2714
     },
     {
       "bounds": {
         "max": [
-          51.63820266723633,
-          45.17203903198242,
-          3.1012613773345947
+          51.63751983642578,
+          44.9610481262207,
+          1.5756094455718994
         ],
         "min": [
-          -30.897581100463867,
-          -45.17203903198242,
-          -12.897198677062988
+          -41.59144592285156,
+          -43.294490814208984,
+          -12.896546363830566
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d22af0a77e0dc657bb0c26dd6e31aa625b8290a79ffd9222a97e9a5b48571c78",
+      "geometryHash": "5bdb542185a917148f13dece8d7dd3e8e3ebda44aa08a6367094e3246f4774ee",
       "id": "sf.render.claim-outpost-relay.mesh.lod1-armor.primitive.0",
-      "indexCount": 9030,
+      "indexCount": 13482,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 4681
+      "vertexCount": 7665
     },
     {
       "bounds": {
         "max": [
-          26.174999237060547,
-          26.123279571533203,
-          -3.124617576599121
+          25.57499885559082,
+          25.523279190063477,
+          -2.424894332885742
         ],
         "min": [
-          -14.175000190734863,
-          -14.12328052520752,
-          -13.31217098236084
+          -14.77500057220459,
+          -14.723280906677246,
+          -13.311894416809082
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f5d6cbfa6b0133c1028273c0c48546783ca574cbbd47c4af30e87922dac6f04e",
+      "geometryHash": "3fe8a356ca6dcec27206494cbfa4e91b656911e0e504c3bc7b4b4c4d2c2a52c2",
       "id": "sf.render.claim-outpost-relay.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 462,
       "indexed": true,
@@ -797,18 +797,18 @@
     {
       "bounds": {
         "max": [
-          51.80147269113892,
-          44.13999938964844,
-          -2.301480801340447
+          51.80212453066294,
+          40.13999938964844,
+          -2.3006812188136885
         ],
         "min": [
-          -0.2014734570586043,
-          -44.13999938964844,
-          -5.798518626454963
+          -0.20212529658262568,
+          -40.13999938964844,
+          -5.799318208981722
         ]
       },
       "drawMode": 4,
-      "geometryHash": "42a35f824171936f7ca84560f81ab1e17e1cc86f7d628a013cf5fd1432c52421",
+      "geometryHash": "b8ebf6b9bb3ac0136bea2b8c8d18968ba66c5f04fd52c26ae6ef9af1e1ec505e",
       "id": "sf.render.claim-outpost-relay.mesh.lod1-hook-nav-port.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -823,17 +823,17 @@
       "bounds": {
         "max": [
           51.79999923706055,
-          4.5379619545656835,
-          -2.300922898809354
+          4.541624175702803,
+          -2.30080082477145
         ],
         "min": [
-          -44.20000076293945,
-          -0.13796199330870262,
-          -5.799076528986056
+          -40.20000076293945,
+          -0.14162421444582218,
+          -5.79919860302396
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5039bff9ef50a2a36d6298ccd01d483108ce72becb970a18e72077a71fb403da",
+      "geometryHash": "4be301ae674d1317c0b9f549344f69a123b553842adfb8f6617dd991c71f47f2",
       "id": "sf.render.claim-outpost-relay.mesh.lod1-hook-nav-starboard.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -848,26 +848,26 @@
       "bounds": {
         "max": [
           56.48640441894531,
-          27.417095184326172,
-          0.09588339924812317
+          3.9867963790893555,
+          -1.4039807319641113
         ],
         "min": [
-          -40.92940139770508,
-          -40.93183135986328,
-          -3.0733189582824707
+          38.51359558105469,
+          -3.9867963790893555,
+          -2.1960196495056152
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dbc3c3a0f5443ad840b3a4501d32877683d531f14dcaa5b73495a310f1973b52",
+      "geometryHash": "152b2702cc5d05d2ec6379ad81b3f7ccf9e35c0505c12fa242103af827bdacff",
       "id": "sf.render.claim-outpost-relay.mesh.lod1-hull-aged.primitive.0",
-      "indexCount": 1662,
+      "indexCount": 84,
       "indexed": true,
       "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_aged",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod1-hull-aged",
       "primitiveIndex": 0,
-      "vertexCount": 627
+      "vertexCount": 40
     },
     {
       "bounds": {
@@ -898,42 +898,42 @@
       "bounds": {
         "max": [
           54.48887252807617,
-          45.66310501098633,
-          1.5974366664886475
+          46.85372543334961,
+          -1.5008163452148438
         ],
         "min": [
-          -43.9967155456543,
-          -43.985923767089844,
-          -13.053524017333984
+          -10,
+          -6.999514579772949,
+          -11.86190128326416
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8342b57d0f832e17e0eff56d4b81a51f511360dcd4902d77a794613478b7ea7d",
+      "geometryHash": "ed0efbd4174db088400dfabc22ec6a16a13812a6c05b6087c648cac58ec2fc3a",
       "id": "sf.render.claim-outpost-relay.mesh.lod1-hull.primitive.0",
-      "indexCount": 7002,
+      "indexCount": 2472,
       "indexed": true,
       "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 2605
+      "vertexCount": 642
     },
     {
       "bounds": {
         "max": [
-          41.71919250488281,
-          45.21024703979492,
-          -2.050154685974121
+          39.98789596557617,
+          44.34000015258789,
+          -2.050755023956299
         ],
         "min": [
-          -16.566940307617188,
-          -45.21024703979492,
-          -12.999845504760742
+          -15.883648872375488,
+          -43.33086013793945,
+          -12.999244689941406
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f6058b10f81c1b3969f7820a8b978ceb466f29706555e5ad3fe3d2de8c3405e2",
+      "geometryHash": "d716983e096da7310bf17d35431590a1cc706f5fcb7bc4e766c1ad97bd94c0e0",
       "id": "sf.render.claim-outpost-relay.mesh.lod1-lights-cyan.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -947,18 +947,18 @@
     {
       "bounds": {
         "max": [
-          44.37470245361328,
-          44.37470245361328,
-          -2.1572513580322266
+          40.37470245361328,
+          40.37470245361328,
+          -2.1566367149353027
         ],
         "min": [
-          -44.37470245361328,
-          -44.37470245361328,
-          -10.61860466003418
+          -40.37470245361328,
+          -40.37470245361328,
+          -10.619219779968262
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a3293b0dabfb3afa9ca4aaaa72a3e3fdda0403c87d41456d96f0f003355852c",
+      "geometryHash": "298d194578eefe0440db69ef3addc5ae0d5928e35f0c7d812cadd983ea263452",
       "id": "sf.render.claim-outpost-relay.mesh.lod1-lights-warm.primitive.0",
       "indexCount": 3972,
       "indexed": true,
@@ -967,7 +967,7 @@
       "meshName": "LOD1_Lights_Warm",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod1-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 1845
+      "vertexCount": 1839
     },
     {
       "bounds": {
@@ -997,18 +997,18 @@
     {
       "bounds": {
         "max": [
-          44.76734924316406,
-          44.76713562011719,
-          -2.252466917037964
+          40.7648811340332,
+          44.130767822265625,
+          -2.252732276916504
         ],
         "min": [
-          -44.766571044921875,
-          -44.76678466796875,
-          -13.395364761352539
+          -40.764442443847656,
+          -40.76678466796875,
+          -13.395098686218262
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aafe28a029edd686d8f2137fd9e5a7e8945d35ba66c057e30ddee453b9757a01",
+      "geometryHash": "30e479642dfc7ad83cb4c979b07b15adc4b88a142a6b4d601d568d877db1714d",
       "id": "sf.render.claim-outpost-relay.mesh.lod1-mechanical.primitive.0",
       "indexCount": 864,
       "indexed": true,
@@ -1022,27 +1022,27 @@
     {
       "bounds": {
         "max": [
-          44.76734924316406,
-          44.76713562011719,
-          -1.00271475315094
+          40.767433166503906,
+          40.76763916015625,
+          8.519722938537598
         ],
         "min": [
-          -44.766571044921875,
-          -44.76678466796875,
-          -4.893712043762207
+          -40.766990661621094,
+          -40.76678466796875,
+          -4.89350700378418
         ]
       },
       "drawMode": 4,
-      "geometryHash": "13250482b4c66363c252761c5de932a506b08479486d44da6d7e33360455c4f5",
+      "geometryHash": "79e11e76ec42991b6c4219ed82cc6728ea17ebbf0b4363cec039ac6bebe1b998",
       "id": "sf.render.claim-outpost-relay.mesh.lod1-mechanicaldark.primitive.0",
-      "indexCount": 900,
+      "indexCount": 1908,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 509
+      "vertexCount": 1177
     },
     {
       "bounds": {
@@ -1073,67 +1073,67 @@
       "bounds": {
         "max": [
           52.5,
-          43.99595260620117,
-          2.198082685470581
+          41.692138671875,
+          -1.004141092300415
         ],
         "min": [
-          -43.99689483642578,
-          -43.99595260620117,
-          -6.695640563964844
+          -41.69287109375,
+          -41.692138671875,
+          -6.6959004402160645
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be80793ed9d42d359f71f8147cbef47723645a6002c872474c9f895a2dfcbbb7",
+      "geometryHash": "72b82f8776c2f5bcd8554c81d793e5463b112245b525e2219db9658638632fa9",
       "id": "sf.render.claim-outpost-relay.mesh.lod1-warning.primitive.0",
-      "indexCount": 3012,
+      "indexCount": 1248,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 1270
+      "vertexCount": 696
     },
     {
       "bounds": {
         "max": [
-          51.63924789428711,
-          45.17270278930664,
-          3.098606586456299
+          51.63751983642578,
+          44.9625129699707,
+          1.5740591287612915
         ],
         "min": [
-          -30.886564254760742,
-          -45.17253112792969,
-          -12.894543647766113
+          -41.57147216796875,
+          -43.296875,
+          -12.894996643066406
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f47f53c4accb126ff1d76c78729424405a17db343d90fac9073fd00eb0de1ec",
+      "geometryHash": "ba4296b0da5e1b864a3e5fb9b443fff8463e73c3ff024a31b265848b0c82f9b3",
       "id": "sf.render.claim-outpost-relay.mesh.lod2-armor.primitive.0",
-      "indexCount": 4200,
+      "indexCount": 6378,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2404
+      "vertexCount": 4294
     },
     {
       "bounds": {
         "max": [
-          26.174999237060547,
-          26.042007446289062,
-          -3.1245791912078857
+          25.575000762939453,
+          25.442007064819336,
+          -2.424856185913086
         ],
         "min": [
-          -14.17500114440918,
-          -14.042006492614746,
-          -13.312132835388184
+          -14.77500057220459,
+          -14.642007827758789,
+          -13.311857223510742
         ]
       },
       "drawMode": 4,
-      "geometryHash": "50a879d24caf754c2e35fba9a2dcd304b22b0327b0851215791947a26a4a49ac",
+      "geometryHash": "1ff18f3d0608fd168886eceb456994b4eb78dc3151a250e7dede431fa6b4760c",
       "id": "sf.render.claim-outpost-relay.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -1147,18 +1147,18 @@
     {
       "bounds": {
         "max": [
-          51.800262011912096,
-          44.04666519165039,
-          -2.299801335429514
+          51.800327844923004,
+          40.04666519165039,
+          -2.299860343733156
         ],
         "min": [
-          -0.20026279273293923,
-          -44.04666519165039,
-          -5.800198569203054
+          -0.20032862574385035,
+          -40.04666519165039,
+          -5.800139560899412
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5603a186efede9b847c7bae336668d2056991e084d679fe1ab1842b03d38f6c1",
+      "geometryHash": "379a7c64c7099f37e2e9098720e4e0766d3fb386e505ba1519252b69d4fd7878",
       "id": "sf.render.claim-outpost-relay.mesh.lod2-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1173,17 +1173,17 @@
       "bounds": {
         "max": [
           51.79999923706055,
-          4.4442092254731165,
-          -2.300923067725865
+          4.446162414037822,
+          -2.3008009906610702
         ],
         "min": [
-          -44.20000457763672,
-          -0.044209178534458715,
-          -5.799076836906703
+          -40.20000457763672,
+          -0.046162367099164214,
+          -5.799198913971498
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6f6da2e2c11db0cee4d1069d575202e226e71b3815bfdc1b73b60e32cde98f96",
+      "geometryHash": "e7977dda43315fef976f79c81bf7532eb1167a21b5923703adda2069a59d7cce",
       "id": "sf.render.claim-outpost-relay.mesh.lod2-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1198,26 +1198,26 @@
       "bounds": {
         "max": [
           56.4821662902832,
-          27.406837463378906,
-          0.08435243368148804
+          3.9816277027130127,
+          -1.4123908281326294
         ],
         "min": [
-          -40.9234733581543,
-          -40.92306900024414,
-          -3.066683053970337
+          38.51782989501953,
+          -3.9816274642944336,
+          -2.1876089572906494
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c78db2eac604c5d1ad703d34847bf90c9f194a99927f97621d0f9fe9736f363b",
+      "geometryHash": "32c7100ba6fdc9105d8e2de02ef3381a6bfc91c01ce219060e8ca00fde6e6952",
       "id": "sf.render.claim-outpost-relay.mesh.lod2-hull-aged.primitive.0",
-      "indexCount": 756,
+      "indexCount": 36,
       "indexed": true,
       "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_aged",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod2-hull-aged",
       "primitiveIndex": 0,
-      "vertexCount": 372
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -1233,57 +1233,57 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3cf35f2c2af65efc77decc84002ee59254a2bebfcfb52804bfd42622e983484",
+      "geometryHash": "58a36976db1e2a0a07428a4410392eb3c0fa27c5d825268c0095f2bf70ce3e97",
       "id": "sf.render.claim-outpost-relay.mesh.lod2-hull-role.primitive.0",
-      "indexCount": 408,
+      "indexCount": 420,
       "indexed": true,
       "materialHash": "96cbd9aa4ca8dcce5b9ac7784b6d502743ef218f0f04117a1c271897b2cc94ad",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_role",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod2-hull-role",
       "primitiveIndex": 0,
-      "vertexCount": 166
+      "vertexCount": 168
     },
     {
       "bounds": {
         "max": [
           54.428688049316406,
-          45.704917907714844,
-          1.5929243564605713
+          46.89524459838867,
+          -1.5244841575622559
         ],
         "min": [
-          -43.985538482666016,
-          -43.987274169921875,
-          -13.053426742553711
+          -9.921785354614258,
+          -6.92097282409668,
+          -11.863332748413086
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d012e3ea4a20d0f08e144bedf3feb0c5ae8eb596704820fa1830f120a91abb2a",
+      "geometryHash": "0f474998bd841736d77e5c9c777c778f49c545943ee82fff6e8e5e85d98f13d7",
       "id": "sf.render.claim-outpost-relay.mesh.lod2-hull.primitive.0",
-      "indexCount": 3228,
+      "indexCount": 858,
       "indexed": true,
       "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1334
+      "vertexCount": 259
     },
     {
       "bounds": {
         "max": [
-          41.71815490722656,
-          45.1402473449707,
-          -2.050365924835205
+          39.98926544189453,
+          44.24666976928711,
+          -2.0496039390563965
         ],
         "min": [
-          -16.565902709960938,
-          -45.1402473449707,
-          -12.999634742736816
+          -15.885017395019531,
+          -43.2608642578125,
+          -13.000396728515625
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a60c1e7856dd9ecc631bb432c8e7b8b84c820be13b0afda61be23a09d11a8dfc",
+      "geometryHash": "c53576e6b24c2b699c3e8826f725e2bfeb17e68003f93f2a1c17075915556824",
       "id": "sf.render.claim-outpost-relay.mesh.lod2-lights-cyan.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1297,18 +1297,18 @@
     {
       "bounds": {
         "max": [
-          44.36562728881836,
-          44.376461029052734,
-          -2.142803192138672
+          40.3518180847168,
+          40.376461029052734,
+          -2.142481565475464
         ],
         "min": [
-          -44.36562728881836,
-          -44.376461029052734,
-          -2.9012131690979004
+          -40.3518180847168,
+          -40.376461029052734,
+          -2.9015347957611084
         ]
       },
       "drawMode": 4,
-      "geometryHash": "11b09204b3266c49760da0899bc11bd782e36fa7a3dfb29d337c90db5048d8d7",
+      "geometryHash": "b05722e9ab204100ff54231894be350a3dee2f21b60fd9c25d8f2e6c72b6cb28",
       "id": "sf.render.claim-outpost-relay.mesh.lod2-lights-warm.primitive.0",
       "indexCount": 846,
       "indexed": true,
@@ -1317,7 +1317,7 @@
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 558
+      "vertexCount": 546
     },
     {
       "bounds": {
@@ -1347,52 +1347,52 @@
     {
       "bounds": {
         "max": [
-          44.766178131103516,
-          44.76620864868164,
-          -2.2503774166107178
+          40.76822280883789,
+          44.130767822265625,
+          -2.2478861808776855
         ],
         "min": [
-          -44.76607131958008,
-          -44.76604080200195,
-          -13.382137298583984
+          -40.76822280883789,
+          -40.76341247558594,
+          -13.384629249572754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bdbd1d0c37c6df3d3580c91569b506cb6fb37891e6a0b19674f08cbff4874030",
+      "geometryHash": "93145b214613d964154dc087aa4af55ca9499c3269b8bf5520967609aa2efcb5",
       "id": "sf.render.claim-outpost-relay.mesh.lod2-mechanical.primitive.0",
-      "indexCount": 315,
+      "indexCount": 327,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 203
+      "vertexCount": 209
     },
     {
       "bounds": {
         "max": [
-          44.766178131103516,
-          44.76620864868164,
-          -1.0250719785690308
+          40.76596450805664,
+          40.767494201660156,
+          8.519277572631836
         ],
         "min": [
-          -44.76607131958008,
-          -44.76604080200195,
-          -3.3749279975891113
+          -40.76596450805664,
+          -40.764434814453125,
+          -3.375720500946045
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0192d9bd0bc5cccaec728f83d3b7eaa3b753651871becfbc931c870fc02e8e5d",
+      "geometryHash": "59a35793546e8eb27cd7a32b32f75706dc7cb44c770b51c698fb35a8226f720c",
       "id": "sf.render.claim-outpost-relay.mesh.lod2-mechanicaldark.primitive.0",
-      "indexCount": 111,
+      "indexCount": 1119,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 87
+      "vertexCount": 755
     },
     {
       "bounds": {
@@ -1423,26 +1423,26 @@
       "bounds": {
         "max": [
           52.5,
-          43.98456573486328,
-          2.192284107208252
+          41.692138671875,
+          -1.013906717300415
         ],
         "min": [
-          -43.984832763671875,
-          -43.98456573486328,
-          -6.6944379806518555
+          -41.69287109375,
+          -41.692138671875,
+          -6.694167613983154
         ]
       },
       "drawMode": 4,
-      "geometryHash": "753756fed676b23e1011abe3cab4b32d8a2842c1de056a5c5ade2945802ce2ce",
+      "geometryHash": "cccc0b399a6433008bc59f24d7a407890c48a4f17af3deb3f020c2b031c8afad",
       "id": "sf.render.claim-outpost-relay.mesh.lod2-warning.primitive.0",
-      "indexCount": 2208,
+      "indexCount": 1008,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 1040
+      "vertexCount": 608
     }
   ],
   "hlods": [],
@@ -1489,22 +1489,8 @@
       ]
     },
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "id": "material:6a5417b004bdbc8e05e1f1ee",
-      "name": "Material_Emissive_NavRed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
-      "id": "material:7c9a3daaaa00f25157b72e50",
+      "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "id": "material:333a696e723d180dee93b90e",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1533,6 +1519,20 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
@@ -1899,17 +1899,17 @@
     {
       "id": "sf.render.claim-outpost-relay.mesh.lod0-hook-nav-port",
       "localTransform": [
-        44.13999938964844,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        44.13999938964844,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        22.06999969482422,
+        20.06999969482422,
         0,
         25.799999617040157,
         0,
@@ -1927,17 +1927,17 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.claim-outpost-relay.body",
       "worldTransform": [
-        44.13999938964844,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        44.13999938964844,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        22.06999969482422,
+        20.06999969482422,
         0,
         25.799999617040157,
         0,
@@ -1948,19 +1948,19 @@
     {
       "id": "sf.render.claim-outpost-relay.mesh.lod0-hook-nav-starboard",
       "localTransform": [
-        48,
+        46,
         0,
         0,
         0,
         0,
-        48,
+        46,
         0,
         0,
         0,
         0,
-        24,
+        23,
         0,
-        3.799999237060547,
+        5.799999237060547,
         2.1999999806284904,
         -4.049999713897705,
         1
@@ -1976,19 +1976,19 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.claim-outpost-relay.body",
       "worldTransform": [
-        48,
+        46,
         0,
         0,
         0,
         0,
-        48,
+        46,
         0,
         0,
         0,
         0,
-        24,
+        23,
         0,
-        3.799999237060547,
+        5.799999237060547,
         2.1999999806284904,
         -4.049999713897705,
         1
@@ -2585,17 +2585,17 @@
     {
       "id": "sf.render.claim-outpost-relay.mesh.lod1-hook-nav-port",
       "localTransform": [
-        44.13999938964844,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        44.13999938964844,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        22.06999969482422,
+        20.06999969482422,
         0,
         25.799999617040157,
         0,
@@ -2613,17 +2613,17 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.claim-outpost-relay.body",
       "worldTransform": [
-        44.13999938964844,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        44.13999938964844,
+        40.13999938964844,
         0,
         0,
         0,
         0,
-        22.06999969482422,
+        20.06999969482422,
         0,
         25.799999617040157,
         0,
@@ -2634,19 +2634,19 @@
     {
       "id": "sf.render.claim-outpost-relay.mesh.lod1-hook-nav-starboard",
       "localTransform": [
-        48,
+        46,
         0,
         0,
         0,
         0,
-        48,
+        46,
         0,
         0,
         0,
         0,
-        24,
+        23,
         0,
-        3.799999237060547,
+        5.799999237060547,
         2.1999999806284904,
         -4.049999713897705,
         1
@@ -2662,19 +2662,19 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.claim-outpost-relay.body",
       "worldTransform": [
-        48,
+        46,
         0,
         0,
         0,
         0,
-        48,
+        46,
         0,
         0,
         0,
         0,
-        24,
+        23,
         0,
-        3.799999237060547,
+        5.799999237060547,
         2.1999999806284904,
         -4.049999713897705,
         1
@@ -3271,17 +3271,17 @@
     {
       "id": "sf.render.claim-outpost-relay.mesh.lod2-hook-nav-port",
       "localTransform": [
-        44.04666519165039,
+        40.04666519165039,
         0,
         0,
         0,
         0,
-        44.04666519165039,
+        40.04666519165039,
         0,
         0,
         0,
         0,
-        22.023332595825195,
+        20.023332595825195,
         0,
         25.799999609589577,
         0,
@@ -3299,17 +3299,17 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.claim-outpost-relay.body",
       "worldTransform": [
-        44.04666519165039,
+        40.04666519165039,
         0,
         0,
         0,
         0,
-        44.04666519165039,
+        40.04666519165039,
         0,
         0,
         0,
         0,
-        22.023332595825195,
+        20.023332595825195,
         0,
         25.799999609589577,
         0,
@@ -3320,19 +3320,19 @@
     {
       "id": "sf.render.claim-outpost-relay.mesh.lod2-hook-nav-starboard",
       "localTransform": [
-        48.00000190734863,
+        46.00000190734863,
         0,
         0,
         0,
         0,
-        48.00000190734863,
+        46.00000190734863,
         0,
         0,
         0,
         0,
-        24.000000953674316,
+        23.000000953674316,
         0,
-        3.799997329711914,
+        5.799997329711914,
         2.200000023469329,
         -4.049999952316284,
         1
@@ -3348,19 +3348,19 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.claim-outpost-relay.body",
       "worldTransform": [
-        48.00000190734863,
+        46.00000190734863,
         0,
         0,
         0,
         0,
-        48.00000190734863,
+        46.00000190734863,
         0,
         0,
         0,
         0,
-        24.000000953674316,
+        23.000000953674316,
         0,
-        3.799997329711914,
+        5.799997329711914,
         2.200000023469329,
         -4.049999952316284,
         1
@@ -3910,42 +3910,42 @@
       "sha256": "1c23741b70e21a88ba8a91c42d995a0c233b6671f928cbc0cc6c1e426c71f63e"
     },
     "sourceGlb": {
-      "bytes": 1039816,
-      "sha256": "9cd31e6a5adbcbfded35a4f35fb4cc5625fb1a643a4108ed84671e9134718034",
+      "bytes": 1040664,
+      "sha256": "f2bceec82990995c81f6081ae2143eb5bec554ca357787db865f7b5e5d3ffe44",
       "uri": "place_claim_outpost_relay.glb"
     },
     "sourceManifest": {
-      "bytes": 205647,
-      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
+      "bytes": 206766,
+      "sha256": "a8ffe0c535bcbca523ec7221e0d2eb2c9dddb4592c00d3ec606a5fe7c1bdac0e",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1855332,
-    "sha256": "711a97b5e7ffe15ecbba7fc4b349f1416a901e30e21ac8f732c0b7d13690b818",
+    "bytes": 1837360,
+    "sha256": "6d160349abf3e08782a150f9862857376a234ef69b4dcd6cb09ef3477d27f6cd",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        5.8666229248046875,
-        0.24733543395996094,
-        1.2333154678344727
+        7.399999618530273,
+        1.7821922302246094,
+        1.233595371246338
       ],
       "max": [
         56.5,
-        45.704917907714844,
-        15.865046501159668
+        46.89524459838867,
+        15.862391471862793
       ],
       "min": [
-        -44.766754150390625,
-        -45.21024703979492,
-        -13.398415565490723
+        -41.70000076293945,
+        -43.33086013793945,
+        -13.395200729370117
       ],
       "size": [
-        101.26675415039062,
-        90.91516494750977,
-        29.26346206665039
+        98.20000076293945,
+        90.22610473632812,
+        29.25759220123291
       ]
     },
     "hidden": [
@@ -4497,17 +4497,17 @@
       {
         "canopy": false,
         "matrix": [
-          44.13999938964844,
+          40.13999938964844,
           0,
           0,
           0,
           0,
-          44.13999938964844,
+          40.13999938964844,
           0,
           0,
           0,
           0,
-          22.06999969482422,
+          20.06999969482422,
           0,
           25.799999617040157,
           0,
@@ -4525,19 +4525,19 @@
       {
         "canopy": false,
         "matrix": [
-          48,
+          46,
           0,
           0,
           0,
           0,
-          48,
+          46,
           0,
           0,
           0,
           0,
-          24,
+          23,
           0,
-          3.799999237060547,
+          5.799999237060547,
           2.1999999806284904,
           -4.049999713897705,
           1
@@ -4877,17 +4877,17 @@
       {
         "canopy": false,
         "matrix": [
-          44.13999938964844,
+          40.13999938964844,
           0,
           0,
           0,
           0,
-          44.13999938964844,
+          40.13999938964844,
           0,
           0,
           0,
           0,
-          22.06999969482422,
+          20.06999969482422,
           0,
           25.799999617040157,
           0,
@@ -4905,19 +4905,19 @@
       {
         "canopy": false,
         "matrix": [
-          48,
+          46,
           0,
           0,
           0,
           0,
-          48,
+          46,
           0,
           0,
           0,
           0,
-          24,
+          23,
           0,
-          3.799999237060547,
+          5.799999237060547,
           2.1999999806284904,
           -4.049999713897705,
           1
@@ -5257,17 +5257,17 @@
       {
         "canopy": false,
         "matrix": [
-          44.04666519165039,
+          40.04666519165039,
           0,
           0,
           0,
           0,
-          44.04666519165039,
+          40.04666519165039,
           0,
           0,
           0,
           0,
-          22.023332595825195,
+          20.023332595825195,
           0,
           25.799999609589577,
           0,
@@ -5285,19 +5285,19 @@
       {
         "canopy": false,
         "matrix": [
-          48.00000190734863,
+          46.00000190734863,
           0,
           0,
           0,
           0,
-          48.00000190734863,
+          46.00000190734863,
           0,
           0,
           0,
           0,
-          24.000000953674316,
+          23.000000953674316,
           0,
-          3.799997329711914,
+          5.799997329711914,
           2.200000023469329,
           -4.049999952316284,
           1
@@ -5585,20 +5585,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
   },
-  "runtimeHash": "a4fb573d21e3d061f643d82d2500e765096fa40ba5a6290604a95b10bbf904d3",
+  "runtimeHash": "f4ba3948bc6acdce4fe264461be14f1916fc564b63e1cecb4eab3226a1f394d6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           56.5,
-          45.704917907714844,
-          15.865046501159668
+          46.89524459838867,
+          15.862391471862793
         ],
         "min": [
-          -44.766754150390625,
-          -45.21024703979492,
-          -13.398415565490723
+          -41.70000076293945,
+          -43.33086013793945,
+          -13.395200729370117
         ]
       },
       "id": "sf.render.claim-outpost-relay.body",

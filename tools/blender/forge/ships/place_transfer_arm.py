@@ -27,7 +27,7 @@ def build():
         a = math.radians(45 + k * 90)
         F.box(s, f'BaseFoot{k}', (-2.0 + math.cos(a) * 2.6, math.sin(a) * 2.4, 0.35),
               (1.4, 1.2, 0.7), material='paint.aged', bevel=0.05)
-    F.cylinder(s, 'Pedestal', (-2.0, 0, 1.8), (-2.0, 0, 3.6), 1.7, material='paint',
+    F.cylinder(s, 'Pedestal', (-2.0, 0, 1.8), (-2.0, 0, 3.6), 1.7, material='paint2',
                segments=20)
     F.cylinder(s, 'SlewBand', (-2.0, 0, 3.4), (-2.0, 0, 4.2), 1.85, material='hazard',
                segments=20)
@@ -47,7 +47,7 @@ def build():
                material='gunmetal', segments=12)
 
     # --- the boom: lattice truss rising to the grapple tip ------------------------------------------------
-    F.truss(s, 'Boom', (-0.4, 0, 5.4), (14.0, 0, 8.6), 2.0, 7, material='paint',
+    F.truss(s, 'Boom', (-0.4, 0, 5.4), (14.0, 0, 8.6), 2.0, 7, material='paint2',
             chord=0.42, web=0.24)
     F.truss(s, 'BoomFly', (13.0, 0, 8.4), (16.6, 0, 9.4), 1.2, 2, material='paint2',
             chord=0.3, web=0.18)
