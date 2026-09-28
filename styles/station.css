@@ -1980,6 +1980,9 @@ html body #screens #sf-ship .sx-sw__stats .k-caps { font-size: 12px; }
    hook is JS too (document.fonts.ready re-projection). The rest is paint. End state:
    ONE amber Hand (the chosen slot: hull bead+arm AND rail bead+arm) + ONE amber Lamp
    Key (SAVE FIT). Everything else bone rgb(236 230 216); red threat-only. */
+/* SH10: the chosen rail row is bead + arm + bright name — never a filled box.
+   The wash fill (sharp vertical cutoffs) stands down on the flight host. */
+html body #screens #sf-ship .sx-sw-flow.is-selected { background: none; background-image: none; box-shadow: none; }
 /* SH2: the rail row answers the Hand in amber — bead + arm, the hull's own. */
 html body #screens #sf-ship .sx-sw-flow.is-selected::before { background: var(--dp-lamp, #f2b950); }
 html body #screens #sf-ship .sx-sw-flow.is-selected::after {
@@ -2036,6 +2039,14 @@ html body #screens #sf-ship .sx-sw__blurb::before {
   content: ""; position: absolute; inset: -8px -14px; z-index: -1; pointer-events: none;
   background: radial-gradient(ellipse at center, rgb(6 8 11 / .72) 30%, rgb(6 8 11 / .4) 55%, transparent 75%);
 }
+/* SH8: in choosing mode the hang column keeps to itself — rules and lines end
+   inside x<=300, and the prose steps down one shade so focus stays on the choice. */
+html body #screens #sf-ship .sx-sw__chooser { overflow: hidden; }
+html body #screens #sf-ship .sx-modrow { max-width: 235px; }
+html body #screens #sf-ship .sx-sw.is-choosing .sx-sw__blurb { color: rgb(236 230 216 / .62); }
+html body #screens #sf-ship .sx-sw.is-choosing .sx-sw__blurb::before {
+  background: radial-gradient(ellipse at center, rgb(6 8 11 / .6) 30%, rgb(6 8 11 / .32) 55%, transparent 75%);
+}
 /* SH2 follow-through: the flight chooser's rows stack in the hang column. The shared
    row is a flex pair (body + act) that crushes the body to ~13px in 230px, wrapping
    every name one letter per line; here the act rides under the body, full width. */
@@ -2064,10 +2075,10 @@ html body #screens #sf-ship .sx-modrow__buy.orr-lampkey {
 html body #screens #sf-ship .sx-modrow__buy:is(:disabled, [aria-disabled="true"]) {
   color: rgb(236 230 216 / .55); text-decoration-color: rgb(236 230 216 / .3);
 }
-/* SH2 follow-through: module chips read in the screen's grammar — gains ice, losses
-   dim bone (the dock readouts' rule); red stays threat-only. */
-html body #screens #sf-ship .sx-modrow :is(.k-good, .is-gain, .sx-modrow__chip.is-up) { color: var(--dp-ice, #8fcbff); }
-html body #screens #sf-ship .sx-modrow :is(.k-bad, .is-loss, .sx-modrow__chip.is-down) { color: rgb(146 143 135); }
+/* SH9: deltas are static numerals, never ice (motion-only) — gains AND losses read
+   bone with their +/- glyphs; red stays threat-only. */
+html body #screens #sf-ship .sx-modrow :is(.k-good, .is-gain, .sx-modrow__chip.is-up) { color: rgb(236 230 216 / .92); }
+html body #screens #sf-ship .sx-modrow :is(.k-bad, .is-loss, .sx-modrow__chip.is-down) { color: rgb(236 230 216 / .92); }
 /* SH2 follow-through: the live foot shares one band — the view words unbox to compact
    dotted words (the SH3 rule) so camera + verbs fit 621px; the drag hint retires (the
    canvas keeps its grab cursor); while choosing, the wide rack owns the band alone. */
@@ -2086,7 +2097,9 @@ html body #screens #sf-ship .sx-sw__camera [data-camera].is-current {
 html body #screens #sf-ship .sx-sw__camera [data-camera]:is(:hover, :focus-visible) { color: rgb(252 249 240); }
 html body #screens #sf-ship .sx-sw__dragcue { display: none; }
 html body #screens #sf-ship .sx-sw.is-choosing .sx-sw__camera { display: none; }
-/* SH2 follow-through: the proposed-fit line reads in the screen's grammar — gains ice,
-   losses dim bone (the dock readouts' rule); red stays threat-only. */
-html body #screens #sf-ship .sx-sw__delta :is(.k-good, .is-gain) { color: var(--dp-ice, #8fcbff); }
-html body #screens #sf-ship .sx-sw__delta :is(.k-bad, .is-loss) { color: rgb(146 143 135); }
+/* SH11: in choosing mode the non-selected leaders step back one shade, so none
+   reads through the proposed-fit line. */
+html body #screens #sf-ship .sx-sw.is-choosing .sx-hardpoint:not(.is-selected) .sx-hardpoint__leader { opacity: .45; }
+/* SH9: the proposed-fit line reads bone with +/- glyphs — ice is motion-only. */
+html body #screens #sf-ship .sx-sw__delta :is(.k-good, .is-gain) { color: rgb(236 230 216 / .92); }
+html body #screens #sf-ship .sx-sw__delta :is(.k-bad, .is-loss) { color: rgb(236 230 216 / .92); }

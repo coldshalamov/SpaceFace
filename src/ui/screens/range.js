@@ -152,8 +152,8 @@ html body #screens #sf-range .sf-range__canvas[data-range-canvas] { outline: non
 #sf-range .sf-range__ladder [data-range-check] { color: rgb(236 230 216 / .66); }
 /* Wave 2 R7: the run instrument rides the tabs row — arc gauge + gate count + clock + best. */
 #sf-range .sf-range__tabs { flex: 1 1 100%; }
-#sf-range .sf-range__run { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; padding: 2px 0 2px 18px;
-  font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: rgb(236 230 216 / .85); white-space: nowrap; }
+#sf-range .sf-range__run { display: inline-flex; align-items: center; gap: 14px; margin-left: auto; padding: 2px 0 2px 18px;
+  font-size: 17px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: rgb(236 230 216 / .85); white-space: nowrap; }
 #sf-range .sf-range__run svg { display: block; overflow: visible; }
 /* Wave 2 r2 RG1: the best-time Counter — tabular figures at full voice, not a murmur. */
 #sf-range .sf-range__run .sf-range__run-best { color: rgb(252 249 240); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -162,7 +162,7 @@ html body #screens #sf-range .sf-range__canvas[data-range-canvas] { outline: non
 #sf-range .sf-range__dossier { display: flex; flex: 0 0 auto; width: 100%; box-sizing: border-box;
   align-items: baseline; gap: 26px; padding: 10px 2px;
   border-top: 1px solid rgb(236 230 216 / .4); border-bottom: 1px solid rgb(236 230 216 / .32);
-  font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: rgb(236 230 216 / .8); }
+  font-size: 17px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: rgb(236 230 216 / .8); }
 #sf-range .sf-range__dossier-group { color: rgb(236 230 216 / .6); }
 #sf-range .sf-range__dossier-state { margin-left: auto; color: rgb(236 230 216 / .6); }
 #sf-range .sf-range__dossier-state.is-cleared { color: rgb(252 249 240); }
@@ -173,6 +173,11 @@ html body #screens #sf-range .sf-range__canvas[data-range-canvas] { outline: non
    gap spread three wrap lines across 300px and halved the hero; the column takes only
    what its rows need and hands the stage its room back.) */
 #sf-range .k-foot { flex-direction: column; align-items: stretch; justify-content: flex-end; row-gap: 10px; flex-wrap: nowrap; }
+/* Wave 2 r3 RG7: the foot docks to the frame's foot — no 100px void below it.
+   The kit grid sizes all three rows to content; the stage takes the slack, so the
+   hero grows back and the foot sits on the frame. */
+#sf-range { grid-template-rows: auto minmax(0, 1fr) auto; }
+#sf-range .k-foot { padding-bottom: 24px; }
 #sf-range .sf-range__tabs { flex: 0 0 auto; width: 100%; }
 #sf-range .sf-range__drawer .k-row { border-top: 0; }
 #sf-range .sf-range__drawer [data-state="cleared"] .k-row__sub { color: rgb(236 230 216 / .66); }
@@ -1848,31 +1853,31 @@ export const rangeScreen = {
     runItem.setAttribute('role', 'status');
     runItem.setAttribute('aria-label', 'Run progress');
     const runSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    runSvg.setAttribute('width', '44');
-    runSvg.setAttribute('height', '44');
-    runSvg.setAttribute('viewBox', '0 0 44 44');
+    runSvg.setAttribute('width', '64');
+    runSvg.setAttribute('height', '64');
+    runSvg.setAttribute('viewBox', '0 0 64 64');
     runSvg.setAttribute('aria-hidden', 'true');
     runSvg.setAttribute('focusable', 'false');
     const runTicks = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     runSvg.appendChild(runTicks);
     const runTrack = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    runTrack.setAttribute('d', 'M 8.1 30 A 16 16 0 1 1 35.9 30');
+    runTrack.setAttribute('d', 'M 12.1 43.5 A 23 23 0 1 1 51.9 43.5');
     runTrack.setAttribute('fill', 'none');
     runTrack.setAttribute('stroke', 'rgb(236 230 216 / .28)');
-    runTrack.setAttribute('stroke-width', '3');
+    runTrack.setAttribute('stroke-width', '4');
     runTrack.setAttribute('stroke-linecap', 'round');
     runSvg.appendChild(runTrack);
     const runArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     runArc.setAttribute('d', '');
     runArc.setAttribute('fill', 'none');
     runArc.setAttribute('stroke', 'rgb(252 249 240)');
-    runArc.setAttribute('stroke-width', '3');
+    runArc.setAttribute('stroke-width', '4');
     runArc.setAttribute('stroke-linecap', 'round');
     runSvg.appendChild(runArc);
     const runBead = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    runBead.setAttribute('cx', '22');
-    runBead.setAttribute('cy', '22');
-    runBead.setAttribute('r', '2.4');
+    runBead.setAttribute('cx', '32');
+    runBead.setAttribute('cy', '32');
+    runBead.setAttribute('r', '3.2');
     runBead.setAttribute('fill', 'rgb(252 249 240)');
     runSvg.appendChild(runBead);
     runItem.appendChild(runSvg);
@@ -2791,11 +2796,11 @@ export const rangeScreen = {
       for (let i = 0; i < n; i += 1) {
         const a = (-120 + (240 * (n === 1 ? 1 : i / (n - 1)))) * (Math.PI / 180);
         const lit = i < Math.round(fraction * n) || (n === 1 && fraction >= 1);
-        const x0 = 22 + Math.sin(a) * 12.4;
-        const y0 = 22 - Math.cos(a) * 12.4;
-        const x1 = 22 + Math.sin(a) * 16;
-        const y1 = 22 - Math.cos(a) * 16;
-        html += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${lit ? 'rgb(252 249 240)' : 'rgb(236 230 216 / .5)'}" stroke-width="${lit ? 2 : 1.2}"/>`;
+        const x0 = 32 + Math.sin(a) * 17.9;
+        const y0 = 32 - Math.cos(a) * 17.9;
+        const x1 = 32 + Math.sin(a) * 23;
+        const y1 = 32 - Math.cos(a) * 23;
+        html += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${lit ? 'rgb(252 249 240)' : 'rgb(236 230 216 / .5)'}" stroke-width="${lit ? 2.6 : 1.6}"/>`;
       }
       ticks.innerHTML = html;
     } else if (total > 1) {
@@ -2804,16 +2809,16 @@ export const rangeScreen = {
       lines.forEach((line, i) => {
         const lit = i < litCount;
         line.setAttribute('stroke', lit ? 'rgb(252 249 240)' : 'rgb(236 230 216 / .5)');
-        line.setAttribute('stroke-width', lit ? '2' : '1.2');
+        line.setAttribute('stroke-width', lit ? '2.6' : '1.6');
       });
     }
     const f = clamp(fraction, 0, 1);
     let arc = '';
     if (f > 0.001) {
       const end = (-120 + 240 * f) * (Math.PI / 180);
-      const x = 22 + Math.sin(end) * 16;
-      const y = 22 - Math.cos(end) * 16;
-      arc = `M 8.1 30 A 16 16 0 ${240 * f > 180 ? 1 : 0} 1 ${x.toFixed(1)} ${y.toFixed(1)}`;
+      const x = 32 + Math.sin(end) * 23;
+      const y = 32 - Math.cos(end) * 23;
+      arc = `M 12.1 43.5 A 23 23 0 ${240 * f > 180 ? 1 : 0} 1 ${x.toFixed(1)} ${y.toFixed(1)}`;
     }
     if (this._els.runArc.getAttribute('d') !== arc) this._els.runArc.setAttribute('d', arc);
     this._syncDossier();
