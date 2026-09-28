@@ -229,33 +229,35 @@ export const core = {
     reconcileEntityIndexSource(index, state.entityList);
     refreshVolatileEntityIndex(index, state.tick);
     beginDirtyTick(state, state.tick);
+    // index.movables is append-gated by isMovableEntity. Re-checking every tick re-entered
+    // isDynamicPhysicsBodyEntity → authoredPhysicsBody/defaultDynamic on the quiet preStep
+    // pole (profile authoredPhysicsBody self under isMovableEntity). Trust the lane; mid-life
+    // dynamic flips already require re-index for spatial/physics lanes too.
     const movables = index.movables;
     for (const e of movables) {
       if (!e || !e.alive) continue;
-      if (isMovableEntity(e)) {
-        const noInterp = !!(e.flags && e.flags.noInterp);
-        if (e.physicsSleeping === true && !noInterp) {
-          const svx = e.vel ? Number(e.vel.x) || 0 : 0;
-          const svz = e.vel ? Number(e.vel.z) || 0 : 0;
-          const swy = Number(e.angVel) || 0;
-          const poseStill = e.prevPos
-            && e.prevPos.x === e.pos.x
-            && e.prevPos.z === e.pos.z
-            && e.prevRot === e.rot;
-          if (svx * svx + svz * svz <= 1e-8 && swy * swy <= 1e-8 && poseStill) continue;
-        }
-        const posChanged = !e.prevPos
-          || e.prevPos.x !== e.pos.x
-          || e.prevPos.z !== e.pos.z
-          || e.prevRot !== e.rot;
-        e.prevPos.copy(e.pos);
-        e.prevRot = e.rot;
-        e.prevBank = e.bank;   // snapshot roll for renderer interpolation (Phase 1 banking)
-        e.prevPitch = e.pitch; // snapshot pitch lean for renderer interpolation
-        const vx = e.vel ? Number(e.vel.x) || 0 : 0;
-        const vz = e.vel ? Number(e.vel.z) || 0 : 0;
-        if ((vx * vx + vz * vz) > 1e-8 || posChanged) markDirty(state, e.id, DIRTY.POSE);
+      const noInterp = !!(e.flags && e.flags.noInterp);
+      if (e.physicsSleeping === true && !noInterp) {
+        const svx = e.vel ? Number(e.vel.x) || 0 : 0;
+        const svz = e.vel ? Number(e.vel.z) || 0 : 0;
+        const swy = Number(e.angVel) || 0;
+        const poseStill = e.prevPos
+          && e.prevPos.x === e.pos.x
+          && e.prevPos.z === e.pos.z
+          && e.prevRot === e.rot;
+        if (svx * svx + svz * svz <= 1e-8 && swy * swy <= 1e-8 && poseStill) continue;
       }
+      const posChanged = !e.prevPos
+        || e.prevPos.x !== e.pos.x
+        || e.prevPos.z !== e.pos.z
+        || e.prevRot !== e.rot;
+      e.prevPos.copy(e.pos);
+      e.prevRot = e.rot;
+      e.prevBank = e.bank;   // snapshot roll for renderer interpolation (Phase 1 banking)
+      e.prevPitch = e.pitch; // snapshot pitch lean for renderer interpolation
+      const vx = e.vel ? Number(e.vel.x) || 0 : 0;
+      const vz = e.vel ? Number(e.vel.z) || 0 : 0;
+      if ((vx * vx + vz * vz) > 1e-8 || posChanged) markDirty(state, e.id, DIRTY.POSE);
     }
     packCombatTable(state);
     stampNearWorkBudget(state);
