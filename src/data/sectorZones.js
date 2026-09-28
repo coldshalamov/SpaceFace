@@ -225,23 +225,7 @@ const CORE_SECTOR_ZONES = {
     { id: 'zone_charon_colony', name: 'Colony Barge', type: 'colony', factionId: 'faction_free',
       reason: 'A struggling colony trades air and salvage for anything it can get.',
       center: { x: -620, z: 1420 }, radius: 420 },
-    // Alien Ecology program (AE-040): the Cinder Nursery — an unregistered DMC service barge
-    // hull colonized by Understory growth. No patrol presence: the site IS the occupancy.
-    { id: 'zone_charon_cinder_nursery', name: 'Cinder Nursery', type: 'derelict_field', factionId: 'faction_understory',
-      reason: 'Uncharted wreck cluster. Salvage markers disagree with each other — nothing here stays still.',
-      center: { x: 1700, z: -1400 }, radius: 620, threat: 1 },
-    // Alien Ecology program wave A/B (AE-065/085): a second colonized wreck (the Warm Freighter)
-    // and the integrated three-hull colony; pylon field = Verge quarantine structures.
-    { id: 'zone_charon_warm_freighter', name: 'The Warm Freighter', type: 'derelict_field', factionId: 'faction_understory',
-      reason: 'A freighter holding reactor standby with no crew aboard. The heat is not the reactor.',
-      center: { x: -2200, z: 900 }, radius: 480, threat: 1 },
-    { id: 'zone_charon_hull_garden', name: 'Three Hull Garden', type: 'derelict_field', factionId: 'faction_understory',
-      reason: 'Three wreck returns on one bearing — filament bridges span the gaps between hulls.',
-      center: { x: 800, z: 2400 }, radius: 720, threat: 2 },
-    { id: 'zone_charon_pylon_field', name: 'Quarantine Pylon Field', type: 'anomaly_deep', factionId: 'faction_verge_layers',
-      reason: 'Three pale pylons hold a dead triangle over the lane. Nothing biological survives inside it.',
-      center: { x: 2400, z: 600 }, radius: 520, threat: 0 },
-  ],
+                  ],
 
   // ── S6–S7 Sker Haven — open pirate haven, gate-camped ──
   sector_sker_haven: [
@@ -281,19 +265,7 @@ const CORE_SECTOR_ZONES = {
       center: { x: 680, z: 4120 }, radius: 420 },
     // Alien Ecology program wave A + machine layer (AE-066/100s): dormant-cyst teaching site,
     // a silent survey spire, the sterile corridor, and an administratively closed gate.
-    { id: 'zone_veil_quiet_ice', name: 'Quiet Ice', type: 'mining_belt', factionId: 'faction_free',
-      reason: 'Cold asteroid body. Spectral return says clean ice; subsurface pockets say otherwise.',
-      center: { x: 900, z: 1500 }, radius: 560, threat: 1 },
-    { id: 'zone_veil_survey_monolith', name: 'Survey Monolith', type: 'anomaly_deep', factionId: 'faction_verge_layers',
-      reason: 'A pale spire mapping the sector at geological patience. It does not acknowledge hails.',
-      center: { x: -1400, z: 600 }, radius: 260, threat: 0 },
-    { id: 'zone_veil_null_corridor', name: 'Null Corridor', type: 'anomaly_deep', factionId: 'faction_verge_layers',
-      reason: 'Contacts drop off the scope inside an invisible lane. The corridor reads sterile.',
-      center: { x: 300, z: -900 }, radius: 920, threat: 0 },
-    { id: 'zone_veil_revoked_gate', name: 'Revoked Transit', type: 'anomaly_deep', factionId: 'faction_verge_layers',
-      reason: 'An intact gate whose authority is pulled. It is not broken — it is closed.',
-      center: { x: 2100, z: -1600 }, radius: 320, threat: 0 },
-  ],
+                  ],
 
   // ── S9 Ashfall Reach — endgame; the Iron Maw guards the vault ──
   sector_ashfall_reach: [
@@ -306,24 +278,7 @@ const CORE_SECTOR_ZONES = {
     { id: 'zone_ashfall_belt', name: 'Edge Seams', type: 'mining_belt', factionId: 'faction_vael',
       reason: 'Cold rock at the edge of known space — thin air, thinner margins.',
       center: { x: 0, z: -500 }, radius: 820 },
-    // Alien Ecology program wave B + machine structures (AE-086/103..108): a colonized dock
-    // section, machine underlayer beneath the boss approach, the ossuary, vault, and worksite.
-    { id: 'zone_ashfall_breathing_dock', name: 'The Breathing Dock', type: 'anomaly_deep', factionId: 'faction_understory',
-      reason: 'A station fragment cycling pressure with no crew logged — something uses the valves as lungs.',
-      center: { x: -1200, z: 1800 }, radius: 680, threat: 2 },
-    { id: 'zone_ashfall_gate_underlayer', name: 'Gate Underlayer', type: 'anomaly_deep', factionId: 'faction_verge_layers',
-      reason: 'Maintenance arms work original geometry under the human gantries.',
-      center: { x: 1600, z: -1600 }, radius: 380, threat: 0 },
-    { id: 'zone_ashfall_ossuary', name: 'Machine Ossuary', type: 'anomaly_deep', factionId: 'faction_verge_layers',
-      reason: 'Hundreds of dormant frames in perfect rank order. None broken — stored.',
-      center: { x: -2000, z: -1200 }, radius: 640, threat: 0 },
-    { id: 'zone_ashfall_black_vault', name: 'Black Vault', type: 'anomaly_deep', factionId: 'faction_verge_layers',
-      reason: 'Sealed containment that answers scans with a thermal signature and nothing else.',
-      center: { x: 2200, z: 2000 }, radius: 260, threat: 0 },
-    { id: 'zone_ashfall_maintenance', name: 'Active Maintenance', type: 'anomaly_deep', factionId: 'faction_verge_layers',
-      reason: 'A working machine does repairs at geological patience. It does not care about you.',
-      center: { x: 600, z: -2200 }, radius: 300, threat: 0 },
-  ],
+                      ],
 };
 
 // Additive authored places (src/data/authoredPlaces.js) are APPENDED, never spread: a spread would

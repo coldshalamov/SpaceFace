@@ -129,8 +129,8 @@ const MACHINE_SCAN_TERMS = Object.freeze([
 ]);
 
 export function scannerMachineLabel(machineProtocol) {
-  const rank = machineProtocolRank(machineProtocol);
-  const tier = Math.max(0, Math.min(MACHINE_SCAN_TERMS.length - 1, rank));
+  // Rank 1 is 'unknown' — the first ladder rung is an unresolved signal, not a classification.
+  const tier = Math.max(0, Math.min(MACHINE_SCAN_TERMS.length - 1, machineProtocolRank(machineProtocol) - 1));
   return MACHINE_SCAN_TERMS[tier];
 }
 

@@ -1590,6 +1590,19 @@ export const economy = {
       };
     }
     const info = stationInfo(state, stationId);
+    // Alien Ecology AE-077 — a faction with `refuses` will not intake biohazard lots at all:
+    // custody refusal, not a price. Recomputed listings still carry the policy driver as the
+    // explanation; execution and automation intake both flow through this quote gate.
+    if (side === 'sell' && def.biohazard === true && info && info.factionId) {
+      const policy = contaminationSaleMult(state, info.sectorId, info.factionId);
+      if (policy && policy.refuses === true) {
+        return {
+          ok: false, reason: 'contamination_refusal', policyNote: policy.note || null,
+          unitAvg: entry.lastSell || 0, total: 0, priceImpactPct: 0, stockAfter: entry.stock,
+          legalityWarning: def.legality !== 'legal' ? def.legality : null,
+        };
+      }
+    }
     const standing = priceModForState(state, info && info.factionId);
     const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
     const marketTier = Math.max(0, Number(def.marketTier) || 0);

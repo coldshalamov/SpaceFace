@@ -133,6 +133,172 @@ export const ZONE_CERES_THROUGHLINE = Object.freeze({
   threat: 1,
 });
 
+
+// ── Alien-ecology / precursor-machine places (AE-040, AE-065/085, AE-100..108) ──
+//
+// These discs are map-visible place records only — ecology occupancy is carried by
+// ALIEN_SITES (src/data/alienEcology.js) and machine geometry by MACHINE_SITES
+// (src/data/precursorMachines.js); the zone supplies chart identity and route context.
+// None carry `presence`: ambient spawns stay owned by the seeded core zones, so these
+// appends cannot move combat behaviour or the deterministic 47a golden — the same rule
+// the Driftmark worked example documents above.
+
+/** Cinder Nursery — the colonized DMC service barge, the program's vertical slice (AE-040). */
+export const ZONE_CHARON_CINDER_NURSERY = Object.freeze({
+  id: 'zone_charon_cinder_nursery',
+  name: 'Cinder Nursery',
+  type: 'derelict_field',
+  factionId: 'faction_understory',
+  reason: 'Uncharted wreck cluster. Salvage markers disagree with each other — nothing here stays still.',
+  center: Object.freeze({ x: 1700, z: -1400 }),
+  radius: 620,
+  threat: 1,
+});
+
+/** The Warm Freighter — second colonized wreck (AE-065). */
+export const ZONE_CHARON_WARM_FREIGHTER = Object.freeze({
+  id: 'zone_charon_warm_freighter',
+  name: 'The Warm Freighter',
+  type: 'derelict_field',
+  factionId: 'faction_understory',
+  reason: 'A freighter holding reactor standby with no crew aboard. The heat is not the reactor.',
+  center: Object.freeze({ x: -2200, z: 900 }),
+  radius: 480,
+  threat: 1,
+});
+
+/** Three Hull Garden — the integrated multi-hull colony (AE-085). */
+export const ZONE_CHARON_HULL_GARDEN = Object.freeze({
+  id: 'zone_charon_hull_garden',
+  name: 'Three Hull Garden',
+  type: 'derelict_field',
+  factionId: 'faction_understory',
+  reason: 'Three wreck returns on one bearing — filament bridges span the gaps between hulls.',
+  center: Object.freeze({ x: 800, z: 2400 }),
+  radius: 720,
+  threat: 2,
+});
+
+/** Quarantine Pylon Field — Verge pylons over the nursery approach (AE-100). */
+export const ZONE_CHARON_PYLON_FIELD = Object.freeze({
+  id: 'zone_charon_pylon_field',
+  name: 'Quarantine Pylon Field',
+  type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'Three pale pylons hold a dead triangle over the lane. Nothing biological survives inside it.',
+  center: Object.freeze({ x: 2400, z: 600 }),
+  radius: 520,
+  threat: 0,
+});
+
+/** Quiet Ice — the contaminated mining body (AE-064). */
+export const ZONE_VEIL_QUIET_ICE = Object.freeze({
+  id: 'zone_veil_quiet_ice',
+  name: 'Quiet Ice',
+  type: 'mining_belt',
+  factionId: 'faction_free',
+  reason: 'Cold asteroid body. Spectral return says clean ice; subsurface pockets say otherwise.',
+  center: Object.freeze({ x: 900, z: 1500 }),
+  radius: 560,
+  threat: 1,
+});
+
+/** Survey Monolith — the first live machine instrument (AE-101). */
+export const ZONE_VEIL_SURVEY_MONOLITH = Object.freeze({
+  id: 'zone_veil_survey_monolith',
+  name: 'Survey Monolith',
+  type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'A pale spire mapping the sector at geological patience. It does not acknowledge hails.',
+  center: Object.freeze({ x: -1400, z: 600 }),
+  radius: 260,
+  threat: 0,
+});
+
+/** Null Corridor — the empty scanner lane (AE-102). */
+export const ZONE_VEIL_NULL_CORRIDOR = Object.freeze({
+  id: 'zone_veil_null_corridor',
+  name: 'Null Corridor',
+  type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'Contacts drop off the scope inside an invisible lane. The corridor reads sterile.',
+  center: Object.freeze({ x: 300, z: -900 }),
+  radius: 920,
+  threat: 0,
+});
+
+/** Revoked Transit — the intact gate with pulled authority (AE-108). */
+export const ZONE_VEIL_REVOKED_GATE = Object.freeze({
+  id: 'zone_veil_revoked_gate',
+  name: 'Revoked Transit',
+  type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'An intact gate whose authority is pulled. It is not broken — it is closed.',
+  center: Object.freeze({ x: 2100, z: -1600 }),
+  radius: 320,
+  threat: 0,
+});
+
+/** The Breathing Dock — a colonized station fragment (AE-086). */
+export const ZONE_ASHFALL_BREATHING_DOCK = Object.freeze({
+  id: 'zone_ashfall_breathing_dock',
+  name: 'The Breathing Dock',
+  type: 'anomaly_deep',
+  factionId: 'faction_understory',
+  reason: 'A station fragment cycling pressure with no crew logged — something uses the valves as lungs.',
+  center: Object.freeze({ x: -1200, z: 1800 }),
+  radius: 680,
+  threat: 2,
+});
+
+/** Gate Underlayer — machine geometry under the human gantries (AE-103). */
+export const ZONE_ASHFALL_GATE_UNDERLAYER = Object.freeze({
+  id: 'zone_ashfall_gate_underlayer',
+  name: 'Gate Underlayer',
+  type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'Maintenance arms work original geometry under the human gantries.',
+  center: Object.freeze({ x: 1600, z: -1600 }),
+  radius: 380,
+  threat: 0,
+});
+
+/** Machine Ossuary — stored frames in rank order (AE-104). */
+export const ZONE_ASHFALL_OSSUARY = Object.freeze({
+  id: 'zone_ashfall_ossuary',
+  name: 'Machine Ossuary',
+  type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'Hundreds of dormant frames in perfect rank order. None broken — stored.',
+  center: Object.freeze({ x: -2000, z: -1200 }),
+  radius: 640,
+  threat: 0,
+});
+
+/** Black Vault — sealed containment that answers scans with heat (AE-105). */
+export const ZONE_ASHFALL_BLACK_VAULT = Object.freeze({
+  id: 'zone_ashfall_black_vault',
+  name: 'Black Vault',
+  type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'Sealed containment that answers scans with a thermal signature and nothing else.',
+  center: Object.freeze({ x: 2200, z: 2000 }),
+  radius: 260,
+  threat: 0,
+});
+
+/** Active Maintenance — a working machine at geological patience (AE-106). */
+export const ZONE_ASHFALL_MAINTENANCE = Object.freeze({
+  id: 'zone_ashfall_maintenance',
+  name: 'Active Maintenance',
+  type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'A working machine does repairs at geological patience. It does not care about you.',
+  center: Object.freeze({ x: 600, z: -2200 }),
+  radius: 300,
+  threat: 0,
+});
+
 /**
  * sectorId -> additional authored zone records, appended to the per-sector tables.
  * Keyed by sector so the merge stays a pure append and can never shadow an existing sector's list.
@@ -140,6 +306,18 @@ export const ZONE_CERES_THROUGHLINE = Object.freeze({
 export const AUTHORED_PLACE_ZONES = Object.freeze({
   sector_ceres_belt: Object.freeze([ZONE_CERES_THROUGHLINE, ZONE_CERES_PRISM_GALLERY]),
   sector_tethys_junction: Object.freeze([ZONE_TETHYS_DRIFTMARK, ZONE_TETHYS_ANVIL]),
+  sector_charon_expanse: Object.freeze([
+    ZONE_CHARON_CINDER_NURSERY, ZONE_CHARON_WARM_FREIGHTER, ZONE_CHARON_HULL_GARDEN,
+    ZONE_CHARON_PYLON_FIELD,
+  ]),
+  sector_veil_nebula: Object.freeze([
+    ZONE_VEIL_QUIET_ICE, ZONE_VEIL_SURVEY_MONOLITH, ZONE_VEIL_NULL_CORRIDOR,
+    ZONE_VEIL_REVOKED_GATE,
+  ]),
+  sector_ashfall_reach: Object.freeze([
+    ZONE_ASHFALL_BREATHING_DOCK, ZONE_ASHFALL_GATE_UNDERLAYER, ZONE_ASHFALL_OSSUARY,
+    ZONE_ASHFALL_BLACK_VAULT, ZONE_ASHFALL_MAINTENANCE,
+  ]),
 });
 
 /**

@@ -151,7 +151,7 @@ export function tickMachineLayer(world, dt) {
 
   for (const site of sites) {
     const rec = machineSiteRec(state, site.siteId);
-    const g = world._toGlobal({ x: site.center.x, z: site.center.z }, sector.id);
+    const g = world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId);
 
     // First observation: entering the site's radius is the 'seen' beat — protocol becomes
     // 'observed' and story.verge.revealed flips (galaxy map learns the layer exists).
