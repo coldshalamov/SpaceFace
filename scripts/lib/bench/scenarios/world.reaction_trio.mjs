@@ -605,10 +605,18 @@ async function civilianWindow(seed, stimulus) {
   if (!civilians.length) throw new Error('world.reaction_trio: the real sector produced no civilian traffic');
 
   // The vision sentence is a hauler panic. Workers holding is the sanctioned reaction, but it is
-  // indistinguishable from ordinary mining in a 3 s A/B, and a job hull would also flee the
-  // team-1 staging ship in silence. Prefer an ambient flee-role hull.
+  // indistinguishable from ordinary mining in a 3 s A/B. Since the economy-honesty pass, working
+  // flee-role hulls carry live jobs and are driven by npcJobsRuntime — their panic arrives through
+  // `jobs.interrupt`, which FLEEs the job and writes the same visible intent a free hull gets.
+  // They are valid subjects only because the staged gunship below is `hold_fire`: a weapons-free
+  // team-1 hull would trip the kernel's own proximity threat scan and scatter them in the silent
+  // arm too, and the A/B could never attribute. Prefer a flee-role hull, jobbed or not.
   const panicSubjects = civilians.filter((e) => fleeRoles.has(String(e.data.trafficRole || '')) && !e.data.jobId);
-  const subject = panicSubjects[0] || civilians.filter((e) => !e.data.jobId)[0] || civilians[0];
+  const jobbedPanicSubjects = civilians.filter((e) => fleeRoles.has(String(e.data.trafficRole || '')) && e.data.jobId);
+  const subject = panicSubjects[0]
+    || jobbedPanicSubjects[0]
+    || civilians.filter((e) => !e.data.jobId)[0]
+    || civilians[0];
   // TRAP 1 + baseline hygiene. Stand the player off the subject so both the subject and the gunfire
   // sit inside the physics reach, settle, and only THEN record the baseline course — so the
   // perturbation of the player's own arrival is inside the baseline and never reads as the signal.
@@ -645,6 +653,12 @@ async function civilianWindow(seed, stimulus) {
   const shooter = runtime.spawn(makeShipEntitySpec('ship_hornet', {
     pos: { x: gunfireAt.x, z: gunfireAt.z }, team: 1, factionId: 'faction_red', fittings: [],
   }));
+  // Staging truth: this hull never acts on its own — the scenario emits the shots' damage events.
+  // A bare team-1 spawn is an eligible hostile and npcJobsRuntime's own threat scan would scatter
+  // every job hull inside 520 WU in BOTH arms, so the A/B could never attribute the panic to the
+  // gunfire. `hold_fire` keeps its mere presence out of the threat query; the violence stamp is
+  // the only signal — which is exactly what the vision sentence tests.
+  shooter.data.ai = { archetype: 'raider', roe: 'hold_fire' };
   const shot = runtime.spawn(makeShipEntitySpec('ship_wasp', {
     pos: { x: gunfireAt.x + 70, z: gunfireAt.z + 40 }, team: 0, factionId: 'faction_scn', fittings: [],
   }));
