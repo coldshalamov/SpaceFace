@@ -402,7 +402,6 @@ ship stills (all REVISE — awaiting new remote candidates).
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 19 | VM-HEAD | Digest head-of-queue: #166 render-package-digest-zero-copy → #167 embedded-ktx2 → #168 glb-body-in-place (+patches-after-167) → #169 shader-readiness → #170 retail-gltfloader alias; then #161–#165 quiet-latch ships | IMPORT | CLAIMED devin-wave2 |
 | 23 | VM-LATCH-B | Quiet-latch render/HUD wave B | IMPORT | CLAIMED devin-wave2 |
 | 24 | VM-LATCH-C | Quiet-latch render/HUD wave C | IMPORT | CLAIMED devin-wave2 |
 | 25 | VM-LATCH-D | Quiet-latch render/HUD wave D | IMPORT | CLAIMED devin-wave2 |
