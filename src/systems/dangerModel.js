@@ -470,6 +470,10 @@ function classifyDrivers(n, trend, rank, oldDominant, impulseKind) {
   // to this function's literal tag set by scripts/check-cause-ledger.mjs).
   else if (impulseKind === 'mining_noise') danger = 'interdiction_wave';
   else if (impulseKind === 'transit_incident') danger = 'transit_incident';
+  // Freight attrition: manifested shipments dying on the lane mark both scarcity and danger; a
+  // spill without a kill is violence only (the pods may still be recovered — price stays honest).
+  else if (impulseKind === 'freight_loss') { danger = 'freight_attrition'; pricePressure = 'freight_attrition'; }
+  else if (impulseKind === 'freight_spill') danger = 'freight_attrition';
   return { danger, pricePressure, influence };
 }
 
