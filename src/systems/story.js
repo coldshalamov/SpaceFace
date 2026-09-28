@@ -105,6 +105,7 @@ const VALE_CONFLICT_ID = 'story_vale_conflict_flip';
 const VALE_CLAIM_ID = 'story_vale_claim_charter';
 const VALE_PROFIT_THRESHOLD = 100000;
 const DEEP_REACH_VERGE_GATE_ID = 'gate_deep_reach_revoked';
+export const HELIOS_BAY7_PROXIMITY_WU = 320;
 
 // Ambient comms cadence: one every 45–90s of flight sim time (the "constant low-grade migraine").
 const AMBIENT_MIN_S = 45;
@@ -188,6 +189,8 @@ export const story = {
     bus.on('claim:claimed', (p) => this._onValeClaimMilestone(p || {}));
     bus.on('sector:enter', (p) => this._onPostEndingSignal('sector:enter', p || {}));
     bus.on('scan:completed', (p) => this._onPostEndingSignal('scan:completed', p || {}));
+    bus.on('scan:completed', (p) => this._onHeliosBay7ScanPulse(p || {}));
+    bus.on('signal:scanResults', (p) => this._onHeliosBay7ScanPulse(p || {}));
     // UI intent: player opened/took/dropped the ledger with the Kurtz figure.
     bus.on('ui:kurtzInteract', (p) => this._onKurtzInteract(p || {}));
     bus.on('ui:heliosBay7Scan', () => this._onHeliosBay7Scan());
@@ -232,6 +235,7 @@ export const story = {
       s.endingGateNextAtS = (state.simTime || 0) + 1;
       this._maybeOfferEndgame();
     }
+    this._tickHeliosBay7Proximity(state);
   },
 
   /** Phase 2 can begin early if the player is deeply hated by a law faction (rep <= -100).
@@ -528,7 +532,6 @@ export const story = {
     // Optional Helios Bay 7 wrong-grid payoff (explore after B3+).
     if (stationId === HELIOS_BAY7.stationId && (s.beatIndex >= 3 || s.flags.beat_2_done)
         && !s.flags.helios_bay7_scanned) {
-      // Arm POI — player can request scan via ui:heliosBay7Scan or auto-note once per save.
       s.flags.helios_bay7_available = true;
     }
     // Post-ending airlock mutation re-surface on home dock.
@@ -1513,6 +1516,61 @@ export const story = {
     this._showGraffiti(GRAFFITI.HELIOS_NOT_NEEDED, 'airlock', s.beatIndex || 0);
   },
 
+  _armHeliosBay7(story, sectorId) {
+    if (!story) return;
+    story.flags = story.flags || {};
+    if (story.flags.helios_bay7_scanned) return;
+    const inHelios = sectorId === HELIOS_BAY7.sectorId
+      || (this.state && this.state.world && this.state.world.currentSectorId === HELIOS_BAY7.sectorId);
+    if (!inHelios) return;
+    if (story.beatIndex >= 3 || story.flags.beat_2_done) story.flags.helios_bay7_available = true;
+  },
+
+  _heliosBay7Entity(state) {
+    const list = (state && state.entityList) || [];
+    for (const entity of list) {
+      if (!entity || entity.alive === false || !entity.pos) continue;
+      if (entity.data && entity.data.poiId === HELIOS_BAY7.poiId) return entity;
+    }
+    const pois = state && state.world && state.world.activeSector && state.world.activeSector.pois;
+    if (Array.isArray(pois)) {
+      const poi = pois.find((row) => row && (row.poiId === HELIOS_BAY7.poiId || row.id === HELIOS_BAY7.poiId));
+      if (poi && poi.pos) return poi;
+    }
+    return null;
+  },
+
+  _heliosBay7NearPlayer(state, radius = HELIOS_BAY7_PROXIMITY_WU) {
+    const player = state && state.entities && state.entities.get && state.playerId != null
+      ? state.entities.get(state.playerId) : null;
+    const pad = this._heliosBay7Entity(state);
+    if (!player || !player.pos || !pad || !pad.pos) return false;
+    return Math.hypot(player.pos.x - pad.pos.x, player.pos.z - pad.pos.z) <= radius;
+  },
+
+  _onHeliosBay7ScanPulse(payload) {
+    const s = this.state && this.state.story;
+    if (!s) return;
+    this._armHeliosBay7(s, payload && payload.sectorId);
+    if (!s.flags || !s.flags.helios_bay7_available || s.flags.helios_bay7_scanned) return;
+    const signals = (payload && Array.isArray(payload.signals) ? payload.signals : [])
+      .concat(payload && payload.primary ? [payload.primary] : []);
+    const hit = signals.some((row) => row && (
+      row.sourceId === HELIOS_BAY7.poiId
+      || row.poiId === HELIOS_BAY7.poiId
+      || row.id === `signal:poi:${HELIOS_BAY7.poiId}`
+    ));
+    if (hit || this._heliosBay7NearPlayer(this.state, 420)) this._onHeliosBay7Scan();
+  },
+
+  _tickHeliosBay7Proximity(state) {
+    const s = state && state.story;
+    if (!s) return;
+    this._armHeliosBay7(s, state.world && state.world.currentSectorId);
+    if (!s.flags || !s.flags.helios_bay7_available || s.flags.helios_bay7_scanned) return;
+    if (this._heliosBay7NearPlayer(state)) this._onHeliosBay7Scan();
+  },
+
   // =========================================================================================
   // SECTOR ENTRY — surface graffiti on arrival; Ashfall POI override.
   // =========================================================================================
@@ -1551,6 +1609,7 @@ export const story = {
       }
       this._maybeOfferEndgame();
     }
+    this._armHeliosBay7(s, sectorId);
   },
 
   // =========================================================================================
