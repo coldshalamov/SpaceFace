@@ -4,6 +4,8 @@
 // Proximity damage routes through combat commands (routeDamage / combat:routeDamage),
 // never direct hull writes or direct Rapier body mutation. Mines carry hull and are
 // shootable (counterplay: destroy before trigger). Telegraph uses cue 'wake_mines'.
+// A Massline throw stamps playerThrown so the mine becomes a grenade against the
+// pack that laid it.
 //
 // Determinism: arm/trigger timers use state.simTime only; no Math.random / wall clock.
 import { scalarHitToDamagePacket } from '../combat/damage.js';
@@ -16,6 +18,7 @@ export const MINE_HULL = 28;
 export const MINE_BLAST_DAMAGE = 42;
 export const MINE_TELEGRAPH_CUE = 'wake_mines';
 export const MINE_TYPE = 'mine';
+export const MINE_THROW_GRACE_S = 0.5;
 
 const TRIGGER_TYPES = new Set(['ship', 'drone']);
 
@@ -32,6 +35,7 @@ export const mines = {
     this.helpers.placeMine = (opts) => this.placeMine(opts || {});
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('mines:placeRequest', (p) => this.placeMine(p || {}));
+      this.bus.on('massline:throw', (p) => this._onThrown(p || {}));
       this.bus.on('sector:exit', () => this.releaseAll('sector_exit'));
       this.bus.on('sector:enter', () => this.releaseAll('sector_enter'));
       this.bus.on('game:new', () => this.releaseAll('new_game'));
@@ -69,13 +73,12 @@ export const mines = {
       hull,
       hullMax: hull,
       collides: true,
-      // Mines accept projectile sweeps only; their distinct category is owned by physics.js.
-      collisionMask: Masks.PROJECTILE,
-      // Rapier solver contacts are disabled. Projectile damage remains authoritative in the
-      // deterministic swept-segment path in physics.js.
+      // Rapier solver contacts stay projectile-sweep plus ship hulls so a thrown mine is a
+      // grenade, not scenery. Parked mines still arm on simTime; Massline latch is explicit.
+      collisionMask: Masks.SHIP | Masks.PROJECTILE,
       physicsBody: {
-        dynamic: false,
-        ccd: false,
+        dynamic: true,
+        ccd: true,
         material: 'projectile',
       },
       team,
@@ -92,6 +95,7 @@ export const mines = {
         placedAt: now,
         sectorId: state.world && state.world.currentSectorId || null,
         triggered: false,
+        masslineTetherable: true,
       },
     });
     if (!ent) return null;
@@ -144,20 +148,53 @@ export const mines = {
     }
   },
 
+  _onThrown(payload) {
+    const id = payload && payload.payloadId;
+    if (id == null || !this.state || !this.state.entities) return;
+    const mine = this.state.entities.get(id);
+    if (!mine || mine.alive === false || mine.type !== MINE_TYPE) return;
+    const data = mine.data || (mine.data = {});
+    const now = this.state.simTime || 0;
+    data.playerThrown = true;
+    data.thrownAt = now;
+    data.thrownBy = this.state.playerId;
+    data.masslineTetherable = true;
+    mine.collisionMask = Masks.SHIP | Masks.PROJECTILE;
+    mine.physicsBody = {
+      ...(mine.physicsBody && typeof mine.physicsBody === 'object' ? mine.physicsBody : {}),
+      dynamic: true,
+      ccd: true,
+      material: 'projectile',
+    };
+    if (!data.armed) {
+      data.armed = true;
+      data.armedAt = now;
+      if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId, thrown: true });
+    }
+  },
+
   _findTriggerVictim(state, mine, data) {
     const r = Number.isFinite(data.triggerRadius) ? Math.max(0, data.triggerRadius) : MINE_TRIGGER_RADIUS;
     const mx = mine.pos.x;
     const mz = mine.pos.z;
     const ownerId = data.ownerId;
     const team = mine.team;
+    const thrown = data.playerThrown === true;
+    const now = state.simTime || 0;
+    const grace = thrown && (now - (Number(data.thrownAt) || 0) < MINE_THROW_GRACE_S);
+    const playerId = state.playerId;
     let best = null;
     let bestDistance = Infinity;
     const source = (state.entityIndex && state.entityIndex.shipLike) || state.entityList || [];
     for (const e of source) {
       if (!e || !e.alive || e.id === mine.id) continue;
       if (!TRIGGER_TYPES.has(e.type)) continue;
-      if (e.id === ownerId) continue;
-      if (team != null && e.team != null && e.team === team) continue;
+      if (thrown) {
+        if (grace && e.id === playerId) continue;
+      } else {
+        if (e.id === ownerId) continue;
+        if (team != null && e.team != null && e.team === team) continue;
+      }
       const dx = e.pos.x - mx;
       const dz = e.pos.z - mz;
       // Math.hypot scales before squaring, so finite 1e308-class coordinates retain

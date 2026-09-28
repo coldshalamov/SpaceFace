@@ -49,10 +49,12 @@ test('ownership + arm delay + per-owner cap lifecycle', () => {
   assert.equal(m1.data.armed, false);
   assert.equal(m1.data.armedAt, 2, 'default arm delay is independently pinned at two seconds');
   assert.deepEqual(m1.physicsBody, {
-    dynamic: false,
-    ccd: false,
+    dynamic: true,
+    ccd: true,
     material: 'projectile',
-  }, 'Rapier authors mines as fixed ghost bodies; projectile hits remain swept in physics.js');
+  }, 'mines are dynamic so a Massline throw can send them as grenades');
+  assert.equal(m1.data.masslineTetherable, true);
+  assert.equal(m1.collisionMask, Masks.SHIP | Masks.PROJECTILE);
   assert.equal(t.events.placed.length, 1);
   assert.ok(t.events.telegraph.some((e) => e.cue === MINE_TELEGRAPH_CUE || e.kind === MINE_TELEGRAPH_CUE));
 
@@ -146,13 +148,12 @@ test('proximity comparison remains defined at 1e308-class coordinates', () => {
   assert.deepEqual(run(Number.MAX_VALUE, 1e308), { alive: true, triggers: 0 }, 'finite extreme beyond target does not trigger');
 });
 
-test('mines have projectile-only custom collision: no ship/station/asteroid/payload/mine shove', () => {
+test('parked mines do not shove stations, asteroids, payloads, or other mines', () => {
   const rigidTypes = [
     { type: 'station', collisionMask: undefined },
-    { type: 'ship', collisionMask: undefined },
     { type: 'asteroid', collisionMask: undefined },
     { type: 'payload', collisionMask: undefined },
-    { type: 'mine', collisionMask: Masks.PROJECTILE },
+    { type: 'mine', collisionMask: Masks.SHIP | Masks.PROJECTILE },
   ];
 
   for (const fixture of rigidTypes) {
