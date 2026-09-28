@@ -31,6 +31,7 @@ Allowed current call sites:
 | `src/ui/orrery/text.js` | cosmetic UI | ORRERY decrypt/scramble text reveal: draws only pick NOISE glyphs for a display string written to `element.textContent`; nothing authoritative reads them. |
 | `src/ui/orrery/waveform.js` | cosmetic UI | ORRERY station waveform bars: draws land in `--orr-wave-*` CSS custom properties (rest offset, animation duration/delay/spread, opacity range) on the bar element — presentation variance only. |
 | `src/ui/screens/sandbox.js` | seed mint | The Combat Lab "roll" button. The boot-seed case in miniature: a human presses roll, the value lands in the seed input, and everything downstream runs from that explicit seed — nothing authoritative reads the raw draw. The screen is additionally DEV ONLY (IS_DEV folds false at build time; uiRoot registers it only behind that flag), so it cannot reach a player build. |
+| `src/ui/screens/crucible.js` | cosmetic UI | Crucible seed "Counter" roll animation: draws pick transient scramble digits written to `seedInput.value` while the real seed tumbles into place, then the interval restores `freeSeed`. Programmatic `.value` writes fire no `input` event, so the explicit run seed never picks up an ambient draw. |
 
 Forbidden classes:
 

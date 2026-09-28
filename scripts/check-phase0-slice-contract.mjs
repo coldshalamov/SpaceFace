@@ -84,6 +84,11 @@ const allowedRandomFiles = new Map([
   // ("never ships in build/web"; IS_DEV folds false at build time and uiRoot only registers it
   // behind that flag), so it cannot reach a player build at all.
   ['src/ui/screens/sandbox.js', 'dev-only Combat Lab seed roll; the drawn value becomes an explicit seed'],
+  // Crucible seed "Counter" roll animation (r2): the draws only pick transient scramble DIGITS
+  // written to `seedInput.value` while the real seed tumbles into place; the interval restores
+  // `freeSeed` when done. Programmatic `.value` writes fire no `input` event, so `freeSeed` — the
+  // explicit seed that drives the run — never picks up an ambient draw. Cosmetic display only.
+  ['src/ui/screens/crucible.js', 'cosmetic seed-counter scramble digits (display only; run seed stays explicit)'],
 ]);
 const randomSites = activeMathRandomSites('src');
 for (const site of randomSites) {
