@@ -186,10 +186,16 @@ jobs:
   # ---------------------------------------------------------------------------
   # browser — the only job that installs and caches Chromium. Every command here boots the normal
   # player route through Playwright (or, for probe-authored-assets-live, a raw Chrome over CDP).
+  # Sharded like `static` — the full group overran the 20-minute wall and died at the timeout rather
+  # than at an assert; two runners put each shard near ten minutes of browser work.
   # ---------------------------------------------------------------------------
   browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -219,14 +225,14 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run browser check group
-        run: node scripts/check-ci-report.mjs --group=browser
+      - name: Run browser check group (shard ${{ matrix.shard }} of ${{ strategy.job-total }})
+        run: node scripts/check-ci-report.mjs --group=browser --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
       - name: Upload check report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: check-report-browser
+          name: check-report-browser-${{ matrix.shard }}
           path: scratch/check-ci-report/
           if-no-files-found: ignore
           retention-days: 7
