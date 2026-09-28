@@ -402,11 +402,11 @@ ship stills (all REVISE — awaiting new remote candidates).
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 19 | VM-HEAD | Digest head-of-queue: #166 render-package-digest-zero-copy → #167 embedded-ktx2 → #168 glb-body-in-place (+patches-after-167) → #169 shader-readiness → #170 retail-gltfloader alias; then #161–#165 quiet-latch ships | IMPORT | OPEN |
-| 22 | VM-LATCH-A | Quiet-latch render/HUD wave A (~10 of ~50: hud-* series, bark-director, optic-lattice…) | IMPORT | OPEN |
-| 23 | VM-LATCH-B | Quiet-latch render/HUD wave B | IMPORT | OPEN |
-| 24 | VM-LATCH-C | Quiet-latch render/HUD wave C | IMPORT | OPEN |
-| 25 | VM-LATCH-D | Quiet-latch render/HUD wave D | IMPORT | OPEN |
+| 19 | VM-HEAD | Digest head-of-queue: #166 render-package-digest-zero-copy → #167 embedded-ktx2 → #168 glb-body-in-place (+patches-after-167) → #169 shader-readiness → #170 retail-gltfloader alias; then #161–#165 quiet-latch ships | IMPORT | CLAIMED devin-wave2 |
+| 22 | VM-LATCH-A | Quiet-latch render/HUD wave A (~10 of ~50: hud-* series, bark-director, optic-lattice…) | IMPORT | CLAIMED devin-wave2 |
+| 23 | VM-LATCH-B | Quiet-latch render/HUD wave B | IMPORT | CLAIMED devin-wave2 |
+| 24 | VM-LATCH-C | Quiet-latch render/HUD wave C | IMPORT | CLAIMED devin-wave2 |
+| 25 | VM-LATCH-D | Quiet-latch render/HUD wave D | IMPORT | CLAIMED devin-wave2 |
 | 26 | VM-LATCH-E | Quiet-latch render/HUD wave E | IMPORT | OPEN |
 | 27 | VM-SKIPS | Quiet live/empty-skip batch (~15: distortion, hull-scorch, camera-clearance series…) | IMPORT | OPEN |
 | 28 | VM-HITCH | Hitch/admission batch (~8: hitch-asteroid-cell-key, opening-admission, drain-gate, dynres-target-pool, integrated-quality-preset…) | IMPORT | OPEN |
