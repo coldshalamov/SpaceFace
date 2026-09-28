@@ -30,6 +30,22 @@ function dist(a, b) {
   return Math.hypot(a.x - b.x, a.z - b.z);
 }
 
+function crushHauler(d, live, hauler) {
+  const pos = hauler && hauler.pos
+    ? { x: hauler.pos.x, z: hauler.pos.z }
+    : (live.data.towout && live.data.towout.mouth);
+  if (hauler) hauler.alive = false;
+  if (pos && typeof d.spawnWreck === 'function') {
+    d.spawnWreck(live, {
+      pos,
+      pool: { cmdty_scrap_metal: 4, cmdty_ore_iron: 1 },
+      scanLabel: 'Crusher leavings',
+      storyPropKind: 'yard_crush_debris',
+    });
+  }
+  d.despawnAll(live, 12, 'skiff');
+}
+
 export const runtime = Object.freeze({
   fire(d, live, state) {
     live.deadlineAt = d.now() + WINDOW_S;
@@ -79,7 +95,7 @@ export const runtime = Object.freeze({
     tow.mouth.z += (dz / len) * JAW_ADVANCE_WU_S * dt;
     const distNow = dist(hauler.pos, tow.mouth);
     if (distNow <= tow.mouth.radius) {
-      d.despawnAll(live, 12);
+      crushHauler(d, live, hauler);
       return d.resolve(live, 'crushed', { speak: true });
     }
     if (distNow >= tow.startDist + CLEAR_MARGIN_WU) {
@@ -90,7 +106,7 @@ export const runtime = Object.freeze({
       return d.resolve(live, 'towed', { speak: true });
     }
     if (now >= live.deadlineAt) {
-      d.despawnAll(live, 12);
+      crushHauler(d, live, hauler);
       return d.resolve(live, 'crushed', { speak: false });
     }
   },

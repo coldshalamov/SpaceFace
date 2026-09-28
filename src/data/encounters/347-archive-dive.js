@@ -33,6 +33,14 @@ function dist(a, b) {
   return Math.hypot(a.x - b.x, a.z - b.z);
 }
 
+function leaveStrippedCore(core) {
+  if (!core) return;
+  const data = core.data || (core.data = {});
+  data.salvagePool = {};
+  data.stripped = true;
+  data.scanLabel = 'Stripped archive core';
+}
+
 export const runtime = Object.freeze({
   fire(d, live, state) {
     live.deadlineAt = d.now() + WINDOW_S;
@@ -83,11 +91,13 @@ export const runtime = Object.freeze({
       e.pos && core.pos && dist(e.pos, core.pos) <= STRIP_RADIUS
     ));
     if (stripped) {
+      leaveStrippedCore(core);
       d.despawnAll(live, 12, 'scavenger');
       return d.resolve(live, 'stripped', { speak: true });
     }
     if (now >= live.deadlineAt) {
-      d.despawnAll(live, 12);
+      leaveStrippedCore(core);
+      d.despawnAll(live, 12, 'scavenger');
       return d.resolve(live, 'stripped', { speak: false });
     }
   },
