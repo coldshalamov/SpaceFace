@@ -974,6 +974,8 @@ function publishPlans(director, frame, recipe, tick) {
         laneSide: rec.laneSide,
         integrity: frame.integrity,
         morphAborted: frame.morphAborted,
+        commandId: frame.commandId,
+        leaderLostTick: frame.leaderLostTick,
         slot: rec.slot,
         slotVel: { x: rec.slot.vx, z: rec.slot.vz },
         bound,
@@ -1001,6 +1003,8 @@ function publishPlans(director, frame, recipe, tick) {
     plan.laneSide = rec.laneSide;
     plan.integrity = frame.integrity;
     plan.morphAborted = frame.morphAborted;
+    plan.commandId = frame.commandId;
+    plan.leaderLostTick = frame.leaderLostTick;
     plan.slot = rec.slot;
     plan.slotVel.x = rec.slot.vx;
     plan.slotVel.z = rec.slot.vz;

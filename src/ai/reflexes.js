@@ -42,6 +42,8 @@ export function emptyReflexState() {
     prevMarked: false,
     lossUntilTick: -1,      // grief stays readable for a window — see loss note below
     hitUntilTick: -1,
+    subsystemUntilTick: -1, // a lost gun/thruster keeps reading for a window too
+    matesLost: 0,           // cumulative roster deaths this pilot has observed
     rosterAlive: null,      // Set of ids last seen alive on a squad roster (lazily allocated)
   };
 }
@@ -78,8 +80,10 @@ export function evaluateReflexes(seed, ctx) {
   // one-tick flag would never be observed by the burst arbitration below.
   if (hullHit > 0.015 || damageEventSeen(ctx)) rs.hitUntilTick = tick + 60;
   if (obs.lostRecently) rs.lossUntilTick = tick + 150;
+  if (subsystemEventSeen(ctx)) rs.subsystemUntilTick = tick + 140;
   obs.hitRecently = tick < rs.hitUntilTick;
   obs.lostRecently = tick < rs.lossUntilTick;
+  obs.subsystemLost = tick < rs.subsystemUntilTick;
 
   // Burst expiry, then preemption: a strictly higher-priority trigger (a hull going
   // critical, a panic snap) may cut a live burst short; same-or-lower priorities wait
@@ -151,6 +155,7 @@ function observeFrame(rs, self, contacts, hullHit, ctx) {
     hostileBehindDist: Infinity,
     hazardDist: Infinity,
     hazardCount: 0,
+    nearestHazardPos: null,
     tetherLineDist: Infinity,
     allyCount: 0,
     nearestAllyPos: null,
@@ -158,8 +163,11 @@ function observeFrame(rs, self, contacts, hullHit, ctx) {
     marked: false,
     calm: true,
     hostileTargets: null,      // Set of entity ids hostile ships are tracking
+    selfTargetedCount: 0,      // hostiles whose own target is this hull
+    allyHurtMin: 1,            // lowest visible ally hullFraction
     allies: null,              // friendly ship contacts (for threatened-ward check)
     lostRecently: false,
+    subsystemLost: false,
   };
   const lost = trackAllies(rs, self, contacts, ctx.squadMembers);
   obs.lostRecently = lost;
@@ -177,7 +185,8 @@ function observeFrame(rs, self, contacts, hullHit, ctx) {
     if (c.kind === ContactKind.HAZARD) {
       if (!c.pos) continue;
       obs.hazardCount += 1;
-      obs.hazardDist = Math.min(obs.hazardDist, distanceTo(self, c));
+      const hd = distanceTo(self, c);
+      if (hd < obs.hazardDist) { obs.hazardDist = hd; obs.nearestHazardPos = c.pos; }
       continue;
     }
     if (c.kind === ContactKind.TETHER) {
@@ -197,6 +206,9 @@ function observeFrame(rs, self, contacts, hullHit, ctx) {
       }
       if (!obs.allies) obs.allies = [];
       obs.allies.push(c);
+      if (Number.isFinite(c.hullFraction) && c.hullFraction < obs.allyHurtMin) {
+        obs.allyHurtMin = c.hullFraction;
+      }
       continue;
     }
     if (c.hostile !== true) continue;
@@ -214,7 +226,10 @@ function observeFrame(rs, self, contacts, hullHit, ctx) {
         obs.hostileBehindDist = d;
       }
     }
-    if (c.targetId === self.id && d > 160 && d < 900) obs.marked = true;
+    if (c.targetId === self.id) {
+      obs.selfTargetedCount += 1;
+      if (d > 160 && d < 900) obs.marked = true;
+    }
     if (c.targetId != null) {
       if (!obs.hostileTargets) obs.hostileTargets = new Set();
       obs.hostileTargets.add(c.targetId);
@@ -263,7 +278,7 @@ function trackAllies(rs, self, contacts, squadMembers) {
       rosterNow.add(mate.id);
       const was = seen.get(mate.id);
       const alive = mate.alive !== false;
-      if (was === true && alive === false) lostRecently = true;
+      if (was === true && alive === false) { lostRecently = true; rs.matesLost += 1; }
       seen.set(mate.id, alive);
       if (alive) rosterAlive.add(mate.id); else rosterAlive.delete(mate.id);
     }
@@ -271,7 +286,7 @@ function trackAllies(rs, self, contacts, squadMembers) {
     // (hull culled, id recycled before the wreck ever became a contact) died.
     for (const id of rosterAlive) {
       if (rosterNow.has(id)) continue;
-      if (seen.get(id) === true) lostRecently = true;
+      if (seen.get(id) === true) { lostRecently = true; rs.matesLost += 1; }
       seen.set(id, false);
       rosterAlive.delete(id);
     }
@@ -281,7 +296,7 @@ function trackAllies(rs, self, contacts, squadMembers) {
     if (c.hostile === true || (c.team == null || self.team == null || c.team !== self.team)) continue;
     const was = seen.get(c.id);
     const alive = c.alive !== false;
-    if (was === true && alive === false) lostRecently = true;
+    if (was === true && alive === false) { lostRecently = true; rs.matesLost += 1; }
     seen.set(c.id, alive);
   }
   // Bound the register: contacts rotate, but a stale entry only delays one loss trigger.
@@ -294,7 +309,7 @@ function trackAllies(rs, self, contacts, squadMembers) {
 // ── gates ─────────────────────────────────────────────────────────────────────
 
 function gatesPass(spec, obs, ctx, seed) {
-  const { entityId, tick, self, target, intent, temperament } = ctx;
+  const { entityId, tick, self, target, intent, temperament, reflexState: rs } = ctx;
   const g = spec.gates;
   // Temperament bounds — the same situation reads differently per pilot archetype.
   if (g.minWeave != null && temperament.weave < g.minWeave) return false;
@@ -312,6 +327,7 @@ function gatesPass(spec, obs, ctx, seed) {
   if (g.minHull != null && hull < g.minHull) return false;
   if (g.maxHull != null && hull > g.maxHull) return false;
   const energy = Number.isFinite(self.energyFraction) ? self.energyFraction : 1;
+  if (g.minEnergy != null && energy < g.minEnergy) return false;
   if (g.maxEnergy != null && energy > g.maxEnergy) return false;
   const heat = Number.isFinite(self.heatFraction) ? self.heatFraction : 0;
   if (g.heatAbove != null && heat <= g.heatAbove) return false;
@@ -329,7 +345,8 @@ function gatesPass(spec, obs, ctx, seed) {
   }
   // Target-relative geometry.
   if (g.minTargetDist != null || g.maxTargetDist != null || g.closingAbove != null
-    || g.recedingAbove != null || g.targetDisabled === true || g.targetFaster === true) {
+    || g.recedingAbove != null || g.targetDisabled === true || g.targetFaster === true
+    || g.targetHullBelow != null || g.targetSlower === true) {
     if (!target || !target.pos) return false;
     const dist = distanceTo(self, target);
     if (g.minTargetDist != null && dist < g.minTargetDist) return false;
@@ -341,6 +358,15 @@ function gatesPass(spec, obs, ctx, seed) {
       const tv = target.vel ? Math.hypot(target.vel.x, target.vel.z) : 0;
       const sv = self.vel ? Math.hypot(self.vel.x, self.vel.z) : 0;
       if (tv <= sv * 1.15 + 8) return false;
+    }
+    if (g.targetHullBelow != null) {
+      const th = Number.isFinite(target.hullFraction) ? target.hullFraction : 1;
+      if (th >= g.targetHullBelow) return false;
+    }
+    if (g.targetSlower === true) {
+      const tv = target.vel ? Math.hypot(target.vel.x, target.vel.z) : 0;
+      const sv = self.vel ? Math.hypot(self.vel.x, self.vel.z) : 0;
+      if (tv >= sv * 1.1) return false;
     }
   }
   // Situation observers.
@@ -358,19 +384,44 @@ function gatesPass(spec, obs, ctx, seed) {
   if (g.tetherLineWithin != null && obs.tetherLineDist > g.tetherLineWithin) return false;
   if (g.minAllies != null && obs.allyCount < g.minAllies) return false;
   if (g.maxAllies != null && obs.allyCount > g.maxAllies) return false;
+  if (g.maxHostiles != null && obs.hostileCount > g.maxHostiles) return false;
+  if (g.hostilesAtLeast != null && obs.hostileCount < g.hostilesAtLeast) return false;
+  if (g.targetedByAtLeast != null && obs.selfTargetedCount < g.targetedByAtLeast) return false;
+  if (g.untargetedOnly === true && obs.selfTargetedCount !== 0) return false;
+  if (g.allyCloseWithin != null && obs.nearestAllyDist > g.allyCloseWithin) return false;
+  if (g.allyFarBeyond != null && obs.allyCount > 0 && obs.nearestAllyDist <= g.allyFarBeyond) return false;
+  if (g.allyHurtBelow != null && obs.allyHurtMin >= g.allyHurtBelow) return false;
   if (g.outnumberedBy != null && obs.hostileCount - obs.allyCount < g.outnumberedBy) return false;
   if (g.wardThreatened === true && !obs.threatenedAllyPos) return false;
   if (g.calm === true && !obs.calm) return false;
+  if (g.subsystemLost === true && !obs.subsystemLost) return false;
+  // Squad registers: frame health, command loss, cumulative losses, and role.
+  if (g.integrityBelow != null) {
+    const integrity = Number.isFinite(ctx.frameIntegrity) ? ctx.frameIntegrity : 1;
+    if (integrity >= g.integrityBelow) return false;
+  }
+  if (g.matesLostAtLeast != null && rs.matesLost < g.matesLostAtLeast) return false;
+  if (g.leaderLost === true) {
+    const lostAt = ctx.leaderLostTick;
+    if (!Number.isInteger(lostAt) || lostAt < 0 || tick - lostAt > 240) return false;
+  }
+  if (g.leadingNow === true && ctx.commandId !== entityId) return false;
+  if (g.leadingNow === false && ctx.commandId === entityId) return false;
+  if (g.roles) {
+    if (!ctx.squadRole || !g.roles.includes(ctx.squadRole)) return false;
+  }
   // Whitelists.
   if (g.intents && !g.intents.includes(intent.kind)) return false;
   if (g.activities) {
     const activityKind = self.activity && self.activity.kind;
     if (!activityKind || !g.activities.includes(activityKind)) return false;
   }
-  // Seeded draw: deterministic per (pilot, kind, tick bucket).
+  // Seeded draw: deterministic per (pilot, kind, tick bucket). The bucket is avalanched
+  // before hashing — a trailing counter stirs hashUnit too weakly, which would pin the
+  // draw per pilot and make seeded gates always-on or never-fire instead of periodic.
   if (g.seededChance) {
     const sc = g.seededChance;
-    const bucket = Math.floor(tick / Math.max(1, sc.everyTicks || 60));
+    const bucket = Math.imul(Math.floor(tick / Math.max(1, sc.everyTicks || 60)) ^ 0x9e3779b9, 0x85ebca6b) >>> 0;
     const draw = hashUnit(seed, entityId, 'reflex_gate', spec.kind, bucket);
     if (draw >= (temperament[sc.field] || 0) * (sc.scale != null ? sc.scale : 1)) return false;
   }
@@ -424,13 +475,15 @@ function resolveSide(mode, seed, entityId, tick, spec, self, obs, target) {
   if (mode === 'orbit') {
     const period = Math.max(1, (spec.response && spec.response.stancePeriod) || 90);
     const bucket = Math.floor(tick / period);
-    return hashUnit(seed, entityId, 'st_dir', spec.kind, bucket) < 0.5 ? -1 : 1;
+    return hashUnit(seed, entityId, 'st_dir', spec.kind,
+      (Math.imul(bucket ^ 0x27d4eb2f, 0x85ebca6b) >>> 0)) < 0.5 ? -1 : 1;
   }
   return seededSide(seed, entityId, tick, spec);
 }
 
 function seededSide(seed, entityId, tick, spec) {
-  return hashUnit(seed, entityId, 'reflex_side', spec ? spec.kind : 'x', Math.floor(tick / 24)) < 0.5 ? -1 : 1;
+  return hashUnit(seed, entityId, 'reflex_side', spec ? spec.kind : 'x',
+    (Math.imul((Math.floor(tick / 24)) ^ 0x165667b1, 0x85ebca6b) >>> 0)) < 0.5 ? -1 : 1;
 }
 
 // Which side of the desired track the world point sits on, in hull frame:
@@ -506,6 +559,7 @@ function pullPoint(which, obs) {
   if (which === 'nearestAlly') return obs.nearestAllyPos;
   if (which === 'threatenedAlly') return obs.threatenedAllyPos;
   if (which === 'target') return obs.targetPos || null;
+  if (which === 'nearestHazard') return obs.nearestHazardPos;
   return null;
 }
 
@@ -516,6 +570,15 @@ function damageEventSeen(ctx) {
   if (!Array.isArray(events)) return false;
   for (const e of events) {
     if (e && e.type === 'damage_received' && Number.isFinite(e.magnitude) && e.magnitude > 0) return true;
+  }
+  return false;
+}
+
+function subsystemEventSeen(ctx) {
+  const events = ctx.events;
+  if (!Array.isArray(events)) return false;
+  for (const e of events) {
+    if (e && e.type === 'subsystem_disabled') return true;
   }
   return false;
 }

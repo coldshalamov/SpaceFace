@@ -62,6 +62,18 @@ import * as encounter058 from './345-belt-claim-jumpers.js';
 import * as encounter059 from './346-yard-towout.js';
 import * as encounter060 from './347-archive-dive.js';
 import * as encounter061 from './348-liner-toll-run.js';
+import * as encounter062 from './349-riptide-interdiction.js';
+import * as encounter063 from './350-lane-duel.js';
+import * as encounter064 from './351-hammer-fall.js';
+import * as encounter065 from './352-shattered-wing.js';
+import * as encounter066 from './353-boundary-overwatch.js';
+import * as encounter067 from './354-silent-tail.js';
+import * as encounter068 from './355-relay-convoy-raid.js';
+import * as encounter069 from './356-mourning-vigil.js';
+import * as encounter070 from './357-gauntlet-crossing.js';
+import * as encounter071 from './358-shepherd-storm.js';
+import * as encounter072 from './359-the-last-line.js';
+import * as encounter073 from './360-toll-of-the-anvil.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -125,5 +137,17 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter059,
   encounter060,
   encounter061,
+  encounter062,
+  encounter063,
+  encounter064,
+  encounter065,
+  encounter066,
+  encounter067,
+  encounter068,
+  encounter069,
+  encounter070,
+  encounter071,
+  encounter072,
+  encounter073,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

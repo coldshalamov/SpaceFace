@@ -19,14 +19,22 @@ import {
 } from '../ai/contracts.js';
 import {
   SQUAD_RECIPE_BURNING_PASS,
+  SQUAD_RECIPE_FUNERAL_ORBIT,
+  SQUAD_RECIPE_GHOST_RELAY,
+  SQUAD_RECIPE_HAMMER_ANVIL,
   SQUAD_RECIPE_HARASSMENT_RING,
   SQUAD_RECIPE_HUNTER_PAIR,
   SQUAD_RECIPE_INTERCEPTOR_SCISSORS,
+  SQUAD_RECIPE_KNIFE_DANCE,
+  SQUAD_RECIPE_LEAPFROG_BOUNDS,
+  SQUAD_RECIPE_OVERWATCH_LADDER,
   SQUAD_RECIPE_PICKET_WALL,
   SQUAD_RECIPE_PINCER_SWEEP,
+  SQUAD_RECIPE_RECON_SHADOW,
   SQUAD_RECIPE_SHEPHERD_NET,
   SQUAD_RECIPE_SIEGE_ORBIT,
   SQUAD_RECIPE_STANDOFF_GUNLINE,
+  SQUAD_RECIPE_SWARM_BURST,
   SQUAD_RECIPE_WOLFPACK_QUARTER,
   SQUAD_SOCKET,
   getSquadRecipe,
@@ -838,25 +846,38 @@ function autoRecipeForSquad(members, squadKey, seed) {
     else if (AUTO_SQUAD_FAST_DOCTRINES.has(d)) fast += 1;
   }
   const mix = hashUnit(seed, squadKey, 'squad_recipe');
-  // Marksman wings anchor everyone behind a firing line — deep marksman benches circle
-  // for a siege, shallower mixes form the gunline or hold the picket wall.
+  // Marksman wings anchor everyone behind a firing line — deep benches circle for a
+  // siege or lay down bounding overwatch, shallower mixes form the gunline, hold the
+  // picket wall, wheel a vigil, or shadow the target from extreme range.
   if (ranged > 0) {
-    if (ranged >= 2) return mix < 0.5 ? SQUAD_RECIPE_SIEGE_ORBIT : SQUAD_RECIPE_PICKET_WALL;
-    return mix < 0.6 ? SQUAD_RECIPE_STANDOFF_GUNLINE : SQUAD_RECIPE_PICKET_WALL;
+    if (ranged >= 2) {
+      return mix < 0.34 ? SQUAD_RECIPE_SIEGE_ORBIT
+        : mix < 0.56 ? SQUAD_RECIPE_PICKET_WALL
+        : mix < 0.78 ? SQUAD_RECIPE_OVERWATCH_LADDER
+        : SQUAD_RECIPE_LEAPFROG_BOUNDS;
+    }
+    return mix < 0.4 ? SQUAD_RECIPE_STANDOFF_GUNLINE
+      : mix < 0.62 ? SQUAD_RECIPE_PICKET_WALL
+      : mix < 0.82 ? SQUAD_RECIPE_FUNERAL_ORBIT
+      : SQUAD_RECIPE_RECON_SHADOW;
   }
   if (fast === members.length) {
     // Two fast hulls read as a hunting pair, not a flight.
     if (members.length <= 2) {
       return mix < 0.7 ? SQUAD_RECIPE_HUNTER_PAIR : SQUAD_RECIPE_INTERCEPTOR_SCISSORS;
     }
-    return mix < 0.28 ? SQUAD_RECIPE_INTERCEPTOR_SCISSORS
-      : mix < 0.52 ? SQUAD_RECIPE_PINCER_SWEEP
-      : mix < 0.78 ? SQUAD_RECIPE_HARASSMENT_RING
+    return mix < 0.22 ? SQUAD_RECIPE_INTERCEPTOR_SCISSORS
+      : mix < 0.42 ? SQUAD_RECIPE_PINCER_SWEEP
+      : mix < 0.58 ? SQUAD_RECIPE_HARASSMENT_RING
+      : mix < 0.72 ? SQUAD_RECIPE_KNIFE_DANCE
+      : mix < 0.85 ? SQUAD_RECIPE_SWARM_BURST
       : SQUAD_RECIPE_BURNING_PASS;
   }
-  return mix < 0.32 ? SQUAD_RECIPE_PINCER_SWEEP
-    : mix < 0.56 ? SQUAD_RECIPE_WOLFPACK_QUARTER
-    : mix < 0.78 ? SQUAD_RECIPE_SHEPHERD_NET
+  return mix < 0.24 ? SQUAD_RECIPE_PINCER_SWEEP
+    : mix < 0.42 ? SQUAD_RECIPE_WOLFPACK_QUARTER
+    : mix < 0.58 ? SQUAD_RECIPE_SHEPHERD_NET
+    : mix < 0.72 ? SQUAD_RECIPE_HAMMER_ANVIL
+    : mix < 0.86 ? SQUAD_RECIPE_GHOST_RELAY
     : SQUAD_RECIPE_INTERCEPTOR_SCISSORS;
 }
 

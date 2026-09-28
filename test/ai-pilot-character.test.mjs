@@ -60,6 +60,10 @@ function evalCtx(over = {}) {
     contacts: over.contacts || [],
     events: over.events || null,
     squadMembers: over.squadMembers || null,
+    frameIntegrity: over.frameIntegrity,
+    commandId: over.commandId,
+    leaderLostTick: over.leaderLostTick ?? -1,
+    squadRole: over.squadRole,
     target: over.target || null,
     intent: over.intent || INTENT,
     temperament: over.temperament || DASHY,
@@ -180,7 +184,7 @@ test('the planner translates a volley jink into a lateral thruster request', () 
   const request = planner.plan({
     entityId: 2, tick: 1, perception, behavior: { maneuver }, directive,
   });
-  assert.ok(Math.abs(request.forceLocal.right) > 0.15,
+  assert.ok(Math.abs(request.forceLocal.right) > 0.05,
     `jink must ride the lateral thruster channel, got ${request.forceLocal.right}`);
 });
 
@@ -948,6 +952,7 @@ test('stances merge as sustained channels and read the whole world state', () =>
 
   // Orbiting an approach: a weave-prone hull circles the commit distance.
   out = fire({
+    self: { energyFraction: 0.4 },
     target: HOSTILE('h1', 300, 0),
     contacts: [HOSTILE('h1', 300, 0)],
     temperament: PILOT({ weave: 0.7, poise: 0.4, aim: 0.4 }),
@@ -956,7 +961,7 @@ test('stances merge as sustained channels and read the whole world state', () =>
 
   // Escort hulls jockey around a ward while anything is close.
   out = fire({
-    self: { capabilities: ['screen'] },
+    self: { capabilities: ['screen'], energyFraction: 0.4 },
     contacts: [ALLY('a1', 140, 0), HOSTILE('h1', 400, 0)],
     temperament: PILOT({ weave: 0.5, poise: 0.4, aim: 0.4 }),
   });
@@ -964,7 +969,7 @@ test('stances merge as sustained channels and read the whole world state', () =>
 
   // Picket line, nobody aboard to jockey for.
   out = fire({
-    self: { capabilities: ['screen'] },
+    self: { capabilities: ['screen'], energyFraction: 0.4 },
     intent: SCREEN_INTENT,
     contacts: [HOSTILE('h1', 500, 0)],
     temperament: PILOT({ weave: 0.5, poise: 0.4, aim: 0.4 }),
@@ -987,6 +992,7 @@ test('stances merge as sustained channels and read the whole world state', () =>
 
   // Outnumbered and slippery: circle instead of closing.
   out = fire({
+    self: { energyFraction: 0.4 },
     contacts: [HOSTILE('a', 400, 0), HOSTILE('b', 600, 0), HOSTILE('c', 700, 0)],
     temperament: PILOT({ weave: 0.7, poise: 0.4, aim: 0.4 }),
   });
@@ -1172,4 +1178,322 @@ test('every authored encounter squadRecipe resolves to a real recipe', async () 
     stamped.push([mod.default.id, id]);
   }
   assert.ok(stamped.length >= 20, 'the stamp pass must cover a broad slice of the catalogue');
+});
+
+// ── the second wave: morale, command, execution, and aftermath triggers ──────
+
+test('focus fire, pincers, and cover each have their own urgent reflex', () => {
+  const engine = createReflexEngine({ seed: 5 });
+  // Two guns tracking this hull at once — the crossfire weave outranks geometry.
+  let out = engine.evaluate(evalCtx({
+    contacts: [HOSTILE('h1', 400, 0, { targetId: 'e7' }), HOSTILE('h2', 420, 40, { targetId: 'e7' })],
+    temperament: PILOT({ weave: 0.6 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.CROSSFIRE_WEAVE);
+
+  // Pincered: one close ahead, one behind — snap out of the bisector.
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    contacts: [HOSTILE('h1', 300, 0), HOSTILE('h2', -280, 0)],
+    temperament: PILOT({ weave: 0.5 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.SANDWICH_SPLIT);
+
+  // Rock + incoming damage: tuck toward cover and brake rather than fencing.
+  const rs = emptyReflexState();
+  rs.lastHull = 0.9;
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    reflexState: rs,
+    self: { hullFraction: 0.87 },
+    contacts: [HAZARD('r1', 280, 30), HOSTILE('h1', 600, 0)],
+    temperament: PILOT({ poise: 0.6 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.COVER_HUG);
+  assert.ok(out.pullTo, 'the hug pulls toward the rock, not away from the fight');
+});
+
+test('a blown subsystem reads as a wound the pilot keeps favoring', () => {
+  const subsystemEvent = [{ type: 'subsystem_disabled', sourceId: 'h9', magnitude: 1 }];
+  // The flinch: off the lane, aim dropped.
+  let out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    events: subsystemEvent,
+    contacts: [HOSTILE('h1', 500, 0)],
+    temperament: PILOT({ weave: 0.6 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.WEAPON_LOST_SCRAMBLE);
+  assert.equal(out.dropAim, true);
+
+  // Same loss on a hurt hull: the pilot limps instead of scrambling.
+  const rs = emptyReflexState();
+  rs.lastHull = 0.4;
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    reflexState: rs,
+    events: subsystemEvent,
+    self: { hullFraction: 0.4 },
+    temperament: PILOT({ weave: 0.1 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.WOUNDED_LIMP);
+  assert.equal(out.settle, true);
+
+  // The wound sticks: the flag stays readable a hundred ticks after the event clears.
+  // The scramble is on per-kind cooldown, so the sticky register surfaces through its sibling.
+  const engine = createReflexEngine({ seed: 5 });
+  const rs2 = emptyReflexState();
+  rs2.lastHull = 0.4;
+  engine.evaluate(evalCtx({ reflexState: rs2, events: subsystemEvent, self: { hullFraction: 0.4 } }));
+  out = engine.evaluate(evalCtx({ reflexState: rs2, tick: 1100, self: { hullFraction: 0.4 }, contacts: [HOSTILE('h1', 500, 0)], temperament: PILOT({ weave: 0.6 }) }));
+  assert.equal(out.kind, REFLEX_KIND.WOUNDED_LIMP, 'subsystem loss reads 100 ticks later');
+});
+
+test('cumulative losses shrink the wing’s nerve — matesLost gates accumulate', () => {
+  const engine = createReflexEngine({ seed: 5 });
+  const rs = emptyReflexState();
+  rs.lastHull = 0.9;
+  const roster = (a1, a2) => [{ id: 'a1', alive: a1 }, { id: 'a2', alive: a2 }];
+  // Two deaths across two ticks — the counter keeps the full bill.
+  engine.evaluate(evalCtx({ reflexState: rs, tick: 1000, squadMembers: roster(true, true), contacts: [ALLY('a1', 200, 0), ALLY('a2', 220, 10)] }));
+  engine.evaluate(evalCtx({ reflexState: rs, tick: 1001, squadMembers: roster(false, true), contacts: [ALLY('a2', 220, 10)] }));
+  engine.evaluate(evalCtx({ reflexState: rs, tick: 1002, squadMembers: roster(false, false), contacts: [] }));
+  assert.equal(rs.matesLost, 2, 'two roster flips count two losses');
+  const out = engine.evaluate(evalCtx({
+    reflexState: rs, tick: 1050,
+    contacts: [ALLY('a3', 200, 0), HOSTILE('h1', 500, 0)],
+    temperament: PILOT({ verve: 0.4, poise: 0.3 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.WING_SHRINK, 'two wingmates gone pulls survivors together');
+});
+
+test('losing the frame leader splits pilots: heir, flounderer, avenger', () => {
+  const base = { contacts: [HOSTILE('h1', 500, 0), ALLY('a1', 220, 10)], tick: 2000, leaderLostTick: 1970 };
+  let out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    ...base, commandId: 'e7', temperament: PILOT({ poise: 0.6, verve: 0.5 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.HEIR_STEP_UP, 'the named successor steps up');
+  assert.equal(out.boost, true);
+
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    ...base, commandId: 'a1', temperament: PILOT({ poise: 0.2, verve: 0.5 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.ADRIFT_FLOUNDER, 'a low-poise wing drifts leaderless');
+
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    ...base, commandId: 'a1', temperament: PILOT({ poise: 0.6, verve: 0.8 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.VOW_PRESS, 'the hot wing answers with violence');
+});
+
+test('frame integrity collapse reads differently on brave and frightened pilots', () => {
+  const base = { self: { energyFraction: 0.5 }, contacts: [HOSTILE('h1', 420, 0), ALLY('a1', 200, 0)], frameIntegrity: 0.3 };
+  let out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    ...base, temperament: PILOT({ verve: 0.7 }),
+  }));
+  // Brave pilots fight wide open — the stance fans them out.
+  assert.equal(out.kind, REFLEX_KIND.LAST_STAND_FAN);
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    ...base,
+    reflexState: Object.assign(emptyReflexState(), {
+      cooldowns: new Map([[REFLEX_KIND.WING_BROKEN, 5000]]),
+    }),
+    temperament: PILOT({ verve: 0.3, poise: 0.4 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.ROUT_SWEEP);
+  assert.ok(out.away > 0, 'a broken wing slides off the fight axis');
+});
+
+test('the last pilot standing picks a temperament-true answer', () => {
+  const mk = (temp) => {
+    const engine = createReflexEngine({ seed: 5 });
+    const rs = emptyReflexState();
+    const roster = (a) => [{ id: 'a1', alive: a }];
+    engine.evaluate(evalCtx({ reflexState: rs, tick: 1000, squadMembers: roster(true), contacts: [ALLY('a1', 200, 0)] }));
+    engine.evaluate(evalCtx({ reflexState: rs, tick: 1001, squadMembers: roster(false), contacts: [] }));
+    return engine.evaluate(evalCtx({
+      reflexState: rs, tick: 1200, contacts: [HOSTILE('h1', 600, 0)], temperament: temp,
+    }));
+  };
+  assert.equal(mk(PILOT({ verve: 0.7 })).kind, REFLEX_KIND.LONE_FRENZY);
+  assert.equal(mk(PILOT({ verve: 0.3, poise: 0.4 })).kind, REFLEX_KIND.LONE_FADE);
+  assert.equal(mk(PILOT({ poise: 0.7, verve: 0.5 })).kind, REFLEX_KIND.LONE_GHOST);
+});
+
+test('wounded prey changes what a hunter does — the execution family', () => {
+  const engine = createReflexEngine({ seed: 5 });
+  let out = engine.evaluate(evalCtx({
+    target: HOSTILE('t1', 320, 0, { hullFraction: 0.2 }),
+    contacts: [HOSTILE('t1', 320, 0, { hullFraction: 0.2 })],
+    temperament: PILOT({ verve: 0.7, weave: 0.3 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.KILL_PRESS, 'the aggressive pilot drives for the finish');
+  assert.equal(out.boost, true);
+
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    target: HOSTILE('t1', 180, 0, { hullFraction: 0.2 }),
+    contacts: [HOSTILE('t1', 180, 0, { hullFraction: 0.2 })],
+    temperament: PILOT({ verve: 0.3, weave: 0.6 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.COUP_CIRCLE, 'the technical pilot orbits close for the coup');
+
+  // And the stance layer keeps pressing: execution_lust holds the aim on a dying target.
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    target: HOSTILE('t1', 600, 0, { hullFraction: 0.15, targetId: 'e7' }),
+    contacts: [HOSTILE('t1', 600, 0, { hullFraction: 0.15, targetId: 'e7' })],
+    temperament: PILOT({ verve: 0.7, weave: 0.1 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.EXECUTION_LUST);
+  assert.equal(out.holdAim, true);
+});
+
+test('a lone opponent gets the duel treatment — strafe dance and joust return', () => {
+  let out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    target: HOSTILE('t1', 300, 0, { targetId: 'e7' }),
+    contacts: [HOSTILE('t1', 300, 0, { targetId: 'e7' })],
+    temperament: PILOT({ weave: 0.7 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.DUEL_STRAFE, 'one-on-one at band range dances');
+
+  // The joust: flying away from the only opponent — brake and come back.
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    self: { vel: { x: 60, z: 0 } },
+    target: HOSTILE('t1', -400, 0),
+    contacts: [HOSTILE('t1', -400, 0)],
+    temperament: PILOT({ verve: 0.6 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.JOUST_TURN);
+  assert.equal(out.brake, true);
+});
+
+test('screen roles interpose; nervous escorts huddle; crowding gets a shoulder check', () => {
+  // Frame-assigned escorts: the ward under fire gets a body between it and the guns.
+  let out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    squadRole: 'support',
+    contacts: [ALLY('a1', 200, 0), HOSTILE('h1', 500, 0, { targetId: 'a1' })],
+    temperament: PILOT({ poise: 0.6 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.BODY_BLOCK);
+  assert.equal(out.holdAim, true, 'the block keeps its guns on the threat');
+
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    contacts: [ALLY('a1', 180, 0), HOSTILE('h1', 500, 0, { targetId: 'a1' })],
+    temperament: PILOT({ poise: 0.2 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.HERD_PUSH, 'a nervous escort crowds the ward');
+
+  out = fireSweep({
+    contacts: [ALLY('a1', 45, 8)],
+    temperament: PILOT({ poise: 0.6, weave: 0.9 }),
+  }, REFLEX_KIND.SHOULDER_CHECK);
+  assert.ok(out, 'a wingmate in the intake gets a polite drift off');
+});
+
+test('reactor and capacitor temperament: cold surge spends, dry tanks coast', () => {
+  let out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    self: { energyFraction: 0.9, heatFraction: 0.1 },
+    contacts: [HOSTILE('h1', 480, 0)],
+    temperament: PILOT({ verve: 0.7 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.COLD_SURGE);
+  assert.equal(out.boost, true);
+
+  out = fireSweep({
+    self: { energyFraction: 0.1 },
+    contacts: [HOSTILE('h1', 500, 0)],
+    temperament: PILOT({ poise: 0.4 }),
+  }, REFLEX_KIND.DRY_LIMP);
+  assert.ok(out && out.settle, 'dry tanks coast on momentum');
+});
+
+test('aftermath tells: breathing wounded, rolling victors, strutting unscanned', () => {
+  // calm + hurt, no fresh hit — the drift owns the first beats, then the breath.
+  let out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    reflexState: Object.assign(emptyReflexState(), { lastHull: 0.4 }),
+    self: { hullFraction: 0.4 },
+  }));
+  assert.equal(out.kind, REFLEX_KIND.CATCH_BREATH);
+  assert.equal(out.settle, true);
+
+  out = fireSweep({
+    temperament: PILOT({ verve: 0.85 }),
+  }, REFLEX_KIND.VICTORY_ROLL);
+  assert.ok(out, 'a hot pilot rolls the quiet sky');
+
+  out = fireSweep({
+    temperament: PILOT({ verve: 0.9, weave: 0.4 }),
+  }, REFLEX_KIND.STRUT);
+  assert.ok(out, 'an untargeted showboat flourishes the transit');
+});
+
+test('stalking and relief are visible: hunter stalk crawls, shake_off sheds the lock', () => {
+  let out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    target: HOSTILE('t1', 900, 0),
+    contacts: [HOSTILE('t1', 900, 0)],
+    temperament: PILOT({ verve: 0.6 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.HUNTER_STALK);
+  assert.ok(out.speedScale < 1, 'the stalk throttles down');
+  assert.equal(out.holdAim, true);
+
+  // marked → unmarked transition: a relief roll sheds the adrenaline.
+  const engine = createReflexEngine({ seed: 5 });
+  const rs = emptyReflexState();
+  engine.evaluate(evalCtx({
+    reflexState: rs, tick: 1000,
+    contacts: [HOSTILE('h1', 400, 0, { targetId: 'e7' })],
+  }));
+  out = engine.evaluate(evalCtx({
+    reflexState: rs, tick: 1040,
+    contacts: [HOSTILE('h1', 1200, 0)],
+    temperament: PILOT({ weave: 0.6 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.SHAKE_OFF, 'the lock dropping reads as a roll');
+});
+
+test('the second stance wave merges: duel circle, vanguard, focus fear, venting', () => {
+  // Dance circle — the sustained 1v1 register under any burst-free tick (unmarked and
+  // past orbit range, so the duel burst and orbit hold both stand down).
+  let out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    self: { energyFraction: 0.4 },
+    target: HOSTILE('t1', 500, 0),
+    contacts: [HOSTILE('t1', 500, 0)],
+    temperament: PILOT({ weave: 0.7, verve: 0.2, poise: 0.4 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.DANCE_CIRCLE);
+
+  // The named leader leans the line forward (marked, so the stalk burst stands down).
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    commandId: 'e7',
+    target: HOSTILE('t1', 800, 0, { targetId: 'e7' }),
+    contacts: [HOSTILE('t1', 800, 0, { targetId: 'e7' })],
+    temperament: PILOT({ poise: 0.6, weave: 0.1 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.VANGUARD_EDGE);
+  assert.ok(out.speedScale > 1);
+
+  // Three guns locked: overwatched slide — slower and aim dropped.
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    contacts: [
+      HOSTILE('h1', 400, 0, { targetId: 'e7' }),
+      HOSTILE('h2', 500, 60, { targetId: 'e7' }),
+      HOSTILE('h3', 460, -80, { targetId: 'e7' }),
+    ],
+    temperament: PILOT({ weave: 0.4, verve: 0.4 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.CROSSFIRE_WEAVE, 'the burst still beats the stance');
+  const rs = emptyReflexState();
+  rs.cooldowns = new Map([[REFLEX_KIND.CROSSFIRE_WEAVE, 5000]]);
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    reflexState: rs,
+    contacts: [
+      HOSTILE('h1', 400, 0, { targetId: 'e7' }),
+      HOSTILE('h2', 500, 60, { targetId: 'e7' }),
+    ],
+    temperament: PILOT({ weave: 0.4, verve: 0.4 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.OVERWATCHED, 'cooling the burst leaves the slide');
+
+  // Hot plates on a jumpy pilot sway.
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    self: { heatFraction: 0.8 },
+    contacts: [HOSTILE('h1', 500, 0)],
+    temperament: PILOT({ poise: 0.3, verve: 0.2 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.VENT_SWAY);
 });

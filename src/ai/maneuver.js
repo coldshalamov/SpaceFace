@@ -258,6 +258,11 @@ export class ManeuverPlanner {
         squadMembers: choreo
           ? choreo.squadMates
           : (directive && Array.isArray(directive.mates) ? directive.mates : null),
+        // Frame registers for morale/leadership triggers (null off-frame).
+        frameIntegrity: choreo && Number.isFinite(choreo.integrity) ? choreo.integrity : null,
+        commandId: choreo ? choreo.commandId ?? null : null,
+        leaderLostTick: choreo && Number.isInteger(choreo.leaderLostTick) ? choreo.leaderLostTick : -1,
+        squadRole: choreo && typeof choreo.role === 'string' ? choreo.role : null,
         reflexState: runtime.reflex || (runtime.reflex = emptyReflexState()),
       });
       if (reflex && choreo) {
