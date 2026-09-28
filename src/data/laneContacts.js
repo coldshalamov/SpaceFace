@@ -145,6 +145,107 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     ship: 'ship_kestrel',
     sectorIds: Object.freeze(['sector_nyx_march']),
   }),
+  // ── The frontier's faces (2026-09-28): every traffic-bearing frontier sector gets one
+  // standing identity, on the same terms the core sectors already had. The four silent rim
+  // sectors (triton_wake, sedna_dark, orcus_shadow, phoebe_echo run trafficPerMin 0 — "hollow"
+  // is their character) stay anonymous on purpose; a named contact in empty dark would be a
+  // lie the traffic count refutes on arrival.
+  Object.freeze({
+    // Dione Lane is the south's lawful freight floor: the Exchange's convoys leave only
+    // after Dione Customs reads the lane, and the one hull Customs never reads twice is
+    // the exchange's own standing cleared run. Meridian invoice register.
+    id: 'lane_sable_cleared_run',
+    name: 'Sable of the Cleared Run',
+    callsign: 'CLEARED-RUN',
+    role: 'hauler',
+    gimmick: 'cleared-run',
+    ship: 'ship_mule',
+    sectorIds: Object.freeze(['sector_dione_lane']),
+  }),
+  Object.freeze({
+    // Nereid Shoal: independent ice crews sell ore same-shift under a Collective cut.
+    // Her barge is the cut itself — Shoal Claim ore on the Waystation scale before the
+    // shift ends. The Collective takes its percentage; she takes the lane.
+    id: 'lane_iva_ice_cut',
+    name: 'Iva of the Ice Cut',
+    callsign: 'ICE-CUT',
+    role: 'ore_carrier',
+    gimmick: 'ice-cut',
+    ship: 'ship_ironback',
+    sectorIds: Object.freeze(['sector_nereid_shoal']),
+  }),
+  Object.freeze({
+    // Haumea Rift: free scientists trade fracture readings beside sensor-ghosting ice.
+    // Quill flies the readings themselves — the Ranger's long-endurance spine is why the
+    // survey survives the rift's ghost returns. The Observatory's mail is fracture data.
+    id: 'lane_quill_fractureline',
+    name: 'Quill Fractureline',
+    callsign: 'RIFT-SURVEY',
+    role: 'surveyor',
+    gimmick: 'survey-mail',
+    ship: 'ship_ranger',
+    sectorIds: Object.freeze(['sector_haumea_rift']),
+  }),
+  Object.freeze({
+    // Rhea Cinder: scorched ore buys at the Cinder Claim and the Sker approach draws
+    // raiders. Brand runs the scorched lots down that thin-escort approach because the
+    // Claim pays same-shift and the raiders eat anyone slower.
+    id: 'lane_brand_scorched_seam',
+    name: 'Brand of the Scorched Seam',
+    callsign: 'CINDER-ORE',
+    role: 'hauler',
+    gimmick: 'scorched-ore',
+    ship: 'ship_mule',
+    sectorIds: Object.freeze(['sector_rhea_cinder']),
+  }),
+  Object.freeze({
+    // Proteus Well: at the well-mouth, active pulses find what sensors miss — and the
+    // Funnel's debris floor returns more mass than the visible hull explains. Low sounds
+    // the well: survey work on the Quiet's own terms, findings to the Den first.
+    id: 'lane_low_well_sound',
+    name: 'Low of the Well Sound',
+    callsign: 'WELL-SOUND',
+    role: 'surveyor',
+    gimmick: 'well-sound',
+    ship: 'ship_ranger',
+    sectorIds: Object.freeze(['sector_proteus_well']),
+  }),
+  Object.freeze({
+    // Kepler Scar: the Bazaar under the capsized Void-Reach — stolen cargo in, surplus
+    // out, favors priced. Ferr is the surplus leg: goods nobody asks about, priced to
+    // move before the capsized hull finds a new owner for them.
+    id: 'lane_ferr_surplus_gate',
+    name: 'Ferr of the Surplus Gate',
+    callsign: 'SURPLUS-OUT',
+    role: 'smuggler',
+    gimmick: 'surplus-run',
+    ship: 'ship_drifter',
+    sectorIds: Object.freeze(['sector_kepler_scar']),
+  }),
+  Object.freeze({
+    // Eunomia Gulf: Vael-licensed salvage changes hands at the Fence. Wray cuts plate
+    // under the License Board's seal — the one salvor in the gulf whose wreck claims
+    // nobody disputes, because the Board's stamp rides her transponder.
+    id: 'lane_wray_license_board',
+    name: 'Wray of the License Board',
+    callsign: 'GULF-SALVAGE',
+    role: 'salvor',
+    gimmick: 'license-salvage',
+    ship: 'ship_pelican',
+    sectorIds: Object.freeze(['sector_eunomia_gulf']),
+  }),
+  Object.freeze({
+    // Eris Margin: Quiet contraband crosses the Ashfall approach and manifests stop at
+    // the hatch. Ash is the crossing herself — the Margin runner who timed the Ashfall
+    // law sweep until it stopped mattering. Not the march's sealed courier; the Fence's.
+    id: 'lane_ash_margin_cross',
+    name: 'Ash of the Unmanifested',
+    callsign: 'MARGIN-CROSS',
+    role: 'courier',
+    gimmick: 'margin-cross',
+    ship: 'ship_kestrel',
+    sectorIds: Object.freeze(['sector_eris_margin']),
+  }),
 ]);
 
 /** PQ-143.02: the one-off courier's contact id, exported for traffic.js's dedicated fixture slot. */
@@ -290,4 +391,21 @@ export const LANE_GIMMICK_LABELS = Object.freeze({
   cut_run: 'CUT RUN',
   'quiet-run': 'QUIET RUN',
   quiet_run: 'QUIET RUN',
+  // The frontier's faces: one standing identity per traffic-bearing rim sector.
+  'cleared-run': 'CLEARED RUN',
+  cleared_run: 'CLEARED RUN',
+  'ice-cut': 'ICE CUT',
+  ice_cut: 'ICE CUT',
+  'survey-mail': 'SURVEY MAIL',
+  survey_mail: 'SURVEY MAIL',
+  'scorched-ore': 'SCORCHED ORE',
+  scorched_ore: 'SCORCHED ORE',
+  'well-sound': 'WELL SOUND',
+  well_sound: 'WELL SOUND',
+  'surplus-run': 'SURPLUS RUN',
+  surplus_run: 'SURPLUS RUN',
+  'license-salvage': 'LICENSE SALVAGE',
+  license_salvage: 'LICENSE SALVAGE',
+  'margin-cross': 'MARGIN CROSS',
+  margin_cross: 'MARGIN CROSS',
 });
