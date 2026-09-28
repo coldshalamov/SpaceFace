@@ -162,6 +162,7 @@ const MACHINE_FIELD_REGION_BY_SECTOR = Object.freeze({
   sector_ceres_belt: 'ceres',
   sector_helios_prime: 'helios',
   sector_sker_haven: 'sker',
+  sector_haumea_rift: 'haumea',
 });
 
 function buildKillMachine({
@@ -352,6 +353,38 @@ export const SKER_SCRAP_BALER = buildKillMachine({
   }],
 });
 
+// 2026-09-28 INFERENCE — one cracker on the northern frontier: the Rift Observatory's survey
+// drill works the Ice Fissure, and its crack cycle throws slab shards across the fissure mouth.
+// Same shove-into-an-anvil law as every mouth: warning registers quiet, surge is the short
+// bite, calm is the safe window. The cold drill platform stands just off the fissure landmark
+// (poi_haumea_fissure at (0,180)), aimed at it, clear of the Observatory, both ice fields, the
+// range buoy, and the probe shell (north.js anchors).
+export const RIFT_FISSURE_SECTOR_ID = 'sector_haumea_rift';
+export const RIFT_FISSURE_CRACKER = buildKillMachine({
+  id: 'fissure_cracker',
+  hazardType: 'debris',
+  placeId: 'place_drill_platform_cold',
+  sectorId: RIFT_FISSURE_SECTOR_ID,
+  localPos: { x: 180, z: 380 },
+  rot: -Math.PI * 0.75,
+  phaseOffsetS: 2,
+  hazardRadius: 104,
+  anvil: { radius: 22, mass: 10000, along: 56, across: 0 },
+  mouth: { name: 'Fissure Cracker', radius: 18 },
+  fields: [{
+    idSuffix: 'intake',
+    kind: 'cone',
+    strength: 720,
+    radius: 96,
+    halfAngleRad: 0.48,
+    edgeSoftRad: 0.12,
+    falloff: 1.08,
+    along: -14,
+    across: 0,
+    dirAlong: 1,
+  }],
+});
+
 // Every machine the adapter owns, in one list: Ceres mouths, the Helios starter cracker, and
 // the Sker baler. Per-sector slices come from killMachinesForSector; this is the census the
 // runtime uses to retire fields and anvils when a sector deactivates or a machine is absent.
@@ -359,12 +392,14 @@ export const ALL_KILL_MACHINES = Object.freeze([
   ...KILL_MACHINES,
   STARTER_FIELD_MACHINE,
   SKER_SCRAP_BALER,
+  RIFT_FISSURE_CRACKER,
 ]);
 
 export function killMachinesForSector(sectorId) {
   if (sectorId === KILL_MACHINE_SECTOR_ID) return KILL_MACHINES;
   if (sectorId === STARTER_FIELD_SECTOR_ID) return Object.freeze([STARTER_FIELD_MACHINE]);
   if (sectorId === SKER_SCRAP_BALER_SECTOR_ID) return Object.freeze([SKER_SCRAP_BALER]);
+  if (sectorId === RIFT_FISSURE_SECTOR_ID) return Object.freeze([RIFT_FISSURE_CRACKER]);
   return Object.freeze([]);
 }
 
