@@ -38,8 +38,8 @@ def build():
         K.plan_box(s, f'MastShoe{k}', mx + ex * 1.7, mv + ev * 1.7, 1.4, 2.6, 2.6, 0.8,
                    material='hazard', bevel=0.05)
     # lattice mast rising UP the wheel face (+v = world up) to the rim
-    K.plan_truss(s, 'Mast', (mx, mv + 1.0, 5.0), (mx, 37.0, 5.0), 2.4, 9, material='paint',
-                 chord=0.4, web=0.22)
+    K.plan_truss(s, 'Mast', (mx, mv + 1.0, 5.0), (mx, 37.0, 5.0), 2.4, 9,
+                 material='paint2', chord=0.4, web=0.22)
     K.plan_cyl(s, 'MastBandA', mx, 25.5, 4.6, mx, 26.9, 5.4, 1.5, material='hazard',
                segments=12)
     K.plan_cyl(s, 'MastBandB', mx, 32.5, 4.8, mx, 33.9, 5.2, 1.3, material='hazard',
@@ -54,7 +54,7 @@ def build():
                segments=16)
     K.plan_box(s, 'DishBack', mx, 40.6, 6.9, 4.4, 4.4, 1.6, material='paint2', bevel=0.15)
     dish = K.placed_sphere(s, 'Dish', mx, 41.4, 7.6, 6.4, material='paint', segments=28,
-                           scale=(1.0, 0.42, 1.0), tilt_x_deg=55.0)
+                           scale=(1.0, 0.42, 1.0), tilt_x_deg=35.0)
     # dish feed arm + horn, held off the face on the viewer side
     K.plan_beams(s, 'FeedArm', [((mx, 41.4, 7.6), (mx - 0.5, 44.0, 12.2))], 0.3,
                  material='gunmetal')
@@ -67,9 +67,9 @@ def build():
 
     # --- whip antennae + horn feeders around the rim — radial spikes off the rim ---------------
     for k, a in enumerate((70.0, 110.0, 250.0, 290.0, 330.0)):
-        u, v, _ = K.polar_plan(K.RING_R1 - 1.2, a)
+        u, v, _ = K.polar_plan(K.FRAME_R - 0.5, a)
         h = 9.0 + (k % 3) * 2.5
-        u2, v2, _ = K.polar_plan(min(48.0, K.RING_R1 - 1.2 + h), a)
+        u2, v2, _ = K.polar_plan(min(46.0, K.FRAME_R - 0.5 + h), a)
         K.plan_cyl(s, f'Whip{k}', u, v, 1.8, u2, v2, 1.8, 0.22, material='paint2',
                    segments=8)
         F.light(s, f'WhipTip{k}', K.P(u2, v2, 2.2), 'glow_cyan', size=0.3)

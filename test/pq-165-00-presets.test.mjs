@@ -29,11 +29,11 @@ import {
 const SEED = 16500;
 const DISPLAY_HZ = 60;
 const PRESET_IDS = ['low', 'medium', 'high'];
-const CAP_VALUES = [30, 60, 120, 0]; // 0 = off
+const CAP_VALUES = [30, 45, 60, 120, 0]; // 0 = off
 const PRESET_VIDEO_KEYS = ['renderScale', 'bloom', 'shadows', 'energyMaterials', 'renderGraph', 'engineTrails', 'particleQuality'];
 
 test('three presets each select an adaptive-quality tier (seed 16500)', () => {
-  assert.equal(QUALITY_PRESETS.length, 4, 'the three picture presets plus iGPU 60');
+  assert.equal(QUALITY_PRESETS.length, 5, 'the three picture presets plus iGPU 60 and Integrated GPU');
   assert.deepEqual(QUALITY_PRESETS.slice(0, 3).map((row) => row.id), PRESET_IDS);
   const rows = [];
   for (const presetId of PRESET_IDS) {
@@ -84,7 +84,7 @@ test('preset switch is captured: only presentation keys move, no content changes
 });
 
 test('four frame-cap values resolve against the live cap (seed 16500)', () => {
-  assert.deepEqual(FRAME_CAP_OPTIONS, [30, 60, 120, 0]);
+  assert.deepEqual(FRAME_CAP_OPTIONS, [30, 45, 60, 120, 0]);
   const live = { cap: null };
   const controller = createFrameCap({ vsync: true, displayHz: DISPLAY_HZ, apply: (cap) => { live.cap = cap; } });
   const rows = [];
@@ -98,7 +98,7 @@ test('four frame-cap values resolve against the live cap (seed 16500)', () => {
   }
   console.log('pq-165.00 frame cap applied to the live cap (seed 16500):');
   for (const row of rows) console.log('  ', JSON.stringify(row));
-  assert.equal(rows.length, 4, 'four cap values measured');
+  assert.equal(rows.length, 5, 'five cap values measured');
 });
 
 test('VSync flag is read: cap can never exceed the display refresh', () => {

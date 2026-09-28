@@ -55,6 +55,37 @@ export function shadowCasterBand(root) {
   return state ? state.castBand : null;
 }
 
+/** True when noteRealtimeShadowCasterPose has recorded a cast-band pose on this root. */
+export function shadowCasterHasPose(root) {
+  const state = root && root.userData ? root.userData[POLICY_STATE] : null;
+  return !!(state && state.pose);
+}
+
+// Quiet syncEntityViews: parked cast-band roots re-entered noteRealtimeShadowCasterPose
+// every closure tick for a sub-texel compare that returned false (held in-function
+// bit-identical early-out ~0.87×). Call-site skip when root TRS / visibility /
+// cast-band policy did not change this frame. Soft-GPU fps not claimed.
+let SHADOW_CASTER_POSE_QUIET_SKIP = true;
+export function setShadowCasterPoseQuietSkipForBench(enabled) {
+  SHADOW_CASTER_POSE_QUIET_SKIP = enabled !== false;
+  return SHADOW_CASTER_POSE_QUIET_SKIP;
+}
+export function getShadowCasterPoseQuietSkipForBench() {
+  return SHADOW_CASTER_POSE_QUIET_SKIP !== false;
+}
+
+export function shouldNoteRealtimeShadowCasterPose(root, {
+  poseApplied = false,
+  visibilityChanged = false,
+  policyRefreshed = false,
+} = {}) {
+  if (SHADOW_CASTER_POSE_QUIET_SKIP === false) return true;
+  if (poseApplied || visibilityChanged || policyRefreshed) return true;
+  const band = shadowCasterBand(root);
+  if (band !== 1) return true; // keep cheap band-0 clear / first-enter path
+  return !shadowCasterHasPose(root);
+}
+
 /**
  * Whether a root should contribute realtime directional shadow-map casters.
  * Player always casts. LOD1/LOD2 are screen-small — contact shadow is enough.

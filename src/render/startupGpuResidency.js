@@ -556,7 +556,15 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   const uploads = [];
   let residentTextures = 0;
   const count = textures.length;
+  const deadlineMs = Number(options.deadlineMs);
+  const hasDeadline = Number.isFinite(deadlineMs) && deadlineMs >= 0;
+  const startedAt = now();
+  let hitDeadline = false;
   for (let index = 0; index < count; index++) {
+    if (hasDeadline && now() - startedAt >= deadlineMs) {
+      hitDeadline = true;
+      break;
+    }
     const texture = textures[index];
     // Video/external textures bypass three's version gate inside the upload path
     // (updateVideoTexture runs on every call; ExternalTexture refreshes __webglTexture),
@@ -576,6 +584,10 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       continue;
     }
     await yieldToMain();
+    if (hasDeadline && now() - startedAt >= deadlineMs) {
+      hitDeadline = true;
+      break;
+    }
     const started = now();
     let success = false;
     try {
@@ -605,15 +617,34 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       });
     }
   }
-  const geometryResidency = options.includeGeometry === false
-    ? { skipped: true, reason: 'geometry residency owned by exact opening admission' }
-    : await prepareStartupGeometryResidency(renderer, subjects, {
+  let geometryResidency;
+  if (hitDeadline) {
+    geometryResidency = { skipped: true, reason: 'loading-deadline' };
+  } else if (options.includeGeometry === false) {
+    geometryResidency = { skipped: true, reason: 'geometry residency owned by exact opening admission' };
+  } else {
+    geometryResidency = await prepareStartupGeometryResidency(renderer, subjects, {
       ...options,
       yieldToMain,
       onBlockingSlice,
       now,
     });
+  }
   await yieldToMain();
+  if (hitDeadline) {
+    // Soft-GPU opening cook must still freeze a receipt after a bounded upload slice.
+    // Mark partial, but do not skip — callers that treat skipped as "abandon cook" would
+    // re-open the identity/plan hole we just closed.
+    return {
+      skipped: false,
+      reason: 'loading-deadline-partial',
+      textures: uploads.length,
+      uploads,
+      residentTextures,
+      geometryResidency,
+      partial: true,
+    };
+  }
   return {
     skipped: false,
     textures: textures.length,

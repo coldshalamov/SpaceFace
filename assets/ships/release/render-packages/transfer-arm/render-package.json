@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fef2426882b06db88d9cf2de20e04ce0d9d97838f1fd268613ffb10f186da574",
+  "contentHash": "761c68b91f04223b8dd922586bc456e4b915f211740a9640f54f0d460d7c63db",
   "dynamicGroups": [
     {
       "id": "sf.render.transfer-arm.mesh.lod0-hook-nav-port.dynamic",
@@ -163,16 +163,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b60e1cccd6f0517cc52d19e664afe357830f637277a4b077b421c1dc252b81b",
+      "geometryHash": "4d9bd45df3b423c9d3e537c01fe354cacb2de4c32ff50580e0d3c032df7f6ae1",
       "id": "sf.render.transfer-arm.mesh.lod0-armor.primitive.0",
-      "indexCount": 2688,
+      "indexCount": 4788,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.transfer-arm.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 994
+      "vertexCount": 2066
     },
     {
       "bounds": {
@@ -252,27 +252,27 @@
     {
       "bounds": {
         "max": [
-          14.314118385314941,
-          9.781055450439453,
-          2.0999844074249268
+          0.30000007152557373,
+          6.800000190734863,
+          2.1000213623046875
         ],
         "min": [
-          -3.700000047683716,
-          1.8001306056976318,
-          -1.6999845504760742
+          -1.5000001192092896,
+          5,
+          0.4999784827232361
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f2cc326d058488baed55b9a58fc5bd82438cdb67878ced2b651dbec1738cf5a",
+      "geometryHash": "cf3e92a5b455cdbcdda50874ada0d3485dbb1cf24c7b174df94a343062d3dba9",
       "id": "sf.render.transfer-arm.mesh.lod0-hull.primitive.0",
-      "indexCount": 2664,
+      "indexCount": 564,
       "indexed": true,
       "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.transfer-arm.mesh.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1260
+      "vertexCount": 188
     },
     {
       "bounds": {
@@ -367,7 +367,7 @@
       "id": "sf.render.transfer-arm.mesh.lod0-warning.primitive.0",
       "indexCount": 1548,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.transfer-arm.mesh.lod0-warning",
@@ -388,16 +388,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "632938582dbcc1f754657b002e833bb3fd33b3e840277c3e5ef17fec19d8cabc",
+      "geometryHash": "754786af8c4baf4923734268f70e52d13a424bccefbf7712497cfd2c6b928ad6",
       "id": "sf.render.transfer-arm.mesh.lod1-armor.primitive.0",
-      "indexCount": 1386,
+      "indexCount": 2766,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.transfer-arm.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 678
+      "vertexCount": 1534
     },
     {
       "bounds": {
@@ -477,27 +477,27 @@
     {
       "bounds": {
         "max": [
-          14.314118385314941,
-          9.781474113464355,
-          2.0931594371795654
+          0.2928973138332367,
+          6.7921271324157715,
+          2.0929744243621826
         ],
         "min": [
-          -3.696962356567383,
-          1.8018947839736938,
-          -1.6973741054534912
+          -1.4922282695770264,
+          5.007873058319092,
+          0.5070253610610962
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ed5f19b716f7ffe5381e94c844e7d26ee2aed0027a91ed33cc68ed252a54278",
+      "geometryHash": "45c7fb3565d60c05739d5cf737d7859250768400df71e8f428b6452479c5285a",
       "id": "sf.render.transfer-arm.mesh.lod1-hull.primitive.0",
-      "indexCount": 1704,
+      "indexCount": 324,
       "indexed": true,
       "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.transfer-arm.mesh.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 993
+      "vertexCount": 137
     },
     {
       "bounds": {
@@ -592,7 +592,7 @@
       "id": "sf.render.transfer-arm.mesh.lod1-warning.primitive.0",
       "indexCount": 444,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.transfer-arm.mesh.lod1-warning",
@@ -613,16 +613,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "935a5131377d4b96c00b0f80b26651e8e1292e0b1e3d2a9520e29b3399043a97",
+      "geometryHash": "7f4d14f2b45ac5ef066fcfcfcb25e56cf93e2b88f7c135dd3ba598b20c83fc18",
       "id": "sf.render.transfer-arm.mesh.lod2-armor.primitive.0",
-      "indexCount": 426,
+      "indexCount": 1470,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.transfer-arm.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 302
+      "vertexCount": 1026
     },
     {
       "bounds": {
@@ -702,27 +702,27 @@
     {
       "bounds": {
         "max": [
-          14.300580024719238,
-          9.780672073364258,
-          2.051168918609619
+          0.2524733543395996,
+          6.751432418823242,
+          2.0514261722564697
         ],
         "min": [
-          -3.696962356567383,
-          1.8026968240737915,
-          -1.696968913078308
+          -1.4524732828140259,
+          5.048567295074463,
+          0.5485735535621643
         ]
       },
       "drawMode": 4,
-      "geometryHash": "02725ed14c3851603fc47c7af0f3210b5c4233f4ee728fe7cc57b79a5a8ce95d",
+      "geometryHash": "26b7ea54c7ee1de9baed6fb93fbe86da4346ed7665c9833fc6e7d1fa7a93c135",
       "id": "sf.render.transfer-arm.mesh.lod2-hull.primitive.0",
-      "indexCount": 1080,
+      "indexCount": 36,
       "indexed": true,
       "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.transfer-arm.mesh.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 748
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -792,7 +792,7 @@
       "id": "sf.render.transfer-arm.mesh.lod2-warning.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.transfer-arm.mesh.lod2-warning",
@@ -837,22 +837,8 @@
       ]
     },
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "id": "material:6a5417b004bdbc8e05e1f1ee",
-      "name": "Material_Emissive_NavRed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
-      "id": "material:7c9a3daaaa00f25157b72e50",
+      "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "id": "material:333a696e723d180dee93b90e",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -881,6 +867,20 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
@@ -2396,19 +2396,19 @@
       "sha256": "ca15db6e39b491a87c70523f3d962fbdeb80508432399396f5cc46273af43919"
     },
     "sourceGlb": {
-      "bytes": 487924,
-      "sha256": "5a5b1cf70ae1ef0ee3496ccfa1a5619aa29bd069126b495a7edd5d8e4f090ac6",
+      "bytes": 488068,
+      "sha256": "6a0d18be2cc3d237b306bdd5387c79c5f3af18f412f900f6b2ae7f6293758db7",
       "uri": "place_transfer_arm.glb"
     },
     "sourceManifest": {
-      "bytes": 205647,
-      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
+      "bytes": 206766,
+      "sha256": "a8ffe0c535bcbca523ec7221e0d2eb2c9dddb4592c00d3ec606a5fe7c1bdac0e",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 661700,
-    "sha256": "3ca7cd53d335794a24051f9ccae13eea61812c14568ad01991eefa4b34face5b",
+    "bytes": 661152,
+    "sha256": "6ddcea0682958336a935a38452156ebf747c326c3201ed35088b566226900699",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3377,7 +3377,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_transfer_arm.glb"
   },
-  "runtimeHash": "479146f96de3ce956e36b10523027b666be8bbb400598c76d01b82244b4dce41",
+  "runtimeHash": "4282f2c9c35a6c0c64e268d7d2b7b47609b4632581a9456a2189af18eb53d0ce",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

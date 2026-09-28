@@ -15,12 +15,14 @@ import {
 // note on scheduleUpgradeFrame in partsLibrary.js for the numbers.
 //
 // A source-regex assertion could not have caught either failure. It proves the code has a SHAPE,
-// never that the shape helps. The two tests kept below drive the primitives and observe ORDER.
+// never that the shape helps. The tests below drive the primitives and observe ORDER.
 
 test('armCallbackAfterPresent runs after the display callback, not inside it', async () => {
   const order = [];
   const realRaf = globalThis.requestAnimationFrame;
   const realTimeout = globalThis.setTimeout;
+  const realScheduler = globalThis.scheduler;
+  globalThis.scheduler = undefined;
   globalThis.requestAnimationFrame = (cb) => {
     order.push('raf');
     cb();
@@ -46,6 +48,44 @@ test('armCallbackAfterPresent runs after the display callback, not inside it', a
   } finally {
     globalThis.requestAnimationFrame = realRaf;
     globalThis.setTimeout = realTimeout;
+    globalThis.scheduler = realScheduler;
+  }
+});
+
+test('armCallbackAfterPresent prefers scheduler.yield after present', async () => {
+  const order = [];
+  const realRaf = globalThis.requestAnimationFrame;
+  const realTimeout = globalThis.setTimeout;
+  const realScheduler = globalThis.scheduler;
+  globalThis.requestAnimationFrame = (cb) => {
+    order.push('raf');
+    cb();
+    return 1;
+  };
+  globalThis.setTimeout = (cb, ms) => {
+    order.push(`timeout:${ms ?? 0}`);
+    // Do not run the unstick timer synchronously — yield should win the race.
+    return 1;
+  };
+  globalThis.scheduler = {
+    yield: async () => { order.push('yield'); },
+  };
+  try {
+    await new Promise((resolve) => {
+      armCallbackAfterPresent(() => {
+        order.push('job');
+        resolve();
+      });
+    });
+    assert.equal(order[0], 'raf');
+    assert.ok(order.includes('yield'));
+    assert.ok(order.includes('job'));
+    assert.ok(order.indexOf('yield') < order.indexOf('job'));
+    assert.ok(!order.includes('timeout:0'), 'must not stack setTimeout(0) when yield exists');
+  } finally {
+    globalThis.requestAnimationFrame = realRaf;
+    globalThis.setTimeout = realTimeout;
+    globalThis.scheduler = realScheduler;
   }
 });
 
@@ -53,6 +93,8 @@ test('yieldAfterPresent settles only after the display callback', async () => {
   const order = [];
   const realRaf = globalThis.requestAnimationFrame;
   const realTimeout = globalThis.setTimeout;
+  const realScheduler = globalThis.scheduler;
+  globalThis.scheduler = undefined;
   globalThis.requestAnimationFrame = (cb) => {
     order.push('raf');
     cb();

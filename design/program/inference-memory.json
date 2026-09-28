@@ -1632,6 +1632,19 @@
       "integration": "live",
       "commit": "f891b6c1a",
       "verification": "focused_green"
+    },
+    {
+      "id": "wf06-freight-lane-attrition",
+      "date": "2026-09-28",
+      "wf": "WF-06",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "freight loss/spill now marks the lane it died on — bounded sector-field scarcity + danger impulses read as freight_attrition in the cause ledger, and sustained kills push a route into route_scarcity",
+      "fingerprint": "verb=disrupt,subject=freight_lane,sector=death_sector,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "c062d7ca3",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [

@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Berth",
       "nodePath": [
         0,
-        28
+        22
       ],
       "parentNodeId": "sf.render.maintenance-gantry.root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Hook",
       "nodePath": [
         0,
-        29
+        23
       ],
       "parentNodeId": "sf.render.maintenance-gantry.root",
       "worldTransform": [
@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d1ab77d8b535eeaa5772f8301537e1656d80da9099ef6d8d623bb915919db02a",
+  "contentHash": "34daaf236a7888d450c6854884560946689c5a6a0745fd7ab64cc43a3ae4af7c",
   "dynamicGroups": [
     {
       "id": "sf.render.maintenance-gantry.mesh.lod0-hook-nav-port.dynamic",
@@ -152,27 +152,27 @@
     {
       "bounds": {
         "max": [
-          2.0994415283203125,
-          9.750081062316895,
+          2.2995574474334717,
+          10.350188255310059,
           9.699999809265137
         ],
         "min": [
-          -2.0994415283203125,
-          8.449918746948242,
+          -2.2995574474334717,
+          -0.00018854097288567573,
           -9.699999809265137
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b0c59ab2d288753f01e4e11185b0b93797d20fbd991ddf91919f7826755fa75",
+      "geometryHash": "37f2193bd1d2e832c19522c59ad4d99735f5c827aeb4e5b62c8b40f2bd8e1fa8",
       "id": "sf.render.maintenance-gantry.mesh.lod0-armor.primitive.0",
-      "indexCount": 3948,
+      "indexCount": 15792,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1184
+      "vertexCount": 4818
     },
     {
       "bounds": {
@@ -227,56 +227,6 @@
     {
       "bounds": {
         "max": [
-          2.299786329269409,
-          10.350004196166992,
-          9.09999942779541
-        ],
-        "min": [
-          -2.299786329269409,
-          -0.000005211868938204134,
-          -9.09999942779541
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9a8535a91a7b04b9d9f327c03a97cd3270845b06bbc78abe2d37b97f59f8c2ed",
-      "id": "sf.render.maintenance-gantry.mesh.lod0-hull-aged.primitive.0",
-      "indexCount": 8460,
-      "indexed": true,
-      "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Hull_aged",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-hull-aged",
-      "primitiveIndex": 0,
-      "vertexCount": 2562
-    },
-    {
-      "bounds": {
-        "max": [
-          1.9493697881698608,
-          8.699562072753906,
-          8.75
-        ],
-        "min": [
-          -1.9493697881698608,
-          0.10043831914663315,
-          -8.75
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "99ff3f564dfb411479605361275c4f37c86c548cf3bd8a1ad4a3969e51aa7cd8",
-      "id": "sf.render.maintenance-gantry.mesh.lod0-hull.primitive.0",
-      "indexCount": 5640,
-      "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Hull",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod0-hull",
-      "primitiveIndex": 0,
-      "vertexCount": 1744
-    },
-    {
-      "bounds": {
-        "max": [
           1.4899338483810425,
           5.998013496398926,
           3.140000104904175
@@ -327,27 +277,27 @@
     {
       "bounds": {
         "max": [
-          1.9894317388534546,
+          1.9898606538772583,
           9.500441551208496,
           8.402547836303711
         ],
         "min": [
-          -1.4994317293167114,
+          -1.6498607397079468,
           -0.00044196139788255095,
           -9.002991676330566
         ]
       },
       "drawMode": 4,
-      "geometryHash": "61a28aa8694a8217ed403ac92e2e6e0f8f9d5db932d7769b77e2452000f48527",
+      "geometryHash": "be3ff3ad4abffac19a753cf2e6a980aefb24e8967b43d7f8dbf4682f0ee775f2",
       "id": "sf.render.maintenance-gantry.mesh.lod0-mechanicaldark.primitive.0",
-      "indexCount": 1248,
+      "indexCount": 3504,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 418
+      "vertexCount": 1090
     },
     {
       "bounds": {
@@ -367,7 +317,7 @@
       "id": "sf.render.maintenance-gantry.mesh.lod0-warning.primitive.0",
       "indexCount": 432,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod0-warning",
@@ -377,27 +327,27 @@
     {
       "bounds": {
         "max": [
-          2.0976736545562744,
-          9.747920989990234,
+          2.297733783721924,
+          10.349783897399902,
           9.697300910949707
         ],
         "min": [
-          -2.0976736545562744,
-          8.452856063842773,
+          -2.297734022140503,
+          0.0022876220755279064,
           -9.697300910949707
         ]
       },
       "drawMode": 4,
-      "geometryHash": "578bc35942e55f25f1d4969c0f2b5649cdf057cc607c0e392a7b42d51e1f0115",
+      "geometryHash": "61be31de2053a9c29f2d747981695ac2405f3b326578462304f96f1537a723d9",
       "id": "sf.render.maintenance-gantry.mesh.lod1-armor.primitive.0",
-      "indexCount": 1842,
+      "indexCount": 7182,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 678
+      "vertexCount": 2701
     },
     {
       "bounds": {
@@ -452,56 +402,6 @@
     {
       "bounds": {
         "max": [
-          2.297992706298828,
-          10.350614547729492,
-          9.097296714782715
-        ],
-        "min": [
-          -2.2979929447174072,
-          0.0014574967790395021,
-          -9.097296714782715
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "57252a449d0106ddd7e1b2d85db0a2ceb4bba988b04b381a0456144c3e4821f3",
-      "id": "sf.render.maintenance-gantry.mesh.lod1-hull-aged.primitive.0",
-      "indexCount": 2730,
-      "indexed": true,
-      "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Hull_aged",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-hull-aged",
-      "primitiveIndex": 0,
-      "vertexCount": 1034
-    },
-    {
-      "bounds": {
-        "max": [
-          1.9477826356887817,
-          8.697367668151855,
-          8.747669219970703
-        ],
-        "min": [
-          -1.9477826356887817,
-          0.1026698648929596,
-          -8.747669219970703
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "098d0631562d8929801b185b77660377c7dd283a555937edd61bb17148b57895",
-      "id": "sf.render.maintenance-gantry.mesh.lod1-hull.primitive.0",
-      "indexCount": 3138,
-      "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Hull",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod1-hull",
-      "primitiveIndex": 0,
-      "vertexCount": 1187
-    },
-    {
-      "bounds": {
-        "max": [
           1.4899338483810425,
           5.998013496398926,
           3.140000104904175
@@ -552,27 +452,27 @@
     {
       "bounds": {
         "max": [
-          1.9894317388534546,
+          1.9896979331970215,
           9.498806953430176,
           8.402547836303711
         ],
         "min": [
-          -1.4994317293167114,
+          -1.64789879322052,
           0.00004770699888467789,
           -9.002991676330566
         ]
       },
       "drawMode": 4,
-      "geometryHash": "988787bcd064f5df809732c3779011a9bbd947322da865a930fa153ca74062bd",
+      "geometryHash": "921e31e1c2362dce1db3de9cc883ec615dc3c4b409682387647c7f037bc4dcd5",
       "id": "sf.render.maintenance-gantry.mesh.lod1-mechanicaldark.primitive.0",
-      "indexCount": 288,
+      "indexCount": 816,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 147
+      "vertexCount": 345
     },
     {
       "bounds": {
@@ -592,7 +492,7 @@
       "id": "sf.render.maintenance-gantry.mesh.lod1-warning.primitive.0",
       "indexCount": 432,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod1-warning",
@@ -602,27 +502,27 @@
     {
       "bounds": {
         "max": [
-          2.0902411937713623,
-          9.739670753479004,
+          2.2938854694366455,
+          10.341773986816406,
           9.690284729003906
         ],
         "min": [
-          -2.0902411937713623,
-          8.45500659942627,
+          -2.295891284942627,
+          0.004129623528569937,
           -9.690284729003906
         ]
       },
       "drawMode": 4,
-      "geometryHash": "433fe9a6b65ea89af7a1399fb9cf2c3da40629ff5b3ba324f4829ac423b2a1b6",
+      "geometryHash": "796e86cb7a497196d935607ae8176ff44bd18702eab6efb68405f2c3d3fed8d5",
       "id": "sf.render.maintenance-gantry.mesh.lod2-armor.primitive.0",
-      "indexCount": 642,
+      "indexCount": 2844,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 286
+      "vertexCount": 1264
     },
     {
       "bounds": {
@@ -677,56 +577,6 @@
     {
       "bounds": {
         "max": [
-          2.2937135696411133,
-          10.341822624206543,
-          9.09311580657959
-        ],
-        "min": [
-          -2.2957193851470947,
-          0.0040811412036418915,
-          -9.093116760253906
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "da7fdabb041ba20881bd5c9fe9db881ac5b8b64fbb0be1cbd8efd39aae3abd80",
-      "id": "sf.render.maintenance-gantry.mesh.lod2-hull-aged.primitive.0",
-      "indexCount": 1116,
-      "indexed": true,
-      "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Hull_aged",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-hull-aged",
-      "primitiveIndex": 0,
-      "vertexCount": 547
-    },
-    {
-      "bounds": {
-        "max": [
-          1.9451099634170532,
-          8.69478702545166,
-          8.74560832977295
-        ],
-        "min": [
-          -1.9451099634170532,
-          0.10246135294437408,
-          -8.744900703430176
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "cd2498d58dd148c128fa74c79324589dab7b53b5d656504be1d32f3b9d7f296e",
-      "id": "sf.render.maintenance-gantry.mesh.lod2-hull.primitive.0",
-      "indexCount": 1230,
-      "indexed": true,
-      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Hull",
-      "nodeId": "sf.render.maintenance-gantry.mesh.lod2-hull",
-      "primitiveIndex": 0,
-      "vertexCount": 523
-    },
-    {
-      "bounds": {
-        "max": [
           1.4899338483810425,
           5.998013496398926,
           3.140000104904175
@@ -777,27 +627,27 @@
     {
       "bounds": {
         "max": [
-          1.5000457763671875,
+          1.6436048746109009,
           9.495450973510742,
           8
         ],
         "min": [
-          -1.5000457763671875,
+          -1.6436048746109009,
           0.0000438690185546875,
           -8
         ]
       },
       "drawMode": 4,
-      "geometryHash": "35187badd51e764e39b9af7177a7b89b2ab1097549bf17a2a88393555d84ef42",
+      "geometryHash": "7456c65cf667d329d5eca69bb8794531600073dba4cbf1ecd6f2a7f707355130",
       "id": "sf.render.maintenance-gantry.mesh.lod2-mechanicaldark.primitive.0",
-      "indexCount": 120,
+      "indexCount": 264,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 64
+      "vertexCount": 156
     },
     {
       "bounds": {
@@ -817,7 +667,7 @@
       "id": "sf.render.maintenance-gantry.mesh.lod2-warning.primitive.0",
       "indexCount": 432,
       "indexed": true,
-      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod2-warning",
@@ -862,22 +712,8 @@
       ]
     },
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
-      "id": "material:6a5417b004bdbc8e05e1f1ee",
-      "name": "Material_Emissive_NavRed",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
-      "id": "material:7c9a3daaaa00f25157b72e50",
+      "hash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
+      "id": "material:333a696e723d180dee93b90e",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -906,6 +742,20 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
@@ -977,70 +827,6 @@
       "name": "Material_Emissive_Warm",
       "pipelineKey": "opaque:front",
       "textures": []
-    },
-    {
-      "hash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
-      "id": "material:d53e5ef9a99fb30a7a241f6f",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
-      "id": "material:f2bfd6ad2d8243301a15508e",
-      "name": "Material_Hull_aged",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
     }
   ],
   "nodes": [
@@ -1241,104 +1027,6 @@
       ]
     },
     {
-      "id": "sf.render.maintenance-gantry.mesh.lod0-hull",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Hull",
-      "nodeName": "LOD0_Hull",
-      "nodePath": [
-        0,
-        4
-      ],
-      "parentId": "sf.render.maintenance-gantry.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.maintenance-gantry.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.maintenance-gantry.mesh.lod0-hull-aged",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Hull_aged",
-      "nodeName": "LOD0_Hull_aged",
-      "nodePath": [
-        0,
-        5
-      ],
-      "parentId": "sf.render.maintenance-gantry.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.maintenance-gantry.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
       "id": "sf.render.maintenance-gantry.mesh.lod0-lights-warm",
       "localTransform": [
         1,
@@ -1363,7 +1051,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        6
+        4
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1412,7 +1100,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        7
+        5
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1461,7 +1149,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        8
+        6
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1510,7 +1198,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        9
+        7
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1559,7 +1247,7 @@
       "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
-        10
+        8
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1608,7 +1296,7 @@
       "nodeName": "LOD1_Beacon_Amber",
       "nodePath": [
         0,
-        11
+        9
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1657,7 +1345,7 @@
       "nodeName": "LOD1_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        12
+        10
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "dynamic",
@@ -1678,104 +1366,6 @@
         -0.00006586313247680664,
         10.445382118225098,
         8.999910831451416,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.maintenance-gantry.mesh.lod1-hull",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Hull",
-      "nodeName": "LOD1_Hull",
-      "nodePath": [
-        0,
-        13
-      ],
-      "parentId": "sf.render.maintenance-gantry.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.maintenance-gantry.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.maintenance-gantry.mesh.lod1-hull-aged",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Hull_aged",
-      "nodeName": "LOD1_Hull_aged",
-      "nodePath": [
-        0,
-        14
-      ],
-      "parentId": "sf.render.maintenance-gantry.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.maintenance-gantry.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
         1
       ]
     },
@@ -1804,7 +1394,7 @@
       "nodeName": "LOD1_Lights_Warm",
       "nodePath": [
         0,
-        15
+        11
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1853,7 +1443,7 @@
       "nodeName": "LOD1_Mechanical",
       "nodePath": [
         0,
-        16
+        12
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1902,7 +1492,7 @@
       "nodeName": "LOD1_MechanicalDark",
       "nodePath": [
         0,
-        17
+        13
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -1951,7 +1541,7 @@
       "nodeName": "LOD1_Warning",
       "nodePath": [
         0,
-        18
+        14
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -2000,7 +1590,7 @@
       "nodeName": "LOD2_Armor",
       "nodePath": [
         0,
-        19
+        15
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -2049,7 +1639,7 @@
       "nodeName": "LOD2_Beacon_Amber",
       "nodePath": [
         0,
-        20
+        16
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -2098,7 +1688,7 @@
       "nodeName": "LOD2_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        21
+        17
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "dynamic",
@@ -2119,104 +1709,6 @@
         0.0009185522794723511,
         10.443656921386719,
         8.999910831451416,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.maintenance-gantry.mesh.lod2-hull",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Hull",
-      "nodeName": "LOD2_Hull",
-      "nodePath": [
-        0,
-        22
-      ],
-      "parentId": "sf.render.maintenance-gantry.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.maintenance-gantry.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.maintenance-gantry.mesh.lod2-hull-aged",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Hull_aged",
-      "nodeName": "LOD2_Hull_aged",
-      "nodePath": [
-        0,
-        23
-      ],
-      "parentId": "sf.render.maintenance-gantry.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.maintenance-gantry.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
         1
       ]
     },
@@ -2245,7 +1737,7 @@
       "nodeName": "LOD2_Lights_Warm",
       "nodePath": [
         0,
-        24
+        18
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -2294,7 +1786,7 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        25
+        19
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -2343,7 +1835,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        26
+        20
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -2392,7 +1884,7 @@
       "nodeName": "LOD2_Warning",
       "nodePath": [
         0,
-        27
+        21
       ],
       "parentId": "sf.render.maintenance-gantry.root",
       "role": "immutable",
@@ -2467,22 +1959,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "96fb3eea0798a7e05bafe455929c9928597ac1e98480765fd229250ac7add9c5"
+      "sha256": "7bf6f8307924e727109ed5907d04332c338c19ce8cae5ed3ba67c01ba5e7aa5d"
     },
     "sourceGlb": {
-      "bytes": 532672,
-      "sha256": "43fd12b7434e3655896f27a9a30592eb8e194b5b5856510ce18d4173f18b6776",
+      "bytes": 520220,
+      "sha256": "bfe6a5c0ecbfe1792bdaaf2831e702ed34b345a63e38693b9099b1b23e21ea8b",
       "uri": "place_maintenance_gantry.glb"
     },
     "sourceManifest": {
-      "bytes": 205647,
-      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
+      "bytes": 206766,
+      "sha256": "a8ffe0c535bcbca523ec7221e0d2eb2c9dddb4592c00d3ec606a5fe7c1bdac0e",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 808276,
-    "sha256": "0e5880de76d907c413a5764b82072406d1fef77781f62c5e912e7db0011f3d0f",
+    "bytes": 795276,
+    "sha256": "5f35ddbe024a2a4f258141ebd6fc0688a455b4ca7443fa1e7aa3877330ac63f6",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2493,17 +1985,17 @@
         0
       ],
       "max": [
-        2.299786329269409,
+        2.2995574474334717,
         10.560575485229492,
         9.699999809265137
       ],
       "min": [
-        -2.299786329269409,
+        -2.2995574474334717,
         -0.0005748127587139606,
         -9.699999809265137
       ],
       "size": [
-        4.599572658538818,
+        4.599114894866943,
         10.561150297988206,
         19.399999618530273
       ]
@@ -2533,7 +2025,7 @@
           1
         ],
         "name": "SOCKET_Berth",
-        "planIndex": 30,
+        "planIndex": 24,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2574,7 +2066,7 @@
           1
         ],
         "name": "SOCKET_Hook",
-        "planIndex": 31,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2597,7 +2089,7 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 10,
+      "hull": 4,
       "mechanical": 6,
       "signal": 9,
       "warning": 3
@@ -2626,37 +2118,37 @@
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 7,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 8,
         "role": "signal"
       },
       {
         "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 9,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 12,
+        "planIndex": 10,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2666,85 +2158,55 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "hull"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 24,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 25,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 26,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 27,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 28,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 29,
         "role": "warning"
       }
     ],
-    "nodeCount": 32,
+    "nodeCount": 26,
     "primitives": [
       {
         "canopy": false,
@@ -2848,7 +2310,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hull",
+        "name": "LOD0_Lights_Warm",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -2875,7 +2337,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hull_aged",
+        "name": "LOD0_Mechanical",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -2902,7 +2364,7 @@
           0,
           1
         ],
-        "name": "LOD0_Lights_Warm",
+        "name": "LOD0_MechanicalDark",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -2929,7 +2391,7 @@
           0,
           1
         ],
-        "name": "LOD0_Mechanical",
+        "name": "LOD0_Warning",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -2956,62 +2418,8 @@
           0,
           1
         ],
-        "name": "LOD0_MechanicalDark",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Warning",
-        "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
         "name": "LOD1_Armor",
-        "planIndex": 12,
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3038,7 +2446,7 @@
           1
         ],
         "name": "LOD1_Beacon_Amber",
-        "planIndex": 13,
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3065,7 +2473,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 14,
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -3092,62 +2500,8 @@
           0,
           1
         ],
-        "name": "LOD1_Hull",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD1_Hull_aged",
-        "planIndex": 16,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 17,
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3174,7 +2528,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 18,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3201,7 +2555,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 19,
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3228,7 +2582,7 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 20,
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3255,7 +2609,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 21,
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3282,7 +2636,7 @@
           1
         ],
         "name": "LOD2_Beacon_Amber",
-        "planIndex": 22,
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3309,7 +2663,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 23,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -3336,62 +2690,8 @@
           0,
           1
         ],
-        "name": "LOD2_Hull",
-        "planIndex": 24,
-        "tags": {
-          "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_Hull_aged",
-        "planIndex": 25,
-        "tags": {
-          "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
         "name": "LOD2_Lights_Warm",
-        "planIndex": 26,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3418,7 +2718,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 27,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3445,7 +2745,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 28,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3472,7 +2772,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 29,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3483,18 +2783,18 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_maintenance_gantry.glb"
   },
-  "runtimeHash": "b6bffcfe53322b71f0bd4c7ff26f5a948f3e890d24469c36c2fc5ef980c9fbe8",
+  "runtimeHash": "c00e05a667be02cbc05576b175b3d0bbaa99f5f4627528249d0e184ec3cb6c8b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          2.299786329269409,
+          2.2995574474334717,
           10.560575485229492,
           9.699999809265137
         ],
         "min": [
-          -2.299786329269409,
+          -2.2995574474334717,
           -0.0005748127587139606,
           -9.699999809265137
         ]
@@ -3505,8 +2805,6 @@
         "sf.render.maintenance-gantry.mesh.lod0-armor",
         "sf.render.maintenance-gantry.mesh.lod0-beacon-amber",
         "sf.render.maintenance-gantry.mesh.lod0-hook-nav-port",
-        "sf.render.maintenance-gantry.mesh.lod0-hull",
-        "sf.render.maintenance-gantry.mesh.lod0-hull-aged",
         "sf.render.maintenance-gantry.mesh.lod0-lights-warm",
         "sf.render.maintenance-gantry.mesh.lod0-mechanical",
         "sf.render.maintenance-gantry.mesh.lod0-mechanicaldark",
@@ -3514,8 +2812,6 @@
         "sf.render.maintenance-gantry.mesh.lod1-armor",
         "sf.render.maintenance-gantry.mesh.lod1-beacon-amber",
         "sf.render.maintenance-gantry.mesh.lod1-hook-nav-port",
-        "sf.render.maintenance-gantry.mesh.lod1-hull",
-        "sf.render.maintenance-gantry.mesh.lod1-hull-aged",
         "sf.render.maintenance-gantry.mesh.lod1-lights-warm",
         "sf.render.maintenance-gantry.mesh.lod1-mechanical",
         "sf.render.maintenance-gantry.mesh.lod1-mechanicaldark",
@@ -3523,8 +2819,6 @@
         "sf.render.maintenance-gantry.mesh.lod2-armor",
         "sf.render.maintenance-gantry.mesh.lod2-beacon-amber",
         "sf.render.maintenance-gantry.mesh.lod2-hook-nav-port",
-        "sf.render.maintenance-gantry.mesh.lod2-hull",
-        "sf.render.maintenance-gantry.mesh.lod2-hull-aged",
         "sf.render.maintenance-gantry.mesh.lod2-lights-warm",
         "sf.render.maintenance-gantry.mesh.lod2-mechanical",
         "sf.render.maintenance-gantry.mesh.lod2-mechanicaldark",

@@ -280,10 +280,17 @@ export class PlasmaStreamSystem {
 
   update(dt, sockets, driveInfo, a11y = null, owner = null) {
     if (this._disposed || !this.group) return { live: 0, pathPoints: 0, continuous: true };
-    const frameDt = Number.isFinite(dt) ? Math.max(0, Math.min(0.1, dt)) : 0;
     const drive = Math.max(0, driveInfo && driveInfo.drive || 0);
     const throttle = Math.max(0, driveInfo && driveInfo.throttle || 0);
     const boost = Math.max(0, driveInfo && driveInfo.boost || 0);
+    // Already fully cold and nothing commanded: skip envelope integrate + repeated reset().
+    // The cold gate below still runs reset() once when first going dark; subsequent quiet
+    // ticks were re-zeroing throats/trails/env every frame with no picture effect.
+    const commandedEarly = Math.max(throttle, drive, boost) > 0.001;
+    if (!commandedEarly && !this._active && !this.sampler.hasLive && !this.group.visible) {
+      return { live: 0, pathPoints: 0, continuous: true };
+    }
+    const frameDt = Number.isFinite(dt) ? Math.max(0, Math.min(0.1, dt)) : 0;
     const speed = Math.max(0, driveInfo && driveInfo.speed || 0);
     // Everything the plume shows is driven off the smoothed envelope, including the throat glow. The
     // previous raw `Math.max` of live inputs is what made pressing forward a one-frame jump from

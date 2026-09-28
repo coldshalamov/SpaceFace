@@ -333,7 +333,9 @@ def live_place_contract(file):
     conv = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))  # glTF -> Blender
     sockets = []
     for i, n in enumerate(nodes):
-        if str(n.get('name', '')).startswith('SOCKET_'):
+        # Some live places carry lowercase socket_* nodes (e.g. the breakaway fork's
+        # socket_mouth/socket_seat) — match case-insensitively so the contract survives.
+        if str(n.get('name', '')).upper().startswith('SOCKET_'):
             sockets.append((n['name'], conv @ world(i) @ conv.inverted(), n.get('extras', {})))
     scene = doc['scenes'][doc.get('scene', 0)]
     roots = [nodes[i]['name'] for i in scene['nodes'] if 'ROOT' in str(nodes[i].get('name', '')).upper()]

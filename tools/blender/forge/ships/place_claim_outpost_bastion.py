@@ -63,22 +63,21 @@ def build():
     casemate(s, 'SponsonA', -20.0, -20.0, 10.0, 8.0, 6.5)
     casemate(s, 'SponsonB', 20.0, 20.0, 10.0, 8.0, 6.5)
 
-    # --- blast-shutter arc panels on the ring rim between the pads -------------------------
-    for k, a in enumerate((45.0, 135.0, 225.0, 315.0)):
-        u, v, _ = K.polar_plan(K.RING_R1 - 0.6, a)
-        K.ring_slab(s, f'Shutter{k}', K.RING_R1 - 4.5, K.RING_R1 + 0.6, 2.4, 5.2,
-                    material='paint2', arc=(a - 16.0, a + 16.0), segments=6)
-        u2, v2, _ = K.polar_plan(K.RING_R1 + 0.4, a)
+    # --- blast-shutter arc panels bolted to the frame chords between the pads --------------
+    for k, a in enumerate((22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5)):
+        K.ring_slab(s, f'Shutter{k}', K.FRAME_R - 3.5, K.FRAME_R + 1.6, 2.4, 5.2,
+                    material='paint2', arc=(a - 12.0, a + 12.0), segments=5)
+        u2, v2, _ = K.polar_plan(K.FRAME_R + 1.2, a)
         K.plan_box(s, f'ShutterRib{k}', u2, v2, 4.0, 2.4, 4.0, 5.6, material='paint.role',
                    rot=math.radians(a), bevel=0.05)
 
-    # --- extra armour skirt under the ring rim ---------------------------------------------
-    K.ring_slab(s, 'ArmourSkirt', K.RING_R1 - 3.0, K.RING_R1 + 0.4, -4.6, -1.8,
+    # --- extra armour skirt under the frame rim ---------------------------------------------
+    K.ring_slab(s, 'ArmourSkirt', K.FRAME_R - 3.0, K.FRAME_R + 0.5, -4.6, -1.8,
                 material='dark', segments=48)
 
     # --- red station beacons replacing the base pennant ------------------------------------
     for k, a in enumerate((12.0, 192.0)):
-        u, v, _ = K.polar_plan(K.RING_R1 - 1.0, a)
+        u, v, _ = K.polar_plan(K.FRAME_R - 1.0, a)
         K.plan_cyl(s, f'WarnMast{k}', u, v, 1.6, u, v, 10.0, 0.3, material='paint2',
                    segments=10)
         F.beacon(s, f'WarnBeacon{k}', K.P(u, v + 10.3, 0.4), finish='glow_red', size=0.55)

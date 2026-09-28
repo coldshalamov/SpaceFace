@@ -71,6 +71,8 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     adaptiveFloor: 0.5,
     renderScale: 0.75,
     bloom: true,
+    bloomStrength: 0.52,
+    bloomLevels: 2,
     // Sun shadow-maps stay out of Performance/Balanced: at the neighbourhood ortho's texel
     // density they read as crawling clumps, not depth. The Quality tier opts back in.
     shadows: false,
@@ -78,6 +80,10 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     renderGraph: false,
     engineTrails: true,
     particleQuality: 'low',
+    frameCap: 0,
+    dynamicResolution: false,
+    postFx: true,
+    sharpen: false,
   }),
   medium: Object.freeze({
     id: 'medium',
@@ -85,11 +91,17 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     adaptiveFloor: 0.6,
     renderScale: 1,
     bloom: true,
+    bloomStrength: 0.52,
+    bloomLevels: 2,
     shadows: false,
     energyMaterials: true,
     renderGraph: false,
     engineTrails: true,
     particleQuality: 'medium',
+    frameCap: 0,
+    dynamicResolution: false,
+    postFx: true,
+    sharpen: false,
   }),
   high: Object.freeze({
     id: 'high',
@@ -97,11 +109,17 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     adaptiveFloor: 0.6,
     renderScale: 1,
     bloom: true,
+    bloomStrength: 0.52,
+    bloomLevels: 2,
     shadows: true,
     energyMaterials: true,
     renderGraph: true,
     engineTrails: true,
     particleQuality: 'high',
+    frameCap: 0,
+    dynamicResolution: false,
+    postFx: true,
+    sharpen: false,
   }),
   // E8 — designed for an integrated GPU, not "everything low". Bloom, trails, and energy
   // materials stay. The sun-shadow map stays off (it crawls at this texel size; contact
@@ -112,11 +130,40 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     adaptiveFloor: 0.5,
     renderScale: 0.75,
     bloom: true,
+    bloomStrength: 0.52,
+    bloomLevels: 2,
     shadows: false,
     energyMaterials: true,
     renderGraph: false,
     engineTrails: true,
     particleQuality: 'medium',
+    frameCap: 0,
+    dynamicResolution: false,
+    postFx: true,
+    sharpen: false,
+  }),
+  // Opt-in integrated-GPU bundle (PERF backlog #86–#94). Default picture stays Medium —
+  // this tier is never auto-applied; the game may only *suggest* it when detectGpu reports
+  // integrated. Bundling bloom/post cuts here is explicit player consent (PERF_WHAT_MATTERS
+  // forbids silent bloom-off as a default fix). Heavier than igpu60: 0.85 scale + sharpen,
+  // single bloom level, postFx off, dynres opt-in, 30 fps cap.
+  integrated: Object.freeze({
+    id: 'integrated',
+    label: 'Integrated GPU',
+    adaptiveFloor: 0.5,
+    renderScale: 0.85,
+    bloom: true,
+    bloomStrength: 0.28,
+    bloomLevels: 1,
+    shadows: false,
+    energyMaterials: true,
+    renderGraph: false,
+    engineTrails: true,
+    particleQuality: 'low',
+    frameCap: 30,
+    dynamicResolution: true,
+    postFx: false,
+    sharpen: true,
   }),
 });
 
@@ -138,12 +185,27 @@ export const QUALITY_PRESETS = Object.freeze([
       'frame cap 60',
     ]),
   }),
+  Object.freeze({
+    id: 'integrated',
+    label: 'Integrated GPU',
+    tier: 'integrated',
+    stays: Object.freeze(['bloom', 'engine trails', 'energy materials']),
+    substitutes: Object.freeze([
+      'render scale 0.85 + sharpen',
+      'single bloom level',
+      'post effects off',
+      'dynamic resolution on',
+      'frame cap 30',
+    ]),
+  }),
 ]);
 export const DEFAULT_QUALITY_PRESET = 'medium';
 
 const QUALITY_PRESET_IDS = new Set(QUALITY_PRESETS.map((p) => p.id));
 const PRESET_VIDEO_KEYS = Object.freeze([
-  'renderScale', 'bloom', 'shadows', 'energyMaterials', 'renderGraph', 'engineTrails', 'particleQuality',
+  'renderScale', 'bloom', 'bloomStrength', 'bloomLevels', 'shadows', 'energyMaterials',
+  'renderGraph', 'engineTrails', 'particleQuality', 'frameCap', 'dynamicResolution',
+  'postFx', 'sharpen',
 ]);
 
 /** The adaptive-quality tier a preset selects. An unknown id falls back to the default preset. */
@@ -174,13 +236,26 @@ export function applyQualityPreset(settings, presetId) {
   return { preset: tier.id, tier: tier.id, changed };
 }
 
+/** True when detectGpu reports an integrated GPU and the player is not already on that preset. */
+export function shouldSuggestIntegratedPreset(gpu, video = {}) {
+  if (!gpu || gpu.tier !== 'integrated') return false;
+  const preset = video && video.qualityPreset;
+  return preset !== 'integrated';
+}
+
+export const INTEGRATED_PRESET_SUGGESTION = Object.freeze({
+  text: 'Integrated GPU detected. Open Settings → Video and try the Integrated GPU preset for a smoother frame rate on this machine.',
+  kind: 'info',
+  ttl: 12,
+});
+
 // --- Frame cap --------------------------------------------------------------------------------
-// 30 / 60 / 120 / off, with VSync honoured. `off` (0) means "no explicit cap": with VSync on the
-// effective cap is the display refresh; with VSync off it is uncapped (0). A cap never exceeds the
-// display refresh — a 120 request on a 60 Hz panel resolves to 60. The controller mirrors the
+// 30 / 45 / 60 / 120 / off, with VSync honoured. `off` (0) means "no explicit cap": with VSync on
+// the effective cap is the display refresh; with VSync off it is uncapped (0). A cap never exceeds
+// the display refresh — a 120 request on a 60 Hz panel resolves to 60. The controller mirrors the
 // adaptive-resolution controller: it reports the effective cap through an `apply` callback and
 // never writes settings.video itself, so a settings edit and a runtime override stay separate.
-export const FRAME_CAP_OPTIONS = Object.freeze([30, 60, 120, 0]);
+export const FRAME_CAP_OPTIONS = Object.freeze([30, 45, 60, 120, 0]);
 
 export function normalizeFrameCap(value) {
   const n = Number(value);

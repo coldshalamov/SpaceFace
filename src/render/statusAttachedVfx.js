@@ -40,6 +40,9 @@ const STATUS_ROWS = Object.freeze({
     authoredLife: 0.7,
   }),
 });
+// Frozen id list — Object.keys(STATUS_ROWS) inside the entity loop allocated every
+// presented frame. Soft-GPU fps not claimed.
+const STATUS_ROW_IDS = Object.freeze([STATUS_ATTACHED_BURN_ID, STATUS_ATTACHED_GOO_ID]);
 
 function clamp(v, lo, hi) {
   const n = Number(v);
@@ -95,13 +98,17 @@ export function collectStatusAttachedVictims(state, out = []) {
   const px = player && player.pos ? Number(player.pos.x) || 0 : 0;
   const pz = player && player.pos ? Number(player.pos.z) || 0 : 0;
   _rankedUsed = 0;
-  for (const key of Object.keys(table)) {
+  // for...in over the combat table — Object.keys(table) allocated a fresh array
+  // every presented frame (contradicted the alloc-free contract above). Soft-GPU
+  // fps not claimed.
+  for (const key in table) {
     const runtime = table[key];
     const statuses = runtime && runtime.statuses;
     if (!statuses) continue;
     const entity = entities.get(key) || entities.get(Number(key));
     if (!entity || entity.alive === false || !entity.pos) continue;
-    for (const statusId of Object.keys(STATUS_ROWS)) {
+    for (let si = 0; si < STATUS_ROW_IDS.length; si++) {
+      const statusId = STATUS_ROW_IDS[si];
       const active = statuses[statusId];
       const remainingS = statusRemainingSeconds(active, tick);
       if (!(remainingS > 0)) continue;

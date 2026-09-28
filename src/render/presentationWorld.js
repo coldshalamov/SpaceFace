@@ -37,6 +37,18 @@ function clampCellIndex(value) {
 }
 const EMPTY_OBJECT = Object.freeze({});
 
+// Quiet syncEntityViews → refreshVisibleEntity: when the entity ref and all pose /
+// metadata scalars already match the slot, skip re-assigns and dirty bookkeeping.
+// Bench-only toggle restores the always-write path for A/B microbench.
+let PRESENTATION_WORLD_UNCHANGED_REFRESH_SKIP = true;
+export function setPresentationWorldUnchangedRefreshSkipForBench(enabled) {
+  PRESENTATION_WORLD_UNCHANGED_REFRESH_SKIP = enabled !== false;
+  return PRESENTATION_WORLD_UNCHANGED_REFRESH_SKIP;
+}
+export function getPresentationWorldUnchangedRefreshSkipForBench() {
+  return PRESENTATION_WORLD_UNCHANGED_REFRESH_SKIP !== false;
+}
+
 function finite(value) {
   return Number.isFinite(value) ? value : 0;
 }
@@ -354,6 +366,10 @@ export function createPresentationWorld(options = {}) {
       || world.bank[slot] !== nextBank || world.pitch[slot] !== nextPitch
       || world.prevRot[slot] !== nextPrevRot || world.prevBank[slot] !== nextPrevBank
       || world.prevPitch[slot] !== nextPrevPitch;
+    // When the skip path is on, identical pose scalars skip re-assigns (and
+    // refreshVisibleEntity may have already returned). Toggle off restores the
+    // prior always-write behavior for A/B microbench.
+    if (PRESENTATION_WORLD_UNCHANGED_REFRESH_SKIP && !changed) return false;
     const gridChanged = world.x[slot] !== nextX || world.z[slot] !== nextZ;
     world.prevX[slot] = nextPrevX;
     world.prevY[slot] = nextPrevY;
@@ -368,7 +384,7 @@ export function createPresentationWorld(options = {}) {
     world.bank[slot] = nextBank;
     world.pitch[slot] = nextPitch;
     if (gridChanged && world.alive[slot]) insertIntoGrid(slot);
-    return changed;
+    return true;
   }
 
   function writePoseValues(slot, source) {
@@ -663,6 +679,37 @@ export function createPresentationWorld(options = {}) {
 
   function refreshVisibleEntity(slot, entity, visualRadius = null) {
     if (slot < 0 || slot >= world.capacity || world.alive[slot] !== 1 || !entity) return false;
+    if (PRESENTATION_WORLD_UNCHANGED_REFRESH_SKIP && world.entityRefs[slot] === entity) {
+      const value = entity;
+      const pos = value.pos && typeof value.pos === 'object' ? value.pos : EMPTY_OBJECT;
+      const prevPos = value.prevPos && typeof value.prevPos === 'object' ? value.prevPos : pos;
+      const nextX = finite(pos.x);
+      const nextY = finite(pos.y);
+      const nextZ = finite(pos.z);
+      const nextPrevX = Number.isFinite(prevPos.x) ? prevPos.x : nextX;
+      const nextPrevY = Number.isFinite(prevPos.y) ? prevPos.y : nextY;
+      const nextPrevZ = Number.isFinite(prevPos.z) ? prevPos.z : nextZ;
+      const nextRot = finite(value.rot);
+      const nextBank = finite(value.bank);
+      const nextPitch = finite(value.pitch);
+      const nextPrevRot = Number.isFinite(value.prevRot) ? value.prevRot : nextRot;
+      const nextPrevBank = Number.isFinite(value.prevBank) ? value.prevBank : nextBank;
+      const nextPrevPitch = Number.isFinite(value.prevPitch) ? value.prevPitch : nextPitch;
+      const nextType = typeCode(entity.type);
+      const nextFlags = presentationFlags(entity);
+      const candidateRadius = Number.isFinite(visualRadius) ? visualRadius : Number(entity.radius);
+      const nextRadius = Math.max(0, Number.isFinite(candidateRadius) ? candidateRadius : 0);
+      if (world.x[slot] === nextX && world.y[slot] === nextY && world.z[slot] === nextZ
+        && world.prevX[slot] === nextPrevX && world.prevY[slot] === nextPrevY
+        && world.prevZ[slot] === nextPrevZ && world.rot[slot] === nextRot
+        && world.bank[slot] === nextBank && world.pitch[slot] === nextPitch
+        && world.prevRot[slot] === nextPrevRot && world.prevBank[slot] === nextPrevBank
+        && world.prevPitch[slot] === nextPrevPitch
+        && world.typeCodes[slot] === nextType && world.flags[slot] === nextFlags
+        && world.radii[slot] === nextRadius) {
+        return false;
+      }
+    }
     const changed = writeEntityPose(slot, entity);
     refreshMetadata(slot, entity, visualRadius);
     if (changed) {

@@ -98,7 +98,11 @@ export class DistortionField {
       this._cursor = (this._cursor + 1) % this.capacity;
     }
     const s = this.slots[slot];
+    // Quiet settled flight: update walked CAP + needsUpdate/commit every frame.
+    // Trust live (spawn ++ when taking a dead slot / retire --); picture unchanged at 0.
+    const wasAlive = !!s.alive;
     s.alive = 1;
+    if (!wasAlive) this.live += 1;
     s.x = x || 0; s.y = y || 0; s.z = z || 0;
     s.radius = radius || 3;
     s.strength = Number.isFinite(strength) ? strength : 1;
@@ -116,6 +120,11 @@ export class DistortionField {
     this.material.uniforms.uTime.value = Number.isFinite(clock)
       ? clock
       : this.material.uniforms.uTime.value + (Number.isFinite(dt) ? dt : 0);
+    // Quiet path: capacity walk + attr needsUpdate when live===0 was pure CPU;
+    // mesh already count=0/visible=false after the frame that retired the last slot.
+    // uTime still advances above so a later spawn resumes with a current clock.
+    // Keep one idle publish when mesh.count>0 so external clears (well sync) still hide.
+    if (!(this.live > 0) && !(this.mesh.count > 0)) return 0;
     let live = 0;
     for (let i = 0; i < this.capacity; i++) {
       const s = this.slots[i];
@@ -123,6 +132,7 @@ export class DistortionField {
       s.age += dt;
       if (s.age >= s.life) {
         s.alive = 0;
+        this.live = Math.max(0, this.live - 1);
         continue;
       }
       const fade = 1 - s.age / s.life;
@@ -147,5 +157,7 @@ export class DistortionField {
   dispose() {
     this.geometry.dispose();
     this.material.dispose();
+    this.live = 0;
+    for (const s of this.slots) s.alive = 0;
   }
 }

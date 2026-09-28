@@ -1,3 +1,132 @@
+# IMPORT ledger — 20260928 owner-side import (devin-w3-vm-skips, board §1C row 27)
+
+Quiet `*-skip` vein — the remaining live/empty/callsite skip-class folders: live-count
+early-outs, idle-commit latches, settled fast paths, and the four-package camera-clearance
+series. Landed this pass (16 folders across 8 commits):
+
+| Folder | Commit | Check |
+|---|---|---|
+| `camera-clearance-asteroid-span-reject` | `6a338aaa4` | new floor-retain suite 10/10; camera battery 70/71 (sole red pre-existing, see D86) |
+| `camera-clearance-never-roof-exclude` | `6a338aaa4` | same commit/suite |
+| `camera-clearance-floor-retain` | `6a338aaa4` | same commit/suite |
+| `camera-clearance-floor-retain-pos-quantize` | `6a338aaa4` | same commit/suite |
+| `distortion-field-quiet-live-skip` | `3af643467` | vfx-well-distortion + well-distortion-quiet-empty-latch 13/13 |
+| `hull-scorch-quiet-live-skip` | `27271eb91` | vfx-weapon-variation + inference-pic-09 8/8 |
+| `micromotion-settled-skip` | `17e55ceec` | named 5-file battery 33/33 |
+| `presentation-world-unchanged-refresh-skip` | `8fd2c0ce3` | new focused 6/6 inside 6-file battery 19/19 (hand-merged) |
+| `plasma-stream-cold-reset-skip` | `d36a7e799` | plasma-stream-thruster + pq-193-02-reverse-jets 27/27 |
+| `rcs-impulse-quiet-empty-skip` | `e53d95400` | thruster-propulsion-vocabulary + dynamic-buffer-ranges + vp220-p2 71/71 |
+| `phased-explosion-quiet-active-skip` | `55e76f7db` | persistent-combat-beam-pool + explosion-rupture + entity-killed-receipt 24/24 |
+| `persistent-beams-quiet-active-skip` | `55e76f7db` | same commit/suite |
+| `shadow-caster-pose-quiet-skip` | `10f58da7e` | shadow-caster-policy 9/9 + entity-view-sync-band 2/2 (hand-merged) |
+| `stunt-flight-history-quiet-skip` | `fdeb30715` | new focused 3/3; full stunt suite 48/48 (adapted merge — see notes) |
+| `particles-idle-commit-skip` | `1295da41f` | vfx-save-restore-destroy + quarks-vfx-system + vfx-structured-transients green |
+| `sprites-idle-commit-skip` | `1295da41f` | focused 3/3 + vfx-instanced-sprite-pool green |
+| `persistent-beams-quiet-callsite-skip` | `1295da41f` | focused 3/3 (test adapted to master's BEAM_COOLING_S release lifecycle) |
+| `swing-trace-quiet-idle-skip` | `1295da41f` | focused 3/3 (hand-merged onto drifted init block) |
+
+Already on master / landed by sibling wave — not re-imported:
+
+- `arcade-structural-fx-quiet-live-skip` — `ce20d6d19` (verified marker + commit)
+- `tumble-body-language-quiet-skip` — `7e5af81ee` (wave E landed it live mid-pass;
+  confirmed via `git show --stat`)
+
+Skipped: none — no folder targeted `src/ui/**`/`styles/**`, none HOLD-marked, none
+obsolete outright (drifted packages were merged, not dropped).
+
+Merge notes:
+
+- Camera series (×4): `git apply --3way` impossible (missing base blobs) and the
+  exported hunks expected a box-returning `cameraClearanceBoxForMesh`; master has
+  record-returning `{box, grid}` + occupancy grid + `clearanceBoundUnsettled` gate +
+  `CAMERA_CLEARANCE_MAX_SPAN_WU`. Ported intent: asteroid scale×2.5 span hint
+  rejects under-120 WU rocks before `setFromObject`; sticky `neverRoof` bit +
+  structural-list exclude; `_clearanceBoxEpoch` bumped on both record-write paths;
+  `cameraClearanceFloorWalk()` extracted once and shared by retain/always-walk
+  paths; retain key quantizes cam X/Y/Z to the authored-instance 0.25 WU cull cell
+  while exact floats still drive the walk. Under-roof retained results re-validate
+  authored stamps; off-roof (-Infinity) trusts cam identity — matching the package.
+- `presentation-world-unchanged-refresh-skip`: exported `yawSin`/`yawCos` repair
+  guards dropped (master no longer packs yaw sin/cos in `writePoseScalars`);
+  same-ref+identical-scalar early-outs kept; `writePoseScalars` tail now `return true`
+  (always-write A/B semantics per the package). Ships the exported 157-line test.
+- `shadow-caster-pose-quiet-skip`: package base still gated the shadow blocks on
+  `runClosures`; master dropped that gate — call-site wrap applied to master's
+  ungated blocks, `poseApplied` captures the apply-branch result only (master's
+  completed-pose validity check does not count as an apply).
+- `stunt-flight-history-quiet-skip`: exported patch stacks on threat-index lanes
+  (#40) + odd-tick discovery cadence (#49), neither on master. Ported with master's
+  live `entityIndex.projectiles` lane as the O(1) empty-lane read; post-scan
+  early-out skips frame alloc + 32-body near walk + history push; threat discovery
+  and `j.pressure` keep master's every-tick cadence; PQ-210.01 `THREAT_SCAN_RANGE_SQ`
+  prefilter preserved. Shipped test passes verbatim (3/3).
+- `persistent-beams-quiet-callsite-skip` test adapted: remote base released on
+  `stop()` immediately; master keeps a stopping beam active through
+  `BEAM_COOLING_S` (0.26 s) — the test now drives the pool clock past the cool
+  before asserting the quiet return.
+- `sprites-idle-commit-skip` patch also carried `artifacts/` bench receipts —
+  applied, then removed (evidence files, not production code; nothing committed).
+
+Pre-existing reds observed (verified on bare master, logged as D86 in
+`design/program/DEMO_READINESS_2026-09-20.md` §6):
+
+- `test/kestrel-production-thruster-bind.test.mjs` ×3 — committed test pins GLSL
+  `crossFilaments` the committed shader lacks (stale-ahead test from `94e336133`).
+- `test/dense-scene-camera-legibility.test.mjs` H3 —
+  `playerHasActiveAttackerFraming` gating drifted vs the attacker fixture.
+
+Board §1C row 27 and the devin-w3-vm-skips NOW row are deleted in the bookkeeping
+commit closing this wave.
+
+# IMPORT ledger — 20260928 owner-side import (devin-w3-vm-latche, board §1C row 26)
+
+Quiet-latch render/sim wave E — the remaining quiet-latch vein folders the earlier
+latch waves left. Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `seam-markers-quiet-hide-latch` | `32a171444` | dynamic-buffer-ranges 24/24 + trail-streak-instancing + vfx-additive-single-pass + `check:thruster:propulsion-family` 68/68 |
+| `status-attached-quiet-empty-latch` | `ed26d8d5b` | focused `status-attached-vfx` 4/4 (DONE-named `inf-045-target-contour.test.mjs` does not exist on this checkout) |
+| `tumble-body-language-quiet-skip` | `7e5af81ee` | pitch/tumble battery 42/42 (hand-merged onto master's newer `updateShipPitchPresentation` signature) |
+| `trail-emit-idle-drive-walk` | `4d4813380` | trail/thruster battery 74/74 (hand-merged) |
+| `npc-job-signatures-quiet-sleep-latch` | `8def07219` | focused 4/4 (hand-merged; the row-20/24 trap cleared once sibling latch resets + fatlist refactor were both on master) |
+| `projectile-trails-quiet-empty-latch` | `a58d7807e` | focused 4/4 |
+| `overlay-quartet-quiet-empty-latch` | `4bf905096` | focused 6/6 (the row-22 deferral resolved — its #122 dependency landed above) |
+| `speed-lines-quiet-idle-latch` | `3cdf60fc0` | focused latch 3/3 + named 9-file battery 29 pass/0 fail |
+
+Already on master before this pass (verified by marker/commit, no re-import):
+
+- `sanctuary-empty-quiet-latch` — `892cb7150`
+- `pending-detonations-quiet-empty-latch` — `a98e4cd99`
+- `countermeasures-quiet-empty-latch` — `180372926` (+ sibling-contract hardening
+  `cf3f8272f`); focused `countermeasures-quiet-empty-latch` 8/8 on master
+- `pirate-disengage-empty-quiet-latch` — `5a90fb13b` (+ hardening `f758ba0ca`)
+- `pirate-parley-empty-quiet-latch` — `c3ef771e2` (+ hardening `f758ba0ca`)
+- `salvage-unstable-quiet-empty-latch` — `47af49265`
+- `tactical-ai-quiet-latch` — `371c52dcb`
+- `tumble-states-quiet-latch` — `833ca50f0` (incl. `impulseProvenanceGeneration`
+  wake in `src/combat/impulseKernel.js`)
+
+Skipped this pass:
+
+- `poi-scan-all-identified-quiet-latch` — sole src hunk edits `src/systems/world.js`,
+  which is under a live foreign claim this pass; left untouched for that lane.
+
+Merge notes:
+
+- `tumble-body-language-quiet-skip`: patch predates master's two-argument
+  `updateShipPitchPresentation`; only the pitch-presentation epoch + vfx wake hunks
+  were ported, master's signature/behavior preserved.
+- `trail-emit-idle-drive-walk` and `npc-job-signatures-quiet-sleep-latch`:
+  hand-merged onto drifted `vfx.js` reset lines / `npcJobsRuntime` fatlist-era
+  dispatch; `+` insertions preserved, master's newer resets kept.
+- `countermeasures-quiet-empty-latch` apply was aborted mid-3way on discovering the
+  package already landed hardened; tree restored clean, nothing re-applied.
+
+Every `*-quiet-latch` vein folder is now dispositioned across waves A–E: landed,
+verified already-on-master, or recorded as skipped-with-reason. Remaining
+`*-skip`/HOLD/report folders belong to rows 27/28/30 or the HOLD list — untouched.
+
 # IMPORT ledger — 20260928 owner-side import (devin-w2-vm-latchb, board §1C row 23)
 
 Quiet-latch vein B (`combat-*` / `weapon-*` / `bombs-*` / `bomb-*` / `quarks-*` /

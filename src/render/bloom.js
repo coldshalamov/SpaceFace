@@ -264,18 +264,31 @@ export function resolveEffectiveSectorPost(video = {}, sectorPost = null, fallba
     return finiteNumber(defaults[key]);
   };
 
+  // postFx is an opt-in kill switch for grade/vignette/grain (integrated preset). Default
+  // remains on so the shipped picture is unchanged unless the player picks that preset.
+  const postFx = settings.postFx !== false;
+  const grade = postFx ? presentation('grade') : 0;
+  const vignette = postFx ? presentation('vignette') : 0;
+  const toe = postFx ? presentation('toe') : 0;
+  const grain = postFx ? presentation('grain') : 0;
+
   return {
     bloom: typeof settings.bloom === 'boolean' ? settings.bloom : defaults.bloom,
     bloomStrength: Math.max(0, Math.min(1, bloomStrength * strengthScale)),
     bloomThreshold: Math.max(0, bloomThreshold + thresholdBias),
+    bloomLevels: Number.isFinite(settings.bloomLevels)
+      ? Math.max(1, Math.min(BALANCED_BLOOM_MAX_LEVELS, settings.bloomLevels | 0))
+      : BALANCED_BLOOM_MAX_LEVELS,
     exposure: playerExposure !== undefined
       ? playerExposure
       : (sectorExposure !== undefined ? sectorExposure : fallbackExposure),
     acesToneMapping: settings.acesToneMapping !== false,
-    grade: presentation('grade'),
-    vignette: presentation('vignette'),
-    toe: presentation('toe'),
-    grain: presentation('grain'),
+    postFx,
+    sharpen: settings.sharpen === true,
+    grade,
+    vignette,
+    toe,
+    grain,
   };
 }
 
@@ -802,7 +815,9 @@ const DOWNSAMPLE_FRAG = /* glsl */`
   precision highp float;
   varying vec2 vUv;
   uniform sampler2D tDiffuse;
-  uniform vec2 uTexel;     // 1.0 / source resolution (full for level 0, ½ for level 1, …)
+  uniform vec2 uTexel;     // 1.0 / allocated source size (content packed at origin)
+  uniform vec2 uUvScale;   // contentSize / allocatedSize — remaps vUv into the active sub-rect
+  uniform vec2 uUvOffset;  // usually (0,0); content origin in texture UV
   uniform float uThreshold;
   uniform float uKnee;
   uniform float uBright;   // 1.0 = apply bright-pass (level 0 only), 0.0 = passthrough
@@ -824,18 +839,20 @@ const DOWNSAMPLE_FRAG = /* glsl */`
   }
 
   void main() {
-    // 5-tap cross + corners, gathered with bilinear-friendly offsets. x/y use the SOURCE texel size so
-    // the footprint shrinks correctly at each pyramid level.
+    // Dyn-res content lives in a viewport sub-rect of a max-sized target. Remap the
+    // fullscreen-quad UV into that sub-rect before gathering; uTexel is one allocated
+    // texel in texture UV (equal to one content pixel when packed at the origin).
+    vec2 base = vUv * uUvScale + uUvOffset;
     vec2 t = uTexel;
     vec2 tl = vec2(-1.0, -1.0) * t;
     vec2 tr = vec2( 1.0, -1.0) * t;
     vec2 bl = vec2(-1.0,  1.0) * t;
     vec2 br = vec2( 1.0,  1.0) * t;
-    vec3 sum  = tap(vUv)            * (4.0 / 8.0);
-    sum += tap(vUv + tl)            * (1.0 / 8.0);
-    sum += tap(vUv + tr)            * (1.0 / 8.0);
-    sum += tap(vUv + bl)            * (1.0 / 8.0);
-    sum += tap(vUv + br)            * (1.0 / 8.0);
+    vec3 sum  = tap(base)            * (4.0 / 8.0);
+    sum += tap(base + tl)            * (1.0 / 8.0);
+    sum += tap(base + tr)            * (1.0 / 8.0);
+    sum += tap(base + bl)            * (1.0 / 8.0);
+    sum += tap(base + br)            * (1.0 / 8.0);
     gl_FragColor = vec4(sum, 1.0);
   }
 `;
@@ -870,27 +887,55 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform float uGrade;     // color-grade blend 0..1 (0 = off, 1 = full cyberpunk-noir LUT)
   uniform float uToe;       // lifted black floor 0..0.06 (0 = true blacks, the default)
   uniform float uGrainFrame;
+  uniform float uSharpen; // 0 = off (default picture); >0 = cheap unsharp after compose
+  uniform vec2 uSceneTexel; // 1/allocated scene size (WebGL1-safe; no textureSize)
 
   ${SPACE_POST_PRESENTATION_GLSL}
 
+  uniform vec2 uUvScale;   // contentSize / allocatedSize for tScene / pyramid sub-rects
+  uniform vec2 uUvOffset;
+
   void main() {
-    vec2 sceneUv = vUv;
+    // Stretch the active content sub-rect across the full presentation buffer. Vignette/grain
+    // still use screen vUv so corner treatment follows the displayed frame, not the RT packing.
+    vec2 sceneUv = vUv * uUvScale + uUvOffset;
     if (uDistortion > 0.5) {
       // Native DistortionField encodes signed displacement in RG and coverage in B.
       // The neutral clear is (0.5, 0.5, 0); empty texels never bend the scene.
+      // Displacement is authored in screen-UV fractions; uUvScale converts it into the
+      // content sub-rect so a dyn-res frame bends by the same fraction of the picture.
       vec3 distortion = texture2D(tDistortion, vUv).rgb;
-      sceneUv = clamp(vUv + (distortion.xy * 2.0 - 1.0)
-        * step(1e-5, distortion.z), vec2(0.0), vec2(1.0));
+      sceneUv = clamp(sceneUv + (distortion.xy * 2.0 - 1.0)
+        * step(1e-5, distortion.z) * uUvScale, vec2(0.0), vec2(1.0));
     }
     vec3 scene = sampleSpaceIllustratedScene(tScene, sceneUv);
     // Multi-scale bloom: fine local brights + hardware-bilinear coarse halo (no upsample RT).
-    vec3 bloom = texture2D(tBloom0, vUv).rgb * uBloomW0
-               + texture2D(tBloom1, vUv).rgb * uBloomW1;
+    // Pyramid targets share the same content/allocated ratio, so one UV remap serves all.
+    vec3 bloom = texture2D(tBloom0, sceneUv).rgb * uBloomW0
+               + texture2D(tBloom1, sceneUv).rgb * uBloomW1;
     vec3 spill = bloom * uStrength * uBloomNorm;
-    gl_FragColor = vec4(composeSpacePostPresentation(
+    vec3 color = composeSpacePostPresentation(
       scene, spill, vUv, gl_FragCoord.xy, uExposure, uAces,
       uGrade, uToe, uVignette, uGrain, uGrainFrame
-    ), 1.0);
+    );
+    // Opt-in sharpen for renderScale < 1 (integrated preset). Neighbour average unsharp —
+    // no extra RT. uSharpen defaults to 0 so the shipped picture is byte-identical. The taps
+    // read the scene inside the content sub-rect (sceneUv space); uSceneTexel is one allocated
+    // texel so the neighbourhood stays one content pixel even under dyn-res.
+    if (uSharpen > 0.001) {
+      vec2 texel = uSceneTexel;
+      vec3 blur = (
+        texture2D(tScene, clamp(sceneUv + vec2(texel.x, 0.0), vec2(0.0), uUvScale)).rgb +
+        texture2D(tScene, clamp(sceneUv - vec2(texel.x, 0.0), vec2(0.0), uUvScale)).rgb +
+        texture2D(tScene, clamp(sceneUv + vec2(0.0, texel.y), vec2(0.0), uUvScale)).rgb +
+        texture2D(tScene, clamp(sceneUv - vec2(0.0, texel.y), vec2(0.0), uUvScale)).rgb
+      ) * 0.25;
+      // Sharpen the composed LDR color using a scene-luma proxy so we don't re-tonemap.
+      float sharpLuma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+      float blurLuma = dot(blur, vec3(0.2126, 0.7152, 0.0722));
+      color = clamp(color + (sharpLuma - blurLuma) * uSharpen, 0.0, 1.0);
+    }
+    gl_FragColor = vec4(color, 1.0);
   }
 `;
 
@@ -1145,7 +1190,7 @@ export function createUnreadyDrawableGuard(renderer) {
  *        GPU timers are capability-gated and only emit when the timer set is enabled.
  * @returns {{ render(scene,camera):void, compileScenePipelines(subject,camera,lightingScene):Promise,
  *            warmScenePipelines(subject,camera,lightingScene):Promise,
- *            setSize(w,h):void, setOptions(o):void, dispose():void,
+ *            setSize(w,h):void, setContentScale(s):void, setOptions(o):void, dispose():void,
  *            get enabled():boolean, set enabled(v):void }}
  */
 export function createBloom(renderer, width, height, instrumentation = null) {
@@ -1156,6 +1201,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // tunables (overridable via setOptions; defaults match settings.video.*)
   let enabled = true;
   let strength = DEFAULT_BLOOM_STRENGTH;
+  let maxLevelsCap = BALANCED_BLOOM_MAX_LEVELS;
+  let sharpenAmount = 0;
   let threshold = 1.0;
   const knee = 0.25;
   let exposure = 1.0;
@@ -1170,6 +1217,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // rtScene is full-res (needs a depth buffer for the scene render). The pyramid targets halve each
   // level (½→¼). There is no separate upsample RT: the composite samples the pyramid multi-scale.
   // Targets allocate at init/resize/context-restore or producer attachment, never inside render().
+  // Dyn-res scale changes use setContentScale (viewport sub-rects) and must not call setSize.
   // All HalfFloat + linear colorSpace (default) so brights exceed 1.0.
   // Reuse one options object so we do not allocate a fresh descriptor on every RT create/resize.
   const pyramidRtOpts = {
@@ -1199,6 +1247,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let rtPost = null;
   // A below-display-resolution frame runs CasFilter; a full-res frame skips it entirely.
   let casActive = false;
+  // The display footprint the CAS gate compares against is owned by the caller (renderer
+  // passes it to setSize). Cache it so internal re-entry (a bloomLevels cap change from
+  // setOptions re-running setSize at the same buffer size) keeps the same gate inputs.
+  let casDisplayW = 0;
+  let casDisplayH = 0;
 
   // The bloom path already presents through a post composite, so multisampling the full-resolution HDR
   // scene target adds a costly resolve before the downsample/composite chain. Keep the offscreen target
@@ -1215,8 +1268,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   function levelCountForSize(w, h) {
     const halfW = Math.max(1, w >> 1);
     const halfH = Math.max(1, h >> 1);
+    const cap = Math.max(1, Math.min(BALANCED_BLOOM_MAX_LEVELS, maxLevelsCap | 0));
     if (halfW < 320 || halfH < 180) return 1;
-    return BALANCED_BLOOM_MAX_LEVELS;
+    return cap;
   }
 
   function allocRenderTarget(w, h, opts, reason) {
@@ -1246,6 +1300,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   let { rtScene, halfW, halfH, levels, down } = createRenderTargets();
+  // Dyn-res content scale: targets stay allocated at max (W×H). Scaled frames render into an
+  // origin-aligned viewport sub-rect; setContentScale never calls setSize/realloc.
+  let contentScale = 1;
+  let contentW = W;
+  let contentH = H;
 
   // Producers own bounded effect geometry; this compositor owns only their shared vector target.
   // Allocate on attachment so prepareResources admits it before combat, never on the first shot.
@@ -1341,6 +1400,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   const downsampleMat = mkMat(DOWNSAMPLE_FRAG, {
     tDiffuse: { value: null },
     uTexel: { value: new THREE.Vector2(1 / W, 1 / H) },     // set per level in render()
+    uUvScale: { value: new THREE.Vector2(1, 1) },
+    uUvOffset: { value: new THREE.Vector2(0, 0) },
     uThreshold: { value: threshold },
     uKnee: { value: knee },
     uBright: { value: 1.0 },                                // 1.0 only on level 0
@@ -1362,6 +1423,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     uGrade:     { value: grade },     // teal-shadow/amber-highlight color grade
     uToe:       { value: toe },       // lifted black floor (0 = true blacks)
     uGrainFrame: { value: 0 },
+    uUvScale: { value: new THREE.Vector2(1, 1) },
+    uUvOffset: { value: new THREE.Vector2(0, 0) },
+    uSharpen:    { value: 0 },        // 0 = default picture; integrated preset opt-in
+    uSceneTexel: { value: new THREE.Vector2(1 / W, 1 / H) },
   });
   // CAS needs GLSL3 (texelFetch, uvec4 bit-cast uniforms) — the only GLSL3 material in the chain.
   const casMat = new THREE.ShaderMaterial({
@@ -1386,11 +1451,44 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
   applyPostStyleUniforms();
 
-  // draw the shared quad with a given material into a given target (null = screen)
-  function blit(material, target) {
+  // draw the shared quad with a given material into a given target (null = screen).
+  // Optional viewW/viewH restrict the write to an origin-aligned content sub-rect of a
+  // max-sized target (dyn-res). Omit both for a full-target / full-framebuffer blit.
+  function blit(material, target, viewW = null, viewH = null) {
     quadMesh.material = material;
     renderer.setRenderTarget(target);
-    renderer.render(quadScene, quadCam);
+    const useSubRect = viewW != null && viewH != null
+      && Number.isFinite(viewW) && Number.isFinite(viewH);
+    let prevViewport = null;
+    let prevScissor = null;
+    let prevScissorTest = null;
+    if (useSubRect && typeof renderer.getViewport === 'function') {
+      prevViewport = renderer.getViewport(new THREE.Vector4());
+      prevScissor = typeof renderer.getScissor === 'function'
+        ? renderer.getScissor(new THREE.Vector4())
+        : null;
+      prevScissorTest = typeof renderer.getScissorTest === 'function'
+        ? renderer.getScissorTest()
+        : null;
+    }
+    if (useSubRect) {
+      if (typeof renderer.setViewport === 'function') renderer.setViewport(0, 0, viewW, viewH);
+      if (typeof renderer.setScissor === 'function') renderer.setScissor(0, 0, viewW, viewH);
+      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(true);
+    } else if (typeof renderer.setScissorTest === 'function') {
+      renderer.setScissorTest(false);
+    }
+    try {
+      renderer.render(quadScene, quadCam);
+    } finally {
+      if (useSubRect && prevViewport) {
+        renderer.setViewport(prevViewport);
+        if (prevScissor && typeof renderer.setScissor === 'function') renderer.setScissor(prevScissor);
+        if (prevScissorTest != null && typeof renderer.setScissorTest === 'function') {
+          renderer.setScissorTest(prevScissorTest);
+        }
+      }
+    }
   }
 
   function releaseBloomSceneSamplers() {
@@ -1636,11 +1734,17 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       releaseBloomSceneSamplers();
       hideUnreadySceneDrawables(scene);
       renderer.setRenderTarget(rtScene);
+      // Content sub-rect: scale changes never resize rtScene; they only shrink this viewport.
+      // The viewport persists on the target, which is exactly what the next pass wants too.
+      if (typeof renderer.setViewport === 'function') renderer.setViewport(0, 0, contentW, contentH);
+      if (typeof renderer.setScissor === 'function') renderer.setScissor(0, 0, contentW, contentH);
+      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(true);
       // rtScene has stencilBuffer:false and the context is stencil-free — clearing the stencil
       // bit is a spec no-op that still pays a stencil.setMask GL state write.
       renderer.clear(true, true, false);
       renderer.render(scene, camera);
-      if (tier1) tier1.countRenderPassPixels(rtScene.width * rtScene.height, 'bloom-scene');
+      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(false);
+      if (tier1) tier1.countRenderPassPixels(contentW * contentH, 'bloom-scene');
     } finally {
       restoreUnreadySceneDrawables();
       renderer.autoClear = prevAutoClear;
@@ -1693,8 +1797,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       releaseBloomSceneSamplers();
       hideUnreadySceneDrawables(scene);
       renderer.setRenderTarget(rtScene);
+      if (typeof renderer.setViewport === 'function') renderer.setViewport(0, 0, contentW, contentH);
+      if (typeof renderer.setScissor === 'function') renderer.setScissor(0, 0, contentW, contentH);
+      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(true);
       renderer.clear(true, true, false);
       renderer.render(scene, camera);
+      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(false);
       rememberBloomGeometries(scene);
       // The rehearsal's GL work sits in the driver's queue until something forces the flush —
       // without a drain here the deferred cost lands inside the presented frame it exists to
@@ -1711,14 +1819,22 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   function renderDownsamplePass(tier1) {
     let src = rtScene.texture;
     for (let i = 0; i < levels; i++) {
-      const sw = i === 0 ? W : Math.max(1, W >> i);
-      const sh = i === 0 ? H : Math.max(1, H >> i);
+      // Allocated source size (max pool) vs active content size (dyn-res sub-rect).
+      const allocW = i === 0 ? W : Math.max(1, W >> i);
+      const allocH = i === 0 ? H : Math.max(1, H >> i);
+      const srcContentW = i === 0 ? contentW : Math.max(1, contentW >> i);
+      const srcContentH = i === 0 ? contentH : Math.max(1, contentH >> i);
+      const dstContentW = Math.max(1, contentW >> (i + 1));
+      const dstContentH = Math.max(1, contentH >> (i + 1));
       downsampleMat.uniforms.tDiffuse.value = src;
-      downsampleMat.uniforms.uTexel.value.set(1 / sw, 1 / sh);
+      // One allocated texel in texture UV == one content pixel when packed at the origin.
+      downsampleMat.uniforms.uTexel.value.set(1 / allocW, 1 / allocH);
+      downsampleMat.uniforms.uUvScale.value.set(srcContentW / allocW, srcContentH / allocH);
+      downsampleMat.uniforms.uUvOffset.value.set(0, 0);
       downsampleMat.uniforms.uThreshold.value = threshold;
       downsampleMat.uniforms.uBright.value = (i === 0) ? 1.0 : 0.0;
-      blit(downsampleMat, down[i]);
-      if (tier1) tier1.countRenderPassPixels(down[i].width * down[i].height, 'bloom-downsample');
+      blit(downsampleMat, down[i], dstContentW, dstContentH);
+      if (tier1) tier1.countRenderPassPixels(dstContentW * dstContentH, 'bloom-downsample');
       src = down[i].texture;
     }
   }
@@ -1745,8 +1861,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
       compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * POST_GRAIN_FPS);
     }
+    compositeMat.uniforms.uUvScale.value.set(contentW / W, contentH / H);
+    compositeMat.uniforms.uUvOffset.value.set(0, 0);
     // Below-res frame: composite presents into rtPost, then CasFilter sharpens it to screen.
     // Full-res: composite writes the canvas directly — no extra target, no extra pass.
+    // Either way it is a full presentation-buffer blit — the content sub-rect is stretched
+    // via uUvScale inside the shader.
     const sharpen = casActive && rtPost;
     blit(compositeMat, sharpen ? rtPost : null);
     if (tier1) tier1.countRenderPassPixels(W * H, 'bloom-composite');
@@ -1880,6 +2000,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     halfH = next.halfH;
     levels = next.levels;
     down = next.down;
+    contentW = Math.max(1, Math.round(W * contentScale));
+    contentH = Math.max(1, Math.round(H * contentScale));
     if (casActive) rtPost = allocRenderTarget(W, H, postRtOpts, 'contextRestore');
     if (rtDistortion) {
       rtDistortion.dispose();
@@ -1900,14 +2022,19 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   function setSize(w, h, displayW, displayH) {
     const nextW = Math.max(1, w | 0);
     const nextH = Math.max(1, h | 0);
+    if (Number.isFinite(displayW) && displayW > 0) casDisplayW = displayW;
+    if (Number.isFinite(displayH) && displayH > 0) casDisplayH = displayH;
     // The gate re-evaluates on every call — dynamic resolution can flip a frame below display
     // res without the buffer size changing class, and a stale flag is a silent miss.
-    casActive = resolveCasSharpenActive(nextW, nextH, displayW, displayH);
+    casActive = resolveCasSharpenActive(nextW, nextH, casDisplayW, casDisplayH);
     if (nextW !== W || nextH !== H) {
       W = nextW;
       H = nextH;
       halfW = Math.max(1, W >> 1);
       halfH = Math.max(1, H >> 1);
+      if (compositeMat.uniforms.uSceneTexel) {
+        compositeMat.uniforms.uSceneTexel.value.set(1 / W, 1 / H);
+      }
       const newLevels = levelCountForSize(W, H);
       resizeRenderTarget(rtScene, W, H, 'resize');
       // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
@@ -1922,13 +2049,30 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       }
       if (rtPost) resizeRenderTarget(rtPost, W, H, 'resize');
       resizeRenderTarget(rtDistortion, halfW, halfH, 'resize');
+      // Keep the active content sub-rect proportional to the new max pool size.
+      contentW = Math.max(1, Math.round(W * contentScale));
+      contentH = Math.max(1, Math.round(H * contentScale));
     }
+    // Dyn-res scale changes must NOT call this with a smaller size; they use setContentScale.
     // RTs are only created at init/resize/context-restore — rtPost joins that rule here,
     // lazily on the first below-res sizing, never inside render().
     if (casActive) {
       if (!rtPost) rtPost = allocRenderTarget(W, H, postRtOpts, 'cas-sharpen');
       applyCasSetup(casMat.uniforms, CAS_SHARPNESS, W, H, W, H);
     }
+  }
+
+  // Dyn-res only: change the active content sub-rect without reallocating any render target.
+  // scale is clamped to [0.2, 1] to match applyRendererSize / adaptiveQuality floors.
+  function setContentScale(scale) {
+    const s = Math.max(0.2, Math.min(1, Number(scale)));
+    const nextScale = Number.isFinite(s) ? s : 1;
+    const nextW = Math.max(1, Math.round(W * nextScale));
+    const nextH = Math.max(1, Math.round(H * nextScale));
+    if (nextScale === contentScale && nextW === contentW && nextH === contentH) return;
+    contentScale = nextScale;
+    contentW = nextW;
+    contentH = nextH;
   }
 
   // Accept partial option updates (wired from settings:changed by the render layer).
@@ -1969,6 +2113,19 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (typeof o.vignette === 'number') vignette = Math.max(0, Math.min(1, o.vignette));
     if (typeof o.grade === 'number') grade = Math.max(0, Math.min(1, o.grade));
     if (typeof o.toe === 'number') toe = Math.max(0, Math.min(0.06, o.toe));
+    if (typeof o.maxLevels === 'number' || typeof o.bloomLevels === 'number') {
+      const next = Number(o.maxLevels != null ? o.maxLevels : o.bloomLevels);
+      if (Number.isFinite(next)) {
+        const capped = Math.max(1, Math.min(BALANCED_BLOOM_MAX_LEVELS, next | 0));
+        if (capped !== maxLevelsCap) {
+          maxLevelsCap = capped;
+          setSize(W, H);
+        }
+      }
+    }
+    if (typeof o.sharpen === 'boolean') sharpenAmount = o.sharpen ? 0.35 : 0;
+    if (typeof o.sharpen === 'number') sharpenAmount = Math.max(0, Math.min(1, o.sharpen));
+    if (compositeMat.uniforms.uSharpen) compositeMat.uniforms.uSharpen.value = sharpenAmount;
     applyPostStyleUniforms();
   }
 
@@ -2005,7 +2162,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       drawingBufferHeight: H,
       sceneTargetWidth: rtScene.width,
       sceneTargetHeight: rtScene.height,
-      effectiveSceneScale: 1,
+      contentWidth: contentW,
+      contentHeight: contentH,
+      contentScale,
+      effectiveSceneScale: W > 0 ? contentW / W : 1,
+      targetPoolMaxWidth: W,
+      targetPoolMaxHeight: H,
       casSharpenActive: casActive,
       casSharpenTarget: rtPost ? { width: rtPost.width, height: rtPost.height } : null,
       fullFramePasses: casActive && rtPost ? 3 : 2,
@@ -2048,6 +2210,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     openingProgramMaterials,
     contextLossResources,
     setSize,
+    setContentScale,
     setOptions,
     setInstrumentation,
     diagnostics,

@@ -30,10 +30,10 @@ def build():
     K.build_platform(s, {'seed': 57})
 
     # --- furnace house + stack on the refinery pad (-20, 20) ---------------------------------
-    K.plan_box(s, 'Furnace', -20.0, 20.0, 3.8, 13.0, 11.0, 7.5, material='paint',
+    K.plan_box(s, 'Furnace', -20.0, 20.0, 3.8, 13.0, 11.0, 7.5, material='paint2',
                rot=math.radians(45.0), bevel=0.3, taper=0.85)
-    # hazard kerb plate around the furnace shoulders
-    K.plan_box(s, 'FurnaceBand', -20.0, 20.0, 7.6, 14.2, 12.2, 0.9, material='hazard',
+    # hazard kerb plate around the furnace shoulders — thin mid-value band, not a slab
+    K.plan_box(s, 'FurnaceBand', -20.0, 20.0, 7.6, 14.2, 1.6, 0.9, material='hazard',
                rot=math.radians(45.0), bevel=0.02)
     # twin flare stacks rising UP the wheel face off the furnace's shoulder — the
     # refinery's verticals, ember-mouthed
@@ -62,15 +62,18 @@ def build():
 
     # --- tank-farm annex off the -X rim (inside the live envelope, u >= -51) -------------------
     # access bridge from the ring to the farm
-    K.plan_box(s, 'AnnexDeck', -43.0, 0.0, 1.0, 16.0, 12.0, 2.0, material='paint',
+    K.plan_box(s, 'AnnexDeck', -43.0, 0.0, 1.0, 16.0, 12.0, 2.0, material='paint2',
                bevel=0.15)
+    # dark grating strip over the annex apron
+    K.plan_box(s, 'AnnexGrate', -43.0, 0.0, 2.1, 13.0, 9.0, 0.25, material='dark',
+               bevel=0.0)
     K.plan_truss(s, 'AnnexTruss', (-36.0, 0.0, 0.4), (-50.0, 0.0, 0.4), 2.2, 5,
                  material='paint2', chord=0.35, web=0.22)
     # three process tanks in a pyramid: two side by side on saddles, one stacked on top —
     # axes along v so the farm stays inside the live -u bound
     for k, tu in enumerate((-41.5, -46.5)):
         K.plan_cyl(s, f'Tank{k}', tu, -6.0, 4.6, tu, 6.0, 4.6, 3.2,
-                   material='paint2' if k != 1 else 'paint', segments=18)
+                   material='paint2' if k != 1 else 'paint.aged', segments=18)
         for e, capv in ((-1, -6.3), (1, 6.3)):
             K.placed_sphere(s, f'TankCap{k}{e:+d}', tu, capv, 4.6, 3.2,
                             material='paint2', segments=18, scale=(1.0, 1.0, 0.5))
@@ -82,7 +85,7 @@ def build():
         F.light(s, f'ValveLamp{k}', K.P(tu, 0.0, 8.2), 'glow_amber', size=0.35)
     # top tank stacked between the pair, resting on their crowns
     K.plan_cyl(s, 'Tank2', -44.0, -4.6, 10.2, -44.0, 4.6, 10.2, 2.9,
-               material='paint', segments=18)
+               material='paint.aged', segments=18)
     for e, capv in ((-1, -4.9), (1, 4.9)):
         K.placed_sphere(s, f'TankCap2{e:+d}', -44.0, capv, 10.2, 2.9,
                         material='paint2', segments=18, scale=(1.0, 1.0, 0.5))

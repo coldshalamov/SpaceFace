@@ -12,7 +12,12 @@ import forge as F  # noqa: E402
 import claim_outpost_kit as K  # noqa: E402
 
 SHIP_ID = 'place_slurry_tank'
-COLORS = dict(K.COLORS)
+COLORS = dict(K.COLORS, **{
+    # slurry domes: toned-down ivory — but on a METALLIC finish. A dielectric dome under the
+    # sector env reads pale no matter the albedo (white F0 spec floor), so the same tone is
+    # carried by the deadmetal finish: full metal, albedo-tinted env reflection, matte roughness — the dome stays mid-value.
+    'deadmetal.dome': '#57513f',
+})
 
 
 def build():
@@ -25,9 +30,9 @@ def build():
         # rib saddles front and back of each sphere
         for e in (-1, 1):
             F.box(s, f'Rib{k}{e:+d}', (tx, e * 1.7, 1.7), (1.4, 0.5, 2.6),
-                  material='paint.aged', bevel=0.05, taper=0.7)
+                  material='paint2', bevel=0.05, taper=0.7)
         # the pressure sphere
-        F.sphere(s, f'Tank{k}', (tx, 0, 3.4), 2.05, material='paint', segments=22)
+        F.sphere(s, f'Tank{k}', (tx, 0, 3.4), 2.05, material='deadmetal.dome', segments=22)
         # hazard band round the equator (two thin rings)
         F.cylinder(s, f'TankBand{k}', (tx, -0.25, 3.4), (tx, 0.25, 3.4), 2.12,
                    material='hazard', segments=20)
