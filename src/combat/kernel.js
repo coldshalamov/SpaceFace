@@ -308,6 +308,20 @@ export function createCombatKernel(ctx, options = {}) {
       publishCombatPostPhysicsQuiet(state, true);
       return;
     }
+    // Quiet postPhysics: prePhysics already ensured every living combatant on this tick's
+    // roster. Physics does not mutate vitals/heat. Skip the first-seen ensure walk when the
+    // sorted cache is still valid for this tick (no spawn/destroy invalidate mid-step).
+    // A mid-tick roster change bumps sortedCacheRevision / index version and falls through.
+    if (
+      COMBAT_POSTPHYSICS_QUIET_SKIP !== false
+      && sortedCache
+      && sortedCacheTick === state.tick
+      && sortedCacheSeenRevision === sortedCacheRevision
+      && sortedCacheIndexVersion === indexVersion
+    ) {
+      publishCombatPostPhysicsQuiet(state, true);
+      return;
+    }
     // Quiet postPhysics re-ensured every combatant (resolve profile + sync bounds) after
     // prePhysics already did both. Physics does not mutate vitals/heat; first-seen combatants
     // still get ensureCombatant.

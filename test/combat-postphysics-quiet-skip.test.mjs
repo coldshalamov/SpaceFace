@@ -102,13 +102,16 @@ test('routeDamage clears postPhysics quiet skip', () => {
   });
   assert.equal(state.combatRuntime.quietLatched, false);
   assert.equal(state.combatRuntime.postPhysicsQuietSkipped, false);
-  // postPhysics after wake must walk (not skip)
+  // postPhysics after wake still skips the redundant ensure walk — prePhysics covered
+  // this tick's roster (heat present so the latch stays disarmed, but the sorted-cache
+  // freshness gate fires instead; the roster walk itself is provably redundant).
   state.tick++;
   state.simTime += 1 / 60;
   act.update(1 / 60, state);
-  // heat still present → latch not re-armed → skip false
   kernel.postPhysics();
-  assert.equal(state.combatRuntime.postPhysicsQuietSkipped, false);
+  assert.equal(state.combatRuntime.postPhysicsQuietSkipped, true);
+  // And the roster really was covered: the target's runtime exists.
+  assert.ok(state.combat.entities[String(target.id)]);
 });
 
 test('bench toggle disables postPhysics quiet skip', () => {
