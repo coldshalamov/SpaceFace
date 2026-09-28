@@ -153,6 +153,30 @@ function ownerIsAlwaysAwake(owner, state) {
 }
 
 /**
+ * Cache always-awake near-work membership on the entity. Invalidated when the
+ * volatile AI/weapon index rebuilds (mid-life combatant/slot attach) so stamp
+ * does not re-walk owner.ai / data.ai / activityActorSlotId every tick.
+ */
+export function refreshNearWorkAlwaysAwake(entity, state) {
+  if (!entity) return false;
+  const awake = ownerIsAlwaysAwake(entity, state);
+  entity._nearWorkAlwaysAwake = awake;
+  return awake;
+}
+
+export function invalidateNearWorkAlwaysAwake(entity) {
+  if (!entity) return;
+  entity._nearWorkAlwaysAwake = undefined;
+}
+
+function entityNearWorkAlwaysAwake(entity, state) {
+  if (!entity) return false;
+  const cached = entity._nearWorkAlwaysAwake;
+  if (cached === true || cached === false) return cached;
+  return refreshNearWorkAlwaysAwake(entity, state);
+}
+
+/**
  * Deterministic slice of S1 civilians that may think this tick. Hostiles and the
  * player are always included and do not consume the budget. Walk order is the
  * live shipLike index (spawn order).
@@ -170,7 +194,12 @@ export function stampNearWorkBudget(state, budget = NEAR_WORK_TOKEN_BUDGET) {
   for (let i = 0; i < n; i++) {
     const entity = ships[(start + i) % n];
     if (!entity || entity.alive === false) continue;
-    if (ownerIsAlwaysAwake(entity, state)) {
+    // Hot path: cached bit (filled on first touch / volatile AI cadence).
+    let awake = entity._nearWorkAlwaysAwake;
+    if (awake !== true && awake !== false) {
+      awake = refreshNearWorkAlwaysAwake(entity, state);
+    }
+    if (awake === true) {
       set.add(entity.id);
       continue;
     }
@@ -186,7 +215,7 @@ export function stampNearWorkBudget(state, budget = NEAR_WORK_TOKEN_BUDGET) {
 
 export function hasNearWorkSlot(state, entity) {
   if (!entity) return false;
-  if (ownerIsAlwaysAwake(entity, state)) return true;
+  if (entityNearWorkAlwaysAwake(entity, state)) return true;
   const set = state && state.nearWorkIds;
   if (!set) return true;
   return set.has(entity.id);

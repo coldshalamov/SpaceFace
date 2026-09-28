@@ -7,7 +7,7 @@ import { hasActiveSpatialHash } from './spatialQuery.js';
 import { initializePresentationAdmission } from './presentationAdmission.js';
 import { packCombatTable } from './combatTable.js';
 import { beginDirtyTick, markDirty, collectDirtyIds, DIRTY } from './dirtyJournal.js';
-import { stampNearWorkBudget } from './activityScheduler.js';
+import { stampNearWorkBudget, refreshNearWorkAlwaysAwake } from './activityScheduler.js';
 import { modelTruthProxyManifest } from '../data/modelTruth.js';
 
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
@@ -227,7 +227,7 @@ export const core = {
     state.meta.playtimeS += dt;
     const index = ensureEntityIndex(state);
     reconcileEntityIndexSource(index, state.entityList);
-    refreshVolatileEntityIndex(index, state.tick);
+    refreshVolatileEntityIndex(index, state);
     beginDirtyTick(state, state.tick);
     // index.movables is append-gated by isMovableEntity. Re-checking every tick re-entered
     // isDynamicPhysicsBodyEntity → authoredPhysicsBody/defaultDynamic on the quiet preStep
@@ -914,12 +914,13 @@ function markEntityIndexSourceSynced(index, list) {
 // ticks without paying the walk 60 Hz.
 const VOLATILE_INDEX_PERIOD_TICKS = 8;
 
-function refreshVolatileEntityIndex(index, tick = 0) {
+function refreshVolatileEntityIndex(index, stateOrTick = 0) {
   if (!index || !index.__spacefaceEntityIndexV1) return false;
+  const state = stateOrTick && typeof stateOrTick === 'object' ? stateOrTick : null;
+  const tick = state ? (state.tick | 0) : (Number.isInteger(stateOrTick) ? stateOrTick : Math.floor(Number(stateOrTick) || 0));
   if (index._volatileReady === true) {
     const period = VOLATILE_INDEX_PERIOD_TICKS;
-    const t = Number.isInteger(tick) ? tick : Math.floor(Number(tick) || 0);
-    if (((t % period) + period) % period !== 0) return false;
+    if (((tick % period) + period) % period !== 0) return false;
   }
   index.aiShips.length = 0;
   index.weaponShips.length = 0;
@@ -929,6 +930,13 @@ function refreshVolatileEntityIndex(index, tick = 0) {
     if (!e || !e.alive || e.type !== 'ship') continue;
     if (e.data && e.data.ai) index.aiShips.push(e);
     if (e.data && e.data.weapons && e.data.weapons.length) index.weaponShips.push(e);
+  }
+  // Mid-life combatant / activity-slot attach shares this cadence. Refresh the
+  // near-work always-awake cache here so stampNearWorkBudget stays a boolean
+  // read on the quiet 60 Hz path (same staleness window as aiShips).
+  const shipLike = index.shipLike;
+  for (let i = 0; i < shipLike.length; i++) {
+    refreshNearWorkAlwaysAwake(shipLike[i], state);
   }
   index._volatileReady = true;
   return true;
