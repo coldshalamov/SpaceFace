@@ -5,6 +5,10 @@ import * as THREE from 'three';
 import {
   invalidateShadowCasterPolicy,
   noteRealtimeShadowCasterPose,
+  shouldNoteRealtimeShadowCasterPose,
+  shadowCasterHasPose,
+  setShadowCasterPoseQuietSkipForBench,
+  getShadowCasterPoseQuietSkipForBench,
   SHADOW_TEXEL_WORLD_SIZE,
   syncShadowCasterPolicy,
 } from '../src/render/shadowCasterPolicy.js';
@@ -144,4 +148,70 @@ test('realtime caster pose invalidation covers silhouette rotation, scale, visib
   syncShadowCasterPolicy(root, 'lod0', { allowCast: true });
   assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 20 }), true,
     're-entering the caster band initializes a fresh rendered pose');
+});
+test('quiet-skip gate is on by default and restores always-note when bench-off', () => {
+  assert.equal(getShadowCasterPoseQuietSkipForBench(), true);
+  setShadowCasterPoseQuietSkipForBench(false);
+  assert.equal(getShadowCasterPoseQuietSkipForBench(), false);
+  assert.equal(
+    shouldNoteRealtimeShadowCasterPose(opaqueMesh(), {
+      poseApplied: false, visibilityChanged: false, policyRefreshed: false,
+    }),
+    true,
+    'bench-off always notes',
+  );
+  setShadowCasterPoseQuietSkipForBench(true);
+  assert.equal(getShadowCasterPoseQuietSkipForBench(), true);
+});
+
+test('quiet skip suppresses note on an unchanged cast-band root with a recorded pose', () => {
+  setShadowCasterPoseQuietSkipForBench(true);
+  const root = new THREE.Group();
+  root.add(opaqueMesh());
+  syncShadowCasterPolicy(root, 'lod0', { allowCast: true });
+  assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 10 }), true, 'seed pose');
+  assert.equal(shadowCasterHasPose(root), true);
+  assert.equal(
+    shouldNoteRealtimeShadowCasterPose(root, {
+      poseApplied: false, visibilityChanged: false, policyRefreshed: false,
+    }),
+    false,
+    'unchanged parked root skips',
+  );
+  assert.equal(
+    shouldNoteRealtimeShadowCasterPose(root, {
+      poseApplied: true, visibilityChanged: false, policyRefreshed: false,
+    }),
+    true,
+    'pose apply still notes',
+  );
+  assert.equal(
+    shouldNoteRealtimeShadowCasterPose(root, {
+      poseApplied: false, visibilityChanged: true, policyRefreshed: false,
+    }),
+    true,
+    'visibility change still notes',
+  );
+  assert.equal(
+    shouldNoteRealtimeShadowCasterPose(root, {
+      poseApplied: false, visibilityChanged: false, policyRefreshed: true,
+    }),
+    true,
+    'policy refresh still notes',
+  );
+});
+
+test('quiet skip still notes before the first pose is recorded', () => {
+  setShadowCasterPoseQuietSkipForBench(true);
+  const root = new THREE.Group();
+  root.add(opaqueMesh());
+  syncShadowCasterPolicy(root, 'lod0', { allowCast: true });
+  assert.equal(shadowCasterHasPose(root), false);
+  assert.equal(
+    shouldNoteRealtimeShadowCasterPose(root, {
+      poseApplied: false, visibilityChanged: false, policyRefreshed: false,
+    }),
+    true,
+    'first enter must record a pose',
+  );
 });

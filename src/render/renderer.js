@@ -186,6 +186,7 @@ import {
   allowRealtimeShadowCast,
   invalidateShadowCasterPolicy,
   noteRealtimeShadowCasterPose,
+  shouldNoteRealtimeShadowCasterPose,
   SHADOW_MAP_SIZE,
   SHADOW_ORTHO_EXTENT,
   shadowCastAxisDistance,
@@ -13884,9 +13885,11 @@ export const render = {
       _protectedRootOptions.forceRender = forceRender;
       _protectedRootOptions.neverCull = neverCull;
       const protectedRoot = isProtectedEntityMesh(_protectedRootOptions);
+      let poseApplied = false;
       if ((dirty & (PRESENTATION_DIRTY.TRANSFORM | PRESENTATION_DIRTY.BINDING
         | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot)) {
         posed = this._applyPresentationPose(slot, mesh, alpha);
+        poseApplied = !!posed;
         if (!posed && !protectedRoot) {
           if (applyEntityMeshVisibility(mesh, false)) {
             this._persistentSubmitLanes.markDirty(entityId, 'visibility');
@@ -13931,10 +13934,12 @@ export const render = {
       const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
       // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
       // directional depth pass. Far / low-LOD roots keep receiveShadow + contact shadows.
+      let shadowPolicyRefreshed = false;
       if (typeName === 'ship' || typeName === 'station') {
         // entity may be null for a world-record row; the retained stand-in keeps the old
         // `{ type: typeName }` verdict (non-player, distance-checked) without the allocation.
         if (syncShadowCasterPolicy(mesh, lodLevel, this._shadowPolicyOptions(entity || _shadowFallbackEntity, mesh))) {
+          shadowPolicyRefreshed = true;
           shadowPolicyRefreshes++;
           noteShadowPolicyChanged(this._shadowReceiverTally, true);
           this._markShadowReceiversDirty();
@@ -13997,11 +14002,19 @@ export const render = {
         && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh(_submitVisibilityOptions));
       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
       if (typeName === 'ship' || typeName === 'station') {
-        _shadowCasterPoseOptions.visualRadius = lodRadius;
-        _shadowCasterPoseOptions.extent = this._shadowOrthoExtent;
-        _shadowCasterPoseOptions.mapSize = this._keyLight?.shadow?.mapSize?.x;
-        if (noteRealtimeShadowCasterPose(mesh, _shadowCasterPoseOptions)) {
-          this._shadowMapDirty = true;
+        // Quiet parked cast-band roots: root TRS unchanged → skip sub-texel compare.
+        // (In-function bit-identical early-out held ~0.87×; call-site skip is the cut.)
+        if (shouldNoteRealtimeShadowCasterPose(mesh, {
+          poseApplied,
+          visibilityChanged,
+          policyRefreshed: shadowPolicyRefreshed,
+        })) {
+          _shadowCasterPoseOptions.visualRadius = lodRadius;
+          _shadowCasterPoseOptions.extent = this._shadowOrthoExtent;
+          _shadowCasterPoseOptions.mapSize = this._keyLight?.shadow?.mapSize?.x;
+          if (noteRealtimeShadowCasterPose(mesh, _shadowCasterPoseOptions)) {
+            this._shadowMapDirty = true;
+          }
         }
       }
 
