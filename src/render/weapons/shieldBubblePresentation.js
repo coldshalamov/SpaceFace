@@ -36,7 +36,7 @@ export function shouldPresentShieldBubble(shield, flash, hasContact = false, col
  * Update one entity's fallback shieldBubble mesh presentation.
  * Returns true when the quiet latch skipped the heavy path this call.
  */
-export function updateEntityShieldBubblePresentation(entity, shieldBubble, now, simTime, motionReduce = false) {
+export function updateEntityShieldBubblePresentation(entity, shieldBubble, now, simTime, motionReduce = false, frameDt = null) {
   if (!entity || !shieldBubble || !shieldBubble.material || !shieldBubble.material.uniforms) {
     return false;
   }
@@ -56,7 +56,11 @@ export function updateEntityShieldBubblePresentation(entity, shieldBubble, now, 
   const uniforms = shieldBubble.material.uniforms;
   const previousShield = userData._prevShield != null ? userData._prevShield : entity.shield;
   const previousFlashTime = userData._prevFlashT != null ? userData._prevFlashT : now;
-  const dt = Math.min(0.1, Math.max(0.001, now - previousFlashTime));
+  // The caller may hand the time-effects-scaled frame delta (renderer.js presFrameDt): under a hard
+  // freeze it is 0, which holds uFlash still instead of decaying on the wall clock.
+  const dt = frameDt != null
+    ? Math.min(0.1, Math.max(0, frameDt))
+    : Math.min(0.1, Math.max(0.001, now - previousFlashTime));
   userData._prevFlashT = now;
 
   setShieldShellClock(shieldBubble.material, simTime, motionReduce === true);

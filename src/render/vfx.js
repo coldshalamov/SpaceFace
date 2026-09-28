@@ -8797,6 +8797,7 @@ export const vfx = {
     mesh.visible = false;
     this._scene.add(mesh);
     this._dockingCradle = { mesh, cradle, scratch };
+    this._dockingCradleQuietHidden = false;
   },
 
   _resetDockingCradle() {
@@ -8806,6 +8807,16 @@ export const vfx = {
     dc.mesh.visible = false;
     dc.mesh.material.opacity = 0;
     dc.mesh.geometry.setDrawRange(0, 0);
+    this._dockingCradleQuietHidden = false;
+  },
+
+  // Cheap dirty wake for quiet cradle latch — corridor phase/berth only.
+  // False-wake falls through to one full update and re-latches when faded.
+  _dockingCradleQuietMaybeAwake(readout) {
+    if (!readout) return false;
+    const phase = readout.phase || 'none';
+    if (phase === 'none') return false;
+    return !!(readout.berth);
   },
 
   _updateDockingCradle(dt) {
@@ -8813,6 +8824,13 @@ export const vfx = {
     if (!dc) return false;
     const state = this.state;
     const readout = state && state.dockingCorridor;
+    // Quiet settled flight: cradle still paid proxy scan + updateDockingCradle +
+    // writeDockingCradleGeometry + a11y resolve every tick after fade-out. Latch
+    // when fully faded; cheap phase/berth wake. Soft-GPU fps not claimed.
+    if (this._dockingCradleQuietHidden) {
+      if (!this._dockingCradleQuietMaybeAwake(readout)) return false;
+      this._dockingCradleQuietHidden = false;
+    }
     // Match the engaged station's diagnostics row for the corridor axis and lane width. Rows are
     // frozen records — reading them here never touches sim state.
     let proxy = null;
@@ -8846,6 +8864,9 @@ export const vfx = {
         dc.mesh.visible = false;
         dc.mesh.material.opacity = 0;
         dc.mesh.geometry.setDrawRange(0, 0);
+      }
+      if (cradle.visible01 <= 0.004 && !this._dockingCradleQuietMaybeAwake(readout)) {
+        this._dockingCradleQuietHidden = true;
       }
       return false;
     }

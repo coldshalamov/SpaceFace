@@ -209,6 +209,10 @@ import { createCrucibleGhostPresentation } from './crucibleGhost.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
 import { hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
+import {
+  shouldPresentShieldBubble,
+  updateEntityShieldBubblePresentation,
+} from './weapons/shieldBubblePresentation.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
@@ -2718,12 +2722,8 @@ const SHIELD_POOL_FRAG = /* glsl */`
   }
 `;
 
-const SHIELD_PRESENTATION_EPSILON = 0.015;
-
 /** Shields read on impact instead of coating every healthy ship in a permanent translucent sphere. */
-export function shouldPresentShieldBubble(shield, flash, hasContact = false, collapseTime = 0) {
-  return (Number(shield) > 0 || collapseTime > 0) && (Number(flash) > SHIELD_PRESENTATION_EPSILON || Boolean(hasContact) || collapseTime > 0);
-}
+export { shouldPresentShieldBubble } from './weapons/shieldBubblePresentation.js';
 
 export function createShipAuxPool(scene, options = {}) {
   const pool = {
@@ -13875,50 +13875,19 @@ export const render = {
       // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
       // frame and is punched up whenever the entity's shield value drops.
       const shieldBubble = userData.shieldBubble;
-      if (entity && shieldBubble && shieldBubble.material && shieldBubble.material.uniforms) {
-        const uniforms = shieldBubble.material.uniforms;
-        const previousShield = shieldBubble.userData._prevShield != null
-          ? shieldBubble.userData._prevShield
-          : entity.shield;
-        // Flash decay rides the time-effects-scaled frame delta: under a hard freeze it is 0,
-        // which holds uFlash still instead of decaying on the wall clock.
-        const dt = Math.min(0.1, presFrameDt);
-        setShieldShellClock(shieldBubble.material, simNow, _worldSiteA11y && _worldSiteA11y.reducedMotion === true);
-
-        const up = entity.shield > 0;
-        let flash = 0;
-
-        if (shieldBubble.userData._collapseTimer == null) {
-          shieldBubble.userData._collapseTimer = 0;
-        }
-
-        if (up) {
-          if (entity.shield < previousShield - 0.5) {
-            uniforms.uFlash.value = Math.min(1.0, uniforms.uFlash.value + 0.8);
-          } else if (entity.shield > previousShield + 1.0) {
-            // Shield capacitor recovery wave
-            uniforms.uFlash.value = Math.max(uniforms.uFlash.value, 0.28);
-          }
-          uniforms.uFlash.value *= Math.pow(0.05, dt);
-          flash = uniforms.uFlash.value;
-          shieldBubble.userData._collapseTimer = 0;
-        } else {
-          // Shield broke this frame or is in collapse sequence
-          if (previousShield > 0) {
-            // Initiate dielectric rupture overload sequence
-            shieldBubble.userData._collapseTimer = 0.32;
-            uniforms.uFlash.value = 2.4; // blinding break flare
-          }
-          if (shieldBubble.userData._collapseTimer > 0) {
-            shieldBubble.userData._collapseTimer -= dt;
-            uniforms.uFlash.value *= Math.pow(0.1, dt);
-            flash = uniforms.uFlash.value;
-          }
-        }
-        shieldBubble.userData._prevShield = entity.shield;
-
-        const visible = shouldPresentShieldBubble(entity.shield, flash, hasShieldContact(entity.id), shieldBubble.userData._collapseTimer);
-        if (shieldBubble.visible !== visible) shieldBubble.visible = visible;
+      if (entity && shieldBubble) {
+        // Per-ship fallback material: same shell clock as the pooled lane, same sim-time source.
+        // Quiet-latches while flash/contact/collapse are cold (see shieldBubblePresentation.js).
+        // simNow already anchors to state.simTime; presFrameDt carries the flash decay so a hard
+        // freeze holds uFlash still instead of decaying on the wall clock.
+        updateEntityShieldBubblePresentation(
+          entity,
+          shieldBubble,
+          now,
+          simNow,
+          _worldSiteA11y && _worldSiteA11y.reducedMotion === true,
+          presFrameDt,
+        );
       }
 
       const hlod = userData.hlod;
