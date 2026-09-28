@@ -138,6 +138,7 @@ import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { rollBountyMark, bountyMarkHail, markArchetypePoolFor, MARK_HAIL_RANGE_WU } from '../data/bountyMarks.js';
+import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { hash32 } from '../core/rng.js';
 import { Masks } from '../core/entity.js';
@@ -2711,7 +2712,11 @@ export const missions = {
       }
       case 'escort': {
         const targetStrength = 1.0 + riskTier * 0.4 + rng() * 0.5;
-        return { targetStrength, fValue: targetStrength, taskTime: 90 };
+        // A convoy, not a lone hull: one named lead plus wing haulers, with a raider wing
+        // working the final approach. Ambush size tracks the board's risk tier (2..4).
+        const convoySize = 3;
+        const ambushSize = 2 + Math.min(2, Math.max(0, Math.floor(riskTier)));
+        return { targetStrength, convoySize, ambushSize, fValue: targetStrength, taskTime: 90 };
       }
       case 'patrol_clear': {
         const clearCount = 2 + Math.floor(rng() * 3); // 2..4 hostiles
@@ -2811,7 +2816,7 @@ export const missions = {
           : `Someone working near ${destName} is worth more dead. Paperwork is already filed.`;
         break;
       case 'escort':
-        line = `Convoy runs to ${destName}. Paid on arrivals, not on kills.`;
+        line = `Convoy into ${destName} on the final leg. Raiders work this lane — paid on arrivals.`;
         break;
       case 'patrol_clear':
         line = `${p.clearCount} hostiles sitting on the lanes near ${destName}. Clear the lane.`;
@@ -4175,6 +4180,11 @@ export const missions = {
           m.params.lostWreckPos = site.wreckPos;
         }
         this._failMission(m, i, 'escortee_lost');
+      } else if (p.data && p.data.escortee === true && String(missionIdentityOf(p)) === String(m.id)) {
+        // A wing hauler of this convoy died: the job survives, but the fee settles short at dock.
+        m.params = m.params || {};
+        m.params.convoyLost = (m.params.convoyLost || 0) + 1;
+        this.bus.emit('toast', { text: 'Convoy hauler down — the fee settles short at dock', kind: 'warn', ttl: 4 });
       }
     }
     this._onPhysicalEntityDestroyed(p);
@@ -6044,9 +6054,9 @@ export const missions = {
       if (this._refuseTurnInIfBlocked(m)) continue;
 
       if (t === 'escort') {
-        // Player reached the destination — complete only if the escortee survived AND arrived too.
+        // Player reached the destination — complete only if the convoy survived AND arrived too.
         const ok = this._escorteeArrivedOk(m);
-        if (ok) this._completeMission(m, i);
+        if (ok) { this._settleEscortConvoyPay(m); this._completeMission(m, i); }
         else this.bus.emit('toast', { text: 'Escort: wait for the convoy to dock', kind: 'warn', ttl: 3 });
         continue;
       }
@@ -6126,8 +6136,38 @@ export const missions = {
   /** True if the escortee for mission m is alive and has reached the destination dock. If the
    *  escortee was never spawned (e.g. accepted far away and the player flew straight to dest),
    *  treat arrival as satisfied so the contract can't soft-lock. */
+  /** Convoy pay is "paid on arrivals": full fee only when every hull that launched is still
+   *  flying. Each lost hauler docks the fee by its share of the convoy — the receipt names the
+   *  shortfall so the settlement reads as the yard counting hulls, not a silent haircut. */
+  _settleEscortConvoyPay(m) {
+    if (!m || m.type !== 'escort' || (m.params && m.params.convoySettled)) return;
+    m.params = m.params || {};
+    m.params.convoySettled = true;
+    const total = Math.max(0, Number(m.params.convoyTotal) || 0);
+    if (total <= 1) return; // single-hull rows (legacy accepts) have no convoy to short
+    let alive = 0;
+    for (const id of m.targetEntityIds || []) {
+      const e = this.state.entities.get(id);
+      if (e && e.alive !== false && e.data && e.data.escortee) alive++;
+    }
+    if (alive >= total) return;
+    const base = Math.max(0, Number(m.reward_cr) || 0);
+    m.reward_cr = Math.max(1, Math.round((base * alive) / total));
+    m.params.completionMethod = 'convoy_short';
+    this.bus.emit('toast', {
+      text: `Convoy arrived short (${alive}/${total} hulls) — pay settled at ${Math.round((100 * alive) / total)}%`,
+      kind: 'warn',
+      ttl: 4,
+    });
+  },
+
   _escorteeArrivedOk(m) {
-    if (m._escorteeId == null) return true; // no live escortee to gate on
+    if (m._escorteeId == null) {
+      // A convoy that never spawned cannot have been escorted — the free-pay path is closed.
+      // Spawn retries while the player is in the destination sector and the deadline bounds the
+      // wait, so this can delay completion but never soft-lock it.
+      return false;
+    }
     const e = this.state.entities.get(m._escorteeId);
     if (!e || !e.alive) return false;       // dead → _onEntityDestroyed will fail it anyway
     return !!m._escorteeArrived;
@@ -7005,7 +7045,7 @@ export const missions = {
       this._stampMissionTargetIdentity(e, m, slot);
       ordered.push({ id: e.id, slot });
       if (!existing.has(e.id)) adopted++;
-      if (e.data && e.data.escortee) {
+      if (e.data && e.data.escortee === 'lead') {
         m._escorteeId = e.id;
         m._escorteeArrived = !!m._escorteeArrived;
       }
@@ -7335,44 +7375,133 @@ export const missions = {
       }
       if (spawned === n && this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
     } else if (m.type === 'escort') {
-      // Already adopted a live escortee from world.records — do not double-spawn.
+      // Already adopted a live convoy from world.records — do not double-spawn.
       if (m._escorteeId != null && this.state.entities.get(m._escorteeId)) return;
       if ((m.targetEntityIds || []).length > 0) return;
       const budget = helpers.spawnBudget;
       const requester = `mission:${m.id}`;
-      if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) {
-        this._noteMissionSpawnDeferred(m, 1, 0);
+      // The convoy: a named lead hauler plus wing haulers (070-convoy shape — mules in a column).
+      // Old rows accepted before convoy params existed keep their single-hull behavior.
+      const convoySize = Math.max(1, Math.min(3, (m.params && m.params.convoySize) || 1));
+      const convoyGrant = budget && typeof budget.request === 'function'
+        ? budget.request(convoySize, requester)
+        : convoySize;
+      if (convoyGrant <= 0) {
+        this._noteMissionSpawnDeferred(m, convoySize, 0);
         return;
       }
       const rng = nextRng();
-      // Real escortee: a friendly (team 0) ship that TRAVELS toward the destination. It needs to
-      // survive (mission fails if it dies — _onEntityDestroyed) and arrive (gates completion).
+      // Deterministic lead identity: the same mission always crews the same convoy.
+      const pilot = promotedPilotIdentity(0, m.id);
+      const level = Math.min(6, Math.max(1, Math.round((lvLo + lvHi) / 2)));
       const ang = rng() * Math.PI * 2, r = 60 + rng() * 40;
-      const pos = { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
-      const spec = makeEnemySpawnSpec('corsair_raider', Math.round((lvLo + lvHi) / 2), pos, { startedTick: this.state.tick });
-      spec.team = 0; spec.factionId = m.factionId; // player team (won't be auto-attacked by allies)
-      spec.data = spec.data || {};
-      spec.data.missionTag = m.id; spec.data.escortee = true;
-      // No data.ai → the AI system skips it (it requires data.ai); WE steer it via data.intent in
-      // update() so it heads for the destination instead of dogfighting. Seed a neutral intent.
-      delete spec.data.ai;
-      spec.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 };
-      let ent;
-      try {
-        ent = helpers.spawnEntity(spec);
-      } catch (error) {
-        if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
-        throw error;
+      const wingOffset = [{ a: 0.28, dr: 14 }, { a: -0.28, dr: -8 }];
+      let spawned = 0;
+      for (let i = 0; i < convoyGrant; i++) {
+        const isLead = i === 0;
+        const off = isLead ? { a: 0, dr: 0 } : wingOffset[(i - 1) % wingOffset.length];
+        const pos = {
+          x: px + Math.cos(ang + off.a) * (r + off.dr),
+          z: pz + Math.sin(ang + off.a) * (r + off.dr),
+        };
+        // Real haulers: friendly (team 0) ships that TRAVEL toward the destination. The lead must
+        // survive (mission fails if it dies — _onEntityDestroyed) and arrive (gates completion).
+        const spec = makeEnemySpawnSpec('mule_trader', level, pos, { startedTick: this.state.tick });
+        spec.team = 0; spec.factionId = m.factionId; // player team (won't be auto-attacked by allies)
+        spec.data = spec.data || {};
+        spec.data.missionTag = m.id;
+        spec.data.escortee = isLead ? 'lead' : true;
+        spec.data.name = isLead ? pilot.name : null;
+        spec.data.scanLabel = isLead ? `${pilot.crew} — convoy lead` : `${pilot.crew} — hauler`;
+        // No data.ai → the AI system skips it (it requires data.ai); WE steer it via data.intent in
+        // update() so it runs the lane instead of dogfighting. Seed a neutral intent.
+        delete spec.data.ai;
+        spec.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 };
+        let ent;
+        try {
+          ent = helpers.spawnEntity(spec);
+        } catch (error) {
+          if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, convoyGrant - spawned);
+          throw error;
+        }
+        if (ent) {
+          if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+          this._stampMissionTargetIdentity(ent, m, i);
+          if (isLead) {
+            m._escorteeId = ent.id;
+            m._escorteeArrived = false;
+          }
+          m.targetEntityIds.push(ent.id);
+          spawned++;
+        }
       }
-      if (ent) {
-        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
-        this._stampMissionTargetIdentity(ent, m, 0);
-        m._escorteeId = ent.id;
-        m._escorteeArrived = false;
-        m.targetEntityIds.push(ent.id);
+      if (spawned > 0) {
+        m.params = m.params || {};
+        m.params.convoyTotal = spawned;
+        m.params.convoyLost = 0;
         if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
-      } else if (budget && typeof budget.releaseSome === 'function') {
-        budget.releaseSome(requester, 1);
+      }
+      if (budget && typeof budget.releaseSome === 'function' && spawned < convoyGrant) {
+        budget.releaseSome(requester, convoyGrant - spawned);
+      }
+      // The ambush: a raider wing already working the lane between the convoy and the berth.
+      // Placed on the approach line so the escort has a place to stand, not a ring around the
+      // player. Stamped escortAmbushOf (never missionTag) so adopt/cleanup treat them as what
+      // they are — ordinary raiders this contract happened to spring, not objective targets.
+      if (spawned > 0 && m._escorteeId != null) {
+        const ambushWant = Math.max(0, Math.min(4, (m.params && m.params.ambushSize) || 0));
+        const ambushGrant = ambushWant > 0 && budget && typeof budget.request === 'function'
+          ? budget.request(ambushWant, requester)
+          : ambushWant;
+        if (ambushGrant > 0) {
+          const destEnt = this._liveStation(m.destStationId);
+          const lead = this.state.entities.get(m._escorteeId);
+          if (destEnt && lead && destEnt.pos && lead.pos) {
+            const riskTier = Math.max(0, Math.round(Number(m.riskTier) || 0));
+            const pool = markArchetypePoolFor(riskTier);
+            const dx = destEnt.pos.x - lead.pos.x, dz = destEnt.pos.z - lead.pos.z;
+            const len = Math.hypot(dx, dz) || 1e-4;
+            const ux = dx / len, uz = dz / len; // approach direction convoy → berth
+            const t = 0.42 + rng() * 0.18;
+            let sprung = 0;
+            for (let i = 0; i < ambushGrant; i++) {
+              const side = i % 2 === 0 ? 1 : -1;
+              const spread = 26 + 20 * rng() + 14 * Math.floor(i / 2);
+              const pos = {
+                x: lead.pos.x + dx * t - uz * spread * side,
+                z: lead.pos.z + dz * t + ux * spread * side,
+              };
+              const archetype = pool[Math.floor(rng() * pool.length)];
+              const raiderLevel = Math.round(lvLo + (lvHi - lvLo) * (0.4 + rng() * 0.6));
+              const spec = makeEnemySpawnSpec(archetype, raiderLevel, pos, { startedTick: this.state.tick });
+              spec.data = spec.data || {};
+              spec.data.escortAmbushOf = String(m.id);
+              let ent;
+              try {
+                ent = helpers.spawnEntity(spec);
+              } catch (error) {
+                if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, ambushGrant - sprung);
+                throw error;
+              }
+              if (ent) {
+                if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+                sprung++;
+              }
+            }
+            if (budget && typeof budget.releaseSome === 'function' && sprung < ambushGrant) {
+              budget.releaseSome(requester, ambushGrant - sprung);
+            }
+            if (sprung > 0 && !m._ambushSprung) {
+              m._ambushSprung = true;
+              this.bus.emit('comms:popup', {
+                sender: pilot.name,
+                text: `${pilot.crew} to escort: raiders on the final leg — stay with the haulers.`,
+                category: 'personal',
+                ttl: 7,
+              });
+            }
+          }
+        }
       }
     } else if (m.type === 'salvage_retrieval' && isMutationRecovery(m)) {
       // INF-068: the convoy-wreck pocket. One unstable drifting wreck holding the contract
@@ -7447,51 +7576,92 @@ export const missions = {
     });
   },
 
-  /** Drive an escortee ship toward the destination station (or sector centre). Writes data.intent
-   *  which flight consumes; marks m._escorteeArrived when it reaches the dock ring. Deterministic
+  /** Drive the convoy toward the destination station (or sector centre). Writes data.intent
+   *  which flight consumes; marks m._escorteeArrived when the LEAD reaches the dock ring —
+   *  wings run the lane in trail formation and do not gate completion. Deterministic
    *  (pure geometry — no RNG). */
   _steerEscortee(m, state, dt) {
-    const e = state.entities.get(m._escorteeId);
-    if (!e || !e.alive) return;
-    const intent = e.data.intent || (e.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 });
-    intent.fire = false; intent.fireGroup = null;
-
-    // Destination point: the dest station entity if it's loaded in the current sector, else the
-    // player (so the escortee tags along until the player jumps it into the destination sector).
-    let target = null;
+    const lead = state.entities.get(m._escorteeId);
+    // Destination point shared by the whole convoy: the dest station entity if it's loaded in
+    // the current sector, else the player (so the convoy tags along until the player jumps it
+    // into the destination sector).
+    let dest = null;
     const inDestSector = state.world.currentSectorId === m.destSectorId;
     if (inDestSector) {
       const byStationId = state.entityIndex && state.entityIndex.byStationId;
-      target = byStationId && m.destStationId ? byStationId.get(m.destStationId) : null;
-      if (!target || !target.alive || target.type !== 'station') {
+      dest = byStationId && m.destStationId ? byStationId.get(m.destStationId) : null;
+      if (!dest || !dest.alive || dest.type !== 'station') {
         const stations = (state.entityIndex && state.entityIndex.stations) || state.entityList;
-        target = null;
+        dest = null;
         for (const cand of stations) {
-          if (cand.alive && cand.type === 'station' && cand.data && cand.data.stationId === m.destStationId) { target = cand; break; }
+          if (cand.alive && cand.type === 'station' && cand.data && cand.data.stationId === m.destStationId) { dest = cand; break; }
         }
       }
     }
-    if (!target) {
+    if (!dest) {
       const player = state.entities.get(state.playerId);
-      target = player && player.alive ? player : null;
+      dest = player && player.alive ? player : null;
     }
-    if (!target) { intent.moveX = 0; intent.moveZ = 0; return; }
+    if (!dest) return;
 
-    const dx = target.pos.x - e.pos.x, dz = target.pos.z - e.pos.z;
-    const dist = Math.hypot(dx, dz) || 1e-4;
-    const arriveR = (target.type === 'station' ? (target.data && target.data.dockRadius) || 80 : 140) + 40;
-    const aim = Math.atan2(dz, dx);
-    intent.aimAngle = aim;
-    if (dist <= arriveR) {
-      // arrived: ease to a hover near the dock and flag arrival (gates player-dock completion)
-      intent.moveZ = 0; intent.moveX = 0; intent.boost = false;
-      if (inDestSector && target.type === 'station') m._escorteeArrived = true;
-    } else {
+    // Shared throttle/heading write. True when inside arriveR (eases to a hover).
+    const headTo = (e, target, arriveR) => {
+      const intent = e.data.intent || (e.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 });
+      intent.fire = false; intent.fireGroup = null;
+      const dx = target.pos.x - e.pos.x, dz = target.pos.z - e.pos.z;
+      const dist = Math.hypot(dx, dz) || 1e-4;
+      const aim = Math.atan2(dz, dx);
+      intent.aimAngle = aim;
+      if (dist <= arriveR) {
+        // arrived: ease to a hover near the dock
+        intent.moveZ = 0; intent.moveX = 0; intent.boost = false;
+        return true;
+      }
       // head straight in; boost to close a large gap so it keeps pace with the player
       const off = Math.abs(wrapAngleLocal(aim - e.rot));
       intent.moveZ = off < 1.2 ? 1 : 0.35;   // throttle down while still turning to face the line
       intent.moveX = 0;
       intent.boost = dist > 700 && off < 0.6;
+      return false;
+    };
+
+    if (lead && lead.alive) {
+      const arriveR = (dest.type === 'station' ? (dest.data && dest.data.dockRadius) || 80 : 140) + 40;
+      const arrived = headTo(lead, dest, arriveR);
+      if (arrived && inDestSector && dest.type === 'station') {
+        m._escorteeArrived = true; // gates player-dock completion
+        if (!m._convoyArrivedSaid) {
+          m._convoyArrivedSaid = true;
+          const pilot = promotedPilotIdentity(0, m.id);
+          this.bus.emit('comms:popup', {
+            sender: pilot.name,
+            text: `${pilot.crew} docked. Good flying — the desk pays on arrivals.`,
+            category: 'personal',
+            ttl: 6,
+          });
+        }
+      }
+      // Wings run the lane in trail formation: staggered back and to the sides of the lead,
+      // measured against the lead→berth line so the column holds through the whole approach.
+      let wing = 0;
+      for (const id of m.targetEntityIds || []) {
+        if (id === m._escorteeId) continue;
+        const e = state.entities.get(id);
+        if (!e || e.alive === false || !(e.data && e.data.escortee)) continue;
+        const back = 42 + wing * 18, side = wing % 2 === 0 ? 30 : -30;
+        let ux = dest.pos.x - lead.pos.x, uz = dest.pos.z - lead.pos.z;
+        const ul = Math.hypot(ux, uz) || 1e-4; ux /= ul; uz /= ul;
+        headTo(e, { pos: { x: lead.pos.x - ux * back - uz * side, z: lead.pos.z - uz * back + ux * side } }, 60);
+        wing++;
+      }
+    } else {
+      // Lead gone but the fail sweep has not settled the row yet: the remaining haulers still
+      // run for the berth so the lane reads alive for the seconds in between.
+      for (const id of m.targetEntityIds || []) {
+        const e = state.entities.get(id);
+        if (!e || e.alive === false || !(e.data && e.data.escortee)) continue;
+        headTo(e, dest, 200);
+      }
     }
   },
 
@@ -7552,6 +7722,15 @@ export const missions = {
         if (e && e.data && e.data.worldRecordId === follow.targetRecordId) targetIds.add(e.id);
       });
     }
+    // Spring-wing raiders are not objective targets: settlement RELEASES them to ordinary lane
+    // life (unpinned, unstamped) rather than sweeping them — the fight the contract started
+    // stays in the sky, which is exactly what a stranger remembers about an escort gone loud.
+    forEachLivingWorldActor(this.state, (e) => {
+      if (!e || !e.data || e.data.escortAmbushOf !== String(m.id)) return;
+      e.data.escortAmbushOf = null;
+      const budget = this.helpers && this.helpers.spawnBudget;
+      if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
+    });
     for (const id of targetIds) {
       const e = this.state.entities.get(id);
       if (e && e.alive && e.id !== this.state.playerId) {
