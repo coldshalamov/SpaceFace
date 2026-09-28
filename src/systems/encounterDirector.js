@@ -1378,6 +1378,14 @@ export const encounterDirector = {
     });
   },
 
+  /** A loose physical cargo pod on the field — the same jettisoned-cargo path the player
+   * produces by jettisoning, so volatile classes keep their lamps, cook-off, and salvage rules.
+   * Encounters shed volatile freight through this so the spilled lot is a real colliding body. */
+  spawnCargoPod(live, spec) {
+    if (!live || !spec || !spec.commodityId) return null;
+    return spawnJettisonedCargoPod(this.state, spec, this.helpers);
+  },
+
   /** Physical manifest cargo uses the ordinary pickup contract. Cargo remains the sole player-hold
    * writer; the director only owns the encounter annotation and observes pickup:collected. */
   spawnFreightPickup(live, opts) {

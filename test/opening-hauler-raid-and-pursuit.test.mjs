@@ -118,7 +118,7 @@ test('Opening hauler raid runtime lifecycle: choices, defense, and payout', () =
   dir.pending = [item];
   dir.pressure.combat = 30; // satisfies pressureCost 20
 
-  sim.runTicks(60); // 1 sec tick - triggers _pump and fire()
+  sim.runTicks(90); // the director pumps on a 1 Hz accum — 60 ticks lands just under 1.0 in float
 
   const live = Object.values(dir.live).find((l) => l.shapeId === 'opening_hauler_raid');
   assert.ok(live, 'encounter must be live');
@@ -138,7 +138,7 @@ test('Opening hauler raid runtime lifecycle: choices, defense, and payout', () =
     r.alive = false;
   }
 
-  sim.runTicks(60); // tick runtime
+  sim.runTicks(90); // one more 1 Hz director pass observes the kills
 
   assert.equal(live.phase, 'done', 'encounter resolves once raiders are down');
   assert.equal(live.outcome, 'defended');

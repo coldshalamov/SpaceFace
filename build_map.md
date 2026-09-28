@@ -420,7 +420,7 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 44 | CV-DAY-1 | `sectorActivityPockets.js` is Ceres-only — Helios does not yet feel like a job in progress; extend pockets to named sectors | BUILD | CLAIMED devin-boards-3x3 |
 | 45 | CV-MOTION-1 | The campaign's core invention was never built: one living-machine **score** deciding what stays in motion on the glass vs sleeps | BUILD | OPEN |
 | 46 | CV-QUIET-1 | The three minutes between jobs should be a place — detour texture density on the default route | BUILD | CLAIMED devin-boards-3x3 |
-| 47 | CR-CHAIN-1 | Named rumor-braids not yet built: volatile pod as moving mine, hitch on a working miner, wreck towed through a search, clothesline on existing rocks, planet-well + field-well as one curve — one braid per unit, update count in row | BUILD | OPEN |
+| 47 | CR-CHAIN-1 | Named rumor-braids not yet built: ~~volatile pod as moving mine~~ (built: encounter 350 THE LONG TAIL), hitch on a working miner, wreck towed through a search, clothesline on existing rocks, planet-well + field-well as one curve — one braid per unit, update count in row (1/5) | BUILD | OPEN |
 | 48 | CR-FEED-1 | Non-copy kill machines for the remaining named sectors (Vesta, Tethys-adjacent, Veil) | BUILD | CLAIMED devin-boards-3x3 |
 | 49 | CR-CHOIR-1 | Congregation-as-activity: the Choir tend the hurt and remember what you did with their dead — beyond one bar memory | BUILD | OPEN |
 | 50 | CR-ANVIL-1 | Sling variants for Vesta belt / Veil lanes; teach with waiting bodies beyond the Tethys witness | BUILD | OPEN |
