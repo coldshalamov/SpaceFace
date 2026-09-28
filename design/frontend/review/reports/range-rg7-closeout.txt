@@ -1,0 +1,66 @@
+RANGE RG7 CLOSEOUT — ORRERY frontend overhaul, foot-dock fix verification
+Critic: range RG7 closeout. Stills opened with own eyes + rows measured with PIL.
+Context: shiprange-r3-critic.txt left RG7 open (foot readout y918-930, ~150px void
+below). Fix: commit 04bb5aa81, src/ui/screens/range.js ONLY (confirmed via
+git show --stat: 1 file, +4/-1) — `html body #screens #sf-range
+{ padding-bottom: 24px; }`; the void was the kit's 96px content padding.
+Stills (re-shot AFTER the fix): w2r3-range-1920 / w2r3-range-1280.
+Px in the named shot's own pixels. Lum = Rec.709.
+
+================================================================================
+(1) FOOT DOCK @1920 — DOCKED ✓
+================================================================================
+Bright-band rows x1400-1850, lum>100:
+- dossier "NOT CLEARED" y948-959; rule y1005-1006; foot readout core y1014-1026
+  (builder claimed y1015-1026 — confirmed within 1px threshold tolerance);
+  gauge-arc/descender tail y1031-1033. Last ink y1033; bright px below: 0.
+Full-width x60-1860, lum>60: foot block y997-1034 (links 998-1007, readout
+1012-1028, tail 1030-1032); last ink y1034; 0 bright px y1035-1080.
+Dead below foot: ~46px (was ~150px at r3) = 24px kit padding (container bottom
+1080-24 = 1056 ✓) + ~22px line-box remainder. The foot cannot sit lower
+without cutting into kit padding: this IS the docked state. r3 target y~1030-
+1055 met (content bottom 1034, container bottom 1056). No void below.
+
+================================================================================
+(2) HERO/STAGE INTACT, BOTH SIZES ✓
+================================================================================
+Eyeballed both stills: no squash, gates + obstacle (pentagon/ring + BRUISER
+marker) + beam all present and composed as at r3. Measured @1920:
+- gate-1 scale: brightest col x596, 373 bright rows (r3 ref x590-606 ✓)
+- beam: solid rows y552-557, 175-213 bright px across x180-590 (r3: y504-509
+  at run state 0.8S; now 1.2S — shifted with run state, legitimately
+  state-dependent per r3, solid origin->gate1)
+- gate-1 Hand bead: 35 amber px, e.g. (235,189,103) @x594 — present
+- gate4 numeral right x1668 = r3 EXACT; top-right tick left x1772 = r3 EXACT;
+  clearance 104px, unchanged
+@1280: gate-1 scale col x400 intact; beam solid y341-344; gate4 numeral right
+x1112 (r3: 1113, 1px); top-right tick left x1164 = r3 EXACT; clearance 52px
+(spec >=24px) ✓.
+
+================================================================================
+(3) 1280 GATE HOLDS ✓
+================================================================================
+Foot: readout core y654-666, last ink y674, 0 bright px below (dead ~46px,
+same dock as 1920). Title + keys + hero + ladder (2 rows) + dossier + foot
+all fit; zero overlap eyeballed; gate4 clear of corner ticks (52px, see §2).
+
+================================================================================
+(4) APPROVED STANDING — RANGE 8.3 HOLDS ✓
+================================================================================
+Palette spot-check (full law verified at r3): Lamp fill exactly (242,185,80)
+= #F2B950 at BOTH sizes ✓; Hand bead amber present; full-screen blue census
+(exact 140,192,242 ±30, sampled /4) = 0 ✓.
+Fix is padding-only; hero px-positions reproduce r3 exactly (1668/1772,
+400-scale, beam solid). Nothing regressed on any axis; the dock repairs the
+r3 Composition ding (7.8, "foot floats") rather than costing anything — no
+formal rescore in a closeout, Range 8.3 HOLDS.
+
+Residual (non-blocking, carried, NOT part of this closeout): the gauge-grow
+half of r3's RG7 re-owe is unchanged — gauge arc ink spans x1509-1548 (~40px
+bead-on-thin-arc, r3: x1504-1553), still no n/4 progress encoding or lit
+fraction. It was already "real but partial" enhancement polish at r3 and
+Range PASSED with it; it remains the screen's top polish item but blocks
+nothing.
+
+VERDICT: RG7 CLOSED (dock verified with px evidence; gauge-grow carried as
+residual polish). RANGE HOLDS.

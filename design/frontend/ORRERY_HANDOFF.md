@@ -32,8 +32,9 @@ Since 2026-09-25 late the bar is the OWNER'S: every surface must also answer (a)
 elements and (b) one distinct signature interaction (`design/frontend/OVERHAUL_PLAN_2026-09-25.md` §1, §2.1 —
 a band counts as body only at >= 2:1 on the glass, measured). Screens marked "letter" passed ORRERY before
 that bar existed and are re-scored after the weight sweep. Live per-surface status: the plan's §4 table.
-Latest critic report per surface: `design/frontend/review/reports/`. 31 surfaces approved (Ship 8.2
-APPROVED via shiprange-r3, Range holds 8.3); RG7 foot-dock close-out is the last Wave 2 item.
+Latest critic report per surface: `design/frontend/review/reports/`. 31 surfaces approved — Wave 2
+fully APPROVED (Ship 8.2, Range 8.3, Automation 8.0, Replay 8.1, Clips 8.0; RG7 closed). Next: Wave 3
+(Asteroid Works, Drill, Base, Loading audit, HUD weight, Sandbox).
 
 | Screen | State | Last score | Composition file | What is left |
 |---|---|---|---|---|
