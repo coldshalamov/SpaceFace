@@ -74,7 +74,11 @@ export function createDeterministicEventTrace(bus, state, options = {}) {
       tick: state && Number.isFinite(state.tick) ? state.tick : 0,
       simTime: round6(state && state.simTime),
       type,
-      payload: sanitizePayload(payload),
+      // ship:thrust is every powered flight frame — sorted Object.keys walk dominated quiet
+      // sanitizePayload self time. Typed fast path keeps identical JSON key order.
+      payload: (type === 'ship:thrust' && THRUST_TRACE_SANITIZE_FAST)
+        ? sanitizeThrustPayload(payload)
+        : sanitizePayload(payload),
     });
     if (records.length > cap) records.splice(0, records.length - cap);
   }));
@@ -93,7 +97,69 @@ export function createDeterministicEventTrace(bus, state, options = {}) {
   };
 }
 
-function sanitizePayload(value, depth = 0) {
+let THRUST_TRACE_SANITIZE_FAST = true;
+
+/** Bench-only: restore sorted Object.keys sanitize for ship:thrust A/B. */
+export function setThrustTraceSanitizeFastForBench(enabled) {
+  THRUST_TRACE_SANITIZE_FAST = enabled !== false;
+}
+
+export function getThrustTraceSanitizeFastForBench() {
+  return THRUST_TRACE_SANITIZE_FAST !== false;
+}
+
+/**
+ * Typed sanitize for the every-frame ship:thrust envelope.
+ * Key order matches Object.keys(payload).sort() for the flightV3 shape so golden
+ * JSON.stringify tapes stay byte-identical.
+ */
+export function sanitizeThrustPayload(payload) {
+  if (payload == null || typeof payload !== 'object') return sanitizePayload(payload);
+  // Only the known flightV3 envelope takes the fast path. Any other shape falls
+  // back so extra/missing keys keep legacy Object.keys().sort() semantics.
+  if (!Object.prototype.hasOwnProperty.call(payload, 'boost')
+    || !Object.prototype.hasOwnProperty.call(payload, 'id')
+    || !Object.prototype.hasOwnProperty.call(payload, 'nozzles')
+    || !Object.prototype.hasOwnProperty.call(payload, 'reverse')
+    || !Object.prototype.hasOwnProperty.call(payload, 'shipId')
+    || !Object.prototype.hasOwnProperty.call(payload, 'strafe')
+    || !Object.prototype.hasOwnProperty.call(payload, 'throttle')
+    || Object.keys(payload).length !== 7) {
+    return sanitizePayload(payload);
+  }
+  const nozzlesIn = Array.isArray(payload.nozzles) ? payload.nozzles : null;
+  if (!nozzlesIn) return sanitizePayload(payload);
+  const n = nozzlesIn.length < 40 ? nozzlesIn.length : 40;
+  const nozzles = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const nozzle = nozzlesIn[i];
+    if (nozzle == null || typeof nozzle !== 'object'
+      || !Object.prototype.hasOwnProperty.call(nozzle, 'angle')
+      || !Object.prototype.hasOwnProperty.call(nozzle, 'role')
+      || !Object.prototype.hasOwnProperty.call(nozzle, 'strength')
+      || Object.keys(nozzle).length !== 3) {
+      nozzles[i] = sanitizePayload(nozzle, 1);
+      continue;
+    }
+    // Alphabetical: angle, role, strength — same as sorted Object.keys on the nozzle.
+    nozzles[i] = {
+      angle: round6(nozzle.angle),
+      role: typeof nozzle.role === 'string' ? nozzle.role : sanitizePayload(nozzle.role, 2),
+      strength: round6(nozzle.strength),
+    };
+  }
+  return {
+    boost: payload.boost,
+    id: payload.id,
+    nozzles,
+    reverse: round6(payload.reverse),
+    shipId: payload.shipId,
+    strafe: round6(payload.strafe),
+    throttle: round6(payload.throttle),
+  };
+}
+
+export function sanitizePayload(value, depth = 0) {
   if (value == null) return value;
   if (depth > 5) return '[depth]';
   const t = typeof value;
