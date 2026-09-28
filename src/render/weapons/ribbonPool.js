@@ -245,7 +245,11 @@ export class WeaponRibbonPool {
     }
     const prev = this.entityIds[slot];
     if (prev >= 0 && prev !== entityId) this.byEntity.delete(prev);
+    // Quiet settled flight: update's early-out trusts live; waking a dead slot must
+    // raise it here because _writeVertices only recounts on frames that run.
+    const wasAlive = !!this.alive[slot];
     this.alive[slot] = 1;
+    if (!wasAlive) this.live += 1;
     this.entityIds[slot] = entityId == null ? -1 : entityId;
     if (entityId != null) this.byEntity.set(entityId, slot);
     this.width[slot] = width || 0.5;
@@ -298,6 +302,9 @@ export class WeaponRibbonPool {
     const reducedFlash = id === 'reduced-flash' || id === 'reduced-motion-and-flash';
     const elapsed = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.1) : 0;
     this.material.uniforms.uModulation.value = reducedFlash ? 0 : 1;
+    // Quiet path: capacity linger walk + _writeVertices when live===0 was pure CPU;
+    // mesh already visible=false and slots cleared after the frame that retired the last wake.
+    if (!(this.live > 0)) return;
     for (let i = 0; i < this.capacity; i++) {
       if (!this.alive[i]) continue;
       if (!reducedMotion) this.age[i] += elapsed;
@@ -475,5 +482,8 @@ export class WeaponRibbonPool {
     if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
     this.geometry.dispose();
     this.material.dispose();
+    this.live = 0;
+    this.alive.fill(0);
+    this.byEntity.clear();
   }
 }
