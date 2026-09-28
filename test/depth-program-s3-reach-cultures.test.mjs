@@ -19,6 +19,7 @@ import { ACE_MEMORY_VERSION, aceMemory } from '../src/systems/aceMemory.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
+import { planetStatesForSector } from '../src/data/planetStates.js';
 
 const CORE_DOCTRINES = ['toll', 'thief', 'salvage-jackal', 'tech-raider', 'ideological'];
 const CORE_ACES = ['ace_yara_no_cut', 'ace_toll_saint_venn', 'ace_mako_broken_ring'];
@@ -296,6 +297,16 @@ function bootCultureIntro(route, seed, options = {}) {
   bus.on('namedAce:appeared', (payload) => appeared.push(structuredClone(payload)));
   bus.on('encounter:voice', (payload) => voices.push(structuredClone(payload)));
   bus.on('aceMemory:voice', (payload) => aceVoices.push(structuredClone(payload)));
+  // Fixture isolation: this suite measures only the culture ace's route. A Reach Scrawl
+  // planet challenge shares the same sector:enter schedule and the same named_hunter shape,
+  // so once its seeded delay + pressure pass it legitimately fires inside the culture window.
+  // Marking its ace terminal up front keeps the harness about the culture ace alone.
+  for (const assignment of planetStatesForSector(route.sectorId)) {
+    const challengeAceId = assignment && assignment.challenge
+      && assignment.challenge.trigger === 'sector:enter'
+      && assignment.challenge.aceId;
+    if (challengeAceId) bus.emit('namedAce:defeated', { aceId: challengeAceId, sectorId: route.sectorId });
+  }
   if (options.emitSectorEnter !== false) bus.emit('sector:enter', { sectorId: route.sectorId });
   return { sim, state, bus, helpers, registry, appeared, voices, aceVoices };
 }
