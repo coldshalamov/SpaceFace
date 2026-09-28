@@ -55,7 +55,7 @@ export function craftingMaterialBlockerText(bp, materials = []) {
   return 'Need ' + fmtQty(qty) + ' ' + commodityName(missing.id) + ' for ' + ((bp && bp.name) || 'this blueprint');
 }
 
-function buildDuration(bp) {
+export function buildDuration(bp) {
   if (!bp) return 0;
   if (bp.timeS && bp.timeS > 0) return bp.timeS;
   return DEFAULT_TIME_S[bp.category] || 0;
