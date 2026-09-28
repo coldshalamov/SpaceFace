@@ -1,0 +1,147 @@
+STATION BAR — ROUND 13 CRITIC (stills r74-bar-1920.png / r74-bar-1280.png, byte-identical to r72; commit
+5b8a14f56; measured against my round-12 LANDMARKS; crops and scripts under scratchpad/crops/barc13-* and
+scratchpad/barc1[123]-*.cjs)
+
+1. VERDICT: PASSED. Overall 8.1 (mean 8.07; previous 7.9). No axis is under 7.8.
+   The round landed what the round-12 projection needed:
+   - One crisp tick series down the whole rail, with the bead centred on the arm.
+   - Key hints at label size and about 5.3:1.
+   - Whispers that read as strokes.
+   - A 62px section break.
+   Two residuals remain. Neither is visible at 1:1 and neither blocks the pass:
+   - The 1280 spine tail is still clipped by the rail's scroll box (the fade cuts from 50 to 9 at y=619/620).
+   - At 1920 the Hand-row tick sits one row under the arm.
+   Composition (7.8) remains the weakest axis. Its last gap, the lower-centre void, is content, not craft.
+
+2. AXES (r12 in brackets)
+   Composition        7.8 (7.7)  The section break tightened from 76 to 62px (CONTACT caps 556 → LEADS caps
+                                 618). The rail now reads 40 / 46 / 35 / 62 / 34 / 46 / 25 from HERE TONIGHT to
+                                 the key: one cadence with one breath. The rail ends at 817, against the stage's
+                                 660. Against it: the lower-centre void is unchanged (x=620-1100 x y=690-990, max
+                                 34, mean 12.5), and so is the band under the rail.
+   Hierarchy          8.0 (7.9)  The order of light holds: the Hand, then the chosen reply 250, the line and lead
+                                 titles 244, the name 226, other replies 206, contacts 198, labels 168, then the
+                                 hints 133 alongside the voice 121-131.
+                                 Caution: at 11px the hint caps are 8 rows tall. That is as tall as, or 1px
+                                 taller than, the section labels (HERE TONIGHT caps 344-350). Only the light step
+                                 (168 → 133) keeps them subordinate. Do not raise the hints' light again.
+   Legibility         8.1 (7.8)  Hints: rgb(138,132,122) = 133 over rgb(12,11,11), about 5.3:1 (was about 4.1),
+                                 at 11px caps. There is no sub-standard text left on the tab. 720 stays whole
+                                 (lead 1 "Gate" is whole; lead 3 wraps).
+   ORRERY fidelity    8.4 (8.3)  One tick rendering along the whole spine at both sizes. Labels at §3.4 size. The
+                                 Hand is emitted with its bloom, the Waveform speaks the line, and the leader obeys
+                                 §3.2.
+   Craft/detail       8.1 (7.9)  Done: the contact ticks are crisp, the bead is centred, the whispers are 3px, and
+                                 the break is tightened. Residuals: the 1280 spine tail is clipped (N3 half), and
+                                 the 1920 Hand tick is 1 row low.
+   Interaction        8.0 (7.9)  Every key hint is now readable at a glance ("↑↓ CONTACT", "1-3 · ENTER ANSWERS",
+                                 "TAB LEAD · ENTER INSPECTS"). The Hand, one reply cursor and a quiet marker leave
+                                 no doubt where you are. At 720 the verbs are all visible.
+
+3. ROUND-12 LIST, ITEM BY ITEM
+   N1 One crisp tick series, and the bead on the arm: DONE (a 1px residual at 1920).
+       Ticks:
+       - 1920 contact minor ticks are single rows at 371 / 379 / 387 … 539, reading 74-75 with the crossing at
+         130-131. The rows above read 7-9. (r12: paired rows 24/59, crossing 97/121.)
+       - 1280 contact ticks are single rows at 253 … 389, reading 73-76 / 130-131.
+       - The leads' ticks are unchanged and match.
+       Bead:
+       - 1920: core rows 384-388 are symmetric about the arm row 386: 87/174/210/178/82 over
+         211/217/218/219/215 over 105/179/210/182/101.
+       - 1280: rows 259-263 are symmetric about 261.
+       Hand-row tick:
+       - 1280: exactly on the arm row (y=261, x=36-38 at 76/82/88).
+       - 1920: at 387 (75/81/86, crossing 139), while the arm row 386 reads 11/19/30 at x=36-38. The tick sits
+         one row under the arm, so at the Hand's root the arm and the tick do not line up as one through-line.
+         Invisible at 1:1, plain at 4x.
+       The likely cause is two numbers: the tick phase comes from floor(row centre) in JS, while the arm's
+       top comes from CSS round(down, 50%, 1px) on a row whose own top is fractional.
+   N2 Key hints at the §3.4 label size: DONE.
+       - 1920: CONTACT caps 556-563 (8 rows) at 133; TAB LEAD 766-772; the stage hint 654-660 (x=665-828).
+       - 1280: CONTACT 403-410; the stage hint 446-452 (x=445-608).
+       - Background around the 1280 stage hint is rgb(12,11,11), giving about 5.3:1.
+       - Fit at 720: CONTACT to LEADS is 39px (403 → 449), the key sits at 600-606, and the tab words at 655.
+         Nothing crowds.
+   N3 1280 finish: HALF.
+       Whispers: DONE.
+       - They now floor at 3px. Example: the whisper at (845-848, 344-345) was (847-848) in r12.
+       - 85 pixels changed on the 1280 arc, all of them whisper extensions. The 1920 arc is unchanged (3 px).
+       Spine tail: NOT DONE.
+       - 1280 reads 614:75, 615:70 … 619:50, then 620:9. It is still cut, and now at 50 (r12: 40).
+       - The 28px bottom padding lengthened the scroll content, not the visible box. The rail's scroll
+         container still ends at y=620 and clips its own ::after.
+       - That padding probably also made the 720 rail scrollable by about 18px (key bottom about 610 + 28 >
+         620). I cannot see a scrollbar in the still (x=372-400 reads 11-17), so check this in the DOM.
+   N4 Close the section break at 900px tall or more: DONE.
+       - CONTACT caps 556 → LEADS caps 618 = 62px (was 76).
+       - Leads 652-664 / 686-698 / 720-732; TAB LEAD 766-772; key 791-797.
+       - The spine is full to about 803, then fades 804 (75) → 817 (10).
+       - 1280 is unchanged, as intended.
+
+4. DOES A STRUCTURAL CHANGE REMAIN? Not to pass. The tab passes on its current structure.
+   Above 8.1 the only lever is composition, and it is content, not spacing: the stage is 312px tall against
+   a 620px face. The constraint still holds: the stage cannot drop more than about 40px before "Vols"
+   (x≈1112) meets the loud bars (tips at x≈1133-1140, y≈430-480).
+   If the owner wants the next level: put a small instrument in the lower centre (x=620-1100, y≈700-820).
+   For example, the contact's standing as a bone arc with one reading under the replies, the Factions
+   language in miniature.
+   That is an owner/design call, not a critic's gate.
+
+5. REMAINING ITEMS (the tab has passed; these are polish, not gates)
+   P1. The 1280 spine tail and the 720 scroll (craft).
+       Change:
+       - In seatSpine, clamp the end to the visible box:
+           bottom = Math.min(bottom, hang.scrollTop + hang.clientHeight - 1)
+         so the mask's 16px fade finishes inside it.
+       - Then take the leads' 720 padding back to 16px. The padding did not fix the tail, and it probably made
+         the rail scroll.
+       Target: 1280 x=39 reads ≤12 on its last visible row, with no 50 → 9 cut, and
+       hang.scrollHeight == hang.clientHeight at 1280x720.
+   P2. The 1920 Hand tick (craft).
+       Change: drive the arm and the tick phase from ONE number. Set --bar-arm-y (px) on the chosen row from
+       the same armY that seats the phase, and give the arm and the bead top: var(--bar-arm-y) and
+       calc(var(--bar-arm-y) - 2px).
+       Target at 1920: y=386 at x=36-38 reads about 75; y=387 reads about 8. 1280 stays as it is (261).
+   Projection with P1 and P2: craft 8.2, mean 8.08. Composition stays 7.8 until the lower centre carries
+   content (section 4).
+
+6. LANDMARKS (for any later round; 1920 unless marked)
+   Hand, y=386:
+   - Crossing 220 at x=39-41; amber arm 42-64 reading 190; bead core rows 384-388, x=65-69, centred on 386.
+   - Bloom: rows 385/387 read 37, rows 384/388 read 24, rows 383/389 read 13-14.
+   - The Hand tick is at 387 (75/81/86, crossing 139).
+   - 1280: arm at 261, core rows 259-263, the Hand tick at 261 (76/82/88).
+   Spine at 1920:
+   - x=39; x=40 reads 7-8.
+   - Fade-in 341→356; 87-88 to about 803; fade 804 (75) → 817 (10).
+   - Contact ticks, single rows: 371, 379, 387 … 539 (74-75, crossing 130-131).
+   - Leads' ticks: 641, 649 … 737 (74-75, crossing 130).
+   - Row ticks: 432, 477, 523 (159-160 where a minor tick coincides), 691, 725.
+   - Bare spine 540-640 (the break) and 738-803.
+   Spine at 1280:
+   - Fade-in 220→235; full to about 613; 614:75 … 619:50, then 620:9 (cut).
+   - Contact ticks 253 … 389, single rows. Leads' ticks 472 … 584.
+   - Row ticks: 298, 336, 374, 522, 563.
+   Lead marker: x=38/39 = 120/120. 1920 y=646-669; 1280 y=477-500.
+   Reply cursor: x=650/651 = 142/129.
+   Rail, 1920:
+   - HERE TONIGHT caps 344-350 at 168.
+   - Contacts: 384-392 (chosen, 247), then 430-438 / 475-483 / 521-529 at 198.
+   - CONTACT 556-563 at 133. LEADS 618-624 at 167.
+   - Leads 652-664 / 686-698 / 720-732, all at 244.
+   - TAB LEAD 766-772 at 133. OPEN THE BOARD 791-797 at 244.
+   Rail, 1280:
+   - HERE TONIGHT 223-229.
+   - Contacts: 259-267 (247), then 296-304 / 334-342 / 372-380.
+   - CONTACT 403-410 at 133. LEADS 449-455.
+   - Leads 483-495 / 517-529 / 551-563 plus 567-577.
+   - Key 600-606. Tab words 655.
+   Stage hint: 1920 caps 654-660, x=665-828 at 133. 1280 caps 446-452, x=445-608.
+   Arc and leader: unchanged from r12 at 1920 (only 3 px differ).
+   - Leader landing (1142,484); nearest bar roots 9.8px below and 22px above.
+   - Bars 4-27; rest 172.0°→176.8°; top three bars are 4px whispers.
+   - 1280: whispers about 3px; loudest bars about 13px.
+   Empty areas (unchanged):
+   - 1920 lower centre, x=620-1100 x y=690-990: max 34, mean 12.5.
+   - 1920 under the rail, x=60-600 x y=840-990: max 19.
+   - 1280, x=400-760 x y=470-630: max 37, mean 12.1.

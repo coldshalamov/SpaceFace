@@ -1,0 +1,135 @@
+STATION FACTIONS TAB, ROUND 10 — ART DIRECTION CRITIQUE (persistent critic; scored against my round-9 numbers, 7.8)
+Scored against design/frontend/ORRERY.md. Stills: r58-fac-1920.png, r58-fac-1280.png (1280x720; Concord = the authority, chosen, arrival).
+All coordinates are 1x pixels in the named shot. Lum = mean of RGB. Contrast = WCAG ratio on composited pixels.
+Grid diff r52 -> r58:
+- 1920: the orbit (chords, beads, emblems, names) and the right column from y=700 down (rung lines, stack) changed.
+- 1280: the orbit and the tier-word row changed.
+- The POWERS rail is pixel-identical to r52. Row 333 runs 248 bone from the spine (x=39) to the bead (63-67), so the arm
+  already ran spine -> bead in round 9; the global translate fix changed nothing visible on this tab.
+
+1. VERDICT: PASSED, on the line. Overall 8.0 (48.0 / 6 = 8.00; round 9: 7.8). No axis under 7.0; the lowest is Legibility at 7.8.
+   All five items landed as specified (F4 by half its projected gain). The orbit, which is the hero instrument, now meets the
+   law at both sizes. The margin is zero for two reasons:
+   - Secondary text on the standing scale fails §8 gate 2: six graduation readings at 2.2-3.3:1 and three future rungs at
+     2.7-4.2:1. I missed these in round 9. They are not grandfathered: they are scored in the Legibility line below and named in
+     section 4.
+   - Two new craft costs: the cursor bisects NEUTRAL, and the rung detail outshines its rung word.
+
+2. AXES (previous = round-9 scores)
+   Composition          7.9  (7.7)  The duplicate "Next:" row is gone, and the next rung now spells out its unlock under its own
+                                    +30 tick. The scale reads as one complete instrument (bands, cursor, rungs, the next
+                                    unlock), and the reading below is four rows (NEXT MOVE 783 / sentence 813 / legend 858 /
+                                    DETAIL 883). The stack did not rise (it moved +4 px), and the band 1020-1880 x 900-1000 is
+                                    still empty.
+   Hierarchy            8.1  (8.0)  The chosen crest is now the brightest mark on the ring: seat emblem 255, related 235, sun
+                                    228, bystanders 125. For bystanders, word = mark (names 123-125, emblems 125-126). Every
+                                    standing figure is 242 (+40 restored). One new inversion: the rung's detail lines (137)
+                                    are brighter than the rung word they hang from (ACCEPTED CONTRACTS 113).
+   Legibility           7.8  (7.5)  Gains: the orbit names went from 2.0:1 to 4.8:1 at both sizes, +40 from 3.8:1 to 18:1, and
+                                    the 1280 tier gaps from 4/5 px to 7/7 px.
+                                    Still under the §8 gate, and scored here rather than exempted:
+                                    - six scale graduations, which are readings: -700 / -400 at 2.2-2.3:1 and -149 / +150 /
+                                      +400 / +700 at 3.1-3.3:1;
+                                    - three future rungs: ACCEPTED CONTRACTS 4.2:1, TRUSTED WORK 4.2:1, ALLIED RETAINERS 2.7:1.
+                                    Why that still allows 7.8: the hero instrument (orbit names, figures, the chosen tier,
+                                    the current rungs) passes at both sizes; the two graduations nearest the cursor (-29 5.2:1,
+                                    +30 4.5:1) pass; the failures are the far graduations and the far rungs. The cursor also
+                                    splits the word NEUTRAL at both sizes. A stricter reading (7.7) would put the mean at
+                                    7.98, which is still 8.0 at one decimal.
+   ORRERY fidelity      8.1  (8.0)  The orbit meets §8 gate 2. §6 standing reads end to end (Vael 54°). Beams stay one layer
+                                    and arcs another, and there is one amber Hand. Absent as before: the chosen crest on a Tilt
+                                    Plate with scroll-revealed lore. Gate-2 failures remain on the scale's secondary text.
+   Craft / detail       7.9  (7.7)  Gain: the bead now clears the arc cleanly at every crest. Beads sit at r 36.0-37.7, with
+                                    3 px of glass to the crest hood and ≈5 px to the arc's lit pixels, and the Vael arc is
+                                    visible from +2° to -52.3°. The rung detail is set on the rung's pitch with nothing
+                                    crossing it.
+                                    Two new named costs:
+                                    - the cursor bisects NEUTRAL at every arrival (column 1436 at 242 through caps rows
+                                      588-595, between T 1428-1430 and R 1442-1444);
+                                    - the detail (137) outshines its parent rung word (113).
+                                    F4 took only half its gain. Net +0.2.
+   Interaction clarity  8.2  (8.0)  The -120 arc is now whole, so Vael reads ≈2x Reach without the numeral. The next rung says
+                                    what it unlocks where it unlocks. The relation set, the standing and the next step each
+                                    read in one look.
+   Mean 48.0 / 6 = 8.00.
+
+3. ROUND-9 LIST, ITEM BY ITEM
+   F1 (rival bead on the standing arc) — DONE, both sizes.
+      1920, bead centroid / radius / bearing from the crest centre:
+        Vael     (760.5,615.7)  r 36.0  -49.7°  (r52: 28.1)
+        Reach    (784.5,511.0)  r 36.9  -105.7° (29.0)
+        Pitborn  (566.6,461.4)  r 37.6  +130.5° (29.6)
+        Meridian (717.1,426.8)  r 37.4          (≈25-29)
+        Choir    (663.5,662.5)  r 37.5  at 0°   (29.5)
+      Row 616 at Vael: bead 758-763 (peak 222,71,51) | glass 764-766 (8-10) | crest hood 767-768 (51-61) | arc 769-774 (248).
+      Vael arc lit -52.3°..+2° = 54.4° (was 46° with its end hidden).
+      1280: Vael bead (385.4,479.6) r 37.7 at -50.6°; Reach bead r 37.4. Vael arc -53.3..-0.9 = 52.4°, arc band r 28.3-31.1.
+   F2 (bystander names at 2.0:1 and the ghosted figure) — DONE, both sizes.
+      1920: bystander names peak 123-125 (VERGE 125, DRIFT 125, ARCHIVE 123, FULFILLMENT 124, QUIET 124, UNDERSTORY 124,
+      HELIX 124, FRONTIER 123; 128,125,118) = 4.84:1 on 9-10. Bystander emblems 125-126, so word = mark. Related names 196-197;
+      related emblems 235. Figures -50 / -120 / +40 all 242.
+      1280: bystander names 123-124; emblems 125; +40 242.
+   F3 (the reading's text stack) — DONE, with one tone slip.
+      - Detail lines: "R3 · HIGHER-RISK ESCORTS" 1498-1663 x 714-720 and "SMUGGLING, COMBAT" 1497-1627 x 725-733, peak 137
+        (143,137,128), 5.3-5.6:1 over the floor.
+      - 1920 Next row: absent (nothing lit in 1015-1560 x 734-752). 1280 keeps "Next: Accepted Contracts at +30"
+        (619-797 x 494-505) as asked.
+      - Slip: the parent word ACCEPTED CONTRACTS is still 113 (117,114,107; 4.17:1), so the child outshines the parent by 24.
+   F4 (1280 tier words fuse) — HALF. The tracking change landed. The runs are now 876-927 | 935-993 | 1001-1052: NEUTRAL|
+      ACCEPTED 7 px, ACCEPTED|TRUSTED 7 px (were 4 / 5; neighbours 12-29). Better and now separable, but still the two tightest
+      gaps on the scale by 5 px. The scale-widening half (right end x≈1184 -> 1240) was not taken.
+   F5 (chosen crest the dimmest lit crest) — DONE. Seat emblem 255,255,255 at both sizes (646-680 x 362-396; 1280 294-329 x
+      271-306), above related 235 and the sun 228. (Crest art is neutral white, not warm bone, on every crest; that is the
+      pipeline and not new.)
+
+4. WHAT STILL HOLDS IT AT 8.0 (nothing here is required for this pass, which is already scored with these defects counted; this
+   is what a round 11 would buy, most valuable first. R1 + R2 + R3 alone would put it at ≈8.2.)
+   R1. Scale graduations under §8 gate 2 (legibility, fidelity). All sit on a 6-18 field:
+       -700   (1098-1128, 621-634)  134,44,33  2.31:1
+       -400                        128,42,32  2.19:1
+       -149                        100,99,94  3.29:1
+       +150 / +400 / +700           ≈99        3.13-3.25:1
+       (-29 and +30, nearest the cursor, pass at 5.2 / 4.5.)
+       At 1280 the same row (y≈443-452) is equally dim.
+       Smallest change: bone graduations to ≥ 128 (≈4.7:1), and the two hostile ones to ≈215,68,48 (85% of danger red, 4.6:1).
+   R2. Rung words under their own detail (hierarchy, legibility).
+       ACCEPTED CONTRACTS (1490-1582 x 687-705) 113, 4.2:1, beneath its detail at 137.
+       TRUSTED WORK (1580-1670 x 650-675) 125,120,111 on 23,19,16, 4.2:1.
+       ALLIED RETAINERS (1675-1760 x 657-676) 106,87,78 over the floor's orange stripe, 2.7:1.
+       Smallest change: the next rung's word to 160 (7.4:1, above its 137 detail), and every other future rung ≥ 140 (≥ 5.2:1
+       on the 25,20,16 floor).
+   R3. The standing cursor splits the tier word it points at (craft), at both sizes.
+       1920: the cursor x=1435-1437 runs y 564-624 straight through NEUTRAL's caps band 588-595, between T (1428-1430) and R
+       (1442-1444). There is only a 1 px knock-out at 587 and 596, so it reads as "NEUT|RAL".
+       1280: the same, between T and R.
+       At a standing of 0 (every new player's arrival) the cursor always lands on the band centre, which is where the word sits.
+       Smallest change: break the cursor across the tier-word row with 3 px clearance (1920 y 584-599; 1280 y 405-420), leaving
+       a stem from the bracket above and the pointer with its chevron below.
+   R4. 1280 tier gaps at 7 px (legibility). Take the other half of F4: run the scale's right end from x≈1184 to 1240, adding
+       ≈6 px per band, for gaps ≈13 px.
+   R5. Composition. The band 1020-1880 x 900-1000 is still empty, and the stack (783-891) did not rise into the space the Next
+       row left. Optional: lift the stack by the 42 px the Next row used to occupy (NEXT MOVE to ≈741). The empty lower band
+       would then read as intended breathing room under a shorter column, rather than slack.
+   The structural ambition beyond 8, unchanged: the chosen crest large on a Tilt Plate with its lore scroll-revealed (§6). The
+   watermark octagon (1029-1327) is flat, and the lore is one tag line.
+
+5. LANDMARKS FOR RE-SCORING
+   1920:
+   - Orbit centre (664,540), r 160; seat amber bbox 631-696 x 346-420; arm x=663-664 y 417-462.
+   - Labels: CONCORD 627-698 x 330-338. VERGE-LAYERS 447-555 x 390-398. MERIDIAN 771-840 x 390-397. PITBORN 437-499 x 434-442.
+     REACH 857-904 x 492-500 (-50 505-513). VAEL 826-861 x 628-635 (-120 641-649). FRONTIER 771-842 x 672-679 (+40 685-693).
+     CHOIR 641-685 x 739-747.
+   - Lums: related names 196-197; bystander names 123-125; figures 242. Emblems: related 235, bystander 125-126, seat 255,
+     sun 228.
+   - Beads r 36.0-37.7 (listed in F1). Arcs: Reach -26.6..0 (27°); Vael -52.3..+2 (54°); Frontier -2..+20 (22°).
+   - Scale: cursor x=1435-1437, y 564-624; NEUTRAL 1402-1469 x 586-597; graduations row 621-634 (lums in R1).
+   - Rungs: ACCEPTED CONTRACTS 1490-1582 x 687-705 at 113; detail 1497-1663 x 714-733 at 137; TRUSTED WORK 1580-1670 x
+     650-675; ALLIED RETAINERS 1675-1760 x 657-676.
+   - Stack: NEXT MOVE 783-790; sentence 813-825; legend 858-867; DETAIL 883-891.
+   - Rail: spine x=39, arm row 333 x 39-67 at 248, bead 63-67.
+   1280:
+   - Seat emblem 294-329 x 271-306 at 255. Bystander names 123-124; +40 242.
+   - Vael bead (385.4,479.6) r 37.7; Vael arc -53.3..-0.9.
+   - Tier runs 632-668 | 696-730 | 753-798 | 814-863 | 876-927 | 935-993 | 1001-1052 | 1071-1108 | 1138-1167, gaps
+     27 / 22 / 15 / 12 / 7 / 7 / 18 / 29. Scale x≈619-1184.
+   - Next row 619-797 x 494-505.

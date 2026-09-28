@@ -1,0 +1,123 @@
+ARCHIVE SCREENS: CODEX + MISSION LOG. Critic round 4 (r12: 107265d8d)
+Stills scored: arc-r12b-* only. Also read: the walk log (view/arc-r12-walk-mission-log.txt) and its PNG for control 04.
+All px are at 1920x1080 unless noted. Contrast is the WCAG ratio on composited pixels.
+"The bar" = a band counts as body at 2:1 or more on the glass.
+
+================================================================================
+1. VERDICTS
+================================================================================
+MISSION LOG:  PASSED. Overall 8.0 (previous 7.8). No axis under 7.
+              (a) PASS. (b) PASS. The §8.3 control walk completed (5/5).
+CODEX:        STILL PASSED. Overall 8.1 (previous 8.0).
+              (a) PASS. (b) PASS. One new small defect (CX-1).
+
+================================================================================
+2. AXES (score / previous / one line)
+================================================================================
+MISSION LOG
+- Hierarchy / composition   7.9 / 7.3  The destination art now carries the floor.
+                                       - mlog-1920: rows y 756-906 (x 620-1820) have mean lum 15-34 and max 58-74, against lum 6
+                                         in round 3.
+                                       - The same art runs under the short list, x 100-560 at mean lum 13-17.
+                                       - It also holds at 2560 and in the empty state (Helios Prime, y 576-876).
+                                       - At 1280 there is no floor, but the gap there is only 116-136 px (rich/mlog-1280, y 504-640),
+                                         so this is a note, not a hole.
+- ORRERY law                8.0 / 7.9  The floor is produced art with a job (where the contract takes you), with no border and all
+                                       edges dissolved.
+- Weight (a)                8.0 / 8.0  Unchanged and passing: the lane band is 2.2:1, the spine band is at lum 71-100, and art sits
+                                       at every endpoint.
+- Signature (b)             8.3 / 8.1  Weighing contracts now carries place. The floor cross-fades to the traced destination, the
+                                       hint retires after the first trace, and the traced name gets the full caption line.
+                                       Weak point: at 15% the traced floor barely registers (richtrace, y 786-876 mean lum 11-16).
+- Typography / legibility   8.0 / 7.9  "TRACING · ELIMINATE A WANTED TARGET NEAR CERES REFINERY" is now whole (trace-1920, y 925), and
+                                       "CERES BELT SECTOR · 1 JUMP" sits on the ghost disc.
+- States / responsiveness   7.9 / 7.7  The walk ran 5/5, and the empty state now shows a place. The 1280 floor collapses. The
+                                       abandon confirm fade is noted in §4 (unscored).
+CODEX
+- Hierarchy / composition   8.0 / 7.9  Ledger now composes the plate: the hull top render at 72% with "5 ENTRIES FILED" circular
+                                       type, with dials and search kept.
+- ORRERY law                8.2 / 8.2
+- Weight (a)                8.2 / 8.2  Locked arcs are now one width, 20-21 px, at lum 74-86 (2.1-2.5:1). That is still over the bar,
+                                       though dimmer than round 3's 85-96.
+- Signature (b)             8.4 / 8.4
+- Typography / legibility   7.9 / 8.0  Hover captions on a dark backing read 15.5-16.8:1, including discohover over the bright anomaly
+                                       plate. New: the reading's scroll marker overprints the title (CX-1).
+- States / responsiveness   8.0 / 7.6  Choice C scrolls inside the reading at 1280 and 1366, with a bottom fade (the last line is at
+                                       5.6:1 while fading) and PREVIOUS/NEXT pinned. Populated and empty Ledger are both shot.
+
+================================================================================
+3. MY ROUND-3 LIST, ITEM BY ITEM
+================================================================================
+MISSION LOG
+ M-1  The destination floor: DONE.
+      - At rest it sits at about 30% (mlog and rich-1920 floor rows: mean lum 26-34, max 58-76).
+      - It also runs under a short list from the left edge.
+      - It collapses when the lane reaches the bottom (trace-1920 has no floor above y 940).
+      - While tracing it fades to the traced destination at 15%.
+      - The empty state shows Helios Prime.
+ GATE The walk: DONE. 5/5 controls exercised: SHOW, Tracking, Open Local Map, Abandon (confirm), Close.
+ 3    The hint retires after the first trace: DONE. It is absent in richtrace and trace, and its slot is kept.
+ 4    The traced name gets the full line: DONE. The jump/sector text moved to the ghost disc (y 687 and y 887).
+ 5    Default-state left column: DONE via the floor. Faint art runs under the list at x 100-560.
+ 6    Empty lane lum: not changed. That is fine as an idle placeholder.
+ 7    Abandon hold ring: NOT DONE (unscored, carried over).
+CODEX
+ C-1  Long entries at 1280 and 1366: DONE. The column scrolls, has a fade, and PREVIOUS/NEXT are pinned
+      (endgameC-1280, y 591; -1366, y 611).
+ C-2  Ledger on the plate: DONE. The dials and search are kept, the hull top render stands in the plate, and the circular type
+      reads "5 ENTRIES FILED" (populated) or "LEDGER EMPTY" (empty).
+ C-4  One locked-arc width: DONE. 20-21 px at every angle sampled (30°, -60°, 160°, 200°).
+ C-5  Hover captions over art: DONE by a dark backing. The discohover caption over the bright anomaly reads 16.8:1.
+
+================================================================================
+4. REMAINING FIXES (none blocks a pass)
+================================================================================
+CODEX
+ CX-1 (new, small, total-fix mode). The reading's scroll marker overprints the text.
+      - At 1280 it is a 2 px bone bar at x 455-456 (lum 221), running from y about 200 to 435 (endgameC-1280).
+      - The eyebrow, the title "CHOICE C — THE ONLY HONEST OPTION" and "WORMHOLE" start at x 448. The bar runs through their
+        first letters and sits 10 px from the "11" numeral.
+      - At 1366 the same happens at x 459-460.
+      - Fix: put the marker in the column gutter 12 px left of the text edge (x 436 at 1280), or on the right edge of the
+        reading column. Make it at least a 3 px band so it matches the other light.
+ CX-2. The populated Ledger rows (x 612-1128, y 570-860) hang on "—" dashes with no spine. Give the list the sub-ladder spine
+       and ticks the other tabs use (a second spine at x 282, as on Story), so Ledger reads as the same instrument.
+MISSION LOG
+ ML-1. The traced floor at 15% barely shows (richtrace: mean lum 11-16, against 27-34 at rest). Raise it to 22-25% so the
+       "where it takes you" half of the comparison is visible.
+ ML-2. At 1280 the floor collapses where the gap is about 120-136 px (rich/mlog-1280, y 504-640). Let it stand at 20% down to
+       the foot there too, or accept the gap. Low priority.
+ ML-3. The walk's Abandon PNG (.devshots/ui-bench/mission-log--04-...png) catches the confirm mid-fade.
+       - The confirm dialog shows at low opacity, with the stage at full brightness through it.
+       - kit.css line 434: #sf-confirm-root fades opacity over --k-d-settle.
+       - If the bench ran under reduced motion (html.sf-reduce-motion), that fade should be instant (ORRERY §3.5 hard gate).
+       - Check that the confirm honours reduced motion.
+       - This is not a z-order bug: the root is fixed at z-index 5000 with an 82% backdrop.
+       Unscored, together with the carried-over hold ring.
+
+================================================================================
+5. MEMORABLE (not yet attempted)
+================================================================================
+MISSION LOG: dragging the trace bead down the beam scrubs the floor between destinations like a porthole panning across
+the belt.
+CODEX: the momentum reel on the ring.
+
+================================================================================
+6. NOT VERIFIABLE FROM THESE STILLS
+================================================================================
+- Plate tilt and sheen, ring inertia, the lane pulse and the floor cross-fade in motion.
+- Keyboard and gamepad trace in motion. The keytrace/keypick states were credited in round 3.
+
+================================================================================
+7. OWNER CRITERIA
+================================================================================
+(a) No super-thin wireframe look or generic elements.
+  MISSION LOG: PASS. The lane is a 10 px band at 2.2:1 plus a 3 px core. The lit and ghost lanes are 5-6 px cores with bloom.
+   The spine band is at lum 71-100. Art sits at every endpoint and now on the floor. No stock slider remains.
+  CODEX: PASS. The locked arcs are 20 px at 2.1-2.5:1. The frame, majors, fan and one-entry ring are as in round 3. Produced
+   art fills every tab, now including Ledger.
+   Watch item: the CX-1 marker is a thin bar colliding with text; fix it as described.
+(b) Each screen has one distinct, creative signature interaction.
+  MISSION LOG: PASS (8.3). Weighing contracts: trace the beam and the ghost lane, ghost dial ring and destination floor show
+   the other contract against the one you fly. The stage holds until you pick.
+  CODEX: PASS (8.4). Turning the archive on the plate's ring, with the blade Hand and leader-named arcs.

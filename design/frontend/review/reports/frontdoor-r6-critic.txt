@@ -1,0 +1,187 @@
+FRONT-DOOR CRITIC, ROUND 6: NEW GAME (Title 8.1 and Pause 8.0 already passed and are not in this round)
+Stills:
+  - r107-ng-1920, r107-ng-1280, r107-ng-2560: arrival;
+  - r107-ng-middrag: 1920, mid-drag;
+  - r107-ng-pelican: 1920, after a flick.
+Coordinates are px at 1920 unless marked. Y is the Rec.709 luma of the sRGB pixel. CR is WCAG contrast from
+composited pixels (98.5th-percentile glyph pixel against the 10th-percentile local ground, sharp .raw()).
+Crops are in scratchpad/crops/fd6-*; the inputs are fd6-ng.json and fd6-25.json. Coloured glyph fringes are
+LCD antialiasing in the capture, not amber.
+
+1. VERDICT: NOT PASSED. Overall 8.0 (round 5: 7.9). No axis is under 7.0. Owner criteria: (a) PASSES and
+   (b) PASSES (section 7).
+   It is blocked only by the overlap-and-legibility rule, on two small defects in the yard's labels:
+     - The yard's left rim runs through "BRAWLER" at every size:
+         - 1920: the rim crosses "LER" at 903-922 x 757-767 (crop fd6-brawler19);
+         - 1280: it crosses the final R at 672-680 x 461-469;
+         - 2560: it crosses "LER" at 1186-1214 x 1006-1026.
+       That is overlapping text.
+     - The rear hulls' words are clickable ("a click on a word turns the ring"), yet at rest they read
+       under the floor:
+         - WASP: Y106, 3.54:1 at 858-925 x 733-749;
+         - PELICAN: Y113, 3.57:1 at 1596-1696 x 733-749;
+         - BRAWLER: Y120, 4.34:1;
+         - @2560: WASP 3.54, PELICAN 3.58 and BRAWLER 4.22.
+       They were dimmed along with the thumbnails, which are correctly at .3.
+   Both are one-rule fixes (items D1 and D2). With them, New Game passes.
+   Amber:
+     - LAUNCH;
+     - the dial's needle and hub (208-288 x 336-480) — difficulty's own Hand, accepted;
+     - the yard index arc and bead (1184-1344 x 832-912).
+   No box chrome.
+
+2. AXES
+   Composition 8.0 (round 5: 7.8)
+     - The dial fills the form. The largest empty band in the form is now 270 px at 1920 (y 600-870,
+       was 386) and 82 px at 1280 (y 470-552, was 200). It is still 517 px at 2560 (y 667-1184), because
+       the form is px-constant while the stage scales.
+     - Against it: depth. The yard's back rim is drawn IN FRONT of the hero. A 1.5 px line crosses the
+       Hitch's nose at about 980-1120 x 715-735 (crop fd6-nose) and the Pelican's arm drum at about
+       950-983 x 723-733. The rear label HITCH also sits over the Pelican's arm drum (927-940 x 732-740).
+   Hierarchy 8.2 (round 5: 8.2)
+     - Unchanged and right: HITCH (35 px caps) and the hero lead.
+     - The dial is a clear second instrument.
+     - LAUNCH is the one filled key.
+   Legibility 7.4 (round 5: 8.4)
+     - Regressed on the rear words: WASP and PELICAN at about 3.5:1; the BRAWLER overprint.
+     - Dial words are fine: CASUAL / VETERAN / IRONMAN Y140 (5.8:1), STANDARD Y241 (16.9:1).
+     - The dial blurb is 8.6:1 and ESC 5.76:1.
+   ORRERY fidelity 8.3 (round 5: 7.8)
+     - Difficulty is now §6's four-stop dial with the Hand from a hub.
+     - Every instrument is light with a core plus bloom over a luminous band (§3.1).
+     - The yard is a lit floor.
+     - Readings sweep: §4's instruments are alive, not stamped.
+   Craft/detail 7.6 (round 5: 7.5)
+     - The weight system is consistent: band, edge, lit value and bead, used across the dial, ring, yard
+       and tape.
+     - Against it:
+         - the depth errors above;
+         - the dial's needle tail ends about 7 px above the blurb's cap line (tail tip about (271,474),
+           blurb caps from y 481), which is tight;
+         - the Pelican hero is still blockout-grade (asset job, recorded; detail .092 against the Hitch's
+           .376).
+   Interaction clarity 8.4 (round 5: 7.9)
+     - Spin the yard is present, legible, and reads correctly mid-motion (section 7b).
+     - A word click turns the ring the short way.
+     - The index bead marks the front.
+
+3. ROUND-5 LIST
+   C1 No overprint between the hero and the rear slots: HALF.
+     - The rear thumbnail now reads at .3 and sits behind the hero, so the thumbnail overprint is
+       acceptable as depth.
+     - But the rear WORD HITCH and the yard's back rim still draw over the hero: over the Pelican's arm at
+       927-983 x 723-740, and over the Hitch's nose at 980-1120 x 715-735.
+   C2 Weight on the instruments: DONE. The measurements are in 7(a).
+   C3 A signature interaction: DONE, with stretch items left (7b).
+   C4 Fill the form void with the dial: DONE at 1920 and 1280.
+     - The dial spans 122-414 x 318-470: a 10 px band at Y34 under a 2 px edge at Y123-155, inner ticks,
+       station ticks, and the needle from its hub at (265,459).
+     - Largest empty band: 270 px @1920 (the target was 120; the dial and seed rows still end at y 600),
+       82 px @1280 (target 80, met), and 517 px @2560 (not met).
+   C5 Pelican poster to hero grade: NOT DONE (asset job, recorded). Detail density is still .092 against
+      .376.
+
+4. STRUCTURAL CHANGE REMAINING: none.
+
+5. CRAFT ITEMS (to pass)
+   D1. Keep the rim off the rear words.
+       Change: place each rear slot's word pair outside the yard's rim, or give the words a dark halo that
+       knocks the rim out behind them.
+       Check: at 1280, 1920 and 2560, no rim pixel above Y40 inside the BRAWLER / WASP / PELICAN / TUG
+       boxes. The collisions are now at 903-922 x 757-767 @1920, 672-680 x 461-469 @1280, and 1186-1214 x
+       1006-1026 @2560.
+   D2. Rear words to at least 4.5:1 while their hulls stay at .3.
+       Change: take the words out of the hull's .3 fade. They are the controls. The rest value should be
+       about bone .62, which is where BRAWLER sits @1280 (Y153).
+       Check: WASP and PELICAN at rest at least Y130 and 4.5:1 @1920 and @2560. They are now Y106 / Y113,
+       3.54 / 3.57:1.
+   D3. Depth: the far rim and the rear words go behind the hero.
+       Change: draw the yard's back half and the rear slots' labels under the hero poster, and keep the
+       front rim, index and front label above it.
+       Check: no bright rim line across the hero in any pick: now 980-1120 x 715-735 on the Hitch's nose
+       and 950-983 x 723-733 on the Pelican's arm. Mid-drag, the fading WASP (Y80) at 972-1038 x 710-742
+       is not drawn over the hull.
+   D4. A settle proof.
+       The Pelican still reads 203 / 55 t, but the Pelican is 197 / 56 t (r100). Its word centre (1241)
+       sits 24 px left of the index bead (1265). Either the capture was mid-settle, or the settle stops
+       short.
+       Change: capture after the spring has come to rest, or fix the settle.
+       Check: the settled still shows 197 / 56 t / 5.3k, with the front word centred on the index within
+       ±3 px (on arrival the Hitch word centre is 1259.5 against the bead at about 1265-1270).
+   Optional: at 2560, scale the form column with the viewport, or anchor the dial lower; the void there
+   is 517 px.
+
+6. LANDMARKS (r107-ng-1920 unless noted)
+   Form:
+     - NEW GAME 96-373 x 99-125;
+     - Wren 97-155 x 225-245, rule y 256-257 (2 px, Y80);
+     - dial 122-414 x 318-470: band Y34, edge Y123-155, needle and hub at (265,459), tail to about
+       (271,474);
+     - STANDARD 162-251 x 317-329: Y241; VETERAN 285-363 x 317-329: Y140; CASUAL 121-188 and IRONMAN
+       337-414 at y 437-449: Y140;
+     - dial blurb 95-410 x 480-494: Y172;
+     - Random 97-188 x 540-562; seed rule y 573 (1 px, Y92); seed note to y 600;
+     - EMPTY y 600-870;
+     - BACK / ESC 98-178 x 888-901 (ESC Y140); LAUNCH 213-381 x 870-921; footnote 96-507 x 951-980.
+   Stage:
+     - stat tracks: 8-9 px band at Y32-38 with a 2 px edge at Y99-119;
+     - lit values: a 3-4 px core at Y244 with a ~11 px bloom at Y60-105;
+     - beads: THRUST (1395,376), MASS (821,558), LINE (1633,687);
+     - yard: front band 9 px at Y36-47, rim 2 px at Y130-146 (x 1000, y 834-835); back rim Y48-72;
+       floor Y25-31;
+     - index arc 1195-1330 x 850-862 with its bead at about (1265-1270, 856); HITCH front word centred
+       at 1259.5;
+     - rear words: WASP 858-925 x 733-749 (Y106) and BRAWLER 860-922 x 756-766 (Y120), crossed by the rim
+       at 903-922; PELICAN 1596-1696 x 733-749 (Y113); TUG clear of the rim;
+     - hero box mean Y41.8 at rest.
+   Tape: 3 px spine at Y81-82, y 930; beads are 10 px rings (Y161-175); the first bead (654,930) is lit.
+   Mid-drag:
+     - HITCH word at 1063-1133 x 870-903;
+     - PELICAN at 1644-1744 x 766-798: Y139, 5.02:1;
+     - WASP fading, Y80, at 972-1038 x 710-742, over the hull;
+     - readings 284 / 37 t / 5.6k;
+     - hero box mean Y31.9 (dimmed 24%).
+   Pelican pick: readings 203 / 55 t / 5.3k; front word 1194-1288 (centre 1241) against the bead at
+   1265; arm drum 927-983 x 703-743 under the rear word HITCH (872-940 x 732-743) and the back rim.
+   @1280:
+     - dial 90-345 x 235-386, hub (233,376);
+     - the largest form gap is 82 px;
+     - BRAWLER 617-680 x 460-470 (Y153, 6.77:1), its final R crossed by the rim at 672-680.
+   @2560:
+     - form void 667-1184;
+     - WASP / BRAWLER / PELICAN at 3.54 / 4.22 / 3.58:1;
+     - BRAWLER crossed at 1186-1214 x 1006-1026.
+
+7. OWNER CRITERIA
+   (a) No thin wireframe look: PASSES.
+       Every instrument now has a luminous band, a lit core with bloom, or a filled bead. Measured:
+         - Stat ring tracks: an 8-9 px band at Y32-38 under a 2 px edge at Y99-119, against the 2 px
+           Y49-59 hairline of round 5. Values have a 3-4 px core at Y244 with a ~11 px bloom at Y60-105
+           and a bead at each value (THRUST bead at (1395,376)).
+         - Yard: a 9 px front band at Y36-47 under a 2 px rim at Y130-146, plus a lit floor (Y25-31 inside
+           the ellipse against the rock), outer ticks, and the amber index as a lit arc with a bead. The
+           back rim is intentionally faint (Y48-72), which is right for depth.
+         - Tape: a 3 px spine at Y81 (was 1 px at Y89), 10 px beads, and the first one filled.
+         - Difficulty: the dial's 10 px band at Y34 under a 2 px edge at Y123-155 replaces the 1.4:1
+           hairline ruler.
+         - Fields: the name rule is 2 px at Y80.
+       Nit: the seed rule still renders 1 px at Y92 (x 150, y 573). Match it to the name rule.
+   (b) A creative, distinct interaction: PASSES.
+       "Spin the yard" is built and reads correctly in the stills:
+         - Mid-drag, all three readings sit at the same fraction of the way from Hitch to Pelican:
+           THRUST 284 (309→197, 22%), MASS 37 t (32→56, 21%), LINE 5.6k (5.7k→5.3k).
+         - The ring has turned: the HITCH word moved from 1225-1295 x 878 to 1063-1133 x 870, and PELICAN
+           from 1596-1696 x 734 to 1644-1744 x 766.
+         - The hero dims 24% (box mean Y41.8 to Y31.9).
+       Mass setting the drag gain and glide, the flick projection and the spring overshoot are described
+       but cannot be shown in stills. A short motion capture should be the evidence for the next pass.
+       This is SpaceFace's verb (mass and momentum) used as a menu control, which is distinct.
+       To make it memorable, not just correct:
+         - Fix the depth (D3), so the yard visibly turns UNDER the ship. Right now the far rim and the rear
+           words slice across the hull, which breaks the illusion at exactly the moment of the signature.
+         - A commit beat that needs no hold: on the LAUNCH click, light the tape's four beads in sequence
+           (about 4 x 90 ms) and then warp. It fires on click, so probes and tests still reach it; if the
+           action must be synchronous, play the beat without blocking it.
+         - A detent: a small tick-flash on the index bead as each hull passes the front mid-spin, so the
+           player feels the stations go by.
+         - Stretch, unchanged: the tether swing on hold.

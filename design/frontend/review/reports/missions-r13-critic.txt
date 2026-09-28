@@ -1,0 +1,190 @@
+STATION MISSIONS TAB - ROUND 13 CRITIC (vs design/frontend/ORRERY.md), scored against the round-12 report (7.98)
+Stills: r68-ct-1920 (arrival), r69-ct-1280 (arrival, after the jump reading settles), r67-ct-focus. The hold was not
+re-shot; its r12 numbers carry over. About 15 sharp crops (nearest, 2-12x) plus raw luminance (Rec.709) rows and
+columns. A 40 px cell diff of r68 against r62 found every region that changed at 1920, and r62-ct-1280 was
+re-sampled wherever a before number was needed.
+
+1. VERDICT: PASSED, overall 8.07 (previous 7.98). A narrow pass.
+   The kind of fault at 720 has changed, not just its size.
+   - r12's blocker: a solid 136-luminance leader through the middle of VESTA FORGE, with that foreign name
+     sitting in the berth's own slot.
+   - r13's residue: the berth's near space is clean, and the berth's solid leader lands only on TETHYS
+     JUNCTION. What is left is VESTA's dim dotted leader (58-63). It runs inside the destination block's
+     line gap: 2 px from the C of CUSTOMS and 4 px from the T of TETHYS.
+   The ruler is now one series with one stroke. Every 720 row is one line, and THIS STATION clears its tick.
+   What would re-fail it: (a) any label crossed by a solid connector; (b) the berth ring still crossing the
+   amber marker after a further round, now that the implementer believes it fixed; (c) any regression
+   worth more than 0.4 in total across the axes (48.4 falling below 48.0). For example, Legibility and
+   Hierarchy each losing 0.3 would fail it.
+
+2. AXES (previous = round-12 score)
+   Composition      8.0 (prev 8.0) - 720 now reads as three clean columns: the ladder ends at 429, a 61 px
+                    gutter, then the dossier from 490. The 720 dial paid for it: outer ring radius 117 to 95,
+                    inner 70 to 57 (19% smaller), and its four names now crowd its rim. The 1920 void above
+                    YOURS (548-705) is unchanged.
+   Hierarchy        7.9 (prev 7.9) - The berth's slot is fixed: nothing stands between the berth and its name. The
+                    ambiguity moved rather than vanished. Two leaders from two bodies now land on the
+                    destination block: the berth's solid one at x 1150, and VESTA's dotted one at x 1102-1103 onto
+                    the T. VESTA FORGE also sits 18 px under CUSTOMS GATE in the same grey, so the three lines
+                    can read as one block.
+   Legibility       7.9 (prev 7.8) - Gains at 720: every row title plus reward is one line (Eliminate 76-390,
+                    Recover 76-422), the tracked title is whole (76-301), and THIS STATION clears its tick by
+                    3-4 px. Still open at 720: VESTA's dotted leader grazes the destination's left edge, and VESTA's
+                    name is 69 px from its own node. 1920 stays clean.
+   ORRERY fidelity  8.5 (prev 8.4) - The ladder is now a true Scale: one tick series, one stroke, majors that
+                    replace minors instead of fusing with them. Held back because the bone orbit ring still crosses
+                    the amber berth marker at both sizes, and by the 720 leader-in-box.
+   Craft / detail   8.0 (prev 7.7) - Four craft items landed: the pitch, the seam stroke, the 720 measure, and
+                    the station label. New softness: the minor ticks now sit on sub-pixel phases and render as
+                    2-row smears. Residues: the 1920 YOURS major landed one row under its label, and the 720
+                    tracked tick moved to the baseline.
+   Interaction      8.1 (prev 8.1) - Carried over from r12 (the hold was not re-shot). The 1920 jump reading is
+                    verified: numeral top at 819 (7 px under the tether core), caption caps 830-836 (18 px
+                    under). Focus is unchanged (x 38-39, y 339-365, 250). DISPATCH is still neither verb nor
+                    fact (open since round 4).
+   Arithmetic mean 48.4 / 6 = 8.07.
+
+3. THE R12 LIST, ITEM BY ITEM
+   1. At 720 the destination owns the berth's near space               HALF
+      - The berth's near space: DONE. Berth core 1146-1155 x 436-450. The solid leader runs x 1150 from 450
+        to 497 (149-152) and stops 7 px above TETHYS (1101-1221 x 504-510, CUSTOMS 517-522). Nothing lies
+        across it.
+      - VESTA under its own node: NOT. The dial shrank, and the slot I prescribed (1039-1123 x 492-498) is now
+        where TETHYS sits. VESTA FORGE went to 1060-1144 x 540-546, 69 px under its node (1100-1105 x
+        468-471), below CUSTOMS GATE. Its dotted leader runs down x 1102-1103: dots at 499-500 (4 px above
+        the T), 514-515 (inside the block's line gap, 2 px above the C) and 524-531 (2 px under the C). That
+        column is inside the destination's box.
+      - The claim "the destination's leader is pushed into the obstacle list" is one-directional in the
+        pixels. Names avoid the destination's leader, but a later leader does not avoid the destination's
+        box. The rule needed: every leader is an obstacle for every name box, AND every placed name box
+        plus 4 px is an obstacle for every later leader.
+   2. One tick origin per size                                           DONE (with a crispness regression)
+      - Rhythm, 1920: header 259, 267 (crisp 121); rows 275.3 ... 571.3; seam 578.6 ... 722.6; YOURS major
+        731; YOURS 739.3 ... 803.3. Every joint is between 7.3 and 8.4 px (r12: 14 and 6).
+      - Rhythm, 720: header 219, 227; rows 235.3 ... 523.3; major 531; YOURS 538.5 ... 586.5. Joints are
+        7.5-7.7 (r12: 10, 6, 7).
+      - No minor fuses with a major any more. At 720, 530 = 74 and 532 = 86. At 1920 only the minor's dim
+        half (730 = 82) touches the major.
+      - Crispness regressed: the phases are fractional, so each minor tick is a 2-row smear. Top block
+        110/85, seam 82/113, 1920 YOURS 118/77, 720 YOURS 98/98, against the crisp 121 of r12 and of the
+        header ticks.
+   3. Section and row ticks on their words                              HALF (two 4-5 px residues)
+      - 720 YOURS major: 531 on label 526-534. DONE.
+      - 1920 tracked tick: 771 on caps 766-776. DONE.
+      - 1920 YOURS major: 731 (x 34-45, 163-194) against glyphs 722-730, one row UNDER the label. The nearer
+        series point was 722.6 (3.4 px from the centre against 4.6), so the snap measured the line box, not
+        the glyph box. FEATURED sits in its label (390-391 on 385-392).
+      - 720 tracked tick: moved from centred (558-559 in r12) to the baseline, 563 on caps 554-564. Here the
+        snap measured correctly: the glyph centre is 559, and the nearest series points are 562.5 and 554.5,
+        both about 4 px away. So snapping itself costs up to half a pitch. The fix for both cases is the
+        same: section and row ticks sit at the glyph centre off the series, and the minor they displace is
+        dropped.
+   4. The seam takes the measured block stroke                          DONE
+      - Seam core 71-73 (blocks 73), shoulders 21-24 (blocks 23-24).
+      - Ticks are 5 px at x 36-40 (63/76/74/113/75 at 579), matching the blocks. The r12 core step (89-91)
+        and the missing x 40 pixel are gone.
+   5. 720 measure                                                        DONE (with a cost)
+      - Eliminate 76-390 x 337-349, Haul 76-339 x 361-373, Recover 76-422 x 410-422: all one line. Title
+        76-301 x 554-566, whole. TRACKED 354-429 x 565-571. Dossier from x 490, so a 61 px gutter.
+      - Rail 219-590, tether 597: the foot is still 7 px above.
+      - The cost: the dial shrank 19% (see section 4). This departs from r12's number (dossier kept at 447).
+   Also-seen items from r12:
+   - Berth slash: NOT. The implementer's note says no ring or lane crosses the marker; the pixels disagree.
+     The inner orbit ring (traced 1706,640 to 1684,730, through the marker, then 1636,788) still crosses it:
+     peak 221,211,190 at (1679,740) at 1920, and 237,226,206 at (1150,443) at 720. Only the horizontal
+     dashed lane was cut (y 746: 82-87 down to 59-66, and 1679-1680 cut to 26-27). Inside the marker the
+     ring is about 4x its brightness elsewhere (50-60), so the 10 px mask reached the lane layer, not the
+     layer that draws this ring.
+   - THIS STATION: DONE. 1920 caps 617-623, north tick 628-632: 4 px of air (r12: 0). 720 caps 388-394, tick
+     398-402: 3 px.
+   - 720 extent bead: DONE. Now at x 39-40 x 326-331, between FEATURED (309-316) and Eliminate (337-349), and
+     off every row tick.
+   - 1920 "1": DONE. 755-766 x 819-836.
+
+4. DOES A STRUCTURAL CHANGE REMAIN?
+   No required change. One structural note, as a cause: at 720 the dial shrank 19% (outer 117 to 95, inner 70
+   to 57, centre 1081,412 to 1103,410) to pay for the 400 px ladder column. That is why four names on a smaller
+   rim pushed VESTA 69 px from its node. If the rim cannot be fixed by placement (item 1 below), give the dial
+   back about 20 px of radius by bringing the dossier left to about 470 (the ladder's widest row now ends at
+   429). Do not reintroduce the wraps.
+   Memorable move, still unattempted: the ice pulse leaving the chosen bead, running the spine, through the key
+   and along the tether to THIS STATION before the beam swings to the berth.
+
+5. NONE REQUIRED TO REACH 8.0. These five hold the pass and lift it toward about 8.3.
+   1. VESTA beside its own node at 720 (r69 1280). Centre VESTA FORGE under its node at 1060-1144 x 479-485,
+      8 px under the node core (bottom 471). The tether is 10 px to the left (x 1050 at y 480). The slot
+      measured empty apart from the x 1102 spoke, which the name mask cuts: rowmax 474-494 over 1106-1146 is
+      10 or below.
+      Give the berth leader a 45-degree elbow from the ring's lower right (about 1156,449 to 1166,459), then
+      straight down to 497, landing on "JUNCTION". That clears VESTA's right end by 22 px. Delete VESTA's
+      dotted leader.
+      Solver rule: every leader is an obstacle for every name box, and every placed box plus 4 px is an
+      obstacle for every later leader.
+   2. Berth mask on the right layer. Cut the inner orbit ring (the path that passes 1684,730 and 1636,788 at
+      1920, and 1155,435 to 1145,449 at 720) inside a 10 px circle round the berth, the way the lane was cut.
+      Check it by pixels: (1679,740) should read under 70 at 1920, and (1150,443) under 70 at 720.
+   3. Section and row ticks at the GLYPH centre, off the series. Place each at its label's cap-height centre,
+      do not snap it to the series, and drop any minor within 4 px of it.
+      1920: YOURS major 731 to 726 (glyphs 722-730), dropping the 722.6 minor.
+      720: tracked tick 563 to 559 (caps 554-564), dropping the 562.5 minor.
+      This matches how the posted rows already work (Escort 351, Eliminate 419-420, Haul 454-455, Recover
+      515 all sit off the series on their words).
+   4. Whole-pixel tick phase. Round the measured phase to device pixels so every minor tick is a single
+      crisp row at about 121, as the header ticks at 259 / 267 and 219 / 227 already are. Today they are
+      110/85, 82/113, 118/77 and 98/98 smears.
+   5. VESTA and CUSTOMS must not read as one block. If item 1 cannot land this round, at least put 24 px
+      between CUSTOMS GATE (bottom 522) and VESTA FORGE, and move VESTA's leader off the x 1101-1221 box
+      (run it at x 1094 or less).
+   Also seen, not ranked: the 720 jump reading (659-866 x 545-568) is top-aligned to the key (562) and sits
+   29 px above the tether (597). At 1920 it hangs 7-18 px under the line. Both read fine; they simply
+   disagree between sizes.
+
+6. LANDMARKS FOR ROUND 14 (luminance = Rec.709; x,y in the still's pixels)
+   1920 arrival (r68):
+   - Rail x 39: core 71-73, shoulders x 37-38 / 40-41 = 21-24.
+     Header ticks 259, 267 (crisp; x 36-40 = 74/87/85/121/85).
+     Row-block minors 275/276 ... 571/572 (110/85 on x 39).
+     Seam 578-688: minors 578/579 ... 722/723 (82/113).
+     YOURS major 731 (x 34-45, 163-194). YOURS minors 739/740 ... 803/804 (118/77). Foot 805.
+   - Chosen bead 313-317 (250), arm y 315 x 36-61.
+   - Row ticks x 36-43: Escort 351, Eliminate 419-420, Haul 454-455, DISPATCH 481, Recover 515, DISPATCH 542,
+     tracked 771.
+   - FEATURED major 390-391 x 34-45 (label 385-392).
+   - Labels: YOURS 58-106 x 722-730. Title 76-301 x 766-778. Deliver 77-253 x 786-794. TRACKED 424-499 x
+     776-782.
+   - Key 572-709 x 774-816. Tether y 812 (128). Bead core 728-732. "1" 755-766 x 819-836. Caption 778-982 x
+     830-836.
+   - Orrery: THIS STATION crosshair (1517,641), caps 1473-1561 x 617-623, north tick 628-632. Berth (1675,746).
+     Inner-ring slash peak (1679,740) = 221,211,190. The ring runs 1706,640 / 1697,700 / 1684,730.
+   - Names (glyph box / node core):
+     DIONE 1795-1867 x 615-621 / 1829-1830 x 601-605.
+     NEREID 1720-1810 x 724-730 / 1815-1817 x 739-743.
+     TETHYS 1617-1737 x 764-771, CUSTOMS to 782.
+     IO 1749-1805 x 872-878 / 1738-1742 x 862-866.
+     HYPERION 1211-1302 x 628-634 / 1203 x 639-644.
+     CERES 1277-1351 x 752-758 / 1359-1363 x 744-748.
+     VESTA 1475-1559 x 843-849 / 1515-1520 x 829-832.
+     PALLAS 1199-1283 x 861-867 / 1292-1296 x 862-866.
+     CHARON 1550-1663 x 956-962 / 1602-1606 x 942-947.
+   Focus (r67): segment x 38-39, y 339-365 (250), with the row minors on x 40 (104-110). Escort words 199 to
+   205.
+   Hold (r62, not re-shot): commit 658-697 x 766 = 188; trace right core x 718-719; bead 728-732.
+   1280 arrival (r69):
+   - Rail x 39, 219-590. Header ticks 219, 227 (crisp). Row minors 235/236 ... 523/524 (110/85). YOURS major
+     531 (x 34-45). YOURS minors 538-539 ... 586-587 (98/98).
+   - FEATURED major 314. Row ticks: chosen bead 255-258, Escort 283, Eliminate 347, Haul 367-368, DISPATCH
+     386, Recover 416, tracked 563. Extent bead x 39-40 x 326-331.
+   - Rows: Eliminate 76-390 x 337-349; Haul 76-339 x 361-373; DISPATCH 58-345 x 382-391; Recover 76-422 x
+     410-422; YOURS 58-106 x 526-534; title 76-301 x 554-566; deliver 77-253 x 575-583; TRACKED 354-429 x
+     565-571. Recover's own DISPATCH line is clipped by the window.
+   - Dossier from x 490. Key 490-618 x 562-598. Bead core 637-641. Tether y 597 (129). Jump reading: "1"
+     659-671 x 545-568, caption 682-866 x 562-568.
+   - Orrery: THIS STATION crosshair about (1103,410), caps 1058-1146 x 388-394, north tick 398-402. Rings: outer
+     r 95 (top 317), inner r 57 (top 355). Berth core 1146-1155 x 436-450; slash peak (1150,443) =
+     237,226,206. Berth leader x 1150, 450-497.
+   - Names: TETHYS 1101-1221 x 504-510, CUSTOMS 517-522. VESTA node 1100-1105 x 468-471. VESTA FORGE 1060-1144
+     x 540-546, its dotted leader x 1102-1103 at 472-531. CERES node 1054-1057 x 441-445; CERES BELT 974-1048
+     x 428-434.
+   - Tether climb at x 1050 at y 480 (45 degrees).
+   - Free slot under the VESTA node: 1106-1146 x 474-494 (10 or below); 1055-1105 holds only the x 1102
+     spoke.

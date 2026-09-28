@@ -1,0 +1,143 @@
+NEW GAME CRITIC, ROUND 7 (commit 5d855f9cc), scored against frontdoor-r6-critic.txt and the owner criteria
+Stills (scratchpad/shots/):
+  - r109-ng-1920, r109-ng-1280, r111-ng-2560 (current 2560);
+  - r109-ng-pelican: a flick released, 3.2 s later.
+Plus two captures of my own:
+  - fd7-middrag: the drag probe yard-drag3.js with motion ON, held mid-drag;
+  - fd7-launch: LAUNCH clicked, about 0.6 s later.
+Coordinates are px at 1920 unless marked. Y is the Rec.709 luma of the sRGB pixel. CR is WCAG contrast from
+composited pixels (98.5th-percentile glyph pixel against the 10th-percentile ground). Crops are in
+scratchpad/crops/fd7-*; the inputs are fd7-ng.json and the probe scripts fd7-launch2.js and fd7-probe.cjs.
+Coloured glyph fringes are LCD antialiasing in the capture.
+
+Harness trap: in ui-bench-eval-long.mjs, any RM value, including RM=0, turns reduced motion ON
+(`if (process.env.RM)`). Leave RM unset to see motion. My motion captures were taken that way.
+
+1. VERDICT: PASSED. Overall 8.2 (round 6: 8.0). No axis is under 7.0.
+   - No overlapping or clipped text at 1280, 1920 or 2560.
+   - Every reading is at least 5.0:1.
+   - Amber appears only on LAUNCH, the difficulty needle and the yard index (both arms were accepted in
+     round 1).
+   - The owner criteria (a) and (b) both pass (section 7).
+   - One claimed feature does not render, the launch beat (fix 1). It is a flourish on top of the
+     signature, not the signature, so it does not block the pass. It should still be fixed now.
+
+2. AXES
+   Composition 8.2 (round 6: 8.0)
+     - Depth is right:
+         - the yard's back rim stops at the hull's edge, behind the Hitch's nose (crop fd7-nose, the line
+           ends at about x 1002, y 740);
+         - behind the Pelican's arm, the back rim runs under the hull block, and the .3 Hitch thumbnail
+           sits under the arm drum (fd7-arm);
+         - the rear names stand beside the ring's widest points, outside the rim.
+     - Against it:
+         - the form still has a 270 px empty band at 1920 (y 600-870);
+         - the yard moves 12 px on the first touch (fix 2).
+   Hierarchy 8.2 (round 6: 8.2)
+     - Unchanged: the HITCH title and the hero lead, the dial is the second instrument, and LAUNCH is the
+       one filled key.
+   Legibility 8.5 (round 6: 7.4)
+     - Rear names @1920:
+         - WASP Y159 (7.24:1), BRAWLER 5.66, PELICAN 7.28, TUG 5.01;
+         - after the Pelican pick: HITCH rear 7.24, SKATER 5.60, WASP 7.02, BRAWLER 5.33, TUG front
+           5.23.
+     - @1280: WASP 7.40, BRAWLER 5.75, PELICAN 6.81, TUG 5.02.
+     - @2560: WASP 7.31, BRAWLER 5.77, PELICAN 6.98, TUG 5.34, FIRST 15 MINUTES 6.82.
+     - No rim pixel inside any name box:
+         - @1920 the names run 799-866 and 1654-1754 against a rim at 896-1625;
+         - @1280, 577-644 and 1122-1222 against 675-1093;
+         - @2560, WASP / BRAWLER end at x 1150 and the rim starts at about x 1180.
+     - Nit: @1280 "way." still sits alone on the blurb's third line (461-486 x 155-167).
+   ORRERY fidelity 8.3 (round 6: 8.3): the four-stop dial with the Hand, light-and-bloom instruments, a lit
+   floor, and readings that sweep.
+   Craft/detail 7.8 (round 6: 7.6)
+     - Gained: the depth fixes; the seed rule is now 2 px at Y92 (x 150, y 572-573); the settle is exact.
+     - Against it:
+         - the launch beat is a no-op (fix 1);
+         - the 12 px yard shift (fix 2);
+         - the Pelican hero is still blockout-grade: detail .092 against the Hitch's .376 (asset job,
+           recorded).
+   Interaction clarity 8.4 (round 6: 8.4)
+     - Spin, flick, settle and pick are all proven (section 7b).
+     - The front word centres on the index bead to within 1 px after the Pelican settles (word centre
+       1271.7, bead 1272.7).
+
+3. ROUND-6 LIST
+   D1 Rim off the rear words: DONE.
+     - The names sit beside the widest points, outside the rim, at every size (see Legibility).
+     - Mid-drag, the fading WASP sits at 812-877 x 743-775, clear of the hull and the rim.
+   D2 Rear words to 4.5:1: DONE. They measure 5.0-7.4:1 at all sizes (was 3.54 / 3.57).
+   D3 Depth: DONE.
+     - The back rim and back floor pass under the hero on the Hitch's nose and on the Pelican's arm.
+     - The .3 rear thumbnail sits under the Pelican's drum.
+     - The rim joins at the widest points are clean (fd7-joinL, fd7-joinR).
+   D4 Settle proof: DONE.
+     - Readings are 197 / 56 t / 5.3k (the Pelican's own values).
+     - The front word is centred on the bead to within 1 px.
+     - The coordinator's probe (r109p.txt) shows the flick picking the Pelican.
+   Extras:
+     - Seed rule 2 px: DONE.
+     - Detent: present in code (yardCarousel.js:147, the bead scales 1.9 then springs back over 220 ms).
+       Not visible in a still.
+     - Launch beat: NOT working (fix 1).
+     - 2560 scaling: DONE; the form's empty band fell from 517 to 338 px (y 818-1156), and the stage
+       words, numerals (32t at Y241, 17.8:1) and yard names scale.
+
+4. RANKED FIXES
+   1. The launch beat renders nothing (screenLayouts.js:877 against 905-909).
+      Cause: the base bead rule sets `background:rgb(10 12 16) !important; box-shadow:... !important`.
+      A CSS animation cannot override !important declarations, so `@keyframes ng-bead-lit`'s `to
+      {background, box-shadow}` never shows.
+      Measured: is-launching is set and the word reads "Launching...", but beads 2-4 keep
+      background rgb(10,12,16) at 100, 200, 300, 400 and 500 ms after the click. In fd7-launch they are
+      still hollow rings at 954, 1253 and 1552 x 930.
+      Fix: drop !important from background and box-shadow in the rule at line 877, raising specificity
+      instead if needed. Or animate a separate ::after overlay's opacity, which no !important rule
+      touches.
+      Check: at 500 ms after the click, bead 2's computed ::before background is rgb(252,249,240), and
+      beads 3 and 4 are lit by 800 ms.
+   2. The yard moves 12 px on the first touch and stays off the ring's axis.
+      Measured at y 780, the rim runs 896-1625 at rest (centre 1260.5, the same as the stat ring's centre,
+      about 1259). Mid-drag and after the Pelican pick it runs 908-1637 (centre 1272.5, 13 px right of
+      the ring), and the bead moves with it.
+      Fix: anchor the yard's centre to the ring's centre, not to a box that changes after the first
+      interaction.
+      Check: the rim's centre stays within 1 px of 1259.5 at rest, mid-drag and after every pick.
+   3. The form still has a 270 px empty band at 1920 (y 600-870, below the seed note) and 338 px at 2560.
+      Fix: move the dial and seed group down so the column's air is split above and below it, or give
+      the column a fixed rhythm (dial centred in 330-760).
+      Check: the largest empty band in the form is at most 160 px @1920 and @2560.
+   4. @1280, "way." is alone on the blurb's third line (461-486 x 155-167).
+      Fix: text-wrap:pretty on the hull blurb (.orr-ng-caption sentence).
+      Check: the last line holds at least two words.
+   5. The Pelican poster to hero grade. This is an asset job, recorded. Detail density is .092 against
+      the Hitch's .376; the target is at least .28.
+
+5. What would make this screen memorable that nothing here attempts yet: the "Try the hitch" hold. Holding
+   on the hero swings a rock on a tether round the yard at that hull's LINE speed, with the LINE numeral
+   counting live, so the player test-drives the game's own verb before choosing.
+
+7. OWNER CRITERIA
+   (a) No super-thin wireframe, no generic elements: PASSES (unchanged from round 6, re-measured).
+       - Stat tracks: an 8-9 px band at Y32-38 under a 2 px edge. Lit values: a 3-4 px core at Y244 with
+         about an 11 px bloom and a bead.
+       - Yard: a 9 px front band under a 2 px rim, a lit floor, and a faint back rim that now passes
+         correctly behind the hull.
+       - Tape: a 3 px spine with 10 px beads, the first one lit.
+       - Dial: a 10 px band with a bright edge.
+       - Both field rules are now 2 px.
+       - Nothing on the screen is a stock component. The only box is the Lamp Key's cut shape.
+   (b) Signature interaction, "Spin the yard": PASSES. It is strong, and it is this screen's alone: the
+       menu control uses the game's own physics (mass, momentum, spring).
+       Evidence from my motion-on capture (fd7-middrag):
+         - mid-drag the spin mix is 0.44;
+         - the readings sit at the same fraction between Hitch and Pelican (THRUST 284, MASS 37 t,
+           LINE 5.6k);
+         - the Hitch thumbnail travels round the front of the floor (1075-1150 x 795-840) while the hero
+           dims 23% (box mean Y41.8 to Y32.1);
+         - WASP fades at the back without crossing the hull.
+       Evidence from the coordinator's probe: a released flick settles on and picks the Pelican
+       (r109p.txt, title "Pelican"), landing exactly on 197 / 56 t with the word centred on the bead.
+       The detent is in code. What keeps it from being fully memorable:
+         - the commit beat is broken (fix 1);
+         - the tether hold is not attempted (section 5).
