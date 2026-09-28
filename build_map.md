@@ -379,7 +379,6 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 3 | ADOPT-CAMPAIGN10 | Land or close `devin-campaign-10` residue — re-check tree for leftover hunks after rows 1–2. | ADOPT | CLAIMED devin-wave1 |
 
 ### B. Defect ledger — open rows (ledger: `DEMO_READINESS_2026-09-20.md` §6)
 
