@@ -64,7 +64,11 @@ test('ECONOMY_PRICE_TUNING exposes moderated produce/consume role factors and sh
     `consume role ${rf.consume} should be scarce but above the legacy 0.35 free-ride`);
   assert.ok(rf.produce / rf.consume < 4.0,
     `stock-target ratio ${rf.produce / rf.consume} must stay under legacy 2.0/0.35 ≈ 5.7`);
-  assert.ok(ECONOMY_PRICE_TUNING.baseEqDefault > 400 && ECONOMY_PRICE_TUNING.baseEqDefault < 1000,
+  // baseEqDefault is derived per commodity (iron ore's value) from economyModel.js's authored
+  // lotUnits/lotImpactFraction/elasticity — the regenerated tables land it at 182. The semantic
+  // guard is "shallower than legacy 1000" plus "deep enough that several authored lots still fit":
+  // floor pinned at 4× the reference lot (24u) so a degenerate derivation still reds.
+  assert.ok(ECONOMY_PRICE_TUNING.baseEqDefault > 96 && ECONOMY_PRICE_TUNING.baseEqDefault < 1000,
     `baseEqDefault ${ECONOMY_PRICE_TUNING.baseEqDefault} should be shallower than legacy 1000`);
   assert.ok(ECONOMY_PRICE_TUNING.spreadBase >= 0.08 && ECONOMY_PRICE_TUNING.spreadBase <= 0.12);
 });
