@@ -150,12 +150,25 @@ usage-locked until **2026-09-29**, which is why the sector tokens were made in B
   with the one amber; the Mule render is flat; six hull models render blank in Blender. Report:
   `review/reports/help-r4-critic.txt`.
 
-**PASSED ONLY THE OLD LETTER — must be re-scored under the owner criteria (a)/(b):**
-- Station tabs (weight sweep landed, all bands measured ≥ 2:1 — commits 73b5a87aa…138988b43): Market,
-  Missions (hold ACCEPT → the tether pulse), Factions (turn the crest orbit, chords draw), Industry (hold
-  FABRICATE, the chain beam runs), Bar (the voice arc speaks each line), Ledger (scrub the tape), and the
-  station shell. Their critics were started and cut off by the usage limit; last reports in
-  `review/reports/{missions-r13,industry-r14,bar-r13,factions-r10,ledger-r9}-critic.txt`.
+**STATION TABS RE-SCORED under (a)/(b) on 2026-09-28** (reports `review/reports/{station3-r1,missions-r15,bar-r15,industry-r14}-critic.txt`):
+- **Ledger — APPROVED 8.1** (scrub the tape). Polish: grow the purse gauge to ~200 px under the tape's
+  current-time end; the lower-left empty field.
+- **Station shell — APPROVED 8.0** (no margin). Polish: UNDOCK as a 2 px arrow in a 40 px banded ring that
+  doubles as a hold-to-confirm ring; band the munitions dial; thin dial numerals; rail rest alpha ~.30.
+- **Factions — 8.0, NOT PASSED on (a) only:** the sun's outer band 1.84:1 (alpha .26 -> ~.32) and its inner
+  2 px ring at 1.32:1 (band it or delete it); rung leaders strike the tier figures; hostile standings fill bone
+  (should be red); hovering a row previews nothing on the orbit.
+- **Industry — NOT PASSED (a)+(b):** the signature did not exist (FABRICATE was a click, pulses idle).
+  A builder is building hold-to-fabricate (the bezel as the hold ring), product node body, the unlit-lamp
+  disabled key (shared lampKey.js), filled pictograms, real build durations.
+- **Bar — NOT PASSED (b):** only list picking. A builder is building replies as a dial on the voice arc
+  (focusing a reply draws its own voice shape opposite hers).
+- **Missions — NOT PASSED (a)+(b):** hold-to-accept was not wired (two drifting idle pulses; hold only with
+  collateral); RISK/STANDING were 1 px sliders. A builder is joining tether+beam into one path filled by the hold.
+- **Market — 7.3, NOT PASSED (a)+(b):** the weight sweep never reached it (1 px spine, dotted dial, divider
+  rules, stat grids, underlined tabs, a table; no ticker). A builder is moving it onto the library and building
+  the quantity dial + price ticker signature.
+
 - Title / main menu (8.1) and Pause (8.0) — arc-rail dial; `frontdoor-r6-critic.txt`.
 - Crucible door / draft / refit / results (8/10 letter, 2026-09-23) — re-audit with weight.
 

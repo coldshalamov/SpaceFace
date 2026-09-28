@@ -1,0 +1,132 @@
+STATION BAR — ROUND 15 CRITIC, re-scored under the OWNER CRITERIA (critic-brief.md owner section + the measured
+weight bar). Stills:
+  - shots/wt-before-station-bar-{1920,1280}.png
+  - shots/wt-a6-station-bar-{1920,1280}.png
+  - shots/r115-station-bar-2560.png (the 1440p placement fix)
+  - shots/wt-st-bar-replyfocus-1920.png
+Scripts: scratchpad/barc15-*.cjs. Contrast is WCAG, computed from RGB.
+Notes on the evidence:
+  - r115-station-bar-1920 is byte-identical to wt-a6-station-bar-1920 (0 pixels differ).
+  - wt-st-bar-replyfocus-1920 was shot at 02:41, BEFORE the sweep finished (a6 is 02:59). Its reply spine is
+    still the old hairline, so the post-sweep focus state has not been shot.
+
+1. VERDICT: NOT PASSED under the owner gate. Overall 8.1 (mean 8.07; previous 8.1 letter pass).
+   The six axes still clear 8.0, and criterion (a), no thin wireframe, now PASSES at the floor. The screen
+   FAILS criterion (b), a distinct signature interaction. In every still, everything the player DOES here is
+   pick an item from a vertical list: contacts, replies, leads. The voice arc is the contact's output, not
+   the player's input. Focusing a reply lights only its own cursor segment and previews nothing. The "replies
+   as a dial" named in the task appears in no still (details in section 7b).
+   The 8.1 is NOT approval.
+
+2. AXES (r13 in brackets)
+   Composition        7.8 (7.8)  Unchanged layout. The lower-centre void is still x=620-1100 x y=690-990
+                                 (max 34, mean 12.5). The 2560 placement is right: the arc sits on the dark side,
+                                 its core at x≈1490-1570 on a 2560-wide frame, clear of the face. It stays
+                                 composition's weakest point.
+   Hierarchy          8.0 (8.0)  The words still lead:
+                                 - chosen reply 250, the line 244, the name 226, other replies 206, contacts 198;
+                                 - the voice bars rose to 146-153 (were 121-131) and still sit under the words;
+                                 - the reply spine core is 178 (cursor 206), the ladder core 155;
+                                 - the Hand (amber 2px) is still the one amber thing.
+                                 The live conversation's spine is brighter than the rail's. That is a defensible
+                                 order, but it is two weights of one element.
+   Legibility         8.1 (8.1)  Unchanged: the hints are 11px caps at about 5.3:1, and 720 is whole.
+   ORRERY fidelity    8.4 (8.4)  The sweep makes §3.1's "bloom as geometry" visible: a 7px band at about 26%
+                                 under a 2px core, on every spine, the arc and the tab rail. The Hand is a 2px
+                                 amber core with bloom, and its bead is 6 rows.
+   Craft/detail       8.1 (8.1)  New with the sweep: the reply spine is not one band. It reads 88 over the
+                                 replies and 67-70 across two 4px seams at y=523-526 and 575-578. The arc band
+                                 wanders from 63 to 79 along its length.
+                                 Closed: r13 P1 and P2 (section 3).
+   Interaction        8.0 (8.0)  Where you are is clear. What you can do is generic; see 7b.
+
+3. ROUND-13 LEFTOVERS
+   P1 The 1280 spine tail: DONE.
+       - wt-a6-1280 at x=39-40 fades cleanly: 157 at 601, 133 at 604, 96 at 608, 59 at 612, 22 at 616, 12 at
+         617, then 8 (dark) at 618.
+       - The r13 cut (50 → 9 at 619/620) is gone.
+   P2 The 1920 Hand tick: DONE.
+       - The arm is now 2px on rows 387-388 (amber 190).
+       - The tick at x=36-38 reads 123/128/132 on row 387, on the arm, with the crossing at 220.
+       - The bead core is 6 rows, 385-390, centred on the arm.
+
+4. RANKED FIXES / BLOCKERS (in order)
+   B1 (gate: criterion b). Make the replies a real dial on the voice arc, one whose focus previews something.
+       Seat the three replies along a short arc concentric with the voice arc, on its inner side, or give them
+       tick positions along the voice arc itself.
+       - A BONE cursor (the Hand stays on the contact rail) swings between them on 1-3, the wheel or hover,
+         using the swing spring.
+       - Focus previews: the focused reply's own envelope is drawn as a second, dimmer bar layer on the track's
+         other side, and the contact's standing tick leans with it (warm or cold).
+       - Commit plays her answer as the voice.
+       The player then TUNES what to say against her voice, which no other screen does.
+       Evidence to re-rule on: a post-sweep focus/hover still showing the preview. If a dial already exists in
+       the live game, that still re-opens this ruling.
+   B2 Shoot the post-sweep reply focus state, and kill the rectangular plate if it is still there.
+       - The only focus evidence (pre-sweep) shows the focused reply on a hard-edged rectangle, x≈620-960 x
+         y≈527-575. It lifts the background from about 5 to 11-13.
+       - That is a stock list-hover row, the one generic element on the tab.
+       - Replace it with focus on the spine only (the cursor segment), or fade the plate out horizontally from
+         the spine to 0 alpha within 200px.
+   B3 Lift the arc band and the ladder band off the floor.
+       - Arc band: lum 63-79 against glass 5-25, which is 1.86-2.24:1 across 13 rows. About half the rows are
+         under 2.0 (for example 410: 70 on 16; 470: 70 on 19; 620: 63 on 5; 710: 64 on 7).
+       - Ladder band (x=36-42): 66-69 on 7-9, about 2.0:1.
+       - Raise both to about lum 80 (about 2.5:1), by raising band alpha from about .26 to about .32, so every
+         row clears the bar at every width.
+   B4 Make the reply spine truly one band.
+       - The band dips from 88 to 67-70 at the 4px gaps between reply backings, y=523-526 and 575-578 (the core
+         dips from 178 to 156).
+       - Paint the band once on the spine element, not per reply backing, or close the gaps. Target: the band
+         reads 86-88 continuously from y=475 to 626.
+   B5 (composition, not a gate) The lower-centre void is still the cap on composition. B1's reply dial seated
+       under the arc would also give the lower centre its content.
+
+5. What would make this tab memorable: you tune your words against her voice. Hover a reply and see its shape
+   answer hers on the arc before you say it.
+
+6. LANDMARKS (after the sweep, 1920 unless marked)
+   Ladder spine:
+   - Band x=36-42 at 66-69; core x=39-40 at 155-157.
+   - Fade-in from about 345 (27/59); runs to about 815 (17/31).
+   Reply spine:
+   - Band x=647-653 at 86-88; core x=650-651 at 177-178; from y=475 to 626.
+   - Seams at 523-526 and 575-578 (band 67-70, core 155-157).
+   - Cursor on reply 1 at 490-507: core 206, band 131.
+   Voice arc:
+   - Track band 7px at 63-79, core about 150.
+   - Bars 2.6px at 146-153.
+   - Glass inside the arc: 5-25.
+   - 1280: band 63-79 against 5-21. 2560: band 63-76 against 5-25, core x≈1490-1570.
+   Hand:
+   - Amber 2px on rows 387-388 at 190; bloom rows 386/389 at 39, rows 385/390 at 24.
+   - Bead core 385-390 at 205-220.
+   Leader: level run 2px (441-442) at 86-88 against 11-14, 2.6:1. The diagonal is 2px at 101-111.
+   Tab rail: band y=1053-1059 at 91-92 with a core at 177, about 3.0:1.
+   Header rule: y=103-104 at 79-80.
+   HUD rings: the gauge fill is 3px at 215 with a 54 band; the empty track is 96.
+
+7. OWNER CRITERIA
+   (a) No thin wireframe, no generic elements: PASS, at the floor.
+       Every structure has body now:
+       - reply spine band 2.8:1;
+       - tab rail band 3.0:1;
+       - ladder band about 2.0:1 plus a 2px core at 155;
+       - arc band 1.86-2.24:1, carried by 2.6px bars at 146-153;
+       - the Hand: 2px amber core with bloom;
+       - the leader: 2px at 88, 2.6:1.
+       Before the sweep every one of these was a 1px line (the ladder spine 1px at 87; the reply spine 1px at
+       37-38; the leader 1px at 57-59).
+       Conditions: B3 (the arc and ladder bands sit on the 2:1 line), and B2 (the pre-sweep focus plate is a
+       generic hover rectangle; if it survives the sweep, (a) fails on it).
+   (b) A signature interaction: FAIL.
+       What the player DOES in every still: pick a contact from the ladder, pick a reply numbered 1-3 from a
+       vertical list (x=647-653, y=475-626), and pick a lead from a list. That is the same gesture as the
+       Missions and Market ladders.
+       The voice arc is strong and unique. Each line is phrased word by word on a band round her portrait, and
+       the leader ties it to the words. But the arc is what SHE does. The player never touches it.
+       Focusing a reply changes only its own cursor segment and previews nothing. That is the fail pattern the
+       criteria name.
+       The "replies as a dial" named in the task is not in any still: the replies are a straight list.
+       B1 is the path to pass: replies on a dial seated on the voice arc, with focus previewing the reply's
+       envelope against hers.
