@@ -1,6 +1,13 @@
 // M6: entity:destroyed with reason:'save_restore' must not spawn destruction VFX.
 // saveSystem._clearEntities() emits that reason for every entity on F9 load; treating those
 // as gameplay explosions fills the particle cap and stalls the frame.
+//
+// The inverse also has to hold, and that is the half that rotted: a real destroy must still put
+// destruction on the glass. The explosion no longer draws as sprite/particle cards — `_explosions`
+// hands each phase to the instanced `_explosionRupture` fan, which owns its own mesh and its own
+// per-frame update. A test that only counted `inspect().liveParticles/liveSprites` therefore read
+// a working explosion as a dead one. The census below counts every channel destruction can use and
+// drives the rupture update the render loop drives, so this fails again if explosions stop.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
@@ -48,11 +55,28 @@ function snapshot(system) {
     liveParticles: snap.liveParticles,
     liveSprites: snap.liveSprites,
     activeLights: snap.activeLights,
+    // The rupture fan is real destruction presentation too — it is instanced geometry attached to
+    // the scene, not a CPU particle. Counting it is what lets this test see a real explosion again.
+    ruptureInstances: system._explosionRupture ? system._explosionRupture.activeCount : 0,
+    ruptureVisible: !!(system._explosionRupture && system._explosionRupture.mesh
+      && system._explosionRupture.mesh.visible),
   };
 }
 
+// Total destruction presentation across every channel an explosion can own.
+function destructionCensus(system) {
+  const s = snapshot(system);
+  return s.liveParticles + s.liveSprites + s.ruptureInstances + s.activeLights;
+}
+
+// The render loop advances the rupture immediately after the phase lifecycle (vfx.js update), which
+// is what resolves the fan's on-glass visibility. A test that skips it sees a latched fan as absent.
 function advanceExplosion(system, dt = 0.2) {
   system._explosions.update(dt, system._explosionEmitter);
+  system._explosionRupture?.update(
+    Number.isFinite(system.state && system.state.simTime) ? system.state.simTime : 0,
+    system.state && system.state.settings,
+  );
 }
 
 const asteroidPayload = {
@@ -87,6 +111,10 @@ assert.equal(afterRestore.liveSprites, 0,
   'save_restore must spawn zero explosion sprites');
 assert.equal(afterRestore.activeLights, 0,
   'save_restore must activate zero flash lights');
+assert.equal(afterRestore.ruptureInstances, 0,
+  'save_restore must emit zero rupture instances');
+assert.equal(afterRestore.ruptureVisible, false,
+  'save_restore must leave the rupture fan hidden');
 
 // Non-asteroid types that would otherwise explode must also stay silent.
 for (const type of ['wreck', 'drone', 'asteroid_large', 'station_debris']) {
@@ -124,19 +152,22 @@ assert.equal(energySys._energy.rcsSystem.pool.activeImpulseCount, 0,
 
 // ── normal destroy: still produces destruction VFX ──────────────────────────
 const combatSys = makeVfxSystem();
-const beforeCombat = snapshot(combatSys);
+const beforeCombat = destructionCensus(combatSys);
+assert.equal(beforeCombat, 0, 'precondition: no destruction presentation before the destroy');
 combatSys._onDestroyed({
   ...asteroidPayload,
   // no reason, or an explicit gameplay reason — either must explode
 });
 advanceExplosion(combatSys);
 const afterCombat = snapshot(combatSys);
-assert.ok(afterCombat.liveParticles > beforeCombat.liveParticles,
-  `normal entity:destroyed must spawn particles (got ${afterCombat.liveParticles})`);
-assert.ok(afterCombat.liveSprites > beforeCombat.liveSprites,
-  `normal entity:destroyed must spawn sprites (got ${afterCombat.liveSprites})`);
-assert.ok(afterCombat.activeLights > beforeCombat.activeLights,
+assert.ok(afterCombat.ruptureInstances > 0,
+  `normal entity:destroyed must emit rupture instances (got ${afterCombat.ruptureInstances})`);
+assert.equal(afterCombat.ruptureVisible, true,
+  'the destruction rupture fan must be visible on the glass, not merely latched');
+assert.ok(afterCombat.activeLights > 0,
   `normal entity:destroyed must flash lights (got ${afterCombat.activeLights})`);
+assert.ok(destructionCensus(combatSys) > beforeCombat,
+  'normal entity:destroyed must put destruction presentation on the glass');
 
 // Explicit non-restore reason still explodes (combat/mining/sector paths).
 const combatSys2 = makeVfxSystem();
@@ -147,8 +178,9 @@ combatSys2._onDestroyed({
 });
 advanceExplosion(combatSys2);
 const afterCombat2 = snapshot(combatSys2);
-assert.ok(afterCombat2.liveParticles > 0, 'reason:combat must still explode');
-assert.ok(afterCombat2.liveSprites > 0, 'reason:combat must still spawn sprites');
+assert.ok(afterCombat2.ruptureInstances > 0, 'reason:combat must still explode');
+assert.equal(afterCombat2.ruptureVisible, true, 'reason:combat must show the rupture fan');
+assert.ok(afterCombat2.activeLights > 0, 'reason:combat must still flash lights');
 
 // Ships remain no-op on entity:destroyed (entity:killed owns ship explosions) — regression guard.
 const shipSys = makeVfxSystem();
@@ -158,7 +190,8 @@ shipSys._onDestroyed({
   pos: { x: 0, z: 0 },
   radius: 10,
 });
-assert.deepEqual(snapshot(shipSys), { liveParticles: 0, liveSprites: 0, activeLights: 0 },
+assert.deepEqual(snapshot(shipSys),
+  { liveParticles: 0, liveSprites: 0, activeLights: 0, ruptureInstances: 0, ruptureVisible: false },
   'ship entity:destroyed must still skip explode (entity:killed path)');
 
 console.log(JSON.stringify({
