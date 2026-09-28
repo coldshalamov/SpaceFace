@@ -434,6 +434,28 @@ function poiMustStayLiveActor(poi, activityObjectSlotId) {
   return false;
 }
 
+/** Bench A/B: production default ON. Still-player latch skips asteroid-field ram query. */
+let ASTEROID_FIELD_INTERACT_STILL_QUIET = true;
+export function setAsteroidFieldInteractStillQuietForBench(enabled) {
+  ASTEROID_FIELD_INTERACT_STILL_QUIET = enabled !== false;
+}
+export function getAsteroidFieldInteractStillQuietForBench() {
+  return ASTEROID_FIELD_INTERACT_STILL_QUIET !== false;
+}
+
+/** Field-version / parked-pose rescan while latched (0.5 s @ 60 Hz). */
+const ASTEROID_FIELD_INTERACT_STILL_RESCAN_TICKS = 30;
+/** Player speed² below this is "parked" for the still-player latch. */
+const ASTEROID_FIELD_INTERACT_STILL_SPEED2 = 0.25;
+
+function publishAsteroidFieldInteractQuiet(state, latched) {
+  const worldState = state && state.world;
+  if (!worldState) return;
+  const rt = worldState.asteroidFieldInteractRuntime
+    || (worldState.asteroidFieldInteractRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
 export const world = {
   name: 'world',
   // records/embodiment serializers already return owned trees; the remaining live overlays are
@@ -486,6 +508,7 @@ export const world = {
     this._pallasDecisionNeedsRebind = false;
     this._hazardSet = new Set();      // hazard zone indices the player is currently inside
     this._hazardNextSet = new Set();  // scratch set reused while computing the next frame
+    this._fieldInteractQuiet = null;  // still-player asteroid-field ram latch
     this._burnVentToastAtS = -Infinity; // scanBlocked vent-toast throttle (one per surge beat)
     this._wireReportAt = new Map();     // sectorId → simTime; bounds offscreen wire reports
     // Floating-origin scratch (allocation-free no-shift path).
@@ -3692,7 +3715,43 @@ export const world = {
 
   _tickAsteroidFieldInteractions(state) {
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
-    if (!player || !player.pos) return;
+    if (!player || !player.pos) {
+      this._fieldInteractQuiet = null;
+      publishAsteroidFieldInteractQuiet(state, false);
+      return;
+    }
+    // Quiet parked flight: dormant field rocks do not translate (vel defaults 0; only angVel
+    // spins). Still-player latch skips the near queryAsteroidField grid walk while parked;
+    // wake on asteroidField.version, player move beyond ~15% of reach, player unpark
+    // (speed), or a 0.5 s rescan. First probe (and any wake) still promotes rocks inside
+    // collide radius.
+    const field = state.world && state.world.asteroidField;
+    const fieldVersion = field && Number.isFinite(field.version) ? field.version : null;
+    const px = Number.isFinite(player.pos.x) ? player.pos.x : 0;
+    const pz = Number.isFinite(player.pos.z) ? player.pos.z : 0;
+    const pvx = player.vel ? Number(player.vel.x) || 0 : 0;
+    const pvz = player.vel ? Number(player.vel.z) || 0 : 0;
+    const parked = (pvx * pvx + pvz * pvz) <= ASTEROID_FIELD_INTERACT_STILL_SPEED2;
+    const tick = state.tick | 0;
+    const latchOn = ASTEROID_FIELD_INTERACT_STILL_QUIET !== false;
+
+    if (latchOn) {
+      const quiet = this._fieldInteractQuiet;
+      if (quiet
+        && parked
+        && quiet.fieldVersion === fieldVersion
+        && ((tick - (quiet.armedTick | 0)) < ASTEROID_FIELD_INTERACT_STILL_RESCAN_TICKS)) {
+        const mdx = px - quiet.x;
+        const mdz = pz - quiet.z;
+        if (mdx * mdx + mdz * mdz <= quiet.wakeMove2) {
+          publishAsteroidFieldInteractQuiet(state, true);
+          return;
+        }
+      }
+    } else if (this._fieldInteractQuiet) {
+      this._fieldInteractQuiet = null;
+    }
+
     // Reach must cover the largest promotion distance below: a rock promotes when the
     // player touches its real collider skin, which exceeds rec.radius by the authored
     // collider factor (worst 1.55x). 36 covers every authored rock size (radius <= 30).
@@ -3711,6 +3770,21 @@ export const world = {
       if (dx * dx + dz * dz <= rad * rad) {
         promoteAsteroidFieldRock(state, rec.id, this.helpers, 'ram');
       }
+    }
+
+    if (latchOn && parked) {
+      const wakeR = Math.max(2, reach * 0.15);
+      this._fieldInteractQuiet = {
+        fieldVersion,
+        armedTick: tick,
+        x: px,
+        z: pz,
+        wakeMove2: wakeR * wakeR,
+      };
+      publishAsteroidFieldInteractQuiet(state, true);
+    } else {
+      this._fieldInteractQuiet = null;
+      publishAsteroidFieldInteractQuiet(state, false);
     }
   },
 
