@@ -76,6 +76,9 @@ const DEATH_DOWNTIME_S = 90;
 // allow the strategy to reassess the real quotes. This preserves price-impact decay without
 // turning a 90-minute Hauler career into a one-use list of commodities.
 const HAULER_ROUTE_RECOVERY_S = 7 * 60;
+// Staking a contract must leave enough wallet for the next gate toll; otherwise a
+// completed serve strands the career at an empty dock (D80).
+const HAULER_CONTRACT_RESERVE_CR = 300;
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -96,9 +99,19 @@ for (const sec of SECTORS) {
 export const CAREER_BANDS = Object.freeze({
   hauler: Object.freeze({
     dead: round2(A_T1 * 0.20),
-    lo: round2(A_T1 * 0.45),
-    hi: round2(A_T1 * 2.4),
-    note: 'Live market arbitrage; capacity + exhaustion bind',
+    // D80 adjudication: the healthy floor is the derived economy's Foothold net
+    // (6,000 cr/h = 100 cr/min, owner ruling 2026-09-19) — the same bar D64 set for
+    // the courier lane. The retired A_T1*0.45=112.5 measured the pre-derived economy.
+    lo: 100,
+    // D80: the old 2.4x cap assumed arbitrage was the whole job. Contract freight
+    // legitimately earns the priced wage of the destination's sector tier (the
+    // seeded patch serves tier 0-2 boards; flawless play also banks the priced
+    // success premium and cruises ~1.4x faster than the pricing's 100 wu/s), so
+    // honest 90m runs land near A(T3)=1400 — 1330 observed, incl. the one-time
+    // Mule hull in earnedValue. 8xA(T1)=2000 sits above that envelope and below
+    // any accounting exploit (a double-settlement bug reads ~2x honest >=2700).
+    hi: round2(A_T1 * 8),
+    note: 'Trade loop = board freight contracts (cargo_delivery/bulk_trade) with spot arbitrage as filler; capacity + exhaustion bind the filler',
   }),
   hunter: Object.freeze({
     dead: round2(A_T1 * 0.12),
@@ -926,7 +939,7 @@ function runHauler(horizonS, options = {}) {
       'ships.buyShip',
       'factions via economy:tradeCompleted',
       'economy.update time authority + market restock',
-      'missions.ensureBoard/acceptMission bulk_trade settle via tradeCompleted',
+      'missions.ensureBoard/acceptMission cargo_delivery+bulk_trade serves; settle via dock:docked/_onTrade → _completeMission → economy:grantCredits',
     ],
     loops: [], routeHistory: [], bottlenecks: [], adaptersUsed: [], defects: [],
     authorityReceipts: [],
@@ -1011,23 +1024,329 @@ function runHauler(horizonS, options = {}) {
   let cargoDestroyed = 0;
   let currentSectorId = NEW_GAME.startingSectorId;
   let currentStationId = null;
-  let activeBulk = null;
 
-  while (t < horizonS) {
-    // Production bulk_trade contracts from the live mission board (not ladder bonded adapters).
-    if (!activeBulk && loops > 0 && loops % 6 === 0 && ctx.missions) {
-      const hit = findBoardOffer(ctx, 'bulk_trade', [buyStationId, ...sellStationIds]);
-      if (hit && (hit.offer.collateral_cr || 0) <= (ctx.state.player.credits | 0)) {
-        const inst = acceptBoardOffer(ctx, hit.offer.id, costs, receipt);
-        if (inst && inst.type === 'bulk_trade') {
-          activeBulk = inst;
-          receipt.authorityReceipts.push({
-            kind: 'mission_accept', type: 'bulk_trade', id: inst.id,
-            reward_cr: inst.reward_cr, atS: round1(ctx.state.simTime),
-            authority: 'missions.acceptMission',
-          });
+  // ---- D80 contract freight dispatch ----------------------------------------
+  // The hauler career is the trade loop, and in the shipped economy the loop's wage
+  // lives on the contract board: cargo_delivery and bulk_trade offers pay a priced
+  // wage (economyMissionTerms nets the Foothold rate into reward_cr) on top of the
+  // goods' own margin. Spot arbitrage between Belt Outpost and the consuming
+  // stations is the filler a real pilot runs while boards are cold — not the whole
+  // job. Measuring only the filler is what made the career read as poverty work.
+  // Ordering mirrors the shipped courier route: board-first, arbitrage between
+  // serves. D80 adjudication: the strategy moves, the economy and band concept stay.
+  const contractStations = Object.freeze([buyStationId, ...sellStationIds]);
+  const refusedOfferIds = new Set();
+
+  const activeFreightContract = () => (ctx.state.missions?.active || []).find((m) => m
+    && m.status === 'active' && (m.type === 'cargo_delivery' || m.type === 'bulk_trade')) || null;
+
+  /** Screen a board offer into an executable serve plan, or null when a competent
+   *  pilot declines it (manifest won't fit, wallet can't stake it, the board's own
+   *  deadline can't be met, or the serve nets nothing). */
+  function planContractServe(hit) {
+    const offer = hit.offer;
+    const cmdtyId = offer.params?.cmdtyId;
+    const cmdty = cmdtyId ? CMDTY_BY_ID.get(cmdtyId) : null;
+    if (!cmdty) return null;
+    const qty = Math.max(1, offer.params?.qty || 1);
+    const volPer = cmdty.volPerU > 0 ? cmdty.volPerU : 1;
+    const ship = SHIP_BY_ID.get(ctx.currentShipId) || SHIP_BY_ID.get(NEW_GAME.shipId);
+    const capVol = (ship && ship.cargo) || NEW_GAME.cargoCapacity || 40;
+    const freeVol = capVol - (ctx.state.player.cargo.usedVolume || 0);
+    if (freeVol < qty * volPer) return null;
+    const destStationId = offer.destStationId;
+    const destSectorId = offer.destSectorId || STATION_TO_SECTOR.get(destStationId)?.id;
+    const boardSectorId = STATION_TO_SECTOR.get(hit.stationId)?.id;
+    if (!destStationId || !STATION_BY_ID.has(destStationId) || !destSectorId || !boardSectorId) return null;
+    const legToBoardS = currentStationId === hit.stationId ? 0
+      : ((STATION_TO_SECTOR.get(currentStationId)?.id === boardSectorId
+        ? stationTravelTimeS(currentStationId, hit.stationId)
+        : travelTimeS(currentSectorId, boardSectorId)) + DOCK_OVERHEAD_S);
+    const tollToBoard = boardSectorId !== currentSectorId
+      ? routeTollAmount(seed, currentSectorId, boardSectorId, 0) : 0;
+    // Source the manifest anywhere in the hauler's patch except the destination
+    // itself — buying freight at its own delivery dock is a degenerate same-station
+    // flip, not the hauling work being measured. A sealed (preloadedCargo) manifest
+    // is loaded by missions authority at accept: no sourcing leg at all.
+    const preloaded = !!offer.preloadedCargo;
+    let best = null;
+    const buyCandidates = preloaded ? [hit.stationId]
+      : [...new Set([hit.stationId, ...contractStations])];
+    for (const buyAt of buyCandidates) {
+      if (buyAt === destStationId) continue;
+      const buyQuote = preloaded ? { ok: true, qty, total: 0 }
+        : ctx.econ.quote(buyAt, cmdtyId, 'buy', qty);
+      if (!buyQuote.ok || buyQuote.qty < qty) continue; // full manifest in one lot or skip
+      const buySectorId = STATION_TO_SECTOR.get(buyAt)?.id;
+      if (!buySectorId) continue;
+      const legToBuyS = buyAt === hit.stationId ? 0
+        : ((buySectorId === boardSectorId
+          ? stationTravelTimeS(hit.stationId, buyAt)
+          : travelTimeS(boardSectorId, buySectorId)) + DOCK_OVERHEAD_S);
+      const tollToBuy = buySectorId !== boardSectorId
+        ? routeTollAmount(seed, boardSectorId, buySectorId, 0) : 0;
+      const legToDestS = (buySectorId === destSectorId
+        ? stationTravelTimeS(buyAt, destStationId)
+        : travelTimeS(buySectorId, destSectorId)) + DOCK_OVERHEAD_S;
+      const tollToDest = buySectorId !== destSectorId
+        ? routeTollAmount(seed, buySectorId, destSectorId, 0) : 0;
+      const tollSum = tollToBoard + tollToBuy + tollToDest;
+      const estS = legToBoardS + legToBuyS + legToDestS + DOCK_OVERHEAD_S + 4 * 8;
+      // Only bulk_trade has a sell leg to price — a delivery serve settles on the
+      // manifest, never the market. Quoting a sell for cargo_delivery would also
+      // lazily warm every screened offer's destination market, multiplying the
+      // per-tick economy cost for work the contract never performs.
+      const sellEst = offer.type === 'bulk_trade'
+        ? ctx.econ.quote(destStationId, cmdtyId, 'sell', qty) : null;
+      const sellTotal = sellEst && sellEst.ok ? sellEst.total : 0;
+      const net = (offer.type === 'cargo_delivery'
+        ? (offer.reward_cr || 0) - buyQuote.total
+        : (offer.reward_cr || 0) + sellTotal - buyQuote.total) - tollSum;
+      const score = net / Math.max(estS, 1);
+      if (!(score > 0)) continue;
+      if (!best || score > best.score) {
+        best = {
+          buyAt, buySectorId, buyTotal: buyQuote.total, sellTotal,
+          legToBoardS, legToBuyS, legToDestS, tollSum, estS, net, score, preloaded,
+        };
+      }
+    }
+    if (!best) return null;
+    const wallet = ctx.state.player.credits | 0;
+    const now = ctx.state.simTime || 0;
+    const durationS = Number(offer.duration_s ?? offer.time_limit_s);
+    // The board's own clock is the honest screen: Economy Pulse already pads
+    // deadlines ~2.4× over expected duration, so a serve that cannot fit its own
+    // limit is a job a real pilot declines rather than a risk to eat.
+    if (Number.isFinite(durationS) && durationS > 0 && best.estS > durationS) return null;
+    if (now + best.estS > horizonS - 20) return null;
+    const need = (offer.collateral_cr || 0) + best.buyTotal + best.tollSum + HAULER_CONTRACT_RESERVE_CR;
+    if (need > wallet) return null;
+    return { offer, hit, cmdtyId, qty, destStationId, destSectorId, boardSectorId, ...best };
+  }
+
+  /** Serve one board freight contract end-to-end (travel→accept→buy→deliver/sell).
+   *  Returns true when an offer was accepted and worked to a terminal state —
+   *  completed or honestly failed — so the caller moves to the next iteration.
+   *  False when nothing serveable exists; caller falls back to spot arbitrage. */
+  function serveBoardContract() {
+    if (!ctx.missions) return false;
+    const searchStations = currentStationId
+      ? [currentStationId, ...contractStations.filter((id) => id !== currentStationId)]
+      : [...contractStations];
+    let plan = null;
+    for (const typeId of ['cargo_delivery', 'bulk_trade']) {
+      let hit = null;
+      while ((hit = findBoardOffer(ctx, typeId, searchStations, {
+        preferSectorId: currentSectorId,
+        fromSectorId: currentSectorId,
+        maxCredits: ctx.state.player.credits | 0,
+        seed,
+        excludeOfferIds: refusedOfferIds,
+      })) != null) {
+        plan = planContractServe(hit);
+        if (plan) break;
+        refusedOfferIds.add(hit.offer.id); // screened out — don't rescan it
+      }
+      if (plan) break;
+    }
+    if (!plan) return false;
+    const offer = plan.offer;
+
+    const abandon = (note) => {
+      const haveNow = ctx.state.player.cargo.items[plan.cmdtyId] || 0;
+      // Dump unserved contract cargo at the current dock: the pilot eats the
+      // spread on a dead contract rather than flying dead freight forever.
+      // A sealed manifest is the contract's property — abandonMission's
+      // _removePreloadedContractCargo takes it back, not the market.
+      if (haveNow > 0 && currentStationId && !plan.preloaded) {
+        const dump = ctx.econ.execute(currentStationId, plan.cmdtyId, 'sell', haveNow);
+        if (dump.ok) {
+          cargoDestroyed += dump.qty;
+          receipt.saleProceeds += dump.total;
         }
       }
+      if ((ctx.state.missions.active || []).some((m) => m.id && m.status === 'active'
+        && m.id === (plan.inst && plan.inst.id))) {
+        ctx.missions.abandonMission(plan.inst.id);
+      }
+      receipt.failedContracts += 1;
+      markBottleneck(receipt, 'contract_serve_failed', note || 'serve');
+      receipt.loops.push({
+        loop: loops, contract: offer.type, outcome: 'failed', note,
+        t: round1(ctx.state.simTime), creditsAfter: ctx.state.player.credits | 0,
+      });
+    };
+
+    // Leg 1: to the board (skip when already berthed).
+    if (currentStationId !== plan.hit.stationId) {
+      if (t + plan.legToBoardS > horizonS) { refusedOfferIds.add(offer.id); return true; }
+      const move = tryTravel(ctx, {
+        fromSectorId: currentSectorId, toSectorId: plan.boardSectorId,
+        travelS: plan.legToBoardS, reason: `gate_toll:hauler:contract_board:${loops}`,
+        seed, costs, budget,
+      });
+      if (!move.ok) {
+        markBottleneck(receipt, 'unaffordable_toll', `contract board leg need=${move.need}`);
+        refusedOfferIds.add(offer.id);
+        return true;
+      }
+      t = ctx.state.simTime;
+      currentSectorId = plan.boardSectorId;
+      currentStationId = plan.hit.stationId;
+    }
+    completeDeliveryAtDock(ctx, plan.hit.stationId);
+
+    // Accept through live mission authority (collateral posts via economy).
+    const beforeIds = new Set((ctx.state.missions.active || []).map((m) => m.id));
+    const beforeCr = ctx.state.player.credits | 0;
+    if (!ctx.missions.acceptMission(offer.id)) {
+      refusedOfferIds.add(offer.id);
+      markBottleneck(receipt, 'contract_accept_refused', offer.id);
+      return true;
+    }
+    const acceptSpent = beforeCr - (ctx.state.player.credits | 0);
+    if (acceptSpent > 0) {
+      costs.missionCost += acceptSpent;
+      receipt.purchaseSpend += acceptSpent;
+    }
+    const inst = (ctx.state.missions.active || []).find((m) => m
+      && m.status === 'active' && !beforeIds.has(m.id)) || null;
+    if (!inst || (inst.type !== 'cargo_delivery' && inst.type !== 'bulk_trade')) {
+      markBottleneck(receipt, 'contract_accept_untracked', offer.id);
+      refusedOfferIds.add(offer.id);
+      return true;
+    }
+    plan.inst = inst;
+    // Sealed manifest enters the hold through missions.addCargo at accept — count it
+    // so the inventory ledger sees the units _deliverCargo will consume.
+    if (plan.preloaded) cargoCreated += plan.qty;
+    receipt.authorityReceipts.push({
+      kind: 'mission_accept', type: inst.type, id: inst.id, offerId: offer.id,
+      cmdtyId: plan.cmdtyId, qty: plan.qty, destStationId: plan.destStationId,
+      reward_cr: inst.reward_cr, collateral_cr: inst.collateral_cr,
+      deadline_s: inst.deadline_s != null ? round1(inst.deadline_s) : null,
+      atS: round1(ctx.state.simTime),
+      authority: 'missions.acceptMission',
+    });
+
+    // Leg 2: to the sourcing station; buy the full manifest through live execute.
+    // A sealed manifest already sits in the hold — missions loaded it at accept.
+    if (!plan.preloaded) {
+      if (plan.buyAt !== currentStationId) {
+        if (t + plan.legToBuyS > horizonS) { abandon('buy_leg_over_horizon'); return true; }
+        const moveBuy = tryTravel(ctx, {
+          fromSectorId: currentSectorId, toSectorId: plan.buySectorId,
+          travelS: plan.legToBuyS, reason: `gate_toll:hauler:contract_buy:${loops}`,
+          seed, costs, budget,
+        });
+        if (!moveBuy.ok) {
+          markBottleneck(receipt, 'unaffordable_toll', `contract buy leg need=${moveBuy.need}`);
+          abandon('buy_leg_toll_denied');
+          return true;
+        }
+        t = ctx.state.simTime;
+        currentSectorId = plan.buySectorId;
+        currentStationId = plan.buyAt;
+      }
+      ctx.econ.ensureMarket(plan.buyAt);
+      const buyRes = ctx.econ.execute(plan.buyAt, plan.cmdtyId, 'buy', plan.qty);
+      if (!buyRes.ok || buyRes.qty < plan.qty) {
+        abandon(`buy_fill_short:${buyRes.reason || 'qty'}`);
+        return true;
+      }
+      cargoCreated += buyRes.qty;
+      receipt.purchaseSpend += buyRes.total;
+      advanceTime(ctx, 8, budget, 'actionS');
+      t = ctx.state.simTime;
+    }
+
+    // Leg 3: to the destination dock.
+    if (t + plan.legToDestS > horizonS) { abandon('dest_leg_over_horizon'); return true; }
+    const moveDest = tryTravel(ctx, {
+      fromSectorId: currentSectorId, toSectorId: plan.destSectorId,
+      travelS: plan.legToDestS, reason: `gate_toll:hauler:contract_dest:${loops}`,
+      seed, costs, budget,
+    });
+    if (!moveDest.ok) {
+      markBottleneck(receipt, 'unaffordable_toll', `contract dest leg need=${moveDest.need}`);
+      abandon('dest_leg_toll_denied');
+      return true;
+    }
+    t = ctx.state.simTime;
+    currentSectorId = plan.destSectorId;
+    currentStationId = plan.destStationId;
+
+    // Settle through the type's live completion seam.
+    const settleBeforeCr = ctx.state.player.credits | 0;
+    const settleBeforeDone = ctx.state.player.stats?.missionsDone || 0;
+    let sellTotal = 0;
+    if (inst.type === 'cargo_delivery') {
+      // dock:docked → _onDockedObjectives → _deliverCargo consumes the manifest →
+      // _completeMission → economy:grantCredits (+ collateral refund).
+      completeDeliveryAtDock(ctx, plan.destStationId);
+      if (!(ctx.state.missions.active || []).some((m) => m.id === inst.id && m.status === 'active')) {
+        cargoDestroyed += plan.qty; // manifest consumed by _deliverCargo
+      }
+    } else {
+      // bulk_trade: selling the quota at the named buyer IS the objective —
+      // economy:tradeCompleted → _onTrade → _completeMission → grantCredits.
+      const have = ctx.state.player.cargo.items[plan.cmdtyId] || 0;
+      const sellRes = ctx.econ.execute(plan.destStationId, plan.cmdtyId, 'sell', have);
+      if (sellRes.ok) {
+        sellTotal = sellRes.total;
+        cargoDestroyed += sellRes.qty;
+        receipt.saleProceeds += sellRes.total;
+      }
+    }
+    const settleDelta = (ctx.state.player.credits | 0) - settleBeforeCr;
+    const stillActive = (ctx.state.missions.active || []).some((m) => m.id === inst.id
+      && m.status === 'active');
+    const completedNow = (ctx.state.player.stats?.missionsDone || 0) > settleBeforeDone
+      || (!stillActive && settleDelta > 0);
+    if (!completedNow) {
+      abandon('settle_incomplete');
+      return true;
+    }
+    receipt.completedContracts += 1;
+    const bonus = Math.max(0, settleDelta - sellTotal);
+    if (bonus > 0) receipt.missionProceeds += bonus;
+    receipt.authorityReceipts.push({
+      kind: 'mission_complete', type: inst.type, id: inst.id,
+      bonusCr: round(bonus), saleTotal: round(sellTotal),
+      atS: round1(ctx.state.simTime),
+      authority: inst.type === 'cargo_delivery'
+        ? 'missions._onDockedObjectives→_deliverCargo→_completeMission→economy:grantCredits'
+        : 'economy:tradeCompleted→missions._onTrade→_completeMission→economy:grantCredits',
+    });
+    receipt.loops.push({
+      loop: loops, contract: inst.type, outcome: 'completed', missionId: inst.id,
+      cmdtyId: plan.cmdtyId, qty: plan.qty, destStationId: plan.destStationId,
+      buyTotal: round(plan.buyTotal), sellTotal: round(sellTotal), bonusCr: round(bonus),
+      t: round1(ctx.state.simTime), creditsAfter: ctx.state.player.credits | 0,
+    });
+    advanceTime(ctx, 8, budget, 'actionS');
+    t = ctx.state.simTime;
+    return true;
+  }
+
+  while (t < horizonS) {
+    // Mid-career upgrade at loop top so contract serves can grow the bank into the
+    // Mule too, not only arbitrage loops.
+    if (!upgraded && midShip && (ctx.state.player.credits | 0) >= midShip.price + NEW_GAME.credits) {
+      if (tryBuyShipLive(ctx, midShip.id, receipt, costs)) {
+        upgraded = true;
+        receipt.equipment.activePhase = 'mule';
+        receipt.equipment.upgradedAtLoop = loops;
+      }
+    }
+
+    // Contract freight first whenever no freight contract is staked; spot arbitrage
+    // fills the gap when boards are dry, refused, or already staked. Hold-emptiness
+    // is NOT a precondition — the starting kit's stray unit rides along forever, and
+    // manifest fit is screened per offer by free volume in planContractServe.
+    if (!activeFreightContract()) {
+      if (serveBoardContract()) continue;
     }
 
     const leg1S = (currentStationId
@@ -1056,19 +1375,19 @@ function runHauler(horizonS, options = {}) {
     if (!(liveMargin > 0)) {
       retiredUntil.set(`${best.cmdtyId}|${best.sellStationId}`, t + HAULER_ROUTE_RECOVERY_S);
       markBottleneck(receipt, 'spread_collapse', `Route ${best.cmdtyId}→${best.sellStationId} collapsed`);
-      let next = selectRoute();
+      const next = selectRoute();
       if (!next) {
         markBottleneck(receipt, 'market_exhaustion', 'All early routes cooling while live stock recovers');
-        while (!next && t < horizonS) {
-          const waits = [...retiredUntil.values()].filter((until) => until > t);
-          const until = waits.length ? Math.min(...waits) : t + 60;
-          const waitS = Math.min(horizonS - t, Math.max(30, until - t));
-          if (!(waitS > 0)) break;
-          advanceTime(ctx, waitS, budget, 'idleS');
-          t = ctx.state.simTime;
-          next = selectRoute();
-        }
-        if (!next) break;
+        // D80: recovery waits happen in outer-loop steps so a contract serve can
+        // interleave between them — a docked hauler checks the board instead of
+        // sitting out the whole recovery window.
+        const waits = [...retiredUntil.values()].filter((until) => until > t);
+        const until = waits.length ? Math.min(...waits) : t + 60;
+        const waitS = Math.min(horizonS - t, Math.max(30, until - t));
+        if (!(waitS > 0)) break;
+        advanceTime(ctx, waitS, budget, 'idleS');
+        t = ctx.state.simTime;
+        continue;
       }
       receipt.routeHistory.push({
         buyStationId, sellStationId: next.sellStationId,
@@ -1136,8 +1455,6 @@ function runHauler(horizonS, options = {}) {
     currentStationId = best.sellStationId;
 
     const have = ctx.state.player.cargo.items[best.cmdtyId] || 0;
-    const creditsBeforeSell = ctx.state.player.credits | 0;
-    const missionsDoneBefore = ctx.state.player.stats?.missionsDone || 0;
     const sellRes = ctx.econ.execute(best.sellStationId, best.cmdtyId, 'sell', have);
     if (!sellRes.ok) {
       receipt.loops.push({ loop: loops, fail: sellRes.reason || 'sell_failed' });
@@ -1145,21 +1462,6 @@ function runHauler(horizonS, options = {}) {
     }
     cargoDestroyed += sellRes.qty;
     receipt.saleProceeds += sellRes.total;
-    // bulk_trade missions complete on economy:tradeCompleted when commodity/dest match.
-    if (activeBulk && activeBulk.params?.cmdtyId === best.cmdtyId) {
-      const missionsDoneAfter = ctx.state.player.stats?.missionsDone || 0;
-      const bonus = Math.max(0, (ctx.state.player.credits | 0) - creditsBeforeSell - sellRes.total);
-      if (missionsDoneAfter > missionsDoneBefore || bonus > 0) {
-        if (bonus > 0) receipt.missionProceeds += bonus;
-        receipt.completedContracts += 1;
-        receipt.authorityReceipts.push({
-          kind: 'mission_complete', type: 'bulk_trade', id: activeBulk.id,
-          bonusCr: bonus, atS: round1(ctx.state.simTime),
-          authority: 'missions._onTrade→_completeMission→economy:grantCredits',
-        });
-        activeBulk = null;
-      }
-    }
     // Dock beat also refreshes boards / delivery objectives through the production path.
     completeDeliveryAtDock(ctx, best.sellStationId);
     advanceTime(ctx, 8, budget, 'actionS');
@@ -1174,14 +1476,6 @@ function runHauler(horizonS, options = {}) {
       creditsAfter: ctx.state.player.credits | 0, shipId: ctx.currentShipId,
       stockAfterBuy: round1((ctx.state.economy.markets[buyStationId]?.[best.cmdtyId]?.stock) || 0),
     });
-
-    if (!upgraded && midShip && (ctx.state.player.credits | 0) >= midShip.price + NEW_GAME.credits) {
-      if (tryBuyShipLive(ctx, midShip.id, receipt, costs)) {
-        upgraded = true;
-        receipt.equipment.activePhase = 'mule';
-        receipt.equipment.upgradedAtLoop = loops;
-      }
-    }
   }
 
   receipt.marketExhaustion = retiredUntil.size > 0;
