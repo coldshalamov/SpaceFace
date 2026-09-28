@@ -10054,6 +10054,32 @@ export const vfx = {
     return this._combatContactVfx.emit(kind, p, this.state);
   },
 
+  // Structural burst request for a collision consequence. Shared by the contact-matter and
+  // fallback rungs so the tumble's arcs/shards read the same unoriented axis, victim extent,
+  // and momentum whichever presentation layer accepted the receipt.
+  _fillCollisionStructuralReq(p) {
+    const victim = this._ent(p.targetId);
+    const axisAngle = this._collisionContactAxis(p);
+    const req = _arcadeStructuralBurstReq;
+    req.x = p.pos.x;
+    req.z = p.pos.z;
+    req.y = NaN;
+    req.classId = 'ordinary';
+    req.radius = Math.max(2, Number(victim && victim.radius) || 6);
+    req.dirX = Math.cos(axisAngle);
+    req.dirZ = Math.sin(axisAngle);
+    req.hasDir = 0;
+    req.velX = victim && victim.vel && Number.isFinite(victim.vel.x) ? victim.vel.x : 0;
+    req.velY = victim && victim.vel && Number.isFinite(victim.vel.y) ? victim.vel.y : 0;
+    req.velZ = victim && victim.vel && Number.isFinite(victim.vel.z) ? victim.vel.z : 0;
+    req.victimId = p.targetId;
+    req.axisAngle = axisAngle;
+    req.magnitude = collisionImpactMagnitude(p);
+    req.dv = collisionDisplayDeltaV(p);
+    req.terrain = p.surface === 'terrain' ? 1 : 0;
+    return req;
+  },
+
   _onCollisionConsequence(p) {
     if (!this._scene || !p || !p.pos) return false;
     const realControl = p.control === 'stagger' || p.control === 'tumble';
@@ -10064,8 +10090,13 @@ export const vfx = {
       // Keep receipt admission/audio and the separate physical debris event. Geometry
       // now maps body extent and closing speed, never dimensionless camera trauma.
       if (p.control === 'tumble') {
-        _arcadeStructuralBurstReq.x = p.pos.x; _arcadeStructuralBurstReq.z = p.pos.z;
-        this._admitAndSpawnArcadeStructural('combat:collisionConsequence', p, false);
+        // A tumble still requests its structural shear on top of the contact seat — the
+        // collision family owns opposed arcs and shards (no blades), same as the bank rung
+        // that draws contact matter AND its burst. The request fields must be filled here:
+        // _arcadeStructuralBurstReq is module-level scratch that otherwise carries whatever
+        // the previous burst caller left behind.
+        this._fillCollisionStructuralReq(p);
+        this._admitAndSpawnArcadeStructural('combat:collisionConsequence', p);
       }
       const light = collisionImpactLight(p);
       this._flashLight(p.pos, p.surface === 'terrain' ? '#ffcaa0' : '#bcd8ff', light.intensity, 9, light.range);
@@ -10143,24 +10174,7 @@ export const vfx = {
       this._flashLight({ x: pos.x, z: pos.z }, terrain ? '#ffcaa0' : '#bcd8ff',
         light.intensity, 9, light.range);
     }
-    const victim = this._ent(p.targetId);
-    const req = _arcadeStructuralBurstReq;
-    req.x = pos.x;
-    req.z = pos.z;
-    req.y = NaN;
-    req.classId = 'ordinary';
-    req.radius = Math.max(2, Number(victim && victim.radius) || 6);
-    req.dirX = axisX;
-    req.dirZ = axisZ;
-    req.hasDir = 0;
-    req.velX = victim && victim.vel && Number.isFinite(victim.vel.x) ? victim.vel.x : 0;
-    req.velY = victim && victim.vel && Number.isFinite(victim.vel.y) ? victim.vel.y : 0;
-    req.velZ = victim && victim.vel && Number.isFinite(victim.vel.z) ? victim.vel.z : 0;
-    req.victimId = p.targetId;
-    req.axisAngle = axisAngle;
-    req.magnitude = magnitude;
-    req.dv = dv;
-    req.terrain = terrain ? 1 : 0;
+    this._fillCollisionStructuralReq(p);
     // A stagger is a control, not a structural hit. The arbiter already refuses it.
     // A tumble uses that one admitted family (opposed arcs and shards, no blades).
     // A second impact sheet here was drawing blades the family does not own.
