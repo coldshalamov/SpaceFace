@@ -3776,28 +3776,38 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_dead_hulk.glb",
       "release": "assets/ships/release/parts/places/place_dead_hulk.glb",
-      "sourceSha256": "bf8178ce4ce7ad2e43b1ce1acb957eb992a03a07f9e48c0afa12ad4b7c346e48",
-      "releaseSha256": "fc7ca4527bc61e701cdbc5e8bf593b8b3d032190b8ba6cbdaedcca7cc8315d62",
-      "sourceBytes": 1275648,
-      "releaseBytes": 653856,
+      "sourceSha256": "1cd464cfb52471a1d077a6acf7dd67b2fac38c9d9804dd4b282c585f442e7414",
+      "releaseSha256": "ff5d7535d57c867ccaa9a3ac31db55aa5d13050b8413a93a4d50baf1dd33571a",
+      "sourceBytes": 1276252,
+      "releaseBytes": 482644,
       "textures": 6,
       "ktx2Textures": 6,
       "meshoptBufferViews": 130,
-      "contractNodeCount": 35
+      "contractNodeCount": 35,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_debris_chunk",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_debris_chunk.glb",
       "release": "assets/ships/release/parts/places/place_debris_chunk.glb",
-      "sourceSha256": "3c078bcdac10905e8e759b7d758d33359df9d1181e96cf5d828f3db451afabca",
-      "releaseSha256": "c169255c9c51af856f50388db1f0e987fa4e4fc0370764765d543f5bd3170186",
-      "sourceBytes": 667184,
-      "releaseBytes": 466116,
+      "sourceSha256": "920be470e8171a6ecb04efede5d97d3a97e539d2b02aee81aa9f11de56a04cd4",
+      "releaseSha256": "916842ebfbf4e855cc9e5e255543b53e0ea1253aafc35e742d197ed4d5c829ea",
+      "sourceBytes": 667864,
+      "releaseBytes": 294980,
       "textures": 6,
       "ktx2Textures": 6,
       "meshoptBufferViews": 108,
-      "contractNodeCount": 28
+      "contractNodeCount": 28,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_lane_pin",
@@ -4140,14 +4150,19 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_dock_interior.glb",
       "release": "assets/ships/release/parts/places/place_dock_interior.glb",
-      "sourceSha256": "52d4fde822bcc9599c3d045c0bab1d6b9e59238683ddf78ae0d57fb8b6856930",
-      "releaseSha256": "e95fc6a13cb47eb647b57e165c4df9c5a11645ece8909acc874d749ed0d2da6a",
-      "sourceBytes": 843476,
-      "releaseBytes": 468528,
+      "sourceSha256": "53114d2ddd3a7bcfc5135040f9e8f9411c0e80419fe39866d431086a2a2dea2f",
+      "releaseSha256": "18ce2bbfacdf4ca704dcda222089d9a7e8d4ed29e0cf0771343f0db631b4bf72",
+      "sourceBytes": 844472,
+      "releaseBytes": 297704,
       "textures": 6,
       "ktx2Textures": 6,
       "meshoptBufferViews": 47,
-      "contractNodeCount": 13
+      "contractNodeCount": 13,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_dock_interior_grit",

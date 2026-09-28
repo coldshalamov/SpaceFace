@@ -2872,7 +2872,7 @@
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
       "tris": 15476,
-      "bytes": 1275648,
+      "bytes": 1276252,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2928,7 +2928,7 @@
       "priority": "P1",
       "file": "places/place_debris_chunk.glb",
       "tris": 7476,
-      "bytes": 667184,
+      "bytes": 667864,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2984,7 +2984,7 @@
       "priority": "P0",
       "file": "places/place_dock_interior.glb",
       "tris": 11128,
-      "bytes": 843476,
+      "bytes": 844472,
       "textureSize": 1024,
       "tintable": {
         "dark": "Material_Armor",
