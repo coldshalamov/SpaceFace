@@ -65,6 +65,13 @@ export function ensureCombatant(state, entity, catalog) {
     runtime = createCombatantRuntime(entity, profile, catalog, runtime);
     combat.entities[entity.id] = runtime;
   }
+  // Backfill dissipation for runtimes created before this field existed; create path
+  // already stamps it. Avoid rewriting the same number every quiet ensure.
+  if (!Number.isFinite(runtime.heatDissipationPerTick)) {
+    runtime.heatDissipationPerTick = profile && profile.heat
+      ? Number(profile.heat.dissipationPerTick) || 0
+      : 0;
+  }
   syncCombatantBounds(entity, runtime, profile);
   return runtime;
 }
@@ -147,6 +154,9 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
     profileId: profile ? profile.id : null,
     heat: previous && finiteNonNegative(previous.heat) ? previous.heat : 0,
     heatMax: profile && profile.heat ? profile.heat.max : 100,
+    heatDissipationPerTick: profile && profile.heat
+      ? Number(profile.heat.dissipationPerTick) || 0
+      : 0,
     immunityTags: profile ? [...(profile.immunityTags || [])].sort() : [],
     baseCapabilities: profile ? cloneData(profile.capabilities || {}) : {},
     capabilities: profile ? cloneData(profile.capabilities || {}) : {},

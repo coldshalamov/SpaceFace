@@ -256,7 +256,9 @@ export function createCombatKernel(ctx, options = {}) {
         applyMomentumSink(state, entity, runtime, dt, momentumSinkImpulse);
       }
       coolCombatHeat(entity, runtime, dt);
-      syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));
+      // ensureCombatant already clamped vitals/heat; cool only lowers heat (Math.max 0).
+      // Re-sync only when statuses may have rewritten vitals this tick. Profile is on runtime.
+      if (statusChanged) syncCombatantBounds(entity, runtime);
       if (!sawBusy && (statusChanged || combatRuntimeBusy(runtime))) sawBusy = true;
     }
     actions.advance();
@@ -300,10 +302,14 @@ export function createCombatKernel(ctx, options = {}) {
       publishCombatPostPhysicsQuiet(state, true);
       return;
     }
+    // Quiet postPhysics re-ensured every combatant (resolve profile + sync bounds) after
+    // prePhysics already did both. Physics does not mutate vitals/heat; first-seen combatants
+    // still get ensureCombatant.
+    const table = state.combat && state.combat.entities;
     for (const entity of sortedEntitiesForTick()) {
       if (!entity.alive || !isCombatantType(entity.type)) continue;
-      const runtime = ensureCombatant(state, entity, catalog);
-      syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));
+      if (table && table[entityKey(entity.id)]) continue;
+      ensureCombatant(state, entity, catalog);
     }
     publishCombatPostPhysicsQuiet(state, false);
   }
@@ -390,8 +396,10 @@ export function createCombatKernel(ctx, options = {}) {
   }
 
   function coolCombatHeat(entity, runtime, dt) {
-    const profile = resolveCombatProfile(entity, catalog);
-    const basePerTick = profile && profile.heat && Number(profile.heat.dissipationPerTick) || 0;
+    // Dissipation is stashed on the runtime at ensureCombatant (profile is tick-stable).
+    const basePerTick = Number.isFinite(runtime.heatDissipationPerTick)
+      ? runtime.heatDissipationPerTick
+      : 0;
     const normalizedTicks = Number.isFinite(dt) && dt > 0 ? dt * 60 : 1;
     const multiplier = runtime.multipliers && Number.isFinite(runtime.multipliers.heatDissipation) ? runtime.multipliers.heatDissipation : 1;
     runtime.heat = Math.max(0, runtime.heat - basePerTick * multiplier * normalizedTicks);
