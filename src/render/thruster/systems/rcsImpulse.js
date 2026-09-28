@@ -241,6 +241,7 @@ export class RcsImpulsePool {
     this.activeImpulseCount = aliveImp;
 
     const geo = this.recipe.geometry;
+    const prevActiveSlots = this.activeSlotCount;
     this.activeSlotCount = 0;
     for (let i = 0; i < this.maxImpulses; i++) {
       const imp = this.impulses[i];
@@ -294,7 +295,9 @@ export class RcsImpulsePool {
         slot.color[2] = this._layerColor[li * 3 + 2];
       }
     }
-    for (let i = this.activeSlotCount; i < this.capacity; i++) {
+    // Only retire slots that were live last frame. Quiet settled flight used to
+    // walk capacity every tick zeroing already-dead tails (O(maxImpulses*layers)).
+    for (let i = this.activeSlotCount; i < prevActiveSlots; i++) {
       this.slots[i].alive = false;
     }
 
@@ -353,6 +356,7 @@ export class RcsImpulseSystem {
     this._a11y = opts.a11y || this.pool._emptyA11y;
     this._textures = opts.textures || {};
     this._disposed = false;
+    this._quietEmpty = false;
     this._qualityTier = 'high';
     if (THREE) {
       this._initThree(THREE, opts);
@@ -579,6 +583,13 @@ export class RcsImpulseSystem {
     if (flags.qualityTier) this.setQualityTier(flags.qualityTier);
     const result = this.pool.update(dt, flags);
 
+    // Quiet settled flight: after the first empty publish, skip event-light churn +
+    // layer batch clear/commit/uniform writes. Fire() arms impulses before update, so
+    // activeSlotCount>0 correctly leaves the quiet path on the spawn frame.
+    if (!(result.activeSlotCount > 0) && this._quietEmpty) {
+      return result;
+    }
+
     // Event lights: begin → write each impulse → finalize (counts always correct)
     this.eventLights.beginFrame();
     for (let i = 0; i < this.pool.maxImpulses; i++) {
@@ -672,6 +683,7 @@ export class RcsImpulseSystem {
       }
       this.group.visible = result.activeSlotCount > 0;
     }
+    this._quietEmpty = !(result.activeSlotCount > 0);
     return result;
   }
 
@@ -682,6 +694,7 @@ export class RcsImpulseSystem {
     }
     this.pool.activeImpulseCount = 0;
     this.pool.activeSlotCount = 0;
+    this._quietEmpty = false;
     for (let i = 0; i < this.pool.capacity; i++) this.pool.slots[i].alive = false;
     this.eventLights.reset();
     if (this.layerBatches) {
