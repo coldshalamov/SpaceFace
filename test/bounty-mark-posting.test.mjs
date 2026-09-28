@@ -186,8 +186,10 @@ test('the mark roll is a pure function of (seed, offer id, sector, tier) — a f
     role: 'board_writ',
     archetype: 'wasp_swarmer',
     factionId: 'faction_reach',
-    zoneId: 'zone_charon_belt',
-    placeName: 'Deep Frontier Seams',
+    anchorId: 'sector_vesta_forge',
+    anchorRadius: 300,
+    anchorMinRadius: 80,
+    placeName: 'the Vesta Forge gate',
   });
 });
 

@@ -10,6 +10,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { WORLD_ONE_OFFS } from '../src/data/worldOneOffs.js';
+import { AUTHORED_DOCK_RUMORS } from '../src/data/frontierRumors.js';
 import { NAMED_LANE_CONTACTS } from '../src/data/laneContacts.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { world } from '../src/systems/world.js';
@@ -19,8 +20,8 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const PLACES_DIR = fileURLToPath(new URL('../assets/ships/release/parts/places/', import.meta.url));
 
 test('the placed one-offs exist, plus the too-fast courier', () => {
-  assert.equal(WORLD_ONE_OFFS.length, 12,
-    'twelve placed set pieces: the eight beside places, plus the four CV-QUIET detours on the legs');
+  assert.equal(WORLD_ONE_OFFS.length, 31,
+    'thirty-one placed set pieces: the eight beside places, the four CV-QUIET detours on the legs, plus nineteen for per-sector coverage');
   const courier = NAMED_LANE_CONTACTS.find((c) => c.id === 'lane_cinder_run_courier');
   assert.ok(courier, 'the named express courier still lives in laneContacts.js');
   const ids = WORLD_ONE_OFFS.map((o) => o.id);
@@ -102,14 +103,35 @@ test('every one-off is authored against a real anchor inside the sector radius',
         assert.ok(d <= sector.worldRadius, `${oneOff.id} cluster part stays inside the sector radius`);
       }
     }
-    // Reachable: starter-pocket one-offs stay within a hop of the start sector; frontier
-    // one-offs (2026-09-28 INFERENCE) reach the same bar structurally — a real anchor inside
-    // their own sector's radius, which the anchor assertion above already proves.
+  }
+});
+
+test('CR-TEXTURE-1: every named sector has a reachable one-off', () => {
+  const bySector = new Map();
+  for (const oneOff of WORLD_ONE_OFFS) {
+    if (!bySector.has(oneOff.sectorId)) bySector.set(oneOff.sectorId, []);
+    bySector.get(oneOff.sectorId).push(oneOff);
+  }
+  for (const sector of SECTORS) {
     assert.ok(
-      oneOff.sectorId === 'sector_helios_prime'
-      || SECTOR_BY_ID.get('sector_helios_prime').neighbors.includes(oneOff.sectorId)
-      || oneOff.id === 'oneoff_held_dock_pinnace',
-      `${oneOff.id} must be reachable: starter pocket or a structurally anchored frontier piece`,
+      (bySector.get(sector.id) || []).length >= 1,
+      `${sector.id} has no one-off — every named place gets one reachable surprise`,
+    );
+  }
+
+  // Reachability: starter-pocket one-offs are on the default route (skyline); every other
+  // sector reaches the same bar through an authored bar lead at one of its own stations,
+  // so a stranger can dock, ask for rumors, and fly to the thing.
+  const STARTER_POCKET = new Set([
+    'sector_helios_prime', 'sector_ceres_belt', 'sector_tethys_junction',
+    'sector_vesta_forge', 'sector_io_reach',
+  ]);
+  for (const sector of SECTORS) {
+    if (STARTER_POCKET.has(sector.id)) continue;
+    const stations = sector.stations || [];
+    assert.ok(
+      stations.some((s) => AUTHORED_DOCK_RUMORS[s.id]),
+      `${sector.id} has no authored bar lead at any of its stations`,
     );
   }
 });
