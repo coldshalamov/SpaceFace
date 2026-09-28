@@ -117,4 +117,17 @@ export function pickWreckClass(key) {
 // keep the legacy ball collider bit-identical.
 export const WRECK_COLLIDER_PROPORTIONS = Object.freeze({ length: 1.8, halfWidth: 0.58, height: 0.45 });
 
+// LIVE COLLIDER TRUTH (Rapier SG-02 — verified, do not re-litigate):
+//   debris ghost:false · rock ghost:false · pickup ghost:true (sensor).
+// A wreck is solid because its spawn site stamps physicsBody:{shape:'capsule'} (material debris,
+// dynamic, non-sensor via physicsAuthority defaultDynamic/defaultMaterial + sg02
+// CONTACT_MATERIALS) — NOT because of any collision mask: DEFAULT_MASK.wreck stays 0 for the
+// custom-backend compatibility path (see src/core/entity.js). The canonical per-model statement
+// of this truth is MODEL_SUBSTANCE_TABLE in src/data/modelTruth.js.
+// Capsule-stamped wreck spawn sites (keep this list current when adding one):
+//   hullFracture.js pieceSpec → wreckPhysicsBody (capsule debris dynamic) + data.proportions
+//   mining.js wreck spec (salvage fallback) → physicsBody:{shape:'capsule'} + data.proportions
+//   aftermathWrecks.js _specForMarker → physicsBody:{shape:'capsule'} + data.proportions
+// Change these proportions only with a measured p90 mismatch number, never by feel.
+
 export default WRECK_CLASSES;

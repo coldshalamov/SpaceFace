@@ -21,6 +21,13 @@ export const DEFAULT_MASK = {
   pickup: Masks.SHIP | Masks.DRONE,
   drone: Masks.ASTEROID | Masks.PROJECTILE,
   payload: Masks.SHIP | Masks.ASTEROID | Masks.STATION,
+  // LIVE-SOLIDITY NOTE (Rapier SG-02): wreck: 0 stays 0 — DO NOT change. The custom-backend
+  // mask path is compatibility-only and NOT live; a wreck is solid because its spawn site
+  // stamps physicsBody:{shape:'capsule'} and the live body resolves to material debris,
+  // dynamic, non-sensor (see physicsAuthority defaultDynamic/defaultMaterial +
+  // MODEL_SUBSTANCE_TABLE in src/data/modelTruth.js). Raising this mask would touch the
+  // custom-backend broad-phase and its goldens for zero live effect, so it stays 0 for the
+  // lane-owner's judgment even if a focused test proves it golden-safe.
   wreck: 0,
   fx: 0,
 };
