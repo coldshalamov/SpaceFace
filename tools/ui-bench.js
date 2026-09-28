@@ -13,6 +13,7 @@ import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
 import { ships as shipsSystem } from '../src/systems/ships.js';
+import { economy as economySystem } from '../src/systems/economy.js';
 import {
   buildCodeFor, buildNameFor, counterplayFor, deathCauseText, deathSentence, storyMomentsFor,
 } from '../src/systems/survivalResults.js';
@@ -455,8 +456,21 @@ const BENCH_CRUCIBLE_RESULT = Object.freeze({
   ],
 });
 
+/** The Market quotes through the game's own economy owner, over the bench state and bus (built on first
+ *  ask, once per page): the docked station's exchange is real, so a commodity is buyable at rest and a
+ *  confirmed trade settles through the same ui:buy / ui:sell intents the game handles. */
+let benchEconomy = null;
+function benchEconomyOwner() {
+  if (!benchEconomy) {
+    benchEconomy = Object.create(economySystem);
+    benchEconomy.init({ state, bus, helpers: null, registry });
+  }
+  if (state.ui.dockedStationId) benchEconomy.ensureMarket(state.ui.dockedStationId);
+  return benchEconomy;
+}
 const registry = {
   get(name) {
+    if (name === 'economy') return benchEconomyOwner();
     if (name === 'ui') return { screenManager: manager, manager };
     if (name === 'survivalResults') return { lastResult: () => BENCH_CRUCIBLE_RESULT };
     if (name === 'survivalDraft') return benchDraftOwner;
