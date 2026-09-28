@@ -118,7 +118,7 @@ usage-locked until **2026-09-29**, which is why the sector tokens were made in B
 
 ## 3. Status of every surface (2026-09-28)
 
-**APPROVED (≥ 8.0, both owner criteria) — 12** (the 11 below + the Chart):
+**APPROVED (≥ 8.0, both owner criteria) — 13** (the 11 below + Chart + Help, listed after the table):
 
 | Surface | Score | Signature | Open polish (non-blocking) |
 |---|---|---|---|
@@ -134,18 +134,21 @@ usage-locked until **2026-09-29**, which is why the sector tokens were made in B
 | Achievements | 8.1 | **Turn the orrery** — four nested orbits, each turned by its category, under a fixed Hand | the struck-medal flight |
 | Footprint (F3) | 8.2 | **Trace a source** on the Heat Dial + **drag the heat needle to scrub time** (tier drops ahead) | hide the hint on empty; proof pips instead of bullets; hub band to L70+ |
 
-**IN FLIGHT at handoff (resume or re-dispatch; their builders may have left dirty files):**
+**Also APPROVED since the table was written:**
 - **Chart / galaxy map** — **APPROVED 8.1** (round 4, 07d6a3d05): square-root SYSTEM dial, one anchored
   label placer (`chartLabels.js`), 24 Blender sector tokens, **Lay the line** (drag from your ship; the amber
   beam previews the game's own route; release locks it in and the ship rides the line). Polish: the 1280 scale
   note clips ("NOT LINEAF"), a 1280 leader dot touches GOAL, the long "Vesta Forge" leader in the all-sectors
   view, the foot strip still teaches only double-click; next structural step (optional): orbital tracks + a
   lens under the cursor. Report: `review/reports/chart-r4-critic.txt`.
-- **Help** (`src/ui/screens/help.js` + `src/ui/orrery/help*.js`) — critic round 3 **7.9** ("one narrow round
-  from passing"); round 4 was shooting at handoff. Signature: **Press anything** — the live input echo on the
-  Controls Rig (the hull's plan view with verb stations on leaders; pressing a key/pad button lights its verb and
-  runs a beam into the ship part; pad input swaps to pad glyphs; never fires game actions). Report:
-  `review/reports/help-r3-critic.txt`.
+- **Help** — **APPROVED 8.0** (round 4, 347d587d5 + 2ef883624). Signature: **Press anything** on the Controls
+  Rig (the hull's plan view, every verb on a leader to the part it drives; a key/mouse/pad press lights the verb,
+  runs a beam and the part reacts; pad input swaps to pad glyphs; never fires game actions). Tabs: Loops ring,
+  Ships comparison dial (pin a hull with C), Commodities price ring, Ores scale, Factions orbit (lowest, 7.4 —
+  add "hold a crest, pulses run to allies/rivals"). Polish: the key glyphs sit on short underline bars (close to
+  the banned underline — make them the cut key shape or drop the bar); the livery orange on hull renders competes
+  with the one amber; the Mule render is flat; six hull models render blank in Blender. Report:
+  `review/reports/help-r4-critic.txt`.
 
 **PASSED ONLY THE OLD LETTER — must be re-scored under the owner criteria (a)/(b):**
 - Station tabs (weight sweep landed, all bands measured ≥ 2:1 — commits 73b5a87aa…138988b43): Market,
@@ -238,7 +241,7 @@ its presentation layer only; never build a second route model).
 
 ## 8. How to finish
 
-1. Resume/re-dispatch Help round 4 to a pass (same critic); land the Chart polish.
+1. Land the Chart and Help polish (small; their critics already passed them).
 2. Land the Shipworks r17 polish; re-score the station tabs, Title, Pause and Crucible under (a)/(b) and fix
    what fails (keep ≤ 4 agents at once).
 3. Build wave 2/3 surfaces in the plan's order: THE SHIP, Range, Automation, Replay/Clips, Loading, Comms/radials
