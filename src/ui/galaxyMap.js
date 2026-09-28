@@ -7530,10 +7530,12 @@ _draw() {
     const field = this._clearField(cw, ch);
     const pad = SECTOR_ORIGIN_LATTICE_WU * 1.25;
     const minor = Math.min(cw, ch);
-    const span = Math.max(
-      (maxX - minX + pad * 2) * minor / Math.max(1, field.width),
-      (maxZ - minZ + pad * 2) * minor / Math.max(1, field.height),
-    );
+    const fitX = (maxX - minX + pad * 2) * minor / Math.max(1, field.width);
+    const fitZ = (maxZ - minZ + pad * 2) * minor / Math.max(1, field.height);
+    // names hang beside their tokens: the outermost tokens keep a name's width of room in the field,
+    // where that costs the chart little scale (at most a tenth)
+    const roomX = (maxX - minX + pad * 2) * minor / Math.max(1, field.width - Math.min(150, field.width * 0.16));
+    const span = Math.max(fitX, fitZ, Math.min(roomX, Math.max(fitX, fitZ) * 1.1));
     return {
       focusGlobal: { x: (minX + maxX) / 2, z: (minZ + maxZ) / 2 },
       spanWU: Math.max(LEVEL_SYSTEM_AT_SPAN_WU * 1.6, Math.min(CHART_SPAN_MAX_WU, span)),

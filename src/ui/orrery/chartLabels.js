@@ -162,6 +162,11 @@ function seatsFor(c, w, h, { maxLeader }) {
     { x: ax + e * DIAG, y: ay + e * DIAG, cost: 5, side: 'lower-right' },
     { x: ax - e * DIAG - w, y: ay - e * DIAG - h, cost: 6, side: 'upper-left' },
     { x: ax - e * DIAG - w, y: ay + e * DIAG, cost: 7, side: 'lower-left' },
+    // above or below, set flush to one side of the mark (room at a chart's edge)
+    { x: ax - w + 10, y: ay - e - h, cost: 8, side: 'above' },
+    { x: ax - 10, y: ay - e - h, cost: 8.5, side: 'above' },
+    { x: ax - w + 10, y: ay + e, cost: 9, side: 'below' },
+    { x: ax - 10, y: ay + e, cost: 9.5, side: 'below' },
   ];
   if (!c.leaderOnly && !c.inside) seats.push(...near);
   // a pool too small for its name hangs it off its rim (never from inside the pool)
