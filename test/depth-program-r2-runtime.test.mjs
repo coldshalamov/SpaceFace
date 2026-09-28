@@ -572,7 +572,14 @@ test('every wreck settles its named drops once and the durable receipt prevents 
       try {
         restored.system.deserialize(checkpoint);
         restored.bus.emit('sector:enter', { sectorId: def.sectorId });
-        assert.equal(liveWreck(restored, def.id), null, `${def.programSlot} cannot respawn after Continue`);
+        // The one-per-save wreck and its named drops never respawn (asserted singular above);
+        // Continue restores the site as an inert, choice-stamped husk instead of empty space.
+        const husk = liveWreck(restored, def.id);
+        assert.ok(husk, `${def.programSlot} keeps its site physical after Continue`);
+        assert.equal(husk.data._salvaged, true, `${def.programSlot} husk is inert, not a respawned wreck`);
+        assert.ok(husk.data.scanLabel.includes(
+          def.decision.choices.find((choice) => choice.uniqueDrop).siteStamp,
+        ), `${def.programSlot} husk carries the choice stamp`);
         assert.equal(restored.state.player.uniqueWrecks.bearings[def.id].phase, 'salvaged');
       } finally {
         restored.dispose();
