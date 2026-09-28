@@ -1382,7 +1382,13 @@ export const aftermathWrecks = {
       hull: 1,
       hullMax: 1,
       physicsBody: { shape: 'capsule' },
+      // Same ownership hole as the marker wreck: an adventure-sector shard is non-durable kill
+      // dressing — sector teardown owns its removal, not the records bag or the far shelf.
+      homeSectorId: marker.sectorId,
       data: {
+        homeSectorId: marker.sectorId,
+        sectorId: marker.sectorId,
+        persistenceOwner: 'aftermathWrecks',
         parentType: 'ship',
         proportions: WRECK_COLLIDER_PROPORTIONS,
         wreckClass: 'battlefield',
@@ -1578,6 +1584,9 @@ export const aftermathWrecks = {
     const identity = this._specForMarker(marker, { atKill: true });
     entity.data = Object.assign(entity.data || {}, identity.data);
     entity.data.salvagePool = poolForMarker(marker);
+    // Sector teardown reads the top-level field: an adopted mining body otherwise stays homeless
+    // and survives eviction beside the marker's own respawn (same hole as the spec stamp).
+    if (marker.sectorId) entity.homeSectorId = marker.sectorId;
     // Adopt dead-man's motion only onto a wreck that is not already moving. A wreck mining spawned
     // from this same spec already carries the inherited momentum and must never be overwritten.
     const vx = Number(entity.vel && entity.vel.x) || 0;
@@ -1723,8 +1732,33 @@ export const aftermathWrecks = {
     const rest = listed.filter((marker) => !isPlayerWreckMarker(marker))
       .slice(0, Math.max(0, MAX_SPAWNED_PER_SECTOR - player.length));
     const markers = [...player, ...rest];
+    // A live wreck that already carries a marker — a body that outlived residency churn or a
+    // record shell — IS that marker's wreck; spawning beside it was the D89 duplicate. Adopt the
+    // first claimant (bindImmediateWreck upgrades it to the full spec) and retire the rest.
+    const claimants = new Map();
+    for (const e of state.entityList || []) {
+      if (e && e.alive !== false && e.type === 'wreck' && e.data && e.data.markerId != null) {
+        const list = claimants.get(e.data.markerId) || [];
+        list.push(e);
+        claimants.set(e.data.markerId, list);
+      }
+    }
     let count = 0;
     for (const marker of markers) {
+      const live = claimants.get(marker.markerId) || null;
+      if (live && live.length) {
+        const adopted = this.bindImmediateWreck(marker.markerId, live[0]);
+        if (adopted) {
+          // Every claimant that did not win the binding is a duplicate body for one marker.
+          for (const e of live) {
+            if (e.id === adopted.id) continue;
+            if (this.helpers.removeEntity) this.helpers.removeEntity(e.id, { immediate: true });
+            else e.alive = false;
+          }
+          count++;
+          continue;
+        }
+      }
       if (this._resolveBoundWreck(marker.markerId)) continue;
       const entity = this.helpers.spawnEntity(this._specForMarker(marker));
       if (!entity) continue;
@@ -1781,7 +1815,15 @@ export const aftermathWrecks = {
       hull: 1,
       hullMax: 1,
       physicsBody: { shape: 'capsule' },
+      // The marker's sector owns this body: without homeSectorId the wreck survived sector
+      // teardown live and unbound, and the marker's re-entry spawn doubled it (D89).
+      homeSectorId: marker.sectorId,
       data: {
+        homeSectorId: marker.sectorId,
+        sectorId: marker.sectorId,
+        // The marker in state.aftermathWrecks IS this body's durable record: world.records and the
+        // far-actor shelf must never persist a second copy of it.
+        persistenceOwner: 'aftermathWrecks',
         parentType: marker.wreckClass === 'military' ? 'military' : 'ship',
         proportions: WRECK_COLLIDER_PROPORTIONS,
         loot: [],
