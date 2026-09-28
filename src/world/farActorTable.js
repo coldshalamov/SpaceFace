@@ -467,6 +467,13 @@ export function dropFarActorSector(state, sectorId) {
   return dropped;
 }
 
+function pushFarInRadius(out, rec, x, z, r2) {
+  if (!rec || rec.alive === false || !rec.pos) return;
+  const dx = rec.pos.x - x;
+  const dz = rec.pos.z - z;
+  if (dx * dx + dz * dz <= r2) out.push(rec);
+}
+
 export function queryFarActors(state, pos, radius, out = []) {
   out.length = 0;
   const table = state && state.world && state.world.farActors;
@@ -479,18 +486,21 @@ export function queryFarActors(state, pos, radius, out = []) {
   const maxC = Math.floor((x + r) / FAR_ACTOR_CELL);
   const minR = Math.floor((z - r) / FAR_ACTOR_CELL);
   const maxR = Math.floor((z + r) / FAR_ACTOR_CELL);
+  const cellSpan = (maxC - minC + 1) * (maxR - minR + 1);
+  const rows = table.rows;
+  // Prefetch / enter discs are often thousands of WU while the far table stays ≤ FAR_ROW_BUDGET.
+  // Walking empty grid cells then dominates; a linear row scan is correct and cheaper whenever
+  // the disc covers more cells than live rows (typical quiet Ceres + decode runway).
+  if (Array.isArray(rows) && rows.length > 0 && cellSpan > rows.length) {
+    for (let i = 0; i < rows.length; i++) pushFarInRadius(out, rows[i], x, z, r2);
+    return out;
+  }
   for (let cx = minC; cx <= maxC; cx++) {
     const rowBase = (cx + CELL_KEY_OFFSET) * CELL_KEY_STRIDE + CELL_KEY_OFFSET;
     for (let cz = minR; cz <= maxR; cz++) {
       const bucket = table.grid && table.grid.get(rowBase + cz);
       if (!bucket) continue;
-      for (let i = 0; i < bucket.length; i++) {
-        const rec = bucket[i];
-        if (!rec || rec.alive === false || !rec.pos) continue;
-        const dx = rec.pos.x - x;
-        const dz = rec.pos.z - z;
-        if (dx * dx + dz * dz <= r2) out.push(rec);
-      }
+      for (let i = 0; i < bucket.length; i++) pushFarInRadius(out, bucket[i], x, z, r2);
     }
   }
   return out;
