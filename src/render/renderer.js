@@ -608,6 +608,13 @@ const OPENING_PICTURE_HOLD_FAILSAFE_MS = 15000;
 // stamp is still missing after this much longer, treat the armed afterBrowserPaint chain as lost
 // and let shouldScheduleFirstPlayablePaintRelease re-arm it (the release is idempotent).
 const FIRST_PLAYABLE_PAINT_REARM_MS = 2000;
+// Live-flight admission slices pace one slot per present through yieldToNextPresent. On a
+// healthy cadence that is exactly right — each bounded slice lands just after its present
+// and the next beat is only ~16 ms away. Once presents run slower than ~40 fps the same
+// pacing strands multi-subject chains (a convoy's serial compile tail) for dozens of
+// presents while the compositor's idle window sits unspent. Racing the resume against a
+// tighter bound keeps ≥40 fps behavior identical — rAF always wins — and drains below it.
+const FLIGHT_ADMISSION_PRESENT_BOUND_MS = 24;
 
 function isDebugRuntime() {
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
@@ -6635,6 +6642,7 @@ export const render = {
       }
       return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene);
     };
+    const admissionPaceYield = () => yieldToNextPresent({ boundMs: FLIGHT_ADMISSION_PRESENT_BOUND_MS });
     const compileForCurrentTarget = (subjects, compileOptions) => {
       const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
       if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'empty pipeline batch' });
@@ -6697,7 +6705,7 @@ export const render = {
         return finish(compileSubjectsAcrossPresents(
           sliced,
           (subject) => compileSubjectColorAndDepth(subject, route, compileOptions),
-          yieldToNextPresent,
+          admissionPaceYield,
         ));
       }
       if (batch.length === 1) {
@@ -6750,7 +6758,7 @@ export const render = {
         ? null
         : createSlicedYield(async () => {
           if (state.mode === 'flight' && Number.isFinite(state.render && state.render.firstPlayableFrameAt)) {
-            await yieldToNextPresent();
+            await admissionPaceYield();
           } else {
             await yieldToBrowser();
           }
