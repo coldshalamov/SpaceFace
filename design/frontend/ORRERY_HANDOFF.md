@@ -32,9 +32,8 @@ Since 2026-09-25 late the bar is the OWNER'S: every surface must also answer (a)
 elements and (b) one distinct signature interaction (`design/frontend/OVERHAUL_PLAN_2026-09-25.md` §1, §2.1 —
 a band counts as body only at >= 2:1 on the glass, measured). Screens marked "letter" passed ORRERY before
 that bar existed and are re-scored after the weight sweep. Live per-surface status: the plan's §4 table.
-Latest critic report per surface: `design/frontend/review/reports/`. 22 surfaces approved; Title r2
-(signature build) plus Crucible door/draft/refit r2 are the work left before wave 2 (Pause APPROVED 8.3,
-Crucible results APPROVED 8.3).
+Latest critic report per surface: `design/frontend/review/reports/`. 24 surfaces approved (Replay 8.1,
+Clips 8.0 APPROVED via replayclips-r1); Title r2 + Crucible r2 + ship/range r1 verdict + automation r2 outstanding.
 
 | Screen | State | Last score | Composition file | What is left |
 |---|---|---|---|---|
@@ -52,7 +51,7 @@ Crucible results APPROVED 8.3).
 | Station Industry | **APPROVED 8.5** (industry-r16) | 8.5 | `chainBeam.js`, `industry.js`, `industryGlyphs.js`, `lampKey.js` | Beyond 8: ghost run ends on the missing thing; live-hold landing still |
 | Station Ledger | **APPROVED 8.1** (station3-r1) | 8.1 | `ledgerTape.js`, `ledger.js` | Nits only (purse scale/dock, left void, 1280 axis) |
 | THE SHIP (F2, flight host of the Shipworks stage) | 6.9 FAIL (wave2-audit) | 6.9 | `shipworks.js`, `station.css` | r1: 1280 overlap + fold, chips→leader callouts, wheel relight/Ladder, SAVE FIT Lamp Key, ladder spine, type sweep |
-| Range / Automation / Replay / Clips | 5.8 / 6.1 FAIL, replay/clips 2.4 BUILD BRIEF (wave2-audit) | see left | `range.js`, `automationPanel.js`, `replay.js`, `clips.js` | r1 builders running: range unbox + gate scales + beam; automation de-card + rail + gauge + flow strip; replay tape + clips reel incl. dormant states |
+| Range / Automation / Replay / Clips | Replay **APPROVED 8.1**, Clips **APPROVED 8.0** (replayclips-r1); automation 7.2np (r2 running); ship/range r1 critic running | see left | `range.js`, `automationPanel.js`, `replay.js`, `clips.js` | Carry-over: replay dormant band 3.5:1 + world exposure; clips ghost sub 16px + glyph bloom; populated stills when stageable |
 | Chart / galaxy map | **APPROVED 8.1** (chart-r4); r5 polish landed (849a0a0dd) | 8.1 | `chartInstruments.js`, `chartLayouts.js`, `galaxyMap.js` presentation layer | Optional margin: orbital tracks + Lens (the critic's §8) |
 | Meta | ALL APPROVED: Settings 8.1 / Credits 8.2 (setcr-r3); Save/Load 8.1 / Game Over 8.2 (sav-r3); Codex 8.1 / Mission Log 8.0 (archive-r4); Research 8.0 / Achievements 8.1 (con-r5); Help 8.0 (help-r4, r9 follow-ups landed) | see left | `settingsLayouts.js`, `saveLayouts.js`, `saveFilmstrip.js`, `saveBerth.js`, `saveSortieTape.js`, `archiveLayouts.js`, `archiveInstruments.js`, `constellation*.js` | Done |
 | Loading | Not started | — | `bootRing.js` exists | Emblem dial; the load's real stages as ticks; no developer copy |

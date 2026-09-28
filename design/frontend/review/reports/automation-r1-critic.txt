@@ -1,0 +1,44 @@
+AUTOMATION r1 CRITIC — ORRERY station-tab round 1
+Critic: automation r1 critic. Stills opened with own eyes: .devshots/ui-review/view/w2r1-automation-1920.png + w2r1-automation-1280.png (1920x1080 / 1280x720). Crops under .devshots/ui-review/crops/auto-r1-*.png. Bands measured with sharp .raw() against glass rgb(9 11 14); ratios below are WCAG-style vs composited glass.
+Scoring law: design/frontend/review/CRITIC_BRIEF.md. PASS = overall >= 8.0 AND no axis < 7.0 AND owner (a) AND owner (b).
+Previous: wave2 audit 6.1 (C 6.0 / H 7.0 / L 7.5 / O 4.0 / D 6.0 / I 6.0) — FAIL.
+
+1. VERDICT: NOT PASSED, overall 7.2 (previous 6.1).
+A strong de-card round — glass, rail, gauge, beam all landed — but four key-cap chips survive and the signature is still dormant, so both owner gates fail and Interaction clarity sits below 7.
+
+2. AXES (score, previous, one line):
+- Composition 7.5 (was 6.0): ordered bands — flow strip, arc rail, dossier+stats, leader note, tier rows — on corner-ticked glass; right column still a chip stack.
+- Hierarchy 7.0 (was 7.0): title -> flow -> dossier -> tiers reads; tier stats are run-on one-liners that flatten scan.
+- Legibility 7.5 (was 7.5): bone-on-black holds, sizes >=12px eyeballed; dense tier strings are the only drag.
+- ORRERY fidelity 7.0 (was 4.0): glass+ticks, arc rail+Hand, gauge+counter, route beam, one Lamp Key — minus 4 unlawful chips.
+- Craft/detail 7.0 (was 6.0): measured bands pass (arc 4.5:1, flow links 4.4:1, beam core 11:1); 1px cores with dim halos still read thin.
+- Interaction clarity 6.5 (was 6.0): Lamp Key + beam consequence clear; flow strip shows no state or action; research affordances boxed.
+
+3. WAVE-2 FIXES A1-A7, item by item:
+- A1 1280 fold: DONE. 1280 shows MK1-MK4 all above the fold (MK4 row y~625-650, corner ticks ~655, fold 720); zero glyph overlap seen; nothing structural below y=700.
+- A2 De-card: DONE. Outer panel is borderless glass with corner ticks; ops-board inner card + amber accent bar gone (dossier on glass, 1920 x~425-830 y~420-500); grey info strip is now a leader-note line with left bar (1920 y~575-600). One surface.
+- A3 Tabs -> rail: DONE. DRONES/TRADERS/OUTPOSTS/FLEET sit on a ruled arc with per-station ticks, dotted underlines, and the amber Hand (bead + glow) on DRONES (1920 x~430-800 y~355-400). Arc core 2px at 4.5:1 — passes weight, barely.
+- A4 Passive bar -> gauge+counter: DONE. Arc gauge + "0 cr/min" counter + "+113 HEADROOM" ghost line (1920 x~435-620 y~280-340). Flat bar killed.
+- A5 Chips -> dotted words: HALF. CLOSE is a dotted word top-right (1920 x~1425-1480 y~245-260) — good. But all four RESEARCH affordances remain dark key-cap boxes (1920 x~1245-1485, y~645-830, one per tier row). 1 of 5 converted.
+- A6 Ops beam: DONE. YOU —(ice bead)— HELIOS SHIPWORKS BERTH beam under the amber Lamp Key (1920 x~435-830 y~545-560); core 1px bone at 11:1 with 2px ~1.65:1 halo. Commit has a visible consequence.
+- A7 Asset-flow signature seed: HALF. The strip exists — gauge -> 4 node rings (0 DRONES/TRADERS/OUTPOSTS/FLEET) -> diamond purse (0 CR/MIN), links 2px at 4.4:1 (1920 x~435-1355 y~280-340) — but the all-zero dormant state shows no pulse, no direction, no throttle; static nodes, nothing to conduct.
+
+4. RANKED FIXES (files: src/ui/screens/automationPanel.js + its stylesheet):
+F1. A5 remainder (P0, ORRERY): 4 research boxes, 1920 x~1245-1485 y~645-830 — still key-cap chrome, ALL-CAPS. Convert to dotted words (law casing); disabled tiers = 1px bone outline of the cut shape, no dark fill.
+F2. Flow-strip pulse (P0, owner b): links 1920 x~640-1330 y~310-315 carry no motion/state. Draw ice pulse beads on each link sized by that asset's cr/min (parked mid-beam at rest counts in a still); dormant 0-state keeps ghost beads so the machine reads alive-but-idle, not dead.
+F3. Conduct action (P0, owner b): node rings (1920 x~640-1205 y~285-330) are display-only. Smallest signature: each ring takes the Hand on hover/select and a dotted-word THROTTLE per tier (or drag the ring along its link to set upkeep share) with the purse Counter rolling live. Name it in copy: "conduct the machine."
+F4. Beam body: route beam core is 1px (1920 y~552, halo 1.65:1). Widen to a 4px under-stroke holding >=2:1 with the 11:1 core on top — bloom geometry, no live filters.
+F5. Tier stat lines: MK1-MK4 one-line strings (1920 x~510-1090, rows y~655/715/775/825) run on. Set as two tabular lines (mine/yield | buffer/range/upkeep) or fixed columns so tiers scan vertically.
+F6. Tab-rail words: keep, but lift chosen-row bone to full rest light and confirm >=12px on the 1280 raster (TRADERS/OUTPOSTS/FLEET read ~12px there — no smaller).
+F7. Gauge ticks: passive arc (1920 x~435-500 y~295-335) is a bare arc + bead. Add 3-5 minor ticks + headroom ghost tick so it reads as instrument #3, not decoration.
+F8. Title dot: confirm the AUTOMATION leader dot is bone, not a third amber (still reads pale — keep it bone in code, not by accident).
+F9. Reduced-motion: state in code that pulses park (not vanish) under reduced-motion with all cr/min numerals kept — verify once, no still needed.
+F10. 1280 re-shoot gate: after F1-F5, re-prove 1280 zero-overlap + nothing structural below y=700 (r1 passes; F5 must not push MK4 past ~660).
+
+5. MEMORABLE: light physically travelling from each owned asset into the purse, faster when the machine is healthy, with one gesture — drag a node — that throttles it. Nothing here attempts the gesture yet.
+
+6. PALETTE / LAW NOTES: ambers = Lamp Key (PLOT HELIOS SHIPWORKS) + Hand bead on DRONES = lawful pair; title dot, "0 cr/min", beam bead read bone/ice. No red (correct — no threat). CLOSE dotted. 1280 gate: PASS (zero overlap, MK4 + ticks above 700). Type >=12px eyeballed incl. 1280; run ui-contrast to confirm 4.5:1 on tier sub-lines. No key-cap chrome except F1's four boxes.
+
+7. OWNER CRITERIA:
+(a) FAIL — the four RESEARCH boxes (1920 x~1245-1485 y~645-830) are generic key-cap chrome: dark fills, ALL-CAPS, no cut/sheen discipline. Everything else de-carded correctly (glass, rail, gauge, beam, leader note). Bands measured: tab arc 4.5:1, flow links 4.4:1, beam core 11:1 — all >=2:1, though 1-2px cores with dim halos are the thinnest lawful thing on screen (see F4).
+(b) FAIL — the strip that should "conduct the machine" is a row of zeroed nodes with no pulse and no player gesture. It is a seed, not a signature: no other screen does this, but neither does this one yet — there is nothing to DO here that a shop list does not do. F2+F3 are the owed move.

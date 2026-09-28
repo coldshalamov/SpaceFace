@@ -65,7 +65,7 @@ compose them.
 
 ## 4. Every surface — its mini-app and its signature
 
-Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 22 surfaces. Other scores are critic scores under the owner criteria unless marked "letter" (scored before the criteria existed). Latest critic report per surface: `design/frontend/review/reports/`.
+Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 24 surfaces. Other scores are critic scores under the owner criteria unless marked "letter" (scored before the criteria existed). Latest critic report per surface: `design/frontend/review/reports/`.
 
 | Surface (bench id) | Mini-app | Signature interaction (distinct) | Assets | Status |
 |---|---|---|---|---|
@@ -92,11 +92,11 @@ Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 22 
 | Bar (`station-bar`) | The conversation | Replies as a dial on the voice arc: focus previews the reply's envelope against her voice | portraits (exist) | **APPROVED 8.4** (bar-r17) |
 | Ledger (`station-ledger`) | The tape | Scrub the tape; stems rise, the purse sweeps | — | **APPROVED 8.1** (station3-r1) |
 | Crucible door/draft/refit/results | door scales, draft ladder + fit preview, refit slot jig, kill-orrery results | arena Orbit Carousel (owed), fit-preview leader beam, exploded hardpoint schematic, death diagram + run timeline | arena art (exist) | results **APPROVED 8.3** (crucible-rs1); door 7.8 (no signature), draft 7.4 (caps + amber×5), refit 8.0 NOT PASSED (fidelity 6.5 floor: caps + third amber) — r2 owed: kbd stylesheet pass, palette, door carousel + Hand, 1280 restores |
-| THE SHIP (`ship`) | Fleet jig in flight | Pick a slot on the hull, preview compatible hardware | posters | 6.9 FAIL (wave2-audit): 1280 overlap + fold, chips→callouts, wheel relight, Lamp Key — r1 builder running |
+| THE SHIP (`ship`) | Fleet jig in flight | Pick a slot on the hull, preview compatible hardware | posters | 6.9 FAIL (wave2-audit) — r1 built, verifying (S1-S7 + R1-R7) |
 | Footprint (`footprint`) | Heat / wanted | A heat dial that cools in real time; each source a sector of the dial | — | **APPROVED 8.2** (footprint-r2) |
-| Range (`range`) | Handling course | Fly the rehearsal: the course draws as a beam, progress rides the gates | — | 5.8 FAIL (wave2-audit): unbox hero, gates→scales, progress beam, chips→dotted words, fill void — r1 builder running |
-| Automation (`automation`) | The operation | Conduct the machine: asset-flow strip pulses income into the purse | drone/outpost tokens | 6.1 FAIL (wave2-audit): de-card, tabs→rail, bar→gauge, fold, flow strip — r1 builder running |
-| Replay / Clips (`replay`, `clips`) | The tape / the reel | Ride the tape (scrub time); pull a moment open (trim windows) | — | 2.4/2.4 BUILD BRIEF (wave2-audit): surfaces unbuilt — r1 builder running |
+| Range (`range`) | Handling course | Fly the rehearsal: the course draws as a beam, progress rides the gates | — | 5.8 FAIL (wave2-audit) — r1 built, verifying (S1-S7 + R1-R7) |
+| Automation (`automation`) | The operation | Conduct the machine: asset-flow strip pulses income into the purse | drone/outpost tokens | 7.2 NOT PASSED (automation-r1): A1-A4/A6 closed; r2 owed (research chips→dotted words, flow pulse + throttle gesture) — r2 builder running |
+| Replay / Clips (`replay`, `clips`) | The tape / the reel | Ride the tape (scrub time); pull a moment open (trim windows) | — | Replay **APPROVED 8.1** / Clips **APPROVED 8.0** (replayclips-r1); carry-over: dormant band to 3.5:1, world exposure, ghost sub to 16px (12 effective), ghost glyph bloom; populated stills when bench can stage |
 | Asteroid Works / Drill / Base | Machine sites | (per `asteroid-works-rebuild` design) | exist | wave 3 |
 | Flight HUD (`orrery-flight`, `flight`), Power rail, Radials | Cluster, rail, radial | (passed Phase 0a) | — | weight pass must NOT regress frame time; audit |
 | Sandbox (`sandbox`) | dev harness | — | — | last (dev-only) |
