@@ -64,6 +64,30 @@ export function canvasRoles() {
   };
 }
 
+/** Wave 2 R3: the beam pulse is ice, and ice is motion-only — pinned, never a role. */
+const RANGE_ICE = 'rgb(223 238 255)';
+
+/** Wave 2 R2: canvas bloom is geometry — a second, wider stroke under the core. This tints
+ *  any resolved role colour (`#hex`, `rgb()` comma or space form, with or without alpha)
+ *  to the given alpha for the under-stroke. */
+export function withAlpha(color, alpha) {
+  const raw = String(color || '').trim();
+  const a = clamp(Number(alpha), 0, 1);
+  let m = /^#([0-9a-f]{6})$/i.exec(raw);
+  if (m) {
+    const n = parseInt(m[1], 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+  m = /^#([0-9a-f]{3})$/i.exec(raw);
+  if (m) {
+    const n = parseInt(m[1].split('').map((c) => c + c).join(''), 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+  m = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+))?\s*\)$/i.exec(raw);
+  if (m) return `rgba(${m[1]},${m[2]},${m[3]},${a})`;
+  return raw;
+}
+
 export function gateStrokeRole(state) {
   if (state === 'passed') return 'you';
   if (state === 'failed') return 'foe';
@@ -85,12 +109,13 @@ export function gateStrokeRole(state) {
 // `.sf-range__canvas { background: var(--bg) }` until Task D deletes it; the sky is the ground.
 const CSS = `
 html:has(> body[data-k-screen="range"]) {
-  --sf-you: var(--k-bone); --sf-foe: var(--k-red); --sf-goal: var(--k-signal); --sf-calm: var(--k-bone-38);
-  --sf-paper: var(--k-bone); --sf-surface: transparent; --sf-edge: var(--k-hair);
+  --sf-you: rgb(236 230 216); --sf-foe: rgb(255 80 56); --sf-goal: rgb(242 185 80); --sf-calm: rgba(236,230,216,.4);
+  --sf-paper: rgb(236 230 216); --sf-surface: transparent; --sf-edge: #1d3350;
 }
-#sf-range .sf-range__box { position: absolute; inset: 0; }
+#sf-range .sf-range__box { position: absolute; inset: 0; background: transparent !important; border: 0 !important; box-shadow: none !important; }
 #sf-range .k-stage:has(> .sf-range__drawer.is-open) .sf-range__box { right: calc(var(--k-hang) + var(--k-gap)); }
-#sf-range .sf-range__canvas { display: block; width: 100%; height: 100%; background: transparent; box-shadow: none; }
+#sf-range .sf-range__canvas { display: block; width: 100%; height: 100%; background: transparent; box-shadow: none; border: 0; }
+html body #screens #sf-range .sf-range__canvas[data-range-canvas] { outline: none !important; }
 #sf-range .sf-range__beam { position: absolute; inset: 0; pointer-events: none; }
 #sf-range .sf-range__drawer { position: absolute; top: 0; right: 0; bottom: 0; width: var(--k-hang); box-sizing: border-box;
   display: flex; flex-direction: column; gap: var(--k-gap);
@@ -101,6 +126,42 @@ html:has(> body[data-k-screen="range"]) {
 #sf-range .k-word::after { display: none; }
 #sf-range .k-words--row { gap: calc(8px * var(--k-s)); align-items: center; }
 #sf-range .k-row { box-shadow: none; }
+/* Wave 2 R4: every verb but the Lamp Key is a dotted word on glass — no key-cap chrome. */
+#sf-range .sf-range__word { background: none !important; background-image: none !important; border: 0 !important; border-radius: 0;
+  box-shadow: none !important; min-height: 0; min-width: 0; padding: 5px 2px; cursor: pointer;
+  font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: rgb(236 230 216 / .85);
+  text-decoration: underline dotted rgb(236 230 216 / .5); text-underline-offset: 5px; text-shadow: none; }
+#sf-range .sf-range__word:hover { color: rgb(252 249 240); text-decoration-color: rgb(252 249 240 / .8); }
+#sf-range .sf-range__word:focus-visible { outline: 1px solid rgb(236 230 216 / .7); outline-offset: 3px; color: rgb(252 249 240); }
+#sf-range .sf-range__word[aria-pressed="true"] { color: rgb(252 249 240); text-decoration-style: solid; text-decoration-color: rgb(252 249 240 / .85); }
+/* Wave 2 R5: the rule rail is a Ladder — one spine over the rail, a tick under every
+   station, the light cursor (bead + arm, bone — the amber is the active gate's) on the
+   chosen rule. */
+#sf-range .sf-range__ladder { position: relative; row-gap: 2px; column-gap: 30px; }
+#sf-range .sf-range__ladder::before { content: ""; flex: 1 0 100%; order: -1; height: 9px; margin-bottom: 2px;
+  background: linear-gradient(rgb(236 230 216 / .46), rgb(236 230 216 / .46)) 0 50% / 100% 1.5px no-repeat,
+    rgb(236 230 216 / .085); }
+#sf-range .sf-range__ladder > li { position: relative; padding-bottom: 14px; }
+#sf-range .sf-range__ladder > li::before { content: ""; position: absolute; left: 50%; bottom: 2px; width: 1.5px; height: 8px;
+  background: rgb(236 230 216 / .52); }
+#sf-range .sf-range__ladder > li:has(> [aria-current="true"])::before { left: calc(50% - .75px); bottom: 8px; width: 1.5px; height: 6px; background: rgb(252 249 240); }
+#sf-range .sf-range__ladder > li:has(> [aria-current="true"])::after { content: ""; position: absolute; left: calc(50% - 4px); bottom: 0;
+  width: 8px; height: 8px; border-radius: 50%; background: rgb(252 249 240); box-shadow: 0 0 0 4px rgb(255 240 214 / .22); }
+#sf-range .sf-range__ladder .sf-range__word[aria-current="true"] { color: rgb(252 249 240); text-decoration-style: solid;
+  text-decoration-color: rgb(252 249 240 / .85); }
+#sf-range .sf-range__ladder [data-range-check] { color: rgb(236 230 216 / .66); }
+/* Wave 2 R7: the run instrument rides the tabs row — arc gauge + gate count + clock + best. */
+#sf-range .sf-range__tabs { flex: 1 1 100%; }
+#sf-range .sf-range__run { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; padding: 2px 0 2px 18px;
+  font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: rgb(236 230 216 / .85); white-space: nowrap; }
+#sf-range .sf-range__run svg { display: block; overflow: visible; }
+#sf-range .sf-range__run .sf-range__run-best { color: rgb(236 230 216 / .6); }
+#sf-range .sf-range__drawer .k-row { border-top: 0; }
+#sf-range .sf-range__drawer [data-state="cleared"] .k-row__sub { color: rgb(236 230 216 / .66); }
+@media (max-width: 1366px) {
+  #sf-range .sf-range__ladder { column-gap: 20px; }
+  #sf-range .sf-range__run { gap: 8px; padding-left: 12px; }
+}
 `;
 
 function injectStyle() {
@@ -1185,6 +1246,8 @@ function drawAsteroid(ctx2d, anchor, bounds, width, height, forced, roles) {
   const radius = Math.max(18, finite(anchor.radius, 48) * scale);
   const rings = [1, 0.83, 0.91, 0.77, 0.88, 0.8, 0.96];
   ctx2d.save();
+  // Wave 2 R6: no flat placeholder fill — the rock's edge in bone, stood in a bone
+  // ring with its own tick scale.
   ctx2d.beginPath();
   rings.forEach((mul, index) => {
     const angle = (Math.PI * 2 * index) / rings.length;
@@ -1194,12 +1257,24 @@ function drawAsteroid(ctx2d, anchor, bounds, width, height, forced, roles) {
     else ctx2d.lineTo(px, py);
   });
   ctx2d.closePath();
-  if (!forced) {
-    ctx2d.fillStyle = ink.edge;
-    ctx2d.fill();
-  }
-  ctx2d.strokeStyle = forced ? 'CanvasText' : ink.calm;
+  ctx2d.strokeStyle = forced ? 'CanvasText' : ink.paper;
   ctx2d.lineWidth = 2;
+  ctx2d.stroke();
+  const ringR = radius * 1.3;
+  ctx2d.strokeStyle = forced ? 'CanvasText' : withAlpha(ink.paper, 0.5);
+  ctx2d.lineWidth = 1.5;
+  ctx2d.beginPath();
+  ctx2d.arc(point.x, point.y, ringR, 0, Math.PI * 2);
+  ctx2d.stroke();
+  ctx2d.strokeStyle = forced ? 'CanvasText' : withAlpha(ink.paper, 0.6);
+  ctx2d.lineWidth = 1.5;
+  ctx2d.beginPath();
+  for (let i = 0; i < 12; i += 1) {
+    const angle = (Math.PI * 2 * i) / 12;
+    const len = i % 3 === 0 ? 9 : 4.5;
+    ctx2d.moveTo(point.x + Math.cos(angle) * (ringR - len), point.y + Math.sin(angle) * (ringR - len));
+    ctx2d.lineTo(point.x + Math.cos(angle) * ringR, point.y + Math.sin(angle) * ringR);
+  }
   ctx2d.stroke();
   ctx2d.restore();
 }
@@ -1262,8 +1337,8 @@ function drawDrone(ctx2d, drone, bounds, width, height, forced, roles) {
     ctx2d.fillStyle = ink.surface;
     ctx2d.fill();
   }
-  ctx2d.strokeStyle = forced ? 'CanvasText' : ink.goal;
-  ctx2d.lineWidth = 1.6;
+  ctx2d.strokeStyle = forced ? 'CanvasText' : ink.paper;
+  ctx2d.lineWidth = 1.8;
   ctx2d.stroke();
   ctx2d.font = canvasFont('600', 12, 'body');
   ctx2d.fillStyle = forced ? 'CanvasText' : ink.paper;
@@ -1282,8 +1357,8 @@ function drawWeakArc(ctx2d, drone, weakPoint, bounds, width, height, forced, rol
   const start = wrapAngle((drone.rot || 0) + weakPoint.arcCenter - weakPoint.arcHalfWidth);
   const end = wrapAngle((drone.rot || 0) + weakPoint.arcCenter + weakPoint.arcHalfWidth);
   ctx2d.save();
-  ctx2d.strokeStyle = forced ? 'CanvasText' : ink.goal;
-  ctx2d.lineWidth = 1.4;
+  ctx2d.strokeStyle = forced ? 'CanvasText' : ink.paper;
+  ctx2d.lineWidth = 1.6;
   if (forced) ctx2d.setLineDash([4, 3]);
   ctx2d.beginPath();
   if (end < start) ctx2d.arc(center.x, center.y, radius, start, end + (Math.PI * 2));
@@ -1291,6 +1366,131 @@ function drawWeakArc(ctx2d, drone, weakPoint, bounds, width, height, forced, rol
   ctx2d.stroke();
   ctx2d.setLineDash([]);
   ctx2d.restore();
+}
+
+/** Wave 2 R1: borderless glass implies its edge with corner ticks, never a box. When the
+ *  canvas holds DOM focus the ticks light up — the focus indicator, with no rectangle. */
+function drawCornerTicks(ctx2d, width, height, forced, roles, focused = false) {
+  const ink = roles || canvasRoles();
+  const arm = focused && !forced ? 28 : 20;
+  const x0 = BOX_INSET;
+  const y0 = BOX_INSET;
+  const x1 = width - BOX_INSET;
+  const y1 = height - BOX_INSET;
+  const trace = () => {
+    ctx2d.beginPath();
+    ctx2d.moveTo(x0, y0 + arm); ctx2d.lineTo(x0, y0); ctx2d.lineTo(x0 + arm, y0);
+    ctx2d.moveTo(x1 - arm, y0); ctx2d.lineTo(x1, y0); ctx2d.lineTo(x1, y0 + arm);
+    ctx2d.moveTo(x1, y1 - arm); ctx2d.lineTo(x1, y1); ctx2d.lineTo(x1 - arm, y1);
+    ctx2d.moveTo(x0 + arm, y1); ctx2d.lineTo(x0, y1); ctx2d.lineTo(x0, y1 - arm);
+    ctx2d.stroke();
+  };
+  ctx2d.save();
+  ctx2d.lineCap = 'butt';
+  if (focused && !forced) {
+    ctx2d.strokeStyle = withAlpha(ink.paper, 0.25);
+    ctx2d.lineWidth = 7;
+    trace();
+  }
+  ctx2d.strokeStyle = forced ? 'CanvasText' : ink.paper;
+  ctx2d.lineWidth = focused && !forced ? 2.5 : 2;
+  trace();
+  ctx2d.restore();
+}
+
+/** Wave 2 R2: a ruled vertical scale — bloom geometry under a bone core, major ticks
+ *  every 8th, minor ticks between, both flanks. */
+function strokeScaleV(ctx2d, x, y0, y1, { core, bloom, tick, coreWidth = 3, forced = false } = {}) {
+  const top = Math.min(y0, y1);
+  const span = Math.abs(y1 - y0);
+  ctx2d.save();
+  ctx2d.lineCap = 'butt';
+  if (!forced && bloom) {
+    ctx2d.strokeStyle = bloom;
+    ctx2d.lineWidth = 6;
+    ctx2d.beginPath();
+    ctx2d.moveTo(x, top);
+    ctx2d.lineTo(x, top + span);
+    ctx2d.stroke();
+  }
+  ctx2d.strokeStyle = core;
+  ctx2d.lineWidth = forced ? 2 : coreWidth;
+  ctx2d.beginPath();
+  ctx2d.moveTo(x, top);
+  ctx2d.lineTo(x, top + span);
+  ctx2d.stroke();
+  ctx2d.strokeStyle = tick;
+  ctx2d.lineWidth = 1.5;
+  ctx2d.beginPath();
+  for (let i = 0; i <= 32; i += 1) {
+    const y = top + (span * i) / 32;
+    const len = i % 4 === 0 ? 9 : 4.5;
+    ctx2d.moveTo(x - len, y);
+    ctx2d.lineTo(x + len, y);
+  }
+  ctx2d.stroke();
+  ctx2d.restore();
+}
+
+/** Wave 2 R2: the same scale turned horizontal (the swing exit). */
+function strokeScaleH(ctx2d, y, x0, x1, { core, bloom, tick, coreWidth = 3, forced = false } = {}) {
+  const left = Math.min(x0, x1);
+  const span = Math.abs(x1 - x0);
+  ctx2d.save();
+  ctx2d.lineCap = 'butt';
+  if (!forced && bloom) {
+    ctx2d.strokeStyle = bloom;
+    ctx2d.lineWidth = 6;
+    ctx2d.beginPath();
+    ctx2d.moveTo(left, y);
+    ctx2d.lineTo(left + span, y);
+    ctx2d.stroke();
+  }
+  ctx2d.strokeStyle = core;
+  ctx2d.lineWidth = forced ? 2 : coreWidth;
+  ctx2d.beginPath();
+  ctx2d.moveTo(left, y);
+  ctx2d.lineTo(left + span, y);
+  ctx2d.stroke();
+  ctx2d.strokeStyle = tick;
+  ctx2d.lineWidth = 1.5;
+  ctx2d.beginPath();
+  for (let i = 0; i <= 16; i += 1) {
+    const x = left + (span * i) / 16;
+    const len = i % 4 === 0 ? 9 : 4.5;
+    ctx2d.moveTo(x, y - len);
+    ctx2d.lineTo(x, y + len);
+  }
+  ctx2d.stroke();
+  ctx2d.restore();
+}
+
+/** Wave 2 R3: the point at fraction t along a screen polyline, by arclength. */
+function pointAlongPolyline(points, t) {
+  if (!Array.isArray(points) || points.length === 0) return null;
+  if (points.length === 1) return { x: points[0].x, y: points[0].y };
+  const target = clamp(t, 0, 1);
+  let total = 0;
+  const segs = [];
+  for (let i = 1; i < points.length; i += 1) {
+    const len = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+    segs.push(len);
+    total += len;
+  }
+  if (total <= 0) return { x: points[0].x, y: points[0].y };
+  let want = target * total;
+  for (let i = 1; i < points.length; i += 1) {
+    if (want <= segs[i - 1]) {
+      const f = segs[i - 1] > 0 ? want / segs[i - 1] : 0;
+      return {
+        x: points[i - 1].x + (points[i].x - points[i - 1].x) * f,
+        y: points[i - 1].y + (points[i].y - points[i - 1].y) * f,
+      };
+    }
+    want -= segs[i - 1];
+  }
+  const last = points[points.length - 1];
+  return { x: last.x, y: last.y };
 }
 
 function updateDroneMotion(sim, stepS) {
@@ -1466,8 +1666,9 @@ export const rangeScreen = {
     pin(verbs, { margin: '12px 0 0' });
     for (const button of verbs.querySelectorAll('.k-word')) {
       button.setAttribute('data-range-action', button.dataset.action);
-      const action = button.dataset.action;
-      paintKey(button, action === 'return' ? 'primary' : 'small');
+      // Wave 2 R4: NEXT RULE is the one amber Lamp Key; every other verb is a dotted word.
+      if (button.dataset.action === 'next') dressLampKey(button);
+      else button.classList.add('sf-range__word');
     }
     title.appendChild(verbs);
     rootEl.appendChild(title);
@@ -1563,10 +1764,11 @@ export const rangeScreen = {
       },
     });
     pin(foot, { 'border-top': '0', 'flex-wrap': 'wrap' });
+    rungWords.classList.add('sf-range__ladder');
     for (const button of rungWords.querySelectorAll('.k-word')) {
       button.setAttribute('data-rung-id', button.dataset.action.slice('rung:'.length));
       button.setAttribute('data-state', 'new');
-      paintKey(button, 'legend');
+      button.classList.add('sf-range__word');
       const check = el('span', 'k-t-fine k-good', ' ✓');
       check.setAttribute('data-range-check', '');
       check.setAttribute('aria-label', 'cleared');
@@ -1590,19 +1792,66 @@ export const rangeScreen = {
     });
     const drawerTabs = [];
     let closeDrawer = null;
+    drawerWords.classList.add('sf-range__tabs');
     for (const button of drawerWords.querySelectorAll('.k-word')) {
       const which = button.dataset.action.slice('drawer:'.length);
+      button.classList.add('sf-range__word');
       if (which === 'close') {
         closeDrawer = button;
         button.setAttribute('data-range-drawer-close', '');
-        paintKey(button, 'small');
       } else {
         button.setAttribute('data-drawer-tab', which);
         button.setAttribute('aria-pressed', 'false');
-        paintKey(button, 'small');
         drawerTabs.push(button);
       }
     }
+    // Wave 2 R7: the run instrument rides the tabs row — arc gauge + gate count + clock + best.
+    const runItem = el('li', 'sf-range__run');
+    runItem.setAttribute('data-range-run', '');
+    runItem.setAttribute('role', 'status');
+    runItem.setAttribute('aria-label', 'Run progress');
+    const runSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    runSvg.setAttribute('width', '30');
+    runSvg.setAttribute('height', '30');
+    runSvg.setAttribute('viewBox', '0 0 30 30');
+    runSvg.setAttribute('aria-hidden', 'true');
+    runSvg.setAttribute('focusable', 'false');
+    const runTicks = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    runSvg.appendChild(runTicks);
+    const runRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    runRing.setAttribute('cx', '15');
+    runRing.setAttribute('cy', '15');
+    runRing.setAttribute('r', '11');
+    runRing.setAttribute('fill', 'none');
+    runRing.setAttribute('stroke', 'rgb(236 230 216 / .46)');
+    runRing.setAttribute('stroke-width', '1.5');
+    runSvg.appendChild(runRing);
+    const runNeedle = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    runNeedle.setAttribute('x1', '15');
+    runNeedle.setAttribute('y1', '15');
+    runNeedle.setAttribute('x2', '15');
+    runNeedle.setAttribute('y2', '6');
+    runNeedle.setAttribute('stroke', 'rgb(252 249 240)');
+    runNeedle.setAttribute('stroke-width', '2');
+    runNeedle.setAttribute('stroke-linecap', 'round');
+    runSvg.appendChild(runNeedle);
+    const runBead = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    runBead.setAttribute('cx', '15');
+    runBead.setAttribute('cy', '15');
+    runBead.setAttribute('r', '2.2');
+    runBead.setAttribute('fill', 'rgb(252 249 240)');
+    runSvg.appendChild(runBead);
+    runItem.appendChild(runSvg);
+    const runGate = el('span', 'sf-range__run-gate', '');
+    runGate.setAttribute('data-range-run-gate', '');
+    const runClock = el('span', 'sf-range__run-clock', '');
+    runClock.setAttribute('data-range-run-clock', '');
+    const runBest = el('span', 'sf-range__run-best', '');
+    runBest.setAttribute('data-range-run-best', '');
+    runItem.appendChild(runGate);
+    runItem.appendChild(runClock);
+    runItem.appendChild(runBest);
+    drawerWords.appendChild(runItem);
     foot.appendChild(drawerWords);
     rootEl.appendChild(foot);
 
@@ -1632,6 +1881,12 @@ export const rangeScreen = {
       empty,
       emptyReturn,
       beamMount,
+      runItem,
+      runTicks,
+      runNeedle,
+      runGate,
+      runClock,
+      runBest,
     };
 
     this._beamFx = createRouteBeam(beamMount, { width: 640, height: 360 });
@@ -1720,6 +1975,10 @@ export const rangeScreen = {
     this._els.canvas.addEventListener('pointermove', this._onCanvasPointerMove);
     this._els.canvas.addEventListener('click', this._onCanvasClick);
     this._els.canvas.addEventListener('keydown', this._onCanvasKeyDown);
+    // Wave 2 R1: the corner ticks are the focus indicator — repaint them on focus change.
+    this._onCanvasFocus = () => this._render();
+    this._els.canvas.addEventListener('focus', this._onCanvasFocus);
+    this._els.canvas.addEventListener('blur', this._onCanvasFocus);
 
     this._onKeyDown = (event) => {
       if (!this._active || !this._controlMap) return;
@@ -1789,6 +2048,7 @@ export const rangeScreen = {
         this._accumS -= STEP_S;
       }
       this._render();
+      this._syncRun();
       if (!this._shouldPark()) this._rafId = requestAnimationFrame(this._renderFrame);
     };
   },
@@ -1811,6 +2071,7 @@ export const rangeScreen = {
     this._enteredFromShip = !!(this._subject && this._subject.fromShip);
     this._cleared = ensureRangeCleared(state);
     this._flown = new Set();
+    if (!this._bestByRung) this._bestByRung = new Map();
     this._ghostTrail = [];
     this._lightHullId = this._subject ? pickLightHull(state, this._subject.shipId) : null;
     this._otherFittings = this._subject
@@ -2386,6 +2647,7 @@ export const rangeScreen = {
       if (contrastButton.textContent !== label) contrastButton.textContent = label;
       if (typeof contrastButton._fhSync === 'function') contrastButton._fhSync();
     }
+    this._syncRun();
   },
 
   _contrastLabel(sim) {
@@ -2425,6 +2687,85 @@ export const rangeScreen = {
       return `Snap ${sim.gates && sim.gates[0] && sim.gates[0].crossed ? 1 : 0} / 1`;
     }
     return '';
+  },
+
+  /** Wave 2 R7: the run instrument's fraction — cleared steps over total steps. */
+  _runProgress(sim) {
+    if (!sim) return { passed: 0, total: 1, fraction: 0 };
+    if (sim.id === 'heavy_turns_wide' && Array.isArray(sim.gates) && sim.gates.length) {
+      const passed = sim.gates.filter((gate) => gate.state === 'passed').length;
+      return { passed, total: sim.gates.length, fraction: passed / sim.gates.length };
+    }
+    if (sim.id === 'boost_keep_speed' || sim.id === 'draw_the_stroke') {
+      const passed = sim.gates && sim.gates[0] && sim.gates[0].state === 'passed' ? 1 : 0;
+      return { passed, total: 1, fraction: passed };
+    }
+    if (sim.id === TRACTOR_THROW_DRILL_ID || sim.id === ELASTIC_WHIP_DRILL_ID) {
+      const passed = sim.gates && sim.gates[0] && sim.gates[0].crossed ? 1 : 0;
+      return { passed, total: 1, fraction: passed };
+    }
+    if (sim.id === 'swing_do_not_pull') {
+      const passed = sim.exitGate && sim.exitGate.crossed ? 1 : 0;
+      return { passed, total: 1, fraction: passed };
+    }
+    if (sim.id === 'you_can_run_dry' && sim.energy) {
+      const done = clamp(1 - finite(sim.energy.holdRemaining, 20) / 20, 0, 1);
+      const passed = sim.verdict && sim.verdict.kind === 'clear' ? 1 : 0;
+      return { passed, total: 1, fraction: sim.verdict ? passed : done };
+    }
+    const passed = sim.verdict && sim.verdict.kind === 'clear' ? 1 : 0;
+    return { passed, total: 1, fraction: passed };
+  },
+
+  _runElapsed(sim) {
+    if (!sim) return 0;
+    return sim.verdict && Number.isFinite(sim.endS) ? Math.max(0, sim.endS) : Math.max(0, finite(sim.timeS, 0));
+  },
+
+  /** Wave 2 R7: the run instrument — arc gauge needle + gate count + clock + best. Every
+   *  write is guarded, so the frame loop can call this while the run is live; the clock
+   *  freezes at the verdict. */
+  _syncRun() {
+    if (!this._els || !this._els.runItem || !this._sim) return;
+    const sim = this._sim;
+    const { passed, total, fraction } = this._runProgress(sim);
+    const ticks = this._els.runTicks;
+    const tickKey = `${total}`;
+    if (ticks.getAttribute('data-total') !== tickKey) {
+      ticks.setAttribute('data-total', tickKey);
+      const n = Math.max(1, Math.min(8, total));
+      let html = '';
+      for (let i = 0; i < n; i += 1) {
+        const a = (-120 + (240 * (n === 1 ? 1 : i / (n - 1)))) * (Math.PI / 180);
+        const lit = i < Math.round(fraction * n) || (n === 1 && fraction >= 1);
+        const x0 = 15 + Math.sin(a) * 8.2;
+        const y0 = 15 - Math.cos(a) * 8.2;
+        const x1 = 15 + Math.sin(a) * 11;
+        const y1 = 15 - Math.cos(a) * 11;
+        html += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${lit ? 'rgb(252 249 240)' : 'rgb(236 230 216 / .5)'}" stroke-width="${lit ? 2 : 1.2}"/>`;
+      }
+      ticks.innerHTML = html;
+    } else if (total > 1) {
+      const lines = ticks.querySelectorAll('line');
+      const litCount = Math.round(fraction * lines.length);
+      lines.forEach((line, i) => {
+        const lit = i < litCount;
+        line.setAttribute('stroke', lit ? 'rgb(252 249 240)' : 'rgb(236 230 216 / .5)');
+        line.setAttribute('stroke-width', lit ? '2' : '1.2');
+      });
+    }
+    const angle = -120 + 240 * clamp(fraction, 0, 1);
+    const rot = `rotate(${angle.toFixed(1)} 15 15)`;
+    if (this._els.runNeedle.getAttribute('transform') !== rot) this._els.runNeedle.setAttribute('transform', rot);
+    const gate = this._progressText(sim);
+    if (this._els.runGate.textContent !== gate) this._els.runGate.textContent = gate;
+    const clock = `${this._runElapsed(sim).toFixed(1)}s`;
+    if (this._els.runClock.textContent !== clock) this._els.runClock.textContent = clock;
+    const best = this._bestByRung && this._bestByRung.get(sim.id);
+    const bestText = best > 0 ? `Best ${best.toFixed(1)}s` : 'Best —';
+    if (this._els.runBest.textContent !== bestText) this._els.runBest.textContent = bestText;
+    const label = `Run progress. ${gate}. Elapsed ${clock}. ${bestText}.`;
+    if (this._els.runItem.getAttribute('aria-label') !== label) this._els.runItem.setAttribute('aria-label', label);
   },
 
   /** The verdict line under the instruction: idle, the because alone at resting strength; on a
@@ -2933,6 +3274,12 @@ export const rangeScreen = {
   _setVerdict(sim, kind, text, because) {
     if (!sim || sim.verdict) return;
     sim.verdict = { kind, text, because };
+    sim.endS = finite(sim.timeS, 0);
+    if (kind === 'clear') {
+      if (!this._bestByRung) this._bestByRung = new Map();
+      const prev = this._bestByRung.get(sim.id);
+      if (!(prev > 0) || sim.endS < prev) this._bestByRung.set(sim.id, sim.endS);
+    }
     sim.player.vx = 0;
     sim.player.vz = 0;
     sim.player.yawRate = 0;
@@ -2970,12 +3317,13 @@ export const rangeScreen = {
     const sim = this._sim;
 
     const roles = canvasRoles();
-    // No surface fill: the drill box sits on the live sky (the sheet's "drill box on the sky").
+    // No surface fill: the course floats on the world. No box: R1 leaves borderless glass
+    // with corner ticks.
     ctx2d.clearRect(0, 0, width, height);
 
-    ctx2d.strokeStyle = forced ? 'CanvasText' : roles.calm;
-    ctx2d.lineWidth = forced ? 2 : 1;
-    ctx2d.strokeRect(BOX_INSET, BOX_INSET, width - BOX_INSET * 2, height - BOX_INSET * 2);
+    const canvasFocused = !!(this._els.canvas && typeof document !== 'undefined'
+      && document.activeElement === this._els.canvas);
+    drawCornerTicks(ctx2d, width, height, forced, roles, canvasFocused);
 
     if (sim.ghostTrail && sim.ghostTrail.length > 1) {
       drawTrail(ctx2d, sim.ghostTrail, sim.bounds, width, height, forced ? 'CanvasText' : roles.calm, true);
@@ -2988,6 +3336,8 @@ export const rangeScreen = {
     if (sim.id === 'boost_keep_speed' || sim.id === 'draw_the_stroke' || sim.id === TRACTOR_THROW_DRILL_ID || sim.id === ELASTIC_WHIP_DRILL_ID) {
       this._drawHeavyGates(ctx2d, sim, width, height, forced, roles);
     }
+    // Wave 2 R3: the flown path as a Beam with its travelling pulse — the run made visible.
+    this._drawRunBeam(ctx2d, sim, width, height, forced, reduced, roles);
 
     if (sim.anchor && sim.id !== TRACTOR_THROW_DRILL_ID && sim.id !== ELASTIC_WHIP_DRILL_ID) {
       drawAsteroid(ctx2d, sim.anchor, sim.bounds, width, height, forced, roles);
@@ -2995,15 +3345,15 @@ export const rangeScreen = {
     if (sim.scrap) drawAsteroid(ctx2d, sim.scrap, sim.bounds, width, height, forced, roles);
 
     if (sim.stroke && sim.stroke.points && sim.stroke.points.length > 1) {
-      drawTrail(ctx2d, sim.stroke.points, sim.bounds, width, height, forced ? 'CanvasText' : roles.goal, reduced);
+      drawTrail(ctx2d, sim.stroke.points, sim.bounds, width, height, forced ? 'CanvasText' : roles.you, reduced);
     }
 
     if (sim.well) {
       const center = mapPoint(sim.bounds, width, height, sim.well.x, sim.well.z);
       const scale = (width - (BOX_INSET * 2)) / Math.max(1, sim.bounds.maxX - sim.bounds.minX);
       ctx2d.save();
-      ctx2d.strokeStyle = forced ? 'CanvasText' : roles.goal;
-      ctx2d.lineWidth = forced ? 2 : 1.4;
+      ctx2d.strokeStyle = forced ? 'CanvasText' : roles.paper;
+      ctx2d.lineWidth = forced ? 2 : 1.6;
       ctx2d.beginPath();
       ctx2d.arc(center.x, center.y, Math.max(10, sim.well.radius * scale), 0, Math.PI * 2);
       ctx2d.stroke();
@@ -3041,7 +3391,7 @@ export const rangeScreen = {
       const p = mapPoint(sim.bounds, width, height, sim.player.x, sim.player.z);
       const glow = clamp(finite(sim.tether.strainGlow, 0), 0, 1);
       ctx2d.save();
-      ctx2d.strokeStyle = forced ? 'CanvasText' : (glow >= 0.35 ? roles.goal : roles.you);
+      ctx2d.strokeStyle = forced ? 'CanvasText' : (glow >= 0.35 ? roles.foe : roles.you);
       ctx2d.lineWidth = forced ? 2 : 2.2 + glow * 3.4;
       ctx2d.globalAlpha = reduced ? 1 : 0.72 + glow * 0.28;
       ctx2d.beginPath();
@@ -3089,24 +3439,26 @@ export const rangeScreen = {
 
   _drawHeavyGates(ctx2d, sim, width, height, forced, roles) {
     const ink = roles || canvasRoles();
-    sim.gates.forEach((gate, index) => {
+    const gates = Array.isArray(sim.gates) ? sim.gates : [];
+    const activeIndex = sim.verdict ? -1 : gates.findIndex((gate) => gate && gate.state === 'pending');
+    gates.forEach((gate, index) => {
       const top = mapPoint(sim.bounds, width, height, gate.x, sim.bounds.minZ);
       const bottom = mapPoint(sim.bounds, width, height, gate.x, sim.bounds.maxZ);
       const center = mapPoint(sim.bounds, width, height, gate.x, gate.centerZ);
       const state = gate.state;
-      let stroke = ink[gateStrokeRole(state)];
-      if (forced) stroke = 'CanvasText';
+      const active = index === activeIndex;
+      // Wave 2 R2: each gate is a ruled scale — bone band, ticked both flanks. Cleared
+      // gates fall back to a ghost; failed gates carry the threat colour.
+      const failed = state === 'failed';
+      const passed = state === 'passed';
+      strokeScaleV(ctx2d, top.x, top.y, bottom.y, {
+        forced,
+        core: forced ? 'CanvasText' : (failed ? ink.foe : passed ? withAlpha(ink.paper, 0.42) : ink.paper),
+        bloom: failed ? null : withAlpha(ink.paper, passed ? 0.10 : 0.22),
+        tick: forced ? 'CanvasText' : withAlpha(failed ? ink.foe : ink.paper, passed ? 0.35 : 0.6),
+        coreWidth: passed ? 2 : 3,
+      });
       ctx2d.save();
-      ctx2d.strokeStyle = stroke;
-      ctx2d.lineWidth = forced ? 2 : 1.3;
-      ctx2d.beginPath();
-      ctx2d.moveTo(top.x, top.y);
-      ctx2d.lineTo(bottom.x, bottom.y);
-      ctx2d.stroke();
-      ctx2d.fillStyle = forced ? 'CanvasText' : ink.goal;
-      ctx2d.beginPath();
-      ctx2d.arc(center.x, center.y, 5, 0, Math.PI * 2);
-      ctx2d.fill();
       if (forced && state !== 'pending') {
         ctx2d.font = canvasFont('600', 12, 'data');
         ctx2d.fillStyle = 'CanvasText';
@@ -3114,28 +3466,125 @@ export const rangeScreen = {
         ctx2d.textBaseline = 'bottom';
         ctx2d.fillText(state === 'passed' ? '✓' : '✕', center.x, center.y - 8);
       }
+      // The value cursor at the gate's heart. The amber bead rides the active gate
+      // alone — that bead is the Hand. Cleared gates keep a ghost tick, not amber.
+      if (!forced && active) {
+        ctx2d.strokeStyle = ink.goal;
+        ctx2d.lineWidth = 2;
+        ctx2d.beginPath();
+        ctx2d.moveTo(center.x - 15, center.y);
+        ctx2d.lineTo(center.x + 15, center.y);
+        ctx2d.stroke();
+        ctx2d.fillStyle = withAlpha(ink.goal, 0.25);
+        ctx2d.beginPath();
+        ctx2d.arc(center.x, center.y, 9, 0, Math.PI * 2);
+        ctx2d.fill();
+        ctx2d.fillStyle = ink.goal;
+        ctx2d.beginPath();
+        ctx2d.arc(center.x, center.y, 5, 0, Math.PI * 2);
+        ctx2d.fill();
+      } else if (!forced && passed) {
+        ctx2d.strokeStyle = withAlpha(ink.paper, 0.55);
+        ctx2d.lineWidth = 2;
+        ctx2d.beginPath();
+        ctx2d.arc(center.x, center.y, 4, 0, Math.PI * 2);
+        ctx2d.stroke();
+      } else if (!forced && failed) {
+        ctx2d.strokeStyle = ink.foe;
+        ctx2d.lineWidth = 2;
+        ctx2d.beginPath();
+        ctx2d.moveTo(center.x - 5, center.y - 5); ctx2d.lineTo(center.x + 5, center.y + 5);
+        ctx2d.moveTo(center.x + 5, center.y - 5); ctx2d.lineTo(center.x - 5, center.y + 5);
+        ctx2d.stroke();
+      } else if (!forced) {
+        ctx2d.strokeStyle = withAlpha(ink.paper, 0.8);
+        ctx2d.lineWidth = 1.6;
+        ctx2d.beginPath();
+        ctx2d.arc(center.x, center.y, 4, 0, Math.PI * 2);
+        ctx2d.stroke();
+      }
       ctx2d.font = canvasFont('600', 12, 'data');
-      ctx2d.fillStyle = forced ? 'CanvasText' : ink.calm;
-      ctx2d.textAlign = 'center';
-      ctx2d.textBaseline = 'top';
-      ctx2d.fillText(String(index + 1), center.x, center.y + 8);
+      ctx2d.fillStyle = forced ? 'CanvasText' : (active ? ink.paper : withAlpha(ink.paper, 0.78));
+      ctx2d.textAlign = 'left';
+      ctx2d.textBaseline = 'middle';
+      ctx2d.fillText(String(index + 1), center.x + 13, center.y);
       ctx2d.restore();
     });
+  },
+
+  /** Wave 2 R3: the run made visible — the flown path drawn as a Beam from the start to
+   *  the live target, with a travelling ice pulse while the run is live. At rest (a
+   *  verdict, reduced motion, forced colours) the beam stands frozen in bone. */
+  _beamTarget(sim) {
+    if (!sim) return null;
+    if (Array.isArray(sim.gates) && sim.gates.length) {
+      const gate = sim.gates.find((row) => row && row.state === 'pending') || sim.gates[sim.gates.length - 1];
+      return gate ? { x: gate.x, z: gate.centerZ } : null;
+    }
+    if (sim.exitGate) return { x: sim.exitGate.centerX, z: sim.exitGate.z };
+    if (Number.isFinite(sim.stopLine) && sim.player) return { x: sim.stopLine, z: sim.player.z };
+    return null;
+  },
+
+  _drawRunBeam(ctx2d, sim, width, height, forced, reduced, roles) {
+    const ink = roles || canvasRoles();
+    const target = this._beamTarget(sim);
+    if (!target || !sim.player) return;
+    const line = [];
+    if (Array.isArray(sim.trail) && sim.trail.length > 1) {
+      for (const point of sim.trail) line.push(mapPoint(sim.bounds, width, height, point.x, point.z));
+    } else {
+      line.push(mapPoint(sim.bounds, width, height, sim.player.x, sim.player.z));
+    }
+    line.push(mapPoint(sim.bounds, width, height, target.x, target.z));
+    if (line.length < 2) return;
+    const running = !sim.verdict && !reduced && !forced;
+    const trace = () => {
+      ctx2d.beginPath();
+      ctx2d.moveTo(line[0].x, line[0].y);
+      for (let i = 1; i < line.length; i += 1) ctx2d.lineTo(line[i].x, line[i].y);
+      ctx2d.stroke();
+    };
+    ctx2d.save();
+    ctx2d.lineCap = 'round';
+    ctx2d.lineJoin = 'round';
+    if (!forced) {
+      ctx2d.strokeStyle = withAlpha(ink.paper, running ? 0.20 : 0.12);
+      ctx2d.lineWidth = 6;
+      trace();
+    }
+    ctx2d.strokeStyle = forced ? 'CanvasText' : (running ? ink.paper : withAlpha(ink.paper, 0.55));
+    ctx2d.lineWidth = forced ? 2 : 2.5;
+    trace();
+    if (running) {
+      const at = pointAlongPolyline(line, (finite(sim.timeS, 0) * 0.35) % 1);
+      if (at) {
+        ctx2d.fillStyle = withAlpha(RANGE_ICE, 0.30);
+        ctx2d.beginPath();
+        ctx2d.arc(at.x, at.y, 8, 0, Math.PI * 2);
+        ctx2d.fill();
+        ctx2d.fillStyle = RANGE_ICE;
+        ctx2d.beginPath();
+        ctx2d.arc(at.x, at.y, 3.6, 0, Math.PI * 2);
+        ctx2d.fill();
+      }
+    }
+    ctx2d.restore();
   },
 
   _drawStopLine(ctx2d, sim, width, height, forced, roles) {
     const ink = roles || canvasRoles();
     const top = mapPoint(sim.bounds, width, height, sim.stopLine, sim.bounds.minZ);
     const bottom = mapPoint(sim.bounds, width, height, sim.stopLine, sim.bounds.maxZ);
+    strokeScaleV(ctx2d, top.x, top.y, bottom.y, {
+      forced,
+      core: forced ? 'CanvasText' : ink.paper,
+      bloom: withAlpha(ink.paper, 0.22),
+      tick: forced ? 'CanvasText' : withAlpha(ink.paper, 0.6),
+    });
     ctx2d.save();
-    ctx2d.strokeStyle = forced ? 'CanvasText' : ink.goal;
-    ctx2d.lineWidth = forced ? 2 : 1.6;
-    ctx2d.beginPath();
-    ctx2d.moveTo(top.x, top.y);
-    ctx2d.lineTo(bottom.x, bottom.y);
-    ctx2d.stroke();
     ctx2d.font = canvasFont('600', 12, 'data');
-    ctx2d.fillStyle = forced ? 'CanvasText' : ink.goal;
+    ctx2d.fillStyle = forced ? 'CanvasText' : ink.paper;
     ctx2d.textAlign = 'center';
     ctx2d.textBaseline = 'top';
     ctx2d.fillText('STOP', top.x, top.y + 6);
@@ -3169,18 +3618,18 @@ export const rangeScreen = {
     const ink = roles || canvasRoles();
     const left = mapPoint(sim.bounds, width, height, sim.exitGate.centerX - sim.exitGate.half, sim.exitGate.z);
     const right = mapPoint(sim.bounds, width, height, sim.exitGate.centerX + sim.exitGate.half, sim.exitGate.z);
+    strokeScaleH(ctx2d, left.y, left.x, right.x, {
+      forced,
+      core: forced ? 'CanvasText' : ink.paper,
+      bloom: withAlpha(ink.paper, 0.22),
+      tick: forced ? 'CanvasText' : withAlpha(ink.paper, 0.6),
+    });
     ctx2d.save();
-    ctx2d.strokeStyle = forced ? 'CanvasText' : ink.goal;
-    ctx2d.lineWidth = forced ? 2 : 1.6;
-    ctx2d.beginPath();
-    ctx2d.moveTo(left.x, left.y);
-    ctx2d.lineTo(right.x, right.y);
-    ctx2d.stroke();
     ctx2d.font = canvasFont('600', 12, 'data');
-    ctx2d.fillStyle = forced ? 'CanvasText' : ink.goal;
+    ctx2d.fillStyle = forced ? 'CanvasText' : ink.paper;
     ctx2d.textAlign = 'center';
     ctx2d.textBaseline = 'bottom';
-    ctx2d.fillText('EXIT', (left.x + right.x) * 0.5, left.y - 4);
+    ctx2d.fillText('EXIT', (left.x + right.x) * 0.5, left.y - 10);
     ctx2d.restore();
   },
 

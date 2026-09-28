@@ -1529,14 +1529,38 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const slots = buildSlotList(def);
     const fits = fittings || [];
     const stockDrive = !!(activeBandModel && activeBandModel.handling && activeBandModel.handling.profile && activeBandModel.handling.profile.driveLabel);
+    const selType = selectedSlot >= 0 && slots[selectedSlot] ? slots[selectedSlot].type : null;
     const out = [];
     for (const type of ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility', 'thruster']) {
       const available = slots.filter((slot) => slot.type === type).length;
       if (!available) continue;
       const fitted = slots.reduce((n, slot, i) => n + (slot.type === type && fits[i] ? 1 : 0), 0);
-      out.push({ type, label: SLOT_LABEL[type] || type, fitted, available, stock: type === 'engine' && fitted === 0 && stockDrive });
+      out.push({ type, label: SLOT_LABEL[type] || type, fitted, available, stock: type === 'engine' && fitted === 0 && stockDrive, selected: type === selType });
     }
     return out;
+  }
+
+  // Wave 2 S4/S6: the rail row and the dial segment follow the hull's chosen slot (the Hand
+  // itself is the amber bead + arm on the hull; rail and dial answer in bone). Choosing a
+  // slot does not re-render the side, so this syncs the side's DOM in place.
+  function selectedSystemType() {
+    if (selectedSlot < 0) return null;
+    const ship = viewedShip();
+    const def = ship && SHIP_BY_ID.get(ship.defId);
+    if (!def) return null;
+    const slots = buildSlotList(def);
+    return slots[selectedSlot] ? slots[selectedSlot].type : null;
+  }
+  function syncSystemSelection() {
+    const type = selectedSystemType();
+    if (sideEl) {
+      for (const row of sideEl.querySelectorAll('.sx-sw-flow[data-system-type]')) {
+        row.classList.toggle('is-selected', !!type && row.getAttribute('data-system-type') === type);
+      }
+    }
+    const ship = viewedShip();
+    const def = ship && SHIP_BY_ID.get(ship.defId);
+    if (def) syncPowerGhost(def, null);
   }
 
   // The circuit's ghost arc: what the fittings being previewed would draw from the core.
@@ -2878,6 +2902,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // column when the rack stands down the right flank.
     const inset = 12;
     const region = { left: inset, top: inset, right: stageRect.width - inset, bottom: stageRect.height - inset };
+    // Wave 2 S1: at narrow widths the left callout column has nowhere to stand but on the
+    // prose. Clamp the solver's label region so left cards stay right of screen x=560 (the
+    // prose ends ~460 there); the hull fit keeps the full region. Skipped when the stage is
+    // too narrow for the clamp to leave the solver a working column.
+    let labelRegion = region;
+    if (typeof window !== 'undefined' && window.innerWidth <= 1366 && stageRect.width > 0) {
+      const clampLeft = 560 - stageRect.left;
+      if (clampLeft > region.left + 40 && clampLeft < region.right - 220) {
+        labelRegion = { ...region, left: Math.round(clampLeft) };
+      }
+    }
     const obstacles = [];
     const gaugesRect = gaugeRackEl && gaugeRackEl.isConnected && getComputedStyle(gaugeRackEl).visibility !== 'hidden'
       ? stageLocalRect(gaugeRackEl.getBoundingClientRect(), stageRect, 4) : null;
@@ -2984,7 +3019,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         stageWidth: stageRect.width,
         stageHeight: stageRect.height,
         nodeRadius: 17,
-        bounds: region,
+        bounds: labelRegion,
         keepOut,
         obstacles,
       });
@@ -3298,7 +3333,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           // a hull flying its stock drive has a drive: the table says so, as the drawing does
           const stock = type === 'engine' && fitted === 0 && activeBandModel && activeBandModel.handling
             && activeBandModel.handling.profile && activeBandModel.handling.profile.driveLabel;
-          return `<li class="k-row k-row--static sx-sw-flow" style="--flow:${strength}" data-system-type="${escapeHtml(type)}">` +
+          const chosen = selectedSlot >= 0 && slots[selectedSlot] && slots[selectedSlot].type === type;
+          return `<li class="k-row k-row--static sx-sw-flow${chosen ? ' is-selected' : ''}" style="--flow:${strength}" data-system-type="${escapeHtml(type)}">` +
             `<span class="k-row__name k-62 sx-sw-flow__copy">${escapeHtml(SLOT_LABEL[type] || type)}<span class="k-row__sub">${stock ? 'stock' : `${fitted}/${available} fitted`}</span></span>` +
             `<span class="k-row__num">${fmt(draw)} <span class="k-38">draw</span></span>` +
           `</li>`;
@@ -3665,6 +3701,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     slotfieldEl.querySelectorAll('[data-spatial-slot]').forEach((node) => {
       node.classList.toggle('is-selected', Number(node.getAttribute('data-spatial-slot')) === slotIndex);
     });
+    syncSystemSelection();
     scheduleSpatialProjection();
     // No modal: the compatible modules take the hang column's cell in place of the hulls; "Back"
     // returns them (Task C §1.9).
@@ -3707,6 +3744,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     chooserAnchor = null;
     slotfieldEl.classList.remove('is-focusing');
     slotfieldEl.querySelectorAll('[data-spatial-slot]').forEach((node) => node.classList.remove('is-selected'));
+    syncSystemSelection();
     el.querySelector('.sx-sw__focusline').classList.remove('is-on');
     chooserEl.classList.remove('is-open');
     el.classList.remove('is-choosing');
@@ -3728,6 +3766,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     emitUiCue(UI_SWITCH_DETENT_CUE);
     payloadSocket = socketIndex;
     selectedSlot = -1;
+    syncSystemSelection();
     if (mount && typeof mount.setExplodedFocus === 'function') mount.setExplodedFocus(null);
     chooserAnchor = anchorEl || sideEl.querySelector(`[data-rack-socket="${socketIndex}"]`);
     renderPayloadChooser();
