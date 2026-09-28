@@ -181,6 +181,13 @@ export class WeaponVfxPresenter {
     this._graph = null;
     this._disposed = false;
     this._nearMissAcc = 0;
+    // Quiet settled flight: empty well bag still paid a11y resolve + CAP slot zero +
+    // DistortionField.update (uTime write before live early-out) every tick. Latch after
+    // first empty sync when fields.active is empty; wake on active ref/len. Soft-GPU fps
+    // not claimed. Picture unchanged (already empty/hidden).
+    this._wellDistortionQuietEmpty = false;
+    this._wellDistortionQuietActiveLen = -1;
+    this._wellDistortionQuietActiveRef = null;
   }
 
   attachGraph(graph) {
@@ -530,10 +537,21 @@ export class WeaponVfxPresenter {
 
   _syncWellDistortion() {
     const field = this.wellDistortion;
+    const active = this.state && this.state.fields && this.state.fields.active;
+    const activeLen = active ? active.length : 0;
+    // Quiet empty-active residual: a11y resolve + CAP zero + DistortionField.update
+    // (uTime write before live early-out) every idle tick. Latch only when the active
+    // bag is empty so reduced-motion + live wells keep syncing. Soft-GPU fps not claimed.
+    if (this._wellDistortionQuietEmpty
+      && active === this._wellDistortionQuietActiveRef
+      && activeLen === this._wellDistortionQuietActiveLen
+      && field.live === 0
+      && !(field.mesh && field.mesh.count > 0)) {
+      return;
+    }
     const slots = field.slots;
     let live = 0;
     if (!reducedMotionProfile(this._a11y())) {
-      const active = this.state && this.state.fields && this.state.fields.active;
       if (active) {
         const cap = field.capacity;
         for (let i = 0; i < active.length && live < cap; i++) {
@@ -560,6 +578,13 @@ export class WeaponVfxPresenter {
     // The well lens is re-synced from scratch each frame, so dt is 0; hand it the simulation clock
     // directly or its shader has no time at all. Reduced motion already zeroes every well above.
     field.update(0, this.state && this.state.simTime);
+    if (live === 0 && activeLen === 0) {
+      this._wellDistortionQuietEmpty = true;
+      this._wellDistortionQuietActiveLen = activeLen;
+      this._wellDistortionQuietActiveRef = active;
+    } else {
+      this._wellDistortionQuietEmpty = false;
+    }
   }
 
   _socketPose(ownerId, origin, angle) {
@@ -818,6 +843,9 @@ export class WeaponVfxPresenter {
   dispose() {
     if (this._disposed) return;
     this._disposed = true;
+    this._wellDistortionQuietEmpty = false;
+    this._wellDistortionQuietActiveLen = -1;
+    this._wellDistortionQuietActiveRef = null;
     this._detachGraph(this._graph);
     this._graph = null;
     clearShieldContacts();
