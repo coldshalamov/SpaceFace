@@ -279,6 +279,10 @@ def _stamp(path, identity, lod_label):
         scene = doc['scenes'][doc.get('scene', 0)]
         scene.setdefault('extras', {})['spacefaceAsset'] = meta
         doc.setdefault('asset', {}).setdefault('extras', {})['spacefaceAsset'] = meta
+        # The release publisher requires the canonical-root node contract too
+        # (build-place-release-assets.mjs): stamp the scene's root nodes.
+        for i in scene.get('nodes', []):
+            doc['nodes'][i].setdefault('extras', {})['spacefaceAsset'] = meta
     return patch_glb_json(path, mutate)
 
 
