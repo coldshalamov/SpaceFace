@@ -391,8 +391,6 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 | 7 | D60 | A6 driver teleported the player ~2.25 M-units in one tick — instrumented, unreproduced in 5 clean runs; prove it dead or find it | FIX | CLAIMED devin-wave1 |
 | 8 | D61 | Sector-jump authored-prewarm invariant race in `renderer.js` publish/generation | FIX | CLAIMED devin-wave1 |
 | 10 | D80 | Hauler income band vs honest arbitrage — model fixed; structural balance adjudication owed | FIX | CLAIMED devin-wave1 |
-| 11 | D82 | Perf-merge imported reds: `check-vfx-techniques` (programCanon.js unlisted soft-card) + `check:massline:arc-render` (overlaps D85 — take together) | FIX | CLAIMED devin-wave1 |
-| 12 | D85 | Massline release arc: `save:loaded` drains token but not mesh — `_resetMasslineReleaseArc` never resets `arc.mesh.visible`/`drawRange` | FIX | CLAIMED devin-wave1 |
 | 14 | D83 | pq020 Ceres structural-cost digest drift — adjudicate semantically, then re-derive the pin | FIX | CLAIMED devin-graphics |
 | 15 | D67 | Market-tab dispatch hang — not reproduced; one quiet-host sweep owed before delete | FIX | PARKED needs quiet host |
 | 16 | D24 | Renderer resource residency — fix landed `4365769c6`; 40-cycle uncontended soak owed | FIX | PARKED needs quiet host |

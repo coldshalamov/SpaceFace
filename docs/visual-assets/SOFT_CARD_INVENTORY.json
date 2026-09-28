@@ -87,6 +87,16 @@
       "files": ["src/render/startupGpuResidency.js"]
     },
     {
+      "id": "program-specimen-admission",
+      "effectClasses": [],
+      "classificationRole": "offscreen-mechanism; no player-facing effect",
+      "status": "offscreen-admission",
+      "playerSees": "Nothing; specimens mount only inside the unpublished admission root and detach after the compile binds the program",
+      "technique": "Type-matched specimen objects (Sprite, Points, Line, Mesh, SkinnedMesh, InstancedMesh) minted so the renderer's own program compile pins each canonical signature",
+      "whyListed": "The completeness scan finds new THREE.Sprite/Points here; they are program-binding proxies for authored material states, never drawn to the player — same class as the startup GPU-residency proxy.",
+      "files": ["src/render/programCanon.js"]
+    },
+    {
       "id": "graphics-lab-sprites",
       "effectClasses": ["engine-jet", "shield-response"],
       "classificationRole": "lab-examples; class assignment is no production permission",

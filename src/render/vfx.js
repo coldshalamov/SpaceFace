@@ -8468,6 +8468,14 @@ export const vfx = {
     arc.ratingScore = 0;
     clearMasslineReleaseTarget(arc.postTarget);
     arc.matter.clear();
+    // Pin the drained state on the mesh itself, not only inside the batch: a save/sector boundary
+    // must never leave a visible echo behind. The draw path re-arms both fields on the next live
+    // release — batch.end() sets visible = count > 0 and commitDynamicBufferOwner writes
+    // mesh.count — so this cannot stick the arc hidden. geometry.drawRange is deliberately NOT
+    // touched: nothing re-arms it, and a zero drawRange would silence this instanced surface
+    // permanently.
+    arc.mesh.visible = false;
+    arc.mesh.count = 0;
   },
 
   _resetMasslineReleaseToken() {
