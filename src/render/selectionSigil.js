@@ -151,7 +151,6 @@ uniform float uRetract; // 1 held, falling to 0 as the instrument folds itself a
 uniform float uFlash;   // 1 normal, lower under flashReduce
 uniform float uHull;    // the marked hull's edge, as a fraction of the instrument radius
 uniform float uGain;
-uniform float uMask;    // debug: 0 = every layer, else a bitmask of layers to draw
 
 const float TAU = 6.28318530718;
 const float PI = 3.14159265359;
@@ -167,10 +166,8 @@ float gPixel(vec2 p) { return max(length(dFdx(p)), length(dFdy(p))) * 0.75 + 1e-
 // instrument then renders as one flat saturated plate with its line work barely visible inside it.
 float sq(float v) { return v * v; }
 
-// Layer mask. 0 means "draw everything"; otherwise only the set bits draw. Used to bisect which
-// figure is responsible for a pixel when the composed picture disagrees with the arithmetic.
-float on(float bit) { return uMask < 0.5 ? 1.0 : mod(floor(uMask / bit), 2.0); }
-
+// Stroke coverage. Every analytic figure resolves to a DISTANCE first and is turned into coverage
+// here, so a shape can never feed its own distance straight into the radiance accumulator.
 float stroke(float d, float w) { return 1.0 - smoothstep(max(w - gpx, 0.0), w + gpx, d); }
 float band(float x, float lo, float hi) {
   return smoothstep(lo - gpx, lo + gpx, x) * (1.0 - smoothstep(hi - gpx, hi + gpx, x));
@@ -275,40 +272,46 @@ void main() {
   // BELONG to a line here; the gaussian is a supporting term around crisp geometry, never the
   // object's own edge and never a fill.
   L += uPrimary * (0.13 * exp(-sq((r - 0.860) / 0.030))
-                 + 0.10 * exp(-sq((r - uHull * 1.02) / 0.026))) * gate(r, fWash) * on(1.0);
+                 + 0.10 * exp(-sq((r - uHull * 1.02) / 0.026))) * gate(r, fWash);
 
   // The socket rim: a hard hairline drawn exactly on the marked hull's own silhouette. This is the
   // contact between instrument and body, and the only line here that has to be exact.
-  L += uPrimary * stroke(abs(r - uHull * 1.02), 0.0065) * gate(r, fWash) * 1.15 * on(1.0);
+  L += uPrimary * stroke(abs(r - uHull * 1.02), 0.0065) * gate(r, fWash) * 1.15;
 
   // -- class emblem -------------------------------------------------------------------------------
-  // Three emblems, one per class, each a different figure, so the marker reads without colour.
+  // Three emblems, one per class, each a DIFFERENT FIGURE, so the marker is legible with the
+  // palette removed entirely — greyscale, any colour-vision, or a player who never reads the HUD
+  // bracket. Every polygon here goes through stroke(): polyEdge returns an unsigned DISTANCE, and
+  // using that distance directly as a coverage lights the whole plane, because the distance is
+  // largest exactly where there is no line. That is what turned the first pass into a flat disc.
   float emblem = 0.0;
   if (uKlass < 0.5) {
     // Hostile: a hexagram — two interlocking triangles — inside a twelve-point burst.
-    emblem = max(polyEdge(p, a, 0.415, 3.0, 0.0), polyEdge(p, a, 0.415, 3.0, PI / 3.0));
+    emblem = max(stroke(polyEdge(p, a, 0.415, 3.0, 0.0), 0.0060),
+                 stroke(polyEdge(p, a, 0.415, 3.0, PI / 3.0), 0.0060));
     emblem = max(emblem, spokes(r, a - aEmblem, 12.0, 0.345, 0.400, 0.0055) * 0.80);
   } else if (uKlass < 1.5) {
     // Friendly: a hexagon rosette — hexagon, six spokes, and a closed hub hexagon.
-    emblem = polyEdge(p, a, 0.420, 6.0, aEmblem);
+    emblem = stroke(polyEdge(p, a, 0.420, 6.0, aEmblem), 0.0060);
     emblem = max(emblem, spokes(r, a - aEmblem, 6.0, 0.350, 0.395, 0.0050) * 0.85);
-    emblem = max(emblem, polyEdge(p, a, 0.375, 6.0, -aEmblem) * 0.85);
+    emblem = max(emblem, stroke(polyEdge(p, a, 0.375, 6.0, -aEmblem), 0.0055) * 0.85);
   } else {
     // Cargo: two squares at 45 degrees — an eight-point star — around a smaller square hub.
-    emblem = max(polyEdge(p, a, 0.420, 4.0, aEmblem), polyEdge(p, a, 0.420, 4.0, aEmblem + PI / 4.0));
-    emblem = max(emblem, polyEdge(p, a, 0.375, 4.0, aEmblem) * 0.80);
+    emblem = max(stroke(polyEdge(p, a, 0.420, 4.0, aEmblem), 0.0060),
+                 stroke(polyEdge(p, a, 0.420, 4.0, aEmblem + PI / 4.0), 0.0060));
+    emblem = max(emblem, stroke(polyEdge(p, a, 0.375, 4.0, aEmblem), 0.0055) * 0.80);
   }
   // The emblem is the instrument's focal point and the hottest thing in it: the eye must land on the
   // shape before it reads any of the graduations.
   float ge = gate(r, fEmblem);
-  L += uPrimary * emblem * ge * (2.60 * uFlash + 0.80) * on(2.0);
+  L += uPrimary * emblem * ge * (2.60 * uFlash + 0.80);
   L += uPrimary * lead(r, fEmblem) * 0.90;
 
   // -- arc cages ----------------------------------------------------------------------------------
   float cage = max(arcs(r, a - aCageA, 3.0, 0.646, 0.730, 0.0058),
                    arcs(r, a - aCageB, 3.0, 0.400, 0.628, 0.0044) * 0.70);
   float gc = gate(r, fCage);
-  L += uSecondary * cage * gc * 0.92 * on(4.0);
+  L += uSecondary * cage * gc * 0.92;
   L += uSecondary * lead(r, fCage) * 0.50;
 
   // -- vernier pair -------------------------------------------------------------------------------
@@ -318,14 +321,14 @@ void main() {
   float vern = max(graduations(r, a, 0.556, 48.0, 0.026, 0.050, 0.0020),
                    graduations(r, a - aVern, 0.556, 49.0, 0.026, 0.050, 0.0020) * 0.72);
   float gv = gate(r, fVernier);
-  L += uSecondary * vern * gv * 0.80 * on(8.0);
+  L += uSecondary * vern * gv * 0.80;
   L += uPrimary * ray(r, a, uStepped, 0.470, 0.585, 0.011) * gv * 1.25;
   L += uPrimary * stroke(abs(r - 0.470), 0.006) * 0.55 * gv;
 
   // -- bezel rail, 96-division scale, travelling index arm ------------------------------------------
   float gr = gate(r, fRail);
   L += uPrimary * (stroke(abs(r - 0.860), 0.0050) * 1.30
-                 + graduations(r, a, 0.860, 96.0, 0.030, 0.062, 0.0022) * 0.85) * gr * on(16.0);
+                 + graduations(r, a, 0.860, 96.0, 0.030, 0.062, 0.0022) * 0.85) * gr;
   L += uPrimary * lead(r, fRail) * 0.70;
 
   float gi = gate(r, fIndex);
@@ -344,7 +347,7 @@ void main() {
   float qy = r * sin(tq) * breath;
   float br = max(stroke(abs(abs(qy) - 0.020), 0.0080) * band(qx, 0.790, 0.945),
                  stroke(abs(abs(qx) - 0.945), 0.0080) * band(qy, 0.790, 0.945));
-  L += uPrimary * br * gate(r, fBracket) * 1.20 * on(32.0);
+  L += uPrimary * br * gate(r, fBracket) * 1.20;
 
   // -- travelling acquire ring --------------------------------------------------------------------
   // A structure that expands and dies, not an opacity ramp: the one moment the instrument is
@@ -358,19 +361,6 @@ void main() {
   // Outside the inscribed circle the plane is empty space. Cut it so the quad's corners cost
   // nothing and the instrument can never show a square edge at any zoom.
   if (r > 0.995) discard;
-  // Diagnostic taps (uMask > 90): show one intermediate as greyscale so a composed picture that
-  // disagrees with the arithmetic can be attributed instead of argued about.
-  if (uMask > 90.5) {
-    float v = 0.0;
-    if (uMask < 91.5) v = gpx * 60.0;                 // 91: pixel footprint in plane units
-    else if (uMask < 92.5) v = emblem;                 // 92: the class figure
-    else if (uMask < 93.5) v = ge;                    // 93: the emblem's presence gate
-    else if (uMask < 94.5) v = polyEdge(p, a, 0.415, 3.0, 0.0) * 4.0;   // 94: raw polygon edge distance
-    else if (uMask < 95.5) v = spokes(r, a, 12.0, 0.345, 0.400, 0.0055); // 95: the burst spokes
-    else v = stroke(abs(r - 0.860), 0.0050) * 2.0;     // 96: one rail stroke, as a control
-    gl_FragColor = vec4(vec3(v), 1.0);
-    return;
-  }
   gl_FragColor = vec4(L * uGain, 1.0);
 }
 `;
@@ -393,7 +383,6 @@ export class SelectionSigil {
         uRetract: { value: 1 },
         uFlash: { value: 1 },
         uHull: { value: 1 / SIGIL_RADIUS_SCALE },
-        uMask: { value: 0 },
         uGain: { value: 1 },
       },
       vertexShader: SIGIL_VERT,
@@ -429,6 +418,10 @@ export class SelectionSigil {
     this._tintTarget = null;
     this._tintSettled = false;
     this._clock = 0;
+    // Reduced motion freezes the clock itself rather than only the arrival: uPhase is the only
+    // driver of the rotating cages and the travelling index arm, so advancing it would keep the
+    // instrument moving under a preference that asked it not to.
+    this._motionReduce = false;
     this._age = 0;
     this._retract = 1;
     this._vernierHold = 0;
@@ -444,6 +437,7 @@ export class SelectionSigil {
     this._accessibilityId = profile.id;
     const reducedMotion = profile.id === 'reduced-motion' || profile.id === 'reduced-motion-and-flash';
     this._u.uInstant.value = reducedMotion ? 1 : 0;
+    this._motionReduce = reducedMotion;
     // flashOpacityScale is the shared authored answer for "this much less radiance". Identity —
     // every figure, every graduation, the whole emblem — is untouched by it.
     this._u.uFlash.value = profile.flashOpacityScale;
@@ -529,7 +523,7 @@ export class SelectionSigil {
       this._vernierMove = 1;
     }
     this._retract = 1;
-    this._clock += step;
+    if (!this._motionReduce) this._clock += step;
     this._age += step;
 
     const radius = sigilRadius(subject && subject.radius);
@@ -574,7 +568,7 @@ export class SelectionSigil {
       this.mesh.visible = false;
       return;
     }
-    this._clock += step;
+    if (!this._motionReduce) this._clock += step;
     this._u.uPhase.value = this._clock * 0.62;
     this._u.uAge.value = this._age;
     this._u.uRetract.value = this._retract;

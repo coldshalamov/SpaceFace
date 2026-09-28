@@ -380,7 +380,7 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
 | 1 | ADOPT-FIGHTWORLD | Land the stale fight/world run: ~12 test files + ~14 system hunks uncommitted in the tree (memorial thief, seam mines, thrown-explosive fuse, kill shards, cookoff chains, berth memory, bar desk, bay-7 scan, faction-presence wire, kill replay, set pieces, crucible a-list). Run each focused suite; pathspec-commit green groups. Do **not** revert `536afa04b` (impulseCharges recycled-id fix — already landed). | ADOPT | CLAIMED devin-wave1 |
-| 2 | ADOPT-PERF | Land or close the stale perf-pipeline hunks: dirty files under `src/render/**` + flight/input strays left by `devin-perf-pipeline`. Inspect each hunk, keep what is coherent, commit by pathspec. | ADOPT | CLAIMED devin-wave1 |
+| 3 | ADOPT-CAMPAIGN10 | Land or close `devin-campaign-10` residue — re-check tree for leftover hunks after rows 1–2. | ADOPT | CLAIMED devin-wave1 |
 
 ### B. Defect ledger — open rows (ledger: `DEMO_READINESS_2026-09-20.md` §6)
 
@@ -394,7 +394,6 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 | 10 | D80 | Hauler income band vs honest arbitrage — model fixed; structural balance adjudication owed | FIX | CLAIMED devin-wave1 |
 | 11 | D82 | Perf-merge imported reds: `check-vfx-techniques` (programCanon.js unlisted soft-card) + `check:massline:arc-render` (overlaps D85 — take together) | FIX | CLAIMED devin-wave1 |
 | 12 | D85 | Massline release arc: `save:loaded` drains token but not mesh — `_resetMasslineReleaseArc` never resets `arc.mesh.visible`/`drawRange` | FIX | CLAIMED devin-wave1 |
-| 13 | D86 | `selectionSigil.js` has raw GLSL in a JS module — fails `node --check`. **File is foreign-dirty: check whether the dirty hunk already fixes it before editing** | FIX | CLAIMED devin-wave1 |
 | 14 | D83 | pq020 Ceres structural-cost digest drift — adjudicate semantically, then re-derive the pin | FIX | CLAIMED devin-graphics |
 | 15 | D67 | Market-tab dispatch hang — not reproduced; one quiet-host sweep owed before delete | FIX | PARKED needs quiet host |
 | 16 | D24 | Renderer resource residency — fix landed `4365769c6`; 40-cycle uncontended soak owed | FIX | PARKED needs quiet host |

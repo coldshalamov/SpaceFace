@@ -234,6 +234,38 @@ test('a mark stays legible with the palette removed entirely', () => {
   } finally { sigil.dispose(); }
 });
 
+test('a polygon DISTANCE is never used directly as coverage', () => {
+  // This is the bug the picture caught and the arithmetic did not. polyEdge returns an unsigned
+  // distance, which is LARGEST exactly where there is no line, so assigning it straight into the
+  // radiance accumulator lights the whole plane and buries the line work inside a flat saturated
+  // disc. Every polygon result must pass through stroke() first. Pinned on the source because the
+  // failure is invisible to a unit test and only ever shows up in the render.
+  const sigil = new SelectionSigil(new THREE.Scene());
+  try {
+    const frag = sigil.mesh.material.fragmentShader;
+    // Assertions run against the CODE, not the comments: the rules below are all explained in prose
+    // right next to the lines they govern, and a prose mention must not read as a violation.
+    const code = frag.replace(/\/\/[^\n]*/g, '');
+    const body = code.slice(code.indexOf('void main()'));
+    const calls = [...body.matchAll(/polyEdge\(/g)];
+    assert.ok(calls.length >= 7, 'the emblems still call polyEdge');
+    for (const call of calls) {
+      const before = body.slice(Math.max(0, call.index - 20), call.index);
+      assert.match(
+        before,
+        /stroke\(\s*$/,
+        `polyEdge(...) must be wrapped in stroke(...): got ${JSON.stringify(before)}`,
+      );
+    }
+    // smoothstep is undefined for edge0 >= edge1, and the natural-looking reversed form leaked the
+    // layer gate across the whole plane. Silent-wrong, so pinned.
+    assert.doesNotMatch(code, /smoothstep\(\s*\w+\s*\+\s*0\.045\s*,\s*\w+\s*-\s*0\.045/, 'no reversed gate');
+    // pow() is undefined for a negative base, and every falloff here is centred on a value the
+    // fragment may sit on either side of. A single NaN poisons the whole additive accumulator.
+    assert.doesNotMatch(code, /pow\([^,]+,\s*2\.0\s*\)/, 'square with v*v, never pow(v, 2.0)');
+  } finally { sigil.dispose(); }
+});
+
 
 // -----------------------------------------------------------------------------------------------
 // Accessibility.
@@ -248,6 +280,13 @@ test('reduced motion keeps every figure and only removes movement', () => {
     const steppedAt = u.uStepped.value;
     for (let i = 0; i < 600; i++) sigil.setSubject(body, 0, 0, 1 / 60, REDUCED_MOTION);
     assert.equal(u.uStepped.value, steppedAt, 'the vernier pointer rests instead of ticking');
+    // uPhase drives the counter-rotating cages and the travelling index arm. The arrival being
+    // instant is not the same thing as the instrument being still: a phase that keeps advancing
+    // leaves the whole deck turning under a preference that asked it not to move, and the earlier
+    // pass proved that gate was only half closed — uInstant was honoured, _clock was not.
+    assert.equal(u.uPhase.value, 0, 'no rotation phase has accumulated');
+    for (let i = 0; i < 600; i++) sigil.setSubject(body, 0, 0, 1 / 60, REDUCED_MOTION);
+    assert.equal(u.uPhase.value, 0, 'and none accumulates over ten seconds of holding the mark');
     assert.equal(u.uKlass.value, 0, 'the emblem is still the hostile one');
     assert.equal(u.uRetract.value, 1, 'the mark is held open, with no arrival or departure pending');
     // Reduced motion reaches every state instantly — including release.

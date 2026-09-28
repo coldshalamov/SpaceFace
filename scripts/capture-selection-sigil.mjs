@@ -20,12 +20,10 @@ const HEIGHT = Number(args.height || 600);
 const ONLY = args.only ? String(args.only).split(',') : null;
 mkdirSync(OUT, { recursive: true });
 
-// A one-off bisect sweep: each frame draws exactly one layer group so the flat field the composed
-// picture shows can be attributed to a figure instead of argued about.
-const MASK_FRAMES = [1, 2, 4, 8, 16, 32].map((bit, i) => ({
-  name: `mask-${i}-bit${bit}`, klass: 'hostile', t: 6.0, tilt: 6, noHull: true, mask: bit,
-}));
-
+// The layer-isolation sweep this instrument was built with is gone: `uMask` was a debug scaffold
+// for attributing a flat field to a single figure, and the flat field is fixed and the causes are
+// pinned as tests. Keeping a dead knob in the shipping shader is a thing to be maintained with no
+// way to reach it from the game, so it came out with the scaffold.
 const SWEEP = [
   { name: 'hostile-chase', klass: 'hostile', t: 6.0, tilt: 52 },
   { name: 'hostile-acquire', klass: 'hostile', t: 0.16, tilt: 52 },
@@ -41,7 +39,6 @@ const SWEEP = [
   { name: 'hostile-release', klass: 'hostile', t: 6.0, tilt: 52, release: 0.12 },
   { name: 'hostile-distant', klass: 'hostile', t: 6.0, tilt: 52, hull: 3 },
   { name: 'hostile-capital', klass: 'hostile', t: 6.0, tilt: 52, hull: 44 },
-  ...MASK_FRAMES,
 ];
 const FRAMES = ONLY ? SWEEP.filter((f) => ONLY.includes(f.name)) : SWEEP;
 
@@ -67,7 +64,6 @@ try {
     if (frame.reduced) params.set('reduced', '1');
     if (frame.flash) params.set('flash', '1');
     if (frame.noHull) params.set('noHull', '1');
-    if (frame.mask != null) params.set('mask', String(frame.mask));
     if (frame.hull != null) params.set('hull', String(frame.hull));
     errors.length = 0;
     await page.goto(`http://127.0.0.1:${server.address().port}/scripts/selection-sigil-lab.html?${params}`, {
