@@ -1506,13 +1506,16 @@ export const mining = {
     d.claimJumpProtestAt = now;
     const visits = (d.claimJumpVisits | 0) + 1;
     d.claimJumpVisits = visits;
-    // The wronged crew: their hull is the witness when it is still on site.
+    // The wronged crew: their hull is the witness when it is still on site. A mission-spawned
+    // claim crew carries its claim on `salvorClaimId` instead of a world record — the protest
+    // resolves either stamp, so the bark names the hull that filed it.
     let victimEntityId = null;
     let crewName = 'Salvor crew';
     const list = state.entityList;
     if (Array.isArray(list)) {
       for (const e of list) {
-        if (e && e.alive !== false && e.data && e.data.worldRecordId === claimantId) {
+        if (e && e.alive !== false && e.data
+          && (e.data.worldRecordId === claimantId || e.data.salvorClaimId === claimantId)) {
           victimEntityId = e.id;
           crewName = e.data.callsign || e.data.shipName || e.data.name || crewName;
           break;
