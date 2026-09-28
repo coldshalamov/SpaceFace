@@ -35,6 +35,7 @@ import {
 } from './aftermathWrecks.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { createChoirReliefBerth, normalizeChoirRelief } from './choirReliefBerth.js';
+import { createMemorialThief, normalizeMemorialThief } from './memorialThief.js';
 
 const VALID_PHASES = new Set(['rumored', 'fixed', 'decision', 'salvaged']);
 
@@ -80,6 +81,7 @@ export function createUniqueWreckState(metaSeed) {
     published: {},
     receipts: [],
     choirRelief: normalizeChoirRelief(),
+    memorialThief: normalizeMemorialThief(),
   };
 }
 
@@ -100,6 +102,7 @@ export function normalizeUniqueWreckState(value, metaSeed) {
     published: {},
     receipts: [],
     choirRelief: normalizeChoirRelief(input.choirRelief),
+    memorialThief: normalizeMemorialThief(input.memorialThief),
   };
   const bearings = input.bearings && typeof input.bearings === 'object' ? input.bearings : {};
   for (const def of UNIQUE_WRECKS) {
@@ -292,6 +295,7 @@ export const uniqueWrecks = {
     this._subscriptions = [];
     this._ensureState();
     this._choirRelief = createChoirReliefBerth(this);
+    this._memorialThief = createMemorialThief(this);
 
     this._listen('game:started', () => this._onGameStarted());
     this._listen('save:loaded', () => this._onSaveLoaded());
@@ -303,10 +307,17 @@ export const uniqueWrecks = {
     }
     this._listen('lossInvestigation:promoted', (payload) => this._onLossPromoted(payload));
     this._listen('scan:pulse', (payload) => this._onScanPulse(payload));
-    this._listen('economy:tick', () => { this._pumpComplications(); this._choirRelief.sync(); });
+    this._listen('economy:tick', () => {
+      this._pumpComplications();
+      this._choirRelief.sync();
+      this._memorialThief.sync();
+    });
     this._listen('npcjobs:work', (payload) => this._choirRelief.work(payload));
     this._listen('npcjobs:complete', (payload) => this._choirRelief.complete(payload));
-    this._listen('entity:killed', (payload) => this._choirRelief.killed(payload));
+    this._listen('entity:killed', (payload) => {
+      this._choirRelief.killed(payload);
+      this._memorialThief.killed(payload);
+    });
     this._listen('salvage:completed', (payload) => this._onSalvageCompleted(payload));
     this._listen('uniqueWreck:choose', (payload) => this._onChoose(payload));
     this._listen('uniqueWreck:decisionRequest', (payload) => this._republishPendingDecisions(payload));
@@ -351,6 +362,7 @@ export const uniqueWrecks = {
 
   _clearRuntime() {
     this._choirRelief?.clear();
+    this._memorialThief?.clear();
     if (this._entityByWreck) this._entityByWreck.clear();
     if (this._wreckByEntity) this._wreckByEntity.clear();
     if (this._bandRequestResolutions) this._bandRequestResolutions.clear();
@@ -1087,6 +1099,7 @@ export const uniqueWrecks = {
       }
     }
     this._choirRelief?.sync();
+    this._memorialThief?.sync();
   },
 
   _findLive(wreckId) {
