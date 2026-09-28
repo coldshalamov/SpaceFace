@@ -65,7 +65,7 @@ compose them.
 
 ## 4. Every surface — its mini-app and its signature
 
-Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 27 surfaces. Other scores are critic scores under the owner criteria unless marked "letter" (scored before the criteria existed). Latest critic report per surface: `design/frontend/review/reports/`.
+Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 28 surfaces. Other scores are critic scores under the owner criteria unless marked "letter" (scored before the criteria existed). Latest critic report per surface: `design/frontend/review/reports/`.
 
 | Surface (bench id) | Mini-app | Signature interaction (distinct) | Assets | Status |
 |---|---|---|---|---|
@@ -95,7 +95,7 @@ Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 27 
 | THE SHIP (`ship`) | Fleet jig in flight | Pick a slot on the hull, preview compatible hardware | posters | 6.8 NOT PASSED (shiprange-r1): S1/S2/S3/S6/S7 closed but hull missing at 1280 + no selection state — r2 owed (SH1-SH7), builder running |
 | Footprint (`footprint`) | Heat / wanted | A heat dial that cools in real time; each source a sector of the dial | — | **APPROVED 8.2** (footprint-r2) |
 | Range (`range`) | Handling course | Fly the rehearsal: the course draws as a beam, progress rides the gates | — | 7.6 NOT PASSED (shiprange-r1): R1-R7 closed, (a)+(b) pass — polish owed (foot instrument, blooms, numerals RG1-RG4), r2 builder running |
-| Automation (`automation`) | The operation | Conduct the machine: asset-flow strip pulses income into the purse | drone/outpost tokens | 7.2 NOT PASSED (automation-r1): A1-A4/A6 closed; r2 owed (research chips→dotted words, flow pulse + throttle gesture) — r2 builder running |
+| Automation (`automation`) | The operation | Conduct the machine: asset-flow strip pulses income into the purse | drone/outpost tokens | **APPROVED 8.0** (automation-r2, on the line); carry-over: flow-link bodies to ~3.1:1, rail follows conducted ring, research-verb contrast margin, tab focus light segment, purse roll |
 | Replay / Clips (`replay`, `clips`) | The tape / the reel | Ride the tape (scrub time); pull a moment open (trim windows) | — | Replay **APPROVED 8.1** / Clips **APPROVED 8.0** (replayclips-r1); carry-over: dormant band to 3.5:1, world exposure, ghost sub to 16px (12 effective), ghost glyph bloom; populated stills when bench can stage |
 | Asteroid Works / Drill / Base | Machine sites | (per `asteroid-works-rebuild` design) | exist | wave 3 |
 | Flight HUD (`orrery-flight`, `flight`), Power rail, Radials | Cluster, rail, radial | (passed Phase 0a) | — | weight pass must NOT regress frame time; audit |
