@@ -30,6 +30,34 @@ import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 
 export const DOCKING_CORRIDOR_SCHEMA_VERSION = 1;
 
+/** Bench A/B: production default ON. Far latch skips station corridor walk + publish. */
+let DOCKING_CORRIDOR_FAR_QUIET = true;
+export function setDockingCorridorFarQuietForBench(enabled) {
+  DOCKING_CORRIDOR_FAR_QUIET = enabled !== false;
+}
+export function getDockingCorridorFarQuietForBench() {
+  return DOCKING_CORRIDOR_FAR_QUIET !== false;
+}
+
+/** Rescan while latched (0.5 s @ 60 Hz) so a creeping approach still wakes. */
+const DOCKING_CORRIDOR_FAR_RESCAN_TICKS = 30;
+/** Wake when the player moves this far from the armed pose (WU²). */
+const DOCKING_CORRIDOR_FAR_WAKE_MOVE2 = 100 * 100;
+/**
+ * Far arm radius = max(floor, mouthRadius * scale * mult). Beyond this the corridor
+ * readout is approach-only noise — latch skips the station walk + proxy publish.
+ * Mouth*4 keeps a comfortable approach band before the latch drops.
+ */
+const DOCKING_CORRIDOR_FAR_MOUTH_MULT = 4;
+const DOCKING_CORRIDOR_FAR_FLOOR_WU = 600;
+
+function publishDockingCorridorQuiet(state, latched) {
+  const world = state && state.world;
+  if (!world) return;
+  const rt = world.dockingCorridorRuntime || (world.dockingCorridorRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
 export const dockingCorridor = {
   name: 'dockingCorridor',
 
@@ -42,11 +70,30 @@ export const dockingCorridor = {
     // memoize per station entity so update() + _publishProxyDiagnostics() stop resolving it twice
     // per tick (a station's collisionProxy id never changes after spawn).
     this._manifestCache = new Map();
+    this._farQuiet = null;
+    for (const unsub of this._farQuietUnsubs || []) {
+      try { unsub(); } catch (_) { /* ignore */ }
+    }
+    this._farQuietUnsubs = [];
+    if (this.bus && typeof this.bus.on === 'function') {
+      const clear = () => { this._farQuiet = null; };
+      this._farQuietUnsubs = [
+        this.bus.on('sector:exit', clear),
+        this.bus.on('sector:entered', clear),
+        this.bus.on('game:new', clear),
+        this.bus.on('save:loaded', clear),
+      ];
+    }
   },
 
   destroy() {
     if (this._proxyGeometryCache) this._proxyGeometryCache.clear();
     if (this._manifestCache) this._manifestCache.clear();
+    this._farQuiet = null;
+    for (const unsub of this._farQuietUnsubs || []) {
+      try { unsub(); } catch (_) { /* ignore */ }
+    }
+    this._farQuietUnsubs = [];
   },
 
   _manifestFor(station) {
@@ -67,20 +114,51 @@ export const dockingCorridor = {
     const player = state.playerId != null ? state.entities.get(state.playerId) : null;
     if (!player || !player.alive || state.mode !== 'flight'
       || (player.flags && player.flags.docked) || (state.ui && state.ui.docked === true)) {
+      this._farQuiet = null;
+      publishDockingCorridorQuiet(state, false);
       this._publish(state, null, null);
       return;
+    }
+
+    const tick = state.tick | 0;
+    const membership = state.entityIndex && Number.isFinite(state.entityIndex.version)
+      ? state.entityIndex.version
+      : -1;
+    const latchOn = DOCKING_CORRIDOR_FAR_QUIET !== false;
+    if (latchOn) {
+      const quiet = this._farQuiet;
+      if (quiet
+        && quiet.membership === membership
+        && ((tick - (quiet.armedTick | 0)) < DOCKING_CORRIDOR_FAR_RESCAN_TICKS)) {
+        const px = finite(player.pos && player.pos.x);
+        const pz = finite(player.pos && player.pos.z);
+        const mdx = px - quiet.x;
+        const mdz = pz - quiet.z;
+        if (mdx * mdx + mdz * mdz <= quiet.wakeMove2) {
+          publishDockingCorridorQuiet(state, true);
+          return;
+        }
+      }
+    } else if (this._farQuiet) {
+      this._farQuiet = null;
     }
 
     // Nearest manifest station wins — only one corridor can reasonably engage at a time.
     const stations = (state.entityIndex && (state.entityIndex.dockStations || state.entityIndex.stations)) || state.entityList || [];
     let best = null;
+    let farArmR = DOCKING_CORRIDOR_FAR_FLOOR_WU;
     for (const station of stations) {
       if (!station || !station.alive || station.type !== 'station') continue;
       const manifest = this._manifestFor(station);
       if (!manifest || !manifest.docking) continue;
       const corridor = corridorStateFor(manifest, station, player.pos, player.vel);
       if (!corridor) continue;
-      if (!best || corridor.distCenter < best.corridor.distCenter) best = { station, manifest, corridor };
+      if (!best || corridor.distCenter < best.corridor.distCenter) {
+        best = { station, manifest, corridor };
+        const scale = corridorScale(manifest, station);
+        const mouth = (manifest.docking.corridor.mouthRadius || 1) * scale;
+        farArmR = Math.max(DOCKING_CORRIDOR_FAR_FLOOR_WU, mouth * DOCKING_CORRIDOR_FAR_MOUTH_MULT);
+      }
     }
 
     // Pilot input magnitude for the assist blend. Read-only over the sim input contract.
@@ -109,6 +187,30 @@ export const dockingCorridor = {
     }
 
     this._publish(state, best, assistApplied);
+
+    // Quiet far latch: after a probe shows the nearest docking station is beyond the
+    // approach band, skip the station walk + proxy publish until the player moves,
+    // membership bumps, or the 0.5 s rescan fires. Approach/capture/berthed never latch.
+    if (latchOn) {
+      const far = !best || best.corridor.distCenter > farArmR;
+      if (far) {
+        this._farQuiet = {
+          armedTick: tick,
+          membership,
+          x: finite(player.pos && player.pos.x),
+          z: finite(player.pos && player.pos.z),
+          wakeMove2: DOCKING_CORRIDOR_FAR_WAKE_MOVE2,
+          farArmR,
+        };
+        publishDockingCorridorQuiet(state, true);
+      } else {
+        this._farQuiet = null;
+        publishDockingCorridorQuiet(state, false);
+      }
+    } else {
+      this._farQuiet = null;
+      publishDockingCorridorQuiet(state, false);
+    }
   },
 
   _publish(state, best, assistApplied) {
