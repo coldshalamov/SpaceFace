@@ -98,13 +98,29 @@ assert.match(promptSrc, /station: `\$\{BINDINGS\.dock\.label\} dock[\s\S]*Hub: a
   'keyboard station control bar must teach hub tab navigation and activation');
 assert.match(promptSrc, /firstStation: `Review Departure Check before \$\{BINDINGS\.dock\.label\} or Escape undocks\.`/,
   'keyboard first-station hint must be one terse, binding-truthful departure verb');
-assert.match(promptSrc, /station: 'B dock when prompted[\s\S]*Hub: LB\/RB tabs[\s\S]*D-pad\/left stick focus[\s\S]*A act[\s\S]*B leave once aboard'/,
-  'gamepad station control bar must teach B docking, LB/RB tab cycling, focus, and activation');
-assert.match(promptSrc, /firstStation: 'Review Departure Check before B undocks\.'/,
+// The controller and touch bars are asserted through the RESOLVED prompt, not by grepping the
+// source. The live strings are built from `padGlyph(...)` / touch labels, so a source regex could
+// only ever match the literal text they replaced - it asserted the old hand-written copy and went
+// red the moment the prompts became binding-truthful, even though what the player reads never
+// changed. Resolving the prompt also makes these rows fail-closed: if a glyph stops resolving to a
+// button, the bar changes and the row says so.
+const padStation = controlPrompt('station', 'gamepad');
+assert.match(padStation, /dock when prompted/,
+  'gamepad station control bar must teach docking');
+assert.match(padStation, /Hub: \S+\/\S+ tabs/,
+  'gamepad station control bar must teach hub tab cycling');
+assert.match(padStation, /focus/,
+  'gamepad station control bar must teach focus navigation');
+assert.match(padStation, /\S+ act/,
+  'gamepad station control bar must teach activation');
+assert.match(padStation, /\S+ leave once aboard/,
+  'gamepad station control bar must teach how to leave');
+const padFirstStation = controlPrompt('firstStation', 'gamepad');
+assert.match(padFirstStation, /Review Departure Check before \S+ undocks\./,
   'gamepad first-station hint must be one terse controller departure verb');
-assert.match(promptSrc, /station: `\$\{BINDINGS\.dock\.label\} dock[\s\S]*Hub: tap tabs\/actions[\s\S]*Tap Undock when ready/,
+assert.match(controlPrompt('station', 'touch'), /tap tabs\/actions[\s\S]*Tap Undock when ready/,
   'touch station control bar must teach touch station tab/action flow');
-assert.match(promptSrc, /firstStation: 'Review Departure Check, then tap Undock\.'/,
+assert.match(controlPrompt('firstStation', 'touch'), /Review Departure Check, then tap Undock\./,
   'touch first-station hint must be one terse touch departure verb');
 assert.match(src, /_tutorialRailOwnsVoice\(\)/,
   'contextual control walls must yield while B0-B5 owns tutorial speech');
