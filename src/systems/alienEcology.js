@@ -532,11 +532,14 @@ export function tickAlienEcology(world, dt) {
           text: (lines && lines.mid) || 'Multiple small contacts — unclassifiable. They turn together.',
           kind: 'warn', ttl: 5,
         });
-        // The synchronized turn: coherent fauna pivot toward the player together.
+        // The synchronized turn: coherent fauna pivot toward the player together. Dormant
+        // species hold sleep — the turn is a coherent response; only their stimulus wakes them.
         if (coherent) {
           for (const e of fauna) {
             const eco = e.data.ecology;
             if (eco.siteId !== site.siteId) continue;
+            const species = eco.speciesId && faunaSpeciesById(eco.speciesId);
+            if (species && species.dormant && eco.driveState === 'dormant') continue;
             eco.driveState = 'investigate';
             eco.driveT = 0;
           }

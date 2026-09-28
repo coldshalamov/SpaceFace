@@ -5014,7 +5014,7 @@ export const world = {
             type: p.type,
             name: rec.name,
             sectorId: state.world.currentSectorId,
-            reward: (ent.data && ent.data.reward) || null,
+            reward: (entData && entData.reward) || null,
           });
           if (newlyIdentified) {
             this.bus.emit('discovery:plateUnlocked', {
@@ -5023,7 +5023,7 @@ export const world = {
               type: p.type,
             });
           }
-          this.bus.emit('toast', { text: `POI identified: ${(ent.data && ent.data.name) || p.poiId}`, kind: 'info', ttl: 4 });
+          this.bus.emit('toast', { text: `POI identified: ${(entData && entData.name) || p.poiId}`, kind: 'info', ttl: 4 });
         }
       }
     }
