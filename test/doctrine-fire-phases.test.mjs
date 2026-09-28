@@ -82,6 +82,11 @@ const CASES = [
   [CombatDoctrineId.ESCORT_SCREEN, 'screen_hold', true],
   [CombatDoctrineId.ESCORT_SCREEN, 'shield_dart', true],
   [CombatDoctrineId.ESCORT_SCREEN, 'screen_approach', false],
+  // The dart's commit advertises fireWindow for the shared pressure-break machine, but the
+  // authority table names no fire phase for it — the hull is the ordnance, never a gunship.
+  [CombatDoctrineId.DETONATOR_RUN, 'commit', false],
+  [CombatDoctrineId.DETONATOR_RUN, 'fuse_cue', false],
+  [CombatDoctrineId.DETONATOR_RUN, 'ingress', false],
 ];
 
 test('doctrine fire phases: advertised gun windows authorize; telegraph/egress do not', () => {
