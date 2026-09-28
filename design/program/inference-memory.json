@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "wreck-cargo-residue-pools",
-      "date": "2026-09-22",
-      "wf": "WF-06",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Wreck salvage now tells the truth about what died: a manifested hull's durable wreck holds its freight residue (floor 30%/line, cap 4) + hull scrap instead of the same generic scrap/electronics for every kill",
-      "fingerprint": "verb=derive,subject=wreck salvage pool,sector=all,domain=wf-06",
-      "references": [],
-      "integration": "live",
-      "commit": "0d2606216",
-      "verification": "focused_green"
-    },
-    {
       "id": "fresh-kill-scavenger-contest",
       "date": "2026-09-22",
       "wf": "WF-01",
@@ -1631,6 +1618,19 @@
       "references": [],
       "integration": "live",
       "commit": "b757bfaf2",
+      "verification": "focused_green"
+    },
+    {
+      "id": "claim-stake-salvage",
+      "date": "2026-09-28",
+      "wf": "WF-08",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Ordinary salvage contracts now land on a contested wreck: a claim crew is already cutting the dead hull when you arrive, so you can strip it under protest, wipe the crew first, tow the hull away, or let them load out and take the cargo back off their hauler.",
+      "fingerprint": "verb=recover,subject=filed claim wreck,sector=destination approach,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "41c217a23c17c24bd37735bb56c48d621ee6584f",
       "verification": "focused_green"
     }
   ],
