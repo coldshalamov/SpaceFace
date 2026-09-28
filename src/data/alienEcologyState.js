@@ -23,6 +23,14 @@ export function createAlienEcologyState() {
     machineSites: {},
     // AE-074 map contamination knowledge — what the player has learned per sector.
     mapKnowledge: {},
+    // AE-114/119 per-sector beat ledger (deep advisory + domain threshold fire once each).
+    sectorFlags: {},
+    // AE-117: Wren's field-recognition line lands once per save.
+    wrenRecognized: false,
+    // AE-138/139: per-faction custody tallies — { [factionId]: {refused, sold, sealed} }.
+    factionConsequences: {},
+    // AE-124: live heat lures — transient burn flags, dropped on save/load.
+    lures: [],
   };
 }
 
@@ -42,5 +50,9 @@ export function ensureAlienEcologyState(state) {
   if (!ae.machineAccess || typeof ae.machineAccess !== 'object') ae.machineAccess = {};
   if (!ae.machineSites || typeof ae.machineSites !== 'object') ae.machineSites = {};
   if (!ae.mapKnowledge || typeof ae.mapKnowledge !== 'object') ae.mapKnowledge = {};
+  if (!ae.sectorFlags || typeof ae.sectorFlags !== 'object') ae.sectorFlags = {};
+  if (!ae.factionConsequences || typeof ae.factionConsequences !== 'object') ae.factionConsequences = {};
+  if (!Array.isArray(ae.lures)) ae.lures = [];
+  ae.wrenRecognized = ae.wrenRecognized === true;
   return ae;
 }

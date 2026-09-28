@@ -284,6 +284,25 @@ export const MACHINE_SITES = Object.freeze({
     beat: 'TRANSIT AUTHORITY REVOKED. BIOLOGICAL CONDITION UNRESOLVED. APPEAL WINDOW CLOSED.',
     reveals: 'revealed',
   }),
+
+  // ── Phase 11 deep-region machine work (AE-115) ───────────────────────────────────────
+  sker_null_causeway: Object.freeze({
+    siteId: 'sker_null_causeway',
+    sectorId: 'sector_sker_haven',
+    poiId: 'poi_sker_null_causeway',
+    name: 'Null Causeway',
+    kind: 'corridor',
+    // AE-115: a machine-milled safe lane through the Haven pocket — a spine chain holding
+    // a dead corridor inside the densest field the player can reach.
+    center: Object.freeze({ x: 600, z: 1400 }),
+    radius: 800,
+    propRing: Object.freeze({ count: 6, radius: 700, propId: 'machine_spine', linear: true }),
+    suppression: Object.freeze({ radius: 800 }),
+    machines: Object.freeze([Object.freeze({ kind: 'custodian', dx: -80, dz: 40 })]),
+    directive: 'HOLD',
+    beat: 'The scope goes quiet inside a lane milled through the pocket. The custodian on the spine has been tending it since before the route had a name.',
+    reveals: null,
+  }),
 });
 
 export function machineSitesForSector(sectorId) {

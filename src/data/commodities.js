@@ -44,6 +44,9 @@ export const COMMODITIES = [
   // Alien Ecology program (doc 09 rewards): contaminated salvage. Nobody sells it — it only
   // comes off colonized hulls — and stations that buy it are buying a live biology sample.
   { id: 'cmdty_filament_sample',    name: 'Living Filament Sample', category: 'exotic',   basePrice: 620, volatility: 0.32, elasticity: 0.5,      legality: 'restricted', volPerU: 0.5, massPerU: 0.3, fineMult: 1.0, marketTier: 4, producedBy: [],                              consumedBy: ['research','blackmarket'], biohazard: true },
+  // AE-167 — a captured organism carried live in a cradle. The rarest biohazard lot: it
+  // only exists when a player releases a latched animal under a fitted Capture Cradle.
+  { id: 'cmdty_live_specimen',      name: 'Live Specimen (Cradled)', category: 'exotic',  basePrice: 1450, volatility: 0.4, elasticity: 0.55,     legality: 'restricted', volPerU: 1.2, massPerU: 0.8, fineMult: 1.6, marketTier: 4, producedBy: [],                              consumedBy: ['research','blackmarket'], biohazard: true, noMarketSeed: true },
   { id: 'cmdty_dmc_black_box',      name: 'DMC Flight Recorder',    category: 'salvage',  basePrice: 900, volatility: 0.0,  elasticity: 0.0,      legality: 'legal',      volPerU: 0.4, massPerU: 0.5, fineMult: 0, marketTier: 4, producedBy: [],                              consumedBy: ['research','military'] },
 
   // --- REFINED ---
@@ -127,6 +130,12 @@ export const COMMODITY_PRESENTATION_BY_CATEGORY = Object.freeze({
 });
 const DEFAULT_COMMODITY_PRESENTATION = Object.freeze({ id: 'cargo-family-general', color: '#9fd8a0' });
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
+// AE-076/122 — biohazard lots breathe on the manifest; cargo audit needs the flag by id.
+export function commodityIsBiohazard(commodityId) {
+  const c = COMMODITY_BY_ID.get(commodityId);
+  return !!(c && c.biohazard === true);
+}
+
 export function commodityPresentationFor(commodityOrId) {
   const commodity = typeof commodityOrId === 'string'
     ? COMMODITY_BY_ID.get(commodityOrId)

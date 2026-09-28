@@ -20,6 +20,14 @@ import {
 } from '../data/precursorMachines.js';
 import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { insertDressingRow } from '../world/dressingTable.js';
+import { fittedModuleDefs } from '../core/fittedModules.js';
+
+// AE-129 (K-table): a salvaged handshake transponder halves the protocol hold window —
+// the machines read your compliance twice as fast.
+function holdWindowS(state) {
+  const fitted = fittedModuleDefs(state).some((d) => d && d.mods && d.mods.precursorHandshake === true);
+  return fitted ? 6 : 12;
+}
 
 const TWO_PI = Math.PI * 2;
 
@@ -205,7 +213,7 @@ export function tickMachineLayer(world, dt) {
         const pv = player.vel ? Math.sqrt(player.vel.x * player.vel.x + player.vel.z * player.vel.z) : 0;
         if (d < site.radius + 120 && pv < 8) {
           rec.holdT = (rec.holdT || 0) + dt;
-          if (rec.holdT > 12) {
+          if (rec.holdT > holdWindowS(state)) {
             rec.directiveResolved = true;
             advanceMachineProtocol(state, 'satisfied');
             if (site.directive === 'WITNESS') grantWitnessMark(state, site.siteId);

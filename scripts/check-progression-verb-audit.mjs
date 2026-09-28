@@ -72,6 +72,11 @@ const VERB_MOD_KEYS = Object.freeze({
   lootMagnetRange: ['pull loot shards into magnet range', 'systems/lootShards.js + ships.js fold (landed)', { file: 'src/systems/lootShards.js', symbol: 'lootMagnetRange' }],
   towFlail: ['towed mass becomes flail damage', 'systems/collisionConsequences.js + ships.js fold (landed)', { file: 'src/systems/collisionConsequences.js', symbol: 'towFlail' }],
   pointDefense: ['auto-intercept projectiles (object value)', 'systems/countermeasures.js (landed)', { file: 'src/systems/countermeasures.js', symbol: 'pointDefense' }],
+  // Alien Ecology unlock economy (AE-121..129): behavior-opening fit gear.
+  heatLure: ['throw a burn-flag lure (charge throw reads hotter than the plume)', 'systems/impulseCharges.js + systems/alienEcology.js lure intake', { file: 'src/systems/impulseCharges.js', symbol: 'heatLure' }],
+  captureSurvivalMult: ['cradle-capture a latched organism into a live specimen lot', 'systems/alienEcology.js tether:released intake', { file: 'src/systems/alienEcology.js', symbol: 'captureSurvivalMult' }],
+  precursorHandshake: ['halved machine-protocol hold window', 'systems/precursorMachines.js holdWindowS', { file: 'src/systems/precursorMachines.js', symbol: 'precursorHandshake' }],
+  containmentSeal: ['sealed-custody biohazard sale (waives custody refusal)', 'systems/economy.js contamination_refusal gate', { file: 'src/systems/economy.js', symbol: 'containmentSeal' }],
 });
 
 // ─── Vocabulary: reads / intel — their own class, neither pure stat nor combat verb ───
@@ -86,6 +91,10 @@ const INTEL_MOD_KEYS = Object.freeze({
   hiddenCargoPct: 'hide cargo fraction (ships.js derived fold)',
   anomalyPingReduction: 'close an anomaly fix in fewer pulses (systems/scanner.js)',
   overusePingThreshold: 'ping-overuse allowance (systems/uniqueWrecks.js)',
+  // Alien Ecology read gear (AE-121/122/127): reveal-ladder and coherence readings.
+  bioScanTier: 'biological signatures resolve one reveal tier up (systems/alienEcology.js effectiveRevelation)',
+  coherenceMeter: 'live site coherence reports on the HUD (systems/alienEcology.js ecology:coherence)',
+  relayNeedle: 'relay organisms report COHERENT/SEVERED on the scanner (systems/alienEcology.js refreshAlienLabels)',
 });
 
 // ─── Vocabulary: every other known mods key is a SCALAR (percentage / flat stat) ───
@@ -95,7 +104,8 @@ const SCALAR_MOD_KEYS = Object.freeze([
   'damageReductionPct', 'boostTopSpeedPct', 'boostDurS', 'boostCdS', 'hullRepairOOC',
   'magnetRange', 'weaponRangePct', 'weaponDmgPct', 'weaponHeatDissipPct',
   'ramDamageDealtMult', 'tetherReelRateMult', 'tetherSpoolMult', 'richCoreRingPctBonus',
-  'scanRangeMult', 'bioFilterMult',
+  'scanRangeMult', 'bioFilterMult', 'stealthBioMult',
+  'quarantineLocker', 'hullPurgeRing',
 ]);
 
 const KNOWN_CM_KINDS = new Set(['chaff', 'ecm', 'decoy']); // decoy lands today

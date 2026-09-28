@@ -144,6 +144,91 @@ const SHIPPED_MODULES = [
     mods: { bioFilterMult: 0.35 },
     description: 'Electrostatic mesh over the intakes and plate seams. Contaminated sectors stop fouling your hull — and your manifest.',
   },
+  // ── Alien Ecology unlock economy (roadmap AE-120..129, catalog G/K-table) ──
+  // Progression that opens behaviors and routes, not damage numbers. Every read site lives
+  // in src/systems/alienEcology.js / precursorMachines.js / impulseCharges.js / economy.js.
+  {
+    // G01 — a biology-tuned scanner head: bio signatures resolve one rung up the reveal
+    // ladder (read via effectiveRevelation in alienEcology spawn/refresh paths).
+    id: 'mod_bio_spectral_pass_s', name: 'Bio-Spectral Pass Head', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 14000,
+    energyDraw: 2,
+    mods: { bioScanTier: 1 },
+    description: 'A scanning head retuned for filament-band returns. Biological contacts resolve one classification rung earlier.',
+  },
+  {
+    // G04 — reads site coherence live; the HUD surfaces it while you sit inside a radius.
+    id: 'mod_field_coherence_meter', name: 'Field Coherence Meter', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 11500,
+    energyDraw: 1,
+    mods: { coherenceMeter: true },
+    description: 'A rack listener on the relay band. Inside a colonized field it reports how coherent the ecology currently reads.',
+  },
+  {
+    // G06 — sealed custody locker: biohazard lots stop feeding hull exposure accrual.
+    id: 'mod_quarantine_locker_s', name: 'Quarantine Locker', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 16000,
+    energyDraw: 1,
+    mods: { quarantineLocker: true },
+    description: 'A sealed custody drawer rated for living cargo. What is locked in it does not breathe on the manifest.',
+  },
+  {
+    // G07 — the heavy filter ring: deep-pocket accrual cut to a fifth.
+    id: 'mod_filter_stack_m', name: 'Biofilm Filter Stack M', slotType: 'utility', size: 'M', tier: 3, mass: 4, price: 21000,
+    requiresTech: 'tech_long_range_survey',
+    energyDraw: 2,
+    mods: { bioFilterMult: 0.20 },
+    description: 'Deep-sector rated filters — a full-bore regeneration stack for pilots who work contaminated space on purpose.',
+  },
+  {
+    // G08 — a docked once-per-berth purge: docking with it fitted scrubs exposure clean.
+    id: 'mod_hull_purge_ring_m', name: 'Hull Purge Ring', slotType: 'utility', size: 'M', tier: 3, mass: 5, price: 24000,
+    energyDraw: 3,
+    mods: { hullPurgeRing: true },
+    description: 'A burn collar around the plate seams. Docking with it fitted fires one sterilizing pass — fouled hulls berth clean.',
+  },
+  {
+    // G10 — charge-throw drops a heat lure that drags heat-hunters off your plume (60s).
+    id: 'mod_heat_lure_s', name: 'Heat Lure Beacon', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 13500,
+    energyDraw: 2,
+    mods: { heatLure: true },
+    description: 'Charge-thrown bait: a burn-flag beacon that reads hotter than your reactor. Predators chase the lie for a minute.',
+  },
+  {
+    // G11 — emission damping: your hull presents a quieter mass/heat signature to fauna.
+    id: 'mod_quiet_mask_s', name: 'Quiet Mask', slotType: 'utility', size: 'S', tier: 3, mass: 3, price: 26000,
+    requiresTech: 'tech_long_range_survey',
+    energyDraw: 3,
+    mods: { stealthBioMult: 0.45 },
+    description: 'Hull plating that damps your drive and mass signature. Animals that hunt heat notice you later — or never.',
+  },
+  {
+    // G12 — relay-band probe: relay organisms report their coherence on the scanner.
+    id: 'mod_relay_needle_s', name: 'Relay Needle', slotType: 'utility', size: 'S', tier: 2, mass: 1, price: 10500,
+    energyDraw: 1,
+    mods: { relayNeedle: true },
+    description: 'A tuned probe for the relay band. Coherent emitters report their broadcast strength instead of a bare contact.',
+  },
+  {
+    // G13 — the cradle: a latched animal released under it reaches the hold alive.
+    id: 'mod_capture_cradle_m', name: 'Capture Cradle', slotType: 'utility', size: 'M', tier: 3, mass: 6, price: 32000,
+    requiresTech: 'tech_tractor_systems',
+    energyDraw: 4,
+    mods: { captureSurvivalMult: 0.85 },
+    description: 'A padded field cage for the massline. Release the latch while it is fitted and the animal comes aboard alive.',
+  },
+  {
+    // K-table — a protocol transponder: machines resolve your compliance in half the time.
+    id: 'mod_precursor_handshake_s', name: 'Handshake Transponder', slotType: 'utility', size: 'S', tier: 4, mass: 2, price: 0,
+    purchasable: false, unique: true, salvageOnly: true,
+    energyDraw: 2,
+    mods: { precursorHandshake: true },
+    description: 'A lattice-tuned responder salvaged from a machine site. Verge instruments read your compliance in half the window.',
+  },
+  {
+    // K03 — quarantine paperwork as equipment: custody refusal softens to a discount.
+    id: 'mod_containment_seal_s', name: 'Containment Seal Kit', slotType: 'utility', size: 'S', tier: 3, mass: 2, price: 28000,
+    energyDraw: 1,
+    mods: { containmentSeal: true },
+    description: 'Registry-stamped quarantine seals. Stations that would refuse a biological lot instead take it at surrender prices.',
+  },
   {
     id: 'unique_truesight_scanner', baseId: 'mod_cargo_scanner_s', name: 'Truesight Scanner', slotType: 'utility', size: 'S', tier: 1, mass: 1, price: 0,
     energyDraw: 1, purchasable: false, unique: true, salvageOnly: true,

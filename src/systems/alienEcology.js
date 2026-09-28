@@ -14,7 +14,7 @@ import {
   ALIEN_SITES,
   alienSitesForSector,
   alienStrainById,
-  ecologyMissionForSite,
+  ecologyMissionsForSite,
   planAmbientGrowth,
   planFaunaCast,
   planInfestationModules,
@@ -23,11 +23,17 @@ import {
   recordContaminationKnowledge,
   scannerBiologyLabel,
   EXPOSURE_MODEL,
+  DEEP_FILTER_GATE,
+  DOMAIN_THRESHOLD,
+  WREN_RECOGNITION,
+  LIVE_SPECIMEN_CMDTY,
 } from '../data/alienEcology.js';
 import { carrierSpecies, faunaSpeciesById } from '../data/alienFauna.js';
 import { suppressionFieldAt } from '../data/precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
+import { addCargo } from './cargo.js';
+import { commodityIsBiohazard } from '../data/commodities.js';
 import { ALIEN_ECOLOGY_SCHEMA, ensureAlienEcologyState } from '../data/alienEcologyState.js';
 
 const TWO_PI = Math.PI * 2;
@@ -61,9 +67,30 @@ function siteRecord(state, siteId) {
       // AE-056 interaction buffer: recent ecological signals fauna react to.
       signals: [],
       offerEmitted: false,
+      // AE-130..137: each authored ecology mission emits once — a per-mission ledger.
+      offersEmitted: {},
+      deepTraceDone: false,
     };
   }
+  if (!ae.sites[siteId].offersEmitted || typeof ae.sites[siteId].offersEmitted !== 'object') {
+    ae.sites[siteId].offersEmitted = {};
+  }
   return ae.sites[siteId];
+}
+
+// AE-121 (G01): a fitted Bio-Spectral Pass resolves BIOLOGICAL signatures one rung further
+// up the reveal ladder — the scan head knows what the hull doesn't. Machine/gate readings
+// stay on the raw axis; the K-table handshake covers protocol, not biology.
+export function effectiveRevelation(state) {
+  const ae = ensureAlienEcologyState(state);
+  const bonus = fittedModuleDefs(state).reduce(
+    (m, d) => Math.max(m, Number(d && d.mods && d.mods.bioScanTier) || 0), 0,
+  );
+  return Math.min(ae.revelation + bonus, 3);
+}
+
+function fittedFlag(state, key) {
+  return fittedModuleDefs(state).some((d) => d && d.mods && d.mods[key] === true);
 }
 
 export function setRevelation(state, tier) {
@@ -164,14 +191,13 @@ export function materializeAlienEcology(world, sector, active) {
         data: {
           // Display name obeys the same reveal ladder as the scanner label: at low
           // revelation the target panel reads the generic scan term, not the taxonomy name.
-          name: ae0.revelation >= 2 ? species.name
-            : scannerBiologyLabel(ae0.revelation, species.signature),
-          scanLabel: scannerBiologyLabel(ae0.revelation, species.signature),
+          name: effectiveRevelation(state) >= 2 ? species.name
+            : scannerBiologyLabel(effectiveRevelation(state), species.signature),
+          scanLabel: scannerBiologyLabel(effectiveRevelation(state), species.signature),
           scannerSignalKind: 'anomaly',
           strainId: strain.id,
           siteId: site.siteId,
-          // AE-058 scan anatomy — surfaced by the scanner at revelation >= 2.
-          anatomy: species.anatomy || null,
+              anatomy: species.anatomy || null,
           role: species.role || null,
           capturable: !!species.capturable,
           beamResist: species.beamResist || 0,
@@ -223,47 +249,55 @@ export function materializeAlienEcology(world, sector, active) {
 // Site close-band fires emit a `mission:offered` row on the sector's station board — the
 // same external-offer contract salvage uses, so the board/accept path needs no new code.
 function emitEcologyOffer(world, site, sector) {
-  const mission = site.surveyOfferId
-    ? (ecologyMissionForSite(site.siteId) || null)
-    : ecologyMissionForSite(site.siteId);
-  if (!mission) return;
+  const state = world && world.state;
+  const rec = siteRecord(state, site.siteId);
+  const missions = ecologyMissionsForSite(site.siteId);
+  if (!missions.length) return;
   const stations = (sector && sector.stations) || [];
   const station = stations[0] || null;
-  const offer = {
-    id: `ecology_${site.siteId}`,
-    offerId: `ecology_${site.siteId}`,
-    source: 'ecology',
-    sectorId: site.sectorId,
-    zoneId: site.zoneId || null,
-    type: mission.type,
-    stationId: station ? station.id : null,
-    factionId: null,
-    destStationId: station ? station.id : null,
-    destSectorId: site.sectorId,
-    distance: 800,
-    riskTier: 2,
-    collateral_cr: 0,
-    duration_s: 3000,
-    time_limit_s: 3000,
-    title: mission.title,
-    summary: mission.summary,
-    brief: mission.log ? `"${mission.log.slice(0, 140)}"` : (mission.summary || null),
-    giver: mission.giver,
-    log: mission.log,
-    reward_cr: mission.reward_cr || 0,
-    params: {
-      ...(mission.params || {}),
-      ecologySiteId: site.siteId,
-      ecologyPoiId: site.poiId || null,
-      wreckPos: { x: site.center.x, z: site.center.z },
-      wreckSectorId: site.sectorId,
-    },
-  };
-  if (world.bus) {
-    world.bus.emit('comms:log', { from: mission.giver || 'Field contact', text: mission.log, kind: 'ecology' });
-    if (offer.stationId) world.bus.emit('mission:offered', offer);
-    world.bus.emit('audio:cue', { id: 'scan_resolve' });
+  let emitted = 0;
+  // AE-130..137 — every authored faction desk at the site emits once, each under its own
+  // offersEmitted key; a site carrying multiple contracts surfaces all of them.
+  for (const mission of missions) {
+    if (rec.offersEmitted[mission.id]) continue;
+    rec.offersEmitted[mission.id] = true;
+    const offer = {
+      id: `ecology_${mission.id}`,
+      offerId: `ecology_${mission.id}`,
+      source: 'ecology',
+      sectorId: site.sectorId,
+      zoneId: site.zoneId || null,
+      type: mission.type,
+      stationId: station ? station.id : null,
+      factionId: mission.factionId || null,
+      destStationId: station ? station.id : null,
+      destSectorId: site.sectorId,
+      distance: 800,
+      riskTier: 2,
+      collateral_cr: 0,
+      duration_s: 3000,
+      time_limit_s: 3000,
+      title: mission.title,
+      summary: mission.summary,
+      brief: mission.log ? `"${mission.log.slice(0, 140)}"` : (mission.summary || null),
+      giver: mission.giver,
+      log: mission.log,
+      reward_cr: mission.reward_cr || 0,
+      params: {
+        ...(mission.params || {}),
+        ecologySiteId: site.siteId,
+        ecologyPoiId: site.poiId || null,
+        wreckPos: { x: site.center.x, z: site.center.z },
+        wreckSectorId: site.sectorId,
+      },
+    };
+    if (world.bus) {
+      world.bus.emit('comms:log', { from: mission.giver || 'Field contact', text: mission.log, kind: 'ecology' });
+      if (offer.stationId) world.bus.emit('mission:offered', offer);
+      emitted += 1;
+    }
   }
+  if (emitted > 0 && world.bus) world.bus.emit('audio:cue', { id: 'scan_resolve' });
 }
 
 // ── Event intake (world.init wires these onto the bus) ──────────────────────────────────────
@@ -363,6 +397,75 @@ export function handleAlienEcologyEvent(world, type, payload) {
       }
       break;
     }
+    case 'alienEcology:lureDropped': {
+      // AE-124 (G10): a charge-thrown lure registers on the sector — heat-sensitive drives
+      // prefer it over the player plume until it burns out (transient; not serialized).
+      const ae = ensureAlienEcologyState(state);
+      if (!Array.isArray(ae.lures)) ae.lures = [];
+      ae.lures.push({
+        x: Number(payload.x) || 0,
+        z: Number(payload.z) || 0,
+        sectorId: payload.sectorId || (state.world && state.world.currentSectorId),
+        until: (Number(state.simTime) || 0) + (payload.burnS || 60),
+      });
+      if (ae.lures.length > 8) ae.lures.shift();
+      toast('Lure beacon burning hot — the predators hear it.', 'info', 3);
+      break;
+    }
+    case 'tether:released': {
+      // AE-167 + G13: releasing a latched organism while a Capture Cradle is fitted puts a
+      // live specimen in the hold instead of letting the animal drift away.
+      const e = payload.targetId != null && state.entities.get(payload.targetId);
+      const eco = e && e.data && e.data.ecology;
+      if (!eco || !eco.faunaKey) break;
+      if (eco.driveState !== 'captured') break;
+      const cradle = fittedModuleDefs(state).reduce(
+        (m, d) => Math.max(m, Number(d && d.mods && d.mods.captureSurvivalMult) || 0), 0,
+      );
+      if (cradle <= 0) break;
+      eco.driveState = 'captured'; // keep latched state consistent for despawn
+      const added = addCargo(state, LIVE_SPECIMEN_CMDTY, 1, 'capture_cradle');
+      if (added <= 0) {
+        toast('Hold full — the cradled specimen could not be berthed.', 'warn', 4);
+        break;
+      }
+      const species = faunaSpeciesById(eco.speciesId);
+      if (world.helpers && typeof world.helpers.removeEntity === 'function') {
+        world.helpers.removeEntity(e.id, { immediate: true });
+      } else {
+        e.alive = false;
+      }
+      const r = eco.siteId && siteRecord(state, eco.siteId);
+      if (r) r.deadFauna[eco.faunaKey] = true; // it leaves the ecosystem permanently
+      setRevelation(state, 2);
+      toast(`Live specimen secured — ${species ? species.name : 'organism'} cradled in the hold.`, 'good', 5);
+      recordContaminationKnowledge(state, e.homeSectorId, 'a live organism carried in cradle custody');
+      break;
+    }
+    case 'dock:docked': {
+      // AE-125 (G08): a fitted Hull Purge Ring fires once per berth — fouled hulls leave clean.
+      const ae = ensureAlienEcologyState(state);
+      if (!fittedFlag(state, 'hullPurgeRing')) break;
+      if ((ae.exposure || 0) <= 0.02) break;
+      ae.exposure = 0;
+      ae._exposureWarned = false;
+      ae._exposureSevere = false;
+      toast('Purge ring cycle — biofilm burned off the plate seams. Hull reads clean.', 'good', 5);
+      break;
+    }
+    case 'ecology:factionOutcome': {
+      // AE-138/139: custody refusals and biohazard sales are remembered per faction.
+      const ae = ensureAlienEcologyState(state);
+      if (!ae.factionConsequences || typeof ae.factionConsequences !== 'object') {
+        ae.factionConsequences = {};
+      }
+      const fid = payload.factionId || 'unfiled';
+      const entry = ae.factionConsequences[fid] || (ae.factionConsequences[fid] = { refused: 0, sold: 0, sealed: 0 });
+      if (payload.outcome === 'custody_refused') entry.refused += 1;
+      else if (payload.outcome === 'sealed_sale') entry.sealed += 1;
+      else if (payload.outcome === 'biohazard_sale') entry.sold += 1;
+      break;
+    }
     default:
       break;
   }
@@ -459,8 +562,15 @@ export function refreshAlienLabels(world) {
     if (!e || !e.data || !e.data.ecology) continue;
     const species = faunaSpeciesById(e.data.ecology.speciesId);
     if (!species) continue;
-    e.data.scanLabel = scannerBiologyLabel(ae.revelation, species.signature);
+    e.data.scanLabel = scannerBiologyLabel(effectiveRevelation(state), species.signature);
     e.data.name = ae.revelation >= 2 ? species.name : e.data.name;
+    // AE-127 (G12): a fitted Relay Needle resolves coherent emitters — relay organisms
+    // report their broadcast status instead of a bare contact tier.
+    if (species.relay && fittedFlag(state, 'relayNeedle')) {
+      const r = e.data.ecology.siteId && ae.sites[e.data.ecology.siteId];
+      const coherent = r ? (r.relaySevered !== true && r.state !== 'severed') : true;
+      e.data.scanLabel = `${e.data.scanLabel} — RELAY ${coherent ? 'COHERENT' : 'SEVERED'}`;
+    }
   }
 }
 
@@ -510,6 +620,78 @@ export function tickAlienEcology(world, dt) {
   if (!fauna.length) return;
 
   const now = Number(state.simTime) || 0;
+
+  // ── Phase 11/12 field instruments (AE-114, AE-117, AE-119, AE-122, AE-124) ──
+  if (!Array.isArray(ae.lures)) ae.lures = [];
+  if (ae.lures.length) ae.lures = ae.lures.filter((l) => l.until > now);
+  if (!ae.sectorFlags || typeof ae.sectorFlags !== 'object') ae.sectorFlags = {};
+  if (player && player.pos) {
+    const localP = world._toLocal ? world._toLocal(player.pos, sectorId) : player.pos;
+    const sectorC = pointContaminationAt(state, sectorId, localP.x, localP.z);
+    const sectorDef = (state.world.sectors && state.world.sectors[sectorId]) || null;
+
+    // AE-114 — deep filter route gate: entering a contaminated deep sector unfiltered
+    // earns one advisory per sector visit; the field notices an open hull.
+    if (sectorDef && (sectorDef.tier || 0) >= DEEP_FILTER_GATE.minTier
+        && sectorC >= DEEP_FILTER_GATE.minLean && !ae.sectorFlags[`${sectorId}:advised`]
+        && exposureFilterMult(state) >= 1) {
+      ae.sectorFlags[`${sectorId}:advised`] = true;
+      world.bus.emit('toast', { text: DEEP_FILTER_GATE.advisory, kind: 'warn', ttl: 7 });
+      recordContaminationKnowledge(state, sectorId, 'unfiltered hull inside a contaminated sector');
+    }
+
+    // AE-119 — domain threshold: at C>=0.8 the field itself reads different.
+    if (sectorC >= DOMAIN_THRESHOLD.minC && !ae.sectorFlags[`${sectorId}:domain`]) {
+      ae.sectorFlags[`${sectorId}:domain`] = true;
+      world.bus.emit('toast', { text: DOMAIN_THRESHOLD.toast, kind: 'warn', ttl: 7 });
+      recordContaminationKnowledge(state, sectorId, DOMAIN_THRESHOLD.knowledge);
+    }
+
+    // AE-117 — Wren's first field recognition, once per save.
+    if (sectorC >= WREN_RECOGNITION.minC && !ae.wrenRecognized) {
+      ae.wrenRecognized = true;
+      world.bus.emit('comms:log', { from: 'Wren (personal log)', text: WREN_RECOGNITION.text, kind: 'ecology' });
+    }
+
+    // AE-122 (G06): a fitted coherence meter reports the local field once a second.
+    if (fittedFlag(state, 'coherenceMeter')) {
+      ae._cohT = (ae._cohT || 0) + dt;
+      if (ae._cohT >= 1) {
+        ae._cohT = 0;
+        let meterSite = null;
+        for (const s of sites) {
+          const g = world._toGlobal({ x: s.center.x, z: s.center.z }, sectorId);
+          if (dist2(player.pos.x, player.pos.z, g.x, g.z)
+              < Math.pow((s.arrivalBands && s.arrivalBands.mid) || 800, 2)) { meterSite = s; break; }
+        }
+        if (meterSite) {
+          const r = siteRecord(state, meterSite.siteId);
+          world.bus.emit('ecology:coherence', {
+            siteId: meterSite.siteId,
+            coherent: r.relaySevered !== true && r.state !== 'severed',
+            contamination: sectorC,
+            t: now,
+          });
+        }
+      }
+    }
+
+    // AE-077/122 — biohazard lots breathe on the manifest: unsealed custody feeds hull
+    // exposure. A Quarantine Locker makes the hold airtight.
+    if (!fittedFlag(state, 'quarantineLocker')) {
+      const cargo = state.player && state.player.cargo;
+      if (cargo && cargo.items) {
+        let bioUnits = 0;
+        for (const cid of Object.keys(cargo.items)) {
+          if (commodityIsBiohazard(cid)) bioUnits += cargo.items[cid] || 0;
+        }
+        if (bioUnits > 0) {
+          ae.exposure = Math.min(1, (ae.exposure || 0) + bioUnits * 0.0004 * dt);
+        }
+      }
+    }
+  }
+
   for (const site of sites) {
     const rec = siteRecord(state, site.siteId);
     const siteGlobal = world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId);
@@ -554,12 +736,20 @@ export function tickAlienEcology(world, dt) {
         });
         refreshAlienLabels(world);
         recordContaminationKnowledge(state, sectorId, `${site.name}: active biological site`);
-        // Ecology mission offer — the site emits its hook when the player is committed.
-        if (!rec.offerEmitted && site.surveyOfferId) {
-          rec.offerEmitted = true;
-          const sector = (state.world.sectors && state.world.sectors[sectorId]) || null;
-          emitEcologyOffer(world, site, sector);
+        // AE-116/118 — deep-trace evidence: close read on a C4 site teaches the deep
+        // ladder rung (Vethari-scale architecture) once, on top of the generic reveal.
+        if (site.deepTraceEvidence && !rec.deepTraceDone) {
+          rec.deepTraceDone = true;
+          setRevelation(state, 3);
+          recordContaminationKnowledge(state, sectorId, `${site.name}: deep-trace architecture`);
+          world.bus.emit('comms:log', {
+            from: 'Instrument note', kind: 'ecology',
+            text: 'The ring structures under the growth are load-bearing and geometric — organized, machined, and old. DEEP-TRACE evidence logged.',
+          });
         }
+        // Ecology mission offers — the site emits each of its authored hooks once.
+        const sector = (state.world.sectors && state.world.sectors[sectorId]) || null;
+        emitEcologyOffer(world, site, sector);
       }
     }
 
@@ -574,6 +764,19 @@ export function tickAlienEcology(world, dt) {
       tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, sectorId);
     }
   }
+}
+
+// AE-123 (G11) — fitted Quiet Mask (mods.stealthBioMult) shrinks the hull's biological
+// signature: alert radii and stimulus accrual both scale down.
+function stealthMult(state) {
+  try {
+    let mult = 1;
+    for (const def of fittedModuleDefs(state)) {
+      const m = def && def.mods && def.mods.stealthBioMult;
+      if (Number.isFinite(m) && m > 0) mult = Math.min(mult, m);
+    }
+    return mult;
+  } catch (_) { return 1; }
 }
 
 // AE-076 — fitted filter stacks (mods.bioFilterMult on utility modules) throttle accrual.
@@ -624,7 +827,10 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   eco.suppressedT = 0;
 
   const awake = rec.state === 'awake' || rec.state === 'bloom';
-  const alertR = species.alertR * (awake ? 1.35 : 1) * (coherent ? 1 : species.coherenceLoss.alertMult);
+  // AE-123 (G11) — Quiet Mask: a damped hull presents a smaller signature; fauna notice
+  // you later and accrue stimulus slower.
+  const stealthM = stealthMult(state);
+  const alertR = species.alertR * stealthM * (awake ? 1.35 : 1) * (coherent ? 1 : species.coherenceLoss.alertMult);
   const px = player && player.pos ? player.pos.x : null;
   const pz = player && player.pos ? player.pos.z : null;
   const playerD = px != null ? Math.sqrt(dist2(e.pos.x, e.pos.z, px, pz)) : Infinity;
@@ -634,9 +840,9 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   const stim = eco.stim || (eco.stim = {});
   const playerSpeed = player && player.vel ? Math.sqrt(player.vel.x * player.vel.x + player.vel.z * player.vel.z) : 0;
   const sens = species.stimuli || {};
-  stim.heat = clampStim(stim.heat, (sens.heat || 0) * (playerSpeed > 40 && playerD < alertR * 1.4 ? 1 : 0) * dt);
-  stim.scan = clampStim(stim.scan, (sens.scan || 0) * (playerD < (species.alertR * 0.5) ? 1 : 0) * dt);
-  stim.mass = clampStim(stim.mass, (sens.mass || 0) * (playerD < alertR ? 1 : 0) * dt);
+  stim.heat = clampStim(stim.heat, (sens.heat || 0) * stealthM * (playerSpeed > 40 && playerD < alertR * 1.4 ? 1 : 0) * dt);
+  stim.scan = clampStim(stim.scan, (sens.scan || 0) * stealthM * (playerD < (species.alertR * stealthM * 0.5) ? 1 : 0) * dt);
+  stim.mass = clampStim(stim.mass, (sens.mass || 0) * stealthM * (playerD < alertR ? 1 : 0) * dt);
 
   // Furnace Maw heat rule: shadow at range until the target is heat-saturated, then charge.
   if (species.heatHunter && px != null) {
@@ -647,8 +853,22 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   // Relay broadcast: coherent fauna bias headings toward the shepherd's slow consensus turn.
   const shepherd = shepherds.find((s) => s.data.ecology.siteId === site.siteId);
 
+  // ── AE-124 (G10) lure override: a burning lure outranks the player plume for
+  // heat-sensitive drives until it burns out. ──
+  const aeL = ensureAlienEcologyState(state);
+  const lure = (aeL.lures || []).find((l) => l.sectorId === sectorId && l.until > now
+    && dist2(e.pos.x, e.pos.z, l.x, l.z) < Math.pow(alertR * 4, 2));
+  if (lure && ((sens.heat || 0) >= 0.6 || species.heatHunter)) {
+    eco.lureTarget = { x: lure.x, z: lure.z };
+    if (eco.driveState !== 'flee' && eco.driveState !== 'feed' && eco.driveState !== 'captured') {
+      setDrive(eco, 'investigate');
+    }
+  } else {
+    eco.lureTarget = null;
+  }
+
   // ── stimulus → drive resolution (doc 02 grammar) ──
-  const stimulated = playerD < alertR || (stim.heat || 0) > 0.8;
+  const stimulated = playerD < alertR || (stim.heat || 0) > 0.8 || !!eco.lureTarget;
   if (stimulated) eco.stimulusT = (eco.stimulusT || 0) + dt;
   else eco.stimulusT = 0;
   const reacted = coherent || (eco.stimulusT || 0) >= species.coherenceLoss.latency;
@@ -733,16 +953,20 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
       break;
     }
     case 'investigate': {
-      if (px == null) { setDrive(eco, species.drives.idle); break; }
-      const ang = Math.atan2(pz - e.pos.z, px - e.pos.x);
+      // AE-124: a live lure target replaces the player as the stimulus point.
+      const tx = eco.lureTarget ? eco.lureTarget.x : px;
+      const tz = eco.lureTarget ? eco.lureTarget.z : pz;
+      const td = eco.lureTarget ? Math.sqrt(dist2(e.pos.x, e.pos.z, tx, tz)) : playerD;
+      if (tx == null) { setDrive(eco, species.drives.idle); break; }
+      const ang = Math.atan2(tz - e.pos.z, tx - e.pos.x);
       // Approach until preferredR, then orbit.
-      if (playerD > species.preferredR * 1.15) {
-        targetX = px - Math.cos(ang) * species.preferredR;
-        targetZ = pz - Math.sin(ang) * species.preferredR;
+      if (td > species.preferredR * 1.15) {
+        targetX = tx - Math.cos(ang) * species.preferredR;
+        targetZ = tz - Math.sin(ang) * species.preferredR;
       } else {
         const orb = ang + dt * 0.5 * (eco.phase > Math.PI ? 1 : -1);
-        targetX = px + Math.cos(orb + Math.PI) * species.preferredR;
-        targetZ = pz + Math.sin(orb + Math.PI) * species.preferredR;
+        targetX = tx + Math.cos(orb + Math.PI) * species.preferredR;
+        targetZ = tz + Math.sin(orb + Math.PI) * species.preferredR;
       }
       break;
     }
@@ -774,14 +998,18 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     }
     case 'charge': {
       // Bristle ram / furnace maw: drive straight at the mass — for physics species the
-      // collision is the message; for kinematic ones we stop just short.
-      if (px == null) { setDrive(eco, species.drives.idle); break; }
-      const ang = Math.atan2(pz - e.pos.z, px - e.pos.x);
+      // collision is the message; for kinematic ones we stop just short. AE-124: a lure
+      // can substitute as the mass point.
+      const tx = eco.lureTarget ? eco.lureTarget.x : px;
+      const tz = eco.lureTarget ? eco.lureTarget.z : pz;
+      if (tx == null) { setDrive(eco, species.drives.idle); break; }
+      const ang = Math.atan2(tz - e.pos.z, tx - e.pos.x);
+      const cd = eco.lureTarget ? Math.sqrt(dist2(e.pos.x, e.pos.z, tx, tz)) : playerD;
       const stopAt = species.physicsBody ? 0 : species.radius + (player && player.radius || 10) + 4;
       const holdR = Math.max(stopAt, species.preferredR * 0.15);
-      if (playerD > holdR) {
-        targetX = px - Math.cos(ang) * holdR;
-        targetZ = pz - Math.sin(ang) * holdR;
+      if (cd > holdR) {
+        targetX = tx - Math.cos(ang) * holdR;
+        targetZ = tz - Math.sin(ang) * holdR;
         speed = (species.fleeSpeed || species.speed) * speedMult;
       } else {
         targetX = e.pos.x; targetZ = e.pos.z; speed = 0;
@@ -865,6 +1093,10 @@ export function serializeAlienEcologyState(state) {
     exposure: ae.exposure || 0,
     machineAccess: ae.machineAccess ? { ...ae.machineAccess } : {},
     mapKnowledge: ae.mapKnowledge ? JSON.parse(JSON.stringify(ae.mapKnowledge)) : {},
+    // AE-114/117/119/138 — field beats + custody ledger persist; lures do not.
+    sectorFlags: JSON.parse(JSON.stringify(ae.sectorFlags || {})),
+    wrenRecognized: ae.wrenRecognized === true,
+    factionConsequences: JSON.parse(JSON.stringify(ae.factionConsequences || {})),
   };
 }
 
@@ -896,8 +1128,18 @@ export function deserializeAlienEcologyState(state, data) {
         signals: [], // transient buffer — never persisted
         scanRevealed: !!rec.scanRevealed,
         offerEmitted: !!rec.offerEmitted,
+        offersEmitted: rec.offersEmitted && typeof rec.offersEmitted === 'object'
+          ? { ...rec.offersEmitted } : {},
+        deepTraceDone: !!rec.deepTraceDone,
       };
     }
   }
+  if (data.sectorFlags && typeof data.sectorFlags === 'object') {
+    ae.sectorFlags = JSON.parse(JSON.stringify(data.sectorFlags));
+  }
+  if (data.factionConsequences && typeof data.factionConsequences === 'object') {
+    ae.factionConsequences = JSON.parse(JSON.stringify(data.factionConsequences));
+  }
+  ae.wrenRecognized = data.wrenRecognized === true;
   return ae;
 }

@@ -428,6 +428,9 @@ const CORE_SECTORS = [
             + 'scan. No architect designed the Throne \u2014 survivors kept welding.',
         },
       },
+      // Alien Ecology deep pocket + machine causeway (AE-110..115).
+      { id: 'poi_sker_harvest_deep', type: 'anomaly', name: 'The Harvest Deep', pos: { x: -1500, z: -1600 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_sker_null_causeway', type: 'anomaly', name: 'Null Causeway', pos: { x: 600, z: 1400 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -530,6 +533,8 @@ const CORE_SECTORS = [
       { id: 'poi_ashfall_ossuary', type: 'anomaly', name: 'Ranked Frames', pos: { x: -2000, z: -1200 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
       { id: 'poi_ashfall_black_vault', type: 'anomaly', name: 'Black Vault', pos: { x: 2200, z: 2000 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
       { id: 'poi_ashfall_maintenance', type: 'anomaly', name: 'Active Maintenance', pos: { x: 600, z: -2200 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      // AE-113 — the drydock that became the organism.
+      { id: 'poi_ashfall_converted_yards', type: 'anomaly', name: 'Converted Yards', pos: { x: 800, z: 800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
     ],
   },
 ];

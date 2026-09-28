@@ -315,6 +315,31 @@ export const FAUNA_SPECIES = Object.freeze({
     drives: Object.freeze({ idle: 'drift', curious: 'drift', tense: 'flee', panic: 'flee' }),
     note: 'Slow carrier surrounded by juveniles, choosing stable thermal pockets. Killing it changes the local encounter table.',
   }),
+  // ── Phase 11 deep-region wave (AE-112) ────────────────────────────────────────────────
+  void_carrier: Object.freeze({
+    id: 'void_carrier',
+    name: 'Void Carrier',
+    signature: 'fauna',
+    role: 'carrier',
+    radius: 80,          // hull-scale body — the giant carrier of the deep regions
+    members: 1,
+    speed: 6, fleeSpeed: 10,
+    turnRate: 0.12,
+    alertR: 1400, threatenR: 0, preferredR: 600,
+    relayAffinity: 0.4,
+    migrates: true,
+    carrier: Object.freeze({
+      juveniles: 'veil_ray',
+      juvenileCount: 3,
+      bloom: 0.15,       // killing a giant carrier stains the whole seam
+      toast: "The carrier's sac wall gives way — a bloom big enough to change the sector reading.",
+    }),
+    stimuli: Object.freeze({ heat: 0.3, vibration: 0.4, scan: 0.2, mass: 0.2, weapon: 0.6, precursor_tone: 1.0, spore_density: 0.0 }),
+    anatomy: Object.freeze({ hostTissue: 'vessel-scale buoyant hull-mass', fungalTissue: 'stratified reproductive layers', relayTissue: true, cystLoad: 'extreme' }),
+    coherenceLoss: Object.freeze({ alertMult: 0.9, speedMult: 0.8, latency: 12.0 }),
+    drives: Object.freeze({ idle: 'migrate', curious: 'migrate', tense: 'migrate', panic: 'drift' }),
+    note: 'A hull-scale migratory carrier that does not notice you at all. Its route predates the charts.',
+  }),
   archive_crab: Object.freeze({
     id: 'archive_crab',
     name: 'Archive Crab',
@@ -356,6 +381,7 @@ export const FAUNA_TAXONOMY = Object.freeze({
   wake_eel: 'tax_filamentous_contamination',
   spindle_mother: 'tax_filamentous_contamination',
   archive_crab: 'tax_filamentous_contamination',
+  void_carrier: 'tax_filamentous_contamination',
 });
 
 // AE-053 — cosmetic microfauna aggregation: very small organisms exist only as dressing,

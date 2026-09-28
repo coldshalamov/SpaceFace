@@ -299,6 +299,42 @@ export const ZONE_ASHFALL_MAINTENANCE = Object.freeze({
   threat: 0,
 });
 
+/** The Converted Yards — a drydock whose superstructure is the organism now (AE-113). */
+export const ZONE_ASHFALL_CONVERTED_YARDS = Object.freeze({
+  id: 'zone_ashfall_converted_yards',
+  name: 'The Converted Yards',
+  type: 'derelict_field',
+  factionId: 'faction_understory',
+  reason: 'A drydock complex where the structure IS the organism — the yard cranes flex on a cycle.',
+  center: Object.freeze({ x: 800, z: 800 }),
+  radius: 700,
+  threat: 3,
+});
+
+/** The Harvest Deep — the C4 networked pocket inside Sker (AE-110/111/116/118). */
+export const ZONE_SKER_HARVEST_DEEP = Object.freeze({
+  id: 'zone_sker_harvest_deep',
+  name: 'The Harvest Deep',
+  type: 'anomaly_deep',
+  factionId: 'faction_understory',
+  reason: 'A density column of stacked returns with no transponders. The whole pocket moves together.',
+  center: Object.freeze({ x: -1500, z: -1600 }),
+  radius: 900,
+  threat: 3,
+});
+
+/** Null Causeway — a machine-milled sterile lane through the Haven field (AE-115). */
+export const ZONE_SKER_NULL_CAUSEWAY = Object.freeze({
+  id: 'zone_sker_null_causeway',
+  name: 'Null Causeway',
+  type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'A sterile lane cut through the dense pocket — machine work, older than the map.',
+  center: Object.freeze({ x: 600, z: 1400 }),
+  radius: 800,
+  threat: 0,
+});
+
 /**
  * sectorId -> additional authored zone records, appended to the per-sector tables.
  * Keyed by sector so the merge stays a pure append and can never shadow an existing sector's list.
@@ -316,7 +352,10 @@ export const AUTHORED_PLACE_ZONES = Object.freeze({
   ]),
   sector_ashfall_reach: Object.freeze([
     ZONE_ASHFALL_BREATHING_DOCK, ZONE_ASHFALL_GATE_UNDERLAYER, ZONE_ASHFALL_OSSUARY,
-    ZONE_ASHFALL_BLACK_VAULT, ZONE_ASHFALL_MAINTENANCE,
+    ZONE_ASHFALL_BLACK_VAULT, ZONE_ASHFALL_MAINTENANCE, ZONE_ASHFALL_CONVERTED_YARDS,
+  ]),
+  sector_sker_haven: Object.freeze([
+    ZONE_SKER_HARVEST_DEEP, ZONE_SKER_NULL_CAUSEWAY,
   ]),
 });
 

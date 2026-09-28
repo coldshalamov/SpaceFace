@@ -507,6 +507,8 @@ const BUILDERS = {
   wake_eel: (c) => buildWakeEel(c),
   spindle_mother: (c) => buildSpindleMother(c),
   archive_crab: (c) => buildArchiveCrab(c),
+  // AE-112: hull-scale carrier — the spindle-mother body plan at vessel scale.
+  void_carrier: (c) => { const m = buildSpindleMother(c); m.scale.setScalar(3.6); return m; },
 };
 
 export function buildFaunaMesh(entity) {

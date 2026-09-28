@@ -588,6 +588,11 @@ export const world = {
     // against live sites teach the taxonomy ladder.
     bus.on('sectorsim:impulse', (p) => handleAlienEcologyEvent(this, 'sectorsim:impulse', p));
     bus.on('scan:completed', (p) => handleAlienEcologyEvent(this, 'scan:completed', p));
+    // AE-124/125/138/139 + AE-167: lures, dock purge, custody outcomes, and cradle capture.
+    bus.on('alienEcology:lureDropped', (p) => handleAlienEcologyEvent(this, 'alienEcology:lureDropped', p));
+    bus.on('dock:docked', (p) => handleAlienEcologyEvent(this, 'dock:docked', p));
+    bus.on('tether:released', (p) => handleAlienEcologyEvent(this, 'tether:released', p));
+    bus.on('ecology:factionOutcome', (p) => handleAlienEcologyEvent(this, 'ecology:factionOutcome', p));
     bus.on('pickup:collected', (p) => {
       // cargo's listener (registered earlier) has already written the acceptance receipt, so
       // the objective only fires on a committed, actually-accepted amount of THIS site's pod.
