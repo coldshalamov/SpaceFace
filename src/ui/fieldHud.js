@@ -4,6 +4,9 @@
 // number, the state word, and denial REASONS (the world cannot say *why* a deploy was refused).
 // Everything positional/directional/boundary lives in the world (the continuous flow + predictor).
 // One socket, one readout at a time (one-voice discipline): denial > active field > cooldown.
+// The readout shares the bottom-center lane with planetHud/massSeedHud through the contract in
+// src/ui/hudLayout.js: a cooldown voice yields its seat (moves up) and stays silent while a
+// load-bearing pill occupies the lane.
 //
 // Reads only: state.fields (active / cooldowns / lastDenial), state.simTime. Writes only its own
 // DOM subtree. No sim state. Fully guarded headless. Never touches hud.js/targetPanel/styles/*
@@ -20,10 +23,16 @@ import {
   cinderSluicePhase,
   pointInsideCinderSluice,
 } from '../data/environmentalMachinery.js';
+import {
+  FIELD_LANE_BASE,
+  LANE_PRIORITY,
+  claimBottomLaneSeat,
+  releaseBottomLaneClaim,
+} from './hudLayout.js';
 
 export const FIELD_HUD_CSS = `
 .sf-field-pill {
-  position: absolute; left: 50%; bottom: 146px; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: ${FIELD_LANE_BASE}px; transform: translateX(-50%);
   display: none; align-items: center; gap: var(--dp-gap, 8px); padding: 5px 14px 6px;
   font-family: var(--dp-face-etch, var(--hud-data, system-ui));
   font-size: var(--dp-fs-etch, 12px); font-weight: 700; line-height: 1.2;
@@ -52,6 +61,15 @@ export const FIELD_HUD_CSS = `
 
 const KIND_LABEL = { well: 'WELL', repulsor: 'REPULSOR', cone: 'CONE' };
 
+// Lane voice for the shared bottom-center contract: the readout's state class maps onto the lane
+// priorities (denial > active > environmental > cooldown) in src/ui/hudLayout.js.
+function fieldLanePriority(cls) {
+  if (cls === 'field-denied') return LANE_PRIORITY.denial;
+  if (cls === 'field-cooldown') return LANE_PRIORITY.cooldown;
+  if (cls.startsWith('field-current')) return LANE_PRIORITY.environmental;
+  return LANE_PRIORITY.active; // '' — the cone / deployed-field voices
+}
+
 export const fieldHud = {
   id: 'fieldHud',
   name: 'fieldHud',
@@ -63,13 +81,16 @@ export const fieldHud = {
     this._lastText = '';
     this._lastClass = '';
     this._visible = false;
+    this._laneSeat = '';
     this._cinderPhaseOut = {};
   },
 
   destroy() {
     if (this._dom && this._dom.root && this._dom.root.parentNode) this._dom.root.parentNode.removeChild(this._dom.root);
+    releaseBottomLaneClaim('field');
     this._dom = null;
     this._visible = false;
+    this._laneSeat = '';
   },
 
   update(dt, state) {
@@ -81,7 +102,13 @@ export const fieldHud = {
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     const environmental = this._resolveEnvironmental(state, now);
     const { text, cls } = this._resolve(f, now, environmental);
+    if (!text) { this._hide(dom); return; }
+    // Lane contract: claim this voice's seat for the frame; a cooldown voice stays silent while
+    // a load-bearing pill (planet band, current clock) occupies the shared bottom-center lane.
+    const seat = claimBottomLaneSeat('field', fieldLanePriority(cls), FIELD_LANE_BASE, now);
+    if (!seat.visible) { this._hide(dom); return; }
     this._apply(dom, text, cls);
+    this._applyLaneSeat(dom.pill, seat.bottom);
   },
 
   // One-voice resolution: a fresh denial wins for a beat, then an occupied environmental timing
@@ -183,8 +210,21 @@ export const fieldHud = {
     }
   },
 
+  // Write-on-change seat: solo (or lane-leading) pills keep the sheet's authored offset — the
+  // inline style stays empty, so stable frames write nothing.
+  _applyLaneSeat(pill, bottom) {
+    const next = bottom === FIELD_LANE_BASE ? '' : `${bottom}px`;
+    if (next === this._laneSeat) return;
+    this._laneSeat = next;
+    pill.style.bottom = next;
+  },
+
   _hide(dom) {
-    if (dom && this._visible) dom.pill.style.display = 'none';
+    releaseBottomLaneClaim('field');
+    if (dom && this._visible) {
+      dom.pill.style.display = 'none';
+      if (this._laneSeat) { dom.pill.style.bottom = ''; this._laneSeat = ''; }
+    }
     this._visible = false;
     this._lastText = '';
   },
@@ -215,6 +255,7 @@ export const fieldHud = {
     this._lastText = '';
     this._lastClass = '';
     this._visible = false;
+    this._laneSeat = '';
     return this._dom;
   },
 };

@@ -9,14 +9,25 @@
 //
 // Reads only: state.planet, state.settings. Writes only: its own DOM subtree. Headless-guarded.
 //
+// The band readout shares the bottom-center lane with fieldHud/massSeedHud through the contract
+// in src/ui/hudLayout.js: it keeps its authored seat when co-visible (active voice, planet tie
+// rank leads) and never hides for a lower voice.
+//
 // INST-01: the skim tell is an instrument on the deck, not a cyan web pill. The injected sheet
 // paints only with the tokens that already live on #hud / :root (deckplate register,
 // src/ui/deckplate/): the flight glass face, the etched legend voice, and the warm lamp as the
 // one accent (storm is the lamp lit; reentry is the lamp driven red; the heat reading stays ink).
 
+import {
+  PLANET_LANE_BASE,
+  LANE_PRIORITY,
+  claimBottomLaneSeat,
+  releaseBottomLaneClaim,
+} from './hudLayout.js';
+
 export const PLANET_HUD_CSS = `
 .sf-planet-pill {
-  position: absolute; left: 50%; bottom: 142px; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: ${PLANET_LANE_BASE}px; transform: translateX(-50%);
   display: none; align-items: center; gap: var(--dp-gap, 8px); padding: 5px 14px 6px;
   font-family: var(--dp-face-etch, var(--hud-data, system-ui));
   font-size: var(--dp-fs-etch, 12px); font-weight: 700; line-height: 1.2;
@@ -61,14 +72,17 @@ export const planetHud = {
     this._lastText = '';
     this._lastClass = '';
     this._visible = false;
+    this._laneSeat = '';
   },
 
   destroy() {
     if (this._dom && this._dom.root && this._dom.root.parentNode) {
       this._dom.root.parentNode.removeChild(this._dom.root);
     }
+    releaseBottomLaneClaim('planet');
     this._dom = null;
     this._visible = false;
+    this._laneSeat = '';
   },
 
   update(dt, state) {
@@ -98,6 +112,12 @@ export const planetHud = {
       text = `HULL COOLING · HEAT ${heatPct}%`;
     }
 
+    // Lane contract: the band readout claims the shared bottom-center lane as an active voice
+    // (it never yields its seat to a lower voice and never hides for one).
+    const seat = claimBottomLaneSeat('planet', LANE_PRIORITY.active, PLANET_LANE_BASE,
+      Number.isFinite(state.simTime) ? state.simTime : 0);
+    if (!seat.visible) { this._hide(); return; }
+
     if (text !== this._lastText) {
       this._lastText = text;
       dom.pillHeat.textContent = '';
@@ -113,12 +133,26 @@ export const planetHud = {
       dom.pill.style.display = 'flex';
       this._visible = true;
     }
+    this._applyLaneSeat(dom.pill, seat.bottom);
+  },
+
+  // Write-on-change seat: solo (or lane-leading) pills keep the sheet's authored offset — the
+  // inline style stays empty, so stable frames write nothing.
+  _applyLaneSeat(pill, bottom) {
+    const next = bottom === PLANET_LANE_BASE ? '' : `${bottom}px`;
+    if (next === this._laneSeat) return;
+    this._laneSeat = next;
+    pill.style.bottom = next;
   },
 
   _hide() {
+    releaseBottomLaneClaim('planet');
     const dom = this._dom;
     if (!dom) return;
-    if (this._visible) dom.pill.style.display = 'none';
+    if (this._visible) {
+      dom.pill.style.display = 'none';
+      if (this._laneSeat) { dom.pill.style.bottom = ''; this._laneSeat = ''; }
+    }
     this._visible = false;
     this._lastText = '';
   },
@@ -152,6 +186,7 @@ export const planetHud = {
     this._lastText = '';
     this._lastClass = '';
     this._visible = false;
+    this._laneSeat = '';
     return this._dom;
   },
 };
