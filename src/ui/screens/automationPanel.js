@@ -417,6 +417,19 @@ const CSS = `
   border: 1px solid var(--panel-edge); overflow: hidden; display: inline-block; vertical-align: middle; }
 #sf-automation .au-minibar > i { display: block; height: 100%; background: linear-gradient(90deg, #10b981, #34d399); }
 #sf-automation .au-locked { font-size: 13px; color: var(--warn); }
+html body #screens #sf-automation.au-orrery .au-shop .nm > .au-locked--mark {
+  display: inline-block; width: 11px; height: 11px; margin-left: 9px; vertical-align: -1px;
+  /* the unlit lamp: a 1px bone outline of the cut shape, no dark fill, no words — the dotted
+     verb beside it already names the research that unlocks the tier. */
+  background-image:
+    linear-gradient(to bottom right, transparent 42%, rgb(var(--au-bone) / .5) 42%, rgb(var(--au-bone) / .5) 58%, transparent 58%),
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)),
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)),
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)),
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5));
+  background-size: 5px 5px, calc(100% - 5px) 1px, 1px 100%, 100% 1px, 1px calc(100% - 5px);
+  background-position: right top, left top, left top, left bottom, right bottom;
+  background-repeat: no-repeat; }
 @media (max-width: 760px) {
   #sf-automation .au-command { grid-template-columns: 1fr; }
   #sf-automation .au-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -485,6 +498,10 @@ html body #screens #sf-automation.au-orrery .au-gauge__fill {
   fill: none; stroke: rgb(var(--au-bone) / .95); stroke-width: 3; stroke-linecap: butt; }
 html body #screens #sf-automation.au-orrery .au-gauge__bead {
   fill: rgb(var(--au-bone)); stroke: rgb(var(--au-bone) / .28); stroke-width: 4; }
+html body #screens #sf-automation.au-orrery .au-gauge__tick {
+  stroke: rgb(var(--au-bone) / .45); stroke-width: 1; }
+html body #screens #sf-automation.au-orrery .au-gauge__tick--ghost {
+  stroke: rgb(var(--au-bone) / .55); stroke-width: 2; }
 html body #screens #sf-automation.au-orrery .au-meter { display: flex; flex-direction: column; gap: 1px; min-width: 128px; }
 html body #screens #sf-automation.au-orrery .au-income .lbl {
   font-size: 12px; letter-spacing: .16em; color: rgb(var(--au-bone) / .55); }
@@ -503,11 +520,30 @@ html body #screens #sf-automation.au-orrery .au-node {
   flex: 1 1 0; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 2px 0; }
 html body #screens #sf-automation.au-orrery .au-node__ring {
   width: 22px; height: 22px; flex: none; border-radius: 50%;
-  border: 2px solid rgb(var(--au-bone) / .75); }
+  border: 2px solid rgb(var(--au-bone) / .75);
+  padding: 0; background: transparent; }
 html body #screens #sf-automation.au-orrery .au-node[data-live="1"] .au-node__ring {
   border-color: rgb(var(--au-bone)); box-shadow: 0 0 0 3px rgb(var(--au-bone) / .14); }
 html body #screens #sf-automation.au-orrery .au-node--purse .au-node__ring {
-  border-radius: 0; transform: rotate(45deg) scale(.72); border-color: rgb(var(--au-bone)); }
+  border-radius: 0; transform: rotate(45deg) scale(.72); border-color: rgb(var(--au-bone)); cursor: default; }
+/* r2 F3: rings are throttles — the Hand rides the hovered or conducted ring. */
+html body #screens #sf-automation.au-orrery button.au-node__ring { cursor: pointer; }
+html body #screens #sf-automation.au-orrery button.au-node__ring:hover,
+html body #screens #sf-automation.au-orrery .au-node.is-conducted .au-node__ring {
+  border-color: var(--accent); box-shadow: 0 0 10px 2px var(--accent); }
+html body #screens #sf-automation.au-orrery button.au-node__ring:focus-visible {
+  outline: 2px solid rgb(var(--au-bone)); outline-offset: 2px; }
+/* One Hand, always: while a ring holds it (conducted or hovered) the rail bead rests in bone. */
+html body #screens #sf-automation.au-orrery.is-conducting .au-tab.active::after,
+html body #screens #sf-automation.au-orrery .au-head:has(.au-node__ring:hover) .au-tab.active::after {
+  background: rgb(var(--au-bone) / .7); box-shadow: none; }
+html body #screens #sf-automation.au-orrery.is-conducting .au-tab.active::before,
+html body #screens #sf-automation.au-orrery .au-head:has(.au-node__ring:hover) .au-tab.active::before {
+  background: rgb(var(--au-bone)); box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-flow__cap {
+  align-self: center; flex: none; white-space: nowrap; margin-right: 12px;
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .55); }
 html body #screens #sf-automation.au-orrery .au-node__t { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
 html body #screens #sf-automation.au-orrery .au-node__t b {
   font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600;
@@ -520,15 +556,26 @@ html body #screens #sf-automation.au-orrery .au-node__beam {
   background:
     linear-gradient(rgb(var(--au-bone) / .7), rgb(var(--au-bone) / .7)) center / 100% 1px no-repeat,
     linear-gradient(rgb(var(--au-bone) / .18), rgb(var(--au-bone) / .18)) center / 100% 5px no-repeat; }
-html body #screens #sf-automation.au-orrery .au-node[data-live="0"] .au-node__beam { opacity: .45; }
 html body #screens #sf-automation.au-orrery .au-node__beam i {
-  position: absolute; top: 50%; left: 0; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%;
+  position: absolute; top: 50%; left: 0; width: 4px; height: 4px; border-radius: 50%;
+  transform: translate(-50%, -50%);
   background: rgb(var(--au-ice)); box-shadow: 0 0 6px 2px rgb(var(--au-ice) / .55);
   animation: au-pulse 2.8s linear infinite; }
-html body #screens #sf-automation.au-orrery .au-node[data-live="0"] .au-node__beam i { animation: none; opacity: .35; }
+html body #screens #sf-automation.au-orrery .au-node[data-live="0"] .au-node__beam i { display: none; }
+/* r2 F2: the parked bead sits mid-beam at rest (stills show it), sized by cr/min; the dormant
+   0-state keeps a hollow ghost bead so the machine reads alive-but-idle, not dead. */
+html body #screens #sf-automation.au-orrery .au-node__beam b {
+  position: absolute; top: 50%; left: 46%; width: 4px; height: 4px; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgb(var(--au-ice)); box-shadow: 0 0 6px 2px rgb(var(--au-ice) / .55); }
+html body #screens #sf-automation.au-orrery .au-node[data-live="0"] .au-node__beam b {
+  width: 6px; height: 6px; background: transparent; box-shadow: none;
+  border: 1px solid rgb(var(--au-ice) / .6); }
 @keyframes au-pulse { from { left: 4%; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } to { left: 92%; opacity: 0; } }
 html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-digit.is-new { animation: none; }
-html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-node__beam i { animation: none; left: 46%; opacity: 1; }
+/* r2 F9: under reduced motion the traveller rests and the parked bead stays mid-beam — pulses
+   park, they never vanish, and every numeral beside them is untouched. */
+html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-node__beam i { display: none; }
 /* O4 (A3): tabs are stations on an arc rail — bone dotted words, ticks to the spine,
    and the ONE amber Hand (arm + bead) riding the chosen station. */
 html body #screens #sf-automation.au-orrery .au-tabs {
@@ -585,9 +632,11 @@ html body #screens #sf-automation.au-orrery .au-route__to {
 html body #screens #sf-automation.au-orrery .au-route__to { color: rgb(var(--au-bone)); }
 html body #screens #sf-automation.au-orrery .au-route__beam {
   position: relative; flex: 1; height: 12px; min-width: 40px;
+  /* r2 F4: 4px under-stroke at bone .38 (holds >=2:1 on glass) with the 1px 11:1 core on
+     top — bloom geometry, no live filters. */
   background:
     linear-gradient(rgb(var(--au-bone) / .8), rgb(var(--au-bone) / .8)) center / 100% 1px no-repeat,
-    linear-gradient(rgb(var(--au-bone) / .2), rgb(var(--au-bone) / .2)) center / 100% 5px no-repeat; }
+    linear-gradient(rgb(var(--au-bone) / .38), rgb(var(--au-bone) / .38)) center / 100% 4px no-repeat; }
 html body #screens #sf-automation.au-orrery .au-route__beam i {
   position: absolute; top: 50%; left: 0; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%;
   background: rgb(var(--au-ice)); box-shadow: 0 0 7px 2px rgb(var(--au-ice) / .6);
@@ -606,12 +655,33 @@ html body #screens #sf-automation.au-orrery .au-card::before {
 html body #screens #sf-automation.au-orrery .au-card:hover::before,
 html body #screens #sf-automation.au-orrery .au-card:focus-within::before { background: rgb(var(--au-bone) / .85); }
 html body #screens #sf-automation.au-orrery .au-shop { padding: 7px 0 7px 16px; align-items: center; }
+/* r2 F5: fixed columns for vertical scan — a name column plus a per-ladder stat grid, still one
+   line per rung so the 1280 fold does not move. */
 html body #screens #sf-automation.au-orrery .au-shop .grow {
-  display: flex; align-items: baseline; gap: 8px 18px; flex-wrap: wrap; }
-html body #screens #sf-automation.au-orrery .au-shop .nm { font-size: 14px; white-space: nowrap; }
-html body #screens #sf-automation.au-orrery .au-shop .meta { margin-top: 0; font-size: 12px; gap: 12px; }
+  display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 2px 16px; align-items: baseline; }
+html body #screens #sf-automation.au-orrery .au-shop--drones .grow { grid-template-columns: 92px minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery :is(.au-shop--traders, .au-shop--outposts) .grow { grid-template-columns: 150px minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery .au-shop .nm {
+  grid-column: 1; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html body #screens #sf-automation.au-orrery .au-shop .meta {
+  grid-column: 2; margin-top: 0; min-width: 0; font-size: 12px; display: grid; grid-auto-flow: column;
+  justify-content: stretch; gap: 10px; }
+html body #screens #sf-automation.au-orrery .au-shop .meta > span {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Fixed tracks sized to measured content; the last column is fluid so the grid can never run
+   under the verbs — column starts still align across rungs. */
+html body #screens #sf-automation.au-orrery .au-shop--drones .meta {
+  grid-template-columns: 10ch 20ch 10ch 9ch minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery .au-shop--traders .meta {
+  grid-template-columns: 10ch 10ch 8ch 10ch minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery .au-shop--outposts .meta {
+  grid-auto-flow: row; grid-template-columns: 9ch 13ch 10ch minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery .au-shop--outposts .meta > span:first-child {
+  grid-column: 1 / -1; }
+html body #screens #sf-automation.au-orrery .au-shop--fleet .meta {
+  grid-template-columns: 24ch max-content; }
 html body #screens #sf-automation.au-orrery .au-shop .au-note {
-  display: none; flex-basis: 100%; margin-top: 2px; font-size: 12px; }
+  display: none; grid-column: 1 / -1; margin-top: 2px; font-size: 12px; }
 html body #screens #sf-automation.au-orrery .au-shop:hover .au-note,
 html body #screens #sf-automation.au-orrery .au-shop:focus-within .au-note { display: block; }
 html body #screens #sf-automation.au-orrery .au-empty {
@@ -636,16 +706,11 @@ html body #screens #sf-automation.au-orrery .au-card button:hover:not(:disabled)
   text-decoration-style: solid; text-decoration-color: rgb(var(--au-bone) / .85); }
 html body #screens #sf-automation.au-orrery .au-card button:active:not(:disabled) { translate: none; }
 html body #screens #sf-automation.au-orrery .au-card button:disabled {
-  border: 0; box-shadow: none;
-  color: rgb(var(--au-bone) / .6); opacity: 1; filter: none; cursor: default; text-decoration: none;
-  padding: 6px 12px;
-  /* the cut shape drawn as geometry: four sides plus the diagonal that closes the corner */
-  background:
-    linear-gradient(to bottom right, transparent 46%, rgb(var(--au-bone) / .5) 46%, rgb(var(--au-bone) / .5) 54%, transparent 54%) right top / 10px 10px no-repeat,
-    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)) left top / calc(100% - 10px) 1px no-repeat,
-    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)) left top / 1px 100% no-repeat,
-    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)) left bottom / 100% 1px no-repeat,
-    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)) right bottom / 1px calc(100% - 10px) no-repeat; }
+  border: 0; box-shadow: none; background: none;
+  color: rgb(var(--au-bone) / .55); opacity: 1; filter: none; cursor: default;
+  padding: 4px 2px;
+  text-decoration: underline dotted rgb(var(--au-bone) / .4); text-decoration-thickness: 1px;
+  text-underline-offset: 5px; }
 /* O7c: amber audit — status ambers go bone (red keeps threat only); deployed instruments flat. */
 html body #screens #sf-automation.au-orrery :is(.au-pill, .au-program-badge) {
   border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0;
@@ -689,6 +754,7 @@ export const automationScreen = {
   _tab: 'drones',
   _els: null,
   _bodySig: '',
+  _conduct: null,
 
   mount(rootEl, ctx) {
     injectStyle();
@@ -712,6 +778,13 @@ export const automationScreen = {
             <path class="au-gauge__track" d="M 6 34 A 26 26 0 0 1 58 34" pathLength="100" />
             <path class="au-gauge__ghost" data-gaugeghost d="M 6 34 A 26 26 0 0 1 58 34" pathLength="100" />
             <path class="au-gauge__fill" data-gaugefill d="M 6 34 A 26 26 0 0 1 58 34" pathLength="100" />
+            <g class="au-gauge__ticks">
+              <line class="au-gauge__tick" x1="11" y1="18.7" x2="13.8" y2="20.8" />
+              <line class="au-gauge__tick" x1="24" y1="9.3" x2="25.1" y2="12.6" />
+              <line class="au-gauge__tick" x1="40" y1="9.3" x2="39" y2="12.6" />
+              <line class="au-gauge__tick" x1="53" y1="18.7" x2="50.2" y2="20.8" />
+              <line class="au-gauge__tick au-gauge__tick--ghost" x1="58" y1="34" x2="53" y2="34" />
+            </g>
             <circle class="au-gauge__bead" data-gaugebead r="3" cx="6" cy="34" />
           </svg>
           <div class="au-meter">
@@ -742,6 +815,13 @@ export const automationScreen = {
     rootEl.querySelector('[data-tabs]').addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-tab]');
       if (btn && btn.dataset.tab !== this._tab) { this._tab = btn.dataset.tab; this.refresh(this._ctx, { forceBody: true }); }
+    });
+
+    // r2 F3: the flow-strip rings are throttles — conducting moves the Hand there.
+    const flow = rootEl.querySelector('[data-flow]');
+    if (flow) flow.addEventListener('click', (e) => {
+      const ring = e.target.closest('button[data-conduct]');
+      if (ring) this._onAction('conduct', ring.dataset.conduct, null);
     });
 
     const closeBtn = rootEl.querySelector('[data-close]');
@@ -862,16 +942,17 @@ export const automationScreen = {
     if (!el) return;
     if (!el.dataset.built) {
       el.dataset.built = '1';
-      el.setAttribute('role', 'img');
-      el.innerHTML = ['drones', 'traders', 'outposts', 'fleet'].map((kind) => `
+      el.setAttribute('role', 'group');
+      el.innerHTML = `<span class="au-flow__cap">Conduct the machine</span>`
+        + ['drones', 'traders', 'outposts', 'fleet'].map((kind) => `
         <div class="au-node" data-node="${kind}">
-          <span class="au-node__ring" aria-hidden="true"></span>
+          <button type="button" class="au-node__ring" data-conduct="${kind}" aria-pressed="false" aria-label="Conduct ${kind} — take the throttle"></button>
           <span class="au-node__t"><b data-n>0</b><i>${kind}</i></span>
-          <span class="au-node__beam" aria-hidden="true"><i data-p></i></span>
+          <span class="au-node__beam" aria-hidden="true"><i data-p></i><b data-park></b></span>
         </div>`).join('') + `
         <div class="au-node au-node--purse" data-node="purse">
           <span class="au-node__ring" aria-hidden="true"></span>
-          <span class="au-node__t"><b data-n-total>0</b><i>cr/min</i></span>
+          <span class="au-node__t"><b data-n-total>0</b><i data-n-sub>cr/min</i></span>
         </div>`;
     }
     const st = this._ctx.state;
@@ -891,20 +972,40 @@ export const automationScreen = {
       if (!node) continue;
       const n = node.querySelector('[data-n]');
       if (n) n.textContent = String(counts[kind]);
+      const share = cap > 0 ? Math.max(0, Math.min(1, classRate[kind] / cap)) : 0;
+      const live = counts[kind] > 0 && classRate[kind] > 0;
+      node.dataset.live = live ? '1' : '0';
+      const beadPx = `${(3 + share * 4).toFixed(1)}px`;
       const pulse = node.querySelector('[data-p]');
       if (pulse) {
-        const share = cap > 0 ? Math.max(0, Math.min(1, classRate[kind] / cap)) : 0;
-        const live = counts[kind] > 0 && classRate[kind] > 0;
-        pulse.style.width = `${(3 + share * 4).toFixed(1)}px`;
-        pulse.style.height = `${(3 + share * 4).toFixed(1)}px`;
+        pulse.style.width = beadPx;
+        pulse.style.height = beadPx;
         pulse.style.animationDuration = `${(2.8 - share * 1.6).toFixed(2)}s`;
-        node.dataset.live = live ? '1' : '0';
       }
+      // The parked bead carries the same size law; dormant nodes clear it so the hollow
+      // ghost bead from the stylesheet shows instead.
+      const park = node.querySelector('[data-park]');
+      if (park) {
+        park.style.width = live ? beadPx : '';
+        park.style.height = live ? beadPx : '';
+      }
+      node.classList.toggle('is-conducted', this._conduct === kind);
+      const ring = node.querySelector('[data-conduct]');
+      if (ring) ring.setAttribute('aria-pressed', String(this._conduct === kind));
     }
+    if (this._root) this._root.classList.toggle('is-conducting', !!this._conduct);
     const total = el.querySelector('[data-n-total]');
     if (total) total.textContent = fmtCr(Math.max(0, rate));
-    el.setAttribute('aria-label', `Asset flow: ${counts.drones} drones, ${counts.traders} traders, `
-      + `${counts.outposts} outposts, ${counts.fleet} escorts; total ${Math.round(Math.max(0, rate))} credits per minute.`);
+    const sub = el.querySelector('[data-n-sub]');
+    if (sub) {
+      sub.textContent = this._conduct && classRate[this._conduct] != null
+        ? `${this._conduct} ${fmtCr(Math.max(0, classRate[this._conduct]))}/min`
+        : 'cr/min';
+    }
+    el.setAttribute('aria-label', `Conduct the machine — asset flow: ${counts.drones} drones, `
+      + `${counts.traders} traders, ${counts.outposts} outposts, ${counts.fleet} escorts; total `
+      + `${Math.round(Math.max(0, rate))} credits per minute`
+      + (this._conduct ? `; conducting ${this._conduct}.` : '.'));
   },
 
   _syncTabs() {
@@ -1135,10 +1236,10 @@ export const automationScreen = {
       const locked = def.tier > tier;
       const purchase = describeAutomationPurchase('drone', def, this._ctx.state);
       const card = document.createElement('div');
-      card.className = 'au-card au-shop';
+      card.className = 'au-card au-shop au-shop--drones';
       card.innerHTML = `
         <div class="grow">
-          <div class="nm">${prettyId(def.id)} ${locked ? `<span class="au-locked">requires drone tier ${def.tier}</span>` : ''}</div>
+          <div class="nm">${prettyId(def.id)}${locked ? `<span class="au-locked au-locked--mark" title="Locked — requires drone tier ${def.tier}" aria-hidden="true"></span>` : ''}</div>
           <div class="meta">
             <span>mine ${def.mineRate}/s</span>
             <span>yield ~${fmtCr(estDroneRate(def))}/min gross</span>
@@ -1148,6 +1249,7 @@ export const automationScreen = {
           </div>
           ${locked ? `<div class="au-note">Research logistics upgrades to unlock this heavier drone tier.</div>` : `<div class="au-note">Best first passive asset: low upkeep, visible in the field, and reversible on recall.</div>`}
         </div>
+        <button class="au-throttle" data-act="conduct" data-ref="drones" data-kind="drone" title="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the drones line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="buyDrone" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1207,7 +1309,7 @@ export const automationScreen = {
     for (const def of TRADERS) {
       const purchase = describeAutomationPurchase('trader', def, this._ctx.state);
       const card = document.createElement('div');
-      card.className = 'au-card au-shop';
+      card.className = 'au-card au-shop au-shop--traders';
       card.innerHTML = `
         <div class="grow">
           <div class="nm">${prettyId(def.id)}</div>
@@ -1220,6 +1322,7 @@ export const automationScreen = {
           </div>
           <div class="au-note">${hireUnlocked ? 'Auto-picks a profitable route now; use Route later to reset heat and find a fresh spread.' : 'Unlocks after Drone Swarm, when the player has seen enough logistics to manage risk.'}</div>
         </div>
+        <button class="au-throttle" data-act="conduct" data-ref="traders" data-kind="trader" title="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the traders line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="hireTrader" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1296,7 +1399,7 @@ export const automationScreen = {
     for (const def of OUTPOSTS) {
       const purchase = describeAutomationPurchase('outpost', def, this._ctx.state);
       const card = document.createElement('div');
-      card.className = 'au-card au-shop';
+      card.className = 'au-card au-shop au-shop--outposts';
       card.innerHTML = `
         <div class="grow">
           <div class="nm">${prettyId(def.id)}</div>
@@ -1309,6 +1412,7 @@ export const automationScreen = {
           </div>
           <div class="au-note">${buildUnlocked ? 'High upkeep, high commitment: best after you can protect the sector or fund losses.' : 'This is the empire layer; reach it after traders prove the route economy.'}</div>
         </div>
+        <button class="au-throttle" data-act="conduct" data-ref="outposts" data-kind="outpost" title="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the outposts line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="buildOutpost" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1360,13 +1464,14 @@ export const automationScreen = {
     } else {
       for (const { s, i } of assignable) {
         const card = document.createElement('div');
-        card.className = 'au-card au-shop';
+        card.className = 'au-card au-shop au-shop--fleet';
         card.innerHTML = `
           <div class="grow">
             <div class="nm">${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(s.customName) || prettyId(s.defId)) : (escapeHtml(s.customName) || '')}</div>
             <div class="meta"><span>${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(prettyId(s.defId))) : ''}</span><span>starts on escort</span></div>
             <div class="au-note">Assigned ships remain in the automation ledger and spawn as live wingmen in-sector.</div>
           </div>
+          <button class="au-throttle" data-act="conduct" data-ref="fleet" data-kind="ownedShip" title="Take the wing throttle — conduct the fleet line" aria-label="Take the wing throttle">Throttle</button>
           <button class="au-buy" data-act="assignFleet" data-ref="${i}" data-kind="ownedShip">Assign as Wingman</button>`;
         frag.appendChild(card);
       }
@@ -1376,6 +1481,13 @@ export const automationScreen = {
   // ---- intent dispatch ----------------------------------------------------
   // `extra` carries the selected value for <select>-driven actions (e.g. assignProgram templateId).
   _onAction(act, ref, kind, extra) {
+    // r2 F3: conducting is pure presentation state (the Hand rides a ring); it never emits
+    // into the sim. Re-activating the conducted line releases the Hand back to the rail.
+    if (act === 'conduct') {
+      this._conduct = this._conduct === ref ? null : ref;
+      this.refresh(this._ctx);
+      return;
+    }
     if (act === 'openShipworksRoute') {
       const ctx = this._ctx;
       const access = shipworksStationAccess(ctx && ctx.state);
