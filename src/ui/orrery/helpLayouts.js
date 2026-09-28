@@ -197,7 +197,7 @@ ${H} .orr-help-ladder__pin { margin-left:10px; ${LABEL} font-size:12px !importan
 ${H} .orr-help-ladder__pin::before { content:""; display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; box-shadow:inset 0 0 0 2px rgb(${BONE} / .9); vertical-align:1px; }
 /* a small verb on a reading: a word with its key, bone at rest, white where the player reaches it */
 ${H} .orr-help-verb { all:unset; box-sizing:border-box; display:inline-flex; align-items:center; gap:12px; margin:18px 0 0; padding:6px 0; cursor:pointer; }
-${H} .orr-help-verb__word { ${LABEL} font-size:clamp(12px, .66vw, 16px) !important; letter-spacing:.2em; color:rgb(${HOT}); }
+${H} .orr-help-verb__word { ${LABEL} font-size:clamp(12px, .66vw, 16px) !important; letter-spacing:.2em; color:rgb(${HOT}); white-space:nowrap; }
 ${H} .orr-help-verb__word::before { content:"›  "; color:rgb(${BONE} / .6); }
 ${H} .orr-help-verb:is(:hover, :focus-visible) .orr-help-verb__word { color:rgb(255 255 255); }
 ${H} .orr-help-verb:is(:hover, :focus-visible) .orr-hkey::after { background:rgb(255 255 255); left:-5px; right:-5px; }
