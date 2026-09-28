@@ -320,7 +320,7 @@ vec4 fieldVolume(){
   // continuous tearing through the body, not a global fade or tiny noisy cells.
   float tearing=0.56*filteredWave(t*21.0-flow*direction*2.4+sin(v*6.0+phase)*1.8)
     +0.44*filteredWave(v*9.0+t*9.0-flow*direction*1.5+phase);
-  float chargePatch=smoothstep(0.34,0.78,tearing);
+  float chargeRegion=smoothstep(0.34,0.78,tearing);
   bool accretion=kind>1.5&&kind<2.5;
   if(accretion){
     // Accretion has dense travelling parcels with real openings between them.
@@ -332,11 +332,11 @@ vec4 fieldVolume(){
       +.34*filteredWave(stream*1.17+warped*9.0-curl)
       +.18*filteredWave(stream*2.63-warped*17.0+phase);
     float parcelAA=max(fwidth(parcel),.025);
-    chargePatch=smoothstep(.49-.105-parcelAA,.49+.105+parcelAA,parcel);
+    chargeRegion=smoothstep(.49-.105-parcelAA,.49+.105+parcelAA,parcel);
     ignition*=.38+.62*filteredWave(stream+curl*2.0);
   }
   float innerPresence=1.0-smoothstep(0.16,0.72,vFieldReach);
-  float opticalDepth=sectionMass*(0.07+chargePatch*(0.22+0.25*bulk))*(0.46+0.54*innerPresence);
+  float opticalDepth=sectionMass*(0.07+chargeRegion*(0.22+0.25*bulk))*(0.46+0.54*innerPresence);
   float edge=1.0-smoothstep(0.89,1.0,abs(v));
   // Closed clamp/extrusion sections have no artificial slit at their shared back seam.
   if(kind<1.5||(kind>3.5&&kind<4.5))edge=1.0;
@@ -348,14 +348,14 @@ vec4 fieldVolume(){
   vec3 dark=vTint.rgb*vec3(0.15,0.21,0.38);
   vec3 body=mix(dark,vTint.rgb,0.32+0.68*bulk)*sideLight;
   body*=1.0-0.68*coolChannel;
-  float hot=(shoulder*(0.36+1.45*ignition)+0.36*ignition)*(0.24+0.76*chargePatch);
+  float hot=(shoulder*(0.36+1.45*ignition)+0.36*ignition)*(0.24+0.76*chargeRegion);
   if(kind>2.5&&kind<3.5){
     // Pressure light lives on the outward lip; the skirt carries compressed amber body.
-    hot=((0.35+1.85*bulk)*strand(v+0.64,0.24)+0.25*secondary)*(0.24+0.76*chargePatch);
+    hot=((0.35+1.85*bulk)*strand(v+0.64,0.24)+0.25*secondary)*(0.24+0.76*chargeRegion);
     body*=0.78+0.22*(1.0-v)*0.5;
   }else if(kind>4.5){
     // Intake banks light across their fold, exposing alternating heavy and open folds.
-    hot=(shoulder*(0.45+1.35*bulk)+0.24*secondary)*(0.24+0.76*chargePatch);
+    hot=(shoulder*(0.45+1.35*bulk)+0.24*secondary)*(0.24+0.76*chargeRegion);
   }else if(kind<1.5){
     // Mechanical mass keeps a restrained body and charge that traverses its raised edges.
     // A dark load-bearing frame with moving charged sections, not a luminous
@@ -366,9 +366,9 @@ vec4 fieldVolume(){
     absorbed=max(absorbed*.66,0.11+load*.30);
   }
   if(accretion){
-    hot=(shoulder*(.16+2.25*ignition)+.26*ignition)*(.06+.94*chargePatch);
-    body*=.32+.68*chargePatch;
-    absorbed*=.07+.93*chargePatch;
+    hot=(shoulder*(.16+2.25*ignition)+.26*ignition)*(.06+.94*chargeRegion);
+    body*=.32+.68*chargeRegion;
+    absorbed*=.07+.93*chargeRegion;
   }
   // Mature colliding streams develop secondary knots; their cadence is slower
   // than ignition and cannot appear in the build stage.

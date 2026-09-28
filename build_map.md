@@ -390,7 +390,6 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 | 6 | D46 | `check:all` foreign-red triage from 2026-09-25 — re-run sweep, re-row what is still red, delete the stale snapshot | FIX | CLAIMED devin-wave1 |
 | 7 | D60 | A6 driver teleported the player ~2.25 M-units in one tick — instrumented, unreproduced in 5 clean runs; prove it dead or find it | FIX | CLAIMED devin-wave1 |
 | 8 | D61 | Sector-jump authored-prewarm invariant race in `renderer.js` publish/generation | FIX | CLAIMED devin-wave1 |
-| 9 | D74 | `SF_FoldedForceSurface` fragment shader fails to link ~1-in-5 (`'patch'` reserved word) | FIX | CLAIMED devin-wave1 |
 | 10 | D80 | Hauler income band vs honest arbitrage — model fixed; structural balance adjudication owed | FIX | CLAIMED devin-wave1 |
 | 11 | D82 | Perf-merge imported reds: `check-vfx-techniques` (programCanon.js unlisted soft-card) + `check:massline:arc-render` (overlaps D85 — take together) | FIX | CLAIMED devin-wave1 |
 | 12 | D85 | Massline release arc: `save:loaded` drains token but not mesh — `_resetMasslineReleaseArc` never resets `arc.mesh.visible`/`drawRange` | FIX | CLAIMED devin-wave1 |

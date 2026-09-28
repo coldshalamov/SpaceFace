@@ -120,12 +120,12 @@ const VERTEX_SHADER = /* glsl */`
     } else if (aBoltSize.w < 1.5) {
       // Three unequal hollow convection channels orbit a hot open interior. The
       // rolled cross-section exposes sidewalls and a dark cavity at every view.
-      float chargePatch=aBoltTopology.y;
-      float helix=chargePatch*2.0943951+t*(1.8+chargePatch*.24)-evolution*2.3;
+      float chargeRegion=aBoltTopology.y;
+      float helix=chargeRegion*2.0943951+t*(1.8+chargeRegion*.24)-evolution*2.3;
       float envelope=pow(max(bow,0.0),.58);
       float roll=side*2.35;
-      float channel=(.13+.025*sin(t*8.0-evolution*3.2+chargePatch))*envelope;
-      float radius=(.32+.055*sin(t*9.0-evolution*4.1+chargePatch*2.1))*envelope;
+      float channel=(.13+.025*sin(t*8.0-evolution*3.2+chargeRegion))*envelope;
+      float radius=(.32+.055*sin(t*9.0-evolution*4.1+chargeRegion*2.1))*envelope;
       float radial=radius+sin(roll)*channel;
       float tangential=(.65-cos(roll))*channel;
       shaped.x=(t-.5)+envelope*side*.055;
