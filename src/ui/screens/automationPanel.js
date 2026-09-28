@@ -429,6 +429,249 @@ const CSS = `
     background: Canvas; color: CanvasText; border-color: CanvasText;
   }
 }
+/* ---- ORRERY r1 (A2): ONE borderless glass surface. Every rule keys off .au-orrery so it beats
+   the LEGACY AU overrides in deckplate/screens.js. Palette law: bone rgb(236 230 216) rest light,
+   ice rgb(223 238 255) motion only, one amber Hand + one amber Lamp Key, red threat only. */
+html body #screens #sf-automation.au-orrery {
+  --au-bone: 236 230 216;
+  --au-ice: 223 238 255;
+  border: 0; border-radius: 0;
+  background: linear-gradient(180deg, rgb(10 13 18 / .94) 0%, rgb(6 8 12 / .94) 100%);
+  box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+  position: relative;
+  /* The glass fits the instrument: no void below the last rung. Long ledgers still scroll. */
+  height: auto; max-height: min(88vh, 860px);
+}
+html body #screens #sf-automation.au-orrery::before,
+html body #screens #sf-automation.au-orrery::after {
+  content: ""; position: absolute; left: 10px; right: 10px; height: 15px; z-index: 5;
+  pointer-events: none; background-repeat: no-repeat;
+  background-image:
+    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6)),
+    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6)),
+    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6)),
+    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6));
+  background-size: 2px 15px, 15px 2px, 2px 15px, 15px 2px;
+}
+html body #screens #sf-automation.au-orrery::before { top: 8px; background-position: left top, left top, right top, right top; }
+html body #screens #sf-automation.au-orrery::after { bottom: 8px; background-position: left bottom, left bottom, right bottom, right bottom; }
+/* O2 header: amber audit — title pip goes bone, purse is a bone Counter, CLOSE is a dotted word. */
+html body #screens #sf-automation.au-orrery .au-head { padding: 14px 26px 10px; gap: 8px; border-bottom: 0; background: none; }
+html body #screens #sf-automation.au-orrery .au-title::before {
+  width: 7px; height: 7px; border-radius: 50%; background: rgb(var(--au-bone)); box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-credits {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 2px 0;
+  font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600;
+  letter-spacing: .06em; color: rgb(var(--au-bone)); }
+html body #screens #sf-automation.au-orrery .au-close {
+  border: 0; border-radius: 0; background: none; box-shadow: none; min-height: 0; padding: 4px 2px;
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .75);
+  text-decoration: underline dotted rgb(var(--au-bone) / .55); text-decoration-thickness: 1px;
+  text-underline-offset: 5px; cursor: pointer; }
+html body #screens #sf-automation.au-orrery .au-close:hover { color: rgb(var(--au-bone)); translate: none; filter: none; }
+html body #screens #sf-automation.au-orrery .au-close::after { display: none; }
+/* O3 (A4+A7): the income row is an instrument — Arc Gauge, rolling Counter, ghost headroom,
+   and the asset-flow strip running into the purse. No bar, no box. */
+html body #screens #sf-automation.au-orrery .au-income {
+  display: flex; align-items: center; gap: 14px; padding: 6px 2px;
+  border: 0; border-radius: 0; background: none; box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-gauge { width: 64px; height: 40px; flex: none; overflow: visible; }
+html body #screens #sf-automation.au-orrery .au-gauge__track {
+  fill: none; stroke: rgb(var(--au-bone) / .22); stroke-width: 1; }
+html body #screens #sf-automation.au-orrery .au-gauge__ghost {
+  fill: none; stroke: rgb(var(--au-bone) / .5); stroke-width: 2; stroke-linecap: butt; }
+html body #screens #sf-automation.au-orrery .au-gauge__fill {
+  fill: none; stroke: rgb(var(--au-bone) / .95); stroke-width: 3; stroke-linecap: butt; }
+html body #screens #sf-automation.au-orrery .au-gauge__bead {
+  fill: rgb(var(--au-bone)); stroke: rgb(var(--au-bone) / .28); stroke-width: 4; }
+html body #screens #sf-automation.au-orrery .au-meter { display: flex; flex-direction: column; gap: 1px; min-width: 128px; }
+html body #screens #sf-automation.au-orrery .au-income .lbl {
+  font-size: 12px; letter-spacing: .16em; color: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-income .val {
+  font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600;
+  font-size: 20px; line-height: 1.1; color: rgb(var(--au-bone)); text-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-digit { display: inline-block; }
+html body #screens #sf-automation.au-orrery .au-digit.is-new { animation: au-roll .32s ease-out; }
+@keyframes au-roll { from { transform: translateY(-55%); opacity: .2; } to { transform: none; opacity: 1; } }
+html body #screens #sf-automation.au-orrery .au-captxt {
+  font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 12px;
+  letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--au-bone) / .6); white-space: nowrap; }
+html body #screens #sf-automation.au-orrery .au-flow {
+  flex: 1; display: flex; align-items: stretch; gap: 0; min-width: 0; margin-left: 6px; }
+html body #screens #sf-automation.au-orrery .au-node {
+  flex: 1 1 0; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 2px 0; }
+html body #screens #sf-automation.au-orrery .au-node__ring {
+  width: 22px; height: 22px; flex: none; border-radius: 50%;
+  border: 2px solid rgb(var(--au-bone) / .75); }
+html body #screens #sf-automation.au-orrery .au-node[data-live="1"] .au-node__ring {
+  border-color: rgb(var(--au-bone)); box-shadow: 0 0 0 3px rgb(var(--au-bone) / .14); }
+html body #screens #sf-automation.au-orrery .au-node--purse .au-node__ring {
+  border-radius: 0; transform: rotate(45deg) scale(.72); border-color: rgb(var(--au-bone)); }
+html body #screens #sf-automation.au-orrery .au-node__t { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+html body #screens #sf-automation.au-orrery .au-node__t b {
+  font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600;
+  font-size: 14px; color: rgb(var(--au-bone)); }
+html body #screens #sf-automation.au-orrery .au-node__t i {
+  font-style: normal; font-family: var(--sf-body-face); font-weight: 600; font-size: 12px;
+  letter-spacing: .12em; text-transform: uppercase; color: rgb(var(--au-bone) / .6); }
+html body #screens #sf-automation.au-orrery .au-node__beam {
+  position: relative; flex: 1; height: 12px; margin-left: 8px; min-width: 14px;
+  background:
+    linear-gradient(rgb(var(--au-bone) / .7), rgb(var(--au-bone) / .7)) center / 100% 1px no-repeat,
+    linear-gradient(rgb(var(--au-bone) / .18), rgb(var(--au-bone) / .18)) center / 100% 5px no-repeat; }
+html body #screens #sf-automation.au-orrery .au-node[data-live="0"] .au-node__beam { opacity: .45; }
+html body #screens #sf-automation.au-orrery .au-node__beam i {
+  position: absolute; top: 50%; left: 0; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%;
+  background: rgb(var(--au-ice)); box-shadow: 0 0 6px 2px rgb(var(--au-ice) / .55);
+  animation: au-pulse 2.8s linear infinite; }
+html body #screens #sf-automation.au-orrery .au-node[data-live="0"] .au-node__beam i { animation: none; opacity: .35; }
+@keyframes au-pulse { from { left: 4%; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } to { left: 92%; opacity: 0; } }
+html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-digit.is-new { animation: none; }
+html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-node__beam i { animation: none; left: 46%; opacity: 1; }
+/* O4 (A3): tabs are stations on an arc rail — bone dotted words, ticks to the spine,
+   and the ONE amber Hand (arm + bead) riding the chosen station. */
+html body #screens #sf-automation.au-orrery .au-tabs {
+  position: relative; gap: 0 26px; padding: 0 4px 16px; border: 0; background: none; box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-tabs::before {
+  content: ""; position: absolute; left: -6px; right: -6px; bottom: 4px; height: 30px;
+  border-bottom: 2px solid rgb(var(--au-bone) / .5); border-radius: 0 0 50% 50%; pointer-events: none; }
+html body #screens #sf-automation.au-orrery .au-tab {
+  position: relative; min-height: 0; padding: 2px 2px 10px; border: 0; background: none; box-shadow: none;
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .6);
+  text-decoration: underline dotted rgb(var(--au-bone) / .45); text-decoration-thickness: 1px;
+  text-underline-offset: 5px; text-shadow: none; cursor: pointer; }
+html body #screens #sf-automation.au-orrery .au-tab:nth-child(2),
+html body #screens #sf-automation.au-orrery .au-tab:nth-child(3) { margin-top: 5px; }
+html body #screens #sf-automation.au-orrery .au-tab:hover { color: rgb(var(--au-bone)); background: none; }
+html body #screens #sf-automation.au-orrery .au-tab::after {
+  content: ""; position: absolute; left: 50%; bottom: -1px; width: 2px; height: 11px; margin-left: -1px;
+  background: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-tab.active {
+  color: rgb(var(--au-bone)); background: none; box-shadow: none; text-shadow: none;
+  text-decoration-style: solid; text-decoration-color: rgb(var(--au-bone) / .8); }
+html body #screens #sf-automation.au-orrery .au-tab.active::after {
+  height: 12px; bottom: -3px; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+html body #screens #sf-automation.au-orrery .au-tab.active::before {
+  content: ""; position: absolute; left: 50%; bottom: -9px; width: 7px; height: 7px; margin-left: -3.5px;
+  border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px 2px var(--accent); }
+/* O5 (A2+A1): the ops board is a dossier on the glass, not two cards — flat, tight, bone. */
+html body #screens #sf-automation.au-orrery .au-body { padding: 12px 26px 16px; gap: 10px; min-height: 0; }
+html body #screens #sf-automation.au-orrery .au-command {
+  gap: 20px; grid-template-columns: minmax(270px, 1.15fr) minmax(0, 1.85fr); }
+html body #screens #sf-automation.au-orrery .au-next,
+html body #screens #sf-automation.au-orrery .au-summary {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; }
+html body #screens #sf-automation.au-orrery .au-next { gap: 3px; border-left: 0; }
+html body #screens #sf-automation.au-orrery .au-kicker { color: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-next-title { font-size: 15px; }
+html body #screens #sf-automation.au-orrery .au-next-body {
+  font-size: 13px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden; }
+html body #screens #sf-automation.au-orrery .au-next-row { margin-top: 2px; padding-top: 2px; }
+html body #screens #sf-automation.au-orrery .au-next-meta { font-size: 12px; }
+html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-content: start; padding-top: 2px; }
+html body #screens #sf-automation.au-orrery .au-metric {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; }
+html body #screens #sf-automation.au-orrery .au-metric:hover { border: 0; background: none; }
+html body #screens #sf-automation.au-orrery .au-metric .v { font-size: 17px; }
+/* O6 (A6): the route Beam — bone band with bloom geometry, ice pulse travelling to the berth. */
+html body #screens #sf-automation.au-orrery .au-route { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+html body #screens #sf-automation.au-orrery .au-route__from,
+html body #screens #sf-automation.au-orrery .au-route__to {
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .12em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .75); white-space: nowrap; }
+html body #screens #sf-automation.au-orrery .au-route__to { color: rgb(var(--au-bone)); }
+html body #screens #sf-automation.au-orrery .au-route__beam {
+  position: relative; flex: 1; height: 12px; min-width: 40px;
+  background:
+    linear-gradient(rgb(var(--au-bone) / .8), rgb(var(--au-bone) / .8)) center / 100% 1px no-repeat,
+    linear-gradient(rgb(var(--au-bone) / .2), rgb(var(--au-bone) / .2)) center / 100% 5px no-repeat; }
+html body #screens #sf-automation.au-orrery .au-route__beam i {
+  position: absolute; top: 50%; left: 0; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%;
+  background: rgb(var(--au-ice)); box-shadow: 0 0 7px 2px rgb(var(--au-ice) / .6);
+  animation: au-pulse 2.4s linear infinite; }
+html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-route__beam i { animation: none; left: 46%; }
+/* O7a (A1+A2): purchase tiers are one-line ladder rungs (name + stats + verb), the helper
+   unfolding on hover/focus; the grey notice strip is a leader-note line; no boxes anywhere. */
+html body #screens #sf-automation.au-orrery .au-section-h { padding-bottom: 4px; margin-bottom: 0; }
+html body #screens #sf-automation.au-orrery .au-card {
+  position: relative; border: 0; border-radius: 0; background: none; box-shadow: none;
+  padding: 10px 0 10px 16px; gap: 14px; }
+html body #screens #sf-automation.au-orrery .au-card:hover { border: 0; background: none; box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-card::before {
+  content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 2px;
+  background: rgb(var(--au-bone) / .4); }
+html body #screens #sf-automation.au-orrery .au-card:hover::before,
+html body #screens #sf-automation.au-orrery .au-card:focus-within::before { background: rgb(var(--au-bone) / .85); }
+html body #screens #sf-automation.au-orrery .au-shop { padding: 7px 0 7px 16px; align-items: center; }
+html body #screens #sf-automation.au-orrery .au-shop .grow {
+  display: flex; align-items: baseline; gap: 8px 18px; flex-wrap: wrap; }
+html body #screens #sf-automation.au-orrery .au-shop .nm { font-size: 14px; white-space: nowrap; }
+html body #screens #sf-automation.au-orrery .au-shop .meta { margin-top: 0; font-size: 12px; gap: 12px; }
+html body #screens #sf-automation.au-orrery .au-shop .au-note {
+  display: none; flex-basis: 100%; margin-top: 2px; font-size: 12px; }
+html body #screens #sf-automation.au-orrery .au-shop:hover .au-note,
+html body #screens #sf-automation.au-orrery .au-shop:focus-within .au-note { display: block; }
+html body #screens #sf-automation.au-orrery .au-empty {
+  border: 0; border-radius: 0; background: none; box-shadow: none; position: relative;
+  padding: 2px 0 2px 16px; font-size: 13px; }
+html body #screens #sf-automation.au-orrery .au-empty::before {
+  content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 2px;
+  background: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-locked { color: rgb(var(--au-bone) / .8); }
+/* O7b (A5): every verb except the Lamp Key is a dotted word. Disabled verbs are a 1px bone
+   outline of the cut shape — a lamp unlit, never a dark chip. */
+html body #screens #sf-automation.au-orrery .au-card button {
+  box-sizing: border-box; min-height: 0; padding: 4px 2px; border: 0; border-radius: 0;
+  background: none; box-shadow: none; filter: none; opacity: 1; translate: none;
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .85); text-shadow: none;
+  text-decoration: underline dotted rgb(var(--au-bone) / .5); text-decoration-thickness: 1px;
+  text-underline-offset: 5px; cursor: pointer; white-space: nowrap; }
+html body #screens #sf-automation.au-orrery .au-card button::after { display: none; }
+html body #screens #sf-automation.au-orrery .au-card button:hover:not(:disabled) {
+  color: rgb(var(--au-bone)); background: none; box-shadow: none; filter: none;
+  text-decoration-style: solid; text-decoration-color: rgb(var(--au-bone) / .85); }
+html body #screens #sf-automation.au-orrery .au-card button:active:not(:disabled) { translate: none; }
+html body #screens #sf-automation.au-orrery .au-card button:disabled {
+  border: 0; box-shadow: none;
+  color: rgb(var(--au-bone) / .6); opacity: 1; filter: none; cursor: default; text-decoration: none;
+  padding: 6px 12px;
+  /* the cut shape drawn as geometry: four sides plus the diagonal that closes the corner */
+  background:
+    linear-gradient(to bottom right, transparent 46%, rgb(var(--au-bone) / .5) 46%, rgb(var(--au-bone) / .5) 54%, transparent 54%) right top / 10px 10px no-repeat,
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)) left top / calc(100% - 10px) 1px no-repeat,
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)) left top / 1px 100% no-repeat,
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)) left bottom / 100% 1px no-repeat,
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)) right bottom / 1px calc(100% - 10px) no-repeat; }
+/* O7c: amber audit — status ambers go bone (red keeps threat only); deployed instruments flat. */
+html body #screens #sf-automation.au-orrery :is(.au-pill, .au-program-badge) {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0;
+  color: rgb(var(--au-bone) / .7); }
+html body #screens #sf-automation.au-orrery .au-pill.warn {
+  color: rgb(var(--au-bone)); text-decoration: underline dotted rgb(var(--au-bone) / .6);
+  text-underline-offset: 3px; border: 0; }
+html body #screens #sf-automation.au-orrery .au-pill.ok { color: rgb(var(--au-bone)); border: 0; }
+html body #screens #sf-automation.au-orrery .au-pill.bad { color: var(--danger); border: 0; }
+html body #screens #sf-automation.au-orrery .au-operation-status.warn { color: rgb(var(--au-bone)); }
+html body #screens #sf-automation.au-orrery .au-outpost-flow[data-state="starved"] .au-flow-link,
+html body #screens #sf-automation.au-orrery .au-outpost-flow[data-state="storage_full"] .au-flow-link {
+  background: rgb(var(--au-bone) / .7); }
+html body #screens #sf-automation.au-orrery .au-outpost-flow[data-state="starved"] .au-flow-link::after,
+html body #screens #sf-automation.au-orrery .au-outpost-flow[data-state="storage_full"] .au-flow-link::after {
+  color: rgb(var(--au-bone) / .7); }
+html body #screens #sf-automation.au-orrery :is(.au-outpost-flow, .au-miner-ops) {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 8px 0; }
+html body #screens #sf-automation.au-orrery .au-flow-core { border-left: 0; border-right: 0; }
+html body #screens #sf-automation.au-orrery .au-outpost-detail summary {
+  color: rgb(var(--au-bone) / .85); text-decoration: underline dotted rgb(var(--au-bone) / .5);
+  text-underline-offset: 4px; }
+html body #screens #sf-automation.au-orrery .au-outpost-detail .au-detail-row {
+  background: none; border: 0; border-radius: 0; padding: 6px 0; }
+html body #screens #sf-automation.au-orrery .au-program {
+  border: 0; border-radius: 0; background: none; box-shadow: none; color: rgb(var(--au-bone)); }
 `;
 
 function injectStyle() {
@@ -452,6 +695,9 @@ export const automationScreen = {
     this._ctx = ctx;
     this._root = rootEl;
     rootEl.id = 'sf-automation';
+    // au-orrery: the ORRERY r1 skin below keys off this class so it strictly beats the
+    // LEGACY AU overrides in deckplate/screens.js regardless of sheet order.
+    rootEl.classList.add('au-orrery');
     rootEl.innerHTML = `
       <div class="au-head">
         <div class="au-top">
@@ -462,9 +708,18 @@ export const automationScreen = {
           </div>
         </div>
         <div class="au-income">
-          <span class="lbl">PASSIVE</span><span class="val" data-rate>0 cr/min</span>
-          <div class="au-capbar"><div class="au-capfill" data-capfill></div></div>
-          <span class="au-captxt" data-captxt>cap —</span>
+          <svg class="au-gauge" data-gauge viewBox="0 0 64 40" aria-hidden="true" focusable="false">
+            <path class="au-gauge__track" d="M 6 34 A 26 26 0 0 1 58 34" pathLength="100" />
+            <path class="au-gauge__ghost" data-gaugeghost d="M 6 34 A 26 26 0 0 1 58 34" pathLength="100" />
+            <path class="au-gauge__fill" data-gaugefill d="M 6 34 A 26 26 0 0 1 58 34" pathLength="100" />
+            <circle class="au-gauge__bead" data-gaugebead r="3" cx="6" cy="34" />
+          </svg>
+          <div class="au-meter">
+            <span class="lbl">PASSIVE</span>
+            <span class="val" data-rate>0 cr/min</span>
+            <span class="au-captxt" data-captxt>cap —</span>
+          </div>
+          <div class="au-flow" data-flow></div>
         </div>
         <div class="au-tabs" data-tabs>
           ${TABS.map((t) => `<button class="au-tab" data-tab="${t.id}">${t.label}</button>`).join('')}
@@ -475,8 +730,11 @@ export const automationScreen = {
     this._els = {
       cr: rootEl.querySelector('[data-cr]'),
       rate: rootEl.querySelector('[data-rate]'),
-      capfill: rootEl.querySelector('[data-capfill]'),
+      gaugefill: rootEl.querySelector('[data-gaugefill]'),
+      gaugeghost: rootEl.querySelector('[data-gaugeghost]'),
+      gaugebead: rootEl.querySelector('[data-gaugebead]'),
       captxt: rootEl.querySelector('[data-captxt]'),
+      flow: rootEl.querySelector('[data-flow]'),
       body,
       tabs: Array.from(rootEl.querySelectorAll('[data-tab]')),
     };
@@ -566,11 +824,87 @@ export const automationScreen = {
     const rate = this._currentRatePerMin();
     const cap = this._passiveCapPerMin();
     const rateEl = this._els && this._els.rate;
-    if (rateEl) rateEl.textContent = `${Math.round(rate)} cr/min`;
-    const fill = this._els && this._els.capfill;
-    if (fill) fill.style.width = (cap > 0 ? Math.max(0, Math.min(100, (rate / cap) * 100)) : 0).toFixed(1) + '%';
+    if (rateEl) setRollingCounter(rateEl, `${Math.round(rate)} cr/min`);
+    // A4: Arc Gauge — bone fill to the drawn rate, ghost arc for the headroom beyond it.
+    const pct = cap > 0 ? Math.max(0, Math.min(100, (Math.max(0, rate) / cap) * 100)) : 0;
+    const headPct = cap > 0 ? Math.max(0, Math.min(100 - pct, ((cap - Math.max(0, rate)) / cap) * 100)) : 0;
+    const fill = this._els && this._els.gaugefill;
+    if (fill) {
+      fill.style.strokeDasharray = '100';
+      fill.style.strokeDashoffset = String(100 - pct);
+    }
+    const ghost = this._els && this._els.gaugeghost;
+    if (ghost) {
+      ghost.style.strokeDasharray = `${headPct.toFixed(1)} 100`;
+      ghost.style.strokeDashoffset = String(-pct);
+    }
+    const bead = this._els && this._els.gaugebead;
+    if (bead) {
+      const theta = (180 - pct * 1.8) * Math.PI / 180;
+      bead.setAttribute('cx', (32 + 26 * Math.cos(theta)).toFixed(1));
+      bead.setAttribute('cy', (34 - 26 * Math.sin(theta)).toFixed(1));
+    }
     const captxt = this._els && this._els.captxt;
-    if (captxt) captxt.textContent = `cap ${Math.round(cap)} cr/min`;
+    if (captxt) {
+      const over = Math.max(0, rate) - cap;
+      captxt.textContent = over > 0.5
+        ? `over +${fmtCr(over)} — dropped`
+        : `+${fmtCr(Math.max(0, cap - Math.max(0, rate)))} headroom`;
+      captxt.dataset.state = over > 0.5 ? 'over' : 'headroom';
+    }
+    this._syncFlow(rate, cap);
+  },
+
+  // A7: asset-flow strip — one node glyph per asset class, ice pulses sized by cr/min
+  // running into the purse. Built once, updated by value; text keeps every fact.
+  _syncFlow(rate, cap) {
+    const el = this._els && this._els.flow;
+    if (!el) return;
+    if (!el.dataset.built) {
+      el.dataset.built = '1';
+      el.setAttribute('role', 'img');
+      el.innerHTML = ['drones', 'traders', 'outposts', 'fleet'].map((kind) => `
+        <div class="au-node" data-node="${kind}">
+          <span class="au-node__ring" aria-hidden="true"></span>
+          <span class="au-node__t"><b data-n>0</b><i>${kind}</i></span>
+          <span class="au-node__beam" aria-hidden="true"><i data-p></i></span>
+        </div>`).join('') + `
+        <div class="au-node au-node--purse" data-node="purse">
+          <span class="au-node__ring" aria-hidden="true"></span>
+          <span class="au-node__t"><b data-n-total>0</b><i>cr/min</i></span>
+        </div>`;
+    }
+    const st = this._ctx.state;
+    const a = (st && st.automation) || {};
+    const classRate = {
+      drones: (a.drones || []).reduce((s, d) => s + (d.ratePerMin != null ? d.ratePerMin : estDroneRate(d)), 0),
+      traders: (a.traders || []).reduce((s, t) => s + (t.ratePerMin != null ? t.ratePerMin : 0), 0),
+      outposts: (a.outposts || []).reduce((s, o) => s + (o.ratePerMin != null ? o.ratePerMin : 0), 0),
+      fleet: 0,
+    };
+    const counts = {
+      drones: (a.drones || []).length, traders: (a.traders || []).length,
+      outposts: (a.outposts || []).length, fleet: (a.fleet || []).length,
+    };
+    for (const kind of ['drones', 'traders', 'outposts', 'fleet']) {
+      const node = el.querySelector(`[data-node="${kind}"]`);
+      if (!node) continue;
+      const n = node.querySelector('[data-n]');
+      if (n) n.textContent = String(counts[kind]);
+      const pulse = node.querySelector('[data-p]');
+      if (pulse) {
+        const share = cap > 0 ? Math.max(0, Math.min(1, classRate[kind] / cap)) : 0;
+        const live = counts[kind] > 0 && classRate[kind] > 0;
+        pulse.style.width = `${(3 + share * 4).toFixed(1)}px`;
+        pulse.style.height = `${(3 + share * 4).toFixed(1)}px`;
+        pulse.style.animationDuration = `${(2.8 - share * 1.6).toFixed(2)}s`;
+        node.dataset.live = live ? '1' : '0';
+      }
+    }
+    const total = el.querySelector('[data-n-total]');
+    if (total) total.textContent = fmtCr(Math.max(0, rate));
+    el.setAttribute('aria-label', `Asset flow: ${counts.drones} drones, ${counts.traders} traders, `
+      + `${counts.outposts} outposts, ${counts.fleet} escorts; total ${Math.round(Math.max(0, rate))} credits per minute.`);
   },
 
   _syncTabs() {
@@ -701,6 +1035,13 @@ export const automationScreen = {
     const actionTarget = next.targetRef != null ? next.targetRef : next.tab;
     const actionTitle = next.actionTitle || next.cta;
     const kindAttr = next.kind ? ` data-kind="${escapeHtml(next.kind)}"` : '';
+    // A6: the route Beam names where the commit lands — the visible consequence.
+    const berth = action === 'openShipworksRoute' ? 'Helios Shipworks berth'
+      : action === 'hireTrader' ? 'Trader berth'
+      : action === 'buildOutpost' ? 'Outpost charter'
+      : action === 'assignFleet' ? 'Fleet muster'
+      : action === 'refuel' || action === 'resumeTrader' ? 'Field rendezvous'
+      : `${next.tab[0].toUpperCase() + next.tab.slice(1)} bay`;
     const wrap = document.createElement('div');
     wrap.className = 'au-command';
     wrap.innerHTML = `
@@ -711,6 +1052,11 @@ export const automationScreen = {
         <div class="au-next-row">
           <span class="au-next-meta">${escapeHtml(next.meta)}</span>
           <button class="au-cta" data-focus-key="operations-next:${escapeHtml(action)}:${escapeHtml(actionTarget)}" data-act="${escapeHtml(action)}" data-ref="${escapeHtml(actionTarget)}"${kindAttr} data-why="${escapeHtml(actionTitle)}" aria-label="${escapeHtml(actionTitle)}">${escapeHtml(next.cta)}</button>
+        </div>
+        <div class="au-route" role="img" aria-label="Route plotted: you to ${escapeHtml(berth)}">
+          <span class="au-route__from">You</span>
+          <span class="au-route__beam" aria-hidden="true"><i></i></span>
+          <span class="au-route__to">${escapeHtml(berth)}</span>
         </div>
       </div>
       <div class="au-summary" aria-label="Automation summary">
@@ -789,7 +1135,7 @@ export const automationScreen = {
       const locked = def.tier > tier;
       const purchase = describeAutomationPurchase('drone', def, this._ctx.state);
       const card = document.createElement('div');
-      card.className = 'au-card';
+      card.className = 'au-card au-shop';
       card.innerHTML = `
         <div class="grow">
           <div class="nm">${prettyId(def.id)} ${locked ? `<span class="au-locked">requires drone tier ${def.tier}</span>` : ''}</div>
@@ -861,7 +1207,7 @@ export const automationScreen = {
     for (const def of TRADERS) {
       const purchase = describeAutomationPurchase('trader', def, this._ctx.state);
       const card = document.createElement('div');
-      card.className = 'au-card';
+      card.className = 'au-card au-shop';
       card.innerHTML = `
         <div class="grow">
           <div class="nm">${prettyId(def.id)}</div>
@@ -950,7 +1296,7 @@ export const automationScreen = {
     for (const def of OUTPOSTS) {
       const purchase = describeAutomationPurchase('outpost', def, this._ctx.state);
       const card = document.createElement('div');
-      card.className = 'au-card';
+      card.className = 'au-card au-shop';
       card.innerHTML = `
         <div class="grow">
           <div class="nm">${prettyId(def.id)}</div>
@@ -1014,7 +1360,7 @@ export const automationScreen = {
     } else {
       for (const { s, i } of assignable) {
         const card = document.createElement('div');
-        card.className = 'au-card';
+        card.className = 'au-card au-shop';
         card.innerHTML = `
           <div class="grow">
             <div class="nm">${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(s.customName) || prettyId(s.defId)) : (escapeHtml(s.customName) || '')}</div>
@@ -1521,13 +1867,14 @@ function deploymentPill(deployment) {
 
 function miniBar(frac) {
   const pct = Math.max(0, Math.min(1, frac || 0)) * 100;
-  const col = pct < 25 ? 'var(--danger)' : pct < 55 ? 'var(--warn)' : 'var(--good)';
+  // Bone carries every level; red is the threat channel (about to strand), never amber.
+  const col = pct < 25 ? 'var(--danger)' : 'rgb(236 230 216 / .85)';
   return `<span class="au-minibar"><i style="width:${pct.toFixed(0)}%;background:${col}"></i></span>`;
 }
 
 function storageBar(frac) {
   const pct = Math.max(0, Math.min(1, frac || 0)) * 100;
-  const color = pct >= 90 ? 'var(--warn)' : 'var(--accent-2)';
+  const color = pct >= 90 ? 'rgb(236 230 216 / .95)' : 'rgb(236 230 216 / .55)';
   return `<span class="au-storebar" aria-hidden="true"><i style="width:${pct.toFixed(0)}%;background:${color}"></i></span>`;
 }
 
@@ -1605,6 +1952,22 @@ function spokenComparisonRate(actual, target, unit) {
 function numOr(v) {
   const n = Number(v);
   return Number.isFinite(n) && String(v).trim() !== '' && !/^[a-z]/i.test(String(v)) ? n : v;
+}
+
+// A4 Counter: per-character columns that roll on change (CSS animates .is-new;
+// reduced-motion resolves instantly with the same text). Rebuilds only on change.
+function setRollingCounter(el, text) {
+  const next = String(text);
+  if (el.textContent === next) return;
+  el.textContent = '';
+  const frag = document.createDocumentFragment();
+  for (const ch of next) {
+    const s = document.createElement('span');
+    s.className = ch === ' ' ? 'au-digit au-digit--sp' : 'au-digit is-new';
+    s.textContent = ch === ' ' ? '\u00A0' : ch;
+    frag.appendChild(s);
+  }
+  el.appendChild(frag);
 }
 
 function fmtCr(v) {
