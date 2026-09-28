@@ -118,6 +118,10 @@ export class SquadCommander {
     const hostilesPresent = contacts.some((contact) => contact.kind === ContactKind.SHIP && contact.hostileVotes > 0);
     const directives = new Map();
     const freeze = this.freeze;
+    // Squad-complete roster shared by every directive this pass: reflexes read
+    // wingmate deaths off membership — a mate absent from the roster died (live
+    // scans only ever carry living hulls, and ids recycle within ticks).
+    const mateRoster = freeze(squad.members.map((m) => freeze({ id: m.id, alive: m.alive !== false })));
     for (let index = 0; index < squad.members.length; index++) {
       const member = squad.members[index];
       const perception = perceptionsByMember.get(member.id) || null;
@@ -146,6 +150,7 @@ export class SquadCommander {
         tactic: selected.id,
         focusTargetId: focus ? focus.id : null,
         objective,
+        mates: mateRoster,
         formation: freeze({
           kind: squad.formation,
           slot: freeze(formationSlot),

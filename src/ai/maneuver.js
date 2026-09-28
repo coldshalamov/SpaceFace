@@ -253,7 +253,11 @@ export class ManeuverPlanner {
         target,
         intent,
         temperament,
-        squadMembers: choreo ? choreo.squadMates : null,
+        // Roster for wingmate-loss triggers: the frame's mates when choreographed,
+        // else the squad-complete roster the commander stamps on every directive.
+        squadMembers: choreo
+          ? choreo.squadMates
+          : (directive && Array.isArray(directive.mates) ? directive.mates : null),
         reflexState: runtime.reflex || (runtime.reflex = emptyReflexState()),
       });
       if (reflex && choreo) {

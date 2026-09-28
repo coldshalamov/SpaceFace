@@ -42,6 +42,7 @@ export function emptyReflexState() {
     prevMarked: false,
     lossUntilTick: -1,      // grief stays readable for a window — see loss note below
     hitUntilTick: -1,
+    rosterAlive: null,      // Set of ids last seen alive on a squad roster (lazily allocated)
   };
 }
 
@@ -254,11 +255,25 @@ function trackAllies(rs, self, contacts, squadMembers) {
   // Frame members are the strongest wingmate signal: a squadmate's roster entry
   // flips alive→false the tick it dies, whether or not the hulk reaches contacts.
   if (squadMembers) {
+    if (!rs.rosterAlive) rs.rosterAlive = new Set();
+    const rosterAlive = rs.rosterAlive;
+    const rosterNow = new Set();
     for (const mate of squadMembers) {
       if (!mate || mate.id === self.id) continue;
+      rosterNow.add(mate.id);
       const was = seen.get(mate.id);
-      if (was === true && mate.alive === false) lostRecently = true;
-      seen.set(mate.id, mate.alive !== false);
+      const alive = mate.alive !== false;
+      if (was === true && alive === false) lostRecently = true;
+      seen.set(mate.id, alive);
+      if (alive) rosterAlive.add(mate.id); else rosterAlive.delete(mate.id);
+    }
+    // A roster is squad-complete: a mate who was alive and is now simply absent
+    // (hull culled, id recycled before the wreck ever became a contact) died.
+    for (const id of rosterAlive) {
+      if (rosterNow.has(id)) continue;
+      if (seen.get(id) === true) lostRecently = true;
+      seen.set(id, false);
+      rosterAlive.delete(id);
     }
   }
   for (const c of contacts) {

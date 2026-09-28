@@ -751,6 +751,20 @@ test('a squadmate dying on the frame roster fires the loss reflexes without a hu
   const after = engine2.evaluate(evalCtx({ tick: 1040, reflexState: rs2, squadMembers: deadRoster }));
   assert.equal(after && after.kind, REFLEX_KIND.SCATTER_LOSS,
     'once the dodge ends the pilot still answers the wingmate loss');
+
+  // A roster is squad-complete: a mate that drops off it entirely (culled hull,
+  // recycled id — no corpse ever listed, no alive:false flag) still counts.
+  const engine3 = createReflexEngine({ seed: 5 });
+  const rs3 = emptyReflexState();
+  rs3.lastHull = 0.9;
+  engine3.evaluate(evalCtx({ reflexState: rs3, squadMembers: aliveRoster }));
+  const missing = engine3.evaluate(evalCtx({
+    tick: 1001,
+    reflexState: rs3,
+    squadMembers: [{ id: 'e7', alive: true }],
+  }));
+  assert.equal(missing && missing.kind, REFLEX_KIND.SCATTER_LOSS,
+    'a mate simply absent from the roster died — ids recycle before wrecks are seen');
 });
 
 test('choreographed members twitch on reflexes but never brake off the frame', () => {
