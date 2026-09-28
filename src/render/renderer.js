@@ -12782,6 +12782,18 @@ export const render = {
     mesh.userData.sfStableEntityKey = stableMeshKeyForEntity(entity);
     // Fresh bind must re-apply LOD even if a prior owner left the same band stamp.
     mesh.userData._appliedLodLevel = undefined;
+    // A bound root that has not yet entered the visible set gets no pose writes, so the
+    // per-frame updateMatrixWorld compose on it (plus the force it pushes into every
+    // descendant) is dead work until first submit. Freeze it here; syncEntityViews restores
+    // matrixAutoUpdate on entry. Every root transform writer composes through the
+    // matrixAutoUpdate === false hook (PERF-59), so the freeze cannot stale a live write.
+    // Compose once now: writers skip the hook while the flag is still true, so the local
+    // matrix for the just-written bind pose only exists after this updateMatrix().
+    if (mesh.matrixAutoUpdate === true) {
+      mesh.matrixAutoUpdate = false;
+      mesh.updateMatrix();
+      mesh.userData.sfHiddenFrozen = true;
+    }
     const lanes = this._persistentSubmitLanes;
     const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
       ? SUBMIT_LANE.TRANSPARENT
@@ -12815,6 +12827,12 @@ export const render = {
       globalInfrastructureMotion.releaseMesh(mesh);
       globalForgeCrown.releaseMesh(mesh);
       globalLawArenaDressing.releaseMesh(mesh);
+    }
+    // A culled-frozen root leaving the presentation world goes back to whatever owns the
+    // object next (dispose, pool reuse, rebuild) in its build-time state.
+    if (mesh && mesh.userData && mesh.userData.sfHiddenFrozen === true) {
+      mesh.userData.sfHiddenFrozen = false;
+      mesh.matrixAutoUpdate = true;
     }
     // The submit-lane reservation is keyed by entity id, not by the world handle: it must
     // release even when the handle (or the world) is already gone, or the slot strands.
@@ -13853,6 +13871,18 @@ export const render = {
         mesh.userData.asteroidInstanceViewCulled = true;
       }
       world.clearDirty(slot);
+      // Out of the visible set the root's local transform is never rewritten (the pose above
+      // was its final write until re-entry), so the walk's per-frame updateMatrix compose and
+      // the force it propagates through the subtree are dead work. Frozen roots still refresh
+      // their matrixWorld when a moved ancestor forces the walk, and hidden pose writers all
+      // run the matrixAutoUpdate === false hook — output is identical, the compose is gone.
+      // Compose before freezing: the pose write skipped the hook while the flag was true.
+      const cullData = mesh.userData || (mesh.userData = {});
+      if (mesh.matrixAutoUpdate === true) {
+        mesh.matrixAutoUpdate = false;
+        mesh.updateMatrix();
+        cullData.sfHiddenFrozen = true;
+      }
       transformed++;
     }
 
@@ -13886,6 +13916,12 @@ export const render = {
       if (!mesh || (entity && entity.alive === false)) continue;
 
       const userData = mesh.userData || (mesh.userData = {});
+      // Roots frozen while culled rejoin the live compose path here — mount-frozen static
+      // roots carry no stamp and are left alone.
+      if (userData.sfHiddenFrozen === true) {
+        userData.sfHiddenFrozen = false;
+        mesh.matrixAutoUpdate = true;
+      }
       // A fresh kill's hulk cools on sim time — uniform emissive fade on its own clones only.
       if (userData.hulkEmber) updateHulkEmber(userData.hulkEmber, this.state.simTime);
       if (this.collisionDebug && this.collisionDebug.on) userData.__lastEntity = entity;
