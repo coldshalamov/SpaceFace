@@ -2,7 +2,7 @@
 const PILOTS = [
   {
     "assetId": "sf.render.apron-shuttle",
-    "expectedContentHash": "73d7ed187d870967b78e9c624ec7ca8c5f8eecc32ac31cd5a05bfc9d187775ab",
+    "expectedContentHash": "fa07525eedc5fc95029f0f54496038709c439d8f73b71e2f768dcd4c68ca782f",
     "key": "apron-shuttle",
     "metadataUrl": "assets/ships/release/render-packages/apron-shuttle/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_APRON_SHUTTLE",
@@ -12,7 +12,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ashline-dart",
-    "expectedContentHash": "58eb95acb9eba31cf45400a1768e779e2f167b4a2e81025dbb46e62f3ad3081a",
+    "expectedContentHash": "38cc8e2fb6e96122df88af981ac6f6274c2d73a2ff9a2aaf66d1962760805c54",
     "key": "ashline-dart",
     "metadataUrl": "assets/ships/release/render-packages/ashline-dart/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_DART",
@@ -22,7 +22,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ashline-lode",
-    "expectedContentHash": "a8c547ac5bea3ce9be760305ce2f5db659f97fd22d6a9593ae1bce5d99cd253a",
+    "expectedContentHash": "dea0b6d2972911e443e942c0f796942760f47a6d6fc7f69471ead2359ea69a2f",
     "key": "ashline-lode",
     "metadataUrl": "assets/ships/release/render-packages/ashline-lode/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_LODE",
@@ -32,7 +32,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ashline-rig",
-    "expectedContentHash": "5277048e6b80ff5a5fec685420fc7ca8a97187f6568717b9d0b8cbc3b46f2cb9",
+    "expectedContentHash": "76e0f7fca296a920e8a58277e53874efb41da14906e70aa5ed2a4214cbc0034e",
     "key": "ashline-rig",
     "metadataUrl": "assets/ships/release/render-packages/ashline-rig/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_RIG",
@@ -42,7 +42,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ashline-rig-corsair-blade",
-    "expectedContentHash": "f8a55ed95cc77392a8cc29e47033c691ca4c9f630fb01e2b0702997d65c041b0",
+    "expectedContentHash": "a63119be7e8ab619f6d4066f5007616a5c1ababe11df70248ab751c897787410",
     "key": "ashline-rig-corsair-blade",
     "metadataUrl": "assets/ships/release/render-packages/ashline-rig-corsair-blade/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE",
@@ -52,7 +52,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.blackmarket",
-    "expectedContentHash": "88d568fa7ee5bd1123a1b10ff1d2e638824b4de938f2d09bb393c121eb1558d5",
+    "expectedContentHash": "2aa25382ca2da01995bdaa80409386dda42a4728a1d5a0662bf0dc4b75e0040f",
     "key": "blackmarket",
     "metadataUrl": "assets/ships/release/render-packages/blackmarket/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_BLACKMARKET",
@@ -62,7 +62,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.cargo-pod-standard",
-    "expectedContentHash": "2484b1886ddda90479c320f55a0b23bbab26b733509854761ef663e191f28f28",
+    "expectedContentHash": "faccf4f067b668b2a3e36ff0787b740176f5e5654d68958e72d27120e97ba8af",
     "key": "cargo-pod-standard",
     "metadataUrl": "assets/ships/release/render-packages/cargo-pod-standard/render-package.json",
     "runtimeAssetId": "place_cargo_pod_standard",
@@ -72,7 +72,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ceres-bait-wreck",
-    "expectedContentHash": "f022f5d974cd366bfb445f6352c1eb56188aa2c887023fc6da6ced78a7effc26",
+    "expectedContentHash": "4b9049f6ec2ec8ed55ed299dd187af9f5dea144d37cd8d6161e1b91b9595e3f8",
     "key": "ceres-bait-wreck",
     "metadataUrl": "assets/ships/release/render-packages/ceres-bait-wreck/render-package.json",
     "runtimeAssetId": "SF_PLACE_CERES_BAIT_WRECK",
@@ -82,7 +82,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ceres-grave-shard",
-    "expectedContentHash": "7e212b08fe1030073486ea7df2247f4617f0b34afb22a1159e805f3ecaeb4ba6",
+    "expectedContentHash": "b941b0feb1eb28e2351ecca6bbf24bec83a92f072c89d1f506d940009185583a",
     "key": "ceres-grave-shard",
     "metadataUrl": "assets/ships/release/render-packages/ceres-grave-shard/render-package.json",
     "runtimeAssetId": "SF_PLACE_CERES_GRAVE_SHARD",
@@ -92,7 +92,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ceres-refinery",
-    "expectedContentHash": "31156f8c8622c52ec9a4748b3783962f8fc26e516e9e1835ef63aa75b7e59ef7",
+    "expectedContentHash": "29b1ffcfebeeb3d6b3f5fccd1bd7eeda97cd954341804fecc94c40a3b7efaef6",
     "key": "ceres-refinery",
     "metadataUrl": "assets/ships/release/render-packages/ceres-refinery/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_REFINERY",
@@ -102,37 +102,37 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.claim-outpost-base",
-    "expectedContentHash": "d75f4b43d68e97eef34a95a909a809615bdef6c612e99b45cb1e55ea29d89f04",
+    "expectedContentHash": "1d0dc3d05e41534d622f0f8b9733076148c747f5c5af82c836c3130db1ad5049",
     "key": "claim-outpost-base",
     "metadataUrl": "assets/ships/release/render-packages/claim-outpost-base/render-package.json",
     "runtimeAssetId": "SF_PLACE_CLAIM_OUTPOST_BASE",
     "slot": "place",
-    "sourceSha256": "d08e4d868caf74b52bcb25c3a599c8ad8e6b17470e649dfd6e759d21816fdb35",
+    "sourceSha256": "aac25d2ddb1dbe4fc7681b057afe64373728216a48bead1ca9d784ecd09e8f68",
     "sourceUrl": "assets/ships/release/parts/places/place_claim_outpost_base.glb"
   },
   {
     "assetId": "sf.render.claim-outpost-refinery",
-    "expectedContentHash": "d213f380bdea608be4973bbae5d5663bee7ad8e3807e5820509a2a387b9b020e",
+    "expectedContentHash": "431ed5eac673dec342747aa865df45c5cca3631afa7b0b0628d5a4824e37aef9",
     "key": "claim-outpost-refinery",
     "metadataUrl": "assets/ships/release/render-packages/claim-outpost-refinery/render-package.json",
     "runtimeAssetId": "SF_PLACE_CLAIM_OUTPOST_REFINERY",
     "slot": "place",
-    "sourceSha256": "19dae3e573ba4b17b8cfc27195c25b21aaccaea30b46f62d45b951dbacc5c23f",
+    "sourceSha256": "7949e10914e74e0cf948ff1fe89c54347758641fa13254837317682177e1574e",
     "sourceUrl": "assets/ships/release/parts/places/place_claim_outpost_refinery.glb"
   },
   {
     "assetId": "sf.render.claim-outpost-relay",
-    "expectedContentHash": "1c694328fcf336702e0c78cbc011432427d4927ebba71a0305567654ceff18ae",
+    "expectedContentHash": "41453e4b5ab113cee470774cc8b9ef7c5a03db8a74075cd5b7a72d80650d9628",
     "key": "claim-outpost-relay",
     "metadataUrl": "assets/ships/release/render-packages/claim-outpost-relay/render-package.json",
     "runtimeAssetId": "SF_PLACE_CLAIM_OUTPOST_RELAY",
     "slot": "place",
-    "sourceSha256": "657d2c829567f2ca5350b4fb23e725be7755b9a1a2b99a97d91dd50b0fd560e2",
+    "sourceSha256": "9cd31e6a5adbcbfded35a4f35fb4cc5625fb1a643a4108ed84671e9134718034",
     "sourceUrl": "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
   },
   {
     "assetId": "sf.render.cockpit-dome",
-    "expectedContentHash": "372572c570e1a7a8de3165c7270a2e70c7bc68c44ffeffdb6c61524365fa3c8b",
+    "expectedContentHash": "52df81db88ad95d5abb612145489f15505731c994650d8548d3f8366e7fe8470",
     "key": "cockpit-dome",
     "metadataUrl": "assets/ships/release/render-packages/cockpit-dome/render-package.json",
     "runtimeAssetId": "SF_COCKPIT_DOME",
@@ -142,7 +142,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.cockpit-recessed",
-    "expectedContentHash": "7dcbc4ac53a0b22f7b503d0407b92ab74227fb9b3904af0799121cb3d821c371",
+    "expectedContentHash": "4a0b23c510bab22d603ceb9de29102ce09401380640963a45924ce839586b5d4",
     "key": "cockpit-recessed",
     "metadataUrl": "assets/ships/release/render-packages/cockpit-recessed/render-package.json",
     "runtimeAssetId": "SF_COCKPIT_RECESSED",
@@ -152,7 +152,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.cockpit-slab",
-    "expectedContentHash": "fe4c25aab070ba5b29cb5d3ab24078b397ba0896ae07f38a4b1ed303758dc9dd",
+    "expectedContentHash": "9702274a701d317602a1df9b262d4a98d10ca43f759b2c8847bf68e3dc16a70a",
     "key": "cockpit-slab",
     "metadataUrl": "assets/ships/release/render-packages/cockpit-slab/render-package.json",
     "runtimeAssetId": "SF_COCKPIT_SLAB",
@@ -162,7 +162,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.container-rack",
-    "expectedContentHash": "4939b07214a94bc48bba5157b6bb1e462f9c279b89e37612e9ffa8e199740fb2",
+    "expectedContentHash": "39aa78b78cdf7a0fce3f9c5f780b8447b6a2bd8f47bf812b6485da1514b45c42",
     "key": "container-rack",
     "metadataUrl": "assets/ships/release/render-packages/container-rack/render-package.json",
     "runtimeAssetId": "place_container_rack",
@@ -172,27 +172,27 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.conveyor-barge",
-    "expectedContentHash": "7df01198fddfe54610ace8f76d473f0fe223a640fc5ff2cb175e23a0305fd72a",
+    "expectedContentHash": "c41670f110d324df494f131d1774bb0e9ed057f0d506ff996904f5517a89e2bc",
     "key": "conveyor-barge",
     "metadataUrl": "assets/ships/release/render-packages/conveyor-barge/render-package.json",
     "runtimeAssetId": "SF_PLACE_CONVEYOR_BARGE",
     "slot": "place",
-    "sourceSha256": "3b8ba39b7fd761864b9d8ee19fb0289b67bb7f7c733778208392007ffdf0ebc8",
+    "sourceSha256": "fa4b3e5c45c3baf08edb2a48313ca42c31979604a4fb2b335c9045220f49449b",
     "sourceUrl": "assets/ships/release/parts/places/place_conveyor_barge.glb"
   },
   {
     "assetId": "sf.render.conveyor-truss",
-    "expectedContentHash": "c7269ff918b7f8cc62d22d1aaff4c3f8a2f901f77d557a6586ae04c8bc63ca44",
+    "expectedContentHash": "eeedadd4b0c01a98d36a62ff70e6f2006ae9f841a63ba710c2fa61ca081fa9f5",
     "key": "conveyor-truss",
     "metadataUrl": "assets/ships/release/render-packages/conveyor-truss/render-package.json",
     "runtimeAssetId": "place_conveyor_truss",
     "slot": "place",
-    "sourceSha256": "6cb26e191e038b95536d78debee4acabd326962c5a92b850d77368fa1d2703c2",
+    "sourceSha256": "20cf2886c5b4bdd9df257e6b391eb7229055db733054311778d61044b904428f",
     "sourceUrl": "assets/ships/release/parts/places/place_conveyor_truss.glb"
   },
   {
     "assetId": "sf.render.dead-hulk",
-    "expectedContentHash": "13157ada5206b9f0b885fb5e211826f24d14b6af3a8ae2f02c406993242b749f",
+    "expectedContentHash": "3cacea0f89ac4e378aabff6641bbe45d7fd829e495f92a3590cdb09d9f5ad67a",
     "key": "dead-hulk",
     "metadataUrl": "assets/ships/release/render-packages/dead-hulk/render-package.json",
     "runtimeAssetId": "place_dead_hulk",
@@ -202,7 +202,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.debris-chunk",
-    "expectedContentHash": "78712786083a26b64f733c84c1395e782011a04e7761dc4737ea4ced6005c3aa",
+    "expectedContentHash": "b5b16f1ae3bcfa9b96aafe5f02f2797e5fe88d354b100fcb09c0aed7b9e36d7c",
     "key": "debris-chunk",
     "metadataUrl": "assets/ships/release/render-packages/debris-chunk/render-package.json",
     "runtimeAssetId": "place_debris_chunk",
@@ -212,7 +212,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.dock-interior",
-    "expectedContentHash": "20f1c294e0fdbb19d13c83ce35890703896cf3e6a0d35151cb5615f0a68b82df",
+    "expectedContentHash": "59dcadafdca6d640f333115f31c49ec6b2cf5a8d171d1ac1e335d2aadb02a9bc",
     "key": "dock-interior",
     "metadataUrl": "assets/ships/release/render-packages/dock-interior/render-package.json",
     "runtimeAssetId": "place_dock_interior",
@@ -222,7 +222,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.dock-interior-grit",
-    "expectedContentHash": "b7091c92c2992b413a166008fadd2733bdbe853e7d861c48928700af05d09f25",
+    "expectedContentHash": "6ddb010b0b6d70474bae2c08f66dc833daf5902174af8dd9fa1e55c8f7ab4286",
     "key": "dock-interior-grit",
     "metadataUrl": "assets/ships/release/render-packages/dock-interior-grit/render-package.json",
     "runtimeAssetId": "SF_PLACE_DOCK_INTERIOR_GRIT",
@@ -232,7 +232,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.dock-interior-military",
-    "expectedContentHash": "b0bfa8b8b3c96bd38535a7c7ae2f8a2cbf696e0cff4b3dd126ac7f123ac5ec0f",
+    "expectedContentHash": "9148279a99699be9f982c7f1b11269d72489c4ab2c7bb1744b2f4cd6e18b0245",
     "key": "dock-interior-military",
     "metadataUrl": "assets/ships/release/render-packages/dock-interior-military/render-package.json",
     "runtimeAssetId": "SF_PLACE_DOCK_INTERIOR_MILITARY",
@@ -242,17 +242,17 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.drill-platform",
-    "expectedContentHash": "43be6a2d0ce1232c7227b8d16c35297ce2d71dcf4b7bfe7c6e2352927f8c83e1",
+    "expectedContentHash": "35931b32c88cdbedef4edd9ae02486d6ad40e746f4d30d65a107cbcda12f06ea",
     "key": "drill-platform",
     "metadataUrl": "assets/ships/release/render-packages/drill-platform/render-package.json",
     "runtimeAssetId": "place_drill_platform",
     "slot": "place",
-    "sourceSha256": "3c739e93aafd1362b4e8c6e6b53d1a8c91b094e48552000cfc47a9c7d154842e",
+    "sourceSha256": "cf5a86ddc2d9a26e1fcbeff9c177df5a413cd3e4746b1f3826c034beeb57a116",
     "sourceUrl": "assets/ships/release/parts/places/place_drill_platform.glb"
   },
   {
     "assetId": "sf.render.engine-industrial",
-    "expectedContentHash": "b38254b8864f800f18a0f526d9d9e9522ca2e91a44c6b59ac0df306a25c69616",
+    "expectedContentHash": "0ab7552556cdbf5d2421db52c6008af6d2ae25889b5db996fd73fe800820bffe",
     "key": "engine-industrial",
     "metadataUrl": "assets/ships/release/render-packages/engine-industrial/render-package.json",
     "runtimeAssetId": "SF_ENGINE_INDUSTRIAL",
@@ -262,7 +262,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.engine-ion-small",
-    "expectedContentHash": "8addcd084d5e4edc3a09e9d5b084a6c43fd3f681ff59b0adcf496e83a0bde0e7",
+    "expectedContentHash": "ae8c824fedc50337918fdcc3e50d3b23a401bc520c4f14acc9274b5179374757",
     "key": "engine-ion-small",
     "metadataUrl": "assets/ships/release/render-packages/engine-ion-small/render-package.json",
     "runtimeAssetId": "SF_ENGINE_ION_SMALL",
@@ -272,7 +272,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.engine-ion-twin",
-    "expectedContentHash": "0898c39f77979bff8eac15643669c461ba12e9d2ba6ffbb923b225eab5ca6a18",
+    "expectedContentHash": "9970996a426eb80234c6be794d41a3c374ec2fe1c9b0170b5df314298f008ef7",
     "key": "engine-ion-twin",
     "metadataUrl": "assets/ships/release/render-packages/engine-ion-twin/render-package.json",
     "runtimeAssetId": "SF_ENGINE_ION_TWIN",
@@ -282,7 +282,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.engine-plasma-ring",
-    "expectedContentHash": "6afd808f916ecf4c7d23d0762af405d67923b79c59d95ebaa62f59b3a3665da9",
+    "expectedContentHash": "c9e845761d651e5189c182cea5aa6f926de76ad8f063a9d927fbf6b055c94b54",
     "key": "engine-plasma-ring",
     "metadataUrl": "assets/ships/release/render-packages/engine-plasma-ring/render-package.json",
     "runtimeAssetId": "SF_ENGINE_PLASMA_RING",
@@ -292,7 +292,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.engine-resonator",
-    "expectedContentHash": "bcae3beafbda47ae276cdb3ca88b7882be7d809842d8cf8016928db53965159e",
+    "expectedContentHash": "821d1b185c86c046c7878422e309ba188871193bad6114f3c80ff056d340375c",
     "key": "engine-resonator",
     "metadataUrl": "assets/ships/release/render-packages/engine-resonator/render-package.json",
     "runtimeAssetId": "SF_ENGINE_RESONATOR",
@@ -302,7 +302,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.engine-vector",
-    "expectedContentHash": "4ce1d9f00044f46ab6dd7a6a9fe88a3081b684e6711ff6a0f78bfcc47734457f",
+    "expectedContentHash": "7e70dbd0ce08f0464922d1a507c757e4b3272877203701714981e9146b24da90",
     "key": "engine-vector",
     "metadataUrl": "assets/ships/release/render-packages/engine-vector/render-package.json",
     "runtimeAssetId": "SF_ENGINE_VECTOR",
@@ -312,17 +312,17 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.extraction-mast",
-    "expectedContentHash": "76791289e9b1cabe3976724aab59f9e1d830b50a7c64b61a30b1d5c06bbcc358",
+    "expectedContentHash": "dce634122ea1ed6ace66d43d6e89d96695ff6808cd3a96d8dbe8363d887ba7e3",
     "key": "extraction-mast",
     "metadataUrl": "assets/ships/release/render-packages/extraction-mast/render-package.json",
     "runtimeAssetId": "place_extraction_mast",
     "slot": "place",
-    "sourceSha256": "a3395afa0c21b7f34d2f2331cfd6b9bc5f86c98009c6ea1655a349b92fe2112c",
+    "sourceSha256": "f715b884a980273809ef7a95aed9129903bcfc27a7fe48cf06a2a671a6dc263e",
     "sourceUrl": "assets/ships/release/parts/places/place_extraction_mast.glb"
   },
   {
     "assetId": "sf.render.fab",
-    "expectedContentHash": "63ceb825d035268ec843cdbb43dc6daec86ea1d5d43ac42b293a87889d9eb57f",
+    "expectedContentHash": "62281f4656482bfd440bafbd618c16b1f19f4cbfc66af26926314da22b220ccb",
     "key": "fab",
     "metadataUrl": "assets/ships/release/render-packages/fab/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_FAB",
@@ -332,7 +332,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.fin-delta",
-    "expectedContentHash": "32b7383cbd62b7a15689ce8ad7525067b9b32a68857ed8b6df41105ccaf5c9d7",
+    "expectedContentHash": "8762f632ac6770915589424472919599215a1a8432449df1e5e9c4c4106e6bc8",
     "key": "fin-delta",
     "metadataUrl": "assets/ships/release/render-packages/fin-delta/render-package.json",
     "runtimeAssetId": "SF_FIN_DELTA",
@@ -342,7 +342,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.fin-radiator-grid",
-    "expectedContentHash": "cc9003180fa405682ce202e79929123db20597bba8e58a34d5b847aab389fe37",
+    "expectedContentHash": "3e9209105927266229284b11cb092644c3beb04c5a0a21aeae414b02b5321318",
     "key": "fin-radiator-grid",
     "metadataUrl": "assets/ships/release/render-packages/fin-radiator-grid/render-package.json",
     "runtimeAssetId": "SF_FIN_RADIATOR_GRID",
@@ -352,7 +352,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.fin-stabilator",
-    "expectedContentHash": "6025118d46540759c096ba5e7156809288293fc7135a14f54cde2258e8ed76a8",
+    "expectedContentHash": "5f0e0139a5f99b67dd00b8ddc9c1986ca4228639d52421bbb7384ead66355b22",
     "key": "fin-stabilator",
     "metadataUrl": "assets/ships/release/render-packages/fin-stabilator/render-package.json",
     "runtimeAssetId": "SF_FIN_STABILATOR",
@@ -362,7 +362,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.fin-swept-smuggler",
-    "expectedContentHash": "1a87b318a41641d3129999db576dc894c0d25c7364dffe0495e79055c9d5b553",
+    "expectedContentHash": "042b080d7512c238f4cdaede9d6a4d1f0af32de50318365b3da91420ab4c6f50",
     "key": "fin-swept-smuggler",
     "metadataUrl": "assets/ships/release/render-packages/fin-swept-smuggler/render-package.json",
     "runtimeAssetId": "SF_PART_FIN_SWEPT_SMUGGLER",
@@ -372,7 +372,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.fin-wedge",
-    "expectedContentHash": "99286825e4fa77228b7d1c218c2c58c09dda924f5eb2b8c86203b5e59f199d55",
+    "expectedContentHash": "e6b01e4fcd81c595f50211dbdbfa39cf9de95138e3471e4a29c2f6f319d43b25",
     "key": "fin-wedge",
     "metadataUrl": "assets/ships/release/render-packages/fin-wedge/render-package.json",
     "runtimeAssetId": "SF_FIN_WEDGE",
@@ -382,17 +382,17 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.freight-platform",
-    "expectedContentHash": "abc86a6948ef1bdbd8f2f22930a6fab13cf7f90ac9fc2c4a5f62e9fd37e424ae",
+    "expectedContentHash": "973c22628fbbfdf65a2bda46d78cea7963446da0279b0fe5e04861e998a79fac",
     "key": "freight-platform",
     "metadataUrl": "assets/ships/release/render-packages/freight-platform/render-package.json",
     "runtimeAssetId": "place_freight_platform",
     "slot": "place",
-    "sourceSha256": "48e7175e6634edf35d568b2fe67d9cf9bb0af021bf9e3c5dddb217ede0d6753f",
+    "sourceSha256": "480dcb8c57b44f563090dd204027cc22e0e9a8178b9759be8616136c49058715",
     "sourceUrl": "assets/ships/release/parts/places/place_freight_platform.glb"
   },
   {
     "assetId": "sf.render.graffiti",
-    "expectedContentHash": "3715b733453388fa2294dd19890a81cf480d3b5b6f0770f59eb9c32e1513c493",
+    "expectedContentHash": "850ef02722c98fdf76dc5458195ceb764205a0bb25390c1df087a6345db9a046",
     "key": "graffiti",
     "metadataUrl": "assets/ships/release/render-packages/graffiti/render-package.json",
     "runtimeAssetId": "SF_PLACE_ASTEROID_GRAFFITI_GEOLOGY_V3",
@@ -402,7 +402,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-antennas",
-    "expectedContentHash": "c1b0c21a5ab63a53afe15fcc2bbabed2b13a9347a42a9477722f3c2a9fe3c131",
+    "expectedContentHash": "ea22a6100ed9448e2231b8ab1961bf00b5ed5de43bab4cde8640a2c766cc0def",
     "key": "greeble-antennas",
     "metadataUrl": "assets/ships/release/render-packages/greeble-antennas/render-package.json",
     "runtimeAssetId": "SF_GREEBLE_ANTENNAS",
@@ -412,7 +412,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-armor-plates",
-    "expectedContentHash": "787d0215a09d44119491db95180924a2a7946e7d167c808f49f04dfc4007f257",
+    "expectedContentHash": "bc1d3c6fce262f30834e980a598ce4e816ac0702075c2a4f8af126f768c741dc",
     "key": "greeble-armor-plates",
     "metadataUrl": "assets/ships/release/render-packages/greeble-armor-plates/render-package.json",
     "runtimeAssetId": "SF_GREEBLE_ARMOR_PLATES",
@@ -422,7 +422,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-hatches",
-    "expectedContentHash": "3d8a4da3559aa0abd0cb9ecf65b0c7bf7d8884ec657e40337e32a1c0bd819d93",
+    "expectedContentHash": "f91a2a2dfdc425e2e6ffc44130d81bb518b6639df19875e72c352f28a827fef8",
     "key": "greeble-hatches",
     "metadataUrl": "assets/ships/release/render-packages/greeble-hatches/render-package.json",
     "runtimeAssetId": "SF_GREEBLE_HATCHES",
@@ -432,7 +432,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-nav-lights",
-    "expectedContentHash": "a1c984fde9c4ffd954606d8d8fe005be1513aa386234751e6742d5722c6de180",
+    "expectedContentHash": "eb34405680f4200fdc9ec3cb3dfe6c31828e29101a04bf7e04a0282d2a044df4",
     "key": "greeble-nav-lights",
     "metadataUrl": "assets/ships/release/render-packages/greeble-nav-lights/render-package.json",
     "runtimeAssetId": "SF_GREEBLE_NAV_LIGHTS",
@@ -442,7 +442,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-pipes",
-    "expectedContentHash": "bda0a3404de5e18ec9e0abc7ce518a5b4bed06b03608e568f3ce9f2ad525c03a",
+    "expectedContentHash": "12e3c439a9b5aef2f47b4f3db6ed399bb59a7d88ac8328f13665bd9f31a22e2f",
     "key": "greeble-pipes",
     "metadataUrl": "assets/ships/release/render-packages/greeble-pipes/render-package.json",
     "runtimeAssetId": "SF_GREEBLE_PIPES",
@@ -452,7 +452,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-rcs",
-    "expectedContentHash": "13b16071b3b1a65200d0f6982cd61dd99cca3ec79af45226d3b0ca45aee501e6",
+    "expectedContentHash": "76c42a10a1769b38d28e823c521861adeda2bb8c6688666d4b7be6a039d0f482",
     "key": "greeble-rcs",
     "metadataUrl": "assets/ships/release/render-packages/greeble-rcs/render-package.json",
     "runtimeAssetId": "SF_GREEBLE_RCS",
@@ -462,7 +462,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-vents",
-    "expectedContentHash": "88a2ef6f8f2aa1385eebc5a7500413f52d710f317063d81545cba06a38e07370",
+    "expectedContentHash": "fe62230a9621c0f74648d188371ceec095a52e5fc0662f94c92da594971182c1",
     "key": "greeble-vents",
     "metadataUrl": "assets/ships/release/render-packages/greeble-vents/render-package.json",
     "runtimeAssetId": "SF_PART_GREEBLE_VENTS",
@@ -472,7 +472,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-arclight",
-    "expectedContentHash": "e3f8e694a38fefb75ba907f5d886eaa6b2a856c5c6bb0fdb07d60afe963b1dc1",
+    "expectedContentHash": "a1f0f4eb088cc0504a39293339b7b715d4eafd7bb226bafdd80404e5b66efab4",
     "key": "helios-arclight",
     "metadataUrl": "assets/ships/release/render-packages/helios-arclight/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_HELIOS_ARCLIGHT",
@@ -482,7 +482,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-cradle",
-    "expectedContentHash": "82301d23209cb1288ebf23f97376074ed5fd61a0b2b410f46cfcb392b054cf59",
+    "expectedContentHash": "929323ab18bd06eb719f37b3bc744a0a619f1a517ca6c6517662d3bbab5402fe",
     "key": "helios-cradle",
     "metadataUrl": "assets/ships/release/render-packages/helios-cradle/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_HELIOS_CRADLE",
@@ -492,7 +492,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-lark",
-    "expectedContentHash": "b90a29e55d1f0450708a12622450b3e0fc8fe3dbb8ed9491149fc8f195679bb7",
+    "expectedContentHash": "2609f49740c4939dd7054e2ac042b2ab50ad5330a2a10f0144e8d5092e2990ee",
     "key": "helios-lark",
     "metadataUrl": "assets/ships/release/render-packages/helios-lark/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_HELIOS_LARK",
@@ -502,7 +502,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-rock-a",
-    "expectedContentHash": "89307e55aa4073c6c790fb5ce5e596e641b7572b307f1e29f947546cd26e4420",
+    "expectedContentHash": "87d6448c260c89a9a8f1520fa33623e8b33c2614413ad268ac4106bd6438a5ab",
     "key": "helios-rock-a",
     "metadataUrl": "assets/ships/release/render-packages/helios-rock-a/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_ROCK_A",
@@ -512,7 +512,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-rock-b",
-    "expectedContentHash": "529085ba6cb6f7f582efe7279211f3bcbb6a3a38b85a345e87f0d4ff81e39df8",
+    "expectedContentHash": "800f6fb799ad85dc8e2b454d28cab1b774ee6c0693cbacdcfa01955392e721fa",
     "key": "helios-rock-b",
     "metadataUrl": "assets/ships/release/render-packages/helios-rock-b/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_ROCK_B",
@@ -522,7 +522,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-rock-c",
-    "expectedContentHash": "533a964e392d0862bae8b853018fab9b809816a7593c100a7f77e344ca326bb1",
+    "expectedContentHash": "b88b04f16a4f15823a0683340fe2121868e8cac609580aded17489d44a883fff",
     "key": "helios-rock-c",
     "metadataUrl": "assets/ships/release/render-packages/helios-rock-c/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_ROCK_C",
@@ -532,7 +532,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-span",
-    "expectedContentHash": "e20dbc97825e27a7c6a8ad34069a3c445b725661bbab77da77ab73eecc97d15b",
+    "expectedContentHash": "740500c70dc77d822d04c3e8345f3c90aabd1a569af584569336160968a98738",
     "key": "helios-span",
     "metadataUrl": "assets/ships/release/render-packages/helios-span/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_HELIOS_SPAN",
@@ -542,8 +542,8 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-trade-hub",
-    "expectedContentHash": "38bf880a34420ddaa1145a3ce0d1f44b39f798514eb806c84670c57535d85d09",
-    "expectedRuntimeHash": "677e8d7dc313c31316aa84faa9cd23df43e6f7b67a92a84bb331de32cc391795",
+    "expectedContentHash": "7b2b4fb549aecaa3670f0841b2fae22a7ac33c87394bf8b5c4d580c70cce03a6",
+    "expectedRuntimeHash": "f5ade0b52b7b87f178026cb0b8bb7c92eef9a19aa95efe10e8008f8234ed4cb7",
     "flightStaticV3": true,
     "key": "helios-trade-hub",
     "metadataUrl": "assets/ships/release/render-packages/helios-trade-hub/render-package.json",
@@ -554,7 +554,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-capital",
-    "expectedContentHash": "fbeb93f82a753eca0490c44a6863bd09a9fde6589a1cd56e505f7adf873a759b",
+    "expectedContentHash": "2f11d07a10a1dc4ab563ff5cf730e6c4eaf410dec4eef025a4dd1103d814431e",
     "key": "hull-capital",
     "metadataUrl": "assets/ships/release/render-packages/hull-capital/render-package.json",
     "runtimeAssetId": "SF_HULL_CAPITAL",
@@ -564,7 +564,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-corvette",
-    "expectedContentHash": "9ee31ad7a7b873880db7442ff3cb130d02ad492ea23e395f2444fd6e33ccaa36",
+    "expectedContentHash": "0dd5afa213579e9161c21e55118b8379b0738fd7cb3f836e2aa3897284c22a2b",
     "key": "hull-corvette",
     "metadataUrl": "assets/ships/release/render-packages/hull-corvette/render-package.json",
     "runtimeAssetId": "SF_HULL_CORVETTE",
@@ -574,7 +574,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-fighter",
-    "expectedContentHash": "9954ecaf20b5f7b222106492709d91e58c9920bea6bbe41527df2ee2bd4c12ef",
+    "expectedContentHash": "4d59943f2c93e12dff0827a4ce9a4926269221f218e15c0566cd0ad6258aaef2",
     "key": "hull-fighter",
     "metadataUrl": "assets/ships/release/render-packages/hull-fighter/render-package.json",
     "runtimeAssetId": "SF_HULL_FIGHTER",
@@ -584,7 +584,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-freighter",
-    "expectedContentHash": "36126382c78e9f3c92bd2ce6b9de1538803b035c6a35e19acf755e48627d9123",
+    "expectedContentHash": "7c84995ab9ad8e6ee68e979a01a026762f4e996dd721420886b5c5d9155e0847",
     "key": "hull-freighter",
     "metadataUrl": "assets/ships/release/render-packages/hull-freighter/render-package.json",
     "runtimeAssetId": "SF_HULL_FREIGHTER",
@@ -594,7 +594,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-frigate",
-    "expectedContentHash": "54563e8feb428b59e0a8a94366c087e692912bbbd9559f2011b80277ac4ccd47",
+    "expectedContentHash": "9f3e340195b1f68b24d76b33f68e0bb695196e0ad4cf503f0652085b32e7fd66",
     "key": "hull-frigate",
     "metadataUrl": "assets/ships/release/render-packages/hull-frigate/render-package.json",
     "runtimeAssetId": "SF_HULL_FRIGATE",
@@ -604,7 +604,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-gunship",
-    "expectedContentHash": "4a2647cc30930f8bfc3ac3366c2dd9aa145c33f900b550b8658b7f3fd3f4f128",
+    "expectedContentHash": "ee9d0ab63cc50a4bc10bc26788ddeb5d72562e2cc4ddc50af2593481e181479b",
     "key": "hull-gunship",
     "metadataUrl": "assets/ships/release/render-packages/hull-gunship/render-package.json",
     "runtimeAssetId": "SF_HULL_GUNSHIP",
@@ -614,7 +614,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-interceptor",
-    "expectedContentHash": "ca807bde1fad15027db18b85ec7b8f825dfe9e06f3b6c5f8ba3a84b97bf39d71",
+    "expectedContentHash": "7e9906b50241c00f5ed88ec2755c25ce0af61b49f6e3b339273ad7835f2f7f4c",
     "key": "hull-interceptor",
     "metadataUrl": "assets/ships/release/render-packages/hull-interceptor/render-package.json",
     "runtimeAssetId": "SF_HULL_INTERCEPTOR",
@@ -624,7 +624,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-miner",
-    "expectedContentHash": "5964590dc72a77813c23c77b79735f5983dac02ede5572e8265e28480dd68ae1",
+    "expectedContentHash": "1c45e9be6580351eeb4b982c54b1e5be1c76fd6e6197e39fada62ff57c14b74e",
     "key": "hull-miner",
     "metadataUrl": "assets/ships/release/render-packages/hull-miner/render-package.json",
     "runtimeAssetId": "SF_HULL_MINER",
@@ -634,7 +634,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-multirole",
-    "expectedContentHash": "e8da8a601c5139c616841f154e05a8a18a6c7f5be09859a3decb36fc6a1a5aa7",
+    "expectedContentHash": "cae3c89ef0a9ef02ee4a289a32af83cb4153f07581b12746c4bc6376ca3872c7",
     "key": "hull-multirole",
     "metadataUrl": "assets/ships/release/render-packages/hull-multirole/render-package.json",
     "runtimeAssetId": "SF_HULL_MULTIROLE",
@@ -644,7 +644,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-starter",
-    "expectedContentHash": "37bb2bb7a27cb81a132e8284cdc48cdf6c1ba4d88dd66d07f7ea2e0ff0670752",
+    "expectedContentHash": "5390dbd19012aedb9d964ab9c6a3f872aadd560ed16c86c84015aae961f848f2",
     "key": "hull-starter",
     "metadataUrl": "assets/ships/release/render-packages/hull-starter/render-package.json",
     "runtimeAssetId": "SF_HULL_STARTER",
@@ -654,7 +654,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.improvised-dock",
-    "expectedContentHash": "8b0c51fc272529a25d2923834b2eea694f0cc256de86e25d8f7ed4658e4dd8a9",
+    "expectedContentHash": "ffb368aa3733c579c929b5c4baf4eb5873a603e334698209a0f36c0e2aedae7c",
     "key": "improvised-dock",
     "metadataUrl": "assets/ships/release/render-packages/improvised-dock/render-package.json",
     "runtimeAssetId": "place_improvised_dock",
@@ -664,7 +664,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.inspection-cutter",
-    "expectedContentHash": "24d44cdcc5a5e7790f577292095389fb2ce570ca77a84ed0a53729b11c8f0554",
+    "expectedContentHash": "d4085064e83ed7425e5da36e99da2c2f1d93c0e397a2ca1c14275508e7501181",
     "key": "inspection-cutter",
     "metadataUrl": "assets/ships/release/render-packages/inspection-cutter/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_INSPECTION_CUTTER",
@@ -674,7 +674,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.interdiction-buoy",
-    "expectedContentHash": "dfde4038d194b4b87ec1e5b272804705ec59137f44cb570ae748f7c8faaee834",
+    "expectedContentHash": "1840bc016c7f60626e0b60f567535f6774cb3511db86f8961d3c6b4b35ce5daa",
     "key": "interdiction-buoy",
     "metadataUrl": "assets/ships/release/render-packages/interdiction-buoy/render-package.json",
     "runtimeAssetId": "place_interdiction_buoy",
@@ -684,7 +684,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.jump-ring",
-    "expectedContentHash": "161ff67a9e79aa3c4eda5eb1068317955de6ccc0070fdf1780a56dac69f155ce",
+    "expectedContentHash": "be4e2870bb8c5b75d05d9e02ef55f249c06ff7b4d67a1fa0345d63153cc93eb7",
     "key": "jump-ring",
     "metadataUrl": "assets/ships/release/render-packages/jump-ring/render-package.json",
     "runtimeAssetId": "SF_PLACE_GATE_JUMP_RING",
@@ -694,7 +694,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel",
-    "expectedContentHash": "24c81ee97ff3f1a7ed8b8e45dd17524cb97486448a7d39478b1b84ab742445c8",
+    "expectedContentHash": "d96ed99b16365ea1291da34bc6245a9eb034c0b2da9a94798c7b79ac4af76f76",
     "key": "kestrel",
     "metadataUrl": "assets/ships/release/render-packages/kestrel/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
@@ -704,7 +704,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel-lod1",
-    "expectedContentHash": "e5aec6fba0ca1272cb4fe4c07118919b127065b376df731a8b2aad23c80da55b",
+    "expectedContentHash": "9fb57cee5290b15acf7be2d3133e944a89d682f8616da0155dec15e2bd2b0982",
     "key": "kestrel-lod1",
     "metadataUrl": "assets/ships/release/render-packages/kestrel-lod1/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
@@ -714,7 +714,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.kestrel-lod2",
-    "expectedContentHash": "fc708ac3995654c722e00d9ab53149bfd1a6f6800d6b8f250bfc26f802a89009",
+    "expectedContentHash": "ee9d3f78e3aec81352a80daa8ffe538ad8bc5f8e94b894e10bed9709ba62496d",
     "key": "kestrel-lod2",
     "metadataUrl": "assets/ships/release/render-packages/kestrel-lod2/render-package.json",
     "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
@@ -724,7 +724,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.lane-beacon",
-    "expectedContentHash": "9d8e361c397539bcd15cad3d3efce8d59603503ab3e6deea1032307fac19da31",
+    "expectedContentHash": "4a6b7111c1bc8c7af4517e01f0abdc456dcdde5b48dd4be46cce68494f22274f",
     "key": "lane-beacon",
     "metadataUrl": "assets/ships/release/render-packages/lane-beacon/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_SUPPORT_GANTRY",
@@ -734,7 +734,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.lane-pin",
-    "expectedContentHash": "4369a6ce4f8270599f22e7f21a7e981f41c681e3ed5890ba154e524c2f2ab271",
+    "expectedContentHash": "800f8dd0f23a380124dc249853415af545de990389c0ad0dd3c46c8f45319920",
     "key": "lane-pin",
     "metadataUrl": "assets/ships/release/render-packages/lane-pin/render-package.json",
     "runtimeAssetId": "SF_PLACE_LANE_PIN",
@@ -744,17 +744,17 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.maintenance-gantry",
-    "expectedContentHash": "e6b927cc80b3e01ef53b27535509a89a6cae73f22c7840d18ece03e1ae1c6b32",
+    "expectedContentHash": "d1ab77d8b535eeaa5772f8301537e1656d80da9099ef6d8d623bb915919db02a",
     "key": "maintenance-gantry",
     "metadataUrl": "assets/ships/release/render-packages/maintenance-gantry/render-package.json",
     "runtimeAssetId": "place_maintenance_gantry",
     "slot": "place",
-    "sourceSha256": "8667acf58dd4e628591e5cacb53d6ceeb4c231283e179eff7efbbb4ed6adc8a8",
+    "sourceSha256": "43fd12b7434e3655896f27a9a30592eb8e194b5b5856510ce18d4173f18b6776",
     "sourceUrl": "assets/ships/release/parts/places/place_maintenance_gantry.glb"
   },
   {
     "assetId": "sf.render.mark",
-    "expectedContentHash": "c2d99f7b0d5223acb46ba51f14560babb69110100ea6085ca99fc0a6f4e98f37",
+    "expectedContentHash": "cb9ca653a2de90f573f29813645ffa5a018198a4bd908ce620ea9cf497c47904",
     "key": "mark",
     "metadataUrl": "assets/ships/release/render-packages/mark/render-package.json",
     "runtimeAssetId": "SF_PLACE_CLAIM_MARK",
@@ -764,7 +764,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.memorial-array",
-    "expectedContentHash": "09f1fcf40c2dcaf428df8b3172452491d314ea69a47a2765ac26b41e10d704bf",
+    "expectedContentHash": "008a988c87af45970b53b27cb57732ea693f42a50eebefbb12c263e556b111c9",
     "key": "memorial-array",
     "metadataUrl": "assets/ships/release/render-packages/memorial-array/render-package.json",
     "runtimeAssetId": "SF_PLACE_MEMORIAL_ARRAY",
@@ -774,7 +774,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.skerris-throne",
-    "expectedContentHash": "18a0fcdc3dcdab72e7baa76d7457fd23e12381a6e510b59e4dd89fc851fe1199",
+    "expectedContentHash": "62342cf6a345a33d2b44aef4ace84a48bfd7ca92db8215c1b55ea6f4b184f52b",
     "key": "skerris-throne",
     "metadataUrl": "assets/ships/release/render-packages/skerris-throne/render-package.json",
     "runtimeAssetId": "SF_PLACE_LANDMARK_SKERRIS_THRONE",
@@ -784,7 +784,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.resonant-cathedral",
-    "expectedContentHash": "160122c11799bcf5d02785d9705f9d1c855b5f92c15fe1de346bb48257bb4437",
+    "expectedContentHash": "22d425523203202ec3c01369b5bf1e0a97dffa61d3d577e1f2249c6f90c02341",
     "key": "resonant-cathedral",
     "metadataUrl": "assets/ships/release/render-packages/resonant-cathedral/render-package.json",
     "runtimeAssetId": "SF_PLACE_LANDMARK_RESONANT_CATHEDRAL",
@@ -794,7 +794,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.candle-fleet",
-    "expectedContentHash": "d1ad1c9b8442d2af2461bc480be93c1d872ee209c288fde86b184d41bcbd07d6",
+    "expectedContentHash": "dd4f7c3182a637b0ccd62aaf9b54d336f3ed397cbcbbede428cf4caa1a3b4ad2",
     "key": "candle-fleet",
     "metadataUrl": "assets/ships/release/render-packages/candle-fleet/render-package.json",
     "runtimeAssetId": "SF_PLACE_LANDMARK_CANDLE_FLEET",
@@ -804,7 +804,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.military",
-    "expectedContentHash": "aea268ef83be1c3a8763185522e27d8bec47ebdbe65b825669a734ccde9297d8",
+    "expectedContentHash": "32372137b83f93761ac08e18a784c7d8dd14b44685265dee033d43d25dc737be",
     "key": "military",
     "metadataUrl": "assets/ships/release/render-packages/military/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_MILITARY",
@@ -814,7 +814,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.mining",
-    "expectedContentHash": "ec5a42bba5414d9a1bb563a5ed60ecad19c27a49e4356e235c344699630de391",
+    "expectedContentHash": "78b7ba777b347ae89b2afedaf0176861d0db81b87bcfb2c08bf18fae27fe9e3f",
     "key": "mining",
     "metadataUrl": "assets/ships/release/render-packages/mining/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_MINING",
@@ -824,7 +824,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.mining-drone",
-    "expectedContentHash": "6756a1ae9539fbbb6c5f24f26172c8fd6a14efa07d6902e335fd5b65b0b3ee06",
+    "expectedContentHash": "f0a84569223b50bca242f095ed7bf550aa6aab8f466a6855d839a02a03e2dddb",
     "key": "mining-drone",
     "metadataUrl": "assets/ships/release/render-packages/mining-drone/render-package.json",
     "runtimeAssetId": "SF_PART_PLACE_MINING_DRONE",
@@ -834,7 +834,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.nav-buoy",
-    "expectedContentHash": "fb6ac9cb7d15e542fb788a0c1dd3864b5b8067c23804131155ba86a6ac0624b1",
+    "expectedContentHash": "7821fcf6f889c9c8e1d3952ffd5860877dca6d112c1b32971cd1f3bf0ffbafd0",
     "key": "nav-buoy",
     "metadataUrl": "assets/ships/release/render-packages/nav-buoy/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_NAV_SPIRE",
@@ -844,7 +844,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ore-barge",
-    "expectedContentHash": "e8c48e2e82c6a3a6dfca94e7559944fd8180e5110211d30baf3dfaa705580ee8",
+    "expectedContentHash": "331ecf7d7fb546278b1bbb4f70d8aa7e161efb48e78c45a5f6136d8dfa468932",
     "key": "ore-barge",
     "metadataUrl": "assets/ships/release/render-packages/ore-barge/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_ORE_BARGE",
@@ -854,17 +854,17 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.outpost-bastion",
-    "expectedContentHash": "14e32ffae52c2ab6b0977b5795b5b7e973ebb8d8af42710461bb0ce54ea760b5",
+    "expectedContentHash": "3422c82c218aaa20a2dca4facc13fa917a90ed77f20001804fe45487662e8368",
     "key": "outpost-bastion",
     "metadataUrl": "assets/ships/release/render-packages/outpost-bastion/render-package.json",
     "runtimeAssetId": "SF_PLACE_CLAIM_OUTPOST_BASTION",
     "slot": "place",
-    "sourceSha256": "2bb15b0599e3c934fc43ae8f7639260053ae174c5dee2da7aeea4c3a6268758d",
+    "sourceSha256": "b1c9ddd366007dfd5ba0ea49edb4f13c0688048abd8e778b3c1a9f5073526642",
     "sourceUrl": "assets/ships/release/parts/places/place_claim_outpost_bastion.glb"
   },
   {
     "assetId": "sf.render.pod-cargo-container",
-    "expectedContentHash": "4191f0cff5f62da6544565fec2957a4f40ae1ebdd029a55becb2fd215edfe0f1",
+    "expectedContentHash": "bf146370d1414a59d8e773c014a735584e95de85014f1409930fb73fc254bcc9",
     "key": "pod-cargo-container",
     "metadataUrl": "assets/ships/release/render-packages/pod-cargo-container/render-package.json",
     "runtimeAssetId": "SF_POD_CARGO_CONTAINER",
@@ -874,7 +874,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.pod-repair-patch",
-    "expectedContentHash": "cdcdadbe7c86df2481a747319a7a256f6293074b3c0a1f9cbc807202e5daa627",
+    "expectedContentHash": "b3d2c937a532342999f2f6b9e182cc654067956e47eb353491acc4fbe4304233",
     "key": "pod-repair-patch",
     "metadataUrl": "assets/ships/release/render-packages/pod-repair-patch/render-package.json",
     "runtimeAssetId": "SF_POD_REPAIR_PATCH",
@@ -884,7 +884,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.pod-utility",
-    "expectedContentHash": "b9bf8ba2d2a5a954aa1581fc18cc16f59a0efff2d9be90b255b32b218a57c145",
+    "expectedContentHash": "ef8a1815d62fee9f6fbe0e72953e85ce088b7a0146d856d4f04e63eb34a4ee12",
     "key": "pod-utility",
     "metadataUrl": "assets/ships/release/render-packages/pod-utility/render-package.json",
     "runtimeAssetId": "SF_POD_UTILITY",
@@ -894,7 +894,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.prospector-skiff",
-    "expectedContentHash": "92d87e250df44bcd076d300c7eabba1c4f1513d0ea035b34fead04c072986d7a",
+    "expectedContentHash": "7467160e41c5b09bc47852a9b70a4803de8db23aad524b64a0fc08de3db0fcb0",
     "key": "prospector-skiff",
     "metadataUrl": "assets/ships/release/render-packages/prospector-skiff/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_PROSPECTOR_SKIFF",
@@ -904,17 +904,17 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.radiator-bank",
-    "expectedContentHash": "8ee2b53ed2fa55e05de34d4ef8d2c3668dd9f37ac55849014a32c4b467051fc8",
+    "expectedContentHash": "b96b06f8fac226884dc78d32f26a5d6108dd797e462e78dd03f4738ac327503c",
     "key": "radiator-bank",
     "metadataUrl": "assets/ships/release/render-packages/radiator-bank/render-package.json",
     "runtimeAssetId": "place_radiator_bank",
     "slot": "place",
-    "sourceSha256": "168c66c7d861c8d4270e710d5f6b938694b026e27377e57066d4d2147052066f",
+    "sourceSha256": "c02013963fc54f19ac2066ad54726feb017d1d7eb509ea9f65d8982a40e1933c",
     "sourceUrl": "assets/ships/release/parts/places/place_radiator_bank.glb"
   },
   {
     "assetId": "sf.render.repair-tender",
-    "expectedContentHash": "07862e867d8b0c09dd8bcb898db038938204c2bdabc1ac97b948ecda139e40fc",
+    "expectedContentHash": "48e61acf1ade4ee1253f819cd9a70755c838b254c746fd6af41196adcf97f2f0",
     "key": "repair-tender",
     "metadataUrl": "assets/ships/release/render-packages/repair-tender/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_REPAIR_TENDER",
@@ -924,7 +924,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.rescue-lifter",
-    "expectedContentHash": "b56717a46e9aa171f88884873f8ca503add210b43e3ad94b692465286cba9d83",
+    "expectedContentHash": "f8269a9c13d5393123034149521c88b88597fc6f7f30b7b1a79f2c679522c395",
     "key": "rescue-lifter",
     "metadataUrl": "assets/ships/release/render-packages/rescue-lifter/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_RESCUE_LIFTER",
@@ -934,7 +934,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.research",
-    "expectedContentHash": "fed6cf031cfddbaae263e82d1ecea54a6d14e492238bbef70ac3ce2c570244fb",
+    "expectedContentHash": "d09742d00f3073d6a1108022ac1759d48229460549297a56dc9d839965388e8f",
     "key": "research",
     "metadataUrl": "assets/ships/release/render-packages/research/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_RESEARCH",
@@ -944,7 +944,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.salvage-cutter",
-    "expectedContentHash": "94f08382857e16b065cc2b48ecd91167fec003632b6b2e85fae394ea554707ee",
+    "expectedContentHash": "3a416a937267eaa8165020c2b192ab8d34dc40e3bdc1085930706efd1d8e322e",
     "key": "salvage-cutter",
     "metadataUrl": "assets/ships/release/render-packages/salvage-cutter/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_SALVAGE_CUTTER",
@@ -954,7 +954,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.scrap-cage",
-    "expectedContentHash": "11c7c8133b6162ea7f7798264d87e8c718a81513aea00a1ea50dfe9c0290cb47",
+    "expectedContentHash": "b9291dce32875a6b883216c0bedb36b8786d376d1e2d7846ecca5e92cf097d5e",
     "key": "scrap-cage",
     "metadataUrl": "assets/ships/release/render-packages/scrap-cage/render-package.json",
     "runtimeAssetId": "place_scrap_cage",
@@ -964,7 +964,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.scrap-sweeper",
-    "expectedContentHash": "806ec8d26e2f4b73bc529bd5f1e4171a21087ad8e1e433569c8ef14448d1ca49",
+    "expectedContentHash": "47e8409beaa317306381688e3974479d080215adaf69ba3e447d1407caf2d56a",
     "key": "scrap-sweeper",
     "metadataUrl": "assets/ships/release/render-packages/scrap-sweeper/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_SCRAP_SWEEPER",
@@ -974,7 +974,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.seamed-asteroid",
-    "expectedContentHash": "653e48ee96d0c83e91ece58f5afba581e51df9e2cfa164b5c7cac78fdcc84451",
+    "expectedContentHash": "9c8e3fbf82e62f955d2ac183d2a8a772a41e14633640d9d9514e6b14f82f0f5d",
     "key": "seamed-asteroid",
     "metadataUrl": "assets/ships/release/render-packages/seamed-asteroid/render-package.json",
     "runtimeAssetId": "SF_PLACE_ASTEROID_SEAMED_GEOLOGY_V3",
@@ -984,7 +984,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.sensor-mast",
-    "expectedContentHash": "de2b4faaba74a053fb55336f43276c8d391b49b979e3386fd174d436e648b815",
+    "expectedContentHash": "1cfe7f1b925bb3b2d46c4d7c4d8ccafa316c055019df46691c3aea15c6ff7034",
     "key": "sensor-mast",
     "metadataUrl": "assets/ships/release/render-packages/sensor-mast/render-package.json",
     "runtimeAssetId": "place_sensor_mast",
@@ -994,7 +994,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.skid-quad",
-    "expectedContentHash": "a942bfc4ebc9cfa869e4e38edcaa769694ec34460dd3fd8bed70355bb19d4eb7",
+    "expectedContentHash": "b956c0cad93a5dbf2724c5e7fb78ffdb50a8484d65c76bebaa89c813a4965452",
     "key": "skid-quad",
     "metadataUrl": "assets/ships/release/render-packages/skid-quad/render-package.json",
     "runtimeAssetId": "SF_SKID_QUAD",
@@ -1004,7 +1004,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.skid-trio",
-    "expectedContentHash": "dfb8a1dafb506942b2f88fd96806f8423c873a6b6144fb7577588b8be41eb72e",
+    "expectedContentHash": "9d45dead9e869f644586407ae979eb54eaf9470728fee4e899f8f03c05f5d34c",
     "key": "skid-trio",
     "metadataUrl": "assets/ships/release/render-packages/skid-trio/render-package.json",
     "runtimeAssetId": "SF_SKID_TRIO",
@@ -1014,17 +1014,17 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.slurry-tank",
-    "expectedContentHash": "485117a528c875df8b454dab8c28d159a9e998274ec17810920b5340e7582dab",
+    "expectedContentHash": "654e3684910727d1d749098f1f124be4df68c650bee36b068045629d06e10618",
     "key": "slurry-tank",
     "metadataUrl": "assets/ships/release/render-packages/slurry-tank/render-package.json",
     "runtimeAssetId": "place_slurry_tank",
     "slot": "place",
-    "sourceSha256": "6225c23aea5d4717bfa04fe2c34c243677b99c3fa750cfa4bc4224d01b238b83",
+    "sourceSha256": "916d1c9179f0dbacd537d09d480e462a489331388ee149c0f7e70a0bff2f32f9",
     "sourceUrl": "assets/ships/release/parts/places/place_slurry_tank.glb"
   },
   {
     "assetId": "sf.render.station-billboard",
-    "expectedContentHash": "beb6ddb84f9d769ccfb3937323cec840b87945ee1dd877fc61dc4eddcb4fdb5d",
+    "expectedContentHash": "1d40226ea9be242c9472f3a755ae29ef075f20119cbe815725ee56468b623b87",
     "key": "station-billboard",
     "metadataUrl": "assets/ships/release/render-packages/station-billboard/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
@@ -1034,7 +1034,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.survey-pin",
-    "expectedContentHash": "8a247d98a7d9636a8a4d4c5dd4a068a8483ca3a77dda613454b360555fec3b17",
+    "expectedContentHash": "cb96c8e03f617dd700ce55bb963139942d162d007fea6a1d8632cf8b1a985c36",
     "key": "survey-pin",
     "metadataUrl": "assets/ships/release/render-packages/survey-pin/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_SURVEY_PIN",
@@ -1044,17 +1044,17 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.transfer-arm",
-    "expectedContentHash": "a62931fbeb85ab7f623069836141afb46976d864ac89d53e3b26e23614c93bea",
+    "expectedContentHash": "fef2426882b06db88d9cf2de20e04ce0d9d97838f1fd268613ffb10f186da574",
     "key": "transfer-arm",
     "metadataUrl": "assets/ships/release/render-packages/transfer-arm/render-package.json",
     "runtimeAssetId": "place_transfer_arm",
     "slot": "place",
-    "sourceSha256": "9d43793dab3a263d8a0ec806b178be1cb9ebf40c5c4c2c2b10a91e1a6124c172",
+    "sourceSha256": "5a5b1cf70ae1ef0ee3496ccfa1a5619aa29bd069126b495a7edd5d8e4f090ac6",
     "sourceUrl": "assets/ships/release/parts/places/place_transfer_arm.glb"
   },
   {
     "assetId": "sf.render.transponder-gate",
-    "expectedContentHash": "f8dc6a0e0b32b8c26dd9df0bb18b99089895bb7d8fc038899b08717753d2b5c8",
+    "expectedContentHash": "94f4bb76ae2853f81acb94e426d60842307a1c2546c5f89bd896aad21862672a",
     "key": "transponder-gate",
     "metadataUrl": "assets/ships/release/render-packages/transponder-gate/render-package.json",
     "runtimeAssetId": "place_transponder_gate",
@@ -1064,7 +1064,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.volatiles-tanker",
-    "expectedContentHash": "9dcf3334b1dd57bd622f7d5113eed29214ab16e8435f12016178253ca443a771",
+    "expectedContentHash": "a0f3033326bcce2bf873549f2e4dc820f49a853904b5453ade0ba3853b215c4f",
     "key": "volatiles-tanker",
     "metadataUrl": "assets/ships/release/render-packages/volatiles-tanker/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_VOLATILES_TANKER",
@@ -1074,7 +1074,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wasp",
-    "expectedContentHash": "ac1eaccec10e4ce5260ff607f67a299f0a853076ef8def3918cf741372404563",
+    "expectedContentHash": "1b12a8145a6934203ff55724480ec5a6b8ba721d87d268177e28a162f19a3855",
     "key": "wasp",
     "metadataUrl": "assets/ships/release/render-packages/wasp/render-package.json",
     "runtimeAssetId": "SF_WASP_PRODUCTION_V1",
@@ -1084,7 +1084,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.weapon-gatling",
-    "expectedContentHash": "6dc2c68c127c45442dce08670b42d8a68a4c585dce2ea9fa77fb2397a84dd7c0",
+    "expectedContentHash": "2f19a532cb7ceb4a9f57d75b31ceed445420b5720cc38d1e9ba5ea04d9e31c60",
     "key": "weapon-gatling",
     "metadataUrl": "assets/ships/release/render-packages/weapon-gatling/render-package.json",
     "runtimeAssetId": "SF_WEAPON_GATLING",
@@ -1094,7 +1094,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.weapon-heavy-cannon",
-    "expectedContentHash": "ad7926cf88811aae032b2db393c4283e1ff019cb2f57f5a4006c0706411abda1",
+    "expectedContentHash": "e4974578b08f8a440c756a51a3e82ed1887eff6694d0c89334c1af0c93631db7",
     "key": "weapon-heavy-cannon",
     "metadataUrl": "assets/ships/release/render-packages/weapon-heavy-cannon/render-package.json",
     "runtimeAssetId": "SF_WEAPON_HEAVY_CANNON",
@@ -1104,7 +1104,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.weapon-lance",
-    "expectedContentHash": "4b90a88195fb763a4d609a1891da89a8798b82c54ca580525f1afb3c94eb1ca1",
+    "expectedContentHash": "aba2294cb8853347bd980805f13444cc1e14454c1e305a3baf3f17b1c99b1b46",
     "key": "weapon-lance",
     "metadataUrl": "assets/ships/release/render-packages/weapon-lance/render-package.json",
     "runtimeAssetId": "SF_WEAPON_LANCE",
@@ -1114,7 +1114,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.weapon-pulse-cannon",
-    "expectedContentHash": "72659fa8763a8d7de711ec04d4803227364131717555f2e33dad3f83937a7c10",
+    "expectedContentHash": "f9b41fc6c9e9dca4e7fd279b5e1c3785869cf82d1ca25eb18aea46dd5bb2a753",
     "key": "weapon-pulse-cannon",
     "metadataUrl": "assets/ships/release/render-packages/weapon-pulse-cannon/render-package.json",
     "runtimeAssetId": "SF_WEAPON_PULSE_CANNON",
@@ -1124,7 +1124,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.weapon-railgun",
-    "expectedContentHash": "3899dcd10484e7a14029da2d81b17648ac027e436c9828aff1599c08f9b54f72",
+    "expectedContentHash": "857f2faae57c950438d36b337a6ca6034d3da26e11d35a781620c418d3b97f91",
     "key": "weapon-railgun",
     "metadataUrl": "assets/ships/release/render-packages/weapon-railgun/render-package.json",
     "runtimeAssetId": "SF_WEAPON_RAILGUN",
@@ -1134,7 +1134,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.weapon-turret-dual",
-    "expectedContentHash": "13ae98e2641e5468e0a3f7dfcffa7a4dc12ca517513fa8fd26a589fa6d1e18f5",
+    "expectedContentHash": "7c4ece0784832809a0a0838a4ae061b8b7ed0c4bae388e34a4a346b3a72c9550",
     "key": "weapon-turret-dual",
     "metadataUrl": "assets/ships/release/render-packages/weapon-turret-dual/render-package.json",
     "runtimeAssetId": "SF_WEAPON_TURRET_DUAL",
@@ -1144,7 +1144,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.whistle",
-    "expectedContentHash": "ad8ce9f9ff15fe9b12e4b237a42a3faef42bdb555ceafe7319508fa679a40710",
+    "expectedContentHash": "45e2b2e8a7735c408cdfc2a9e3a69b8d664d831a57cc2c36c51fdbc39e17062b",
     "key": "whistle",
     "metadataUrl": "assets/ships/release/render-packages/whistle/render-package.json",
     "runtimeAssetId": "SF_PLACE_WHISTLE",
@@ -1154,7 +1154,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.worklight-tower",
-    "expectedContentHash": "ef05d9dfa1032a992477d61401e615152e66162ef710935e12af6f7794ef87bc",
+    "expectedContentHash": "a07f5dc4100794d511a785910801b4f3635e9afdeea8ad91242b7a003073ff20",
     "key": "worklight-tower",
     "metadataUrl": "assets/ships/release/render-packages/worklight-tower/render-package.json",
     "runtimeAssetId": "place_worklight_tower",
@@ -1164,7 +1164,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-cargo-port",
-    "expectedContentHash": "5e9f12b6761ac653417c037ebf4ac2414335cca5df10edf017191d82d6d9cf2a",
+    "expectedContentHash": "0478ee8e8fbd4234e001a75724a315bf218b55475089275cbea0199c962b0f5b",
     "key": "works-cargo-port",
     "metadataUrl": "assets/ships/release/render-packages/works-cargo-port/render-package.json",
     "runtimeAssetId": "place_works_cargo_port",
@@ -1174,7 +1174,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-lane-corner",
-    "expectedContentHash": "9c0a1e63d0caa0a10e769a01d5fb2490bfcf521ef12776bcd9a40e2c2c54296d",
+    "expectedContentHash": "4cc2329a21cb74f9e7a601e833f307c5b85a4f3ce0b7895ee160903fb47da4a7",
     "key": "works-conduit-lane-corner",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-corner/render-package.json",
     "runtimeAssetId": "place_works_conduit_lane_corner",
@@ -1184,7 +1184,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-lane-cross",
-    "expectedContentHash": "977f1a484a5c4ed356b28f805508de57c37bd57bff9ddeb58012af1a861046cb",
+    "expectedContentHash": "b05a475fb8ae5394c4c3fc19eb48d914a2c38fb714de369c9a302eed8f8cbf03",
     "key": "works-conduit-lane-cross",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-cross/render-package.json",
     "runtimeAssetId": "place_works_conduit_lane_cross",
@@ -1194,7 +1194,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-lane-end",
-    "expectedContentHash": "f1b30a4a0b1819aa19056287cba73f3446235f4717e7b680c6c36abced4877f3",
+    "expectedContentHash": "c623e53f6c5c3852d5598ddce21f691263172cf1d78fc2eca8678f1ef2c2cffd",
     "key": "works-conduit-lane-end",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-end/render-package.json",
     "runtimeAssetId": "place_works_conduit_lane_end",
@@ -1204,7 +1204,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-lane-junction",
-    "expectedContentHash": "0800d1eefbd96d4e8ff8732291d54f9cf184682b500098ef8691052f67379192",
+    "expectedContentHash": "80aea945536bcefad18bc051a211c7151e26067e068148c47de4b594ccb4babd",
     "key": "works-conduit-lane-junction",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-junction/render-package.json",
     "runtimeAssetId": "place_works_conduit_lane_junction",
@@ -1214,7 +1214,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-lane-straight",
-    "expectedContentHash": "fd09566c6a98ed7d4208cdb068b6d2cce6c4185687ffbae586cb09f1fab2c0fa",
+    "expectedContentHash": "3fd043adc3d644ffd6f9193f2bfdf72bde56047da5f00e4fe23f30a888ccb762",
     "key": "works-conduit-lane-straight",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-straight/render-package.json",
     "runtimeAssetId": "place_works_conduit_lane_straight",
@@ -1224,7 +1224,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-lane-t",
-    "expectedContentHash": "c8e1395b1961fd7eee8f23c2acb2ce550f4666f2858b4930a23ca076b1a5e05c",
+    "expectedContentHash": "6285073a8cebde2ba602c6dc5e5425a02e8a8bb3599ce0d32f3f644c5074544d",
     "key": "works-conduit-lane-t",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-t/render-package.json",
     "runtimeAssetId": "place_works_conduit_lane_t",
@@ -1234,7 +1234,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-power-corner",
-    "expectedContentHash": "b68cdc2b2d3daa3630ddfa1c0cc1a9e12e28d9484ccb70344f64f96cb9712b92",
+    "expectedContentHash": "257c3194118077577273458a041667a3ccddc5392609acc14d28ca132fb4b04c",
     "key": "works-conduit-power-corner",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-corner/render-package.json",
     "runtimeAssetId": "place_works_conduit_power_corner",
@@ -1244,7 +1244,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-power-cross",
-    "expectedContentHash": "f977bd8eae04aa479ec6d9e2e06cff8c290ad197d6e025fe30ddc9e6f2458499",
+    "expectedContentHash": "5fa8f7a208fd1965c6a704546a5db26a18588832f718d64ad4826a23d09c84a5",
     "key": "works-conduit-power-cross",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-cross/render-package.json",
     "runtimeAssetId": "place_works_conduit_power_cross",
@@ -1254,7 +1254,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-power-end",
-    "expectedContentHash": "c8928890c41453649481bd0c2ec6ad755ff3c27c6c4aa0b0885bf49499d6114a",
+    "expectedContentHash": "f7790dccfddbfde0b26c69d135d39ba8ba10a28e76dce5ab0c8f917d1a2d17f1",
     "key": "works-conduit-power-end",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-end/render-package.json",
     "runtimeAssetId": "place_works_conduit_power_end",
@@ -1264,7 +1264,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-power-junction",
-    "expectedContentHash": "46b056075b3d0a230d508d58d41040846f362da8e2f98d52680bfc8053381d02",
+    "expectedContentHash": "9dbd8c1b639cba2367207402e972f81b204e788634dfb348ece49c89e08a2ad5",
     "key": "works-conduit-power-junction",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-junction/render-package.json",
     "runtimeAssetId": "place_works_conduit_power_junction",
@@ -1274,7 +1274,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-power-straight",
-    "expectedContentHash": "2827c4e3754364067470ab02eb88bc1334dfc497f8431c63d611f6b7622124cd",
+    "expectedContentHash": "920876114cb819e22674e845b1da0dcc0394cc279661ef2975bda7b63d40dd94",
     "key": "works-conduit-power-straight",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-straight/render-package.json",
     "runtimeAssetId": "place_works_conduit_power_straight",
@@ -1284,7 +1284,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-power-t",
-    "expectedContentHash": "e62b2a8db6c098556f6f981e6902372910c3a0991f86a427106d70f28d541602",
+    "expectedContentHash": "a296e4987c487e815fd8c7df5f46908522b108fda7f5d12529f62b6b55bcd074",
     "key": "works-conduit-power-t",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-t/render-package.json",
     "runtimeAssetId": "place_works_conduit_power_t",
@@ -1294,7 +1294,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-derrick",
-    "expectedContentHash": "d6739b6a44040baee2ad9ad404760cfa08a9cf075b968ebf4a3fb6d12c385398",
+    "expectedContentHash": "c3d1998d3ca0cd9c6972b7ca97d076223b9beb6b4dde92200c8e87aff56ba172",
     "key": "works-derrick",
     "metadataUrl": "assets/ships/release/render-packages/works-derrick/render-package.json",
     "runtimeAssetId": "place_works_derrick",
@@ -1304,7 +1304,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-extractor",
-    "expectedContentHash": "c5f77e1a0c0ddf0fc00e0ce1b5364defef3afe8908877023341fb0059e740212",
+    "expectedContentHash": "91d6aa9286a8b44710822daac26ca6725404aac47dbd103828afda87a493f19b",
     "key": "works-extractor",
     "metadataUrl": "assets/ships/release/render-packages/works-extractor/render-package.json",
     "runtimeAssetId": "place_works_extractor",
@@ -1314,7 +1314,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-fabricator",
-    "expectedContentHash": "da800c1f28019b36068aed9ba52625dfd5d0bc5cf1796d90c180b2f77688a488",
+    "expectedContentHash": "1c63ab088baffaa7ff5b963b3fb12b71ce32350337e8eabf4030fdca78139e73",
     "key": "works-fabricator",
     "metadataUrl": "assets/ships/release/render-packages/works-fabricator/render-package.json",
     "runtimeAssetId": "place_works_fabricator",
@@ -1324,7 +1324,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-gas-tap",
-    "expectedContentHash": "83f04bf4ea3c2abef91a654eb4514e1bff3c5f8e7d251f61ac22076a10610239",
+    "expectedContentHash": "ef1e3f4f62c2147b0bede21f15a332f440c744651c6c6e3662f91905fbce3c87",
     "key": "works-gas-tap",
     "metadataUrl": "assets/ships/release/render-packages/works-gas-tap/render-package.json",
     "runtimeAssetId": "place_works_gas_tap",
@@ -1334,7 +1334,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-massline-core",
-    "expectedContentHash": "8cbc1cada5eb052ea625ad571ed0d3d9886328b499be4cde1d730091880f3774",
+    "expectedContentHash": "d6c697de9710c5d38c8bedfc744bc6e65e5cc6e7b16febe7a3e5a332a08596ad",
     "key": "works-massline-core",
     "metadataUrl": "assets/ships/release/render-packages/works-massline-core/render-package.json",
     "runtimeAssetId": "place_works_massline_core",
@@ -1344,7 +1344,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-refinery",
-    "expectedContentHash": "9b2c2e79f3dfb085b1061fa5e470d0266a1ddad8110de6c5baaa865a9fe328cb",
+    "expectedContentHash": "fe7aa4d402df71d711b0344623deafc53312d7ac0b3b5e2ad73d7a4c6f908e6c",
     "key": "works-refinery",
     "metadataUrl": "assets/ships/release/render-packages/works-refinery/render-package.json",
     "runtimeAssetId": "place_works_refinery",
@@ -1354,7 +1354,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-rover",
-    "expectedContentHash": "5d4c31700c9b93c6cf6317ec01960565da3cd10c69ad05bbd1bd6c3273a0c5c4",
+    "expectedContentHash": "3b90c537b382d368a41fb6824ec36e4da80cda183c183207bc1ec8d631f33eab",
     "key": "works-rover",
     "metadataUrl": "assets/ships/release/render-packages/works-rover/render-package.json",
     "runtimeAssetId": "place_works_rover",
@@ -1364,7 +1364,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wreck-cathedral",
-    "expectedContentHash": "25cf8788f2d0e3cdecd07035911521b132e741c9c4b828ab65a0c5c3dea52ead",
+    "expectedContentHash": "d092d0aa85e477d11b8ff862cd22b33d8170543d06c0ac0d395e4cc9ab168083",
     "key": "wreck-cathedral",
     "metadataUrl": "assets/ships/release/render-packages/wreck-cathedral/render-package.json",
     "runtimeAssetId": "SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL",
@@ -1374,7 +1374,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.yard-tug",
-    "expectedContentHash": "b43b2ffdca487513a4b23466a3a80c3aac5f777c77ef294d4b22cd7ab7c06e5b",
+    "expectedContentHash": "9612254894f03fb7f61dd1cf6c209e3eebb7b0d0dbfc20d0f126e76141f00b74",
     "key": "yard-tug",
     "metadataUrl": "assets/ships/release/render-packages/yard-tug/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_YARD_TUG",
@@ -1384,7 +1384,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-inclusion-kit",
-    "expectedContentHash": "8ed1e51a87d28a3bba7e6b55b5c32fc8e07015b22857a05c4348326293fa2940",
+    "expectedContentHash": "8efff7a19f34058a13ad6e7ad3875bba1647566614227aa26af1f2b0d1fba70e",
     "key": "works-inclusion-kit",
     "metadataUrl": "assets/ships/release/render-packages/works-inclusion-kit/render-package.json",
     "runtimeAssetId": "place_works_inclusion_kit",
@@ -1394,7 +1394,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-aft-armor-slab",
-    "expectedContentHash": "b3715620c5aa14abd47eb8300afb2a399066665f7a3bdd899008f26ba10c281d",
+    "expectedContentHash": "beaed13cd279e900e6a557710ce703ff6746ac15db3212ea8120ea8f7ee16c54",
     "key": "aftermath-aft-armor-slab",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-armor-slab/render-package.json",
     "runtimeAssetId": "place_aftermath_aft_armor_slab",
@@ -1404,7 +1404,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-aft-armor-slab-authored-down",
-    "expectedContentHash": "f1dc2fee652891da207e26e49d2ee8fb9a50d3d6db465f0428c810712161bfd1",
+    "expectedContentHash": "0c05e7dbeb2db28cff8a8e8ebbc56749b0224a581fb9dbc47ddf0f8c46daf20b",
     "key": "aftermath-aft-armor-slab-authored-down",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-armor-slab-authored-down/render-package.json",
     "runtimeAssetId": "place_aftermath_aft_armor_slab_authored_down",
@@ -1414,7 +1414,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-aft-cargo-module",
-    "expectedContentHash": "41a99bd1e9340a5e709186949889dcb1e4690a5c77b6d0a9ada98deb116afc04",
+    "expectedContentHash": "57fda3b2ac00034869de7471df3221304ab34ac49383e03a176f09e5618f98f8",
     "key": "aftermath-aft-cargo-module",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-cargo-module/render-package.json",
     "runtimeAssetId": "place_aftermath_aft_cargo_module",
@@ -1424,7 +1424,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-aft-cockpit-section",
-    "expectedContentHash": "0dc43feb3079c6652ed8eb2b5043be4b8c8d45cff47b9d694f5f1e0e98fba669",
+    "expectedContentHash": "430f66a1618fdfd99d6d963e842ea611a7585fa49c17cd64e27232494194a093",
     "key": "aftermath-aft-cockpit-section",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-cockpit-section/render-package.json",
     "runtimeAssetId": "place_aftermath_aft_cockpit_section",
@@ -1434,7 +1434,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-aft-dock-collar",
-    "expectedContentHash": "737c2cfe9c47bf1a4586423d835c0967b952dd3f46f7738dd4a955a3ed8b7d8c",
+    "expectedContentHash": "9c18c94323aa38dfee35ca13eae2c7a179190de9141007c6a6a25fad098cb883",
     "key": "aftermath-aft-dock-collar",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-dock-collar/render-package.json",
     "runtimeAssetId": "place_aftermath_aft_dock_collar",
@@ -1444,7 +1444,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-aft-engine-section",
-    "expectedContentHash": "9004a34f28d8936438fbbb88c3f07b2ddc8349626f96ddbd2817a4ad96adb5fd",
+    "expectedContentHash": "a921d2ba45e76c215ef149662c68370325e0283825f23fd9fadeefd0694a00d5",
     "key": "aftermath-aft-engine-section",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-engine-section/render-package.json",
     "runtimeAssetId": "place_aftermath_aft_engine_section",
@@ -1454,7 +1454,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-aft-pressure-tank",
-    "expectedContentHash": "f2717d3e1e91d428d5a57b54b611e4825aa8b829f3db3eafbb3276c36f068dc0",
+    "expectedContentHash": "5604e5f1db7424ab79f1664587f0b05aa428685b2b649c7dd1a67d2332d27373",
     "key": "aftermath-aft-pressure-tank",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-pressure-tank/render-package.json",
     "runtimeAssetId": "place_aftermath_aft_pressure_tank",
@@ -1464,7 +1464,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-aft-radiator-panel",
-    "expectedContentHash": "93dba5dbcba32bbc5863ef9d8731e3a7c4c3ce11c7690f97971f877563d28e63",
+    "expectedContentHash": "dc078e5a111c6e8900eb35214e634f3ae239a8abeeabcbf3847f77b3bdb313e1",
     "key": "aftermath-aft-radiator-panel",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-radiator-panel/render-package.json",
     "runtimeAssetId": "place_aftermath_aft_radiator_panel",
@@ -1474,7 +1474,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-aft-weapon-spar",
-    "expectedContentHash": "0a55eec2e2708eb741ece470af4ef4b2a2084c2f90fb2917a4c83a37a25051f0",
+    "expectedContentHash": "68b5b98946380e5497d7123b05671441b0aa0c338d7a34c217b622b1827c8623",
     "key": "aftermath-aft-weapon-spar",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-weapon-spar/render-package.json",
     "runtimeAssetId": "place_aftermath_aft_weapon_spar",
@@ -1484,7 +1484,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-deb-corvette-armor-belt",
-    "expectedContentHash": "3bd50bd6d3c1226f09904a9fb402c7290936b87982de612947ccb8b1dbfde168",
+    "expectedContentHash": "efe115592a10eb62d3390558030ae634e7e011e9f0e8bd2f3c18e0285f7588f7",
     "key": "aftermath-deb-corvette-armor-belt",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-deb-corvette-armor-belt/render-package.json",
     "runtimeAssetId": "place_aftermath_deb_corvette_armor_belt",
@@ -1494,7 +1494,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-deb-corvette-barbette-ring",
-    "expectedContentHash": "876af8a3a1482454a2feb5cc37ee4f38a82f26dc6a1c0d545a50f13a7e52d4c5",
+    "expectedContentHash": "9c31143d3c6dcc342ddd9365d4a534f4fd2e3d5361f72493145c73c3b9686c43",
     "key": "aftermath-deb-corvette-barbette-ring",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-deb-corvette-barbette-ring/render-package.json",
     "runtimeAssetId": "place_aftermath_deb_corvette_barbette_ring",
@@ -1504,7 +1504,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-deb-liner-drive-pod",
-    "expectedContentHash": "b35f995751656b7ac0ef928d68bf27d45334cd95f55984356fb788d8a10d3c87",
+    "expectedContentHash": "8b38d86aea0c9ac67e59ddb06404b945599eaad6b886cceff47402f85fb1995d",
     "key": "aftermath-deb-liner-drive-pod",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-deb-liner-drive-pod/render-package.json",
     "runtimeAssetId": "place_aftermath_deb_liner_drive_pod",
@@ -1514,7 +1514,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-deb-liner-hull-panel",
-    "expectedContentHash": "330432ef1742dd7b9c4bf7af219848314a0ea1f9beaebd29fb36e62c8a53253e",
+    "expectedContentHash": "04d7864bc19103ec575320cd58efb080112a8cc25674d6644c322597847b1aa0",
     "key": "aftermath-deb-liner-hull-panel",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-deb-liner-hull-panel/render-package.json",
     "runtimeAssetId": "place_aftermath_deb_liner_hull_panel",
@@ -1524,7 +1524,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-deb-liner-hull-panel-authored-down",
-    "expectedContentHash": "ce70b55cc0acb9298fc353c3273a434c9de44021d08a260a1053f3158c946345",
+    "expectedContentHash": "9c50c0ee486dc72f0d855d3fd7b2971fc0a39f3df46e77e23ea1f0eb190be22b",
     "key": "aftermath-deb-liner-hull-panel-authored-down",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-deb-liner-hull-panel-authored-down/render-package.json",
     "runtimeAssetId": "place_aftermath_deb_liner_hull_panel_authored_down",
@@ -1534,7 +1534,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-deb-ore-freighter-drive-bell",
-    "expectedContentHash": "5efee464efdf276c3fa8b39c85b43705a61f4364a185b5f0df1af7f03642398e",
+    "expectedContentHash": "c164561ca9ac7295b231c8868f1af62af8082b0341c7c30bbeee483759e88768",
     "key": "aftermath-deb-ore-freighter-drive-bell",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-deb-ore-freighter-drive-bell/render-package.json",
     "runtimeAssetId": "place_aftermath_deb_ore_freighter_drive_bell",
@@ -1544,7 +1544,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-deb-ore-freighter-hopper-lid",
-    "expectedContentHash": "7350a4c4ada9224b4ec483ca109ac849ec958b4a4afbc9f69c68e8d645820c41",
+    "expectedContentHash": "8f0e61433bafa82d5a2db45d09e18e7a0c35e8bbd88a9653165fec762046f8fc",
     "key": "aftermath-deb-ore-freighter-hopper-lid",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-deb-ore-freighter-hopper-lid/render-package.json",
     "runtimeAssetId": "place_aftermath_deb_ore_freighter_hopper_lid",
@@ -1554,7 +1554,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down",
-    "expectedContentHash": "14895c7f0d66c0122fa07b7294e75a350e8bb60108505e4400dbe17685f44793",
+    "expectedContentHash": "333c00ce97fabcfb3216a777e7861e464e9f9190ea6176deafdcf17fbecd1941",
     "key": "aftermath-deb-ore-freighter-hopper-lid-authored-down",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-deb-ore-freighter-hopper-lid-authored-down/render-package.json",
     "runtimeAssetId": "place_aftermath_deb_ore_freighter_hopper_lid_authored_down",
@@ -1564,7 +1564,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-deb-ore-freighter-ring-span",
-    "expectedContentHash": "07acf2d4372b051365b8241c7360d7fd398b49e9fda98c8d8d34e48a16a4ab5b",
+    "expectedContentHash": "00fea396021fb9a639aa122d9d15a700fb1c576d6c5e872cef91a32cb5f46898",
     "key": "aftermath-deb-ore-freighter-ring-span",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-deb-ore-freighter-ring-span/render-package.json",
     "runtimeAssetId": "place_aftermath_deb_ore_freighter_ring_span",
@@ -1574,7 +1574,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-frag-cable-bundle",
-    "expectedContentHash": "eb17e956c4dbc84b55df2c5ee8213234caaa26baff8a7daa12e6c283c3f0ac31",
+    "expectedContentHash": "f0c6e6117195113d47d9f4360408cf459072a42518d9ee56af137a1be7d61740",
     "key": "aftermath-frag-cable-bundle",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-frag-cable-bundle/render-package.json",
     "runtimeAssetId": "place_aftermath_frag_cable_bundle",
@@ -1584,7 +1584,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-frag-grating-sheet",
-    "expectedContentHash": "9bfbeb3e1332f78ae096de36dda302d37a6351b675cbf82e3b82ea0fc5c93e4a",
+    "expectedContentHash": "61d54a0d0c38e77a69296137fcc01fc373ba80a6e7c5e814418d3027a85ef3d8",
     "key": "aftermath-frag-grating-sheet",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-frag-grating-sheet/render-package.json",
     "runtimeAssetId": "place_aftermath_frag_grating_sheet",
@@ -1594,7 +1594,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-frag-grating-sheet-authored-down",
-    "expectedContentHash": "6c4a154dc0b79e6842d9ececeedc0bdb10814eeb6c36c3be323bf5d8e1ab38ed",
+    "expectedContentHash": "66eda3dc5df1cef8284af4e9061331ed2e36610f242488c2d039fe94671052d2",
     "key": "aftermath-frag-grating-sheet-authored-down",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-frag-grating-sheet-authored-down/render-package.json",
     "runtimeAssetId": "place_aftermath_frag_grating_sheet_authored_down",
@@ -1604,7 +1604,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-frag-pipe-tangle",
-    "expectedContentHash": "86141260f0312151d93ee8abc387fe8c58373e1e1949234b1a291d0b6047d53c",
+    "expectedContentHash": "ef4aa058f8c0b2c0ede628c84c386d742b4e1c6506e75d6295e5531ee6504be4",
     "key": "aftermath-frag-pipe-tangle",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-frag-pipe-tangle/render-package.json",
     "runtimeAssetId": "place_aftermath_frag_pipe_tangle",
@@ -1614,7 +1614,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-frag-plate-curl",
-    "expectedContentHash": "8fdcdc8b455856f40cfcb689d965170fe79c71890c86c88d5fd36a1559af80df",
+    "expectedContentHash": "fc090f82a919bc20b285c42a676250f906081d9e991c1c845b9612074d2f6582",
     "key": "aftermath-frag-plate-curl",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-frag-plate-curl/render-package.json",
     "runtimeAssetId": "place_aftermath_frag_plate_curl",
@@ -1624,7 +1624,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-frag-rib-cluster",
-    "expectedContentHash": "cec858988980a03c992c6a315a7cb699fbc0c139cdcc316a8d51fed259bd04ec",
+    "expectedContentHash": "f9f13d0a85974b4a2d8ff63867ffa83e86e9bbeccfebbf7067ce9164d2c69ac2",
     "key": "aftermath-frag-rib-cluster",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-frag-rib-cluster/render-package.json",
     "runtimeAssetId": "place_aftermath_frag_rib_cluster",
@@ -1634,7 +1634,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-frag-strut-shard",
-    "expectedContentHash": "c8fba441e081bcd018ffc271bb668b2f1451e5d42a5423c028d5862d03a6d958",
+    "expectedContentHash": "47b93ecafe0454b3643870d818f135b1bb91201b87746ec1b189d97816fa27c2",
     "key": "aftermath-frag-strut-shard",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-frag-strut-shard/render-package.json",
     "runtimeAssetId": "place_aftermath_frag_strut_shard",
@@ -1644,7 +1644,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-corvette-engine",
-    "expectedContentHash": "39bca143be928615d5fb74e8442d5ef346f93d94a0613bc09e2a5e4d39468f16",
+    "expectedContentHash": "ad3987297e6b5f435a7c5a004eb87edcbe3e622605202655b2c65ce1f55167d6",
     "key": "aftermath-wreck-corvette-engine",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-corvette-engine/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_corvette_engine",
@@ -1654,7 +1654,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-corvette-forward",
-    "expectedContentHash": "b71fc4c58197fc3c272cee30361f1a4f23ade3f6ac161bfc7f0469c6fc711609",
+    "expectedContentHash": "2dc54fbe4709b3287e2cf5c89fb0858164ae0c81ddc4078076680390e1a0f40b",
     "key": "aftermath-wreck-corvette-forward",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-corvette-forward/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_corvette_forward",
@@ -1664,7 +1664,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-corvette-forward--fresh",
-    "expectedContentHash": "7364882803e93a698db37f4823bca6a0f8d374eace5d28833ce21c8d4893ba0c",
+    "expectedContentHash": "e7294b69e406130c644d16d72bfd2e620dafb694ee3ccafdde841ab8842dfc5c",
     "key": "aftermath-wreck-corvette-forward--fresh",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-corvette-forward--fresh/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_corvette_forward__fresh",
@@ -1674,7 +1674,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy",
-    "expectedContentHash": "bd96b96eae1749ca61e0e760488dc52b40dbc46e1861765ed7db25f564d829b2",
+    "expectedContentHash": "2b0cff90f0febe2262442ba086b89c66234f392c1fdd3de63551cf7e103b52e6",
     "key": "aftermath-wreck-corvette-forward--stripped-heavy",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-corvette-forward--stripped-heavy/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_corvette_forward__stripped_heavy",
@@ -1684,7 +1684,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-corvette-turret",
-    "expectedContentHash": "78bd223724726eb95cbfc961b514cf6998da3cf092560675659c431440106a4e",
+    "expectedContentHash": "0e924f2f3802c7dbe82bba702f2a3b05a2f3d492fa44d45a966e77ab847d9908",
     "key": "aftermath-wreck-corvette-turret",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-corvette-turret/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_corvette_turret",
@@ -1694,7 +1694,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-liner-boatbay",
-    "expectedContentHash": "cefd8b8f99b2b6d36e9cd893244e39535dfcb13567330d534fbf9b0b528d0e63",
+    "expectedContentHash": "574f19d38802f697d833d7e379670dfc97c09f270b9cc079668b0842f5a1319d",
     "key": "aftermath-wreck-liner-boatbay",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-liner-boatbay/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_liner_boatbay",
@@ -1704,7 +1704,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-liner-boatbay-authored-down",
-    "expectedContentHash": "f1ef61988d47a0a62cb2042c2d47c82b999917f32c0294774b90cd13e95ed1d1",
+    "expectedContentHash": "12a25e74d90744f7af0b9b8217d42e2dfd8e3370419a32f3cd3a5b447831212b",
     "key": "aftermath-wreck-liner-boatbay-authored-down",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-liner-boatbay-authored-down/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_liner_boatbay_authored_down",
@@ -1714,7 +1714,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-liner-bow",
-    "expectedContentHash": "0d5c9d571c244444213c4255931af953d3898a647582d39943cff4f579223c5f",
+    "expectedContentHash": "2bb26eebc938e96e89f13a975f06cdc641a353bd4ee785706946d6d482a81208",
     "key": "aftermath-wreck-liner-bow",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-liner-bow/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_liner_bow",
@@ -1724,7 +1724,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-liner-bow-authored-down",
-    "expectedContentHash": "b988c024faffaa4d574625f5d0fe252d7b7bd93aeb959db8bcfb3d7274f87e2e",
+    "expectedContentHash": "fc7bcfc741260b80ec618062ac635e6ebc3e00a3435aabd9e74b5a0993febbf3",
     "key": "aftermath-wreck-liner-bow-authored-down",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-liner-bow-authored-down/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_liner_bow_authored_down",
@@ -1734,7 +1734,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-liner-drum",
-    "expectedContentHash": "d0af63b982a2a1454672995e10b6b2e7f44f89ca3298b35a499ec75c8e210be2",
+    "expectedContentHash": "2a84bc5260013755488925a60c0a32355ced9dc03a690e9d8429e04db07564b7",
     "key": "aftermath-wreck-liner-drum",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-liner-drum/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_liner_drum",
@@ -1744,7 +1744,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-liner-drum--derelict",
-    "expectedContentHash": "8ce2c931dbe386a91e72a51e9c2e277828c05d5167367da2f0093684ead10b46",
+    "expectedContentHash": "9d538336a2e6b4876e720060e660d3f977dcf98d87a5eba605a0937fe11aa2ef",
     "key": "aftermath-wreck-liner-drum--derelict",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-liner-drum--derelict/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_liner_drum__derelict",
@@ -1754,7 +1754,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-liner-drum--fresh",
-    "expectedContentHash": "8c9434c96e0b91a7dc81c3c33d831873fe057e0ea94809195c912c7e0071294b",
+    "expectedContentHash": "a27dee7a4e5bb3d56e0f24afa18228b11051f452a4b9de99cd7c04eb0c083a0d",
     "key": "aftermath-wreck-liner-drum--fresh",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-liner-drum--fresh/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_liner_drum__fresh",
@@ -1764,7 +1764,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-ore-freighter-bow",
-    "expectedContentHash": "8799cd21fa86461414803741d461b5c5ffc12f895e64b0db58a5fd702b63cdd7",
+    "expectedContentHash": "526d168d2705f1e055d3514c60cd275a73b6e8413c7c7cc8209e22f53b19a529",
     "key": "aftermath-wreck-ore-freighter-bow",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-ore-freighter-bow/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_ore_freighter_bow",
@@ -1774,7 +1774,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-ore-freighter-bow--derelict",
-    "expectedContentHash": "3373941d2e8ef9b9627d2f25ef33bdbd2442acc789bde4cf7d1e2e5dc2b34348",
+    "expectedContentHash": "bc9f75ba99a41abbf901ac71c7632ff5e23a83a73445a18561c8068356f6371f",
     "key": "aftermath-wreck-ore-freighter-bow--derelict",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-ore-freighter-bow--derelict/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_ore_freighter_bow__derelict",
@@ -1784,7 +1784,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-ore-freighter-bow--fresh",
-    "expectedContentHash": "534a0f03c1b1ab57019490156adc5877a42b8c3d07c726fdd981228e9101425f",
+    "expectedContentHash": "5f61f24397bf797a85d00a02c98c99aaca00eac6e5eb3aeffad1d020d88b4700",
     "key": "aftermath-wreck-ore-freighter-bow--fresh",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-ore-freighter-bow--fresh/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_ore_freighter_bow__fresh",
@@ -1794,7 +1794,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-ore-freighter-bow--stripped",
-    "expectedContentHash": "20d3d51c2cca5267f1f7d58b008bf01d24c7d1c550b09fc1a73516f9288c5f5b",
+    "expectedContentHash": "e4597d0e1af55cb07adaa061c75155946dd7f68f957f339f36be3770312ef33f",
     "key": "aftermath-wreck-ore-freighter-bow--stripped",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-ore-freighter-bow--stripped/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_ore_freighter_bow__stripped",
@@ -1804,7 +1804,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-ore-freighter-hopper",
-    "expectedContentHash": "0a310966286547b538f2e6ea5f78645add8cd76ae2dde49855d8523f318afb3c",
+    "expectedContentHash": "f3f6695db7e8a18895772a6041b07d38bff95878e762fb67ba3f27240d8e443c",
     "key": "aftermath-wreck-ore-freighter-hopper",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-ore-freighter-hopper/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_ore_freighter_hopper",
@@ -1814,7 +1814,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down",
-    "expectedContentHash": "5642fd99f200a8b26fa896ed33186a4a4c9f732465dcae7b1ca2ffc01d4ec368",
+    "expectedContentHash": "709c53626127ea848a359a99d93830962b0c0f8c14b8ee51349a2cd920bb1490",
     "key": "aftermath-wreck-ore-freighter-hopper-authored-down",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-ore-freighter-hopper-authored-down/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_ore_freighter_hopper_authored_down",
@@ -1824,7 +1824,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-ore-freighter-stern",
-    "expectedContentHash": "4567acd7fbc0c60e3fda2eb9eff6e385368342f7c9abec9ebb99c65f1cc42f72",
+    "expectedContentHash": "044d2feb6b02922d55eb7a7eeda2919668534a0223e2f4a666d2c1d497516cbc",
     "key": "aftermath-wreck-ore-freighter-stern",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-ore-freighter-stern/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_ore_freighter_stern",
@@ -1834,7 +1834,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.cargo-pod-hazmat",
-    "expectedContentHash": "39ab3572de69df23ae26520ebbbe09198ebe77743d08812a43d8a52192285957",
+    "expectedContentHash": "dd54f974a334b706cfee9b64b7627c85bd4d9b2e9c88b2cefc542f251d7a8c69",
     "key": "cargo-pod-hazmat",
     "metadataUrl": "assets/ships/release/render-packages/cargo-pod-hazmat/render-package.json",
     "runtimeAssetId": "place_cargo_pod_hazmat",
@@ -1844,7 +1844,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.cargo-pod-standard-breached",
-    "expectedContentHash": "cc68f6928319224a93e08189230932a1ae9e0886ed4479d78e24ca0452a5959b",
+    "expectedContentHash": "7c8ccfaccd34e6c8f5ef37c78b9907a8e162234ada43d98182398c9640518432",
     "key": "cargo-pod-standard-breached",
     "metadataUrl": "assets/ships/release/render-packages/cargo-pod-standard-breached/render-package.json",
     "runtimeAssetId": "place_cargo_pod_standard_breached",
@@ -1854,7 +1854,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.comms-array",
-    "expectedContentHash": "abcc29ed7dab52145b4ee1312ee7aaf8201ba69fe70e51c40087152764c41d00",
+    "expectedContentHash": "5f787ce27663a463a7eee86cad1aa9f8ce0f7a0400b810d64ed4a2c3706c792d",
     "key": "comms-array",
     "metadataUrl": "assets/ships/release/render-packages/comms-array/render-package.json",
     "runtimeAssetId": "place_comms_array",
@@ -1864,7 +1864,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.construction-frame",
-    "expectedContentHash": "ea9343a9aaefb70b45c6c9756ec90ea4f902385604b44eceea7d7ff893b8e3fb",
+    "expectedContentHash": "21487317067733bd43393f7592318cc4144d5fbff0049f4f952dfa7075f67ed0",
     "key": "construction-frame",
     "metadataUrl": "assets/ships/release/render-packages/construction-frame/render-package.json",
     "runtimeAssetId": "place_construction_frame",
@@ -1874,7 +1874,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.container-rack-abandoned",
-    "expectedContentHash": "bd7c5e467fd1207e7c9da5dc6776f085c380c4c903d6dc7f459547e9bb9e11bb",
+    "expectedContentHash": "2bdb7bf39d0f7ca7651aa12f7766309bd38bbf4b13382feda4fba49e45e8a8f9",
     "key": "container-rack-abandoned",
     "metadataUrl": "assets/ships/release/render-packages/container-rack-abandoned/render-package.json",
     "runtimeAssetId": "place_container_rack_abandoned",
@@ -1884,7 +1884,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.crusher-module",
-    "expectedContentHash": "4f3e07685e444ed74b12a1849c89ab71139cb40a1713b4790f3912945c82392a",
+    "expectedContentHash": "29f1948d241cbce403a1877d057928248a6c11c74c67450474de57d5ced40663",
     "key": "crusher-module",
     "metadataUrl": "assets/ships/release/render-packages/crusher-module/render-package.json",
     "runtimeAssetId": "place_crusher_module",
@@ -1894,7 +1894,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.customs-pylon",
-    "expectedContentHash": "42a8d6fd42368580ec61ce217e7ab5db902a9690170a1575156c0c4bf1469937",
+    "expectedContentHash": "de6458a222a6a05a68db41682b4efec49809b90fb77819be4cd785229a2e96da",
     "key": "customs-pylon",
     "metadataUrl": "assets/ships/release/render-packages/customs-pylon/render-package.json",
     "runtimeAssetId": "place_customs_pylon",
@@ -1904,7 +1904,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.drill-platform-cold",
-    "expectedContentHash": "d389bf3073be27eb3f0e5a9939e90823b835e30ea05f790d05e3018e60324948",
+    "expectedContentHash": "a51bbffed80d38e82729b5917ff3b7b9171739a1a761fc66e3ed663dac94e6a9",
     "key": "drill-platform-cold",
     "metadataUrl": "assets/ships/release/render-packages/drill-platform-cold/render-package.json",
     "runtimeAssetId": "place_drill_platform_cold",
@@ -1914,7 +1914,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.habitat-pod",
-    "expectedContentHash": "3e4b80e06bbfe92217f0f8a810ac665975f210f1dc5b5ef3f96793391ef43724",
+    "expectedContentHash": "04be4e6d4a208cca98bda1d3882d61e8f8af7872b7f9460d0235abf5cb28914c",
     "key": "habitat-pod",
     "metadataUrl": "assets/ships/release/render-packages/habitat-pod/render-package.json",
     "runtimeAssetId": "place_habitat_pod",
@@ -1924,7 +1924,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.habitat-pod-derelict",
-    "expectedContentHash": "3cb9121b4136303c378d7d35c561cd8c1e07824b09ac9d6d62602450ab1c56c6",
+    "expectedContentHash": "75dc95906de59e36e5414c2470600ce1cc7d2445ba4c3ac561eea143c87c1811",
     "key": "habitat-pod-derelict",
     "metadataUrl": "assets/ships/release/render-packages/habitat-pod-derelict/render-package.json",
     "runtimeAssetId": "place_habitat_pod_derelict",
@@ -1934,7 +1934,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-rack",
-    "expectedContentHash": "a1a1713a86be0b90214fd4379b4de1c47343a697fd120e19f8cf81df14a7729a",
+    "expectedContentHash": "0d954d940c2162ba1f034dbdf4ed66768cc63bd9cd1892f07bbe275053c09dd8",
     "key": "hull-rack",
     "metadataUrl": "assets/ships/release/render-packages/hull-rack/render-package.json",
     "runtimeAssetId": "place_hull_rack",
@@ -1944,7 +1944,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.illicit-transfer-frame",
-    "expectedContentHash": "75e61dc58485ad62e267d64965f2d4e5d4a553888a523106fb2dab82255005c9",
+    "expectedContentHash": "66fbdabedbaaa37900150821ad86a64acceb8afca5307217198cdb64b13b451f",
     "key": "illicit-transfer-frame",
     "metadataUrl": "assets/ships/release/render-packages/illicit-transfer-frame/render-package.json",
     "runtimeAssetId": "place_illicit_transfer_frame",
@@ -1954,7 +1954,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.inspection-platform",
-    "expectedContentHash": "abe01e8670aeda0c036e66fd14e99b8a13426ca834dc47e5be88822a9298738f",
+    "expectedContentHash": "f11e3ab4e9d7d79ce276fb220d6f5b7d878921e25a0091c59711fb4dcd1532c0",
     "key": "inspection-platform",
     "metadataUrl": "assets/ships/release/render-packages/inspection-platform/render-package.json",
     "runtimeAssetId": "place_inspection_platform",
@@ -1964,7 +1964,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.observation-blister",
-    "expectedContentHash": "b5224f950e4b6209770cd0b140129afe17e2eff0c1d5af77b3849a034580bc3f",
+    "expectedContentHash": "697fdd7f27d2637998791d39486dfa798c13fff2d5ba6264117e3f07ee42e6d4",
     "key": "observation-blister",
     "metadataUrl": "assets/ships/release/render-packages/observation-blister/render-package.json",
     "runtimeAssetId": "place_observation_blister",
@@ -1974,7 +1974,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ore-bulk-container",
-    "expectedContentHash": "79afc0ff7942ddfbf47f1d5ad096e691f8b174d8ace6c1d9594b97410211c5be",
+    "expectedContentHash": "2a6813b490a9dec32d839945a060afafbdcad2f7d4e37137d983af085e33603b",
     "key": "ore-bulk-container",
     "metadataUrl": "assets/ships/release/render-packages/ore-bulk-container/render-package.json",
     "runtimeAssetId": "place_ore_bulk_container",
@@ -1984,7 +1984,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ore-sorter",
-    "expectedContentHash": "e441690a4ce83073d39529dbe0ed8fcddbd9ea0ce55aaa86414af1f2183c8ab4",
+    "expectedContentHash": "3c3ced143bbde3cb39a480b801d3f41369e958e6283ca684f0b2ea2139cc32e0",
     "key": "ore-sorter",
     "metadataUrl": "assets/ships/release/render-packages/ore-sorter/render-package.json",
     "runtimeAssetId": "place_ore_sorter",
@@ -1994,7 +1994,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.parts-rack",
-    "expectedContentHash": "efaf4ae9090b12b10ff4603553714aff0d1db93d2c9a48649916b00ddce2a034",
+    "expectedContentHash": "9ce4e1802a4049d97ce71f40ccd5a4a997acc0baa4a6b513a2f57a0004736831",
     "key": "parts-rack",
     "metadataUrl": "assets/ships/release/render-packages/parts-rack/render-package.json",
     "runtimeAssetId": "place_parts_rack",
@@ -2004,7 +2004,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.passenger-platform",
-    "expectedContentHash": "319a100e5122168ba36a93beee52154c783c4a77d6837f17a205aa3ecc320298",
+    "expectedContentHash": "2f6ebbb24b252033eea3f70169341bb235bc81fde217dbce4e22983fc4bd14df",
     "key": "passenger-platform",
     "metadataUrl": "assets/ships/release/render-packages/passenger-platform/render-package.json",
     "runtimeAssetId": "place_passenger_platform",
@@ -2014,7 +2014,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.pirate-sensor-mast",
-    "expectedContentHash": "b4c90292c9efd852427d9e376fed02c05668e1f865f51e8cd3446ce00cbadbae",
+    "expectedContentHash": "af78cd4ec2bdb3a2508ad5889f6bb80c0156b4b6b887b9d841036f9ec0ccc96d",
     "key": "pirate-sensor-mast",
     "metadataUrl": "assets/ships/release/render-packages/pirate-sensor-mast/render-package.json",
     "runtimeAssetId": "place_pirate_sensor_mast",
@@ -2024,7 +2024,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.power-skid",
-    "expectedContentHash": "9d91e8f9a6e60fa8c36702b060d04fdbd85ce565a38770e5ef83bb7df93659f9",
+    "expectedContentHash": "7b139e726dbe57c39ebed79dee18bba61d5e4605919019dda4257aeda3da2359",
     "key": "power-skid",
     "metadataUrl": "assets/ships/release/render-packages/power-skid/render-package.json",
     "runtimeAssetId": "place_power_skid",
@@ -2034,7 +2034,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.power-skid-patched",
-    "expectedContentHash": "fe3fa9ea6e1d07c128117cf0f3eeac35b10eccc9fe1231f0e83e487ff7fdf249",
+    "expectedContentHash": "4eb448481094e47189a9921e8e1b34bb19bf1ff5e9d078bf83d09aa3eb98716a",
     "key": "power-skid-patched",
     "metadataUrl": "assets/ships/release/render-packages/power-skid-patched/render-package.json",
     "runtimeAssetId": "place_power_skid_patched",
@@ -2044,7 +2044,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.repair-scaffold",
-    "expectedContentHash": "5722f29212754a1791140e7bb0a8eab112424cf234cefbfc644e505dd68f5c85",
+    "expectedContentHash": "03abc2b9400cb7477baa78c9c0079b38a81a0ec756716efaf7020ea00f4feb6b",
     "key": "repair-scaffold",
     "metadataUrl": "assets/ships/release/render-packages/repair-scaffold/render-package.json",
     "runtimeAssetId": "place_repair_scaffold",
@@ -2054,7 +2054,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.repair-scaffold-bent",
-    "expectedContentHash": "56e03818db3df3ce25869411b6bbad68cfd5a22d982bb8728a45ca0e6d20f377",
+    "expectedContentHash": "d6b492ae1d4646a09bc8e1766f5ebf14047ded0444d1794099117bc216bc9fac",
     "key": "repair-scaffold-bent",
     "metadataUrl": "assets/ships/release/render-packages/repair-scaffold-bent/render-package.json",
     "runtimeAssetId": "place_repair_scaffold_bent",
@@ -2064,7 +2064,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.salvage-clamp",
-    "expectedContentHash": "b529ec320d160d20873db7a556840bd79874e8c42820dc2fd5e7cd690885f4e7",
+    "expectedContentHash": "4ef4d073097bb680464b80a732bee1ac0747e88e14c554d4c58c784a955e4bb4",
     "key": "salvage-clamp",
     "metadataUrl": "assets/ships/release/render-packages/salvage-clamp/render-package.json",
     "runtimeAssetId": "place_salvage_clamp",
@@ -2074,7 +2074,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.shuttle-dock",
-    "expectedContentHash": "f528441191090f4c1acc7c2d371c7d6380a5cbff5c773ec28d6e94b88dd370bb",
+    "expectedContentHash": "aed4aceb7f34439e59e47b9bb2ea0f731b66be048f5482edc3fe9cdec14250d8",
     "key": "shuttle-dock",
     "metadataUrl": "assets/ships/release/render-packages/shuttle-dock/render-package.json",
     "runtimeAssetId": "place_shuttle_dock",
@@ -2084,7 +2084,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.solar-array",
-    "expectedContentHash": "155b498b075b9fba776b375493a2e49f91be8a82f602eae27f9637386f5c2592",
+    "expectedContentHash": "bff9a4aaaad6dc10bf82a2d81bbc22f6239b0d5f2902a3c9dc74b7b57a6d0f11",
     "key": "solar-array",
     "metadataUrl": "assets/ships/release/render-packages/solar-array/render-package.json",
     "runtimeAssetId": "place_solar_array",
@@ -2094,7 +2094,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.tanker-coupling",
-    "expectedContentHash": "335f785d3d5259140c9f9c7bb3b6c56eaf4b200a0e8f2bacd719379a2e17b22b",
+    "expectedContentHash": "2a4d748c138feb3d4b7ea93c0f1351dc5b75d90b221d12246d510af1dfca79c7",
     "key": "tanker-coupling",
     "metadataUrl": "assets/ships/release/render-packages/tanker-coupling/render-package.json",
     "runtimeAssetId": "place_tanker_coupling",
@@ -2104,7 +2104,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.traffic-signal",
-    "expectedContentHash": "8f0aa75203be74c5f3bf9ef24fe127b13a728b644a315e4f2a3724fbad7ed703",
+    "expectedContentHash": "2087e5eaa36cbab3b90388e07f4dd3ca43d2d05d6b293c688e78fb682fb1c785",
     "key": "traffic-signal",
     "metadataUrl": "assets/ships/release/render-packages/traffic-signal/render-package.json",
     "runtimeAssetId": "place_traffic_signal",
@@ -2114,7 +2114,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.utility-module",
-    "expectedContentHash": "eed8596ec02414ae36f7ff282b895d74de8717d7775f40da80e65786a66d6fd0",
+    "expectedContentHash": "b28c1c8088ccf3f3ec4aeac0221d177ac4ef866ed28c0457fbe9947839ba44d9",
     "key": "utility-module",
     "metadataUrl": "assets/ships/release/render-packages/utility-module/render-package.json",
     "runtimeAssetId": "place_utility_module",
@@ -2124,7 +2124,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.welding-drone",
-    "expectedContentHash": "d0681d4031f3d82cce48306d246b7b8af3a2cd6e646578ebad59b0a2cef208f7",
+    "expectedContentHash": "6abd95ead232f00165ab27a4963c80d8a8cb5912f2649cd3ff6cda6e05919c39",
     "key": "welding-drone",
     "metadataUrl": "assets/ships/release/render-packages/welding-drone/render-package.json",
     "runtimeAssetId": "place_welding_drone",
@@ -2134,7 +2134,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.drifter-production-v1",
-    "expectedContentHash": "21491b3747461edd45b0bb2d372d82acdc71f90a136f36af3b953862acfa9ddd",
+    "expectedContentHash": "570db76f0fe8ae3317cfa389f656b1017280c0bf02a93166792635eed4da58be",
     "key": "drifter-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/drifter-production-v1/render-package.json",
     "runtimeAssetId": "SF_DRIFTER_PRODUCTION_V1",
@@ -2144,7 +2144,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.drifter-production-v1-lod1",
-    "expectedContentHash": "d0186748c2ffb30c838a32b75fc60d0269ffebf1d2f7bdcd8bb37d653977b579",
+    "expectedContentHash": "d69758cafafd7e43d7ab4ea6739a44961e41f77c5f5f7bf2a8fd76a74ef8c9bb",
     "key": "drifter-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/drifter-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_DRIFTER_PRODUCTION_V1",
@@ -2154,7 +2154,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.drifter-production-v1-lod2",
-    "expectedContentHash": "bbd584574df336f4c8412d1ed0b3c77802db43c5fbc91e1f0a3d7719191382f6",
+    "expectedContentHash": "e92cbf74c8f90f7b9f1742a632df6f5178dee8486a917112c8330d73502114c4",
     "key": "drifter-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/drifter-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_DRIFTER_PRODUCTION_V1",
@@ -2164,7 +2164,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.cold-locker",
-    "expectedContentHash": "c5690f5abb6508c86a24b2bfe45ee40c412fb1e89246d7e89ca973a8d071e029",
+    "expectedContentHash": "721665292f0db4b41e4ff29b4d8aa064736f009b584c0a8a30a36bcfc0228ad0",
     "key": "cold-locker",
     "metadataUrl": "assets/ships/release/render-packages/cold-locker/render-package.json",
     "runtimeAssetId": "SF_PLACE_COLD_LOCKER",
@@ -2174,7 +2174,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ash-pin",
-    "expectedContentHash": "4ba0bb88438e2606c0bac9606605dfc5dd8f5259da5c11051d658f6821bab501",
+    "expectedContentHash": "059dfa822d184c942b8b70e9fc50d18feca5c1ca9a80d67e4332e2b31d6469ca",
     "key": "ash-pin",
     "metadataUrl": "assets/ships/release/render-packages/ash-pin/render-package.json",
     "runtimeAssetId": "SF_PLACE_ASH_PIN",
@@ -2184,7 +2184,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.tally-post",
-    "expectedContentHash": "9ac22d6111d2512a39ddd099c27ad5c3e1b0044d69b78d33dd2427cb46d9ed18",
+    "expectedContentHash": "fa81f915d9256141010a6456f7fbc750f564496c6b70ad0a4cad8cc3dc25d0b0",
     "key": "tally-post",
     "metadataUrl": "assets/ships/release/render-packages/tally-post/render-package.json",
     "runtimeAssetId": "SF_PLACE_TALLY_POST",
@@ -2194,7 +2194,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.pelican-production-v1",
-    "expectedContentHash": "64f403646e317fc30ce7dc64fb4bca9c013564f0c32e04f49386e093ece15f26",
+    "expectedContentHash": "013da5a4b798ccb80d564f03f0577a2bb1487fc581680ba8fc39fda25cf46c0a",
     "key": "pelican-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1/render-package.json",
     "runtimeAssetId": "SF_PELICAN_PRODUCTION_V1",
@@ -2204,7 +2204,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.atlas-production-v1",
-    "expectedContentHash": "9fdc6fa5fb5913275e3d86cf8d38deaf2f3199d9b1c31a37de82e074c3d3e079",
+    "expectedContentHash": "f28ff761fb44a977bb1a144bf87297ec20971345b9933ee9cc87133bb7da176a",
     "key": "atlas-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/atlas-production-v1/render-package.json",
     "runtimeAssetId": "SF_ATLAS_PRODUCTION_V1",
@@ -2214,7 +2214,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.bastion-production-v1",
-    "expectedContentHash": "741b5801327778fa5a0feed4b3fa165e77379d0a8c69689c3c8032d4e1b5bad7",
+    "expectedContentHash": "74213248e552c92e109901a4968516a7377ed3e43869bc3fb3e2e5f925ce6aa4",
     "key": "bastion-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1/render-package.json",
     "runtimeAssetId": "SF_BASTION_PRODUCTION_V1",
@@ -2224,7 +2224,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.colossus-production-v1",
-    "expectedContentHash": "a89ffc169a1a5b1200d9d282ae91f1ae4e7ffebc7b089bf93e87ab162276c30f",
+    "expectedContentHash": "683ca7d33da5a5029588d47a4c2475e94768167b720013b859f609e81cbae0d2",
     "key": "colossus-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/colossus-production-v1/render-package.json",
     "runtimeAssetId": "SF_COLOSSUS_PRODUCTION_V1",
@@ -2234,7 +2234,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hornet-production-v1",
-    "expectedContentHash": "bd36bf855359ad11f38c87ebae5b2a4cdd2dd4918986ecde0b362151e011f9a7",
+    "expectedContentHash": "146444ea64924413172c853886fbacc04c75c8b4cb6a10a12325238981608282",
     "key": "hornet-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1/render-package.json",
     "runtimeAssetId": "SF_HORNET_PRODUCTION_V1",
@@ -2244,7 +2244,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ironback-production-v1",
-    "expectedContentHash": "a0668eee6d67daccd0f10fc187e71d701a1b7cff4aa5e34ce0d629f57875c9d2",
+    "expectedContentHash": "eab57a7214c525e751d474350a858108deccd984a5db448cf8ae282408cae403",
     "key": "ironback-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1/render-package.json",
     "runtimeAssetId": "SF_IRONBACK_PRODUCTION_V1",
@@ -2254,7 +2254,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.leviathan-production-v1",
-    "expectedContentHash": "cb55ea81a62397f8d6a3ae52c8fda8164f8e4fd850527f42326b22606b15a2b1",
+    "expectedContentHash": "7cf8d37dd60ff4a42ba9178b621b0f8832652fb981747f95c841b566702ad416",
     "key": "leviathan-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/leviathan-production-v1/render-package.json",
     "runtimeAssetId": "SF_LEVIATHAN_PRODUCTION_V1",
@@ -2264,7 +2264,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.mule-production-v1",
-    "expectedContentHash": "c8399d88169cd740238ae41716c583998c1ba99174b12948142ed9d4184a7528",
+    "expectedContentHash": "a0800e6c4c3efb37e8aba510758da69386b40fc27c16a6f20e656489cc0a088d",
     "key": "mule-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/mule-production-v1/render-package.json",
     "runtimeAssetId": "SF_MULE_PRODUCTION_V1",
@@ -2274,7 +2274,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ranger-production-v1",
-    "expectedContentHash": "73c10e57222bc2b63ca0f0f6971251962220760c9d1c9edfd3d27a9408760d62",
+    "expectedContentHash": "b6b11c43cae0c93e10f3662519698d8390c6be7278e9b7dcd389689472f92020",
     "key": "ranger-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1/render-package.json",
     "runtimeAssetId": "SF_RANGER_PRODUCTION_V1",
@@ -2284,7 +2284,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.warden-production-v1",
-    "expectedContentHash": "5bc965a8d7bd7ab984e07b88c1b7c4c9ec232d78f542c2060f61812f47dd47e1",
+    "expectedContentHash": "f46cfc64bc3e4d257fc92867649e2c8178dc71878bfe4430ebcb09468e389c94",
     "key": "warden-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/warden-production-v1/render-package.json",
     "runtimeAssetId": "SF_WARDEN_PRODUCTION_V1",
@@ -2294,7 +2294,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.massline-express-liner-v1",
-    "expectedContentHash": "95b6bea9ad276cc90afed5c51210df0ad411b4af7f3b04283e2f91c0e5c2352c",
+    "expectedContentHash": "41e23faa0985348f281f1be42d515a9c30bb3dcf46c2990559cbc2b26dbe3d25",
     "key": "massline-express-liner-v1",
     "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
@@ -2304,27 +2304,27 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.var-station-trade-hub-free-overlay-v01",
-    "expectedContentHash": "9df0dcd41dda94d45aedacb5b17f6b52ff4c893c6a6a9fe20f5e36f84c84e150",
+    "expectedContentHash": "7af6acec687b6cc1005566a5282109b9bdea34b715f93bd65f5e48c82be8e48d",
     "key": "var-station-trade-hub-free-overlay-v01",
     "metadataUrl": "assets/ships/release/render-packages/var-station-trade-hub-free-overlay-v01/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_TRADE_HUB_FREE_OVERLAY",
     "slot": "place",
-    "sourceSha256": "00d8b93ba3b9e24a59dad41b57a57660103541e86625f970e6c5918aa7efc6e2",
+    "sourceSha256": "6ddec10cb99b1296f70a09c715a7ca2135406a47a62cea479245d74f96432fe4",
     "sourceUrl": "assets/ships/release/parts/places/var_station_trade_hub_free_overlay_v01.glb"
   },
   {
     "assetId": "sf.render.var-station-trade-hub-mts-overlay-v01",
-    "expectedContentHash": "23b38c02c78f8b2937616881feab9a467bb7ba3f0e5847eb6339b49a0163c645",
+    "expectedContentHash": "3756a9f291dd2eea554967a12221c471519f365927cb8d97133d403e3c6af9f1",
     "key": "var-station-trade-hub-mts-overlay-v01",
     "metadataUrl": "assets/ships/release/render-packages/var-station-trade-hub-mts-overlay-v01/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_TRADE_HUB_MTS_OVERLAY",
     "slot": "place",
-    "sourceSha256": "50c610d8badb9330e6c5d16a07d6619274941d1b9b031d7030d77e049e50e362",
+    "sourceSha256": "7372f25c7a67aab2bce4ef5e774d0810ce69a206d471a361dee91d25bd2e82f1",
     "sourceUrl": "assets/ships/release/parts/places/var_station_trade_hub_mts_overlay_v01.glb"
   },
   {
     "assetId": "sf.render.var-station-trade-hub-scn-overlay-v01",
-    "expectedContentHash": "ca9250b16adc37c259de4d7a46e2e4cc22b2e1337e8623a97afc92f4eff1ba79",
+    "expectedContentHash": "63afbf8eb94e171911264b1a7d18e5b9902d0de0828a863503ef5098f3f527bb",
     "key": "var-station-trade-hub-scn-overlay-v01",
     "metadataUrl": "assets/ships/release/render-packages/var-station-trade-hub-scn-overlay-v01/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_TRADE_HUB_SCN_OVERLAY",
@@ -2334,7 +2334,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-span-dmc",
-    "expectedContentHash": "ea76cf5de92a37b993fee813aba893f73c683299e63ecc662dda30e7ec55b236",
+    "expectedContentHash": "86286c752f5817ed6333eca8c099bf7856b319bbb48c44b69ce7b3a8bfb22863",
     "key": "helios-span-dmc",
     "metadataUrl": "assets/ships/release/render-packages/helios-span-dmc/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_HELIOS_SPAN_DMC",
@@ -2344,7 +2344,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-span-mts",
-    "expectedContentHash": "82aff70c73c03dd7a123e38831d04e3654b75ed33d6ac484ac4ff86c35026136",
+    "expectedContentHash": "dbe614bbb6bac3cd8331095370f7bc32608fc7aaacc7fb41c54f597d26df22ae",
     "key": "helios-span-mts",
     "metadataUrl": "assets/ships/release/render-packages/helios-span-mts/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_HELIOS_SPAN_MTS",
@@ -2354,7 +2354,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-span-reach",
-    "expectedContentHash": "06022c000f57184904fe12583bb9cc08c5cd29617cbc706799b3b6db059e3b82",
+    "expectedContentHash": "66619dea47b377b60c2af7be168596e448bd5b0b75f56efa93025b64723aa005",
     "key": "helios-span-reach",
     "metadataUrl": "assets/ships/release/render-packages/helios-span-reach/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_HELIOS_SPAN_REACH",
@@ -2364,7 +2364,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wasp-free-militia",
-    "expectedContentHash": "f9a3de3a1d436e35883592fb0762073bf848a6866d00870cee7711ece29ec2d6",
+    "expectedContentHash": "785059491771aeda1b9f50d6e763a17a667b9877ef847a85f44901cdfe5f6a37",
     "key": "wasp-free-militia",
     "metadataUrl": "assets/ships/release/render-packages/wasp-free-militia/render-package.json",
     "runtimeAssetId": "SF_WASP_FREE_MILITIA",
@@ -2374,7 +2374,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wasp-mts-escort",
-    "expectedContentHash": "fb4d982d29f7438d1c60b5fd903777ad3df7bda7f96d19f11cadafa9418e3566",
+    "expectedContentHash": "68d6f78c11b843bfed30f84d30720fbc84fdd99731f2fb81d903deafca52ff53",
     "key": "wasp-mts-escort",
     "metadataUrl": "assets/ships/release/render-packages/wasp-mts-escort/render-package.json",
     "runtimeAssetId": "SF_WASP_MTS_ESCORT",
@@ -2384,7 +2384,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wasp-scn-patrol",
-    "expectedContentHash": "7c789e98c48a6da82a7b14a47e2de9a35d6cc3acba02d5706825518eecc93753",
+    "expectedContentHash": "335605ebba0f15cf601c3e69c25d7b3f3b736af9678ddf9c98ac15f367d56f27",
     "key": "wasp-scn-patrol",
     "metadataUrl": "assets/ships/release/render-packages/wasp-scn-patrol/render-package.json",
     "runtimeAssetId": "SF_WASP_SCN_PATROL",
@@ -2394,7 +2394,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.pod-47a-evidence-spindle",
-    "expectedContentHash": "173224ad0a8bf42351ad9767cebe99f6954fd0585de22150b43f2cb9e6b31688",
+    "expectedContentHash": "3b00d2e00c32085d9f89e55b631b2e02f8a6ed9beb7b572d86d42c9b368b5795",
     "key": "pod-47a-evidence-spindle",
     "metadataUrl": "assets/ships/release/render-packages/pod-47a-evidence-spindle/render-package.json",
     "runtimeAssetId": "SF_POD_47A_EVIDENCE_SPINDLE",
@@ -2404,7 +2404,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.47a-rescue-capsule",
-    "expectedContentHash": "0e431bdafe98ff2176d0af7c2e329bf763fbd762c23a82da24c1b6877b143294",
+    "expectedContentHash": "e3eaf0609e3112ca727a29202846e32e293b1357b9caa3e33307502e573360a6",
     "key": "47a-rescue-capsule",
     "metadataUrl": "assets/ships/release/render-packages/47a-rescue-capsule/render-package.json",
     "runtimeAssetId": "SF_PLACE_47A_RESCUE_CAPSULE",
@@ -2414,7 +2414,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wasp-production-v1-lod1",
-    "expectedContentHash": "a6063c4d0baf91f56678797d15570532a241a927e60c5d6abcd0b1a4c17fdf6f",
+    "expectedContentHash": "006fb5524e02b5b2eb580b19089f2b41e4eab6780eef70910b1c694128d4acc7",
     "key": "wasp-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/wasp-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_WASP_PRODUCTION_V1",
@@ -2424,7 +2424,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wasp-production-v1-lod2",
-    "expectedContentHash": "f357e44b76d5c65448681b67c0f690a3763ef2de14ca035b96cd791a4561c5cb",
+    "expectedContentHash": "b4cce15ec6f026e3b008798f82172accdeec5369589cbd0daf7a197a538221e0",
     "key": "wasp-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/wasp-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_WASP_PRODUCTION_V1",
@@ -2434,7 +2434,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hornet-production-v1-lod1",
-    "expectedContentHash": "e14f420f2c7360f1be69275b8d31e1da8d6a93d57219106ebb978e7aa92d8f16",
+    "expectedContentHash": "4f66a06ea0f4ae763a4b7a183ab3814d83450bd849704a0ae794ed6005833953",
     "key": "hornet-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_HORNET_PRODUCTION_V1",
@@ -2444,7 +2444,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hornet-production-v1-lod2",
-    "expectedContentHash": "836e390bdaa9b508b541b0115938bb690797c9d6005ed3b759c924339da2a2f7",
+    "expectedContentHash": "c8e09d5f050a410533ad0e80b693a4ebe01e797620cbadc4bf0bd3d8d19e7b7f",
     "key": "hornet-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_HORNET_PRODUCTION_V1",
@@ -2454,7 +2454,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.bastion-production-v1-lod1",
-    "expectedContentHash": "61f7b93c10d918848685f52dd49e22ac22be4adc72768ec4e767cf5f2879be87",
+    "expectedContentHash": "8b1e9278a044c0a0d4284788fd9572045ed0cf3b11fc8aca60eba27e587ff98e",
     "key": "bastion-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_BASTION_PRODUCTION_V1",
@@ -2464,7 +2464,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.bastion-production-v1-lod2",
-    "expectedContentHash": "384c97a92067bc6eb988736e6299a36e706f1eef91f57da021c0568d17e9dfef",
+    "expectedContentHash": "f5f7b474d0820541044afafeae17fe9e9667790e2fb0f4883ab985959ba67d5f",
     "key": "bastion-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_BASTION_PRODUCTION_V1",
@@ -2474,7 +2474,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.warden-production-v1-lod1",
-    "expectedContentHash": "2e2ac573c677cc046dd5c70ec6cf0a3c90f3de5cf05d0531f0d8cf81d61c4209",
+    "expectedContentHash": "abf79072ecf56228162c72c39b2e42a888124cdd9aa558a61b49587d9bee39cd",
     "key": "warden-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/warden-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_WARDEN_PRODUCTION_V1",
@@ -2484,7 +2484,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.warden-production-v1-lod2",
-    "expectedContentHash": "b6f5c3bea4ea761ff6888c14edecfa6d090732c8fedfb866746173f47cc4fd1f",
+    "expectedContentHash": "323fdd0f43d79ff92b98f69cd3ed1f97ecbfb66a8aa7b59464f893eb2af2719d",
     "key": "warden-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/warden-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_WARDEN_PRODUCTION_V1",
@@ -2494,7 +2494,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.massline-express-liner-v1-lod1",
-    "expectedContentHash": "244498f8ae66ea867281ad6f90ffbfbc7faa38bd8cbcd9567e2e09d004440b72",
+    "expectedContentHash": "e289cc214ed38f72f22424ad497b4a8a12daa5b26669893d860b731ef1f206d1",
     "key": "massline-express-liner-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
@@ -2504,7 +2504,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.massline-express-liner-v1-lod2",
-    "expectedContentHash": "515e3f06b550833f6771ee73d143f75032d0ab7d85f2d512ba2ea7db93f5892d",
+    "expectedContentHash": "839ae5e1a455cce4689b0aa381f378deb8fd63b2d4cb469e40d3ba9b3481ebf0",
     "key": "massline-express-liner-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
@@ -2514,7 +2514,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.mule-production-v1-lod1",
-    "expectedContentHash": "dbcb7699364fa63bf53be3a3347a5783e7d7a362ca8f6e08ce126607bf109bf0",
+    "expectedContentHash": "99012331288c1083fa1238ef77ba51b46e8a7dc5e46d94f6432869c863db2c45",
     "key": "mule-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/mule-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_MULE_PRODUCTION_V1",
@@ -2524,7 +2524,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.mule-production-v1-lod2",
-    "expectedContentHash": "0ee550063cd8adf950f44ddb37828ec0204250dfa5e20ed4f7e6871ad46e5a12",
+    "expectedContentHash": "41835d8b56edf2cc8a027ac0af5689ebf2aec8bbec076632c9aed6c804202683",
     "key": "mule-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/mule-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_MULE_PRODUCTION_V1",
@@ -2534,7 +2534,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.atlas-production-v1-lod1",
-    "expectedContentHash": "20b88ea2b03a4a172be3231db0aef349acbc610ab129e7f7468098b927d48378",
+    "expectedContentHash": "b82f58f94598bac53e2f9ba4151adfd419728b83a3ed6b48c7d5afb734bd4e35",
     "key": "atlas-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/atlas-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_ATLAS_PRODUCTION_V1",
@@ -2544,7 +2544,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.atlas-production-v1-lod2",
-    "expectedContentHash": "4a1190dc804c7a9b1c60b9fbbe181b1deb618ca308cf4252f76904fe334d04da",
+    "expectedContentHash": "2d023006af9e4ab030905f90b8e4f714c10a6d8b2979935aa7a2b05fa2604e6b",
     "key": "atlas-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/atlas-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_ATLAS_PRODUCTION_V1",
@@ -2554,7 +2554,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ranger-production-v1-lod1",
-    "expectedContentHash": "5ea9695b9806d3f4f2f5e886e92d17ddb3929f26d2e7737abdfe56acfd90b43d",
+    "expectedContentHash": "12371e4526523077ffea08ab03c6c7e76b16720c620982c0de1417fbcd6db470",
     "key": "ranger-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_RANGER_PRODUCTION_V1",
@@ -2564,7 +2564,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ranger-production-v1-lod2",
-    "expectedContentHash": "7512200ac7807f81cfe8ad813db995f6453471078c2d3a35b8736e13e3c4788c",
+    "expectedContentHash": "f2cb15a9caa80833ed6ad3e56658cdd7f85d3a8afe2d6d00500b26aaa9cb3930",
     "key": "ranger-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_RANGER_PRODUCTION_V1",
@@ -2574,17 +2574,17 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.outpost-catcher",
-    "expectedContentHash": "922e6f37b182b03e79854727bccddd2915eb4b90ca8d3947950e2f88ed601a37",
+    "expectedContentHash": "72086e6c814fc26062aa10fa14f8d9665210c1b4e041109c68d8cea656657eab",
     "key": "outpost-catcher",
     "metadataUrl": "assets/ships/release/render-packages/outpost-catcher/render-package.json",
     "runtimeAssetId": "SF_PLACE_CLAIM_OUTPOST_CATCHER",
     "slot": "place",
-    "sourceSha256": "48e4f76d137f32ad0e707a4ca71176e352cac14e96afd7561408e59220501dea",
+    "sourceSha256": "40020a7796a56823909e0c86d1eb1c9ade36bb380cb40407012f2a24a2574c50",
     "sourceUrl": "assets/ships/release/parts/places/place_claim_outpost_catcher.glb"
   },
   {
     "assetId": "sf.render.breakaway-sp07",
-    "expectedContentHash": "b6b857e61508ffb8e9f2933b0f9729145a17975908121d1e4002f352fdb49c3a",
+    "expectedContentHash": "01fd533c65cb15d2c4b0264ca0d76badddb5811889ba2518723eb6d6ec2ca722",
     "key": "breakaway-sp07",
     "metadataUrl": "assets/ships/release/render-packages/breakaway-sp07/render-package.json",
     "runtimeAssetId": "SF_PLACE_BREAKAWAY_SP07",
@@ -2594,7 +2594,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.breakaway-fork",
-    "expectedContentHash": "4f6c675d41c6a891e7cfd75eb9f707cded41e8bc7c87ce4bf851760c760926f8",
+    "expectedContentHash": "72b542b2d8195900e2e95cc6e5acf6dd56fe794ef95df355fdc6ab7295132c9b",
     "key": "breakaway-fork",
     "metadataUrl": "assets/ships/release/render-packages/breakaway-fork/render-package.json",
     "runtimeAssetId": "SF_PLACE_BREAKAWAY_FORK",
@@ -2604,17 +2604,17 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.outpost-fence",
-    "expectedContentHash": "4d5e06d96c9d9a3294696ed37d5b77a47c52feec3c651e1a7f2f549f0b89f2a6",
+    "expectedContentHash": "ed656b85d625488ae067a8a53cbf13c47dcb173eca5b53113b0eb1d7cc40a43e",
     "key": "outpost-fence",
     "metadataUrl": "assets/ships/release/render-packages/outpost-fence/render-package.json",
     "runtimeAssetId": "SF_PLACE_CLAIM_OUTPOST_FENCE",
     "slot": "place",
-    "sourceSha256": "ee11627b75fe57eaffcd4c90059b3948b61fd59fa27bb2944f55c330de122cb0",
+    "sourceSha256": "af21f42f1aaae1e6dcec8874150b5f512e6da2c7da9994e04301c6c18f8e112e",
     "sourceUrl": "assets/ships/release/parts/places/place_claim_outpost_fence.glb"
   },
   {
     "assetId": "sf.render.fin-crystalline",
-    "expectedContentHash": "c04300c988b51a69920bc5b657f89cf73f3d7f14c252698c521007acd940fe9f",
+    "expectedContentHash": "8ca9cb758de1a70890adb50f2fde55796b306f44dda998e0fb2c0088138f9186",
     "key": "fin-crystalline",
     "metadataUrl": "assets/ships/release/render-packages/fin-crystalline/render-package.json",
     "runtimeAssetId": "SF_FIN_CRYSTALLINE",
@@ -2624,7 +2624,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.pelican-production-v1-lod1",
-    "expectedContentHash": "0825ef5ab7177421516d6200ab2507df3d56ad4781e99cf92b0e966b874cff2c",
+    "expectedContentHash": "05fc3dd43c38c0c6e10b342d6ecbc247bda4c9652b5cea0d669ae1e361383960",
     "key": "pelican-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_PELICAN_PRODUCTION_V1",
@@ -2634,7 +2634,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.pelican-production-v1-lod2",
-    "expectedContentHash": "021e642086dd239f0634d59d6f6e2094208a151947f91b4fd547e44c3fe897e2",
+    "expectedContentHash": "8e57cb173f34205270fa44204945a2b1e506fdd708d7be8880c1a4edf414aa3d",
     "key": "pelican-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_PELICAN_PRODUCTION_V1",
@@ -2644,7 +2644,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.colossus-production-v1-lod1",
-    "expectedContentHash": "5f314f61ae0af4b92a843db4fd3c563b4076e715df26b1970c8eef2de0c88e7d",
+    "expectedContentHash": "0f6eb2564fd6bdf41e8efa4414bb89d0c4bd440027564ebbe8eb7f1254f9c29b",
     "key": "colossus-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/colossus-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_COLOSSUS_PRODUCTION_V1",
@@ -2654,7 +2654,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.colossus-production-v1-lod2",
-    "expectedContentHash": "99015b98ff4a2e3864121f6ce58b8cce59b8ff0bfa16fd744ae1bd9e251e3d7d",
+    "expectedContentHash": "28cc6cbe12048a60668bb2f3f10da3e446e9b65dd9384bac7403a985f3773d8f",
     "key": "colossus-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/colossus-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_COLOSSUS_PRODUCTION_V1",
@@ -2664,7 +2664,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ironback-production-v1-lod1",
-    "expectedContentHash": "cb46687cb470b477ce5c3dcfba7a948bcbe5d05381c95a2e23b9d6dca8913be3",
+    "expectedContentHash": "7b8dbfe170f75e109b22fb5190d5eaf14bc1d4877c8baf5d9015ea70075283b7",
     "key": "ironback-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_IRONBACK_PRODUCTION_V1",
@@ -2674,7 +2674,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ironback-production-v1-lod2",
-    "expectedContentHash": "1518fad1fba7cd5ae55cc1cbc853f3bb2ce3645a3849a5fc5499b8061e202748",
+    "expectedContentHash": "f783cdec4554f1ce966212d20ebc9e65a733ce6de70fc64d041b6878f7886100",
     "key": "ironback-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_IRONBACK_PRODUCTION_V1",
@@ -2684,7 +2684,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.leviathan-production-v1-lod1",
-    "expectedContentHash": "1f84a3c38dd4d9e05b8c176027aacdba73f668938c910e9ff13fd0d79f4ecb14",
+    "expectedContentHash": "4dfa2368175cef609a4a7974106ab07db565c4a230dd3f81a8e4687016a624a0",
     "key": "leviathan-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/leviathan-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_LEVIATHAN_PRODUCTION_V1",
@@ -2694,7 +2694,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.leviathan-production-v1-lod2",
-    "expectedContentHash": "3f064b6170640fda3bb8f4284f92f7125b430be936e3c4a63894d0553b377324",
+    "expectedContentHash": "57415f16de42444b0ff6d181df2cd5234b22d35b5e13d46fe272c98e7beb9773",
     "key": "leviathan-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/leviathan-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_LEVIATHAN_PRODUCTION_V1",
@@ -2704,32 +2704,32 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.quiessence-freighter-a",
-    "expectedContentHash": "6bb9139f2e4d633057e6dc9cdfa0cf1c5529a32acd3d7570f731b09999ad9a32",
+    "expectedContentHash": "194fc4ba5a43bd79be9aa8e9d69477f67a880b5f0f1af5c402a806954e42b533",
     "key": "quiessence-freighter-a",
     "metadataUrl": "assets/ships/release/render-packages/quiessence-freighter-a/render-package.json",
     "runtimeAssetId": "SF_PLACE_QUIESSENCE_FREIGHTER_A",
     "slot": "place",
-    "sourceSha256": "fb0970f5c313f884a18424fccd0c07765e3bd103dc99a1f4ba89ffc0f02a8dbe",
+    "sourceSha256": "416fdfbb7039c2a3b5199bf88464e2ecd28d4a8ca771a5fbbc36bd3a363b84d2",
     "sourceUrl": "assets/ships/release/parts/places/place_quiessence_freighter_a.glb"
   },
   {
     "assetId": "sf.render.quiessence-freighter-b",
-    "expectedContentHash": "ca89fdc0eb4a18f95d339b89adbcc43845fa22940d45c699240386a8eabe74ed",
+    "expectedContentHash": "d7d35dea6f9a60e5485031695b22ba2a648981ba13120464bd8c57a58b1102a4",
     "key": "quiessence-freighter-b",
     "metadataUrl": "assets/ships/release/render-packages/quiessence-freighter-b/render-package.json",
     "runtimeAssetId": "SF_PLACE_QUIESSENCE_FREIGHTER_B",
     "slot": "place",
-    "sourceSha256": "152db4bfe4362e8a46d1991f8fb8de08b93b3caf63e6acdff0c3b1688401bfb8",
+    "sourceSha256": "0732226c5045471132ac6a5153b528a13b79d54f5c7fe8f96b62fec83134539a",
     "sourceUrl": "assets/ships/release/parts/places/place_quiessence_freighter_b.glb"
   },
   {
     "assetId": "sf.render.quiessence-freighter-c",
-    "expectedContentHash": "2a38e198d94ad99dc337fc73efc4109c22dd7824aff73b49576fa13ae277d511",
+    "expectedContentHash": "6bc4d9aae81be85c64d4c2d3c61bc30eed368c1de6af1924471ee2a1f693caf2",
     "key": "quiessence-freighter-c",
     "metadataUrl": "assets/ships/release/render-packages/quiessence-freighter-c/render-package.json",
     "runtimeAssetId": "SF_PLACE_QUIESSENCE_FREIGHTER_C",
     "slot": "place",
-    "sourceSha256": "2d029ec41a10f2d1d031bf9c4ae9b327c8dd20015327f96766d59cba121b679b",
+    "sourceSha256": "ed118412422351e9b5fa10fab3d2392eb49d39c8743ca2dd37dd95f4f9095f52",
     "sourceUrl": "assets/ships/release/parts/places/place_quiessence_freighter_c.glb"
   }
 ];

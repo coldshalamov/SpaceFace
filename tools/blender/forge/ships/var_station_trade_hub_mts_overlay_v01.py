@@ -22,14 +22,27 @@ import forge as F  # noqa: E402
 import hub_overlay_kit as K  # noqa: E402
 
 SHIP_ID = 'var_station_trade_hub_mts_overlay_v01'
+
+# Brushed-metal fix (process-local): the sector key light gives dielectric paint a fixed pale
+# floor — white F0 spec off the hot amber backdrop — which is why the muted-gold albedo still
+# read saturated gold in the contact sheets. A corporate halo should read as brushed
+# brass/bronze metal, so paint/stripe/hazard go near-full metal here (same deadmetal lesson
+# as the Quiessence hulls): the albedo then tints the sheen instead of the env owning it.
+for _finish in ('paint', 'paint2', 'stripe', 'hazard'):
+    F.FINISHES[_finish] = {**F.FINISHES[_finish], 'metal': 0.85, 'rough': 0.5}
+
 COLORS = {
-    'paint': '#8d815f',            # pale Meridian gold coat (#E8D8A0 lifted, authored dark)
-    'paint2': '#54411c',           # deep bronze secondary
+    # The sector key light lifts saturated gold into gaudy yellow — MTS reads muted brass/bronze,
+    # corporate rather than gilded; channels stay under the 0x90 cap, chroma pulled toward bronze.
+    # Third pass: #595340 still read gold through the warm key — go darker/greyer so the halo
+    # ring lands as brushed bronze mid-value, not bullion.
+    'paint': '#454036',            # weathered bronze coat (was #595340 — still read gilded)
+    'paint2': '#332d1e',           # deep bronze secondary
     'paint.graphite': '#23282e',
-    'stripe': '#a8761e',           # Meridian gold #F2B233 carried in bands
-    'hazard': '#a8861c',
+    'stripe': '#41351c',           # Meridian identity, authored down to a dark bronze band
+    'hazard': '#4a4022',
     'dark': '#15181c',
-    'glow_amber.mts': '#7a5c26',   # lit ad-panel gold, muted to a mid-value block (no text, ever)
+    'glow_amber.mts': '#6b5224',   # lit ad-panel gold, muted to a mid-value block (no text, ever)
     'glow_warm': '#ffd9a0',
     'glow_red': '#ff3a2a',
     'glow_green': '#3dff7a',

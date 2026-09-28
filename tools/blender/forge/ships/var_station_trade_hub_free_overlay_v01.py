@@ -49,15 +49,17 @@ PODS = (
     (176.0, 46.0, 12.0, 9.0, 6.0, 'stack'),
 )
 
-# patch plates welded on the ring's outer wall and the terminal face
+# patch plates welded on the ring's outer wall and the terminal face. Centres sit at
+# r ~54.5 (thickness 1.0): the inner face embeds in the r54 wall so nothing floats, the
+# outer face lands ~55.0 just shy of the fender ribs at ~55.5.
 SKIRTS = (
-    (160.0, 55.4, 22.0, 10.0, 8.0, 'paint.patch'),
-    (180.0, 55.6, 24.5, 12.0, 9.0, 'paint2'),
-    (200.0, 55.4, 21.0, 9.0, 7.0, 'paint.primer'),
-    (235.0, 55.2, 25.0, 10.0, 7.0, 'paint.patch'),
-    (300.0, 55.2, 23.5, 9.0, 8.0, 'paint2'),
-    (62.0, 55.4, 21.5, 10.0, 8.5, 'paint.patch'),
-    (118.0, 55.4, 23.0, 11.0, 7.5, 'paint.primer'),
+    (160.0, 54.5, 22.0, 10.0, 8.0, 'paint.patch'),
+    (180.0, 54.55, 24.5, 12.0, 9.0, 'paint2'),
+    (200.0, 54.5, 21.0, 9.0, 7.0, 'paint.primer'),
+    (235.0, 54.45, 25.0, 10.0, 7.0, 'paint.patch'),
+    (300.0, 54.45, 23.5, 9.0, 8.0, 'paint2'),
+    (62.0, 54.5, 21.5, 10.0, 8.5, 'paint.patch'),
+    (118.0, 54.5, 23.0, 11.0, 7.5, 'paint.primer'),
 )
 
 
@@ -102,20 +104,28 @@ def build_pods(s):
                 F.ring(s, f'Pod{k}Strap{e:+d}', q, wr * 0.47, 0.28, axis=(axis[0], axis[1], 0),
                        material='hazard', segments=18, sides=6)
             tops.append((cx, cy, K.ROOF_Z1 + 3.0 + wr * 0.42))
+            # crates lash down onto the drum crest — sunk half a metre so they read strapped
+            crate_base = K.ROOF_Z1 + 3.0 + wr * 0.42 - 0.5
         elif style == 'stack':
             top = pod_shell(s, k, a, r, wt, wr, h * 0.62, body_mat)
-            cx, cy, _ = K.polar(r - wr * 0.18, a - 6.0)
+            # the upper tier stays within the lower pod's roof (offset kept inside the
+            # wt*0.62 footprint so it cannot cantilever into air)
+            cx, cy, _ = K.polar(r - wr * 0.08, a - 3.5)
             F.box(s, f'Pod{k}Upper', (cx, cy, top[2] + h * 0.28), (wr * 0.62, wt * 0.62, h * 0.56),
                   material='paint.primer', rot_z=ra + 0.35, bevel=0.15)
             tops.append((cx, cy, top[2] + h * 0.56))
+            crate_base = top[2]      # crates ride the lower roof, not the upper top
         else:
             top = pod_shell(s, k, a, r, wt, wr, h, body_mat)
             tops.append(top)
+            crate_base = top[2]
         # a cyan claim band cut into every pod body
         F.band(s, f'Pod{k}', K.polar(r, a, tops[k][2] - h * 0.34), (0, 0, 1), 0.7, 'stripe')
         pod_windows(s, k, a, r, wt, tops[k][2])
-        # roof clutter: strapped crates and a drum — cargo lashed wherever it fits
-        q = K.polar(r + wr * 0.2, a + 5.0, tops[k][2] + 0.7)
+        # roof clutter: strapped crates and a drum — lashed ON the pod roof they stand on.
+        # Keep the azimuth offset inside the pod's tangential half-width (~3 deg) so the
+        # crate lands on the roof instead of hanging off it.
+        q = K.polar(r + wr * 0.12, a + 3.0, crate_base + 0.7)
         F.box(s, f'Pod{k}Crate', q, (1.8, 1.4, 1.4), material='paint2', rot_z=ra + 0.5,
               bevel=0.05)
         F.box(s, f'Pod{k}Strap', (q[0], q[1], q[2] + 0.35), (1.9, 0.3, 0.16), material='hazard',
@@ -144,7 +154,7 @@ def build_skirts(s):
         F.box(s, f'Skirt{k}', K.polar(r, a, zc), (1.0, wt, h), material=mat,
               rot_z=math.radians(a), bevel=0.06)
         if k % 2 == 0:
-            p = K.polar(r + 0.6, a, zc + h * 0.2)
+            p = K.polar(r + 0.55, a, zc + h * 0.2)
             F.box(s, f'Skirt{k}Win', p, (0.14, 1.4, 0.45), material='glow_warm',
                   rot_z=math.radians(a), bevel=0.0)
     # terminal stern lean-to: a salvaged shack welded to the -X face

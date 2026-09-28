@@ -510,6 +510,111 @@
       "part_id": "place_quiessence_freighter_c",
       "new_place": true,
       "note": "Quiessence becalmed freighter C (new place): tank-line hauler with saddle tanks and aft bridge, cold engines, warm bunk windows, faint violet beacon."
+    },
+    "place_claim_outpost_base": {
+      "layout": "place",
+      "file": "place_claim_outpost_base",
+      "asset_id": "SF_PLACE_CLAIM_OUTPOST_BASE",
+      "note": "Forge rebuild of the claim anchor: claim rock wrapped by a service ring, four module pads, dock arm, ops pod.",
+      "part_id": "place_claim_outpost_base"
+    },
+    "place_claim_outpost_bastion": {
+      "layout": "place",
+      "file": "place_claim_outpost_bastion",
+      "asset_id": "SF_PLACE_CLAIM_OUTPOST_BASTION",
+      "note": "Forge rebuild: claim ring with armoured defence casemate and gun slits.",
+      "part_id": "place_claim_outpost_bastion"
+    },
+    "place_claim_outpost_catcher": {
+      "layout": "place",
+      "file": "place_claim_outpost_catcher",
+      "asset_id": "SF_PLACE_CLAIM_OUTPOST_CATCHER",
+      "note": "Forge rebuild: claim ring with cargo-capture cradle arm and net frame.",
+      "part_id": "place_claim_outpost_catcher"
+    },
+    "place_claim_outpost_fence": {
+      "layout": "place",
+      "file": "place_claim_outpost_fence",
+      "asset_id": "SF_PLACE_CLAIM_OUTPOST_FENCE",
+      "note": "Forge rebuild: claim ring with perimeter defence pylons and beam emitters.",
+      "part_id": "place_claim_outpost_fence"
+    },
+    "place_claim_outpost_refinery": {
+      "layout": "place",
+      "file": "place_claim_outpost_refinery",
+      "asset_id": "SF_PLACE_CLAIM_OUTPOST_REFINERY",
+      "note": "Forge rebuild: claim ring with process tanks, furnace stack and pipe runs.",
+      "part_id": "place_claim_outpost_refinery"
+    },
+    "place_claim_outpost_relay": {
+      "layout": "place",
+      "file": "place_claim_outpost_relay",
+      "asset_id": "SF_PLACE_CLAIM_OUTPOST_RELAY",
+      "note": "Forge rebuild: claim ring with comms mast and dish, doubles as site relay.",
+      "part_id": "place_claim_outpost_relay"
+    },
+    "place_conveyor_barge": {
+      "layout": "place",
+      "file": "place_conveyor_barge",
+      "asset_id": "SF_PLACE_CONVEYOR_BARGE",
+      "note": "Forge rebuild: autonomous ore-transfer barge, hopper spine with conveyor throat.",
+      "part_id": "place_conveyor_barge"
+    },
+    "place_conveyor_truss": {
+      "layout": "place",
+      "file": "place_conveyor_truss",
+      "asset_id": "place_conveyor_truss",
+      "note": "Forge rebuild: span-gauge bucket conveyor with drive house.",
+      "part_id": "place_conveyor_truss"
+    },
+    "place_drill_platform": {
+      "layout": "place",
+      "file": "place_drill_platform",
+      "asset_id": "place_drill_platform",
+      "note": "Forge rebuild: anchored seam drill, four outriggers, ring deck, lit bit.",
+      "part_id": "place_drill_platform"
+    },
+    "place_extraction_mast": {
+      "layout": "place",
+      "file": "place_extraction_mast",
+      "asset_id": "place_extraction_mast",
+      "note": "Forge rebuild: extraction yard mast, three amber floods and claim strobe on a wide base.",
+      "part_id": "place_extraction_mast"
+    },
+    "place_freight_platform": {
+      "layout": "place",
+      "file": "place_freight_platform",
+      "asset_id": "place_freight_platform",
+      "note": "Forge rebuild: open freight apron, rack rows, crew cab, flood masts.",
+      "part_id": "place_freight_platform"
+    },
+    "place_radiator_bank": {
+      "layout": "place",
+      "file": "place_radiator_bank",
+      "asset_id": "place_radiator_bank",
+      "note": "Forge rebuild: six-fin heat rejection bank, furnace-amber cores.",
+      "part_id": "place_radiator_bank"
+    },
+    "place_slurry_tank": {
+      "layout": "place",
+      "file": "place_slurry_tank",
+      "asset_id": "place_slurry_tank",
+      "note": "Forge rebuild: three formed spheres in a hazard-ended cradle with downpipe.",
+      "part_id": "place_slurry_tank"
+    },
+    "place_transfer_arm": {
+      "layout": "place",
+      "file": "place_transfer_arm",
+      "asset_id": "place_transfer_arm",
+      "note": "Forge rebuild: slew-ring cargo crane, two-segment boom, grapple.",
+      "part_id": "place_transfer_arm"
+    },
+    "place_maintenance_gantry": {
+      "layout": "place",
+      "file": "place_maintenance_gantry",
+      "asset_id": "place_maintenance_gantry",
+      "note": "Forge rebuild: portal gantry a small hull parks under, trolley hoist and tool booms.",
+      "part_id": "place_maintenance_gantry"
     }
   }
 }
