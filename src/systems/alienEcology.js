@@ -38,6 +38,8 @@ function siteRecord(state, siteId) {
   if (!ae.sites[siteId]) {
     ae.sites[siteId] = {
       state: 'dormant',
+      // Coherence is its own axis: a bloom after a sever must not restore the relay.
+      relaySevered: false,
       objectiveDone: false,
       bloomAt: -1,
       beats: {},
@@ -96,6 +98,7 @@ export function materializeAlienEcology(world, sector, active) {
     }
 
     // Fauna cast — kinematic entities; persistent dead set means kills never respawn.
+    const ae0 = ensureAlienEcologyState(state);
     const cast = planFaunaCast(site, rng);
     for (const member of cast) {
       if (rec.deadFauna[member.faunaKey]) continue;
@@ -111,8 +114,11 @@ export function materializeAlienEcology(world, sector, active) {
         physicsBody: false,
         homeSectorId: sector.id,
         data: {
-          name: species.name,
-          scanLabel: scannerBiologyLabel(ensureAlienEcologyState(state).revelation, species.signature),
+          // Display name obeys the same reveal ladder as the scanner label: at low
+          // revelation the target panel reads the generic scan term, not the taxonomy name.
+          name: ae0.revelation >= 2 ? species.name
+            : scannerBiologyLabel(ae0.revelation, species.signature),
+          scanLabel: scannerBiologyLabel(ae0.revelation, species.signature),
           scannerSignalKind: 'anomaly',
           strainId: strain.id,
           siteId: site.siteId,
@@ -152,15 +158,17 @@ export function handleAlienEcologyEvent(world, type, payload) {
       break;
     }
     case 'alienEcology:relaySevered': {
-      if (rec) rec.state = 'severed';
+      if (rec) { rec.state = 'severed'; rec.relaySevered = true; }
       setRevelation(state, 2);
       toast('The pale emitter goes dark — the swarm loses its order.', 'warn', 5);
       refreshAlienLabels(world);
       break;
     }
     case 'alienEcology:nurseryBloom': {
-      if (rec) rec.state = 'bloom';
-      rec.bloomAt = state.simTime || 0;
+      // 'severed' is a terminal stage label; the bloom still stamps bloomAt + taxonomy side
+      // effects, but never un-severs the relay (coherence reads relaySevered, not state).
+      if (rec && rec.state !== 'severed') rec.state = 'bloom';
+      if (rec) rec.bloomAt = state.simTime || 0;
       setRevelation(state, 2);
       toast('Cysts rupture — the colony blooms outward.', 'warn', 5);
       refreshAlienLabels(world);
@@ -231,7 +239,7 @@ export function tickAlienEcology(world, dt) {
   for (const site of sites) {
     const rec = siteRecord(state, site.siteId);
     const siteGlobal = world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId);
-    const coherent = rec.state !== 'severed';
+    const coherent = rec.relaySevered !== true && rec.state !== 'severed';
 
     // Staged arrival beats (doc 09): bands around the site trigger the reveal choreography.
     if (player && player.pos) {
@@ -442,6 +450,8 @@ export function deserializeAlienEcologyState(state, data) {
       if (!rec || typeof rec !== 'object') continue;
       ae.sites[siteId] = {
         state: typeof rec.state === 'string' ? rec.state : 'dormant',
+        // Legacy saves encoded severance only in state; fold it into the flag.
+        relaySevered: !!rec.relaySevered || rec.state === 'severed',
         objectiveDone: !!rec.objectiveDone,
         bloomAt: Number.isFinite(rec.bloomAt) ? rec.bloomAt : -1,
         beats: rec.beats && typeof rec.beats === 'object' ? { ...rec.beats } : {},

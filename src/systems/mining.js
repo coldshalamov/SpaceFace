@@ -963,7 +963,14 @@ export const mining = {
       radius: PICKUP_RADIUS, mass: 0.1, collides: true,
       ...(opts?.npcMiningSource ? { flags: { persistent: true } } : {}),
       data: {
-        kind: 'ore', commodityId, amount, despawnAt: this.state.simTime + PICKUP_TTL,
+        kind: 'ore', commodityId, amount,
+        // A split world-site payload spills durable site goods, not ordinary scrap: keep the
+        // site provenance (objective/persistence bookkeeping) and never time it out in-sector.
+        ...(!(srcEnt.data && srcEnt.data.worldSiteId) ? { despawnAt: this.state.simTime + PICKUP_TTL } : {}),
+        ...(srcEnt.data && srcEnt.data.worldSiteId ? {
+          worldSiteId: srcEnt.data.worldSiteId,
+          worldSitePayloadId: srcEnt.data.worldSitePayloadId,
+        } : {}),
         ...(opts?.npcMiningSource ? { npcMiningSource: { ...opts.npcMiningSource } } : {}),
         ...(lotSource ? { richLotSource: lotSource } : {}),
       },
@@ -1116,6 +1123,10 @@ export const mining = {
           commodityId,
           pos: { x: payloadEntity.pos.x, z: payloadEntity.pos.z },
           ...(data.richLotSource ? { richLotSource: data.richLotSource } : {}),
+          ...(data.worldSiteId ? {
+            worldSiteId: data.worldSiteId,
+            worldSitePayloadId: data.worldSitePayloadId,
+          } : {}),
         };
         this.bus.emit('pickup:collected', eventPayload);
         const acceptance = resolvePickupAcceptance(eventPayload, requested);
@@ -1129,11 +1140,31 @@ export const mining = {
         payloadEntity.alive = false;
         clearPickupAcceptanceRetry(data);
       }
+      this._syncWorldSiteRemainingPool(data);
     } else if (data.commodityId && data.amount > 0) {
       const acceptance = this._collectPickupViaEvent(payloadEntity, player);
       if (acceptance.accepted > 0 || acceptance.legacyFullConsume) collectedAny = true;
     }
     return collectedAny;
+  },
+
+  // A world-site payload pod's remaining contents are durable site state, not entity-local
+  // scratch: every partial accept/split writes the depleted pool back to the durable record so
+  // leave-and-return rematerializes only what was never taken.
+  _syncWorldSiteRemainingPool(data) {
+    const sites = this.state && this.state.sites;
+    const record = sites && sites.worldById && data && sites.worldById[data.worldSiteId];
+    const durable = record && record.payloads && data
+      ? record.payloads[data.worldSitePayloadId]
+      : null;
+    if (!durable) return;
+    const pool = data.salvagePool && typeof data.salvagePool === 'object' ? data.salvagePool : {};
+    const remaining = {};
+    for (const [commodityId, qty] of Object.entries(pool)) {
+      const whole = Math.floor(Number(qty));
+      if (commodityId && Number.isFinite(whole) && whole > 0) remaining[commodityId] = whole;
+    }
+    durable.remainingPool = remaining;
   },
 
   _onPickupCollected(p) {
@@ -1304,6 +1335,9 @@ export const mining = {
     pod.alive = false;
     data.salvagePool = {};
     data.amount = 0;
+    // Site bookkeeping: the pool moved onto the spilled pickups; the durable record reads
+    // empty until the payload capture folds live spills back into remainingPool.
+    this._syncWorldSiteRemainingPool(data);
     for (const [commodityId, qty] of spills) {
       let remaining = qty;
       const bodies = Math.min(3, remaining);
@@ -1935,6 +1969,10 @@ export const mining = {
           ...pickup.data.richLotSource,
           richQty: Math.min(requested, Math.max(0, Math.floor(Number(pickup.data.richLotSource.richQty) || 0))),
         },
+      } : {}),
+      ...(pickup.data.worldSiteId ? {
+        worldSiteId: pickup.data.worldSiteId,
+        worldSitePayloadId: pickup.data.worldSitePayloadId,
       } : {}),
     };
     this.bus.emit('pickup:collected', payload);

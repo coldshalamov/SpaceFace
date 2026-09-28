@@ -185,6 +185,8 @@ import {
   serializeAlienEcologyState,
   deserializeAlienEcologyState,
 } from './alienEcology.js'; // Alien Ecology program (doc 08): world-owned library, not a registered system
+import { createAlienEcologyState } from '../data/alienEcologyState.js';
+import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import {
   dropFarActorSector,
   farActorHoldsWorldRecord,
@@ -578,7 +580,13 @@ export const world = {
     bus.on('alienEcology:nurseryBloom', (p) => handleAlienEcologyEvent(this, 'alienEcology:nurseryBloom', p));
     bus.on('alienEcology:blackBoxRecovered', (p) => handleAlienEcologyEvent(this, 'alienEcology:blackBoxRecovered', p));
     bus.on('pickup:collected', (p) => {
-      if (p && p.commodityId === 'cmdty_dmc_black_box' && p.collectorId === this.state.playerId) {
+      // cargo's listener (registered earlier) has already written the acceptance receipt, so
+      // the objective only fires on a committed, actually-accepted amount of THIS site's pod.
+      if (p && p.commodityId === 'cmdty_dmc_black_box'
+          && p.collectorId === this.state.playerId
+          && p.worldSiteId === 'world_site_charon_cinder_nursery'
+          && p.worldSitePayloadId === 'dmc_black_box'
+          && successfulPickupAmount(p) > 0) {
         handleAlienEcologyEvent(this, 'alienEcology:blackBoxRecovered', { siteId: 'cinder_nursery' });
       }
     });
@@ -2463,7 +2471,25 @@ export const world = {
       if (!disc.pois[poi.id]) disc.pois[poi.id] = { discovered: false, identified: false };
       // Static Atlas rows may delegate their physical representation to a durable runtime owner.
       // Keep the discovery identity here, but never create a second marker entity beside that owner.
-      if (typeof poi.runtimeOwner === 'string' && poi.runtimeOwner.length > 0) continue;
+      // A markerless projection still joins active.pois: sector sweeps mark it discovered and
+      // proximity identification resolves the runtime-owned site root as its carrier.
+      if (typeof poi.runtimeOwner === 'string' && poi.runtimeOwner.length > 0) {
+        const ownerPos = this._toGlobal(poi.pos || poi.anchor || local, sector.id);
+        active.pois.push({
+          id: null, poiId: poi.id, type: poi.type,
+          pos: { x: ownerPos.x, z: ownerPos.z },
+          name: poi.name || null,
+          hidden: !!poi.hidden, claimable: false,
+          manualInvestigation: poi.manualInvestigation === true,
+          requiresActiveScan: poi.requiresActiveScan === true,
+          runtimeOwned: true,
+          ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
+          ...(finitePositive(poi.scannerSignalPriority)
+            ? { scannerSignalPriority: Number(poi.scannerSignalPriority) } : {}),
+          ...(finitePositive(poi.scanRange) ? { scanRange: Number(poi.scanRange) } : {}),
+        });
+        continue;
+      }
       const placeId = poi.landmarkGlb
         ? String(poi.landmarkGlb).replace(/^places\//, '').replace(/\.glb$/, '')
         : null;
@@ -4911,6 +4937,28 @@ export const world = {
       || getDressingRow(this.state, id);
   },
 
+  // Markerless runtime-owned POI projections carry no marker entity id; their carrier is the
+  // owning system's site root (data.worldSiteId === poiId for asteroidSites manifests). Resolved
+  // lazily — the root materializes after dressing spawns — and cached on the projection until it
+  // dies or the sector bag is rebuilt.
+  _worldSitePoiCarrier(p) {
+    if (!p || p.runtimeOwned !== true) return null;
+    const entities = this.state && this.state.entities;
+    if (!entities || typeof entities.get !== 'function' || typeof entities.values !== 'function') return null;
+    const cached = p._wsCarrierId != null ? entities.get(p._wsCarrierId) : null;
+    if (cached && cached.alive !== false) return cached;
+    let found = null;
+    for (const e of entities.values()) {
+      const d = e && e.data;
+      if (d && d.worldSiteId === p.poiId && d.role === 'world_site_root' && e.alive !== false) {
+        found = e;
+        break;
+      }
+    }
+    p._wsCarrierId = found ? found.id : null;
+    return found;
+  },
+
   _tickPOIScan(state) {
     const player = state.entities.get(state.playerId);
     if (!player) return;
@@ -4924,24 +4972,29 @@ export const world = {
       : 1;
     const scanBonus = 1 + 0.25 * scannerTier;
     for (const p of (state.world.activeSector.pois || [])) {
-      const ent = this._poiCarrier(p.id);
-      if (!ent || ent.alive === false) continue;
+      const ent = this._poiCarrier(p.id) || this._worldSitePoiCarrier(p);
+      if (ent && ent.alive === false) continue;
+      const entData = ent && ent.data;
+      // No carrier yet for a runtime-owned projection (site root not materialized this tick):
+      // the authored anchor position still anchors the proximity read.
+      const carrierPos = ent ? ent.pos : (p && p.runtimeOwned === true ? p.pos : null);
+      if (!carrierPos) continue;
       const rec = disc.pois[p.poiId] || (disc.pois[p.poiId] = { discovered: false, identified: false });
       if (rec.identified) continue;
       // A concealed layer marked this way is an active-scanner verb, never a proximity freebie.
       // `signal:investigated` below is the sole path that turns the return into durable discovery.
-      if ((p.requiresActiveScan || ent.data && ent.data.requiresActiveScan) && !rec.investigated) continue;
-      if (ent.data && ent.data.requiresTriangulation && !rec.triangulated && !ent.data.anomalyTriangulated) continue;
-      const dx = ent.pos.x - player.pos.x, dz = ent.pos.z - player.pos.z;
+      if ((p.requiresActiveScan || entData && entData.requiresActiveScan) && !rec.investigated) continue;
+      if (entData && entData.requiresTriangulation && !rec.triangulated && !entData.anomalyTriangulated) continue;
+      const dx = carrierPos.x - player.pos.x, dz = carrierPos.z - player.pos.z;
       const distSq = dx * dx + dz * dz;
-      const sr = ((ent.data && ent.data.scanRange) || SCAN_RANGE) * scanBonus * weather;
+      const sr = ((entData && entData.scanRange) || (p && p.scanRange) || SCAN_RANGE) * scanBonus * weather;
       if (distSq <= sr * sr) {
         if (!rec.discovered) { rec.discovered = true; this.bus.emit('poi:discovered', { poiId: p.poiId, type: p.type }); }
         if (distSq <= sr * sr * 0.25) {
           const newlyIdentified = !rec.identified;
           rec.identified = true;
           rec.type = p.type || rec.type || null;
-          rec.name = ent.data && ent.data.name || rec.name || p.poiId;
+          rec.name = entData && entData.name || p.name || rec.name || p.poiId;
           rec.identifiedAt = Number(state.simTime) || 0;
           this.bus.emit('poi:identified', {
             poiId: p.poiId,
@@ -6059,6 +6112,7 @@ export const world = {
     state.world.scanPings = {};
     state.world.pendingSpawns = {};
     state.world.frontierRumors = normalizeFrontierRumorState(null);
+    state.world.alienEcology = createAlienEcologyState();
     this._tethysRunEntities = {};
     state.world.vestaOreCache = freshVestaOreCacheState();
     state.world.pallasHiddenCache = freshPallasHiddenCacheState();

@@ -2318,7 +2318,15 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
 
 export function buildAuthoredPlaceProp(entity, options = {}) {
   const placeFile = placeFileForEntity(entity);
-  if (!placeFile) return null;
+  if (!placeFile) {
+    const data = entity && entity.data || {};
+    // Procedural-only place families have no registered GLB by design; the fallback
+    // builder owns their geometry, so return it directly instead of an empty admit.
+    if (String(data.placeId || '').startsWith('alien_growth_')) {
+      return buildFallbackPlaceProp(entity);
+    }
+    return null;
+  }
   const fallbackRoot = options.fallbackRoot && options.fallbackRoot.isObject3D
     ? options.fallbackRoot
     : buildFallbackPlaceProp(entity, placeFile);

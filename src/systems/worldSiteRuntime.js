@@ -103,11 +103,43 @@ export function captureWorldSitePayloadState({
         && entity.data.worldSitePayloadId === payload.id
         && entity.data.worldRecordId === payload.worldObjectId)
       .sort((a, b) => stableEntityId(a) - stableEntityId(b))[0];
-    if (!live || !finitePoint(live.pos) || !finitePoint(live.vel)) continue;
+    // The released pod's live pool plus any beam-split spills carrying the same payload
+    // provenance together are the durable remainder; depletion and scattering both persist.
+    const mergedPool = {};
+    let sawContents = false;
+    if (live && live.data && live.data.salvagePool && typeof live.data.salvagePool === 'object') {
+      sawContents = true;
+      for (const [commodityId, qty] of Object.entries(live.data.salvagePool)) {
+        const whole = Math.floor(Number(qty));
+        if (commodityId && Number.isFinite(whole) && whole > 0) mergedPool[commodityId] = (mergedPool[commodityId] || 0) + whole;
+      }
+    }
+    for (const entity of state.entities.values()) {
+      const d = entity && entity.data;
+      if (!entity || entity.alive === false || !d || entity.type !== 'pickup') continue;
+      if (d.worldSiteId !== manifest.id || d.worldSitePayloadId !== payload.id) continue;
+      const whole = Math.floor(Number(d.amount));
+      if (typeof d.commodityId === 'string' && d.commodityId && Number.isFinite(whole) && whole > 0) {
+        sawContents = true;
+        mergedPool[d.commodityId] = (mergedPool[d.commodityId] || 0) + whole;
+      }
+    }
+    const stored = durable.remainingPool && typeof durable.remainingPool === 'object'
+      ? durable.remainingPool : null;
+    const poolChanged = sawContents
+      && (!stored || !sameCommodityPool(stored, mergedPool));
+    if (!live || !finitePoint(live.pos) || !finitePoint(live.vel)) {
+      if (!poolChanged) continue;
+      if (!changed) next = JSON.parse(JSON.stringify(record));
+      next.payloads[payload.id].remainingPool = mergedPool;
+      changed = true;
+      continue;
+    }
     const motion = { pos: { x: live.pos.x, z: live.pos.z }, vel: { x: live.vel.x, z: live.vel.z } };
-    if (sameMotion(durable.motion, motion, force ? 0 : epsilon)) continue;
+    if (!poolChanged && sameMotion(durable.motion, motion, force ? 0 : epsilon)) continue;
     if (!changed) next = JSON.parse(JSON.stringify(record));
     next.payloads[payload.id].motion = motion;
+    if (poolChanged) next.payloads[payload.id].remainingPool = mergedPool;
     changed = true;
   }
   if (changed) {
@@ -430,6 +462,15 @@ function stableEntityId(entity) {
 
 function finitePoint(value) {
   return !!value && Number.isFinite(value.x) && Number.isFinite(value.z);
+}
+
+function sameCommodityPool(a, b) {
+  const aKeys = Object.keys(a), bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    if (Math.floor(Number(a[key])) !== Math.floor(Number(b[key]))) return false;
+  }
+  return true;
 }
 
 function sameMotion(a, b, epsilon = 0) {

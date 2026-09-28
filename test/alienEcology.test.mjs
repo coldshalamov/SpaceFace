@@ -23,6 +23,7 @@ import {
   deserializeAlienEcologyState,
   handleAlienEcologyEvent,
   materializeAlienEcology,
+  refreshAlienLabels,
   serializeAlienEcologyState,
   setRevelation,
   tickAlienEcology,
@@ -210,6 +211,75 @@ test('alienEcology state serializes and round-trips with validation', () => {
   deserializeAlienEcologyState(blank, { schema: 'bogus' });
   assert.equal(ensureAlienEcologyState(blank).revelation, 0);
   assert.equal(createAlienEcologyState().schema, 'spaceface.alienEcology.v1');
+});
+
+test('relay sever is a permanent axis: a later bloom never restores coherence', () => {
+  const state = makeState();
+  const world = makeWorld(state, []);
+  materializeAlienEcology(world, { id: 'sector_charon_expanse' }, { dressing: [] });
+  handleAlienEcologyEvent(world, 'alienEcology:relaySevered', { siteId: 'cinder_nursery' });
+  handleAlienEcologyEvent(world, 'alienEcology:nurseryBloom', { siteId: 'cinder_nursery' });
+  const rec = ensureAlienEcologyState(state).sites.cinder_nursery;
+  assert.equal(rec.relaySevered, true);
+  assert.equal(rec.state, 'severed'); // bloom must not overwrite the severed stage
+  state.entities.set(1, { id: 1, pos: { x: 1700, z: -1400 } });
+  state.entityList.push(state.entities.get(1));
+  const swarm = state.entityList.find((e) => e.type === 'fauna' && e.data.ecology.speciesId === 'needle_swarm');
+  tickAlienEcology(world, 1 / 60);
+  assert.equal(swarm.data.ecology.driveState, 'drift'); // still latency-gated, not re-cohered
+  // Legacy saves carrying only state:'severed' deserialize into the flag.
+  const saved = serializeAlienEcologyState(state);
+  delete saved.sites.cinder_nursery.relaySevered;
+  const restored = makeState();
+  deserializeAlienEcologyState(restored, JSON.parse(JSON.stringify(saved)));
+  assert.equal(ensureAlienEcologyState(restored).sites.cinder_nursery.relaySevered, true);
+});
+
+test('spawned fauna names obey the reveal ladder, not the taxonomy table', () => {
+  const state = makeState();
+  const world = makeWorld(state, []);
+  materializeAlienEcology(world, { id: 'sector_charon_expanse' }, { dressing: [] });
+  const ray = state.entityList.find((e) => e.type === 'fauna' && e.data.ecology.speciesId === 'veil_ray');
+  assert.equal(ray.data.name, scannerBiologyLabel(0, 'fauna')); // 'DEBRIS DRIFT', not 'Veil-Ray'
+  setRevelation(state, 3);
+  refreshAlienLabels(world);
+  assert.equal(ray.data.name, 'Veil-Ray'); // revealed knowledge upgrades the display name
+});
+
+test('released payload depletion persists: remainingPool survives normalize + narrows the plan', async () => {
+  const { normalizeWorldSiteRecord, planWorldSiteMaterialization, createWorldSiteRecord, applyWorldSiteOperation }
+    = await import('../src/systems/worldSiteKernel.js');
+  const manifest = worldSiteManifestById('world_site_charon_cinder_nursery');
+  let record = createWorldSiteRecord(manifest, { tick: 0 });
+  // Drive the authored chain: power → unseal releases the flight recorder pod.
+  record = applyWorldSiteOperation(manifest, record, {
+    operationId: 'restore_power_bus', requestStreamId: 'player-industrial-beam',
+    requestSequence: 1, tick: 1, amount: 99, earnedAtS: 0,
+  }).record;
+  record = applyWorldSiteOperation(manifest, record, {
+    operationId: 'unseal_black_box', requestStreamId: 'player-industrial-beam',
+    requestSequence: 2, tick: 2, amount: 99, earnedAtS: 0,
+  }).record;
+  assert.equal(record.payloads.dmc_black_box.status, 'released');
+  // Fresh plan: full authored pool.
+  let plan = planWorldSiteMaterialization(manifest, normalizeWorldSiteRecord(manifest, record), { tick: 3 });
+  assert.equal(plan.payloads.length, 1);
+  assert.equal(plan.payloads[0].salvagePool.cmdty_dmc_black_box, 1);
+  // Player took the recorder → durable remainder is empty → the pod never respawns.
+  record.payloads.dmc_black_box.remainingPool = {};
+  plan = planWorldSiteMaterialization(manifest, normalizeWorldSiteRecord(manifest, record), { tick: 4 });
+  assert.equal(plan.payloads.length, 0);
+  // Partial pools narrow to what remains (filament sample: 1 of 3 taken). Status is derived
+  // from the op chain, so release it through the authored operation before trimming the pool.
+  record = applyWorldSiteOperation(manifest, record, {
+    operationId: 'extract_cyst_cluster', requestStreamId: 'player-industrial-beam',
+    requestSequence: 3, tick: 5, amount: 99, earnedAtS: 0,
+  }).record;
+  assert.equal(record.payloads.filament_sample.status, 'released');
+  record.payloads.filament_sample.remainingPool = { cmdty_filament_sample: 2 };
+  plan = planWorldSiteMaterialization(manifest, normalizeWorldSiteRecord(manifest, record), { tick: 6 });
+  const sample = plan.payloads.find((p) => p.payloadId === 'filament_sample');
+  assert.equal(sample.salvagePool.cmdty_filament_sample, 2);
 });
 
 test('nursery manifest passes the world-site validator end to end', () => {

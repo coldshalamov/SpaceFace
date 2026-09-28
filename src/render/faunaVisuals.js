@@ -35,7 +35,13 @@ function glowMat(color, intensity = 1.2) {
 
 function geo(key, make) {
   const cache = (geo._cache ||= new Map());
-  if (!cache.has(key)) cache.set(key, make());
+  if (!cache.has(key)) {
+    const g = make();
+    // Shared across every creature of this species and across sector teardowns: the per-entity
+    // disposer (renderer disposeObject) honors spacefaceSharedAsset and never frees the cache.
+    g.userData = { ...(g.userData || {}), spacefaceSharedAsset: true };
+    cache.set(key, g);
+  }
   return cache.get(key);
 }
 
