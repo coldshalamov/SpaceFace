@@ -44,7 +44,7 @@ import {
   resetOrbitWorld,
   syncOrbitRuntime,
 } from './orbitNodeRuntime.js';
-import { planNpcFieldDeploy } from '../ai/npcFieldDeploy.js';
+import { planNpcFieldDeploy, npcFieldRole } from '../ai/npcFieldDeploy.js';
 
 const EMITTER_TYPE = 'fieldEmitter';
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
@@ -70,6 +70,57 @@ const MASS_STATE_REFRESH_LEAD_TICKS = 30;
 function hasOwnEnumKey(obj) {
   if (!obj) return false;
   for (const _k in obj) return true;
+  return false;
+}
+
+/** Bench A/B: production default ON. Quiet latch skips idle discover+_publish. */
+let FIELDS_IDLE_QUIET_LATCH = true;
+export function setFieldsIdleQuietLatchForBench(enabled) {
+  FIELDS_IDLE_QUIET_LATCH = enabled !== false;
+}
+export function getFieldsIdleQuietLatchForBench() {
+  return FIELDS_IDLE_QUIET_LATCH !== false;
+}
+
+/** Membership / scavenger-discover rescan while latched (0.5 s @ 60 Hz). */
+const FIELDS_IDLE_QUIET_RESCAN_TICKS = 30;
+
+function entityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+function fieldsIdleSnapshot(rt, kernel) {
+  const kernelCount = kernel && typeof kernel.list === 'function'
+    ? kernel.list().length
+    : 0;
+  return !rt.coneActive
+    && !rt.skimActive
+    && !rt.skimFieldId
+    && kernelCount === 0
+    && !hasOwnEnumKey(rt.deployed)
+    && !hasOwnEnumKey(rt.anchored)
+    && !hasOwnEnumKey(rt.npcFields)
+    && !hasOwnEnumKey(rt.hitches);
+}
+
+/** Awake ships that can arm an NPC cone/well — latch refuses while any are present. */
+function anyNpcFieldRoleInterest(state) {
+  const index = state && state.entityIndex;
+  const ships = (index && index.aiShips)
+    || (index && index.ships)
+    || (state && state.entityList)
+    || [];
+  const playerId = state && state.playerId;
+  for (let i = 0; i < ships.length; i++) {
+    const entity = ships[i];
+    if (!entity || entity.type !== 'ship' || entity.id === playerId) continue;
+    if (entity.alive === false) continue;
+    if (entity.physicsSleeping === true) continue;
+    if (npcFieldRole(entity)) return true;
+  }
   return false;
 }
 
@@ -360,6 +411,7 @@ export const fields = {
     // (rope-delivered bodies and loose mass drifting in) latch hitches through it.
     this._seedLockFieldId = null;
     this._insideRing = new Map();
+    this._fieldsIdleQuiet = null;
     ensureRuntime(ctx.state);
     if (this.bus && typeof this.bus.on === 'function') {
       this._lifecycleUnsubs = [
@@ -748,42 +800,77 @@ export const fields = {
       // touched just before docking holds stale bookkeeping until the next flight.
       this._flushEndedWells(state);
       this._publish(state, rt, 0, 0, 0);
+      this._fieldsIdleQuiet = null;
+      state.fieldsRuntime = state.fieldsRuntime || {};
+      state.fieldsRuntime.quietLatched = false;
       return;
     }
     this._handleInput(state, rt);
     // Skim sheet mirrors the planet collector latch — must run even when the kernel is empty
     // so turning the scoop on can arm a sheet without a pre-existing field.
     this._syncSkimSheet(state, rt);
-    // Quiet flight: no player cone/deployed/anchored/npc/skim and an empty kernel — still run the
-    // cadenced NPC discover walk so a scavenger can spin up, but skip cone/anchor/orbit/force work.
-    const kernelCount = this._kernel && typeof this._kernel.list === 'function'
-      ? this._kernel.list().length
-      : 0;
-    const idle = !rt.coneActive
-      && !rt.skimActive
-      && !rt.skimFieldId
-      && kernelCount === 0
-      && !hasOwnEnumKey(rt.deployed)
-      && !hasOwnEnumKey(rt.anchored)
-      && !hasOwnEnumKey(rt.npcFields)
-      && !hasOwnEnumKey(rt.hitches);
+    // Quiet flight: no player cone/deployed/anchored/npc/skim and an empty kernel — after
+    // npc-plan-cadence, deepen with an idle quiet latch: skip the discover walk and the
+    // quiet-path producers for up to 0.5 s while membership is stable; wake on entity-index
+    // bump, rescan, or leaving idle (input/skim already ran above and clear idle when the
+    // player deploys). Unlatched idle still runs every quiet-path producer each tick.
+    let idle = fieldsIdleSnapshot(rt, this._kernel);
     if (idle) {
-      // Producers must stay live while quiet: a mass-seed ring or a newly
-      // orbit-capable host has to bootstrap out of an empty kernel, the cadenced
-      // NPC discover lets a scavenger spin up, and deferred well bookkeeping
-      // still needs its flush so external unregisters retire cleanly.
-      this._syncSeedLockField(state, rt);
-      this._syncNpcFields(state, rt);
-      // First-ever scan fires immediately so a fitted host doesn't wait out the
-      // cadence; later rescans ride the NPC plan period.
-      if (this._orbitScanned !== true || ((state.tick | 0) % NPC_FIELD_PLAN_PERIOD_TICKS) === 0) this._syncOrbit(state);
-      // Hitch bookkeeping must still run: its prev/inside swap is what ages out
-      // ring-membership memory, and a same-tick latch on a just-registered seed
-      // ring matches the non-idle order.
-      this._syncHitches(state, rt);
-      this._flushEndedWells(state);
-      this._publish(state, rt, 0, 0, 0);
-      return;
+      if (FIELDS_IDLE_QUIET_LATCH !== false) {
+        const membership = entityIndexVersion(state);
+        const tick = state.tick | 0;
+        const quiet = this._fieldsIdleQuiet;
+        if (quiet
+          && quiet.membership === membership
+          && ((tick - (quiet.armedTick | 0)) < FIELDS_IDLE_QUIET_RESCAN_TICKS)
+          && (!this._wellBodies || this._wellBodies.size === 0)) {
+          state.fieldsRuntime = state.fieldsRuntime || {};
+          state.fieldsRuntime.quietLatched = true;
+          return;
+        }
+        // Refuse latch while any awake scavenger/sweeper/salvor/anchor role exists — those
+        // still need the cadenced discover walk so loose-mass cones can arm (PQ-147.01).
+        const refuseLatch = anyNpcFieldRoleInterest(state);
+        if (refuseLatch) this._fieldsIdleQuiet = null;
+        // Producers must stay live while unlatched-idle: a mass-seed ring or a newly
+        // orbit-capable host has to bootstrap out of an empty kernel, the cadenced
+        // NPC discover lets a scavenger spin up, and deferred well bookkeeping
+        // still needs its flush so external unregisters retire cleanly.
+        this._syncSeedLockField(state, rt);
+        this._syncNpcFields(state, rt);
+        // First-ever scan fires immediately so a fitted host doesn't wait out the
+        // cadence; later rescans ride the NPC plan period.
+        if (this._orbitScanned !== true || ((state.tick | 0) % NPC_FIELD_PLAN_PERIOD_TICKS) === 0) this._syncOrbit(state);
+        // Hitch bookkeeping must still run: its prev/inside swap is what ages out
+        // ring-membership memory, and a same-tick latch on a just-registered seed
+        // ring matches the non-idle order.
+        this._syncHitches(state, rt);
+        this._flushEndedWells(state);
+        idle = fieldsIdleSnapshot(rt, this._kernel);
+        if (idle) {
+          if (!refuseLatch) this._fieldsIdleQuiet = { membership, armedTick: tick };
+          this._publish(state, rt, 0, 0, 0);
+          state.fieldsRuntime = state.fieldsRuntime || {};
+          state.fieldsRuntime.quietLatched = !refuseLatch;
+          return;
+        }
+        // A producer armed something (seed ring / NPC cone / hitch) — fall through
+        // to the live force path with the latch disarmed.
+        this._fieldsIdleQuiet = null;
+      } else {
+        // Bench A/B: unlatched idle keeps every quiet-path producer live (see above).
+        this._syncSeedLockField(state, rt);
+        this._syncNpcFields(state, rt);
+        if (this._orbitScanned !== true || ((state.tick | 0) % NPC_FIELD_PLAN_PERIOD_TICKS) === 0) this._syncOrbit(state);
+        this._syncHitches(state, rt);
+        this._flushEndedWells(state);
+        this._publish(state, rt, 0, 0, 0);
+        state.fieldsRuntime = state.fieldsRuntime || {};
+        state.fieldsRuntime.quietLatched = false;
+        return;
+      }
+    } else if (this._fieldsIdleQuiet) {
+      this._fieldsIdleQuiet = null;
     }
     this._syncCone(state, rt);
     this._syncNpcFields(state, rt);
@@ -796,6 +883,8 @@ export const fields = {
     // be published. Order: geometry settled → forces → publish.
     const applied = this._applyForces(dt, state, rt);
     this._publish(state, rt, applied.queries, applied.affected, applied.accelSum);
+    state.fieldsRuntime = state.fieldsRuntime || {};
+    state.fieldsRuntime.quietLatched = false;
   },
 
   _onEntitySpawned(payload) {
@@ -1355,6 +1444,9 @@ export const fields = {
     }
     this.bus && this.bus.emit && this.bus.emit('fields:cleared', { reason, why });
     state.fields = defaultRuntime();
+    this._fieldsIdleQuiet = null;
+    state.fieldsRuntime = state.fieldsRuntime || {};
+    state.fieldsRuntime.quietLatched = false;
   },
 
   // ── PQ-013 external authored profiles (the planet's attraction rides the SAME kernel) ─────────
