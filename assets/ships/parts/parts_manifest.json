@@ -1858,25 +1858,25 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_ash_pin.glb",
-      "tris": 5994,
-      "bytes": 570468,
+      "tris": 6604,
+      "bytes": 594044,
       "textureSize": 128,
       "note": "Forge rebuild of the ash pin: a squat memorial cairn — ballast base, offering cage, hung tokens, name plate, one warm lamp.",
       "bounds": {
         "min": [
-          -1.5483916997909546,
-          -0.25,
-          -1.548136830329895
+          -2.684678792953491,
+          -0.45000001788139343,
+          -3.0711164474487305
         ],
         "max": [
-          1.5483916997909546,
-          3.30570387840271,
-          1.5483916997909546
+          2.684678792953491,
+          3.71287202835083,
+          3.0711164474487305
         ],
         "dimensionsM": [
-          3.096783399581909,
-          3.55570387840271,
-          3.0965285301208496
+          5.369357585906982,
+          4.1628720462322235,
+          6.142232894897461
         ]
       },
       "mount": "origin",
@@ -2201,8 +2201,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_claim_mark.glb",
-      "tris": 5582,
-      "bytes": 525880,
+      "tris": 4130,
+      "bytes": 460888,
       "textureSize": 128,
       "tintable": {
         "hull": "Material_Hull",
@@ -2212,19 +2212,19 @@
       "note": "Forge rebuild of the claim mark: a prospector's staked beacon — driven shaft, weld collar, cage frame, lamp lens and streamer tabs.",
       "bounds": {
         "min": [
-          -0.8844301104545593,
-          -0.4400000274181366,
-          -0.9018946886062622
+          -1.8924951553344727,
+          -2.4396607875823975,
+          -2.0891335010528564
         ],
         "max": [
-          0.8696647882461548,
-          6.777063369750977,
-          0.7852773070335388
+          2.288727283477783,
+          5.202000141143799,
+          1.5201542377471924
         ],
         "dimensionsM": [
-          1.7540948987007141,
-          7.217063397169113,
-          1.687171995639801
+          4.181222438812256,
+          7.641660928726196,
+          3.609287738800049
         ]
       },
       "mount": "origin",
@@ -2668,31 +2668,30 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_cold_locker.glb",
-      "tris": 16996,
-      "bytes": 1240620,
+      "tris": 9920,
+      "bytes": 783732,
       "textureSize": 0,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
-        "mechanical": "Material_Mechanical",
-        "accent": "Material_Accent"
+        "mechanical": "Material_Mechanical"
       },
       "note": "Forge rebuild of the cold locker: a tall vacuum-insulated storage rack — latticed tower of locked cryo drawers on a bond-ring foot.",
       "bounds": {
         "min": [
-          -3.4000000953674316,
-          -0.7000000476837158,
-          -3.4000000953674316
+          -4.970000267028809,
+          -0.8999999761581421,
+          -3.799999952316284
         ],
         "max": [
-          3.4000000953674316,
-          21.100000381469727,
-          3.4000000953674316
+          4.970000267028809,
+          6.800000190734863,
+          3.869999885559082
         ],
         "dimensionsM": [
-          6.800000190734863,
-          21.800000429153442,
-          6.800000190734863
+          9.940000534057617,
+          7.700000166893005,
+          7.669999837875366
         ]
       },
       "mount": "origin",
@@ -2834,8 +2833,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
-      "tris": 15099,
-      "bytes": 1159332,
+      "tris": 15476,
+      "bytes": 1275648,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2870,18 +2869,18 @@
       "bounds": {
         "min": [
           -27.600000381469727,
-          -6.270188331604004,
-          -7.671618461608887
+          -6.044553279876709,
+          -7.667428970336914
         ],
         "max": [
-          28,
-          8.765735626220703,
-          7.533950328826904
+          27.60000228881836,
+          8.49466323852539,
+          7.2988200187683105
         ],
         "dimensionsM": [
-          55.60000038146973,
-          15.035923957824707,
-          15.205568790435791
+          55.200002670288086,
+          14.5392165184021,
+          14.966248989105225
         ]
       }
     },
@@ -2890,11 +2889,12 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_debris_chunk.glb",
-      "tris": 6100,
-      "bytes": 577180,
+      "tris": 7476,
+      "bytes": 667184,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
+        "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"
       },
@@ -2924,19 +2924,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.6297717690467834,
-          -3.8986997604370117,
-          -5.400000095367432
+          0.19999980926513672,
+          -5.460000038146973,
+          -5.54979133605957
         ],
         "max": [
           23.5,
-          4.27500057220459,
-          5.400000095367432
+          4.304999828338623,
+          5.54979133605957
         ],
         "dimensionsM": [
-          24.129771769046783,
-          8.173700332641602,
-          10.800000190734863
+          23.300000190734863,
+          9.764999866485596,
+          11.09958267211914
         ]
       }
     },
@@ -3446,8 +3446,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_lane_pin.glb",
-      "tris": 10124,
-      "bytes": 786164,
+      "tris": 9240,
+      "bytes": 743476,
       "textureSize": 0,
       "tintable": {
         "hull": "Material_Hull",
@@ -3458,19 +3458,19 @@
       "note": "Forge rebuild of the lane pin: a tall navigation mast on a tripod ballast foot, chevron light housing, vane rings, speed lamps.",
       "bounds": {
         "min": [
-          -1.4299999475479126,
-          -2.1500000953674316,
-          -1.4299999475479126
+          -4.822023868560791,
+          -2.049999952316284,
+          -5.300000190734863
         ],
         "max": [
-          1.4299999475479126,
-          31.399999618530273,
-          1.4299999475479126
+          4.822383403778076,
+          9.57619571685791,
+          5.300000190734863
         ],
         "dimensionsM": [
-          2.859999895095825,
-          33.549999713897705,
-          2.859999895095825
+          9.644407272338867,
+          11.626195669174194,
+          10.600000381469727
         ]
       },
       "mount": "origin",
@@ -3519,8 +3519,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_memorial_array.glb",
-      "tris": 14952,
-      "bytes": 1494660,
+      "tris": 16428,
+      "bytes": 1646160,
       "textureSize": 256,
       "note": "Forge rebuild of the memorial array prop: a low spine carrying a row of vigil lamps and name plates with truss outriggers.",
       "hooks": [],
@@ -3530,19 +3530,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.550000011920929,
-          -0.7750000357627869,
-          -1.2000000476837158
+          -1.2999999523162842,
+          -0.6000000238418579,
+          -6.449999809265137
         ],
         "max": [
-          13.549999237060547,
-          1.8450000286102295,
-          1.2000000476837158
+          12.449999809265137,
+          4.889999866485596,
+          6.449999809265137
         ],
         "dimensionsM": [
-          14.099999248981476,
-          2.6200000643730164,
-          2.4000000953674316
+          13.749999761581421,
+          5.489999890327454,
+          12.899999618530273
         ]
       },
       "triangleMetric": "lod0",
@@ -3915,9 +3915,9 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_billboard.glb",
-      "tris": 5720,
+      "tris": 6024,
       "triangleMetric": "lod0",
-      "bytes": 927476,
+      "bytes": 950344,
       "textureSize": 256,
       "note": "Forge rebuild of the station information billboard: a framed twin-face lit display on a truss mast with service platform, no text.",
       "hooks": [],
@@ -3929,17 +3929,17 @@
         "min": [
           -7.449999809265137,
           -7.349999904632568,
-          -4.2000041007995605
+          -5.325865745544434
         ],
         "max": [
           7.449999809265137,
           5,
-          4.2000250816345215
+          4.199999809265137
         ],
         "dimensionsM": [
           14.899999618530273,
           12.349999904632568,
-          8.400029182434082
+          9.52586555480957
         ]
       },
       "tintable": {
@@ -4416,8 +4416,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_trade_hub_mts_overlay_v01.glb",
-      "tris": 22248,
-      "bytes": 1715972,
+      "tris": 24532,
+      "bytes": 1914368,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4453,8 +4453,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_trade_hub_scn_overlay_v01.glb",
-      "tris": 28583,
-      "bytes": 2359564,
+      "tris": 39345,
+      "bytes": 3053372,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4469,17 +4469,17 @@
         "min": [
           -89.11943054199219,
           15.699999809265137,
-          -57.32283401489258
+          -57.803890228271484
         ],
         "max": [
-          57.44990539550781,
-          53.12606430053711,
-          56.92214584350586
+          57.80992889404297,
+          53.126529693603516,
+          57.762603759765625
         ],
         "dimensionsM": [
-          146.5693359375,
-          37.42606449127197,
-          114.24497985839844
+          146.92935943603516,
+          37.42652988433838,
+          115.56649398803711
         ]
       },
       "note": "Forge rebuild of the Concord claim on the Helios hub: armoured cladding band with a blue rail, four diagonal bastion keeps, six masts, terminal docking-boom gate."
@@ -4489,8 +4489,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_tally_post.glb",
-      "tris": 8618,
-      "bytes": 757008,
+      "tris": 5512,
+      "bytes": 573720,
       "textureSize": 128,
       "tintable": {
         "hull": "Material_Hull",
@@ -4501,19 +4501,19 @@
       "note": "Forge rebuild of the tally post: a cargo-weigh gantry with a mast, hung yoke and tongs, operator deck with rails, scale house and invoice lamp.",
       "bounds": {
         "min": [
-          -2.450000047683716,
-          -1.1800000667572021,
-          -1.7599999904632568
+          -1.730800747871399,
+          -1.100000023841858,
+          -5.502713203430176
         ],
         "max": [
-          2.359999895095825,
-          15.997304916381836,
-          1.7599999904632568
+          4,
+          9,
+          5.502713203430176
         ],
         "dimensionsM": [
-          4.809999942779541,
-          17.177304983139038,
-          3.5199999809265137
+          5.730800747871399,
+          10.100000023841858,
+          11.005426406860352
         ]
       },
       "mount": "origin",
@@ -4599,8 +4599,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_whistle.glb",
-      "tris": 5765,
-      "bytes": 564108,
+      "tris": 5329,
+      "bytes": 545852,
       "textureSize": 128,
       "tintable": {
         "hull": "Material_Hull",
@@ -4611,19 +4611,19 @@
       "note": "Forge rebuild of the whistle: a message-drum buoy on a tripod boot, chain-hung basket cage, crank, whip antennae and signal lamp.",
       "bounds": {
         "min": [
-          -1.4136455059051514,
+          -1.6086310148239136,
           -0.6200000047683716,
-          -1.4500000476837158
+          -4.042873382568359
         ],
         "max": [
-          1.540000081062317,
-          7.860000133514404,
-          1.4500000476837158
+          3.2200000286102295,
+          8.426273345947266,
+          1.649999976158142
         ],
         "dimensionsM": [
-          2.9536455869674683,
-          8.480000138282776,
-          2.9000000953674316
+          4.828631043434143,
+          9.046273350715637,
+          5.6928733587265015
         ]
       },
       "mount": "origin",
@@ -8325,13 +8325,16 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_quiessence_freighter_a.glb",
-      "tris": 10560,
-      "bytes": 849732,
+      "tris": 65772,
+      "bytes": 3785400,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
+        "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
-        "accent": "Material_Accent"
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [],
       "sockets": [
@@ -8341,19 +8344,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -23.100000381469727,
-          -5.400000095367432,
-          -5.400000095367432
+          -17.520679473876953,
+          -3.000007390975952,
+          -3.2220005989074707
         ],
         "max": [
-          21.10494613647461,
-          5.400000095367432,
-          5.400000095367432
+          17.600311279296875,
+          3.6782572269439697,
+          3.2220005989074707
         ],
         "dimensionsM": [
-          44.204946517944336,
-          10.800000190734863,
-          10.800000190734863
+          35.12099075317383,
+          6.678264617919922,
+          6.444001197814941
         ]
       },
       "note": "Quiessence becalmed freighter A (new place): long intact hauler, charcoal-violet hull, cold engines, rows of warm bunk windows, one faint violet beacon."
@@ -8364,15 +8367,16 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_quiessence_freighter_b.glb",
-      "tris": 26240,
-      "bytes": 1746440,
+      "tris": 50748,
+      "bytes": 3052640,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent",
-        "canopy": "Material_Canopy"
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [],
       "sockets": [
@@ -8382,19 +8386,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -21.100000381469727,
-          -2.299999952316284,
-          -5.559999942779541
+          -14.621007919311523,
+          -2.0200002193450928,
+          -4.7643046379089355
         ],
         "max": [
-          19.549999237060547,
-          4.718999862670898,
-          5.559999942779541
+          14.600387573242188,
+          3.127270460128784,
+          4.7643046379089355
         ],
         "dimensionsM": [
-          40.64999961853027,
-          7.018999814987183,
-          11.119999885559082
+          29.22139549255371,
+          5.147270679473877,
+          9.528609275817871
         ]
       },
       "note": "Quiessence becalmed freighter B (new place): shorter container-spine hauler, stacked box rows, cold engines, warm bunk windows, faint violet beacon."
@@ -8405,14 +8409,16 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_quiessence_freighter_c.glb",
-      "tris": 12165,
-      "bytes": 906364,
+      "tris": 55952,
+      "bytes": 3530464,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
+        "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent",
-        "canopy": "Material_Canopy"
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
       },
       "hooks": [],
       "sockets": [
@@ -8422,19 +8428,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -21.700002670288086,
-          -2.299999952316284,
-          -3.549999952316284
+          -22.77107810974121,
+          -2.230894088745117,
+          -4.755979537963867
         ],
         "max": [
-          20.42973518371582,
-          8.719000816345215,
-          4.259999752044678
+          20.539981842041016,
+          6.775000095367432,
+          4.755979537963867
         ],
         "dimensionsM": [
-          42.129737854003906,
-          11.019000768661499,
-          7.809999704360962
+          43.31105995178223,
+          9.005894184112549,
+          9.511959075927734
         ]
       },
       "note": "Quiessence becalmed freighter C (new place): tank-line hauler with saddle tanks and aft bridge, cold engines, warm bunk windows, faint violet beacon."

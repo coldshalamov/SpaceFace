@@ -86,20 +86,83 @@ try {
     // named station so the place sits on screen.
     const report = await page.evaluate(({ token, dist }) => {
       const s = window.SF.state;
-      let target = null;
-      for (const e of s.entities.values()) {
+      const matches = (e) => {
         const d = e.data || {};
-        if (d.stationId === token || d.archetypeGlb === token || d.poiId === token || e.id === token) { target = e; break; }
+        return d.stationId === token || d.archetypeGlb === token || d.poiId === token
+          || d.landmarkGlb === token || d.placeId === token || e.id === token;
+      };
+      let target = null;
+      for (const e of s.entities.values()) if (matches(e)) { target = e; break; }
+      // POI lane marks and most dressing are presentation rows, not live entities.
+      if (!target) {
+        for (const row of s.world?.dressing?.rows || []) {
+          if (row && row.alive !== false && matches(row)) { target = row; break; }
+        }
       }
       if (!target) return 'no station match';
-      const p = s.entities.get(s.playerId);
-      p.pos.x = target.pos.x;
-      p.pos.z = target.pos.z + dist;
-      if (p.vel) { p.vel.x = 0; p.vel.z = 0; }
-      if (p.prevPos) { p.prevPos.x = p.pos.x; p.prevPos.z = p.pos.z; }
-      return `${target.id} at (${target.pos.x.toFixed(0)},${target.pos.z.toFixed(0)})`;
+      // Same-sector teleports must go through relocatePlayerInSector: a raw pos+prevPos write
+      // emits no transform record, so the presented hull stays parked at the old spot and the
+      // chase camera (which follows the presented pose) frames empty space.
+      const world = window.SF.registry?.get?.('world');
+      const moved = world && world.relocatePlayerInSector
+        ? world.relocatePlayerInSector({ x: target.pos.x, z: target.pos.z + dist }, { reason: 'flight-look:aim' })
+        : false;
+      if (!moved) {
+        const p = s.entities.get(s.playerId);
+        p.pos.x = target.pos.x;
+        p.pos.z = target.pos.z + dist;
+        if (p.vel) { p.vel.x = 0; p.vel.z = 0; }
+        if (p.prevPos) { p.prevPos.x = p.pos.x; p.prevPos.z = p.pos.z; }
+      }
+      return `${target.id} at (${target.pos.x.toFixed(0)},${target.pos.z.toFixed(0)}) relocated=${moved}`;
     }, { token: String(args.aim), dist: Number(args.aimDist || 260) });
     console.log('aim', report);
+    // Stations hide their procedural fallback while 'awaiting-authored-admission', so a shot
+    // taken before the boundary admits shows floating overlay over empty space. Gate the
+    // capture on the aimed entity reaching an authored state.
+    const authoredWait = Number(args.aimAuthoredWait || 180);
+    if (authoredWait > 0) {
+      try {
+        await page.waitForFunction(({ token }) => {
+          const s = window.SF.state;
+          const matches = (e) => {
+            const d = e.data || {};
+            return d.stationId === token || d.archetypeGlb === token || d.poiId === token
+              || d.landmarkGlb === token || d.placeId === token || e.id === token;
+          };
+          // Dressing rows never get row.mesh — the renderer's mesh map holds their boundary.
+          const renderMeshes = window.SF.registry?.get?.('render')?._meshes;
+          const rows = [...s.entities.values(), ...(s.world?.dressing?.rows || [])];
+          for (const e of rows) {
+            if (!matches(e)) continue;
+            const root = e.mesh || (renderMeshes && renderMeshes.get(e.id));
+            const st = root && root.userData && root.userData.authoredAssetState;
+            return typeof st === 'string' && st.startsWith('authored');
+          }
+          return false;
+        }, { token: String(args.aim) }, { timeout: authoredWait * 1000, polling: 1000 });
+        console.log('aim-authored ok');
+      } catch {
+        console.log('aim-authored TIMEOUT — capture proceeds with whatever is admitted');
+      }
+    }
+  }
+  // 'authored' marks the boundary's decision; the render package then compiles behind every
+  // other queued admission. Under software GL that queue drains slowly, so a shot taken right
+  // after admission can still catch procedural-hidden space. Wait the queue out.
+  const queueWait = Number(args.queueWait ?? 240);
+  if (queueWait > 0) {
+    try {
+      await page.waitForFunction(async () => {
+        const lib = await import('/src/render/partsLibrary.js');
+        const q = lib.describeAuthoredUpgradeQueue(window.SF.state.render.scene);
+        if (!q || q.present === false) return true;
+        return (q.pending | 0) === 0 && (q.inFlight | 0) === 0 && !(q.jobs && q.jobs.length);
+      }, null, { timeout: queueWait * 1000, polling: 2000 });
+      console.log('queue drained');
+    } catch {
+      console.log('queue drain TIMEOUT — capture proceeds');
+    }
   }
   await page.waitForTimeout(Number(args.wait || 20) * 1000);
   // SwiftShader trips the software-renderer emergency profile (third-resolution, bloom off). A

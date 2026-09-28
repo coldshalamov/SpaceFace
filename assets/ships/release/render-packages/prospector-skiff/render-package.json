@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7e278529c6a6f5ef69d35226b0770b1502d796eb5a5fa16ef42499d735fdaa10",
+  "contentHash": "92d87e250df44bcd076d300c7eabba1c4f1513d0ea035b34fead04c072986d7a",
   "dynamicGroups": [
     {
       "id": "sf.render.prospector-skiff.node.lod0-hook-drive-core.dynamic",
@@ -4903,8 +4903,8 @@
       "uri": "prospector_skiff.glb"
     },
     "sourceManifest": {
-      "bytes": 203788,
-      "sha256": "8361e46abf91eba0b1e694e7dae87b812124bb990cf1bc562a95382c7c8d23b3",
+      "bytes": 203792,
+      "sha256": "89265c7483d7097c2f84a11894cd2330cfe1ef918bc259f24acd4279520cbbb0",
       "uri": "pilots.json"
     }
   },
@@ -7060,7 +7060,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/prospector_skiff.glb"
   },
-  "runtimeHash": "64c0589ad70cb2422d306ecb20e2a7ff709f8d9e236aad4f480a5c9e8ddf0a6b",
+  "runtimeHash": "7969fbd0a90b817f3df1bb380a2ca22806b7fcac48944aa8c8d5cb623f0f2d5c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -29,7 +29,7 @@ COLORS = {
     'stripe': '#a8761e',           # Meridian gold #F2B233 carried in bands
     'hazard': '#a8861c',
     'dark': '#15181c',
-    'glow_amber.mts': '#f2b233',   # lit ad-panel gold (no text, ever)
+    'glow_amber.mts': '#7a5c26',   # lit ad-panel gold, muted to a mid-value block (no text, ever)
     'glow_warm': '#ffd9a0',
     'glow_red': '#ff3a2a',
     'glow_green': '#3dff7a',
@@ -71,10 +71,14 @@ def build_crown(s, k, a):
     """Diagonal corporate crown: rooftop pylon, stepped cap, cantilevered outer canopy on
     tie-rods, gold band and lit face bars."""
     F.box(s, f'Crown{k}', K.polar(55.0, a, 31.8), (16.0, 14.0, 9.4), material='paint',
-          rot_z=math.radians(a), bevel=0.18)
+          rot_z=math.radians(a), bevel=0.18, taper=0.82)
     F.band(s, f'Crown{k}', K.polar(55.0, a, 34.6), (0, 0, 1), 1.2, 'stripe', inset=0.05, depth=0.1)
-    F.box(s, f'Crown{k}Cap', K.polar(56.5, a, 37.6), (12.0, 11.0, 3.4), material='paint2',
-          rot_z=math.radians(a), bevel=0.1)
+    # a second step above the band — the spire's mid tier, banded again
+    F.box(s, f'Crown{k}Mid', K.polar(55.8, a, 36.2), (13.0, 12.0, 2.2), material='paint',
+          rot_z=math.radians(a), bevel=0.12, taper=0.8)
+    F.band(s, f'Crown{k}Mid', K.polar(55.8, a, 36.6), (0, 0, 1), 0.7, 'stripe')
+    F.box(s, f'Crown{k}Cap', K.polar(56.5, a, 38.0), (11.0, 10.0, 3.0), material='paint2',
+          rot_z=math.radians(a), bevel=0.1, taper=0.85)
     # cantilevered canopy out over the rim, hung off the cap by tie-rods
     F.box(s, f'Crown{k}Canopy', K.polar(64.0, a, 36.2), (16.0, 10.0, 1.2), material='paint2',
           rot_z=math.radians(a), bevel=0.06)
@@ -137,14 +141,29 @@ def build_ad_pylon(s, k, a):
           rot_z=math.radians(a), bevel=0.08)
     F.truss(s, f'Ad{k}Mast', (base[0], base[1], 29.6), (base[0], base[1], 39.6), 2.3, 5,
             material='gunmetal', chord=0.4, web=0.22)
-    # the board: a framed lit slab facing outward, tilting a little toward the sky camera
+    # the board: a mid-value colour block inside a thin lit frame — muted, no flat glow slab
     c = K.polar(40.0, a, 42.4)
     F.box(s, f'Ad{k}Board', c, (1.1, 13.0, 9.4), material='paint2', rot_z=math.radians(a),
           bevel=0.1)
-    F.box(s, f'Ad{k}Face', K.polar(40.6, a, 42.4), (0.5, 11.6, 8.0), material='glow_amber.mts',
-          rot_z=math.radians(a), bevel=0.0)
-    F.box(s, f'Ad{k}FaceB', K.polar(39.4, a, 42.4), (0.5, 11.6, 8.0), material='glow_amber.mts',
-          rot_z=math.radians(a), bevel=0.0)
+    for e in (-1, 1):
+        # the mid-value field — a muted corporate block, not a blown light face
+        F.box(s, f'Ad{k}Face{e:+d}', K.polar(40.0 + e * 0.62, a, 42.4), (0.4, 11.6, 8.0),
+              material='glow_amber.mts', rot_z=math.radians(a), bevel=0.0)
+        # the lit frame: thin bright rails edging the muted block
+        for tag, off in (('T', 4.6), ('B', -4.6)):
+            F.box(s, f'Ad{k}Frame{e:+d}{tag}', K.polar(40.0 + e * 0.7, a, 42.4 + off),
+                  (0.24, 12.0, 0.5), material='glow_warm', rot_z=math.radians(a), bevel=0.0)
+        tx_, ty_ = -sa, ca
+        for tag, off in (('L', -5.8), ('R', 5.8)):
+            F.box(s, f'Ad{k}Frame{e:+d}{tag}',
+                  (K.polar(40.0 + e * 0.7, a, 42.4)[0] + tx_ * off,
+                   K.polar(40.0 + e * 0.7, a, 42.4)[1] + ty_ * off, 42.4),
+                  (0.24, 0.5, 8.6), material='glow_warm',
+                  rot=(0, 0, math.radians(a)), bevel=0.0)
+            F.box(s, f'Ad{k}FramePost{e:+d}{tag}',
+                  (K.polar(40.0 + e * 0.7, a, 42.4)[0] + tx_ * off,
+                   K.polar(40.0 + e * 0.7, a, 42.4)[1] + ty_ * off, 42.4),
+                  (0.3, 0.24, 8.8), material='gunmetal', rot_z=math.radians(a), bevel=0.0)
     # tripod bracing so the board visibly hangs on the mast: knee braces from the foot to the
     # board's lower corners plus spreader arms into its back corners
     F.beams(s, f'Ad{k}Knees', [
