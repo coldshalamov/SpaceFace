@@ -1436,6 +1436,17 @@ export const vfx = {
     this._projectileTrailPlanScratch = createProjectileTrailSpawnPlanScratch();
     this._projectileTrailsWereRelevant = false;
     this._seamMarkersWereRelevant = false;
+    // Quiet settled flight: irrelevant seam path used to re-walk asteroids +
+    // commitDynamicBufferOwner(0) every tick. Latch after first sleep; clear on
+    // cheap dirty wake (player quantum / index version / drawWu / mining pulse /
+    // periodic re-probe). Soft-GPU fps not claimed.
+    this._seamMarkersQuietHidden = false;
+    this._seamMarkersQuietPlayerQX = 0;
+    this._seamMarkersQuietPlayerQZ = 0;
+    this._seamMarkersQuietIndexVersion = null;
+    this._seamMarkersQuietDrawWu = 0;
+    this._seamMarkersQuietPulseKey = '';
+    this._seamMarkersQuietAt = 0;
     // Quiet settled flight: empty gas pool still paid resolveVfxAccessibilityProfile
     // + setAccessibility + empty update every tick. Latch after first empty observe
     // (liveCount===0 after update publishes 0); wake on liveCount>0 (emit). Soft-GPU
@@ -11289,7 +11300,14 @@ export const vfx = {
       this._sleepNpcJobSignatures();
       sub.npcJobSignatures = 0;
     }
-    if (this._seamMarkersRelevant()) {
+    // Quiet-hidden residual: consecutive irrelevant ticks still paid full
+    // `_seamMarkersRelevant` asteroid walk + `_sleepSeamMarkers` commit. Cheap
+    // dirty wake first; false-wake falls through to full relevant (sleep latch
+    // re-arms). Soft-GPU fps not claimed.
+    if (this._seamMarkersQuietHidden && !this._seamMarkersQuietMaybeAwake()) {
+      sub.seamMarkers = 0;
+    } else if (this._seamMarkersRelevant()) {
+      this._seamMarkersQuietHidden = false;
       const seamWake = !this._seamMarkersWereRelevant;
       this._seamMarkersWereRelevant = true;
       let seamStep = this._consumeCadence('_cadenceSeam', dt, VFX_SEAM_MARKERS_HZ);
@@ -11306,6 +11324,7 @@ export const vfx = {
     } else {
       this._seamMarkersWereRelevant = false;
       this._sleepSeamMarkers();
+      this._seamMarkersQuietLatch();
       sub.seamMarkers = 0;
     }
     // Loot magnet — drops being vacuumed in read as light flying at you.
@@ -12007,6 +12026,55 @@ export const vfx = {
     const tether = this.state.player && this.state.player.tether;
     const remote = this.state.player && this.state.player.remoteMassline;
     return !!((tether && tether.active) || (remote && remote.active));
+  },
+
+  // Fingerprint quiet-irrelevant seam sleep so consecutive ticks skip the
+  // asteroid walk + zero-commit. Soft-GPU fps not claimed.
+  _seamMarkersQuietLatch() {
+    const state = this.state;
+    const player = this.helpers && this.helpers.player
+      ? this.helpers.player()
+      : this._ent(state && state.playerId);
+    const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
+    const cell = Math.max(16, drawWu * 0.1);
+    const px = player && player.pos ? (player.pos.x || 0) : 0;
+    const pz = player && player.pos ? (player.pos.z || 0) : 0;
+    this._seamMarkersQuietPlayerQX = Math.round(px / cell);
+    this._seamMarkersQuietPlayerQZ = Math.round(pz / cell);
+    this._seamMarkersQuietIndexVersion = entityIndexVersion(state);
+    this._seamMarkersQuietDrawWu = drawWu;
+    const pulseId = this._miningSeamPulseId;
+    const pulseUntil = this._miningSeamPulseUntil || 0;
+    this._seamMarkersQuietPulseKey = pulseId != null ? `${pulseId}|${pulseUntil}` : '';
+    this._seamMarkersQuietAt = state && Number.isFinite(state.simTime) ? state.simTime : 0;
+    this._seamMarkersQuietHidden = true;
+  },
+
+  // Cheap dirty wake while `_seamMarkersQuietHidden`. Conservative: may
+  // false-wake into full relevant (sleep latch re-arms); must not miss a real
+  // approach / spawn / pulse / drawWu change. Soft-GPU fps not claimed.
+  _seamMarkersQuietMaybeAwake() {
+    const state = this.state;
+    const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
+    if (drawWu !== this._seamMarkersQuietDrawWu) return true;
+    if (entityIndexVersion(state) !== this._seamMarkersQuietIndexVersion) return true;
+    const pulseId = this._miningSeamPulseId;
+    const pulseUntil = this._miningSeamPulseUntil || 0;
+    const pulseKey = pulseId != null ? `${pulseId}|${pulseUntil}` : '';
+    if (pulseKey !== this._seamMarkersQuietPulseKey) return true;
+    const simTime = state && Number.isFinite(state.simTime) ? state.simTime : 0;
+    // Rock drift / slow approach safety: re-probe a few times per second.
+    if (simTime - (this._seamMarkersQuietAt || 0) > 0.35) return true;
+    const player = this.helpers && this.helpers.player
+      ? this.helpers.player()
+      : this._ent(state && state.playerId);
+    const cell = Math.max(16, drawWu * 0.1);
+    const px = player && player.pos ? (player.pos.x || 0) : 0;
+    const pz = player && player.pos ? (player.pos.z || 0) : 0;
+    const qx = Math.round(px / cell);
+    const qz = Math.round(pz / cell);
+    if (qx !== this._seamMarkersQuietPlayerQX || qz !== this._seamMarkersQuietPlayerQZ) return true;
+    return false;
   },
 
   _seamMarkersRelevant() {
