@@ -1,38 +1,44 @@
 {
   "anchors": [],
   "assetId": "sf.render.pod-cargo-container",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.pod-cargo-container.collision",
+      "nodeId": "sf.render.pod-cargo-container.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "dd04b72e9cc3bb9dd17935e9b45a533b1d17140f154b321345e804563835a22a",
+  "contentHash": "20c5493886b4fb5af63661a225809e391854643dac3373a34d3a1ffe8f7133dd",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          4.449999809265137,
-          1.289981484413147,
-          1.5000842809677124
+          4.900000095367432,
+          2.270052909851074,
+          1.5298800468444824
         ],
         "min": [
-          -0.25,
-          0.345018595457077,
-          -1.5100842714309692
+          -0.5199999809265137,
+          -0.020052999258041382,
+          -1.5298800468444824
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3596d52db19490a92b74160167286a36ccfb26c6053557d3414d5d37b9d05924",
-      "id": "sf.render.pod-cargo-container.node.cargo-id-plate.primitive.0",
-      "indexCount": 972,
+      "geometryHash": "59d92bb14accf41dba3c292c481c07cd22bcaa07c55c24cd2b3ad49078b81259",
+      "id": "sf.render.pod-cargo-container.node.collision-hull.primitive.0",
+      "indexCount": 900,
       "indexed": true,
-      "materialHash": "5d9220e988d92ae328f0256a6134b06c6eae64051208fe5e76f7dc2090b3fc4a",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cargo_ID_Plate_Mesh",
-      "nodeId": "sf.render.pod-cargo-container.node.cargo-id-plate",
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.pod-cargo-container.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 288
+      "vertexCount": 688
     },
     {
       "bounds": {
@@ -48,116 +54,91 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7576f7701f9ca61de210b1d5e6723686673b77de72664f45675142c38a878eda",
-      "id": "sf.render.pod-cargo-container.node.cargo-shell.primitive.0",
-      "indexCount": 6276,
+      "geometryHash": "79866023b7b325c2438ba83f2c820202c29bf9c6288a6c65796b5223afb8fc7c",
+      "id": "sf.render.pod-cargo-container.node.lod0-hull.primitive.0",
+      "indexCount": 10716,
       "indexed": true,
-      "materialHash": "3adbf370a73d6fa9c9aad225a420cd983e0b32b48236f73563228c992f11b257",
+      "materialHash": "a8230c805ad8e45c836edc0c6669b8f3256a1823e36b5ea574c930e109622821",
       "materialPipelineKey": "opaque",
-      "meshName": "Cargo_Shell_Mesh.001",
-      "nodeId": "sf.render.pod-cargo-container.node.cargo-shell",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.pod-cargo-container.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1880
+      "vertexCount": 3300
     },
     {
       "bounds": {
         "max": [
-          3.393226146697998,
-          2.2100000381469727,
-          0.6430085301399231
+          4.449999809265137,
+          1.9000736474990845,
+          1.5299657583236694
         ],
         "min": [
-          0.8067975044250488,
-          2.124115467071533,
-          -0.6430085301399231
+          -0.5199999809265137,
+          0.9099262952804565,
+          -1.5299657583236694
         ]
       },
       "drawMode": 4,
-      "geometryHash": "08a4d87cfdf19190a01aee771affe5e493dc76b3ba672f669ca8673a2a3151b1",
-      "id": "sf.render.pod-cargo-container.node.cargo-shell.primitive.1",
-      "indexCount": 60,
+      "geometryHash": "b2155b3e9f9ded5732bd5b09da227d6e5e14641702d5c2612992101f769fbc86",
+      "id": "sf.render.pod-cargo-container.node.lod0-livery.primitive.0",
+      "indexCount": 1692,
       "indexed": true,
-      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "materialHash": "d6543720ecb75cf9114e8f75c160c8fb8db26e42fd1c377aeaff4cf7f6ef68e3",
       "materialPipelineKey": "opaque",
-      "meshName": "Cargo_Shell_Mesh.001",
-      "nodeId": "sf.render.pod-cargo-container.node.cargo-shell",
-      "primitiveIndex": 1,
-      "vertexCount": 40
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.pod-cargo-container.node.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 532
     },
     {
       "bounds": {
         "max": [
-          4.699999809265137,
-          2.2849769592285156,
-          1.499872088432312
+          4.800000190734863,
+          2.270033121109009,
+          1.4999984502792358
         ],
         "min": [
-          -0.5299999713897705,
-          -0.019976917654275894,
-          -1.499872088432312
+          -0.5199999809265137,
+          -0.020033173263072968,
+          -1.514998435974121
         ]
       },
       "drawMode": 4,
-      "geometryHash": "acb9a5c3e41225f50bc707715070436f89f95ffbf5cd69b5fedd4ed9e5cf524d",
-      "id": "sf.render.pod-cargo-container.node.pod-cargo-container-material-mechanical-merged.primitive.0",
-      "indexCount": 6492,
+      "geometryHash": "242491de13d6da65970e0fe54c02d8f8bd9e496cd9a002b5cc5d1ad2e18c2f1f",
+      "id": "sf.render.pod-cargo-container.node.lod0-mechanical.primitive.0",
+      "indexCount": 9756,
       "indexed": true,
-      "materialHash": "ac2a30987285dd6658fde64570418c8ecb7480e088d7eea6172bd9c8e764e489",
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
-      "meshName": "pod_cargo_container_Material_Mechanical_Merged_Mesh",
-      "nodeId": "sf.render.pod-cargo-container.node.pod-cargo-container-material-mechanical-merged",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.pod-cargo-container.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 2016
+      "vertexCount": 3080
     },
     {
       "bounds": {
         "max": [
-          4.676219940185547,
-          2.430095672607422,
-          1.4908643960952759
+          4.90000581741333,
+          1.149999976158142,
+          0.09000003337860107
         ],
         "min": [
-          -0.39621996879577637,
-          2.2499043941497803,
-          -1.5008643865585327
+          4.799994468688965,
+          0.9699999094009399,
+          -0.09000003337860107
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b5ac58f8ead62a3a3a34a433909f9f4fae51df50b9c4f1bf77f45b5e961b3258",
-      "id": "sf.render.pod-cargo-container.node.remaster-material-mechanical-brushednickel.primitive.0",
-      "indexCount": 768,
+      "geometryHash": "ca419be01b090c73c117b6decc6ca59053cedb62d219f0bb4b4e8eade3319abc",
+      "id": "sf.render.pod-cargo-container.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 132,
       "indexed": true,
-      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
+      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
-      "meshName": "Remaster_CargoCornerCasting",
-      "nodeId": "sf.render.pod-cargo-container.node.remaster-material-mechanical-brushednickel",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.pod-cargo-container.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 384
-    },
-    {
-      "bounds": {
-        "max": [
-          4.685551166534424,
-          2.319990873336792,
-          1.5004075765609741
-        ],
-        "min": [
-          -0.4055509567260742,
-          2.077609062194824,
-          -1.510407567024231
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "16f06cbe94d26efdeb86710fc77a376b68e23bf2a960642fcf733b45f9ffc82f",
-      "id": "sf.render.pod-cargo-container.node.remaster-material-mechanical-shadowenamel.primitive.0",
-      "indexCount": 1404,
-      "indexed": true,
-      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
-      "materialPipelineKey": "opaque",
-      "meshName": "Remaster_CargoCastingMount",
-      "nodeId": "sf.render.pod-cargo-container.node.remaster-material-mechanical-shadowenamel",
-      "primitiveIndex": 0,
-      "vertexCount": 936
+      "vertexCount": 56
     }
   ],
   "hlods": [],
@@ -165,160 +146,128 @@
   "lods": [],
   "materials": [
     {
-      "hash": "3adbf370a73d6fa9c9aad225a420cd983e0b32b48236f73563228c992f11b257",
-      "id": "material:3adbf370a73d6fa9c9aad225",
-      "name": "Material_Hull",
+      "hash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "id": "material:1596da2f23e2c1dd543b727e",
+      "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "Material_Hull_basecolor",
+          "name": "forge_machinery_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Hull_orm",
+          "name": "forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Hull_normal",
+          "name": "forge_machinery_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Hull_orm",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "5d9220e988d92ae328f0256a6134b06c6eae64051208fe5e76f7dc2090b3fc4a",
-      "id": "material:5d9220e988d92ae328f0256a",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Accent_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Accent_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Accent_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Accent_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
-      "id": "material:a3835271b1d8aa0e92a83e88",
-      "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_ShadowEnamel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "ac2a30987285dd6658fde64570418c8ecb7480e088d7eea6172bd9c8e764e489",
-      "id": "material:ac2a30987285dd6658fde645",
+      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "id": "material:7dbce0f058ce69aeee64664b",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "Material_Mechanical_basecolor",
+          "name": "forge_machinery_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_orm",
+          "name": "forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_normal",
+          "name": "forge_machinery_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_orm",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
-      "id": "material:ffe807b15567637e0a14ecd2",
-      "name": "Material_Mechanical_BrushedNickel",
+      "hash": "a8230c805ad8e45c836edc0c6669b8f3256a1823e36b5ea574c930e109622821",
+      "id": "material:a8230c805ad8e45c836edc0c",
+      "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "Material_Mechanical_BrushedNickel_base",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d6543720ecb75cf9114e8f75c160c8fb8db26e42fd1c377aeaff4cf7f6ef68e3",
+      "id": "material:d6543720ecb75cf9114e8f75",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -327,7 +276,7 @@
   ],
   "nodes": [
     {
-      "id": "sf.render.pod-cargo-container.node.cargo-id-plate",
+      "id": "sf.render.pod-cargo-container.node.collision-hull",
       "localTransform": [
         1,
         0,
@@ -346,14 +295,14 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Cargo_ID_Plate",
-      "nodeName": "Cargo_ID_Plate",
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
       "nodePath": [
         0,
         0
       ],
-      "parentId": "sf.render.pod-cargo-container.node.pod-cargo-container",
+      "parentId": "sf.render.pod-cargo-container.node.sf-pod-cargo-container-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.pod-cargo-container.body",
       "worldTransform": [
@@ -376,7 +325,7 @@
       ]
     },
     {
-      "id": "sf.render.pod-cargo-container.node.cargo-shell",
+      "id": "sf.render.pod-cargo-container.node.lod0-hull",
       "localTransform": [
         1,
         0,
@@ -396,13 +345,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "Cargo_Shell",
-      "nodeName": "Cargo_Shell",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
       "nodePath": [
         0,
         1
       ],
-      "parentId": "sf.render.pod-cargo-container.node.pod-cargo-container",
+      "parentId": "sf.render.pod-cargo-container.node.sf-pod-cargo-container-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.pod-cargo-container.body",
       "worldTransform": [
@@ -425,7 +374,7 @@
       ]
     },
     {
-      "id": "sf.render.pod-cargo-container.node.mount-child",
+      "id": "sf.render.pod-cargo-container.node.lod0-livery",
       "localTransform": [
         1,
         0,
@@ -439,67 +388,19 @@
         0,
         1,
         0,
-        5,
-        1,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "root",
-      "mergeBoundary": "MOUNT_Child",
-      "nodeName": "MOUNT_Child",
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
       "nodePath": [
         0,
         2
       ],
-      "parentId": "sf.render.pod-cargo-container.node.pod-cargo-container",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.pod-cargo-container.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        5,
-        1,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.pod-cargo-container.node.pod-cargo-container",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "root",
-      "mergeBoundary": "pod_cargo_container",
-      "nodeName": "pod_cargo_container",
-      "nodePath": [
-        0
-      ],
-      "parentId": null,
+      "parentId": "sf.render.pod-cargo-container.node.sf-pod-cargo-container-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.pod-cargo-container.body",
       "worldTransform": [
@@ -522,7 +423,7 @@
       ]
     },
     {
-      "id": "sf.render.pod-cargo-container.node.pod-cargo-container-material-mechanical-merged",
+      "id": "sf.render.pod-cargo-container.node.lod0-mechanical",
       "localTransform": [
         1,
         0,
@@ -542,13 +443,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "pod_cargo_container_Material_Mechanical_Merged",
-      "nodeName": "pod_cargo_container_Material_Mechanical_Merged",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
         3
       ],
-      "parentId": "sf.render.pod-cargo-container.node.pod-cargo-container",
+      "parentId": "sf.render.pod-cargo-container.node.sf-pod-cargo-container-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.pod-cargo-container.body",
       "worldTransform": [
@@ -571,7 +472,7 @@
       ]
     },
     {
-      "id": "sf.render.pod-cargo-container.node.remaster-material-mechanical-brushednickel",
+      "id": "sf.render.pod-cargo-container.node.lod0-mechanicaldark",
       "localTransform": [
         1,
         0,
@@ -591,12 +492,13 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "Remaster_Material_Mechanical_BrushedNickel",
-      "nodeName": "Remaster_Material_Mechanical_BrushedNickel",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
-        2
+        0,
+        4
       ],
-      "parentId": null,
+      "parentId": "sf.render.pod-cargo-container.node.sf-pod-cargo-container-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.pod-cargo-container.body",
       "worldTransform": [
@@ -619,7 +521,7 @@
       ]
     },
     {
-      "id": "sf.render.pod-cargo-container.node.remaster-material-mechanical-shadowenamel",
+      "id": "sf.render.pod-cargo-container.node.sf-pod-cargo-container-root",
       "localTransform": [
         1,
         0,
@@ -638,11 +540,11 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Remaster_Material_Mechanical_ShadowEnamel",
-      "nodeName": "Remaster_Material_Mechanical_ShadowEnamel",
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_POD_CARGO_CONTAINER_ROOT",
+      "nodeName": "SF_POD_CARGO_CONTAINER_ROOT",
       "nodePath": [
-        1
+        0
       ],
       "parentId": null,
       "role": "immutable",
@@ -669,114 +571,72 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "07743892681b860d5dee72b7b6ea1718b138025de1526f01c3bf2c24a688e507"
+      "sha256": "49c0edd29c92ea67717b2f6898f1cf2a44fa3e38590e6bec03f57122df1696b7"
     },
     "sourceGlb": {
-      "bytes": 192736,
-      "sha256": "3c7eb51bbf1fa7b0c141d85b147dc9395316644e358a5f4d625b1b8d15f2e1d9",
+      "bytes": 393716,
+      "sha256": "7df6150b3e01810e8b57d61daa8fc2bdd03d291efd04284a6a4bd26372d33cf7",
       "uri": "pod_cargo_container.glb"
     },
     "sourceManifest": {
-      "bytes": 208595,
-      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
+      "bytes": 209118,
+      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 282972,
-    "sha256": "0dfb3af836f68cadb95e1449d15e3d5e2b6730253d38605f46b42f5c8abc7850",
+    "bytes": 534424,
+    "sha256": "0da66d0b4e8159941c7c54799dfaa997656c92de745c48b61bcd53baeaf4a06e",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        2.1399999856948853,
-        1.205059377476573,
-        -0.004999995231628418
+        2.190002918243408,
+        1.1249999552965164,
+        0
       ],
       "max": [
-        4.809999942779541,
-        2.430095672607422,
-        1.5004075765609741
+        4.90000581741333,
+        2.270052909851074,
+        1.5299657583236694
       ],
       "min": [
-        -0.5299999713897705,
-        -0.019976917654275894,
-        -1.510407567024231
+        -0.5199999809265137,
+        -0.020052999258041382,
+        -1.5299657583236694
       ],
       "size": [
-        5.3399999141693115,
-        2.4500725902616978,
-        3.010815143585205
+        5.420005798339844,
+        2.2901059091091156,
+        3.059931516647339
       ]
     },
-    "hidden": [],
-    "legacyPart": false,
-    "markers": [
-      {
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          5,
-          1,
-          0,
-          1
-        ],
-        "name": "MOUNT_Child",
-        "planIndex": 6,
-        "tags": {
-          "mountKey": "true",
-          "socketForward": [
-            1,
-            0,
-            0
-          ],
-          "socketRole": "stack"
-        },
-        "userData": {
-          "forward": [
-            1,
-            0,
-            0
-          ],
-          "name": "MOUNT_Child",
-          "role": "stack",
-          "spacefaceMount": true,
-          "spacefaceRenderPackageSemantic": {
-            "rawNodeName": "MOUNT_Child",
-            "recordIds": [
-              "sf.render.pod-cargo-container.node.mount-child"
-            ],
-            "schema": "spaceface.renderPackageSemantic.v1"
-          }
-        }
-      }
+    "hidden": [
+      2
     ],
+    "legacyPart": false,
+    "markers": [],
     "materialProfileRoles": {
       "accent": 1,
-      "hull": 1,
-      "mechanical": 4
+      "hull": 2,
+      "mechanical": 2
     },
     "materialProfiles": [
       {
-        "allowTextures": true,
+        "allowTextures": false,
         "planIndex": 2,
-        "role": "accent"
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -785,21 +645,11 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 7,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 8,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 9,
+        "planIndex": 6,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 10,
+    "nodeCount": 7,
     "primitives": [
       {
         "canopy": false,
@@ -821,115 +671,10 @@
           0,
           1
         ],
-        "name": "Cargo_ID_Plate",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "Cargo_Shell_Mesh001",
-        "planIndex": 4,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "Cargo_Shell_Mesh001_1",
-        "planIndex": 5,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "pod_cargo_container_Material_Mechanical_Merged",
-        "planIndex": 7,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "Remaster_Material_Mechanical_ShadowEnamel",
-        "planIndex": 8,
+        "name": "LOD0_Hull",
+        "planIndex": 3,
         "tags": {
           "canopy": false,
-          "chamfered": true,
           "lod": "lod0"
         }
       },
@@ -953,11 +698,64 @@
           0,
           1
         ],
-        "name": "Remaster_Material_Mechanical_BrushedNickel",
-        "planIndex": 9,
+        "name": "LOD0_Livery",
+        "planIndex": 4,
         "tags": {
           "canopy": false,
-          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
           "lod": "lod0"
         }
       }
@@ -966,31 +764,30 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_cargo_container.glb"
   },
-  "runtimeHash": "65b0d398262ba01d9ea60d087c40137556f99c8577c09dfef21b5e6648f19530",
+  "runtimeHash": "a7ab294ed076d277a1c8471563ab9df60a0d7829a354c78bb3f282fd599ba94b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          4.809999942779541,
-          2.430095672607422,
-          1.5004075765609741
+          4.90000581741333,
+          2.270052909851074,
+          1.5299657583236694
         ],
         "min": [
-          -0.5299999713897705,
-          -0.019976917654275894,
-          -1.510407567024231
+          -0.5199999809265137,
+          -0.020052999258041382,
+          -1.5299657583236694
         ]
       },
       "id": "sf.render.pod-cargo-container.body",
       "nodeIds": [
-        "sf.render.pod-cargo-container.node.cargo-id-plate",
-        "sf.render.pod-cargo-container.node.cargo-shell",
-        "sf.render.pod-cargo-container.node.mount-child",
-        "sf.render.pod-cargo-container.node.pod-cargo-container",
-        "sf.render.pod-cargo-container.node.pod-cargo-container-material-mechanical-merged",
-        "sf.render.pod-cargo-container.node.remaster-material-mechanical-brushednickel",
-        "sf.render.pod-cargo-container.node.remaster-material-mechanical-shadowenamel"
+        "sf.render.pod-cargo-container.node.collision-hull",
+        "sf.render.pod-cargo-container.node.lod0-hull",
+        "sf.render.pod-cargo-container.node.lod0-livery",
+        "sf.render.pod-cargo-container.node.lod0-mechanical",
+        "sf.render.pod-cargo-container.node.lod0-mechanicaldark",
+        "sf.render.pod-cargo-container.node.sf-pod-cargo-container-root"
       ]
     }
   ]

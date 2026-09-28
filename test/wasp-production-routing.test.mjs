@@ -28,8 +28,7 @@ assert.deepEqual(visual, {
 }, 'the player Wasp must resolve only the new production body and its authored LOD family');
 assert.deepEqual(authoredPreloadPlanForEntity(wasp, { requiredWholeShip: true }), {
   hull: ['wholeships/wasp_production_v1.glb'],
-  weapon: ['weapons/weapon_pulse_cannon.glb'],
-}, 'the live entity must decode Wasp LOD0 and its fitted gun without pinning higher LODs');
+}, 'the live entity must decode Wasp LOD0 alone — the Forge body integrates hardpoints, so fitted kit records are never mounted or decoded');
 assert.deepEqual(authoredBootstrapPreloadPlan().hull, ['wholeships/kestrel.glb'],
   'the Wasp trial must not expand first-frame bootstrap residency');
 assert.equal(resolveRequiredWholeShipRecord(wasp, [record], {

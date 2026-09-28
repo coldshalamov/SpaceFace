@@ -53,7 +53,7 @@ for (const shipId of shipIds) {
   }
 
   const place = entry.layout === 'place';
-  const dir = place ? 'places' : 'wholeships';
+  const dir = place ? (entry.parts_dir || 'places') : 'wholeships';
   const files = entry.layout === 'player'
     ? [entry.file, `${entry.file}_lod1`, `${entry.file}_lod2`]
     : [entry.file];

@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        15
+        20
       ],
       "parentNodeId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        16
+        21
       ],
       "parentNodeId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        17
+        22
       ],
       "parentNodeId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        18
+        23
       ],
       "parentNodeId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        19
+        24
       ],
       "parentNodeId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "worldTransform": [
@@ -254,7 +254,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        20
+        25
       ],
       "parentNodeId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "worldTransform": [
@@ -300,7 +300,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        21
+        26
       ],
       "parentNodeId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "worldTransform": [
@@ -346,7 +346,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        22
+        27
       ],
       "parentNodeId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "worldTransform": [
@@ -392,7 +392,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        23
+        28
       ],
       "parentNodeId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "worldTransform": [
@@ -438,7 +438,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        24
+        29
       ],
       "parentNodeId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "worldTransform": [
@@ -484,7 +484,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        25
+        30
       ],
       "parentNodeId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "worldTransform": [
@@ -530,7 +530,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        26
+        31
       ],
       "parentNodeId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "worldTransform": [
@@ -565,8 +565,18 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "403daa04882b61a95d3623fee154a5f7461bbaf9b75e488638a614a1995b345d",
+  "contentHash": "b21a9c3c1d26a1b6696798b2e73d6eab91c5f828ed7734b02e857c21c1d731de",
   "dynamicGroups": [
+    {
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-armor-hip-hull.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-armor-hip-hull"
+    },
+    {
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-armor-hip-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-armor-hip-mechanical"
+    },
     {
       "id": "sf.render.pelican-production-v1.node.lod0-hook-drive-core.dynamic",
       "kind": "dynamic-surface",
@@ -581,6 +591,26 @@
       "id": "sf.render.pelican-production-v1.node.lod0-hook-nav-starboard.dynamic",
       "kind": "dynamic-surface",
       "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-secondary-mast-glow-red.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-secondary-mast-glow-red"
+    },
+    {
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-secondary-mast-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-secondary-mast-mechanical"
+    },
+    {
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-sensor-dome-lights-cyan.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-sensor-dome-lights-cyan"
+    },
+    {
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-sensor-dome-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-sensor-dome-mechanical"
     }
   ],
   "geometry": [
@@ -712,6 +742,56 @@
     {
       "bounds": {
         "max": [
+          -1.4271554946899414,
+          0.19994149106347858,
+          -1.2021728591384582
+        ],
+        "min": [
+          -5.890018463134766,
+          -0.19994149106347858,
+          -2.3480228348312684
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4c8ef481dbe0ff795509f0f833446e58e490e27fb7fa4ca7f386ca72effff4af",
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-armor-hip-hull.primitive.0",
+      "indexCount": 477,
+      "indexed": true,
+      "materialHash": "15b56ad2d722bda9a87061bfa6ff14fc6bbf0a54af9ad155a82859b32975964a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_ARMOR_HIP_Hull",
+      "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-armor-hip-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 146
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.4145605564117432,
+          -0.012276409503366836,
+          -1.1999864414096457
+        ],
+        "min": [
+          -5.893692493438721,
+          -0.19654319776937734,
+          -2.3500135109066385
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0021b78718b257d6bf24bb0bf4f21c8e88bd38fabb8eba0589260928294f81b5",
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-armor-hip-mechanical.primitive.0",
+      "indexCount": 303,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_ARMOR_HIP_Mechanical",
+      "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-armor-hip-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 117
+    },
+    {
+      "bounds": {
+        "max": [
           -5.862583868540025,
           0.4844529822136327,
           2.697200059890747
@@ -737,27 +817,27 @@
     {
       "bounds": {
         "max": [
-          -2.9649250190258827,
-          2.5244719021028117,
-          0.7350000143051147
+          -5.139999866485596,
+          0.04200197416538321,
+          -3.009999990463257
         ],
         "min": [
-          -5.260074647188107,
-          -0.041972008348091006,
+          -5.259999752044678,
+          -0.04200197416538321,
           -3.129999876022339
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4db229074cebae8ead45d8626ae1d18d111fb8be890b01b89e958187879fafca",
+      "geometryHash": "077c5ab580a2f5b75adff8fa4373e01164fd66b6ed4d6255622549d91b858309",
       "id": "sf.render.pelican-production-v1.node.lod0-hook-nav-port.primitive.0",
-      "indexCount": 72,
+      "indexCount": 36,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_NAV_PORT",
       "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 48
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -787,6 +867,106 @@
     {
       "bounds": {
         "max": [
+          -2.9649999141693115,
+          2.524501235046978,
+          0.7350000739097595
+        ],
+        "min": [
+          -3.0350000858306885,
+          2.475498764953022,
+          0.6649999022483826
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "168d63262804a0013230382ce30924236b656e4d48bbb5f680c55384f42c49c3",
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-secondary-mast-glow-red.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SECONDARY_MAST_glow_red",
+      "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-secondary-mast-glow-red",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.92001709248413,
+          2.5,
+          0.7799828955949409
+        ],
+        "min": [
+          -3.07998290751587,
+          1.600000023841858,
+          0.6200170805632012
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "21578befce351d5292aebe7b5e165c16c11030faadfa62a366f0495b3e852db0",
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-secondary-mast-mechanical.primitive.0",
+      "indexCount": 672,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SECONDARY_MAST_Mechanical",
+      "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-secondary-mast-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 224
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.5969998836517334,
+          1.7803017138037789,
+          -0.6509999632835388
+        ],
+        "min": [
+          -2.694999933242798,
+          1.7116983891930473,
+          -0.7490000128746033
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "df8b98530de55f8ceb6528f476303d2a877306746e39850e36a9f2643fe24c01",
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-sensor-dome-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SENSOR_DOME_Lights_Cyan",
+      "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-sensor-dome-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.51999993622303,
+          1.8215978998272122,
+          -0.41999998688697815
+        ],
+        "min": [
+          -3.0799999684095383,
+          1.610002074805051,
+          -0.9800000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "49f136c780fb4899283ae026878dc2e50cce395f4d0d8cc145fc3c1d1dc1f373",
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-sensor-dome-mechanical.primitive.0",
+      "indexCount": 708,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SENSOR_DOME_Mechanical",
+      "nodeId": "sf.render.pelican-production-v1.node.lod0-hook-sensor-dome-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 184
+    },
+    {
+      "bounds": {
+        "max": [
           1.5962285995483398,
           1.7101242542266846,
           3.069864273071289
@@ -798,41 +978,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95fae8d33f585784e7f46e9e926af9848527fac5ba1fad9dedb01118b42e1421",
+      "geometryHash": "273107523b948bb44824693eecb624d22e8283a1712cf51815faeb4a1cb7379c",
       "id": "sf.render.pelican-production-v1.node.lod0-hull.primitive.0",
-      "indexCount": 17652,
+      "indexCount": 17175,
       "indexed": true,
       "materialHash": "15b56ad2d722bda9a87061bfa6ff14fc6bbf0a54af9ad155a82859b32975964a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.pelican-production-v1.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 4872
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.5969998836517334,
-          1.7803016901016235,
-          -0.6509999632835388
-        ],
-        "min": [
-          -2.694999933242798,
-          1.7116984128952026,
-          -0.7490000128746033
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "cb0c12f48f4dde12facdc3f64fe737977978828f0641aaacc078c3ee9cf40522",
-      "id": "sf.render.pelican-production-v1.node.lod0-lights-cyan.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Lights_Cyan",
-      "nodeId": "sf.render.pelican-production-v1.node.lod0-lights-cyan",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 4726
     },
     {
       "bounds": {
@@ -888,26 +1043,26 @@
       "bounds": {
         "max": [
           7.389999866485596,
-          2.5000171661376953,
+          1.3994078636169434,
           3.050236463546753
         ],
         "min": [
           -7.320000171661377,
-          -2.1100170612335205,
+          -2.109407901763916,
           -3.050236463546753
         ]
       },
       "drawMode": 4,
-      "geometryHash": "88e249203a72ea2cfbaa308519e99e61728c679a19c5a45e170b3a5980c6166b",
+      "geometryHash": "613da805cad4bf3736cf085b6ad23f98b5ac69a914c870bcfd072414bbde30fc",
       "id": "sf.render.pelican-production-v1.node.lod0-mechanical.primitive.0",
-      "indexCount": 11616,
+      "indexCount": 9933,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.pelican-production-v1.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 4045
+      "vertexCount": 3520
     },
     {
       "bounds": {
@@ -1485,6 +1640,104 @@
       ]
     },
     {
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-armor-hip-hull",
+      "localTransform": [
+        2.231431484222412,
+        0,
+        0,
+        0,
+        0,
+        2.231431484222412,
+        0,
+        0,
+        0,
+        0,
+        2.231431484222412,
+        0,
+        -3.6585869789123535,
+        0,
+        -1.7750978469848633,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_ARMOR_HIP_Hull",
+      "nodeName": "LOD0_HOOK_ARMOR_HIP_Hull",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pelican-production-v1.body",
+      "worldTransform": [
+        2.231431484222412,
+        0,
+        0,
+        0,
+        0,
+        2.231431484222412,
+        0,
+        0,
+        0,
+        0,
+        2.231431484222412,
+        0,
+        -3.6585869789123535,
+        0,
+        -1.7750978469848633,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-armor-hip-mechanical",
+      "localTransform": [
+        2.2395659685134888,
+        0,
+        0,
+        0,
+        0,
+        2.2395659685134888,
+        0,
+        0,
+        0,
+        0,
+        2.2395659685134888,
+        0,
+        -3.654126524925232,
+        -0.10440980363637209,
+        -1.774999976158142,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_ARMOR_HIP_Mechanical",
+      "nodeName": "LOD0_HOOK_ARMOR_HIP_Mechanical",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pelican-production-v1.body",
+      "worldTransform": [
+        2.2395659685134888,
+        0,
+        0,
+        0,
+        0,
+        2.2395659685134888,
+        0,
+        0,
+        0,
+        0,
+        2.2395659685134888,
+        0,
+        -3.654126524925232,
+        -0.10440980363637209,
+        -1.774999976158142,
+        1
+      ]
+    },
+    {
       "id": "sf.render.pelican-production-v1.node.lod0-hook-drive-core",
       "localTransform": [
         2.697200059890747,
@@ -1509,7 +1762,7 @@
       "nodeName": "LOD0_HOOK_DRIVE_CORE",
       "nodePath": [
         0,
-        5
+        7
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "dynamic",
@@ -1536,21 +1789,21 @@
     {
       "id": "sf.render.pelican-production-v1.node.lod0-hook-nav-port",
       "localTransform": [
-        1.9324999451637268,
+        0.059999942779541016,
         0,
         0,
         0,
         0,
-        1.9324999451637268,
+        0.059999942779541016,
         0,
         0,
         0,
         0,
-        1.9324999451637268,
+        0.059999942779541016,
         0,
-        -4.112499833106995,
-        1.2412499468773603,
-        -1.197499930858612,
+        -5.199999809265137,
+        0,
+        -3.069999933242798,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1558,27 +1811,27 @@
       "nodeName": "LOD0_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        6
+        8
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.pelican-production-v1.body",
       "worldTransform": [
-        1.9324999451637268,
+        0.059999942779541016,
         0,
         0,
         0,
         0,
-        1.9324999451637268,
+        0.059999942779541016,
         0,
         0,
         0,
         0,
-        1.9324999451637268,
+        0.059999942779541016,
         0,
-        -4.112499833106995,
-        1.2412499468773603,
-        -1.197499930858612,
+        -5.199999809265137,
+        0,
+        -3.069999933242798,
         1
       ]
     },
@@ -1607,7 +1860,7 @@
       "nodeName": "LOD0_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        7
+        9
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "dynamic",
@@ -1628,6 +1881,202 @@
         -5.199999809265137,
         0,
         3.069999933242798,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-secondary-mast-glow-red",
+      "localTransform": [
+        0.03500008583068848,
+        0,
+        0,
+        0,
+        0,
+        0.03500008583068848,
+        0,
+        0,
+        0,
+        0,
+        0.03500008583068848,
+        0,
+        -3,
+        2.5,
+        0.699999988079071,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SECONDARY_MAST_glow_red",
+      "nodeName": "LOD0_HOOK_SECONDARY_MAST_glow_red",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pelican-production-v1.body",
+      "worldTransform": [
+        0.03500008583068848,
+        0,
+        0,
+        0,
+        0,
+        0.03500008583068848,
+        0,
+        0,
+        0,
+        0,
+        0.03500008583068848,
+        0,
+        -3,
+        2.5,
+        0.699999988079071,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-secondary-mast-mechanical",
+      "localTransform": [
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        -3,
+        2.050000011920929,
+        0.699999988079071,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SECONDARY_MAST_Mechanical",
+      "nodeName": "LOD0_HOOK_SECONDARY_MAST_Mechanical",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pelican-production-v1.body",
+      "worldTransform": [
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        0,
+        0,
+        0,
+        0.44999998807907104,
+        0,
+        -3,
+        2.050000011920929,
+        0.699999988079071,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-sensor-dome-lights-cyan",
+      "localTransform": [
+        0.04900002479553223,
+        0,
+        0,
+        0,
+        0,
+        0.04900002479553223,
+        0,
+        0,
+        0,
+        0,
+        0.04900002479553223,
+        0,
+        -2.6459999084472656,
+        1.746000051498413,
+        -0.699999988079071,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SENSOR_DOME_Lights_Cyan",
+      "nodeName": "LOD0_HOOK_SENSOR_DOME_Lights_Cyan",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pelican-production-v1.body",
+      "worldTransform": [
+        0.04900002479553223,
+        0,
+        0,
+        0,
+        0,
+        0.04900002479553223,
+        0,
+        0,
+        0,
+        0,
+        0.04900002479553223,
+        0,
+        -2.6459999084472656,
+        1.746000051498413,
+        -0.699999988079071,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pelican-production-v1.node.lod0-hook-sensor-dome-mechanical",
+      "localTransform": [
+        0.2800000160932541,
+        0,
+        0,
+        0,
+        0,
+        0.2800000160932541,
+        0,
+        0,
+        0,
+        0,
+        0.2800000160932541,
+        0,
+        -2.799999952316284,
+        1.7157999873161316,
+        -0.7000000029802322,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SENSOR_DOME_Mechanical",
+      "nodeName": "LOD0_HOOK_SENSOR_DOME_Mechanical",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pelican-production-v1.body",
+      "worldTransform": [
+        0.2800000160932541,
+        0,
+        0,
+        0,
+        0,
+        0.2800000160932541,
+        0,
+        0,
+        0,
+        0,
+        0.2800000160932541,
+        0,
+        -2.799999952316284,
+        1.7157999873161316,
+        -0.7000000029802322,
         1
       ]
     },
@@ -1656,56 +2105,7 @@
       "nodeName": "LOD0_Hull",
       "nodePath": [
         0,
-        8
-      ],
-      "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.pelican-production-v1.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.pelican-production-v1.node.lod0-lights-cyan",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Lights_Cyan",
-      "nodeName": "LOD0_Lights_Cyan",
-      "nodePath": [
-        0,
-        9
+        14
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -1754,7 +2154,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        10
+        15
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -1803,7 +2203,7 @@
       "nodeName": "LOD0_Livery",
       "nodePath": [
         0,
-        11
+        16
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -1852,7 +2252,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        12
+        17
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -1901,7 +2301,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        13
+        18
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -1950,7 +2350,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        14
+        19
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -2047,7 +2447,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        15
+        20
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -2096,7 +2496,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        16
+        21
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -2145,7 +2545,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        17
+        22
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -2194,7 +2594,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        18
+        23
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -2243,7 +2643,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        19
+        24
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -2292,7 +2692,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        20
+        25
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -2341,7 +2741,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        21
+        26
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -2390,7 +2790,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        22
+        27
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -2439,7 +2839,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        23
+        28
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -2488,7 +2888,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        24
+        29
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -2537,7 +2937,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        25
+        30
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -2586,7 +2986,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        26
+        31
       ],
       "parentId": "sf.render.pelican-production-v1.node.pelican-production-v1-lod0-root",
       "role": "immutable",
@@ -2613,22 +3013,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "79e3cd24d2011f8726db2a7cbb87662a1859683f9717c9e55acbd5950facf6d2"
+      "sha256": "e6605ca2f7887005dd6e7353f1c05de66e5102ff382343b895a298273f9649ad"
     },
     "sourceGlb": {
-      "bytes": 638436,
-      "sha256": "516185f7814556e776a6e0765316069b80d4097afc90364abe684deca33a77e1",
+      "bytes": 647208,
+      "sha256": "e961892aac4e8fd2f61cf8657169463aae25e9ca8baf728928fcdd2dcb9b8fb7",
       "uri": "pelican_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 208595,
-      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
+      "bytes": 209118,
+      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1070568,
-    "sha256": "b264e12247d4ec5664e19aef9ced377df1b9adcc81a60235f1cc7fe0b821f75f",
+    "bytes": 1069380,
+    "sha256": "4da93b585143bf189ea6489cfcc86cc7e4033334ff442d8e56ef0bba681c7856",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2679,7 +3079,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 17,
+        "planIndex": 22,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2731,7 +3131,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 18,
+        "planIndex": 23,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2783,7 +3183,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 19,
+        "planIndex": 24,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2835,7 +3235,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 20,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2887,7 +3287,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 21,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2939,7 +3339,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 22,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2991,7 +3391,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 23,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3043,7 +3443,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 24,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3095,7 +3495,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 25,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3147,7 +3547,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 26,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3199,7 +3599,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 27,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3251,7 +3651,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 28,
+        "planIndex": 33,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3288,9 +3688,9 @@
       "accent": 1,
       "drive": 1,
       "glass": 1,
-      "hull": 3,
-      "mechanical": 3,
-      "signal": 5,
+      "hull": 4,
+      "mechanical": 6,
+      "signal": 6,
       "warning": 1
     },
     "materialProfiles": [
@@ -3322,22 +3722,22 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "drive"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "signal"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3352,12 +3752,12 @@
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3367,10 +3767,35 @@
       {
         "allowTextures": true,
         "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
         "role": "warning"
       }
     ],
-    "nodeCount": 29,
+    "nodeCount": 34,
     "primitives": [
       {
         "canopy": false,
@@ -3483,6 +3908,62 @@
       {
         "canopy": false,
         "matrix": [
+          2.231431484222412,
+          0,
+          0,
+          0,
+          0,
+          2.231431484222412,
+          0,
+          0,
+          0,
+          0,
+          2.231431484222412,
+          0,
+          -3.6585869789123535,
+          0,
+          -1.7750978469848633,
+          1
+        ],
+        "name": "LOD0_HOOK_ARMOR_HIP_Hull",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "damageRole": "armor",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.2395659685134888,
+          0,
+          0,
+          0,
+          0,
+          2.2395659685134888,
+          0,
+          0,
+          0,
+          0,
+          2.2395659685134888,
+          0,
+          -3.654126524925232,
+          -0.10440980363637209,
+          -1.774999976158142,
+          1
+        ],
+        "name": "LOD0_HOOK_ARMOR_HIP_Mechanical",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "damageRole": "armor",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
           2.697200059890747,
           0,
           0,
@@ -3501,7 +3982,7 @@
           1
         ],
         "name": "LOD0_HOOK_DRIVE_CORE",
-        "planIndex": 7,
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -3529,25 +4010,25 @@
       {
         "canopy": false,
         "matrix": [
-          1.9324999451637268,
+          0.059999942779541016,
           0,
           0,
           0,
           0,
-          1.9324999451637268,
+          0.059999942779541016,
           0,
           0,
           0,
           0,
-          1.9324999451637268,
+          0.059999942779541016,
           0,
-          -4.112499833106995,
-          1.2412499468773603,
-          -1.197499930858612,
+          -5.199999809265137,
+          0,
+          -3.069999933242798,
           1
         ],
         "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 8,
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -3575,10 +4056,122 @@
           1
         ],
         "name": "LOD0_HOOK_NAV_STARBOARD",
-        "planIndex": 9,
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.03500008583068848,
+          0,
+          0,
+          0,
+          0,
+          0.03500008583068848,
+          0,
+          0,
+          0,
+          0,
+          0.03500008583068848,
+          0,
+          -3,
+          2.5,
+          0.699999988079071,
+          1
+        ],
+        "name": "LOD0_HOOK_SECONDARY_MAST_glow_red",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.44999998807907104,
+          0,
+          0,
+          0,
+          0,
+          0.44999998807907104,
+          0,
+          0,
+          0,
+          0,
+          0.44999998807907104,
+          0,
+          -3,
+          2.050000011920929,
+          0.699999988079071,
+          1
+        ],
+        "name": "LOD0_HOOK_SECONDARY_MAST_Mechanical",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.04900002479553223,
+          0,
+          0,
+          0,
+          0,
+          0.04900002479553223,
+          0,
+          0,
+          0,
+          0,
+          0.04900002479553223,
+          0,
+          -2.6459999084472656,
+          1.746000051498413,
+          -0.699999988079071,
+          1
+        ],
+        "name": "LOD0_HOOK_SENSOR_DOME_Lights_Cyan",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.2800000160932541,
+          0,
+          0,
+          0,
+          0,
+          0.2800000160932541,
+          0,
+          0,
+          0,
+          0,
+          0.2800000160932541,
+          0,
+          -2.799999952316284,
+          1.7157999873161316,
+          -0.7000000029802322,
+          1
+        ],
+        "name": "LOD0_HOOK_SENSOR_DOME_Mechanical",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
           "lod": "lod0"
         }
       },
@@ -3603,34 +4196,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Lights_Cyan",
-        "planIndex": 11,
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3657,7 +4223,7 @@
           1
         ],
         "name": "LOD0_Lights_Warm",
-        "planIndex": 12,
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3684,7 +4250,7 @@
           1
         ],
         "name": "LOD0_Livery",
-        "planIndex": 13,
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3711,7 +4277,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 14,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3738,7 +4304,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 15,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3765,7 +4331,7 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 16,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3776,7 +4342,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/pelican_production_v1.glb"
   },
-  "runtimeHash": "504273a562cbaca8e295025f80dc50c1016cf317fc6df14f422d57c2608b83d5",
+  "runtimeHash": "9a08443367ae2edcd969a7dd3105742bb2b304584f47da689d61613c7a537644",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3799,11 +4365,16 @@
         "sf.render.pelican-production-v1.node.lod0-beacon-amber",
         "sf.render.pelican-production-v1.node.lod0-brushedmetal",
         "sf.render.pelican-production-v1.node.lod0-canopy",
+        "sf.render.pelican-production-v1.node.lod0-hook-armor-hip-hull",
+        "sf.render.pelican-production-v1.node.lod0-hook-armor-hip-mechanical",
         "sf.render.pelican-production-v1.node.lod0-hook-drive-core",
         "sf.render.pelican-production-v1.node.lod0-hook-nav-port",
         "sf.render.pelican-production-v1.node.lod0-hook-nav-starboard",
+        "sf.render.pelican-production-v1.node.lod0-hook-secondary-mast-glow-red",
+        "sf.render.pelican-production-v1.node.lod0-hook-secondary-mast-mechanical",
+        "sf.render.pelican-production-v1.node.lod0-hook-sensor-dome-lights-cyan",
+        "sf.render.pelican-production-v1.node.lod0-hook-sensor-dome-mechanical",
         "sf.render.pelican-production-v1.node.lod0-hull",
-        "sf.render.pelican-production-v1.node.lod0-lights-cyan",
         "sf.render.pelican-production-v1.node.lod0-lights-warm",
         "sf.render.pelican-production-v1.node.lod0-livery",
         "sf.render.pelican-production-v1.node.lod0-mechanical",

@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
 import json
 import math
 import sys
@@ -504,28 +505,57 @@ def build_cargo_pod_standard_breached():
     return root, meta
 
 
+# Forge-derived kit bodies (GFX-9): geometry is authored in tools/blender/forge/ships/
+# and mounted here on the kit contract — plain-named root, SOCKET_* empties, and the
+# COLLISION_HULL box main() adds. The exported GLB is re-stamped with the Forge
+# spacefaceAsset identity so provenance tooling reads it as Forge-authored.
+FORGE_DERIVED = {
+    'ore_bulk_container': 'place_ore_bulk_container',
+}
+
+
+def forge_derived(ship_id):
+    """Import a Forge ship builder inside this Blender session and return its Ship."""
+    forge_dir = ROOT / 'tools' / 'blender' / 'forge'
+    for p in (str(forge_dir / 'ships'), str(forge_dir)):
+        if p not in sys.path:
+            sys.path.insert(0, p)
+    mod = importlib.import_module(ship_id)
+    ship = mod.build().finish()
+    import forge_export as FE
+    FE._rename_materials(ship)
+    return ship
+
+
+def stamp_forge_source(glb, forge_ship_id):
+    """Stamp the kit-exported GLB with the same spacefaceAsset identity forge_export
+    writes, so the source (and the pack release built from it) reads Forge-authored."""
+    import forge_export as FE
+    FE._stamp(Path(glb), {
+        'contractVersion': 2, 'slot': 'place', 'category': 'places',
+        'liveId': forge_ship_id, 'assetId': forge_ship_id, 'partId': forge_ship_id,
+        'forge': {'version': 1, 'ship': forge_ship_id},
+    }, 'lod0')
+
+
 @register('ore_bulk_container')
 def build_ore_bulk_container():
+    # Forge rebuild (GFX-9): ribbed walled bin, rim rails, rub strakes, heaped displaced
+    # ore lumps — same slot, root name, hoist socket and box collision contract.
+    ship = forge_derived(FORGE_DERIVED['ore_bulk_container'])
     root = root_of('ore_bulk_container')
-    put(box('floor', (10.0, 5.0, 0.35), (0, 0, -1.85)), 'esk_struct_alloy', root)
-    put(box('wall_f', (0.35, 5.0, 4.0), (4.85, 0, 0)), 'esk_paint_industrial_ochre', root)
-    put(box('wall_a', (0.35, 5.0, 4.0), (-4.85, 0, 0)), 'esk_paint_industrial_ochre', root)
-    put(box('wall_p', (10.0, 0.35, 4.0), (0, 2.35, 0)), 'esk_paint_industrial_ochre', root)
-    put(box('wall_s', (10.0, 0.35, 4.0), (0, -2.35, 0)), 'esk_paint_industrial_ochre', root)
-    put(box('rim', (10.2, 0.4, 0.2), (0, 2.35, 2.05)), 'esk_hazard_stripe', root)
-    put(box('rim_s', (10.2, 0.4, 0.2), (0, -2.35, 2.05)), 'esk_hazard_stripe', root)
-    put(box('rub_p', (10.2, 0.25, 0.25), (0, 2.45, -1.9)), 'esk_bare_steel', root)
-    put(box('rub_s', (10.2, 0.25, 0.25), (0, -2.45, -1.9)), 'esk_bare_steel', root)
-    # two spread clusters so the load FILLS the box (round 1: one centered egg)
-    ore_lumps(root, 'ore_a', (-2.2, 0.3, 1.55), 2.1)
-    ore_lumps(root, 'ore_b', (2.4, -0.4, 1.7), 2.3)
-    put(box('plate', (1.6, 0.05, 0.9), (2.6, -2.55, 0.6)), 'esk_id_plate', root)
-    socket('SOCKET_Hoist_Center', (0, 0, 2.2), root)
+    for o in ship.objects:
+        for key in [k for k in o.keys() if str(k).startswith('forge_')]:
+            del o[key]
+        o.parent = root
+    for name, (pos, _fwd) in ship.sockets.items():
+        socket(name, pos, root)
     meta = {
         'family': 'cargo', 'role': 'open-top bulk ore box, load proud of the rim (show your mass)',
         'states': 'active=ore mound present; abandoned=empty box (subtraction)',
         'placement': 'mining worksites, conveyor discharge, barge loading aprons',
         'lodPlan': 'LOD1: box+ore as one; LOD2: single box',
+        'forgeDerived': 'tools/blender/forge/ships/place_ore_bulk_container.py',
     }
     return root, meta
 
@@ -2432,6 +2462,9 @@ def main():
         chull.parent = root
         glb = OUT_SOURCE / f'{name}.glb'
         digest = export_glb(root, glb)
+        if name in FORGE_DERIVED:
+            stamp_forge_source(glb, FORGE_DERIVED[name])
+            digest = hashlib.sha256(glb.read_bytes()).hexdigest()
         exporter_generators.add(glb_generator_record(glb))
         entry = {
             'id': name,

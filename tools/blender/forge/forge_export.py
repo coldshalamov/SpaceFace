@@ -295,7 +295,8 @@ def _clear_export_objects(objs):
             bpy.data.objects.remove(obj, do_unlink=True)
 
 
-PLACE_DIR = os.path.join(ROOT, 'assets', 'ships', 'parts', 'places')
+PARTS_DIR = os.path.join(ROOT, 'assets', 'ships', 'parts')
+PLACE_DIR = os.path.join(PARTS_DIR, 'places')
 
 
 def _read_glb_json(path):
@@ -305,11 +306,11 @@ def _read_glb_json(path):
     return json.loads(data[20:20 + jlen].decode('utf-8'))
 
 
-def live_place_contract(file):
+def live_place_contract(file, parts_dir=None):
     """Sockets (world transform + extras), root name and identity of the live place GLB, so a forged
     place drops into the exact gameplay contract the old one held."""
     from mathutils import Matrix, Quaternion
-    doc = _read_glb_json(os.path.join(PLACE_DIR, f'{file}.glb'))
+    doc = _read_glb_json(os.path.join(parts_dir or PLACE_DIR, f'{file}.glb'))
     nodes = doc.get('nodes', [])
     parent = {}
     for i, n in enumerate(nodes):
@@ -354,11 +355,15 @@ def live_place_contract(file):
 
 
 def export_place(ship, spec, preview=False):
-    out_dir = PREVIEW_DIR if preview else PLACE_DIR
+    # spec['parts_dir'] retargets a place-layout body at another parts/ subdir (e.g. 'pods') so a
+    # Forge rebuild can replace a live file in place instead of moving its references.
+    parts_dir = os.path.join(PARTS_DIR, spec.get('parts_dir', 'places'))
+    out_dir = PREVIEW_DIR if preview else parts_dir
     os.makedirs(out_dir, exist_ok=True)
     # A brand-new place (no live body yet) carries its own sockets (s.socket / s.socket_names).
-    new_place = not os.path.exists(os.path.join(PLACE_DIR, f"{spec['file']}.glb")) or spec.get('new_place')
-    live = {'sockets': [], 'root': None, 'meta': {}} if new_place else live_place_contract(spec['file'])
+    new_place = not os.path.exists(os.path.join(parts_dir, f"{spec['file']}.glb")) or spec.get('new_place')
+    live = {'sockets': [], 'root': None, 'meta': {}} if new_place else live_place_contract(
+        spec['file'], parts_dir)
     _rename_materials(ship)
     root = _root_empty(live['root'] or f"SF_{spec['file'].upper()}_ROOT", {})
     meshes_all = []
@@ -389,10 +394,12 @@ def export_place(ship, spec, preview=False):
     keep = ('contractVersion', 'assetId', 'partId', 'liveId', 'category', 'family', 'role',
             'previewMount', 'sourceRole')
     identity = {k: live['meta'][k] for k in keep if k in live['meta']}
+    category = spec.get('parts_dir', 'places')
     if new_place:
-        identity.update({'contractVersion': 2, 'liveId': spec['file'], 'category': 'places'})
-    identity.update({'assetId': spec['asset_id'], 'partId': spec.get('part_id', spec['file']), 'slot': 'place',
-                     'category': 'places',
+        identity.update({'contractVersion': 2, 'liveId': spec['file'], 'category': category})
+    identity.update({'assetId': spec['asset_id'], 'partId': spec.get('part_id', spec['file']),
+                     'slot': spec.get('slot', 'place'),
+                     'category': category,
                      'forge': {'version': 1, 'ship': ship.id}})
     _stamp(path, identity, 'lod0')
     tris = sum(sum(len(p.vertices) - 2 for p in m.data.polygons) for m in meshes_all if m.name.startswith('LOD0_'))

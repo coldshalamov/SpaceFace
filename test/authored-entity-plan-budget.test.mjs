@@ -267,12 +267,10 @@ function independentExpectedSlots(entity) {
   const shipDef = SHIP_BY_ID.get(defId);
   const wholeShipFile = WHOLE_SHIP_FILE_BY_DEF[defId];
   if (wholeShipFile && partsLibrary.REQUIRED_WHOLE_SHIP_DEF_IDS.includes(defId)) {
-    // Packaged whole-ship bodies bake their dressing; only guns actually fitted may sprout on the
-    // authored sockets (PQ-176.04 fittedOnly contract — runtime/fitted weapons, never seed picks).
-    const slots = { hull: [wholeShipFile] };
-    const weapons = fixtureWeaponFiles(entity, shipDef, true);
-    if (weapons.length) slots.weapon = weapons;
-    return slots;
+    // Packaged whole-ship bodies bake their dressing and — since the fleet went Forge —
+    // integrate their hardpoints too: fitted kit records never mount on these hulls
+    // (hullIntegratesHardpoints gates the composition), so the demand is the body alone.
+    return { hull: [wholeShipFile] };
   }
   const seed = fixtureHash(`${entity.id}|${defId}|${entity.factionId || ''}`);
   const regularHulls = partsLibrary.PART_LIBRARY_CONTRACT.slots.hull

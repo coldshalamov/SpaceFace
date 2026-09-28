@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        14
+        22
       ],
       "parentNodeId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        15
+        23
       ],
       "parentNodeId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        16
+        24
       ],
       "parentNodeId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        17
+        25
       ],
       "parentNodeId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        18
+        26
       ],
       "parentNodeId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "worldTransform": [
@@ -254,7 +254,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        19
+        27
       ],
       "parentNodeId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "worldTransform": [
@@ -300,7 +300,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        20
+        28
       ],
       "parentNodeId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "worldTransform": [
@@ -346,7 +346,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        21
+        29
       ],
       "parentNodeId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "worldTransform": [
@@ -392,7 +392,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        22
+        30
       ],
       "parentNodeId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "worldTransform": [
@@ -438,7 +438,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        23
+        31
       ],
       "parentNodeId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "worldTransform": [
@@ -484,7 +484,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        24
+        32
       ],
       "parentNodeId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "worldTransform": [
@@ -530,7 +530,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        25
+        33
       ],
       "parentNodeId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "worldTransform": [
@@ -565,8 +565,18 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bf2246774b6999b83b8750f64ec97c31cc04829e2bfd3d125bbb608c492f581f",
+  "contentHash": "0a3b08c96e8f36775e7b0dc3b3cf9738e56ab446890315d3173615080860c3ba",
   "dynamicGroups": [
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-armor-bumper-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-armor-bumper-mechanical"
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-armor-bumper-warning.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-armor-bumper-warning"
+    },
     {
       "id": "sf.render.mule-production-v1.node.lod0-hook-drive-core.dynamic",
       "kind": "dynamic-surface",
@@ -581,6 +591,41 @@
       "id": "sf.render.mule-production-v1.node.lod0-hook-nav-starboard.dynamic",
       "kind": "dynamic-surface",
       "nodeId": "sf.render.mule-production-v1.node.lod0-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-mast-glow-red.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-secondary-mast-glow-red"
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-mast-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-secondary-mast-mechanical"
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-hull.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-hull"
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-mechanical"
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-mechanicaldark.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-mechanicaldark"
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-sensor-dome-lights-cyan.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-sensor-dome-lights-cyan"
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-sensor-dome-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-sensor-dome-mechanical"
     }
   ],
   "geometry": [
@@ -687,6 +732,56 @@
     {
       "bounds": {
         "max": [
+          7.9999330475051895,
+          0.20006102941075116,
+          0.949999988079071
+        ],
+        "min": [
+          7.600067333964537,
+          -0.3000610383514479,
+          -0.949999988079071
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d7d92e3e4494f1c4c2e27888105fb37722d2cf11b966b3b003cccf2d6ab5a77c",
+      "id": "sf.render.mule-production-v1.node.lod0-hook-armor-bumper-mechanical.primitive.0",
+      "indexCount": 756,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_ARMOR_BUMPER_Mechanical",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-armor-bumper-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 292
+    },
+    {
+      "bounds": {
+        "max": [
+          7.9999727240763345,
+          0.20003814366649664,
+          0.5
+        ],
+        "min": [
+          7.600027657393392,
+          -0.30003815260719335,
+          -0.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "98276b1f8c28093517f3afd53810a32d3632c4b8aefa55b66ada4cf7a9e759ad",
+      "id": "sf.render.mule-production-v1.node.lod0-hook-armor-bumper-warning.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "94130d3712ec2f09e6854233d9d727de00b0b6e6b0ab6c299d4c1fa26d290c17",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_ARMOR_BUMPER_Warning",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-armor-bumper-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 112
+    },
+    {
+      "bounds": {
+        "max": [
           -5.3350730052192095,
           0.6270319736360954,
           2.5104000568389893
@@ -712,27 +807,27 @@
     {
       "bounds": {
         "max": [
-          3.93500018119812,
-          2.2744108249092863,
-          0.5849891491876653
+          -4.624999761581421,
+          0.8025025511572336,
+          -3.2100000381469727
         ],
         "min": [
-          -4.774999618530273,
-          0.697589058742447,
-          -3.3599892445550967
+          -4.7749998569488525,
+          0.6974974488427664,
+          -3.3600001335144043
         ]
       },
       "drawMode": 4,
-      "geometryHash": "017073139b629b627a84972e1174ec70345a5aed7be7413c6f1103427c99f635",
+      "geometryHash": "2a57f2db5e39fed15d61a4ebec7b80b5186d63ba3ee230c3bcb2c4639f28ec47",
       "id": "sf.render.mule-production-v1.node.lod0-hook-nav-port.primitive.0",
-      "indexCount": 72,
+      "indexCount": 36,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_NAV_PORT",
       "nodeId": "sf.render.mule-production-v1.node.lod0-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 48
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -762,6 +857,181 @@
     {
       "bounds": {
         "max": [
+          3.93500018119812,
+          2.274501235046978,
+          0.5850000977516174
+        ],
+        "min": [
+          3.865000009536743,
+          2.225498764953022,
+          0.5149999260902405
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c3a806803f3ca261c6f40e6dc3eeb7a0106004cd0d0ef16fc555f8fd3928143c",
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-mast-glow-red.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SECONDARY_MAST_glow_red",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-secondary-mast-glow-red",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.9800196272134962,
+          2.25,
+          0.6300195437669935
+        ],
+        "min": [
+          3.819980563521367,
+          1.25,
+          0.4699804800748643
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "62f7978c2ec4bea322a961ff9bc54a88fb6d363117458f03bbdff3412e7627a4",
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-mast-mechanical.primitive.0",
+      "indexCount": 672,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SECONDARY_MAST_Mechanical",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-secondary-mast-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.310547828674316,
+          1.709974421017643,
+          0.39152305252140857
+        ],
+        "min": [
+          -6.28945255279541,
+          1.290025578982357,
+          -0.39152305252140857
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ef060b54693f5a7e29108b16f42a52e731376039dcb13b3740c959b793667a87",
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-hull.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "2068df9c87648d2bfeed86432ad922541d10af24c81625f485897dc2373be91d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SECONDARY_TURRET_Hull",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.049999713897705,
+          1.57991474362264,
+          0.5500312076262655
+        ],
+        "min": [
+          -7.892499923706055,
+          1.0000852992927043,
+          -0.5500312076262655
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8a3133633a2144f36b92b5312c0bd6ff4a45fb7547e9eaf52afd8755ec03844d",
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-mechanical.primitive.0",
+      "indexCount": 2532,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SECONDARY_TURRET_Mechanical",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 856
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.199999809265137,
+          1.5779259156059526,
+          0.27800695743921905
+        ],
+        "min": [
+          -7.900000095367432,
+          1.4220739651847578,
+          -0.2780068084276071
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "76c1bc6d861a63944c64af2663bfc08a38fac9dd70fa266b2818b649d418a2cc",
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-mechanicaldark.primitive.0",
+      "indexCount": 1656,
+      "indexed": true,
+      "materialHash": "c2498444ecef0251ca52252be8ce06ff755b2ba849f40ea1e3b9586304b86abd",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SECONDARY_TURRET_MechanicalDark",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 448
+    },
+    {
+      "bounds": {
+        "max": [
+          4.488499820232391,
+          1.4488515690786268,
+          -0.5545000433921814
+        ],
+        "min": [
+          4.397499859333038,
+          1.385148541547594,
+          -0.6455000042915344
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ab64b7db6a146ce7a12c175e39d2647b7365cd501da915378464fe33434bae27",
+      "id": "sf.render.mule-production-v1.node.lod0-hook-sensor-dome-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SENSOR_DOME_Lights_Cyan",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-sensor-dome-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.559999957680702,
+          1.4871900386947567,
+          -0.3400000035762787
+        ],
+        "min": [
+          4.039999946951866,
+          1.290009944902045,
+          -0.8600000143051147
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "42c251a8f344a0428eec33c154593acce4b75988d67e777a5527a474949cdf24",
+      "id": "sf.render.mule-production-v1.node.lod0-hook-sensor-dome-mechanical.primitive.0",
+      "indexCount": 708,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_SENSOR_DOME_Mechanical",
+      "nodeId": "sf.render.mule-production-v1.node.lod0-hook-sensor-dome-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 184
+    },
+    {
+      "bounds": {
+        "max": [
           7.800000190734863,
           2.0302581787109375,
           3.2247745990753174
@@ -773,41 +1043,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e02145b379afda6639e365edcf57a7c94cbd7327725ba967d3f49b61e2afb463",
+      "geometryHash": "98546e44806d488b05364d5427e55148617d2d38b9b03e57da0f18ab4de60a03",
       "id": "sf.render.mule-production-v1.node.lod0-hull.primitive.0",
-      "indexCount": 12750,
+      "indexCount": 12186,
       "indexed": true,
       "materialHash": "2068df9c87648d2bfeed86432ad922541d10af24c81625f485897dc2373be91d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.mule-production-v1.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 3653
-    },
-    {
-      "bounds": {
-        "max": [
-          4.488499641418457,
-          1.4488515853881836,
-          -0.5545000433921814
-        ],
-        "min": [
-          4.397500038146973,
-          1.385148525238037,
-          -0.6455000042915344
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9de2a27effbc5769eb85642030e1dcbaef7d636d52498d6062f7f29c1f2c9204",
-      "id": "sf.render.mule-production-v1.node.lod0-lights-cyan.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Lights_Cyan",
-      "nodeId": "sf.render.mule-production-v1.node.lod0-lights-cyan",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 3485
     },
     {
       "bounds": {
@@ -862,77 +1107,77 @@
     {
       "bounds": {
         "max": [
-          8,
-          2.2501893043518066,
-          3.4370672702789307
+          7.7992753982543945,
+          1.2201882600784302,
+          3.4370224475860596
         ],
         "min": [
           -8.119999885559082,
-          -1.0301892757415771,
-          -3.4370672702789307
+          -1.0301882028579712,
+          -3.4370224475860596
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bff1c3f04c788020706fd97f9cfdc97238391e2d938c5fddd4a9049695449e72",
+      "geometryHash": "1407074046daecaf3af0847f2654c2ebb75c4c9efd9ed47d11be49340c02f8e1",
       "id": "sf.render.mule-production-v1.node.lod0-mechanical.primitive.0",
-      "indexCount": 24378,
+      "indexCount": 19710,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.mule-production-v1.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 7921
+      "vertexCount": 6369
     },
     {
       "bounds": {
         "max": [
           7.3354997634887695,
-          1.578086018562317,
+          1.1295781135559082,
           3.4623584747314453
         ],
         "min": [
           -8.119999885559082,
-          -1.0501083135604858,
+          -1.049578070640564,
           -3.4623584747314453
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fcc65f5685021e35853830524022740ca24e1707deb67c9931faf4d2ec951613",
+      "geometryHash": "0012e6019ed3f4aaf6acf42e22ce82ac903bcaf70e8292e0c45b12a3b7db8b7c",
       "id": "sf.render.mule-production-v1.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 9738,
+      "indexCount": 8082,
       "indexed": true,
       "materialHash": "c2498444ecef0251ca52252be8ce06ff755b2ba849f40ea1e3b9586304b86abd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.mule-production-v1.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 3248
+      "vertexCount": 2800
     },
     {
       "bounds": {
         "max": [
-          8,
-          1.0803287029266357,
-          3.375072479248047
+          3.5,
+          1.0800005197525024,
+          3.3752784729003906
         ],
         "min": [
           -5,
-          -0.30032867193222046,
-          -3.375072479248047
+          0.16999955475330353,
+          -3.3752784729003906
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f77c2bf1221ec9044519e35feea89fb3636814370094b9e6ae1b4cfbab8b7d35",
+      "geometryHash": "1b0229c0ecfcbf26948645f88e457e71a742ef1ef3c1418674c744b54eeccc58",
       "id": "sf.render.mule-production-v1.node.lod0-warning.primitive.0",
-      "indexCount": 8208,
+      "indexCount": 8016,
       "indexed": true,
       "materialHash": "94130d3712ec2f09e6854233d9d727de00b0b6e6b0ab6c299d4c1fa26d290c17",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.mule-production-v1.node.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 2563
+      "vertexCount": 2451
     }
   ],
   "hlods": [],
@@ -1379,6 +1624,104 @@
       ]
     },
     {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-armor-bumper-mechanical",
+      "localTransform": [
+        0.949999988079071,
+        0,
+        0,
+        0,
+        0,
+        0.949999988079071,
+        0,
+        0,
+        0,
+        0,
+        0.949999988079071,
+        0,
+        7.800000190734863,
+        -0.05000000447034836,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_ARMOR_BUMPER_Mechanical",
+      "nodeName": "LOD0_HOOK_ARMOR_BUMPER_Mechanical",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.mule-production-v1.body",
+      "worldTransform": [
+        0.949999988079071,
+        0,
+        0,
+        0,
+        0,
+        0.949999988079071,
+        0,
+        0,
+        0,
+        0,
+        0.949999988079071,
+        0,
+        7.800000190734863,
+        -0.05000000447034836,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-armor-bumper-warning",
+      "localTransform": [
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        7.800000190734863,
+        -0.05000000447034836,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_ARMOR_BUMPER_Warning",
+      "nodeName": "LOD0_HOOK_ARMOR_BUMPER_Warning",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.mule-production-v1.body",
+      "worldTransform": [
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        7.800000190734863,
+        -0.05000000447034836,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.mule-production-v1.node.lod0-hook-drive-core",
       "localTransform": [
         2.5104000568389893,
@@ -1403,7 +1746,7 @@
       "nodeName": "LOD0_HOOK_DRIVE_CORE",
       "nodePath": [
         0,
-        4
+        6
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "dynamic",
@@ -1430,21 +1773,21 @@
     {
       "id": "sf.render.mule-production-v1.node.lod0-hook-nav-port",
       "localTransform": [
-        4.354999899864197,
+        0.07500004768371582,
         0,
         0,
         0,
         0,
-        4.354999899864197,
+        0.07500004768371582,
         0,
         0,
         0,
         0,
-        4.354999899864197,
+        0.07500004768371582,
         0,
-        -0.41999971866607666,
-        1.4859999418258667,
-        -1.3875000476837158,
+        -4.699999809265137,
+        0.75,
+        -3.2850000858306885,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1452,27 +1795,27 @@
       "nodeName": "LOD0_HOOK_NAV_PORT",
       "nodePath": [
         0,
-        5
+        7
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.mule-production-v1.body",
       "worldTransform": [
-        4.354999899864197,
+        0.07500004768371582,
         0,
         0,
         0,
         0,
-        4.354999899864197,
+        0.07500004768371582,
         0,
         0,
         0,
         0,
-        4.354999899864197,
+        0.07500004768371582,
         0,
-        -0.41999971866607666,
-        1.4859999418258667,
-        -1.3875000476837158,
+        -4.699999809265137,
+        0.75,
+        -3.2850000858306885,
         1
       ]
     },
@@ -1501,7 +1844,7 @@
       "nodeName": "LOD0_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
-        6
+        8
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "dynamic",
@@ -1522,6 +1865,349 @@
         -4.699999809265137,
         0.75,
         3.2850000858306885,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-mast-glow-red",
+      "localTransform": [
+        0.03500008583068848,
+        0,
+        0,
+        0,
+        0,
+        0.03500008583068848,
+        0,
+        0,
+        0,
+        0,
+        0.03500008583068848,
+        0,
+        3.9000000953674316,
+        2.25,
+        0.550000011920929,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SECONDARY_MAST_glow_red",
+      "nodeName": "LOD0_HOOK_SECONDARY_MAST_glow_red",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.mule-production-v1.body",
+      "worldTransform": [
+        0.03500008583068848,
+        0,
+        0,
+        0,
+        0,
+        0.03500008583068848,
+        0,
+        0,
+        0,
+        0,
+        0.03500008583068848,
+        0,
+        3.9000000953674316,
+        2.25,
+        0.550000011920929,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-mast-mechanical",
+      "localTransform": [
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        3.9000000953674316,
+        1.75,
+        0.550000011920929,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SECONDARY_MAST_Mechanical",
+      "nodeName": "LOD0_HOOK_SECONDARY_MAST_Mechanical",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.mule-production-v1.body",
+      "worldTransform": [
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        3.9000000953674316,
+        1.75,
+        0.550000011920929,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-hull",
+      "localTransform": [
+        0.4894523620605469,
+        0,
+        0,
+        0,
+        0,
+        0.4894523620605469,
+        0,
+        0,
+        0,
+        0,
+        0.4894523620605469,
+        0,
+        -5.800000190734863,
+        1.5,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SECONDARY_TURRET_Hull",
+      "nodeName": "LOD0_HOOK_SECONDARY_TURRET_Hull",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.mule-production-v1.body",
+      "worldTransform": [
+        0.4894523620605469,
+        0,
+        0,
+        0,
+        0,
+        0.4894523620605469,
+        0,
+        0,
+        0,
+        0,
+        0.4894523620605469,
+        0,
+        -5.800000190734863,
+        1.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-mechanical",
+      "localTransform": [
+        1.4212501049041748,
+        0,
+        0,
+        0,
+        0,
+        1.4212501049041748,
+        0,
+        0,
+        0,
+        0,
+        1.4212501049041748,
+        0,
+        -6.47124981880188,
+        1.2900000214576721,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SECONDARY_TURRET_Mechanical",
+      "nodeName": "LOD0_HOOK_SECONDARY_TURRET_Mechanical",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.mule-production-v1.body",
+      "worldTransform": [
+        1.4212501049041748,
+        0,
+        0,
+        0,
+        0,
+        1.4212501049041748,
+        0,
+        0,
+        0,
+        0,
+        1.4212501049041748,
+        0,
+        -6.47124981880188,
+        1.2900000214576721,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-mechanicaldark",
+      "localTransform": [
+        0.8500001430511475,
+        0,
+        0,
+        0,
+        0,
+        0.8500001430511475,
+        0,
+        0,
+        0,
+        0,
+        0.8500001430511475,
+        0,
+        -7.049999952316284,
+        1.4999999403953552,
+        7.450580596923828e-8,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SECONDARY_TURRET_MechanicalDark",
+      "nodeName": "LOD0_HOOK_SECONDARY_TURRET_MechanicalDark",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.mule-production-v1.body",
+      "worldTransform": [
+        0.8500001430511475,
+        0,
+        0,
+        0,
+        0,
+        0.8500001430511475,
+        0,
+        0,
+        0,
+        0,
+        0.8500001430511475,
+        0,
+        -7.049999952316284,
+        1.4999999403953552,
+        7.450580596923828e-8,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-sensor-dome-lights-cyan",
+      "localTransform": [
+        0.045499980449676514,
+        0,
+        0,
+        0,
+        0,
+        0.045499980449676514,
+        0,
+        0,
+        0,
+        0,
+        0.045499980449676514,
+        0,
+        4.442999839782715,
+        1.4170000553131104,
+        -0.6000000238418579,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SENSOR_DOME_Lights_Cyan",
+      "nodeName": "LOD0_HOOK_SENSOR_DOME_Lights_Cyan",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.mule-production-v1.body",
+      "worldTransform": [
+        0.045499980449676514,
+        0,
+        0,
+        0,
+        0,
+        0.045499980449676514,
+        0,
+        0,
+        0,
+        0,
+        0.045499980449676514,
+        0,
+        4.442999839782715,
+        1.4170000553131104,
+        -0.6000000238418579,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mule-production-v1.node.lod0-hook-sensor-dome-mechanical",
+      "localTransform": [
+        0.26000000536441803,
+        0,
+        0,
+        0,
+        0,
+        0.26000000536441803,
+        0,
+        0,
+        0,
+        0,
+        0.26000000536441803,
+        0,
+        4.299999952316284,
+        1.3885999917984009,
+        -0.6000000089406967,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_SENSOR_DOME_Mechanical",
+      "nodeName": "LOD0_HOOK_SENSOR_DOME_Mechanical",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.mule-production-v1.body",
+      "worldTransform": [
+        0.26000000536441803,
+        0,
+        0,
+        0,
+        0,
+        0.26000000536441803,
+        0,
+        0,
+        0,
+        0,
+        0.26000000536441803,
+        0,
+        4.299999952316284,
+        1.3885999917984009,
+        -0.6000000089406967,
         1
       ]
     },
@@ -1550,56 +2236,7 @@
       "nodeName": "LOD0_Hull",
       "nodePath": [
         0,
-        7
-      ],
-      "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mule-production-v1.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mule-production-v1.node.lod0-lights-cyan",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Lights_Cyan",
-      "nodeName": "LOD0_Lights_Cyan",
-      "nodePath": [
-        0,
-        8
+        16
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -1648,7 +2285,7 @@
       "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
-        9
+        17
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -1697,7 +2334,7 @@
       "nodeName": "LOD0_Livery",
       "nodePath": [
         0,
-        10
+        18
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -1746,7 +2383,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        11
+        19
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -1795,7 +2432,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        12
+        20
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -1844,7 +2481,7 @@
       "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
-        13
+        21
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -1941,7 +2578,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        14
+        22
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -1990,7 +2627,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        15
+        23
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -2039,7 +2676,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        16
+        24
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -2088,7 +2725,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        17
+        25
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -2137,7 +2774,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        18
+        26
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -2186,7 +2823,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        19
+        27
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -2235,7 +2872,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        20
+        28
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -2284,7 +2921,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        21
+        29
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -2333,7 +2970,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        22
+        30
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -2382,7 +3019,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        23
+        31
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -2431,7 +3068,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        24
+        32
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -2480,7 +3117,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        25
+        33
       ],
       "parentId": "sf.render.mule-production-v1.node.mule-production-v1-lod0-root",
       "role": "immutable",
@@ -2507,29 +3144,29 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "96c63c639c028985e99a7b5e66c52adb9b700205a9953ee1a68ae9d9bc0b288c"
+      "sha256": "019553e2b46d94b07147707b2515ec07a8ae184f5eca3ee2f0b100dc987d3225"
     },
     "sourceGlb": {
-      "bytes": 618264,
-      "sha256": "70131bcf98f44ff7b7ce50a77607c8c3b3f2cfb45ea731da8e57d4b7c39fdf4f",
+      "bytes": 632096,
+      "sha256": "6d184c0e43d005579ef26d149290af46b1971441a2eb8b348a16b4f62314c66b",
       "uri": "mule_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 208595,
-      "sha256": "8fd7652780b0db4be10ca1effc820598441f1bfc66448f4509940a58f9cf92d5",
+      "bytes": 209118,
+      "sha256": "af0b27e4207f5bc74abfe8b76b605ddcfdf9c5c05164170bd6bdef4a4b730965",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1019004,
-    "sha256": "111042c5d9e30d0dea4a0e337fbb995702dd14b64ba023fc47c5d068cd33e5b7",
+    "bytes": 1001920,
+    "sha256": "321f9514420340228f3fb6a8eed83690c3de570142d03e1562865e6bcbbbdb27",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -0.045011043548583984,
-        0.6128560900688171,
+        0.6131212115287781,
         0
       ],
       "max": [
@@ -2539,12 +3176,12 @@
       ],
       "min": [
         -8.12002182006836,
-        -1.0501083135604858,
+        -1.049578070640564,
         -3.4623584747314453
       ],
       "size": [
         16.15002155303955,
-        3.325928807258606,
+        3.325398564338684,
         6.924716949462891
       ]
     },
@@ -2573,7 +3210,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 16,
+        "planIndex": 24,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2625,7 +3262,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 17,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2677,7 +3314,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 18,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2729,7 +3366,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 19,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2781,7 +3418,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 20,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2833,7 +3470,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 21,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2885,7 +3522,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 22,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2937,7 +3574,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 23,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2989,7 +3626,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 24,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3041,7 +3678,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 25,
+        "planIndex": 33,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3093,7 +3730,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 26,
+        "planIndex": 34,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3145,7 +3782,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 27,
+        "planIndex": 35,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3182,10 +3819,10 @@
       "accent": 1,
       "drive": 1,
       "glass": 1,
-      "hull": 2,
-      "mechanical": 2,
-      "signal": 5,
-      "warning": 1
+      "hull": 3,
+      "mechanical": 7,
+      "signal": 6,
+      "warning": 2
     },
     "materialProfiles": [
       {
@@ -3206,22 +3843,22 @@
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "drive"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "signal"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "signal"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3236,12 +3873,12 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -3251,10 +3888,50 @@
       {
         "allowTextures": true,
         "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
         "role": "warning"
       }
     ],
-    "nodeCount": 28,
+    "nodeCount": 36,
     "primitives": [
       {
         "canopy": false,
@@ -3340,6 +4017,62 @@
       {
         "canopy": false,
         "matrix": [
+          0.949999988079071,
+          0,
+          0,
+          0,
+          0,
+          0.949999988079071,
+          0,
+          0,
+          0,
+          0,
+          0.949999988079071,
+          0,
+          7.800000190734863,
+          -0.05000000447034836,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_ARMOR_BUMPER_Mechanical",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "damageRole": "armor",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.5,
+          0,
+          0,
+          0,
+          0,
+          0.5,
+          0,
+          0,
+          0,
+          0,
+          0.5,
+          0,
+          7.800000190734863,
+          -0.05000000447034836,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_ARMOR_BUMPER_Warning",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "damageRole": "armor",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
           2.5104000568389893,
           0,
           0,
@@ -3358,7 +4091,7 @@
           1
         ],
         "name": "LOD0_HOOK_DRIVE_CORE",
-        "planIndex": 6,
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -3386,25 +4119,25 @@
       {
         "canopy": false,
         "matrix": [
-          4.354999899864197,
+          0.07500004768371582,
           0,
           0,
           0,
           0,
-          4.354999899864197,
+          0.07500004768371582,
           0,
           0,
           0,
           0,
-          4.354999899864197,
+          0.07500004768371582,
           0,
-          -0.41999971866607666,
-          1.4859999418258667,
-          -1.3875000476837158,
+          -4.699999809265137,
+          0.75,
+          -3.2850000858306885,
           1
         ],
         "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 7,
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -3432,10 +4165,206 @@
           1
         ],
         "name": "LOD0_HOOK_NAV_STARBOARD",
-        "planIndex": 8,
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.03500008583068848,
+          0,
+          0,
+          0,
+          0,
+          0.03500008583068848,
+          0,
+          0,
+          0,
+          0,
+          0.03500008583068848,
+          0,
+          3.9000000953674316,
+          2.25,
+          0.550000011920929,
+          1
+        ],
+        "name": "LOD0_HOOK_SECONDARY_MAST_glow_red",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.5,
+          0,
+          0,
+          0,
+          0,
+          0.5,
+          0,
+          0,
+          0,
+          0,
+          0.5,
+          0,
+          3.9000000953674316,
+          1.75,
+          0.550000011920929,
+          1
+        ],
+        "name": "LOD0_HOOK_SECONDARY_MAST_Mechanical",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4894523620605469,
+          0,
+          0,
+          0,
+          0,
+          0.4894523620605469,
+          0,
+          0,
+          0,
+          0,
+          0.4894523620605469,
+          0,
+          -5.800000190734863,
+          1.5,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_SECONDARY_TURRET_Hull",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.4212501049041748,
+          0,
+          0,
+          0,
+          0,
+          1.4212501049041748,
+          0,
+          0,
+          0,
+          0,
+          1.4212501049041748,
+          0,
+          -6.47124981880188,
+          1.2900000214576721,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_SECONDARY_TURRET_Mechanical",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.8500001430511475,
+          0,
+          0,
+          0,
+          0,
+          0.8500001430511475,
+          0,
+          0,
+          0,
+          0,
+          0.8500001430511475,
+          0,
+          -7.049999952316284,
+          1.4999999403953552,
+          7.450580596923828e-8,
+          1
+        ],
+        "name": "LOD0_HOOK_SECONDARY_TURRET_MechanicalDark",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.045499980449676514,
+          0,
+          0,
+          0,
+          0,
+          0.045499980449676514,
+          0,
+          0,
+          0,
+          0,
+          0.045499980449676514,
+          0,
+          4.442999839782715,
+          1.4170000553131104,
+          -0.6000000238418579,
+          1
+        ],
+        "name": "LOD0_HOOK_SENSOR_DOME_Lights_Cyan",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.26000000536441803,
+          0,
+          0,
+          0,
+          0,
+          0.26000000536441803,
+          0,
+          0,
+          0,
+          0,
+          0.26000000536441803,
+          0,
+          4.299999952316284,
+          1.3885999917984009,
+          -0.6000000089406967,
+          1
+        ],
+        "name": "LOD0_HOOK_SENSOR_DOME_Mechanical",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
           "lod": "lod0"
         }
       },
@@ -3460,34 +4389,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 9,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Lights_Cyan",
-        "planIndex": 10,
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3514,7 +4416,7 @@
           1
         ],
         "name": "LOD0_Lights_Warm",
-        "planIndex": 11,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3541,7 +4443,7 @@
           1
         ],
         "name": "LOD0_Livery",
-        "planIndex": 12,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3568,7 +4470,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 13,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3595,7 +4497,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 14,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3622,7 +4524,7 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 15,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3633,7 +4535,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mule_production_v1.glb"
   },
-  "runtimeHash": "2bbb2a35c01cd2bdaafd436076521fccd91a6091101ef77eea7b3180aee79cab",
+  "runtimeHash": "ae7ac71efadbd06019e088430c52e07b584605817bceaeaa6bae29e3b8ca97d3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3645,7 +4547,7 @@
         ],
         "min": [
           -8.12002182006836,
-          -1.0501083135604858,
+          -1.049578070640564,
           -3.4623584747314453
         ]
       },
@@ -3655,11 +4557,19 @@
         "sf.render.mule-production-v1.node.lod0-armor",
         "sf.render.mule-production-v1.node.lod0-beacon-amber",
         "sf.render.mule-production-v1.node.lod0-canopy",
+        "sf.render.mule-production-v1.node.lod0-hook-armor-bumper-mechanical",
+        "sf.render.mule-production-v1.node.lod0-hook-armor-bumper-warning",
         "sf.render.mule-production-v1.node.lod0-hook-drive-core",
         "sf.render.mule-production-v1.node.lod0-hook-nav-port",
         "sf.render.mule-production-v1.node.lod0-hook-nav-starboard",
+        "sf.render.mule-production-v1.node.lod0-hook-secondary-mast-glow-red",
+        "sf.render.mule-production-v1.node.lod0-hook-secondary-mast-mechanical",
+        "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-hull",
+        "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-mechanical",
+        "sf.render.mule-production-v1.node.lod0-hook-secondary-turret-mechanicaldark",
+        "sf.render.mule-production-v1.node.lod0-hook-sensor-dome-lights-cyan",
+        "sf.render.mule-production-v1.node.lod0-hook-sensor-dome-mechanical",
         "sf.render.mule-production-v1.node.lod0-hull",
-        "sf.render.mule-production-v1.node.lod0-lights-cyan",
         "sf.render.mule-production-v1.node.lod0-lights-warm",
         "sf.render.mule-production-v1.node.lod0-livery",
         "sf.render.mule-production-v1.node.lod0-mechanical",

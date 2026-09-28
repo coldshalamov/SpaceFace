@@ -665,6 +665,30 @@
       "note": "Forge rebuild: the 47-A lifeboat \u00e2\u20ac\u201d ceramic pressure hull, distress band, airlock collar.",
       "part_id": "place_47a_rescue_capsule"
     },
+    "pod_cargo_container": {
+      "layout": "place",
+      "parts_dir": "pods",
+      "file": "pod_cargo_container",
+      "asset_id": "SF_POD_CARGO_CONTAINER",
+      "part_id": "pod_cargo_container",
+      "slot": "pod",
+      "lod_levels": [
+        0
+      ],
+      "note": "Forge rebuild: the generic tow can — corrugated ISO shell, door latches, freight band, tow eye (same pods/ file and contract as the PQ-era body)."
+    },
+    "pod_47a_evidence_spindle": {
+      "layout": "place",
+      "parts_dir": "pods",
+      "file": "pod_47a_evidence_spindle",
+      "asset_id": "SF_POD_47A_EVIDENCE_SPINDLE",
+      "part_id": "pod_47a_evidence_spindle",
+      "slot": "pod",
+      "lod_levels": [
+        0
+      ],
+      "note": "Forge rebuild: the 47-A evidence can — sealed ISO body, custody straps, evidence bands, ledger case, padlocked door (same pods/ file and contract as the PQ-193.04 body)."
+    },
     "place_breakaway_fork": {
       "layout": "place",
       "file": "place_breakaway_fork",

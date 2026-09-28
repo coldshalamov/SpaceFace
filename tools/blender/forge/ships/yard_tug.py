@@ -157,6 +157,13 @@ def build():
     F.light(s, 'NavStarboardFwd', (10.1, -3.83, 0.6), 'glow_green', size=0.16)
     F.light(s, 'Beacon', (5.9, 0.0, 3.58), 'glow_amber', size=0.3)
     F.light(s, 'BeaconAft', (-10.35, 0.0, 2.16), 'glow_amber', size=0.18)
+
+    # --- damage hooks: mast + tow gear shed, beacons strobe, port winch cheek lifts ----------------
+    _dmg = {o.name: o for o in s.objects}
+    s.hook_part('HOOK_SECONDARY_MAST', _dmg['CabMast_Mast'], _dmg['CabMast_Foot'], _dmg['CabMast_Tip'])
+    s.hook_part('HOOK_SECONDARY_TOWGEAR', _dmg['Fairlead'], _dmg['FairleadRoll'], _dmg['TowHook'])
+    s.hook_part('HOOK_SENSOR_BEACON', _dmg['Beacon'], _dmg['BeaconAft'])
+    s.hook_part('HOOK_ARMOR_WINCH', _dmg['WinchCheek'])
     return s
 
 

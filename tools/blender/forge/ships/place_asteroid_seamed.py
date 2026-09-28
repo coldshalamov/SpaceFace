@@ -16,10 +16,11 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_asteroid_seamed'
 COLORS = {
-    'stone': '#5e564b',
-    'stone.strata': '#4a443b',
-    'stone.deep': '#4a443b',
-    'stone.vein': '#3f5a4c',     # muted copper-green mineral vein
+    'stone': '#524a40',
+    'stone.strata': '#403830',
+    'stone.deep': '#403830',
+    'stone.vein': '#456a55',     # copper-green mineral vein — lifted a touch over the darker
+    # stone so the band still separates at chase zoom
     'dark': '#16191d',
     'glow_warm': '#c8903a',      # faint hot-seam line only
     'glow_amber': '#c88f2a',
@@ -31,13 +32,13 @@ def build():
     s = F.Ship(SHIP_ID, COLORS)
 
     # --- the mass: one dominant displaced boulder + flanking lumps --------------------------
-    F.rock(s, 'Core', (0, 0, 0), 10.5, seed=13, subdiv=4, relief=0.34, terrace=0.45,
+    F.rock(s, 'Core', (0, 0, 0), 10.5, seed=13, subdiv=4, relief=0.34, terrace=0.0,
            material='stone')
-    F.rock(s, 'LumpA', (-7.5, -3.0, -2.0), 4.4, seed=47, subdiv=4, relief=0.3, terrace=0.4,
+    F.rock(s, 'LumpA', (-7.5, -3.0, -2.0), 4.4, seed=47, subdiv=4, relief=0.3, terrace=0.0,
            material='stone.deep')
-    F.rock(s, 'LumpB', (6.0, 4.5, 3.0), 3.8, seed=59, subdiv=4, relief=0.3, terrace=0.4,
+    F.rock(s, 'LumpB', (6.0, 4.5, 3.0), 3.8, seed=59, subdiv=4, relief=0.3, terrace=0.0,
            material='stone')
-    F.rock(s, 'LumpC', (1.0, -6.5, 4.2), 3.0, seed=71, subdiv=4, relief=0.3, terrace=0.4,
+    F.rock(s, 'LumpC', (1.0, -6.5, 4.2), 3.0, seed=71, subdiv=4, relief=0.3, terrace=0.0,
            material='stone.deep')
 
     # --- the seam: a real banded vein cut through the rock — a tilted plane crossing the
@@ -45,11 +46,11 @@ def build():
     # dark fracture shoulders, then the ore band, then a thin warm glow line down its middle
     F.band(s, 'Core', (0, 2.1, 0.4), (0.0, 0.82, 0.57), 0.8, 'stone.deep')
     F.band(s, 'Core', (0, -2.1, -0.4), (0.0, 0.82, 0.57), 0.8, 'stone.deep')
-    F.band(s, 'Core', (0, 0.0, 0.0), (0.0, 0.82, 0.57), 2.6, 'stone.vein', depth=-0.06)
-    F.band(s, 'Core', (0, 0.0, 0.0), (0.0, 0.82, 0.57), 0.45, 'glow_warm')
+    F.band(s, 'Core', (0, 0.0, 0.0), (0.0, 0.82, 0.57), 4.0, 'stone.vein', depth=-0.06)
+    F.band(s, 'Core', (0, 0.0, 0.0), (0.0, 0.82, 0.57), 0.8, 'glow_warm')
     # the vein carries through the satellites it would cross — same plane family
-    F.band(s, 'LumpB', (0, 0.0, 0.0), (0.0, 0.82, 0.57), 1.6, 'stone.vein')
-    F.band(s, 'LumpA', (0, 0.0, 0.0), (0.0, 0.82, 0.57), 1.4, 'stone.vein')
+    F.band(s, 'LumpB', (0, 0.0, 0.0), (0.0, 0.82, 0.57), 2.2, 'stone.vein')
+    F.band(s, 'LumpA', (0, 0.0, 0.0), (0.0, 0.82, 0.57), 1.9, 'stone.vein')
     # one crossing stratum away from the seam so the body reads layered, not striped-in-one-axis
     F.band(s, 'Core', (0, 0.4, -4.2), (0.1, -0.06, 1.0), 1.0, 'stone.strata')
     return s

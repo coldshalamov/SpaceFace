@@ -2156,10 +2156,7 @@ here and there in the fixing commit.
 
 | Row | Outcome |
 |---|---|
-| **GFX-8** | Rocks: procedural geology + authored rock places reviewed and rebuilt to the Forge material language. |
-| **GFX-9** | Bolt-on parts audit: no pre-Forge weapon, pod or engine draws on the default route. |
 | **GFX-10** | Forge performance pass. Dedupe the shared tile textures in the loader, instance repeated hulls, and record frame p50/p95 and texture MB in §21.4. |
-| **GFX-11** | Runtime attachments on Forge hulls: retro shells on the nozzles, damage hooks shedding, player paint on all 14 hulls. |
 | **GFX-12** | Wave F F3: the pending-body stand-in is the hull's own Forge LOD2. |
 
 ### Wave D — shelf that beats live

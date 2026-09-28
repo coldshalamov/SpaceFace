@@ -112,10 +112,7 @@ Inspect GLBs with `node tools/blender/forge/glbinfo.cjs <file>`.
 
 | # | Task | Why | Done when |
 |---|---|---|---|
-| **GFX-8** | Asteroids: review the procedural common-rock geology (`src/render/objectSpaceGeology.js`) and the authored rock places against the Forge bar at chase camera; rebuild rock A/B/C/seamed/graffiti with the GFX-6 rock primitive. | Rocks are everywhere. The procedural geology already reads as rock; the authored rock places are older. | The rocks match the stations' material language. |
-| **GFX-9** | Bolt-on parts (weapons, pods, engines under `assets/ships/parts/`): audit which still draw on the live route. Forge hulls skip bolt-ons; modular NPC kits may not. Rebuild the survivors as Forge parts or retire them. | Old-pipeline parts next to Forge hulls break the one-game read. | The census shows no pre-Forge part on the default route. |
 | **GFX-10** | Performance pass on the Forge fleet: `probe-frame-solid` with a crowded Helios; dedupe the shared tile textures across GLBs in the loader (identical images are embedded per GLB today); instance repeated NPC hulls; measure GPU memory. | Consistency made sharing possible; take the win. | Frame p50/p95 and texture MB are recorded before/after in `build_map.md` §21.4. |
-| **GFX-11** | Runtime attachments on Forge hulls: retro-thruster shells (`Retro_Shell_*`), plume sockets, damage hooks (`HOOK_SECONDARY/SENSOR/ARMOR`) shedding in combat, player paint override across all 14 hulls. | Runtime layers were written against the old bodies. | `flight-look` stills per hull show retros on the nozzles and a clean paint swap; a damage run sheds parts. |
 | **GFX-12** | Wave F stand-ins (§13D): the pending-body stand-in is the hull's own Forge LOD2, preloaded. | No box ever. | `probe:frame-solid` rootSwaps 0; no generic marker on a cold New Game. |
 
 Pick a row, read FORGE.md and this page, and use the matching brief template. When a row is done,

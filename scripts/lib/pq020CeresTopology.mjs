@@ -95,8 +95,13 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // (14 shelved), sluice 5/5 (4 shelved), all exact-agreement and additive-census assertions pass,
 // and the structural census is unchanged at 23 entities / 184 colliders. Only the embedded hash
 // moved. Prior digest was ee36315ae7010ee127d17f10432c08ee8bbfc5a8737e3663f897a0d2b8827aa9.
+// 2026-09-28 (packet 8): re-pinned after the Forge place/pod/ore rebuild wave — the pack release
+// now carries forge provenance and the republished GLBs moved collision-proxy manifests
+// (colliders 184 → 190) plus embedded release hashes. Every authored-topology, exact-agreement and
+// additive-census assertion still passes; cathedral 15/15 materialized (14 shelved), sluice 5/5.
+// Prior digest was db16cacc9f0af7a764c4be8157c9fc0db3d60839a545deb99ed4f8e2fa24cd08.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'db16cacc9f0af7a764c4be8157c9fc0db3d60839a545deb99ed4f8e2fa24cd08';
+  'daac8aa195abf9517f8b5a2036824894080e4fcad68f823b03bdb3425bdfc188';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({

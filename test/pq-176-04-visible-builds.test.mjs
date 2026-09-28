@@ -91,37 +91,56 @@ test('fitted drives recolor the nacelle glow', () => {
   );
 });
 
-test('whole-ship bodies still cook the parts their fit will mount', () => {
-  // ship_kestrel resolves to a packaged whole-ship body — the plan must still carry the fitted
-  // gun and the budget-heavy cargo module so the live assembly can bolt them to its sockets.
+test('integrated Forge whole-ship bodies cook their hull alone — fits never mount kit parts', () => {
+  // ship_kestrel resolves to a packaged Forge whole-ship body whose metadata integrates its
+  // hardpoints: the composition mounts no bolt-on records for it, so the demand plan must not
+  // decode the fitted gun or the budget-heavy cargo module either.
   const fitted = shipEntity('ship_kestrel', [
     'wpn_railgun_m', 'mod_cargo_expander_l',
   ], [
     { slotIndex: 0, defId: 'wpn_railgun_m', facing: 'front', tracking: 'fixed', size: 'M' },
   ]);
-  const plan = partsLibrary.authoredPreloadPlanForEntity(fitted);
-  assert.deepEqual(plan.hull, ['wholeships/kestrel.glb']);
-  assert.ok((plan.weapon || []).some((url) => url.endsWith('weapons/weapon_railgun.glb')),
-    'fitted railgun cooks into the weapon slot');
-  assert.ok((plan.pod || []).some((url) => url.endsWith('pods/pod_cargo_container.glb')),
-    'budget-heavy cargo module cooks into the pod slot');
+  assert.deepEqual(partsLibrary.authoredPreloadPlanForEntity(fitted),
+    { hull: ['wholeships/kestrel.glb'] },
+    'an integrated Forge hull cooks nothing but its body — even when fitted');
 
   const empty = partsLibrary.authoredPreloadPlanForEntity(shipEntity('ship_kestrel', []));
   assert.deepEqual(empty, { hull: ['wholeships/kestrel.glb'] },
     'an unfitted whole ship cooks nothing but its body — no ghost guns');
+
+  // The bolt-on contract survives on modular hulls: a ship with no whole-body selection still
+  // cooks the exact kit parts its fit will mount.
+  const modular = shipEntity('ship_unknown_fixture', [], [
+    { slotIndex: 0, defId: 'wpn_railgun_m', facing: 'front', tracking: 'fixed', size: 'M' },
+  ]);
+  const modularPlan = partsLibrary.authoredPreloadPlanForEntity(modular);
+  assert.ok((modularPlan.weapon || []).some((url) => url.endsWith('weapons/weapon_railgun.glb')),
+    'a modular hull still cooks its fitted railgun into the weapon slot');
 });
 
-test('refits change the cooked plan and the composition fingerprint (parts hot-swap)', () => {
+test('refits still change the composition fingerprint, and modular plans still hot-swap parts', () => {
   const before = shipEntity('ship_kestrel', ['mod_cargo_pod_m']);
   const after = shipEntity('ship_kestrel', ['mod_cargo_expander_l', 'mod_thruster_vernier_m']);
-  const planBefore = partsLibrary.authoredPreloadPlanForEntity(before);
-  const planAfter = partsLibrary.authoredPreloadPlanForEntity(after);
-  assert.notDeepEqual(planAfter, planBefore);
-  assert.ok((planAfter.greeble || []).some((url) => url.endsWith('greebles/greeble_rcs.glb')));
+  // Integrated Forge hulls mount no kit records, so the plan stays hull-only across a refit —
+  // the fingerprint still moves so appearanceChanged rebuilds stay honest.
+  assert.deepEqual(partsLibrary.authoredPreloadPlanForEntity(before),
+    partsLibrary.authoredPreloadPlanForEntity(after));
   assert.notEqual(
     partsLibrary.authoredCompositionFingerprintForEntity(before),
     partsLibrary.authoredCompositionFingerprintForEntity(after),
   );
+
+  const modularBefore = shipEntity('ship_unknown_fixture', [], [
+    { slotIndex: 0, defId: 'wpn_pulse_laser_s', facing: 'front', tracking: 'fixed', size: 'S' },
+  ]);
+  const modularAfter = shipEntity('ship_unknown_fixture', [], [
+    { slotIndex: 0, defId: 'wpn_railgun_m', facing: 'front', tracking: 'fixed', size: 'M' },
+    { slotIndex: 1, defId: 'wpn_pulse_laser_s', facing: 'front', tracking: 'fixed', size: 'S' },
+  ]);
+  const modularPlanAfter = partsLibrary.authoredPreloadPlanForEntity(modularAfter);
+  assert.notDeepEqual(modularPlanAfter, partsLibrary.authoredPreloadPlanForEntity(modularBefore));
+  assert.ok((modularPlanAfter.weapon || []).some((url) => url.endsWith('weapons/weapon_railgun.glb')),
+    'a modular hull still hot-swaps its cooked weapon files on refit');
 });
 
 test('every visible-fit part file is a contracted authored asset (reachability stays green)', () => {

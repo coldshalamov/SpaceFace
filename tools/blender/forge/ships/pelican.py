@@ -141,6 +141,12 @@ def build():
     F.light(s, 'NavPort', (-5.2, PY + 0.72, 0.0), 'glow_red')
     F.light(s, 'NavStarboard', (-5.2, -PY - 0.72, 0.0), 'glow_green')
     F.light(s, 'Beacon', (-3.9, 0.0, 1.62), 'glow_amber', size=0.13)
+
+    # --- damage hooks: mast sheds, dome flickers, port hip plate displaces ----------------------
+    _dmg = {o.name: o for o in s.objects}
+    s.hook_part('HOOK_SECONDARY_MAST', _dmg['Mast_Mast'], _dmg['Mast_Foot'], _dmg['Mast_Tip'])
+    s.hook_part('HOOK_SENSOR_DOME', _dmg['Dome'], _dmg['Dome_Lens'])
+    s.hook_part('HOOK_ARMOR_HIP', _dmg['Hip'])
     return s
 
 

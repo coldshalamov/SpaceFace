@@ -562,7 +562,8 @@ test('every committed src import resolves to a committed file', async () => {
   // specifier in a tracked source must resolve to a tracked file.
   const { execFileSync } = await import('node:child_process');
   const tracked = new Set(
-    execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+    // 17k+ tracked files overflow the default 1 MiB maxBuffer (ENOBUFS kill).
+    execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
       .split('\n').filter(Boolean),
   );
   const sources = [...tracked].filter((f) => /^src\/.*\.(js|mjs)$/.test(f));
@@ -586,7 +587,7 @@ test('every committed src named import resolves to a committed export', async ()
   // export * chains are skipped rather than resolved transitively.
   const { execFileSync } = await import('node:child_process');
   const tracked = new Set(
-    execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+    execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
       .split('\n').filter(Boolean),
   );
   const exportRe = /export\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)|export\s*\{([^}]*)\}/g;
