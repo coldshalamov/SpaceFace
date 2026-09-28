@@ -177,7 +177,10 @@ html body #screens #sf-range .sf-range__canvas[data-range-canvas] { outline: non
    The kit grid sizes all three rows to content; the stage takes the slack, so the
    hero grows back and the foot sits on the frame. */
 #sf-range { grid-template-rows: auto minmax(0, 1fr) auto; }
-#sf-range .k-foot { padding-bottom: 24px; }
+html body #screens #sf-range { grid-template-rows: auto minmax(0, 1fr) auto; }
+/* The "void" is the kit's 96px content padding, not the grid: trim the foot end
+   so the run instrument sits on the frame (foot bottom lands ~1056). */
+html body #screens #sf-range { padding-bottom: 24px; }
 #sf-range .sf-range__tabs { flex: 0 0 auto; width: 100%; }
 #sf-range .sf-range__drawer .k-row { border-top: 0; }
 #sf-range .sf-range__drawer [data-state="cleared"] .k-row__sub { color: rgb(236 230 216 / .66); }
