@@ -174,7 +174,12 @@ import {
   ensureOpeningGeneratedScenarioPropPackage,
   syncVisiblePointLightBudget,
 } from './precompile.js';
-import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
+import {
+  detectGpu,
+  createAdaptiveResolution,
+  shouldSuggestIntegratedPreset,
+  INTEGRATED_PRESET_SUGGESTION,
+} from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
 import { ensurePerfRuntime } from '../core/perfRuntime.js';
 import { perfCountersRequested } from '../core/perfCounters.js';
@@ -6565,6 +6570,17 @@ export const render = {
       }, 1200);
     }
 
+    // Opt-in integrated-GPU preset suggestion. Never auto-applies — PERF_WHAT_MATTERS forbids
+    // silent bloom/shadow cuts. One toast per boot when detectGpu reports integrated.
+    if (shouldSuggestIntegratedPreset(gpu, state.settings && state.settings.video) && !this._integratedPresetSuggested) {
+      this._integratedPresetSuggested = true;
+      scheduleTimeout(() => {
+        try {
+          bus.emit('toast', { ...INTEGRATED_PRESET_SUGGESTION });
+        } catch (_) { /* toast is best-effort */ }
+      }, 1600);
+    }
+
     // ?perf — auto-enable the on-screen FPS/GPU/scale overlay for quick self-diagnosis.
     try { if (query && query.get('perf') != null && this.diag) this.diag.setOverlay(true); } catch (_) {}
 
@@ -12519,6 +12535,9 @@ export const render = {
       typeof norm.vignette === 'number' ? norm.vignette.toFixed(4) : '',
       typeof norm.toe === 'number' ? norm.toe.toFixed(4) : '',
       typeof norm.grain === 'number' ? norm.grain.toFixed(4) : '',
+      norm.postFx === false ? 0 : 1,
+      norm.sharpen === true ? 1 : 0,
+      Number.isFinite(norm.bloomLevels) ? (norm.bloomLevels | 0) : 2,
       video.ao === false ? 0 : 1,
       Math.min(1, finiteInRange(video.renderScale, 0.5, 2, 1)).toFixed(4),
     ].join('|');
@@ -12691,6 +12710,8 @@ export const render = {
       bloomThreshold: norm.bloomThreshold,
       exposure: norm.exposure,
       acesToneMapping: norm.acesToneMapping,
+      bloomLevels: norm.bloomLevels,
+      sharpen: norm.sharpen === true,
       grade: norm.grade,
       vignette: norm.vignette,
       toe: norm.toe,

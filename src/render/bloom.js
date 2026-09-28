@@ -264,18 +264,31 @@ export function resolveEffectiveSectorPost(video = {}, sectorPost = null, fallba
     return finiteNumber(defaults[key]);
   };
 
+  // postFx is an opt-in kill switch for grade/vignette/grain (integrated preset). Default
+  // remains on so the shipped picture is unchanged unless the player picks that preset.
+  const postFx = settings.postFx !== false;
+  const grade = postFx ? presentation('grade') : 0;
+  const vignette = postFx ? presentation('vignette') : 0;
+  const toe = postFx ? presentation('toe') : 0;
+  const grain = postFx ? presentation('grain') : 0;
+
   return {
     bloom: typeof settings.bloom === 'boolean' ? settings.bloom : defaults.bloom,
     bloomStrength: Math.max(0, Math.min(1, bloomStrength * strengthScale)),
     bloomThreshold: Math.max(0, bloomThreshold + thresholdBias),
+    bloomLevels: Number.isFinite(settings.bloomLevels)
+      ? Math.max(1, Math.min(BALANCED_BLOOM_MAX_LEVELS, settings.bloomLevels | 0))
+      : BALANCED_BLOOM_MAX_LEVELS,
     exposure: playerExposure !== undefined
       ? playerExposure
       : (sectorExposure !== undefined ? sectorExposure : fallbackExposure),
     acesToneMapping: settings.acesToneMapping !== false,
-    grade: presentation('grade'),
-    vignette: presentation('vignette'),
-    toe: presentation('toe'),
-    grain: presentation('grain'),
+    postFx,
+    sharpen: settings.sharpen === true,
+    grade,
+    vignette,
+    toe,
+    grain,
   };
 }
 
@@ -874,6 +887,8 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform float uGrade;     // color-grade blend 0..1 (0 = off, 1 = full cyberpunk-noir LUT)
   uniform float uToe;       // lifted black floor 0..0.06 (0 = true blacks, the default)
   uniform float uGrainFrame;
+  uniform float uSharpen; // 0 = off (default picture); >0 = cheap unsharp after compose
+  uniform vec2 uSceneTexel; // 1/allocated scene size (WebGL1-safe; no textureSize)
 
   ${SPACE_POST_PRESENTATION_GLSL}
 
@@ -899,10 +914,28 @@ const COMPOSITE_FRAG = /* glsl */`
     vec3 bloom = texture2D(tBloom0, sceneUv).rgb * uBloomW0
                + texture2D(tBloom1, sceneUv).rgb * uBloomW1;
     vec3 spill = bloom * uStrength * uBloomNorm;
-    gl_FragColor = vec4(composeSpacePostPresentation(
+    vec3 color = composeSpacePostPresentation(
       scene, spill, vUv, gl_FragCoord.xy, uExposure, uAces,
       uGrade, uToe, uVignette, uGrain, uGrainFrame
-    ), 1.0);
+    );
+    // Opt-in sharpen for renderScale < 1 (integrated preset). Neighbour average unsharp —
+    // no extra RT. uSharpen defaults to 0 so the shipped picture is byte-identical. The taps
+    // read the scene inside the content sub-rect (sceneUv space); uSceneTexel is one allocated
+    // texel so the neighbourhood stays one content pixel even under dyn-res.
+    if (uSharpen > 0.001) {
+      vec2 texel = uSceneTexel;
+      vec3 blur = (
+        texture2D(tScene, clamp(sceneUv + vec2(texel.x, 0.0), vec2(0.0), uUvScale)).rgb +
+        texture2D(tScene, clamp(sceneUv - vec2(texel.x, 0.0), vec2(0.0), uUvScale)).rgb +
+        texture2D(tScene, clamp(sceneUv + vec2(0.0, texel.y), vec2(0.0), uUvScale)).rgb +
+        texture2D(tScene, clamp(sceneUv - vec2(0.0, texel.y), vec2(0.0), uUvScale)).rgb
+      ) * 0.25;
+      // Sharpen the composed LDR color using a scene-luma proxy so we don't re-tonemap.
+      float sharpLuma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+      float blurLuma = dot(blur, vec3(0.2126, 0.7152, 0.0722));
+      color = clamp(color + (sharpLuma - blurLuma) * uSharpen, 0.0, 1.0);
+    }
+    gl_FragColor = vec4(color, 1.0);
   }
 `;
 
@@ -1168,6 +1201,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // tunables (overridable via setOptions; defaults match settings.video.*)
   let enabled = true;
   let strength = DEFAULT_BLOOM_STRENGTH;
+  let maxLevelsCap = BALANCED_BLOOM_MAX_LEVELS;
+  let sharpenAmount = 0;
   let threshold = 1.0;
   const knee = 0.25;
   let exposure = 1.0;
@@ -1212,6 +1247,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let rtPost = null;
   // A below-display-resolution frame runs CasFilter; a full-res frame skips it entirely.
   let casActive = false;
+  // The display footprint the CAS gate compares against is owned by the caller (renderer
+  // passes it to setSize). Cache it so internal re-entry (a bloomLevels cap change from
+  // setOptions re-running setSize at the same buffer size) keeps the same gate inputs.
+  let casDisplayW = 0;
+  let casDisplayH = 0;
 
   // The bloom path already presents through a post composite, so multisampling the full-resolution HDR
   // scene target adds a costly resolve before the downsample/composite chain. Keep the offscreen target
@@ -1228,8 +1268,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   function levelCountForSize(w, h) {
     const halfW = Math.max(1, w >> 1);
     const halfH = Math.max(1, h >> 1);
+    const cap = Math.max(1, Math.min(BALANCED_BLOOM_MAX_LEVELS, maxLevelsCap | 0));
     if (halfW < 320 || halfH < 180) return 1;
-    return BALANCED_BLOOM_MAX_LEVELS;
+    return cap;
   }
 
   function allocRenderTarget(w, h, opts, reason) {
@@ -1384,6 +1425,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     uGrainFrame: { value: 0 },
     uUvScale: { value: new THREE.Vector2(1, 1) },
     uUvOffset: { value: new THREE.Vector2(0, 0) },
+    uSharpen:    { value: 0 },        // 0 = default picture; integrated preset opt-in
+    uSceneTexel: { value: new THREE.Vector2(1 / W, 1 / H) },
   });
   // CAS needs GLSL3 (texelFetch, uvec4 bit-cast uniforms) — the only GLSL3 material in the chain.
   const casMat = new THREE.ShaderMaterial({
@@ -1979,14 +2022,19 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   function setSize(w, h, displayW, displayH) {
     const nextW = Math.max(1, w | 0);
     const nextH = Math.max(1, h | 0);
+    if (Number.isFinite(displayW) && displayW > 0) casDisplayW = displayW;
+    if (Number.isFinite(displayH) && displayH > 0) casDisplayH = displayH;
     // The gate re-evaluates on every call — dynamic resolution can flip a frame below display
     // res without the buffer size changing class, and a stale flag is a silent miss.
-    casActive = resolveCasSharpenActive(nextW, nextH, displayW, displayH);
+    casActive = resolveCasSharpenActive(nextW, nextH, casDisplayW, casDisplayH);
     if (nextW !== W || nextH !== H) {
       W = nextW;
       H = nextH;
       halfW = Math.max(1, W >> 1);
       halfH = Math.max(1, H >> 1);
+      if (compositeMat.uniforms.uSceneTexel) {
+        compositeMat.uniforms.uSceneTexel.value.set(1 / W, 1 / H);
+      }
       const newLevels = levelCountForSize(W, H);
       resizeRenderTarget(rtScene, W, H, 'resize');
       // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
@@ -2065,6 +2113,19 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (typeof o.vignette === 'number') vignette = Math.max(0, Math.min(1, o.vignette));
     if (typeof o.grade === 'number') grade = Math.max(0, Math.min(1, o.grade));
     if (typeof o.toe === 'number') toe = Math.max(0, Math.min(0.06, o.toe));
+    if (typeof o.maxLevels === 'number' || typeof o.bloomLevels === 'number') {
+      const next = Number(o.maxLevels != null ? o.maxLevels : o.bloomLevels);
+      if (Number.isFinite(next)) {
+        const capped = Math.max(1, Math.min(BALANCED_BLOOM_MAX_LEVELS, next | 0));
+        if (capped !== maxLevelsCap) {
+          maxLevelsCap = capped;
+          setSize(W, H);
+        }
+      }
+    }
+    if (typeof o.sharpen === 'boolean') sharpenAmount = o.sharpen ? 0.35 : 0;
+    if (typeof o.sharpen === 'number') sharpenAmount = Math.max(0, Math.min(1, o.sharpen));
+    if (compositeMat.uniforms.uSharpen) compositeMat.uniforms.uSharpen.value = sharpenAmount;
     applyPostStyleUniforms();
   }
 
