@@ -563,6 +563,7 @@ export const PALLAS_REEF_CYCLE_S = PALLAS_REEF_CYCLE;
 // `radiation` zone type is forbidden here because world.js would chew hull.
 export const VEIL_WEATHER_SECTOR_ID = 'sector_veil_nebula';
 export const VESTA_WEATHER_SECTOR_ID = 'sector_vesta_forge';
+export const IO_REACH_WEATHER_SECTOR_ID = 'sector_io_reach';
 const WEATHER_CYCLE = Object.freeze({ warningS: 2, surgeS: 6, calmS: 4 });
 export const WEATHER_SCAN_SCALE_INSIDE = 0.4;
 
@@ -720,11 +721,50 @@ export const WEATHER_VOLUMES = Object.freeze([
       falloff: 1.2,
     },
   }),
+  // Io Reach's war is weather. The contested floor has changed hands by the week, and the
+  // fighting left two standing facts on the chart: a debris current thrown off the hulls that
+  // died crossing the southern approach (shots and hulls bend inside it), and a radiation
+  // belt off the west holdings nobody has held long enough to vent. Positions sit clear of
+  // both stations, all four gates, both ore fields, and the named POIs in sectorAnchors.js.
+  buildWeatherVolume({
+    id: 'io_reach_storm_lane',
+    role: 'storm',
+    sectorId: IO_REACH_WEATHER_SECTOR_ID,
+    hazardType: 'debris_current',
+    localPos: { x: 700, z: -1750 },
+    rot: -0.5,
+    scanScale: 1,
+    field: {
+      kind: 'sheet',
+      strength: 320,
+      radius: 460,
+      halfWidth: 78,
+      falloff: 1.05,
+    },
+  }),
+  buildWeatherVolume({
+    id: 'io_reach_radiation_belt',
+    role: 'radiation_belt',
+    sectorId: IO_REACH_WEATHER_SECTOR_ID,
+    hazardType: 'nebula',
+    localPos: { x: -2350, z: 1250 },
+    rot: 0,
+    scanScale: WEATHER_SCAN_SCALE_INSIDE,
+    field: {
+      kind: 'well',
+      strength: 210,
+      radius: 260,
+      innerRadius: 78,
+      innerSoft: 24,
+      falloff: 1.2,
+    },
+  }),
 ]);
 
 export const WEATHER_SECTOR_IDS = Object.freeze(new Set([
   VEIL_WEATHER_SECTOR_ID,
   VESTA_WEATHER_SECTOR_ID,
+  IO_REACH_WEATHER_SECTOR_ID,
 ]));
 
 // WEATHER_VOLUMES is frozen at module load, so per-sector slices are memoized: the tick loop
