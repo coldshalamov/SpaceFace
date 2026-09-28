@@ -288,7 +288,7 @@ test('unsealed biohazard cargo feeds exposure; a locker seals it', () => {
 test('a site under several faction desks emits each authored offer once', () => {
   const deep = ALIEN_SITES.harvest_deep;
   const missions = ecologyMissionsForSite(deep.siteId);
-  assert.equal(missions.length, 2, 'SCN audit + Reach survey share the deep pocket');
+  assert.equal(missions.length, 3, 'SCN audit + Reach survey + wave-B run share the deep pocket');
   const state = makeState('sector_sker_haven');
   const emitLog = [];
   const world = makeWorld(state, [], emitLog);
@@ -298,10 +298,10 @@ test('a site under several faction desks emits each authored offer once', () => 
   player.pos = { x: -1500, z: -1600 }; // inside the close band
   tickAlienEcology(world, 0.5);
   const offers = emitLog.filter((e) => e.type === 'mission:offered');
-  assert.equal(offers.length, 2);
+  assert.equal(offers.length, 3);
   assert.ok(offers.every((o) => o.p.factionId));
   tickAlienEcology(world, 0.5);
-  assert.equal(emitLog.filter((e) => e.type === 'mission:offered').length, 2, 'no repeat offers');
+  assert.equal(emitLog.filter((e) => e.type === 'mission:offered').length, 3, 'no repeat offers');
 });
 
 // ── AE-116/118: the deep trace ───────────────────────────────────────────────────────

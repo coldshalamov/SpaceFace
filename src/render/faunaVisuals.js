@@ -492,6 +492,154 @@ function segLegMat(colors) {
   return tissueMat(colors.tissue);
 }
 
+// Cold Bell (AE-160): a hollow resonant bell — inverted cup of tissue over a glowing
+// piezo clapper. Reads motionless between tolls.
+function buildColdBell(colors) {
+  const g = new THREE.Group();
+  const shell = new THREE.Mesh(geo('cb_shell', () => {
+    const s = new THREE.SphereGeometry(1, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.62);
+    s.scale(1, 1.35, 1);
+    return s;
+  }), tissueMat(colors.tissue));
+  shell.scale.setScalar(16);
+  shell.rotation.x = Math.PI; // cup faces down
+  g.add(shell);
+  const clapper = new THREE.Mesh(geo('cb_clapper', () => new THREE.SphereGeometry(0.3, 10, 8)),
+    glowMat(colors.glow, 0.7));
+  clapper.position.y = -14;
+  clapper.scale.setScalar(10);
+  g.add(clapper);
+  const ribs = geo('cb_rib', () => {
+    const s = new THREE.BoxGeometry(0.06, 1.4, 0.06);
+    s.translate(0, 0.7, 0);
+    return s;
+  });
+  for (let i = 0; i < 6; i += 1) {
+    const rib = new THREE.Mesh(ribs, tissueMat(colors.filament));
+    const a = (i / 6) * Math.PI * 2;
+    rib.position.set(Math.cos(a) * 9, -2, Math.sin(a) * 9);
+    rib.rotation.z = Math.cos(a) * 0.5;
+    rib.rotation.x = Math.sin(a) * 0.5;
+    rib.scale.setScalar(8);
+    g.add(rib);
+  }
+  g.name = 'SF_Fauna_cold_bell';
+  return g;
+}
+
+// Suture Mite (AE-161): a palm-sized knitter — a low crab body with two spinneret cones.
+function buildSutureMite(colors) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(geo('sm_body', () => {
+    const s = new THREE.SphereGeometry(1, 10, 7);
+    s.scale(1.1, 0.5, 1.5);
+    return s;
+  }), tissueMat(colors.tissue));
+  body.scale.setScalar(3);
+  g.add(body);
+  const spinneret = geo('sm_spin', () => {
+    const s = new THREE.ConeGeometry(0.16, 0.9, 5);
+    s.rotateX(Math.PI / 2);
+    return s;
+  });
+  for (const side of [-1, 1]) {
+    const sp = new THREE.Mesh(spinneret, tissueMat(colors.filament));
+    sp.position.set(side * 1.4, 0.4, -3.4);
+    sp.rotation.y = side * 0.4;
+    g.add(sp);
+  }
+  const eye = new THREE.Mesh(geo('sm_eye', () => new THREE.SphereGeometry(0.22, 6, 5)),
+    glowMat(colors.glow, 0.8));
+  eye.position.set(0, 0.8, 2.6);
+  g.add(eye);
+  g.name = 'SF_Fauna_suture_mite';
+  return g;
+}
+
+// Black Sail (AE-162): an edge-on photophore sheet — a tall thin membrane that reads as
+// a debris panel until it turns broadside.
+function buildBlackSail(colors) {
+  const g = new THREE.Group();
+  const sail = new THREE.Mesh(geo('bs_sail', () => {
+    const s = new THREE.SphereGeometry(1, 20, 12);
+    s.scale(0.06, 1.15, 1.5);
+    return s;
+  }), new THREE.MeshStandardMaterial({
+    color: 0x14161a, roughness: 0.4, metalness: 0.35,
+    emissive: colors.glow, emissiveIntensity: 0.12,
+  }));
+  sail.scale.setScalar(18);
+  g.add(sail);
+  const cord = new THREE.Mesh(geo('bs_cord', () => {
+    const s = new THREE.CylinderGeometry(0.08, 0.08, 2.4, 6);
+    s.rotateX(Math.PI / 2);
+    return s;
+  }), tissueMat(colors.filament));
+  cord.scale.setScalar(14);
+  g.add(cord);
+  g.name = 'SF_Fauna_black_sail';
+  return g;
+}
+
+// Stone Lung (AE-163): an asteroid that breathes — a rock-textured mound with a vent
+// throat that cycles open on the exhale period.
+function buildStoneLung(colors) {
+  const g = new THREE.Group();
+  const mound = new THREE.Mesh(geo('sl_mound', () => {
+    const s = new THREE.DodecahedronGeometry(1, 1);
+    s.scale(1.2, 0.6, 1.2);
+    return s;
+  }), new THREE.MeshStandardMaterial({
+    color: 0x5c564d, roughness: 0.95, metalness: 0.05,
+    emissive: colors.tissue, emissiveIntensity: 0.06,
+  }));
+  mound.scale.setScalar(22);
+  g.add(mound);
+  const throat = new THREE.Mesh(geo('sl_throat', () => {
+    const s = new THREE.CylinderGeometry(0.4, 0.9, 0.7, 12);
+    s.translate(0, 0.35, 0);
+    return s;
+  }), tissueMat(colors.tissue));
+  throat.scale.setScalar(18);
+  throat.position.y = 10;
+  g.add(throat);
+  const wetCore = new THREE.Mesh(geo('sl_core', () => new THREE.SphereGeometry(0.3, 10, 8)),
+    glowMat(colors.glow, 0.5));
+  wetCore.position.y = 14;
+  wetCore.scale.setScalar(16);
+  g.add(wetCore);
+  g.name = 'SF_Fauna_stone_lung';
+  return g;
+}
+
+// Pilgrim Spine (AE-164): a linked vertebra segment — wedge head, cord tail; a line of
+// them reads as a procession when chainFollowed.
+function buildPilgrimSpine(colors) {
+  const g = new THREE.Group();
+  const wedge = new THREE.Mesh(geo('ps_wedge', () => {
+    const s = new THREE.ConeGeometry(0.8, 2.4, 6);
+    s.rotateX(Math.PI / 2);
+    return s;
+  }), tissueMat(colors.tissue));
+  wedge.scale.setScalar(7);
+  g.add(wedge);
+  const cord = new THREE.Mesh(geo('ps_cord', () => {
+    const s = new THREE.CylinderGeometry(0.12, 0.22, 2.2, 6);
+    s.rotateX(-Math.PI / 2);
+    s.translate(0, 0, -1.4);
+    return s;
+  }), tissueMat(colors.filament));
+  cord.scale.setScalar(8);
+  g.add(cord);
+  const nodeGlow = new THREE.Mesh(geo('ps_glow', () => new THREE.SphereGeometry(0.2, 8, 6)),
+    glowMat(colors.glow, 1.0));
+  nodeGlow.position.set(0, 1.2, 0);
+  nodeGlow.scale.setScalar(8);
+  g.add(nodeGlow);
+  g.name = 'SF_Fauna_pilgrim_spine';
+  return g;
+}
+
 const BUILDERS = {
   veil_ray: (c, s) => buildVeilRay(c),
   needle_swarm: (c, s) => buildNeedleSwarm(c, s),
@@ -509,6 +657,12 @@ const BUILDERS = {
   archive_crab: (c) => buildArchiveCrab(c),
   // AE-112: hull-scale carrier — the spindle-mother body plan at vessel scale.
   void_carrier: (c) => { const m = buildSpindleMother(c); m.scale.setScalar(3.6); return m; },
+  // ── Phase 16 species (AE-160..AE-164) ──
+  cold_bell: (c) => buildColdBell(c),
+  suture_mite: (c) => buildSutureMite(c),
+  black_sail: (c) => buildBlackSail(c),
+  stone_lung: (c) => buildStoneLung(c),
+  pilgrim_spine: (c) => buildPilgrimSpine(c),
 };
 
 export function buildFaunaMesh(entity) {
@@ -603,6 +757,7 @@ export function buildAlienGrowthProp(placeId, radius = 8) {
       break;
     }
     case 'vent_lung':
+    case 'lung_bladder':
     case 'spore_chimney': {
       const stack = new THREE.Mesh(geo('gr_stack', () => {
         const s = new THREE.CylinderGeometry(0.35, 0.9, 2.6, 10);
@@ -615,6 +770,110 @@ export function buildAlienGrowthProp(placeId, radius = 8) {
       vent.position.y = r * 2.0;
       vent.scale.setScalar(r * 0.8);
       g.add(vent);
+      break;
+    }
+    case 'nerve_lace':
+    case 'false_cable': {
+      // Phase 16 B-table: a cable-run of filament strands crossing like wiring — for
+      // false_cable the cable is the lure (it reads as dead conduit until close).
+      const strand = geo('gr_lace', () => {
+        const s = new THREE.CylinderGeometry(0.05, 0.09, 2.8, 5);
+        s.translate(0, 1.4, 0);
+        return s;
+      });
+      for (let i = 0; i < 8; i += 1) {
+        const t = new THREE.Mesh(strand, i % 2 ? fil : tissue);
+        const a = (i / 8) * Math.PI * 2;
+        t.position.set(Math.cos(a) * r * 0.5, 0, Math.sin(a) * r * 0.5);
+        t.rotation.z = Math.cos(a) * 1.0;
+        t.rotation.x = -Math.sin(a) * 1.0;
+        t.scale.setScalar(r * 0.7);
+        g.add(t);
+      }
+      if (moduleId === 'false_cable') {
+        const tip = new THREE.Mesh(geo('gr_lace_tip', () => new THREE.SphereGeometry(0.12, 6, 5)), glow);
+        tip.position.y = r * 1.2;
+        tip.scale.setScalar(r * 0.4);
+        g.add(tip);
+      }
+      break;
+    }
+    case 'red_core': {
+      // B-table: a hard glowing node — the field's reactor organ.
+      const core = new THREE.Mesh(geo('gr_redcore', () => new THREE.SphereGeometry(0.62, 14, 10)),
+        glowMat(0xff3b2f, 1.8));
+      core.scale.setScalar(r * 0.9);
+      core.position.y = r * 0.5;
+      g.add(core);
+      const cage = new THREE.Mesh(geo('gr_redcage', () => new THREE.TorusGeometry(0.8, 0.1, 6, 16)), fil);
+      cage.rotation.x = Math.PI / 2;
+      cage.scale.setScalar(r * 0.8);
+      g.add(cage);
+      break;
+    }
+    case 'memory_knot': {
+      // B-table: a dense folded knot — the site’s archive organ.
+      const knot = new THREE.Mesh(geo('gr_knot', () => new THREE.TorusKnotGeometry(0.55, 0.2, 48, 8)), tissue);
+      knot.scale.setScalar(r * 0.75);
+      knot.position.y = r * 0.6;
+      g.add(knot);
+      const bead = new THREE.Mesh(geo('gr_knot_bead', () => new THREE.SphereGeometry(0.16, 8, 6)), glow);
+      bead.position.y = r * 0.6;
+      bead.scale.setScalar(r * 0.6);
+      g.add(bead);
+      break;
+    }
+    case 'mirror_membrane': {
+      // B-table: a flat mirrored sheet standing off the hull — phantom-echo organ.
+      const pane = new THREE.Mesh(geo('gr_mirror', () => {
+        const s = new THREE.SphereGeometry(1, 16, 8);
+        s.scale(1, 0.05, 1);
+        return s;
+      }), new THREE.MeshStandardMaterial({
+        color: 0x2a2f38, roughness: 0.25, metalness: 0.7,
+        emissive: 0x223344, emissiveIntensity: 0.2,
+      }));
+      pane.scale.setScalar(r);
+      pane.position.y = r * 0.3;
+      g.add(pane);
+      break;
+    }
+    case 'dead_crown': {
+      // B-table: the severed-state crown — a ring of dried spike blades, no glow.
+      const spike = geo('gr_deadspike', () => {
+        const s = new THREE.ConeGeometry(0.14, 2.6, 5);
+        s.translate(0, 1.3, 0);
+        return s;
+      });
+      const dead = new THREE.MeshStandardMaterial({
+        color: 0x6e6a5e, roughness: 0.95, metalness: 0.0,
+      });
+      for (let i = 0; i < 9; i += 1) {
+        const s2 = new THREE.Mesh(spike, dead);
+        const a = (i / 9) * Math.PI * 2;
+        s2.position.set(Math.cos(a) * r * 0.55, 0, Math.sin(a) * r * 0.55);
+        s2.rotation.z = Math.cos(a) * 0.8;
+        s2.rotation.x = -Math.sin(a) * 0.8;
+        s2.scale.setScalar(r * 0.7);
+        g.add(s2);
+      }
+      break;
+    }
+    case 'silt_root': {
+      // B-table: a low mineral root ridge — the underground half of the colony.
+      const ridge = geo('gr_ridge', () => {
+        const s = new THREE.BoxGeometry(0.5, 0.5, 2.2);
+        s.translate(0, 0.25, 0);
+        return s;
+      });
+      for (let i = 0; i < 4; i += 1) {
+        const seg = new THREE.Mesh(ridge, tissue);
+        const a = i * 0.7;
+        seg.position.set(Math.cos(a) * r * 0.4, 0, Math.sin(a) * r * 0.4);
+        seg.rotation.y = a;
+        seg.scale.setScalar(r * 0.75);
+        g.add(seg);
+      }
       break;
     }
     case 'sensory_fan':

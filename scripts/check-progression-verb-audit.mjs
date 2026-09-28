@@ -77,6 +77,7 @@ const VERB_MOD_KEYS = Object.freeze({
   captureSurvivalMult: ['cradle-capture a latched organism into a live specimen lot', 'systems/alienEcology.js tether:released intake', { file: 'src/systems/alienEcology.js', symbol: 'captureSurvivalMult' }],
   precursorHandshake: ['halved machine-protocol hold window', 'systems/precursorMachines.js holdWindowS', { file: 'src/systems/precursorMachines.js', symbol: 'precursorHandshake' }],
   containmentSeal: ['sealed-custody biohazard sale (waives custody refusal)', 'systems/economy.js contamination_refusal gate', { file: 'src/systems/economy.js', symbol: 'containmentSeal' }],
+  resonantMassline: ['dead-matter beam signature — dormant fauna do not wake on mining noise', 'systems/alienEcology.js sectorsim:impulse gate', { file: 'src/systems/alienEcology.js', symbol: 'resonantMassline' }],
 });
 
 // ─── Vocabulary: reads / intel — their own class, neither pure stat nor combat verb ───
@@ -95,6 +96,11 @@ const INTEL_MOD_KEYS = Object.freeze({
   bioScanTier: 'biological signatures resolve one reveal tier up (systems/alienEcology.js effectiveRevelation)',
   coherenceMeter: 'live site coherence reports on the HUD (systems/alienEcology.js ecology:coherence)',
   relayNeedle: 'relay organisms report COHERENT/SEVERED on the scanner (systems/alienEcology.js refreshAlienLabels)',
+  // AE-170..171 (G02/G03/G05/G15): field-instrument reads.
+  filamentContrast: 'phantom contacts flag themselves as probable echoes (systems/alienEcology.js materializeAlienEcology)',
+  hostMapReveal: 'host-hull cartography resolves on entering a colonized field (systems/alienEcology.js hostMap beat)',
+  echoRecorder: 'relay pulses logged to the field notebook (systems/alienEcology.js ecology:relayPulse)',
+  quietEquation: 'machine directives decode into intent (systems/precursorMachines.js directiveText)',
 });
 
 // ─── Vocabulary: every other known mods key is a SCALAR (percentage / flat stat) ───

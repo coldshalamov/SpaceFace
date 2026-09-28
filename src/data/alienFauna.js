@@ -43,6 +43,8 @@ export const FAUNA_DRIVES = Object.freeze([
   'trail',     // wake eel — follows a moving target's wake
   'anchored',  // anchor beast — sessile, posture only
   'captured',  // massline-latched (AE-059) — organism immobilized in the cradle
+  // Phase 16 additions:
+  'repair',    // suture mite — slow seam orbit knitting the colony's breaches
 ]);
 
 // Stimulus vocabulary (AE-051). The drive engine resolves these against species.stimuli.
@@ -359,6 +361,112 @@ export const FAUNA_SPECIES = Object.freeze({
     drives: Object.freeze({ idle: 'forage', curious: 'forage', tense: 'flee', panic: 'flee' }),
     note: 'Slow radial scavenger arranging debris into repeated geometries. Its piles hold unusual salvage — shooting it erases the evidence.',
   }),
+  // ── Phase 16 / AE-160..AE-165 — the remaining catalog species ──────────────────────────
+  cold_bell: Object.freeze({
+    id: 'cold_bell',
+    name: 'Cold Bell',
+    signature: 'fauna',
+    role: 'colony',
+    radius: 20,
+    members: 1,
+    speed: 4, fleeSpeed: 6,
+    turnRate: 0.2,
+    alertR: 900, threatenR: 0, preferredR: 600,
+    relayAffinity: 0.4,
+    // AE-160: rings electromagnetically on pressure/radiation change — a weather warning
+    // organism. tickFauna reads the sector hazard field into stim.pressure; the toll is a
+    // comms beat ahead of the front.
+    weatherListener: true,
+    tollPeriodS: 240,
+    stimuli: Object.freeze({ heat: 0.0, vibration: 0.1, scan: 0.3, mass: 0.2, weapon: 0.4, precursor_tone: 0.6, spore_density: 0.2 }),
+    anatomy: Object.freeze({ hostTissue: 'hollow resonant bell body', fungalTissue: 'piezo filament clapper', relayTissue: false, cystLoad: 'trace' }),
+    coherenceLoss: Object.freeze({ alertMult: 1.0, speedMult: 0.5, latency: 4.0 }),
+    drives: Object.freeze({ idle: 'drift', curious: 'drift', tense: 'drift', panic: 'drift' }),
+    note: 'A hollow bell that tolls before a radiation front arrives. Miners learned to listen before they learned what it was.',
+  }),
+  suture_mite: Object.freeze({
+    id: 'suture_mite',
+    name: 'Suture Mite',
+    signature: 'fauna',
+    role: 'scavenger',
+    radius: 4,
+    members: 1,
+    speed: 18, fleeSpeed: 30,
+    turnRate: 1.4,
+    alertR: 220, threatenR: 40, preferredR: 12,
+    relayAffinity: 0.5,
+    // AE-161: hull-repair organism — seeks the site anchor and knits tissue into it. Hostile
+    // only when pulled off an active repair (defend drive).
+    repairer: true,
+    stimuli: Object.freeze({ heat: 0.2, vibration: 0.4, scan: 0.1, mass: 0.3, weapon: 0.9, precursor_tone: 0.3, spore_density: 0.5 }),
+    anatomy: Object.freeze({ hostTissue: 'spinneret mandibles', fungalTissue: 'scar-tissue reservoir', relayTissue: false, cystLoad: 'none' }),
+    coherenceLoss: Object.freeze({ alertMult: 0.8, speedMult: 0.8, latency: 1.5 }),
+    drives: Object.freeze({ idle: 'repair', curious: 'repair', tense: 'defend', panic: 'flee' }),
+    note: 'A knitter. It closes breaches in the colony it lives on; crews that tether one off a seam learn why it was there.',
+  }),
+  black_sail: Object.freeze({
+    id: 'black_sail',
+    name: 'Black Sail',
+    signature: 'fauna',
+    role: 'colony',
+    radius: 34,
+    members: 1,
+    speed: 22, fleeSpeed: 55,
+    turnRate: 0.5,
+    alertR: 700, threatenR: 120, preferredR: 350,
+    relayAffinity: 0.35,
+    beamResist: 0.9,
+    // AE-162: edge-on it reads as debris on every scanner tier; completing a close scan flips
+    // it broadside and resolves the label.
+    disguise: 'debris',
+    stimuli: Object.freeze({ heat: 0.1, vibration: 0.2, scan: 1.0, mass: 0.3, weapon: 0.8, precursor_tone: 0.5, spore_density: 0.2 }),
+    anatomy: Object.freeze({ hostTissue: 'photophore sail membrane', fungalTissue: 'edge stiffener cord', relayTissue: false, cystLoad: 'light' }),
+    coherenceLoss: Object.freeze({ alertMult: 0.8, speedMult: 0.7, latency: 3.0 }),
+    drives: Object.freeze({ idle: 'drift', curious: 'shadow', tense: 'flee', panic: 'flee' }),
+    note: 'A sail of dark photophore thinner than the scan beam. You have flown through a flock of them and logged it as debris.',
+  }),
+  stone_lung: Object.freeze({
+    id: 'stone_lung',
+    name: 'Stone Lung',
+    signature: 'fauna',
+    role: 'sessile',
+    radius: 46,
+    members: 1,
+    speed: 0, fleeSpeed: 0,
+    turnRate: 0.05,
+    alertR: 260, threatenR: 0, preferredR: 0,
+    relayAffinity: 0.5,
+    sessile: true,
+    // AE-163: asteroid-buried filter organism venting on a period — the exhale feeds the
+    // local contamination field.
+    ventPeriodS: 26,
+    stimuli: Object.freeze({ heat: 0.3, vibration: 0.8, scan: 0.1, mass: 0.2, weapon: 0.5, precursor_tone: 0.4, spore_density: 0.0 }),
+    anatomy: Object.freeze({ hostTissue: 'rock-lined mantle cavity', fungalTissue: 'spore bladder', relayTissue: false, cystLoad: 'heavy' }),
+    coherenceLoss: Object.freeze({ alertMult: 1.0, speedMult: 1.0, latency: 0 }),
+    drives: Object.freeze({ idle: 'anchored', curious: 'anchored', tense: 'defend', panic: 'anchored' }),
+    note: 'An asteroid that breathes. Prospectors drill the inhale; the exhale is where the claims go bad.',
+  }),
+  pilgrim_spine: Object.freeze({
+    id: 'pilgrim_spine',
+    name: 'Pilgrim Spine',
+    signature: 'fauna',
+    role: 'migrant',
+    radius: 16,
+    members: 1,
+    speed: 30, fleeSpeed: 42,
+    turnRate: 0.6,
+    alertR: 480, threatenR: 60, preferredR: 200,
+    relayAffinity: 0.6,
+    migrates: true,
+    // AE-164: a line of linked organisms on an unexplained route — each segment follows the
+    // one ahead (eco.chainTo), not the waypoint directly.
+    chainFollow: true,
+    stimuli: Object.freeze({ heat: 0.1, vibration: 0.2, scan: 0.4, mass: 0.3, weapon: 0.7, precursor_tone: 0.9, spore_density: 0.3 }),
+    anatomy: Object.freeze({ hostTissue: 'vertebra link segments', fungalTissue: 'route-nerve cord', relayTissue: true, cystLoad: 'trace' }),
+    coherenceLoss: Object.freeze({ alertMult: 0.9, speedMult: 0.9, latency: 2.0 }),
+    drives: Object.freeze({ idle: 'migrate', curious: 'migrate', tense: 'migrate', panic: 'flee' }),
+    note: 'A procession of linked segments walking a route older than the charts. Where it ends, nothing has reached yet.',
+  }),
 });
 
 export function faunaSpeciesById(id) {
@@ -382,6 +490,11 @@ export const FAUNA_TAXONOMY = Object.freeze({
   spindle_mother: 'tax_filamentous_contamination',
   archive_crab: 'tax_filamentous_contamination',
   void_carrier: 'tax_filamentous_contamination',
+  cold_bell: 'tax_filamentous_contamination',
+  suture_mite: 'tax_filamentous_contamination',
+  black_sail: 'tax_filamentous_contamination',
+  stone_lung: 'tax_filamentous_contamination',
+  pilgrim_spine: 'tax_filamentous_contamination',
 });
 
 // AE-053 — cosmetic microfauna aggregation: very small organisms exist only as dressing,

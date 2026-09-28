@@ -197,6 +197,15 @@ export const INFESTATION_MODULES = Object.freeze({
   spore_chimney:   { radius: 6,  mass: 0, glow: 0.8,  spread: 'vent' },
   mineral_root:    { radius: 8,  mass: 0, glow: 0.15, spread: 'cluster' },
   sensory_fan:     { radius: 9,  mass: 0, glow: 0.6,  spread: 'node' },
+  // ── Phase 17 / AE-170..AE-174 — B-table morphology rows ──
+  nerve_lace:      { radius: 12, mass: 0, glow: 0.5,  spread: 'surface' },   // B01 fine filament webbing
+  red_core:        { radius: 7,  mass: 0, glow: 1.2,  spread: 'node', pulseOn: 'heat' }, // B02 pulsing nucleus
+  lung_bladder:    { radius: 10, mass: 0, glow: 0.4,  spread: 'vent', periodS: 24 },      // B04 breathing sac
+  memory_knot:     { radius: 6,  mass: 0, glow: 0.8,  spread: 'node', revelation: 'memory_knot' }, // B06 archive node
+  silt_root:       { radius: 16, mass: 0, glow: 0.1,  spread: 'ridge' },      // B07 buried migration trace
+  mirror_membrane: { radius: 13, mass: 0, glow: 0.05, spread: 'surface', phantomEcho: true }, // B08 ping reflector
+  dead_crown:      { radius: 11, mass: 0, glow: 0.0,  spread: 'cluster' },    // B09 burned-out marker
+  false_cable:     { radius: 9,  mass: 0, glow: 0.2,  spread: 'ridge', scanGate: 2 },       // B10 reads as infrastructure
 });
 
 export function infestationModuleById(id) {
@@ -229,6 +238,7 @@ export const ALIEN_SITES = Object.freeze({
     relayComponentId: 'relay_choir_node',
     powerComponentId: 'power_bus',
     growthRing: Object.freeze({ inner: 34, outer: 120, count: 22 }),
+    morphologyMix: Object.freeze(['filament_sheet', 'nerve_bundle', 'node_bulb_large', 'cyst_cluster', 'vent_lung', 'sensory_fan']),
   }),
 
   // ── Phase 6 wave A sites (AE-065, AE-066) ────────────────────────────────────────────
@@ -256,6 +266,13 @@ export const ALIEN_SITES = Object.freeze({
       lantern_cyst: 2,
     }),
     growthRing: Object.freeze({ inner: 20, outer: 70, count: 12 }),
+    morphologyMix: Object.freeze(['membrane_patch', 'filament_sheet', 'lung_bladder', 'node_bulb_small']),
+    // AE-181 (D04): the swarm inherits the dead host's docking approach — a recorded lane.
+    routeEcho: Object.freeze({ waypoints: Object.freeze([
+      Object.freeze({ x: -1200, z: 400 }),
+      Object.freeze({ x: -1600, z: 700 }),
+      Object.freeze({ x: -1900, z: 850 }),
+    ]) }),
     // AE-068: a biological-survey offer hooks off this site's discovery.
     surveyOfferId: 'em_bio_survey_warm_freighter',
   }),
@@ -291,6 +308,9 @@ export const ALIEN_SITES = Object.freeze({
       ]),
     }),
     growthRing: Object.freeze({ inner: 26, outer: 90, count: 14 }),
+    morphologyMix: Object.freeze(['cyst_cluster', 'mineral_root', 'membrane_patch', 'dead_crown']),
+    // AE-182 (D05): powering the drill scar wakes the dormant understory.
+    heatWakes: true,
     surveyOfferId: 'em_quarantine_cargo_veil',
   }),
 
@@ -320,6 +340,7 @@ export const ALIEN_SITES = Object.freeze({
       blind_shepherd: 1,
     }),
     growthRing: Object.freeze({ inner: 40, outer: 150, count: 26 }),
+    morphologyMix: Object.freeze(['nerve_lace', 'nerve_bundle', 'tendril_cluster', 'node_bulb_large', 'red_core']),
     surveyOfferId: 'em_contaminated_claim_garden',
   }),
   breathing_dock: Object.freeze({
@@ -355,6 +376,7 @@ export const ALIEN_SITES = Object.freeze({
       ]),
     }),
     growthRing: Object.freeze({ inner: 36, outer: 130, count: 24 }),
+    morphologyMix: Object.freeze(['vent_lung', 'lung_bladder', 'spore_chimney', 'cyst_cluster', 'false_cable']),
     surveyOfferId: 'em_carrier_diversion_breathing',
   }),
 
@@ -395,6 +417,7 @@ export const ALIEN_SITES = Object.freeze({
       ]),
     }),
     growthRing: Object.freeze({ inner: 60, outer: 220, count: 30 }),
+    morphologyMix: Object.freeze(['nerve_lace', 'red_core', 'spore_chimney', 'memory_knot', 'mirror_membrane', 'cyst_cluster']),
     // AE-116/118: closing on the deep writes the deep-trace evidence + architecture read.
     deepTraceEvidence: 'deep_trace_harvest_deep',
     surveyOfferId: 'em_scn_quarantine_audit_deep',
@@ -424,7 +447,300 @@ export const ALIEN_SITES = Object.freeze({
       needle_swarm: 4,
     }),
     growthRing: Object.freeze({ inner: 48, outer: 170, count: 28 }),
+    morphologyMix: Object.freeze(['calcified_collar', 'false_cable', 'lung_bladder', 'red_core', 'nerve_lace', 'tendril_cluster']),
     surveyOfferId: 'em_dmc_worksite_recovery',
+  }),
+
+  // ── Phase 19 site wave C (AE-165, AE-186..AE-194) ────────────────────────────────────
+  // The catalog's remaining locations, distributed over the flyable gradient so the C
+  // field reaches every tier. Deep sectors Triton/Phoebe/Nyx are not flyable — their
+  // catalog sites live on the deep end of the flyable range instead.
+  empty_skin: Object.freeze({
+    siteId: 'empty_skin',
+    sectorId: 'sector_charon_expanse',
+    zoneId: 'zone_charon_empty_skin',
+    poiId: 'poi_charon_empty_skin',
+    name: 'The Empty Skin',
+    strainId: 'charon_grave',
+    // AE-165 (A20): a molted giant shell — shelter and salvage, not an enemy. Scanners
+    // flag it 'fauna' until the close band resolves the shed membrane.
+    falseFauna: true,
+    baseContamination: 0.22,
+    center: Object.freeze({ x: -900, z: -2200 }),
+    arrivalBands: Object.freeze({ long: 2000, mid: 1200, close: 420 }),
+    arrivalLines: Object.freeze({
+      long: 'A hull-sized return, warm-colored, drifting. Classification keeps landing on "fauna".',
+      mid: 'It does not maneuver. Whatever it was, it is hollow — a shell the size of a cutter.',
+      close: 'Shed membrane, not a shipwreck and not a carcass. The inside is clean enough to shelter in.',
+    }),
+    faunaCast: Object.freeze({ black_sail: 2 }),
+    growthRing: Object.freeze({ inner: 18, outer: 60, count: 8 }),
+    morphologyMix: Object.freeze(['membrane_patch', 'filament_sheet', 'silt_root', 'dead_crown']),
+    surveyOfferId: 'em_missing_crew_empty_skin',
+  }),
+  closed_refinery: Object.freeze({
+    siteId: 'closed_refinery',
+    sectorId: 'sector_ceres_belt',
+    zoneId: 'zone_ceres_closed_refinery',
+    poiId: 'poi_ceres_closed_refinery',
+    name: 'The Closed Refinery',
+    strainId: 'charon_grave',
+    // AE-186 (C04): a DMC refinery sealed mid-conversion — the fossil record of what
+    // colonization looks like in progress. Calcite collars encase the loop machinery.
+    baseContamination: 0.48,
+    center: Object.freeze({ x: 1600, z: 1800 }),
+    arrivalBands: Object.freeze({ long: 2400, mid: 1400, close: 500 }),
+    arrivalLines: Object.freeze({
+      long: 'Refinery complex on scope — DMC registry, sealed mid-shift forty years ago.',
+      mid: 'Mineral growth reads through the hull seams. The ore loop never finished its last run.',
+      close: 'Collars of calcite ring every joint. Something decided where this station was allowed to bend.',
+    }),
+    faunaCast: Object.freeze({
+      suture_mite: 6,
+      archive_crab: 2,
+      casket_worm: 3,
+      stone_lung: 1,
+    }),
+    growthRing: Object.freeze({ inner: 44, outer: 150, count: 24 }),
+    morphologyMix: Object.freeze(['calcified_collar', 'silt_root', 'mineral_root', 'dead_crown', 'nerve_lace']),
+    surveyOfferId: 'em_dmc_closed_refinery_survey',
+  }),
+  red_cable_yard: Object.freeze({
+    siteId: 'red_cable_yard',
+    sectorId: 'sector_vesta_forge',
+    zoneId: 'zone_vesta_red_cable_yard',
+    poiId: 'poi_vesta_red_cable_yard',
+    name: 'Red Cable Yard',
+    strainId: 'charon_grave',
+    // AE-187 (C07): false-cable growth merged into the yard power bus — the floodlights
+    // are alive. Powering the yard wakes the understory; cutting power starves it.
+    heatWakes: true,
+    baseContamination: 0.44,
+    center: Object.freeze({ x: -1400, z: -900 }),
+    arrivalBands: Object.freeze({ long: 2200, mid: 1300, close: 460 }),
+    arrivalLines: Object.freeze({
+      long: 'Salvage yard on scope — floodlights on, holding pattern. Nobody answers hails.',
+      mid: 'The yard lights track your approach. Umbilical runs carry signal both directions.',
+      close: 'The power bus is a circulatory system. Every light on this yard is a cell.',
+    }),
+    faunaCast: Object.freeze({
+      suture_mite: 5,
+      hull_leech: 3,
+      needle_swarm: 4,
+      casket_worm: 2,
+    }),
+    growthRing: Object.freeze({ inner: 40, outer: 140, count: 22 }),
+    morphologyMix: Object.freeze(['false_cable', 'nerve_lace', 'red_core', 'node_bulb_small', 'tendril_cluster']),
+    surveyOfferId: 'em_dmc_yard_power_audit',
+  }),
+  empty_habitat: Object.freeze({
+    siteId: 'empty_habitat',
+    sectorId: 'sector_pallas_drift',
+    zoneId: 'zone_pallas_empty_habitat',
+    poiId: 'poi_pallas_empty_habitat',
+    name: 'The Empty Habitat',
+    strainId: 'veil_glass',
+    // AE-188 (C08): a station that evacuated in hours — intact rooms, growth in the air
+    // system, no fauna. The colonists left; what they ran from stayed.
+    baseContamination: 0.38,
+    center: Object.freeze({ x: 500, z: -1900 }),
+    arrivalBands: Object.freeze({ long: 2200, mid: 1300, close: 460 }),
+    arrivalLines: Object.freeze({
+      long: 'Habitat ring on scope — transponder live, crew manifest closed. Docking clamps open.',
+      mid: 'Interior reads pressurized. Air ducts carry an organic lining — nothing moves.',
+      close: 'Rooms intact, cups still racked. The vents breathe a red film. Whatever happened here was fast.',
+    }),
+    faunaCast: Object.freeze({}),
+    growthRing: Object.freeze({ inner: 30, outer: 110, count: 20 }),
+    morphologyMix: Object.freeze(['filament_sheet', 'nerve_lace', 'lung_bladder', 'membrane_patch', 'sensory_fan']),
+    surveyOfferId: 'em_missing_crew_empty_habitat',
+  }),
+  shepherds_ring: Object.freeze({
+    siteId: 'shepherds_ring',
+    sectorId: 'sector_io_reach',
+    zoneId: 'zone_io_shepherds_ring',
+    poiId: 'poi_io_shepherds_ring',
+    name: "Shepherd's Ring",
+    strainId: 'veil_glass',
+    // AE-189 (C09): anchor beasts arranged around a dead relay node — investigate reveals
+    // the ring IS the containment measure. Killing the anchors releases the bloom.
+    baseContamination: 0.52,
+    center: Object.freeze({ x: -1100, z: 700 }),
+    arrivalBands: Object.freeze({ long: 2400, mid: 1400, close: 500 }),
+    arrivalLines: Object.freeze({
+      long: 'Six large contacts in a ring formation around a silent relay — geometry too clean for a flock.',
+      mid: 'Anchor organisms holding station on a dead broadcast node. The spacing is deliberate.',
+      close: 'The ring is not feeding on the relay — it is holding the center shut.',
+    }),
+    faunaCast: Object.freeze({
+      anchor_beast: 6,
+      needle_swarm: 3,
+      veil_ray: 2,
+      pilgrim_spine: 4,
+    }),
+    // AE-164: a pilgrim line crosses the ring on a machine-memory route — segments chain
+    // through the site rather than orbiting it.
+    migrationRoute: Object.freeze({
+      waypoints: Object.freeze([
+        Object.freeze({ x: -700, z: 300 }),
+        Object.freeze({ x: -200, z: 80 }),
+        Object.freeze({ x: 300, z: -220 }),
+        Object.freeze({ x: 800, z: -500 }),
+      ]),
+    }),
+    growthRing: Object.freeze({ inner: 60, outer: 190, count: 22 }),
+    morphologyMix: Object.freeze(['dead_crown', 'silt_root', 'calcified_collar', 'nerve_bundle']),
+    surveyOfferId: 'em_shepherds_ring_investigate',
+  }),
+  black_orchard: Object.freeze({
+    siteId: 'black_orchard',
+    sectorId: 'sector_veil_nebula',
+    zoneId: 'zone_veil_black_orchard',
+    poiId: 'poi_veil_black_orchard',
+    name: 'The Black Orchard',
+    strainId: 'veil_glass',
+    // AE-190 (C10): a glassback forest in shadowed space — sessile organisms, not fauna
+    // drives, that passivate beam scanners until resolved at close band.
+    orchardScannerFog: true,
+    baseContamination: 0.42,
+    center: Object.freeze({ x: -1700, z: -800 }),
+    arrivalBands: Object.freeze({ long: 2400, mid: 1400, close: 520 }),
+    arrivalLines: Object.freeze({
+      long: 'Radar washes out ahead — a field of glass returns, no motion, arranged in rows.',
+      mid: 'The rows are cultivated. Whatever planted them is not on scope.',
+      close: 'Sessile organisms, rooted through rock. The beam scatters off their backs — the fog is alive.',
+    }),
+    faunaCast: Object.freeze({
+      glassback: 5,
+      stone_lung: 2,
+      veil_ray: 2,
+    }),
+    growthRing: Object.freeze({ inner: 50, outer: 200, count: 30 }),
+    morphologyMix: Object.freeze(['mineral_root', 'dead_crown', 'silt_root', 'membrane_patch']),
+    surveyOfferId: 'em_free_orchard_survey',
+  }),
+  preserved_cockpit: Object.freeze({
+    siteId: 'preserved_cockpit',
+    sectorId: 'sector_charon_expanse',
+    zoneId: 'zone_charon_preserved_cockpit',
+    poiId: 'poi_charon_preserved_cockpit',
+    name: 'The Preserved Cockpit',
+    strainId: 'charon_grave',
+    // AE-191 (C11 / L07): a single cockpit held intact inside growth — crew vitals still
+    // running. The recovery beat is evidence, not salvage.
+    baseContamination: 0.36,
+    center: Object.freeze({ x: 2300, z: 400 }),
+    arrivalBands: Object.freeze({ long: 2000, mid: 1200, close: 420 }),
+    arrivalLines: Object.freeze({
+      long: 'A single cockpit shell adrift inside a growth web — power faint, transponder dead.',
+      mid: 'The web parts around the canopy. Vital-signs telemetry: one occupant, still cycling.',
+      close: 'The growth is holding the pressure hull together. The occupant is not alone in there.',
+    }),
+    faunaCast: Object.freeze({
+      archive_crab: 1,
+      needle_swarm: 2,
+      cold_bell: 2,
+    }),
+    growthRing: Object.freeze({ inner: 14, outer: 50, count: 10 }),
+    morphologyMix: Object.freeze(['memory_knot', 'nerve_lace', 'filament_sheet', 'lung_bladder']),
+    surveyOfferId: 'em_missing_crew_preserved_cockpit',
+  }),
+  split_station: Object.freeze({
+    siteId: 'split_station',
+    sectorId: 'sector_tethys_junction',
+    zoneId: 'zone_tethys_split_station',
+    poiId: 'poi_tethys_split_station',
+    name: 'The Split Station',
+    strainId: 'charon_grave',
+    // AE-192 (C12): half-converted — one side still crewed, one side sealed. The policy
+    // vignette lives here: quarantine is a border drawn through a kitchen.
+    baseContamination: 0.34,
+    center: Object.freeze({ x: -800, z: 1600 }),
+    arrivalBands: Object.freeze({ long: 2200, mid: 1300, close: 460 }),
+    arrivalLines: Object.freeze({
+      long: 'Station on scope — half the ring lit, half dark. Docking control answers on the lit side only.',
+      mid: 'Quarantine welds down the middle deck. The sealed half is still emitting.',
+      close: 'Two crews share one hull and no airlock. The weld line drips filament.',
+    }),
+    faunaCast: Object.freeze({
+      hull_leech: 2,
+      suture_mite: 3,
+    }),
+    growthRing: Object.freeze({ inner: 30, outer: 100, count: 16 }),
+    morphologyMix: Object.freeze(['false_cable', 'filament_sheet', 'lung_bladder', 'red_core']),
+    surveyOfferId: 'em_scn_split_station_clause',
+  }),
+  red_snow: Object.freeze({
+    siteId: 'red_snow',
+    sectorId: 'sector_sker_haven',
+    zoneId: 'zone_sker_red_snow',
+    poiId: 'poi_sker_red_snow',
+    name: 'Red Snow',
+    strainId: 'ashfall_choir',
+    // AE-193 (C13): buried spore layers tint the whole frost field — ambient-only, no cast.
+    // Pure map-C lift and phantom weather; pretty and wrong.
+    baseContamination: 0.50,
+    center: Object.freeze({ x: 400, z: -1800 }),
+    arrivalBands: Object.freeze({ long: 2400, mid: 1500, close: 500 }),
+    arrivalLines: Object.freeze({
+      long: 'Ice field ahead — albedo reads wrong in the reds, drifts tinting rose at the edges.',
+      mid: 'Subsurface layers are organic to three meters down. The snow is a skin.',
+      close: 'Your wake lifts red dust off the drifts. The field resettles behind you like nothing passed.',
+    }),
+    faunaCast: Object.freeze({}),
+    growthRing: Object.freeze({ inner: 80, outer: 260, count: 26 }),
+    morphologyMix: Object.freeze(['membrane_patch', 'silt_root', 'dead_crown', 'mineral_root']),
+  }),
+  towed_moonlet: Object.freeze({
+    siteId: 'towed_moonlet',
+    sectorId: 'sector_ashfall_reach',
+    zoneId: 'zone_ashfall_towed_moonlet',
+    poiId: 'poi_ashfall_towed_moonlet',
+    name: 'The Towed Moonlet',
+    strainId: 'ashfall_choir',
+    // AE-194 (C14): a contaminated body under tow toward populated space — the mission
+    // hook is intercepting the tow before the corridor clears it.
+    baseContamination: 0.56,
+    center: Object.freeze({ x: -200, z: -1500 }),
+    arrivalBands: Object.freeze({ long: 2600, mid: 1500, close: 520 }),
+    arrivalLines: Object.freeze({
+      long: 'Massive body on scope under tow harness — three tugs pulling a moonlet on a populated-sector vector.',
+      mid: 'The towed surface reads organic to bedrock. The tugs are clean. Nobody scanned their cargo.',
+      close: 'Spore drifts peel off the body in the tow\'s shadow. Every kilometer moves the line inward.',
+    }),
+    faunaCast: Object.freeze({
+      casket_worm: 3,
+      bristle_ram: 2,
+      needle_swarm: 4,
+      cold_bell: 3,
+      black_sail: 2,
+    }),
+    growthRing: Object.freeze({ inner: 70, outer: 240, count: 28 }),
+    morphologyMix: Object.freeze(['spore_chimney', 'cyst_cluster', 'nerve_lace', 'mineral_root', 'dead_crown']),
+    surveyOfferId: 'em_tow_moonlet_intercept',
+  }),
+  sterile_zone: Object.freeze({
+    siteId: 'sterile_zone',
+    sectorId: 'sector_ashfall_reach',
+    zoneId: 'zone_ashfall_sterile_zone',
+    poiId: 'poi_ashfall_sterile_zone',
+    name: 'Old Sterile Zone',
+    strainId: null,
+    // AE-194 (C15): a machine-burned exclusion crater — zero C inside a C4 sector.
+    // The absence is the tell: suppression, not cleanliness.
+    sterile: true,
+    baseContamination: 0.0,
+    center: Object.freeze({ x: 1400, z: -600 }),
+    arrivalBands: Object.freeze({ long: 1800, mid: 1100, close: 380 }),
+    arrivalLines: Object.freeze({
+      long: 'A glass crater ahead — thermal history reads like a cutting beam, not an impact.',
+      mid: 'Nothing grows here. Not rock, not ice, not contamination. The machine line held.',
+      close: 'The crater edge is a perfect circle. Whatever sterilized this field knew exactly what it was cutting.',
+    }),
+    faunaCast: Object.freeze({}),
+    growthRing: Object.freeze({ inner: 40, outer: 120, count: 8 }),
+    morphologyMix: Object.freeze(['dead_crown', 'silt_root', 'mineral_root']),
+    surveyOfferId: 'em_sterile_zone_survey',
   }),
 });
 
@@ -501,14 +817,24 @@ export function ecologyEncounterWeights(state, sectorId, zoneId) {
 // Pure functions of the supplied rng stream — the caller seeds
 // mulberry32(hash32(meta.seed, sectorId, epoch, 'alien-ecology')). No ambient randomness.
 
-/** Plan infestation-module dressing around a site anchor. Returns sector-local offsets. */
-export function planInfestationModules(site, rng) {
+// AE-176 — severed sites decay: the planner swaps to the dead palette (dead crowns, roots,
+// collars — no glowing tissue) when the live state reads 'severed'.
+const SEVERED_MORPHOLOGY = Object.freeze(['dead_crown', 'silt_root', 'mineral_root', 'calcified_collar']);
+
+/** Plan infestation-module dressing around a site anchor. Returns sector-local offsets.
+ * siteState (optional) is the live record state ('severed' swaps to the dead palette — AE-176). */
+export function planInfestationModules(site, rng, siteState = null) {
   const ring = site.growthRing;
   const out = [];
-  const ids = Object.keys(INFESTATION_MODULES);
+  // AE-175 morphology fingerprint: each site draws from its authored mix, so the nursery
+  // ≠ the garden ≠ the dock. Sites without a mix fall back to the full kit.
+  const severed = siteState === 'severed';
+  const ids = severed ? SEVERED_MORPHOLOGY
+    : (Array.isArray(site.morphologyMix) && site.morphologyMix.length ? site.morphologyMix
+      : Object.keys(INFESTATION_MODULES));
   // Anchor ribs: a few fixed module identities so the silhouette reads authored, then seeded fill.
-  const ribs = ['filament_sheet', 'nerve_bundle', 'node_bulb_large', 'cyst_cluster', 'vent_lung',
-    'calcified_collar', 'tendril_cluster', 'sensory_fan'];
+  const ribs = severed ? SEVERED_MORPHOLOGY : ['filament_sheet', 'nerve_bundle', 'node_bulb_large', 'cyst_cluster', 'vent_lung',
+    'calcified_collar', 'tendril_cluster', 'sensory_fan'].filter((id) => ids.includes(id));
   const count = Math.max(6, Math.trunc(ring.count));
   for (let i = 0; i < count; i += 1) {
     const moduleId = i < ribs.length ? ribs[i] : ids[Math.floor(rng() * ids.length)];
@@ -578,6 +904,9 @@ export function pointContaminationAt(state, sectorId, x, z) {
     const dz = z - base.center.z;
     const d = Math.sqrt(dx * dx + dz * dz);
     if (d > base.radius) continue;
+    // AE-167/194 sterile exclusion: machine-burned ground reads clean — the crater
+    // suppresses both the sector lean and any site falloff inside its radius.
+    if (site.sterile) return 0.02;
     // Smooth falloff: full C at the site center, feathered to sector lean at the edge.
     const t = Math.max(0, 1 - d / base.radius);
     const local = base.baseContamination * (0.35 + 0.65 * t);
@@ -593,6 +922,8 @@ export function pointContaminationAt(state, sectorId, x, z) {
 export function planAmbientGrowth(state, site, rng) {
   const ae = state && state.world && state.world.alienEcology;
   const rec = ae && ae.sites && ae.sites[site.siteId];
+  // AE-176: a severed site stops ambient spill entirely — the field reads dead.
+  if (rec && rec.state === 'severed') return [];
   const boost = rec && rec.state === 'bloom' ? 1.0
     : rec && rec.state === 'awake' ? 0.5
     : 0.15;
@@ -615,6 +946,36 @@ export const ECOLOGY_DECK = Object.freeze([
   Object.freeze({ shape: 'ecology_carrier_drift',  minC: 0.35, weight: 2, label: 'Buoyant sac adrift — rupture risk', kind: 'warn' }),
   Object.freeze({ shape: 'ecology_relay_pulse',    minC: 0.45, weight: 2, label: 'Field coherence spike nearby', kind: 'warn' }),
   Object.freeze({ shape: 'ecology_predator_wake',  minC: 0.55, weight: 1, label: 'Predator wake ahead', kind: 'warn' }),
+  // ── Phase 21 / AE-204..AE-213 — human vignettes: people reacting to the ecology on the
+  // same mystery pull. Each row is a bark beat with an optional systemic edge flag. ──
+  Object.freeze({ shape: 'enc_miners_vs_flock',   minC: 0.30, weight: 2, kind: 'info',
+    label: 'DMC miners on open channel: "Clear the migration lane or we burn it."',
+    bark: 'Mining crew (local): "That flock crosses our claim every orbit. Clear it, or the torches do."',
+    edge: 'scatter_flock' }),
+  Object.freeze({ shape: 'enc_corporate_grab',    minC: 0.40, weight: 1, kind: 'warn',
+    label: 'Meridian skiff shadowing your track',
+    bark: 'MTS charter (tight beam): "Regulators file next week. Bring us a live lot first — price is whatever you name."',
+    edge: 'sample_grab' }),
+  Object.freeze({ shape: 'enc_quarantine_delay',  minC: 0.35, weight: 2, kind: 'warn',
+    label: 'Concord checkpoint holding traffic on an ambiguous scan',
+    bark: 'Checkpoint patrol: "Biological flag on your last transit — power down and hold for the sweep."',
+    edge: 'quarantine_hold' }),
+  Object.freeze({ shape: 'enc_quiet_passage',     minC: 0.45, weight: 1, kind: 'info',
+    label: 'Unmarked broker offering a signal profile',
+    bark: 'Quiet broker: "One transit of silence. The organisms will not hear you. The price is not credits — it is the route you flew in."',
+    edge: 'stealth_window' }),
+  Object.freeze({ shape: 'enc_reach_bait',        minC: 0.50, weight: 1, kind: 'warn',
+    label: 'Beacon on the lane emitting drive-plume heat',
+    bark: 'Your scanner flags the beacon as artificial — a lure. Something is already answering it.',
+    edge: 'bait_trap' }),
+  Object.freeze({ shape: 'enc_relic_dispute',     minC: 0.40, weight: 1, kind: 'info',
+    label: 'Choir shrine beacon — the holy thread is moving',
+    bark: 'Choir cloister: "The filament is sacred. Prove it lives, and the Concord cannot burn it."',
+    edge: 'relic_proof' }),
+  Object.freeze({ shape: 'enc_insurance_war',     minC: 0.25, weight: 1, kind: 'warn',
+    label: 'Insurance adjustor flagging your hull biofilm history',
+    bark: 'Underwriters (automated): "Exposure record exceeds covenant. Premium repriced at next dock."',
+    edge: 'insurance' }),
 ]);
 
 /** Weighted ecology encounter pick for a zone (deterministic via the caller's rng). */
@@ -954,6 +1315,242 @@ export const ECOLOGY_MISSIONS = Object.freeze([
     reward_cr: 1600,
     tag: 'ecology',
   }),
+
+  // ── Phase 20 mission wave B (AE-195..AE-203) — all reuse existing MISSION_TYPES. ──
+  Object.freeze({
+    id: 'em_bloom_burn_moonlet',
+    siteId: 'towed_moonlet',
+    title: 'Burn Before the Lane',
+    type: 'salvage_retrieval',
+    factionId: 'faction_scn',
+    giver: 'Concord corridor command',
+    params: { cmdtyId: 'cmdty_spore_chimney_core', qty: 2, deadlineS: 900 },
+    log: 'The tow clears the corridor in fifteen minutes. If the moonlet is still emitting at the checkpoint, the escorts burn it — and the tugs with it.',
+    summary: 'Pull two chimney cores off the towed body before it reaches the lane checkpoint.',
+    reward_cr: 3400,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_cyst_convoy',
+    siteId: 'towed_moonlet',
+    title: 'Cyst Convoy Escort',
+    type: 'recon_scan',
+    factionId: 'faction_dmc',
+    giver: 'DMC tow captain',
+    params: { scanTargets: 2 },
+    log: 'We tow the cyst, you fly the picket. If anything with a heat signature moves on the body, we want the read, not the wreck.',
+    summary: 'Shadow the tow and mark every organism that stirs on the hull.',
+    reward_cr: 2800,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_false_contamination_pallas',
+    siteId: 'empty_habitat',
+    title: 'Flag on the Habitat',
+    type: 'recon_scan',
+    factionId: 'faction_scn',
+    giver: 'Drift Claims desk',
+    params: { scanTargets: 2 },
+    log: 'A claim buyer paid quarantine rates on a habitat that may be clean. Verify the field — if it is a scam, the scanner tells it.',
+    summary: 'Read the habitat for contamination. Finding nothing is the finding.',
+    reward_cr: 1400,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_lost_route_spine',
+    siteId: 'shepherds_ring',
+    title: 'The Spine’s Bearing',
+    type: 'recon_scan',
+    factionId: 'faction_free',
+    giver: 'Free Frontier cartography',
+    params: { scanTargets: 3 },
+    log: 'A pilgrim line crosses Io Reach on a machine-memory route nobody owns. Triangulate the segments; the route is worth more than the animals.',
+    summary: 'Close-scan three pilgrim segments to reconstruct the route they are walking.',
+    reward_cr: 2200,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_filter_run_harvest',
+    siteId: 'harvest_deep',
+    title: 'Filter Run — Deep Pocket',
+    type: 'salvage_retrieval',
+    factionId: 'faction_free',
+    giver: 'Haven relief post',
+    params: { cmdtyId: 'cmdty_sterile_shell', qty: 1, exposureClock: true },
+    log: 'A survey crew is fouled up past their filters in the deep pocket. Deliver one sterile shell cartridge before their exposure redlines.',
+    summary: 'Carry a sterile shell into the pocket while your own exposure accrues.',
+    reward_cr: 3000,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_quarantine_tow_yards',
+    siteId: 'converted_yards',
+    title: 'Quarantine Tow Clearance',
+    type: 'recon_scan',
+    factionId: 'faction_dmc',
+    giver: 'DMC salvage authority',
+    params: { scanTargets: 1 },
+    log: 'We are cutting a section loose from the yards and towing it under custody. Certify the section reads dead before it crosses a checkpoint.',
+    summary: 'Scan the tow section for live tissue so custody clears the checkpoint.',
+    reward_cr: 1900,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_dead_relay_shepherds',
+    siteId: 'shepherds_ring',
+    title: 'Dead Relay Decision',
+    type: 'recon_scan',
+    factionId: 'faction_choir',
+    giver: 'Choir field cloister',
+    params: { scanTargets: 1 },
+    log: 'The ring holds a dead relay. The Choir wants it woken; Concord wants it confirmed dead. Your reading decides which writ lands.',
+    summary: 'Read the dead relay inside the anchor ring — the choice follows the evidence.',
+    reward_cr: 2600,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_contaminated_claim_orchard',
+    siteId: 'black_orchard',
+    title: 'Claim Dispute — the Orchard',
+    type: 'salvage_retrieval',
+    factionId: 'faction_free',
+    giver: 'Drift Claims arbitration',
+    params: { cmdtyId: 'cmdty_glass_back_scale', qty: 2 },
+    log: 'Two prospectors filed on the orchard rows. The claim pays out at the contamination measured on delivery — deeper carries a premium.',
+    summary: 'Pull two glassback scale plates; the award scales with where you lifted them.',
+    reward_cr: 2400,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_missing_crew_empty_skin',
+    siteId: 'empty_skin',
+    title: 'Castaway Rumor — the Skin',
+    type: 'salvage_retrieval',
+    factionId: 'faction_free',
+    giver: 'Charon dockmaster',
+    params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
+    log: 'A castaway reported sheltering inside a hollow shell off the graveyard lanes. Nobody went back for the log. Bring whatever is in it.',
+    summary: 'Search the shed shell for what the castaway left behind.',
+    reward_cr: 1500,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_dmc_closed_refinery_survey',
+    siteId: 'closed_refinery',
+    title: 'Mid-Conversion Record',
+    type: 'recon_scan',
+    factionId: 'faction_dmc',
+    giver: 'DMC heritage office',
+    params: { scanTargets: 3 },
+    log: 'The refinery was sealed before anyone logged what the growth was doing. Three reads of the collar rings, for the record — not the salvage.',
+    summary: 'Document the refinery’s conversion state without disturbing the collars.',
+    reward_cr: 1800,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_dmc_yard_power_audit',
+    siteId: 'red_cable_yard',
+    title: 'Who Owns the Lights',
+    type: 'recon_scan',
+    factionId: 'faction_dmc',
+    giver: 'Yard receivers office',
+    params: { scanTargets: 2 },
+    log: 'The yard draws power with no crew. Receivers need to know if cutting the bus starves the thing or angers it.',
+    summary: 'Read the yard power bus at two points — the answer decides the writ.',
+    reward_cr: 1700,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_missing_crew_empty_habitat',
+    siteId: 'empty_habitat',
+    title: 'Crew Absent, Air Intact',
+    type: 'salvage_retrieval',
+    factionId: 'faction_scn',
+    giver: 'Habitat estate office',
+    params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
+    log: 'The habitat holds pressure, the galley is set, and the crew is gone. The estate wants the security core — the colonists never filed a cause.',
+    summary: 'Pull the security core from an abandoned, still-pressurized habitat.',
+    reward_cr: 1600,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_shepherds_ring_investigate',
+    siteId: 'shepherds_ring',
+    title: 'What the Ring Holds',
+    type: 'recon_scan',
+    factionId: 'faction_choir',
+    giver: 'Io Reach watch station',
+    params: { scanTargets: 2 },
+    log: 'Six anchor organisms stand in a perfect ring around a dead relay. Before anyone breaks the formation, find out what it is keeping shut.',
+    summary: 'Close-scan the ring anchors without breaking the formation.',
+    reward_cr: 2100,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_free_orchard_survey',
+    siteId: 'black_orchard',
+    title: 'Row Audit — the Orchard',
+    type: 'recon_scan',
+    factionId: 'faction_free',
+    giver: 'Free Frontier research board',
+    params: { scanTargets: 3 },
+    log: 'The orchard rows are planted, not grown wild. Read three rows — the spacing is the data.',
+    summary: 'Survey the orchard rows; your beam will fog, so work close.',
+    reward_cr: 1900,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_missing_crew_preserved_cockpit',
+    siteId: 'preserved_cockpit',
+    title: 'One Occupant, Still Cycling',
+    type: 'salvage_retrieval',
+    factionId: 'faction_quiet',
+    giver: 'Unmarked quiet broker',
+    params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
+    log: 'The cockpit telemetry runs on nobody\'s clock. Recover the occupant recorder — do not open the canopy on site.',
+    summary: 'Lift the recorder from a cockpit the growth is still keeping alive.',
+    reward_cr: 2700,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_scn_split_station_clause',
+    siteId: 'split_station',
+    title: 'Two Halves, One Hull',
+    type: 'recon_scan',
+    factionId: 'faction_scn',
+    giver: 'Concord quarantine office',
+    params: { scanTargets: 2 },
+    log: 'The crewed half petitions to cut the sealed half loose. Two verified readings of the weld line decide whether the station is one claim or two.',
+    summary: 'Read the weld line on both halves of a station split down the middle.',
+    reward_cr: 2000,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_tow_moonlet_intercept',
+    siteId: 'towed_moonlet',
+    title: 'Intercept Manifest',
+    type: 'recon_scan',
+    factionId: 'faction_scn',
+    giver: 'Concord corridor command',
+    params: { scanTargets: 1 },
+    log: 'The tow crew filed clean on a body that reads organic to bedrock. Certify the manifest against the field before the checkpoint does it for them.',
+    summary: 'Read the towed body once, close — the checkpoint writes what you file.',
+    reward_cr: 2300,
+    tag: 'ecology',
+  }),
+  Object.freeze({
+    id: 'em_sterile_zone_survey',
+    siteId: 'sterile_zone',
+    title: 'The Absence Report',
+    type: 'recon_scan',
+    factionId: 'faction_vael',
+    giver: 'Vael survey desk',
+    params: { scanTargets: 1 },
+    log: 'A sterilized crater in the most contaminated sector on the chart. Measure the edge — the width of the cut is the only data that matters.',
+    summary: 'Read the exclusion crater rim. What is absent is the evidence.',
+    reward_cr: 2500,
+    tag: 'ecology',
+  }),
 ]);
 
 export function ecologyMissionForSite(siteId) {
@@ -965,3 +1562,61 @@ export function ecologyMissionForSite(siteId) {
 export function ecologyMissionsForSite(siteId) {
   return ECOLOGY_MISSIONS.filter((m) => m.siteId === siteId);
 }
+
+// ── Phase 18 field language (AE-178..AE-185) ─────────────────────────────────────────
+// Systemic ecological behaviors crossing site boundaries. All implemented as signal /
+// drive clauses in systems/alienEcology.js — these are the timing/cadence knobs.
+export const FIELD_LANGUAGE = Object.freeze({
+  // D02: sites sharing a strainId pulse in phase — one broadcast per period, simultaneous.
+  relayPulsePeriodS: 90,
+  // D03/D10: a kill pushes a 'panic' signal same-site instantly; the flee wave reaches
+  // unrelated species after this delay (the field propagates, it does not teleport).
+  fleeWaveDelayS: 2.0,
+  fleeWaveTtlS: 12,
+  // D06: fauna inside a suppression field are inert — stim cleared, drive held.
+  // (AE-096 already scatters; inertness applies to sessile/anchored species that cannot leave.)
+  // D07: a live heatHunter in the cast silences other drives at this stimulus floor.
+  predatorSilenceStim: 0.25,
+  // D08: a radiation/storm front on the sector slows migration and swells phantoms.
+  weatherMigrateMult: 0.6,
+  // AE-160: cold bell toll leads a front by this many seconds.
+  weatherFrontPeriodS: 240,
+});
+
+// ── Phase 23 harvest loop (AE-226..AE-230) ───────────────────────────────────────────
+// What a dead organism is worth: killed fauna drop bio-resource pickups, gated where
+// noted. `suppressionOnly` drops exist only inside machine dead pockets (AE-227).
+export const FAUNA_DROPS = Object.freeze({
+  default:        { commodityId: 'cmdty_calcified_filament', qty: 1, chance: 0.6 },
+  needle_swarm:   { commodityId: 'cmdty_conductive_fiber',   qty: 2, chance: 0.7 },
+  blind_shepherd: { commodityId: 'cmdty_relay_nodule',       qty: 1, chance: 0.85 },
+  lantern_cyst:   { commodityId: 'cmdty_cyst_resin',         qty: 1, chance: 0.8 },
+  spindle_mother: { commodityId: 'cmdty_cyst_resin',         qty: 2, chance: 0.8 },
+  void_carrier:   { commodityId: 'cmdty_cyst_resin',         qty: 3, chance: 0.9 },
+  archive_crab:   { commodityId: 'cmdty_host_archive_sample',qty: 1, chance: 0.5 },
+  anchor_beast:   { commodityId: 'cmdty_calcified_filament', qty: 3, chance: 0.9 },
+  glassback:      { commodityId: 'cmdty_glass_back_scale',   qty: 1, chance: 0.75 },
+  stone_lung:     { commodityId: 'cmdty_spore_chimney_core', qty: 1, chance: 0.9 },
+  black_sail:     { commodityId: 'cmdty_membrane_laminate',  qty: 1, chance: 0.7 },
+  pilgrim_spine:  { commodityId: 'cmdty_interface_tissue',   qty: 1, chance: 0.6 },
+  furnace_maw:    { commodityId: 'cmdty_calcified_filament', qty: 2, chance: 0.9 },
+});
+
+// Suppression-field bonus drop: kills inside a machine dead pocket may yield sterile shell
+// or nerve glass (AE-227) — the only source, which is why they are rare.
+export const SUPPRESSION_DROPS = Object.freeze([
+  Object.freeze({ commodityId: 'cmdty_sterile_shell', qty: 1, chance: 0.25 }),
+  Object.freeze({ commodityId: 'cmdty_nerve_glass', qty: 1, chance: 0.15 }),
+]);
+
+// AE-230 ripening: biohazard cargo held through high-C sectors matures. Per-unit timer.
+export const RIPENING = Object.freeze({
+  minC: 0.5,
+  periodS: 300,
+  // commodityId -> riper form (rarer, higher value, still biohazard)
+  chain: Object.freeze({
+    cmdty_filament_sample: 'cmdty_cyst_resin',
+    cmdty_cyst_resin: 'cmdty_host_archive_sample',
+    cmdty_live_specimen: 'cmdty_interface_tissue',
+  }),
+});

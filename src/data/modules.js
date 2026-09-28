@@ -230,6 +230,45 @@ const SHIPPED_MODULES = [
     description: 'Registry-stamped quarantine seals. Stations that would refuse a biological lot instead take it at surrender prices.',
   },
   {
+    // G02 — filament contrast filter: phantom contacts get flagged as probable echoes.
+    id: 'mod_filament_contrast_s', name: 'Filament Contrast Filter', slotType: 'utility', size: 'S', tier: 2, mass: 1, price: 9800,
+    energyDraw: 1,
+    mods: { filamentContrast: true },
+    description: 'A polarized scanner gasket tuned to the membrane band. Mirror-echo contacts mark themselves instead of wearing a clean return.',
+  },
+  {
+    // G03 — host-memory cartography: crossing a site’s long band maps the hull under the growth.
+    id: 'mod_host_cartography_s', name: 'Host-Memory Cartography', slotType: 'utility', size: 'S', tier: 3, mass: 2, price: 21000,
+    requiresTech: 'tech_long_range_survey',
+    energyDraw: 2,
+    mods: { hostMapReveal: true },
+    description: 'A hull-resonance mapper that reads the structure under the growth. Entering a colonized field, the host resolves on the chart.',
+  },
+  {
+    // G05 — echo recorder: relay pulses get logged to the field notebook.
+    id: 'mod_echo_recorder_s', name: 'Echo Recorder', slotType: 'utility', size: 'S', tier: 2, mass: 1, price: 12000,
+    energyDraw: 1,
+    mods: { echoRecorder: true },
+    description: 'A slow tape for the relay band. Sites that pulse in phase leave a coherence signature in your flight log.',
+  },
+  {
+    // G14 — resonant massline tuning: the beam strike carries a dead-matter signature;
+    // dormant fauna do not wake on your mining noise.
+    id: 'mod_resonant_massline_m', name: 'Resonant Massline Coil', slotType: 'utility', size: 'M', tier: 4, mass: 3, price: 0,
+    purchasable: false, unique: true, salvageOnly: true,
+    energyDraw: 3,
+    mods: { resonantMassline: true },
+    description: 'A field coil salvaged from a dead pylon. Your beam strikes read as dead matter — the sleepers do not hear you work.',
+  },
+  {
+    // G15 — the Quiet Equation: machine directive lines decode into readable intent while fitted.
+    id: 'mod_quiet_equation_s', name: 'The Quiet Equation', slotType: 'utility', size: 'S', tier: 4, mass: 1, price: 0,
+    purchasable: false, unique: true, salvageOnly: true,
+    energyDraw: 1,
+    mods: { quietEquation: true },
+    description: 'A Verge-layer decode lattice. Where the machines speak in directive fragments, you read the sentence underneath.',
+  },
+  {
     id: 'unique_truesight_scanner', baseId: 'mod_cargo_scanner_s', name: 'Truesight Scanner', slotType: 'utility', size: 'S', tier: 1, mass: 1, price: 0,
     energyDraw: 1, purchasable: false, unique: true, salvageOnly: true,
     mods: { revealCargo: true, scanRangeMult: 1.50 },

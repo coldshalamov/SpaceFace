@@ -335,27 +335,155 @@ export const ZONE_SKER_NULL_CAUSEWAY = Object.freeze({
   threat: 0,
 });
 
+
+// ── Phase 19 site wave C — ecology catalog sites across the flyable gradient (AE-186..194, AE-165) ──
+
+export const ZONE_CERES_CLOSED_REFINERY = Object.freeze({
+  id: 'zone_ceres_closed_refinery',
+  name: 'The Closed Refinery',
+  type: 'derelict_field',
+  factionId: 'faction_dmc',
+  reason: 'A DMC refinery sealed mid-conversion — the loop machinery is encased in mineral collars.',
+  center: Object.freeze({ x: 1600, z: 1800 }),
+  radius: 620,
+  threat: 2,
+});
+
+export const ZONE_VESTA_RED_CABLE_YARD = Object.freeze({
+  id: 'zone_vesta_red_cable_yard',
+  name: 'Red Cable Yard',
+  type: 'derelict_field',
+  factionId: 'faction_dmc',
+  reason: 'A salvage yard whose power bus carries a circulation — the floodlights are alive.',
+  center: Object.freeze({ x: -1400, z: -900 }),
+  radius: 560,
+  threat: 2,
+});
+
+export const ZONE_PALLAS_EMPTY_HABITAT = Object.freeze({
+  id: 'zone_pallas_empty_habitat',
+  name: 'The Empty Habitat',
+  type: 'derelict_field',
+  factionId: 'faction_free',
+  reason: 'A station evacuated in hours — pressurized, intact, and lined with growth in the vents.',
+  center: Object.freeze({ x: 500, z: -1900 }),
+  radius: 480,
+  threat: 1,
+});
+
+export const ZONE_IO_SHEPHERDS_RING = Object.freeze({
+  id: 'zone_io_shepherds_ring',
+  name: "Shepherd's Ring",
+  type: 'anomaly_deep',
+  factionId: 'faction_free',
+  reason: 'Anchor organisms in a perfect ring around a dead relay — a containment measure, not a herd.',
+  center: Object.freeze({ x: -1100, z: 700 }),
+  radius: 560,
+  threat: 2,
+});
+
+export const ZONE_VEIL_BLACK_ORCHARD = Object.freeze({
+  id: 'zone_veil_black_orchard',
+  name: 'The Black Orchard',
+  type: 'anomaly_deep',
+  factionId: 'faction_vael',
+  reason: 'A forest of rooted glass organisms in shadowed space, arranged in rows.',
+  center: Object.freeze({ x: -1700, z: -800 }),
+  radius: 640,
+  threat: 1,
+});
+
+export const ZONE_CHARON_PRESERVED_COCKPIT = Object.freeze({
+  id: 'zone_charon_preserved_cockpit',
+  name: 'The Preserved Cockpit',
+  type: 'derelict_field',
+  factionId: 'faction_quiet',
+  reason: 'A single cockpit held intact inside growth — occupant vitals still cycling.',
+  center: Object.freeze({ x: 2300, z: 400 }),
+  radius: 340,
+  threat: 1,
+});
+
+export const ZONE_CHARON_EMPTY_SKIN = Object.freeze({
+  id: 'zone_charon_empty_skin',
+  name: 'The Empty Skin',
+  type: 'derelict_field',
+  factionId: 'faction_reach',
+  reason: 'A shed membrane the size of a cutter — scanners flag fauna, the shell is empty.',
+  center: Object.freeze({ x: -900, z: -2200 }),
+  radius: 400,
+  threat: 0,
+});
+
+export const ZONE_TETHYS_SPLIT_STATION = Object.freeze({
+  id: 'zone_tethys_split_station',
+  name: 'The Split Station',
+  type: 'derelict_field',
+  factionId: 'faction_scn',
+  reason: 'Half crewed, half welded shut — the quarantine line runs through the middle deck.',
+  center: Object.freeze({ x: -800, z: 1600 }),
+  radius: 460,
+  threat: 1,
+});
+
+export const ZONE_SKER_RED_SNOW = Object.freeze({
+  id: 'zone_sker_red_snow',
+  name: 'Red Snow',
+  type: 'anomaly_deep',
+  factionId: 'faction_understory',
+  reason: 'Buried spore layers tint the whole frost field — pretty, and wrong.',
+  center: Object.freeze({ x: 400, z: -1800 }),
+  radius: 780,
+  threat: 1,
+});
+
+export const ZONE_ASHFALL_TOWED_MOONLET = Object.freeze({
+  id: 'zone_ashfall_towed_moonlet',
+  name: 'The Towed Moonlet',
+  type: 'derelict_field',
+  factionId: 'faction_dmc',
+  reason: 'A contaminated body under tow toward populated space — the manifest says clean.',
+  center: Object.freeze({ x: -200, z: -1500 }),
+  radius: 700,
+  threat: 2,
+});
+
+export const ZONE_ASHFALL_STERILE_ZONE = Object.freeze({
+  id: 'zone_ashfall_sterile_zone',
+  name: 'Old Sterile Zone',
+  type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'A machine-burned exclusion crater — the only clean ground in the sector.',
+  center: Object.freeze({ x: 1400, z: -600 }),
+  radius: 520,
+  threat: 0,
+});
+
 /**
  * sectorId -> additional authored zone records, appended to the per-sector tables.
  * Keyed by sector so the merge stays a pure append and can never shadow an existing sector's list.
  */
 export const AUTHORED_PLACE_ZONES = Object.freeze({
-  sector_ceres_belt: Object.freeze([ZONE_CERES_THROUGHLINE, ZONE_CERES_PRISM_GALLERY]),
-  sector_tethys_junction: Object.freeze([ZONE_TETHYS_DRIFTMARK, ZONE_TETHYS_ANVIL]),
+  sector_ceres_belt: Object.freeze([ZONE_CERES_THROUGHLINE, ZONE_CERES_PRISM_GALLERY, ZONE_CERES_CLOSED_REFINERY]),
+  sector_tethys_junction: Object.freeze([ZONE_TETHYS_DRIFTMARK, ZONE_TETHYS_ANVIL, ZONE_TETHYS_SPLIT_STATION]),
+  sector_vesta_forge: Object.freeze([ZONE_VESTA_RED_CABLE_YARD]),
+  sector_pallas_drift: Object.freeze([ZONE_PALLAS_EMPTY_HABITAT]),
+  sector_io_reach: Object.freeze([ZONE_IO_SHEPHERDS_RING]),
   sector_charon_expanse: Object.freeze([
     ZONE_CHARON_CINDER_NURSERY, ZONE_CHARON_WARM_FREIGHTER, ZONE_CHARON_HULL_GARDEN,
-    ZONE_CHARON_PYLON_FIELD,
+    ZONE_CHARON_PYLON_FIELD, ZONE_CHARON_PRESERVED_COCKPIT, ZONE_CHARON_EMPTY_SKIN,
   ]),
   sector_veil_nebula: Object.freeze([
     ZONE_VEIL_QUIET_ICE, ZONE_VEIL_SURVEY_MONOLITH, ZONE_VEIL_NULL_CORRIDOR,
-    ZONE_VEIL_REVOKED_GATE,
+    ZONE_VEIL_REVOKED_GATE, ZONE_VEIL_BLACK_ORCHARD,
   ]),
   sector_ashfall_reach: Object.freeze([
     ZONE_ASHFALL_BREATHING_DOCK, ZONE_ASHFALL_GATE_UNDERLAYER, ZONE_ASHFALL_OSSUARY,
     ZONE_ASHFALL_BLACK_VAULT, ZONE_ASHFALL_MAINTENANCE, ZONE_ASHFALL_CONVERTED_YARDS,
+    ZONE_ASHFALL_TOWED_MOONLET, ZONE_ASHFALL_STERILE_ZONE,
   ]),
   sector_sker_haven: Object.freeze([
-    ZONE_SKER_HARVEST_DEEP, ZONE_SKER_NULL_CAUSEWAY,
+    ZONE_SKER_HARVEST_DEEP, ZONE_SKER_NULL_CAUSEWAY, ZONE_SKER_RED_SNOW,
   ]),
 });
 

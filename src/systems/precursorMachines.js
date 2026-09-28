@@ -11,6 +11,7 @@ import {
   MACHINE_KINDS,
   machineSitesForSector,
   machineKindById,
+  MACHINE_DIRECTIVES,
   machineDirectiveLine,
   machineRevealsVerge,
   advanceMachineProtocol,
@@ -27,6 +28,16 @@ import { fittedModuleDefs } from '../core/fittedModules.js';
 function holdWindowS(state) {
   const fitted = fittedModuleDefs(state).some((d) => d && d.mods && d.mods.precursorHandshake === true);
   return fitted ? 6 : 12;
+}
+
+// AE-170 (G15) — a fitted Quiet Equation decodes directive grammar into intent: the
+// comms line keeps the machine's own words, then appends the human read.
+function directiveText(state, id) {
+  const line = machineDirectiveLine(id);
+  const decoded = fittedModuleDefs(state).some((d) => d && d.mods && d.mods.quietEquation === true);
+  if (!decoded) return line;
+  const d = MACHINE_DIRECTIVES[id];
+  return d && d.resolves ? `${line} — ${d.resolves}.` : line;
 }
 
 const TWO_PI = Math.PI * 2;
@@ -181,7 +192,7 @@ export function tickMachineLayer(world, dt) {
           rec.directiveIssued = true;
           world.bus.emit('comms:log', {
             from: site.name,
-            text: machineDirectiveLine(site.directive),
+            text: directiveText(state, site.directive),
             kind: 'machine',
           });
         }
@@ -288,7 +299,7 @@ export function tickMachineLayer(world, dt) {
               from: 'Gate Auditor',
               text: marked
                 ? 'WITNESS STATUS ON FILE. PROCEED.'
-                : `INTERROGATION. ${machineDirectiveLine('APPEAL')}`,
+                : `INTERROGATION. ${directiveText(state, 'APPEAL')}`,
               kind: 'machine',
             });
             advanceMachineProtocol(state, 'seen');
