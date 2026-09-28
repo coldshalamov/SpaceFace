@@ -163,6 +163,9 @@ const MACHINE_FIELD_REGION_BY_SECTOR = Object.freeze({
   sector_helios_prime: 'helios',
   sector_sker_haven: 'sker',
   sector_haumea_rift: 'haumea',
+  sector_vesta_forge: 'vesta',
+  sector_tethys_junction: 'tethys',
+  sector_veil_nebula: 'veil',
 });
 
 function buildKillMachine({
@@ -385,14 +388,141 @@ export const RIFT_FISSURE_CRACKER = buildKillMachine({
   }],
 });
 
-// Every machine the adapter owns, in one list: Ceres mouths, the Helios starter cracker, and
-// the Sker baler. Per-sector slices come from killMachinesForSector; this is the census the
-// runtime uses to retire fields and anvils when a sector deactivates or a machine is absent.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+// CR-FEED - non-copy kill machines for the remaining named sectors. Every machine below is a
+// different KIND of object, not another mouth at a different angle. The axes that separate them
+// are chosen so no two read the same at the chase camera:
+//
+//   vesta_shear_jaws   two opposed sheets converging on one bar  (the only converging machine)
+//   tethys_weigh_clamp one reversed cone feeding a plate behind  (the only machine that kills behind its face)
+//   veil_cold_draw     one off-centre well dragging across a plate (the only off-centre gather, and the only nebula)
+//
+// Same shared law as every other mouth: warning registers the volume at strength 0, surge is the
+// bite, calm is the safe window. None of these is a damage aura.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+// VESTA FORGE - the foundry shear. A double shear stands on the south approach to the works: two
+// slag rams close from both ends onto one shear bar at the throat. Its rot runs along the inbound
+// leg from the Helios gate so the jaws close ACROSS a ship crossing the approach, which is the
+// whole read: not a mouth you fly into, a pair of jaws that meet where you are.
+export const VESTA_SHEAR_SECTOR_ID = 'sector_vesta_forge';
+export const VESTA_SHEAR_JAWS = buildKillMachine({
+  id: 'vesta_shear_jaws',
+  hazardType: 'debris',
+  placeId: 'place_ore_sorter',
+  sectorId: VESTA_SHEAR_SECTOR_ID,
+  // South approach to the works: clear of both stations (975 WU to Depot Three), both belts
+  // (946 WU off the radiation volume, 1388 off the storm lane), the ore winnow at f_vesta_3, the
+  // dead freighter, and the runaway ladle on the foundry apron.
+  localPos: { x: 250, z: -1000 },
+  rot: Math.PI * 0.5,
+  phaseOffsetS: 10,
+  hazardRadius: 130,
+  anvil: { radius: 22, mass: 11000, along: 0, across: 0 },
+  mouth: { name: 'Shear Bar', radius: 20 },
+  fields: [{
+    // Two sheets whose sweep directions point AT each other. The forward jaw is offset ahead and
+    // runs reversed; the aft jaw is offset behind and runs forward. Both meet on the bar.
+    idSuffix: 'jaw_fwd',
+    kind: 'sheet',
+    strength: 760,
+    radius: 80,
+    halfWidth: 46,
+    falloff: 1.05,
+    along: 70,
+    across: 0,
+    dirAlong: -1,
+  }, {
+    idSuffix: 'jaw_aft',
+    kind: 'sheet',
+    strength: 760,
+    radius: 80,
+    halfWidth: 46,
+    falloff: 1.05,
+    along: -70,
+    across: 0,
+    dirAlong: 1,
+  }],
+});
+
+// TETHYS JUNCTION - the weigh clamp. Every inbound ship is scanned before it reaches the core, and
+// the scale plate is BEHIND the gantry: the clamp cone runs reversed, so it hands what the gate
+// takes backward onto the plate. The only machine in the census that kills behind its own face,
+// which is what a toll that weighs you rather than greets you should look like.
+export const TETHYS_WEIGH_SECTOR_ID = 'sector_tethys_junction';
+export const TETHYS_WEIGH_CLAMP = buildKillMachine({
+  id: 'tethys_weigh_clamp',
+  hazardType: 'debris',
+  placeId: 'place_inspection_platform',
+  sectorId: TETHYS_WEIGH_SECTOR_ID,
+  // On the weigh site beside poi_tethys_weigh, clear of both stations (1463 WU to Customs), the
+  // Tethys field, the black-market buoy, and the customs log marker.
+  localPos: { x: 820, z: -1080 },
+  rot: 0.75,
+  phaseOffsetS: 12,
+  hazardRadius: 120,
+  // Down-range is behind the gantry here - the plate sits where a normal mouth would stand.
+  anvil: { radius: 24, mass: 12000, along: -86, across: 0 },
+  mouth: { name: 'Weigh Clamp', radius: 20 },
+  fields: [{
+    idSuffix: 'clamp',
+    kind: 'cone',
+    strength: 700,
+    radius: 104,
+    halfAngleRad: 0.5,
+    edgeSoftRad: 0.12,
+    falloff: 1.08,
+    along: -30,
+    across: 0,
+    // Reversed: the gather runs from the gantry face backward onto the weigh plate.
+    dirAlong: -1,
+  }],
+});
+
+// VEIL NEBULA - the cold draw. The research station vents its helium envelope through a cold trap:
+// the drain is a well, but it is NOT centred on the kill. The pressure plate sits to one side of
+// the drain mouth, so anything the draw gathers is dragged ACROSS the plate on its way in. The
+// only off-centre gather in the census, and the only one whose hazard reads as nebula rather than
+// debris - a gas that takes you, not a piece of one.
+export const VEIL_COLD_SECTOR_ID = 'sector_veil_nebula';
+export const VEIL_COLD_DRAW = buildKillMachine({
+  id: 'veil_cold_draw',
+  hazardType: 'nebula',
+  placeId: 'place_tanker_coupling',
+  sectorId: VEIL_COLD_SECTOR_ID,
+  // On the Io approach to Research Station Veil, clear of the station (1706 WU), the Veil field
+  // and its storm lane (2907 WU), the radiation belt (1769 WU), and the anomaly landmark.
+  localPos: { x: -900, z: -2200 },
+  rot: 1.15,
+  phaseOffsetS: 14,
+  hazardRadius: 130,
+  anvil: { radius: 22, mass: 9000, along: 0, across: 0 },
+  mouth: { name: 'Cold Draw', radius: 20 },
+  fields: [{
+    idSuffix: 'draw',
+    kind: 'well',
+    strength: 560,
+    radius: 128,
+    falloff: 0.5,
+    // Off-centre: the drain mouth sits 56 WU to one side of the pressure plate, so the gather
+    // drags across the plate instead of straight down onto nothing.
+    along: 0,
+    across: 56,
+  }],
+});
+
+// Every machine the adapter owns, in one list: Ceres mouths, the Helios starter cracker, the Sker
+// baler, the Rift fissure cracker, and the CR-FEED trio. Per-sector slices come from
+// killMachinesForSector; this is the census the runtime uses to retire fields and anvils when a
+// sector deactivates or a machine is absent.
 export const ALL_KILL_MACHINES = Object.freeze([
   ...KILL_MACHINES,
   STARTER_FIELD_MACHINE,
   SKER_SCRAP_BALER,
   RIFT_FISSURE_CRACKER,
+  VESTA_SHEAR_JAWS,
+  TETHYS_WEIGH_CLAMP,
+  VEIL_COLD_DRAW,
 ]);
 
 export function killMachinesForSector(sectorId) {
@@ -400,6 +530,9 @@ export function killMachinesForSector(sectorId) {
   if (sectorId === STARTER_FIELD_SECTOR_ID) return Object.freeze([STARTER_FIELD_MACHINE]);
   if (sectorId === SKER_SCRAP_BALER_SECTOR_ID) return Object.freeze([SKER_SCRAP_BALER]);
   if (sectorId === RIFT_FISSURE_SECTOR_ID) return Object.freeze([RIFT_FISSURE_CRACKER]);
+  if (sectorId === VESTA_SHEAR_SECTOR_ID) return Object.freeze([VESTA_SHEAR_JAWS]);
+  if (sectorId === TETHYS_WEIGH_SECTOR_ID) return Object.freeze([TETHYS_WEIGH_CLAMP]);
+  if (sectorId === VEIL_COLD_SECTOR_ID) return Object.freeze([VEIL_COLD_DRAW]);
   return Object.freeze([]);
 }
 

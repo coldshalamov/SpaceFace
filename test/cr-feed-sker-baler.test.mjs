@@ -79,7 +79,15 @@ test('the baler registers for Sker Haven and joins the all-machine census', () =
   assert.equal(killMachinesForSector(KILL_MACHINE_SECTOR_ID), KILL_MACHINES, 'Ceres slice intact');
   assert.deepEqual(killMachinesForSector(STARTER_FIELD_MACHINE.sectorId), [STARTER_FIELD_MACHINE]);
   assert.deepEqual(killMachinesForSector('sector_nowhere'), []);
-  assert.equal(ALL_KILL_MACHINES.length, KILL_MACHINES.length + 2);
+  // The census is exactly the union of the per-sector slices - derived rather than a hand-counted
+  // constant, because CR-FEED keeps adding sectors and a stale pin fails for the wrong reason
+  // (this assertion was red for exactly that before row 48 landed).
+  const censusIds = ALL_KILL_MACHINES.map((m) => m.id);
+  assert.equal(new Set(censusIds).size, censusIds.length, 'the census has no duplicate machines');
+  const sliceIds = [...new Set(ALL_KILL_MACHINES.map((m) => m.sectorId))]
+    .flatMap((sectorId) => killMachinesForSector(sectorId).map((m) => m.id))
+    .sort();
+  assert.deepEqual([...censusIds].sort(), sliceIds, 'every census machine serves its own sector slice');
   for (const machine of [...KILL_MACHINES, STARTER_FIELD_MACHINE, MACHINE]) {
     assert.ok(ALL_KILL_MACHINES.includes(machine), `${machine.id} is in ALL_KILL_MACHINES`);
   }
