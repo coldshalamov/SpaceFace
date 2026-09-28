@@ -386,7 +386,6 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 4 | D36 | Works-screen tab starves all scheduling under host contention (~2/12 runs) — real scheduler fix, not a throttle | FIX | CLAIMED devin-wave1 |
 | 5 | D38 | First-arrival body undrawn while it compiles — ordering landed; residual is the serial compose/link/upload lane | FIX | CLAIMED devin-wave1 |
 | 6 | D46 | `check:all` foreign-red triage from 2026-09-25 — re-run sweep, re-row what is still red, delete the stale snapshot | FIX | CLAIMED devin-wave1 |
 | 7 | D60 | A6 driver teleported the player ~2.25 M-units in one tick — instrumented, unreproduced in 5 clean runs; prove it dead or find it | FIX | CLAIMED devin-wave1 |
