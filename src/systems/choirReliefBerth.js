@@ -16,6 +16,7 @@ export function normalizeChoirRelief(value) {
     patientLost: value?.patientLost === true,
     driveRestored: value?.driveRestored === true,
     evacuated: value?.evacuated === true,
+    ropeRepairPaid: value?.ropeRepairPaid === true,
   };
 }
 
@@ -112,6 +113,11 @@ export function createChoirReliefBerth(owner) {
     if (patient && !patient.data.choirReliefInitialized) {
       if (!relief.driveRestored && !wound(patient, DRIVE, 1)) return;
       wound(patient, 'subsystem_power', 0.75);
+      // Mercy took the same hit her drive did. Hull below max means a taut line on her does
+      // seconds of real repair work (latchRepair frees the drive once the plating is whole),
+      // not a one-tick flag flip.
+      if (Number.isFinite(patient.hull) && Number.isFinite(patient.hullMax)
+          && patient.hull > patient.hullMax * 0.6) patient.hull = patient.hullMax * 0.6;
       patient.data.choirReliefInitialized = true;
     }
     if (relief.driveRestored) {
@@ -176,14 +182,59 @@ export function createChoirReliefBerth(owner) {
       kind: 'wreck_recovery', sourceRef: 'followup.choir_relief_evacuated', sectorId: SECTOR });
   }
 
+  // A taut-line repair restores the same drive component the returned swarm does. The berth
+  // reads the shared subsystemEnabled event so a player who knits Mercy with their own rope is
+  // credited the same as one who hands the knitbots back.
+  function enabled(payload) {
+    if (!payload || payload.subsystemId !== DRIVE) return;
+    const relief = own();
+    if (relief.driveRestored || relief.evacuated || relief.patientLost) return;
+    const patient = actor('patient');
+    if (!patient || payload.targetId !== patient.id) return;
+    relief.driveRestored = true;
+    if (state.playerId != null && payload.repairedBy === state.playerId) {
+      // Gratitude once per site: a re-disabled then re-knitted Mercy is still the same mercy.
+      if (!relief.ropeRepairPaid) {
+        relief.ropeRepairPaid = true;
+        bus.emit('faction:repDelta', { factionId: 'faction_choir', delta: 6,
+          reason: 'choir_relief:mercy_hand_repair' });
+      }
+      bus.emit('toast', { kind: 'info', ttl: 5,
+        text: 'CHOIR · LAST LIGHT: Mercy thrusts. Your line did what their hands could not.' });
+    }
+    sync();
+  }
+
+  // driveRestored is not a point of no return: raider fire or a finally-dead power plant can
+  // re-disable Mercy on the way home. Revert to the tending state so a second repair (rope or
+  // tools) is what actually gets her home — not a stale flag on a dead drive.
+  function disabled(payload) {
+    if (!payload || payload.subsystemId !== DRIVE) return;
+    const relief = own();
+    if (!relief.driveRestored || relief.evacuated || relief.patientLost) return;
+    const patient = actor('patient');
+    if (!patient || payload.targetId !== patient.id) return;
+    relief.driveRestored = false;
+    release(patient);
+    delete patient.data.jobId;
+    delete patient.data.choirReliefReturning;
+  }
+
   function killed(payload) {
     for (const role of ROLES) {
+      // Numeric entity ids recycle; a stale cached actor must not re-charge the ledger.
+      if (own()[`${role}Lost`]) continue;
       const entity = actors.get(role) || actor(role);
       if (!entity || payload?.id !== entity.id) continue;
       own()[`${role}Lost`] = true;
       release(entity);
+      // Their dead cost more than a barkeep line: the congregation's standing drops on record.
+      if (state.playerId != null && payload.killerId === state.playerId) {
+        bus.emit('faction:repDelta', { factionId: 'faction_choir', delta: -8,
+          reason: `choir_relief:${role}_killed` });
+      }
     }
   }
 
-  return { sync, work, complete, killed, clear: () => actors.clear() };
+  return { sync, work, complete, killed, enabled, disabled, clear: () => actors.clear() };
 }

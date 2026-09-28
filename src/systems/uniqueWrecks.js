@@ -398,6 +398,8 @@ export const uniqueWrecks = {
     });
     this._listen('npcjobs:work', (payload) => this._choirRelief.work(payload));
     this._listen('npcjobs:complete', (payload) => this._choirRelief.complete(payload));
+    this._listen('combat:subsystemEnabled', (payload) => this._choirRelief.enabled(payload));
+    this._listen('combat:subsystemDisabled', (payload) => this._choirRelief.disabled(payload));
     this._listen('entity:killed', (payload) => {
       this._choirRelief.killed(payload);
       this._memorialThief.killed(payload);

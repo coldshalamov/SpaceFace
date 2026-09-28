@@ -74,30 +74,61 @@ function lineTaut(state, attachment, owner, target) {
   return span >= rest * LATCH_REPAIR_TAUT_RATIO;
 }
 
-function freeDrive(state, target) {
+function freeDrive(state, target, owner, bus) {
   const runtime = driveRuntime(state, target);
   if (!runtime) return;
+  const drive = runtime.subsystems && runtime.subsystems.subsystem_drive;
+  const power = runtime.subsystems && runtime.subsystems.subsystem_power;
+  // Emit only when this repair actually restored a real drive component: subsystem_drive must
+  // exist and have been down (driveless tether-anchor profiles carry capabilities.drive:false
+  // permanently — freeing them is fine but announcing a subsystem restore is a lie that also
+  // re-flaps every recompute), and a dead power plant re-disables the drive on the next
+  // recompute, so announcing before power is back just precedes a re-disable.
+  const restoredDrive = !!(drive && (drive.destroyed === true || drive.effectiveDisabled === true))
+    && !(power && power.destroyed === true);
   runtime.capabilities = runtime.capabilities || {};
   runtime.capabilities.drive = true;
   if (runtime.multipliers && runtime.multipliers.movement === 0) runtime.multipliers.movement = 1;
   if (Array.isArray(runtime.blockedActionTags)) {
     runtime.blockedActionTags = runtime.blockedActionTags.filter((tag) => tag !== 'dash' && tag !== 'sling');
   }
-  const drive = runtime.subsystems && runtime.subsystems.subsystem_drive;
-  if (!drive) return;
-  drive.effectiveDisabled = false;
-  drive.destroyed = false;
-  if (Number.isFinite(drive.maxHealth)) drive.health = drive.maxHealth;
+  if (drive) {
+    drive.effectiveDisabled = false;
+    drive.destroyed = false;
+    // A destroy/restore pending armed this same tick outlives a flag-clear — disarm it or the
+    // next prePhysics re-flips the drive and emits a disabled right after our enabled.
+    if (drive.pendingTransition) {
+      drive.pendingTransition = null;
+      if ((runtime.pendingSubsystemTransitionCount | 0) > 0) {
+        runtime.pendingSubsystemTransitionCount -= 1;
+      }
+    }
+    if (Number.isFinite(drive.maxHealth)) drive.health = drive.maxHealth;
+  }
+  // The damage pipeline emits subsystemEnabled when a shot restores a drive; a taut-line repair
+  // restores the same component through this file, so it must speak the same event or systems
+  // that record repairs (relief berths, yard tenders) cannot see the work.
+  if (restoredDrive && bus && typeof bus.emit === 'function') {
+    bus.emit('combat:subsystemEnabled', {
+      attackerId: null,
+      targetId: target.id,
+      subsystemId: 'subsystem_drive',
+      dependencyDisabled: false,
+      cueId: 'combat.subsystem.restored',
+      source: 'latch_repair',
+      repairedBy: owner && owner.id != null ? owner.id : null,
+    });
+  }
 }
 
-function applyRepair(state, target, dt) {
+function applyRepair(state, target, dt, owner, bus) {
   const hullMax = Number(target.hullMax);
   const hull = Number(target.hull);
   if (!Number.isFinite(hullMax) || hullMax <= 0 || !Number.isFinite(hull)) return 0;
   const next = Math.min(hullMax, hull + LATCH_REPAIR_HULL_PER_SECOND * dt);
   const gained = next - hull;
   target.hull = next;
-  if (next >= hullMax - 0.05) freeDrive(state, target);
+  if (next >= hullMax - 0.05) freeDrive(state, target, owner, bus);
   return gained;
 }
 
@@ -105,7 +136,7 @@ function applyRepair(state, target, dt) {
  * One pass over live attachments. A target heals at most once per call.
  * @returns {number} hull points restored this step
  */
-export function stepLatchRepair(state, dt) {
+export function stepLatchRepair(state, dt, bus) {
   const step = Number(dt);
   if (!(step > 0) || !state) return 0;
   const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
@@ -120,7 +151,7 @@ export function stepLatchRepair(state, dt) {
     if (!lineTaut(state, attachment, owner, target)) continue;
     if (healed.has(target.id)) continue;
     healed.add(target.id);
-    gained += applyRepair(state, target, step);
+    gained += applyRepair(state, target, step, owner, bus);
   }
   return gained;
 }

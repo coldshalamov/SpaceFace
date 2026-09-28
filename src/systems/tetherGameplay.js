@@ -228,7 +228,7 @@ export const tetherGameplay = {
     try { this._updateTetherGameplay(dt, state); }
     finally { this._insideTetherUpdate = false; }
     // The line's own phase was just mirrored. Hull climbs only while that line is taut.
-    if (state && state.mode === 'flight') stepLatchRepair(state, dt);
+    if (state && state.mode === 'flight') stepLatchRepair(state, dt, this.bus);
   },
 
   _updateTetherGameplay(dt, state) {
