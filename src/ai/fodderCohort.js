@@ -1274,6 +1274,10 @@ function desiredForMember(
 
 function publishPlans(director, cohort, recipe, tick) {
   const bound = Math.max(90, (cohort.spacing || recipe.densityTarget) * 2.2);
+  // Same roster contract as squad frames: packmates dying is a reflex trigger,
+  // and the roster reports it whether or not the wreck reaches contacts.
+  const squadMates = [];
+  for (const rec of cohort.members.values()) squadMates.push({ id: rec.id, alive: rec.alive });
   for (const rec of cohort.members.values()) {
     if (!rec.plan) {
       rec.plan = {
@@ -1312,6 +1316,7 @@ function publishPlans(director, cohort, recipe, tick) {
     const plan = rec.plan;
     plan.tick = tick;
     plan.phase = cohort.phase;
+    plan.squadMates = squadMates;
     plan.laneId = rec.lane;
     plan.integrity = cohort.integrity;
     plan.slot = rec.slot;

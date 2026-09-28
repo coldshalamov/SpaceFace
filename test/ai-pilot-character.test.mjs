@@ -731,6 +731,26 @@ test('a squadmate dying on the frame roster fires the loss reflexes without a hu
   }));
   assert.equal(out && out.kind, REFLEX_KIND.SCATTER_LOSS,
     'a roster flip must read exactly like the wreck reaching contacts');
+
+  // The grief is sticky, not a single tick: a survivor mid-burst when the roster
+  // flips still answers the loss once the burst ends (scatter_loss waits out the
+  // live mine_swerve — lower-numbered priorities arbitrate first).
+  const engine2 = createReflexEngine({ seed: 5 });
+  const rs2 = emptyReflexState();
+  rs2.lastHull = 0.9;
+  const mine = {
+    id: 'm1', kind: 'hazard', hostile: true, alive: true,
+    pos: { x: 120, z: 40 }, vel: { x: 0, z: 0 }, radius: 20,
+  };
+  const aliveRoster = [{ id: 'e7', alive: true }, { id: 'a1', alive: true }];
+  const deadRoster = [{ id: 'e7', alive: true }, { id: 'a1', alive: false }];
+  engine2.evaluate(evalCtx({ reflexState: rs2, squadMembers: aliveRoster, contacts: [mine] }));
+  const mid = engine2.evaluate(evalCtx({ tick: 1001, reflexState: rs2, squadMembers: deadRoster }));
+  assert.equal(mid && mid.kind, REFLEX_KIND.MINE_SWERVE,
+    'a live burst keeps its lane — grief does not cut a dodge short');
+  const after = engine2.evaluate(evalCtx({ tick: 1040, reflexState: rs2, squadMembers: deadRoster }));
+  assert.equal(after && after.kind, REFLEX_KIND.SCATTER_LOSS,
+    'once the dodge ends the pilot still answers the wingmate loss');
 });
 
 test('choreographed members twitch on reflexes but never brake off the frame', () => {

@@ -40,6 +40,8 @@ export function emptyReflexState() {
     lastHull: 1,
     seenAllies: null,       // Map friendly contact id -> alive flag (lazily allocated)
     prevMarked: false,
+    lossUntilTick: -1,      // grief stays readable for a window — see loss note below
+    hitUntilTick: -1,
   };
 }
 
@@ -70,13 +72,26 @@ export function evaluateReflexes(seed, ctx) {
   obs.markedLost = rs.prevMarked === true && marked === false;
   rs.prevMarked = marked;
 
-  // Burst expiry.
+  // Damage and grief are registered here once and stay readable for a window: the
+  // transition tick almost always lands inside someone else's live burst, so a
+  // one-tick flag would never be observed by the burst arbitration below.
+  if (hullHit > 0.015 || damageEventSeen(ctx)) rs.hitUntilTick = tick + 60;
+  if (obs.lostRecently) rs.lossUntilTick = tick + 150;
+  obs.hitRecently = tick < rs.hitUntilTick;
+  obs.lostRecently = tick < rs.lossUntilTick;
+
+  // Burst expiry, then preemption: a strictly higher-priority trigger (a hull going
+  // critical, a panic snap) may cut a live burst short; same-or-lower priorities wait
+  // for it to end. First-match ordering inside pickBurst keeps the arbitration stable.
   if (rs.burst && tick >= rs.burst.untilTick) rs.burst = null;
 
   // Burst arbitration: first matching spec (priority order) owns the window.
   if (!rs.burst) {
     const burst = pickBurst(seed, ctx, obs);
     if (burst) rs.burst = burst;
+  } else {
+    const preempt = pickBurst(seed, ctx, obs, rs.burst.spec.priority);
+    if (preempt) rs.burst = preempt;
   }
 
   // Resolve channels: burst channels first, then every matching stance merges in.
@@ -349,7 +364,7 @@ function gatesPass(spec, obs, ctx, seed) {
 
 // ── burst arbitration ─────────────────────────────────────────────────────────
 
-function pickBurst(seed, ctx, obs) {
+function pickBurst(seed, ctx, obs, belowPriority = Infinity) {
   const { entityId, tick, self, target, temperament, reflexState: rs } = ctx;
   const cooling = (kind) => rs.cooldowns != null && (rs.cooldowns.get(kind) || 0) > tick;
   const setCooldown = (kind, spec) => {
@@ -357,6 +372,7 @@ function pickBurst(seed, ctx, obs) {
     rs.cooldowns.set(kind, tick + spec.cooldownTicks);
   };
   for (const spec of BURST_SPECS) {
+    if (spec.priority >= belowPriority) break; // table is priority-ordered
     if (spec.cooldownTicks > 0 && cooling(spec.kind)) continue;
     if (!gatesPass(spec, obs, ctx, seed)) continue;
     const resp = spec.response;
