@@ -1245,7 +1245,7 @@ export const automationScreen = {
       card.className = 'au-card au-shop au-shop--drones';
       card.innerHTML = `
         <div class="grow">
-          <div class="nm">${prettyId(def.id)}${locked ? `<span class="au-locked au-locked--mark" title="Locked — requires drone tier ${def.tier}" aria-hidden="true"></span>` : ''}</div>
+          <div class="nm">${prettyId(def.id)}${locked ? `<span class="au-locked au-locked--mark" data-why="Locked — requires drone tier ${def.tier}" aria-hidden="true"></span>` : ''}</div>
           <div class="meta">
             <span>mine ${def.mineRate}/s</span>
             <span>yield ~${fmtCr(estDroneRate(def))}/min gross</span>
@@ -1255,7 +1255,7 @@ export const automationScreen = {
           </div>
           ${locked ? `<div class="au-note">Research logistics upgrades to unlock this heavier drone tier.</div>` : `<div class="au-note">Best first passive asset: low upkeep, visible in the field, and reversible on recall.</div>`}
         </div>
-        <button class="au-throttle" data-act="conduct" data-ref="drones" data-kind="drone" title="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the drones line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
+        <button class="au-throttle" data-act="conduct" data-ref="drones" data-kind="drone" data-why="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the drones line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="buyDrone" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1328,7 +1328,7 @@ export const automationScreen = {
           </div>
           <div class="au-note">${hireUnlocked ? 'Auto-picks a profitable route now; use Route later to reset heat and find a fresh spread.' : 'Unlocks after Drone Swarm, when the player has seen enough logistics to manage risk.'}</div>
         </div>
-        <button class="au-throttle" data-act="conduct" data-ref="traders" data-kind="trader" title="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the traders line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
+        <button class="au-throttle" data-act="conduct" data-ref="traders" data-kind="trader" data-why="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the traders line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="hireTrader" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1418,7 +1418,7 @@ export const automationScreen = {
           </div>
           <div class="au-note">${buildUnlocked ? 'High upkeep, high commitment: best after you can protect the sector or fund losses.' : 'This is the empire layer; reach it after traders prove the route economy.'}</div>
         </div>
-        <button class="au-throttle" data-act="conduct" data-ref="outposts" data-kind="outpost" title="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the outposts line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
+        <button class="au-throttle" data-act="conduct" data-ref="outposts" data-kind="outpost" data-why="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the outposts line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="buildOutpost" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1477,7 +1477,7 @@ export const automationScreen = {
             <div class="meta"><span>${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(prettyId(s.defId))) : ''}</span><span>starts on escort</span></div>
             <div class="au-note">Assigned ships remain in the automation ledger and spawn as live wingmen in-sector.</div>
           </div>
-          <button class="au-throttle" data-act="conduct" data-ref="fleet" data-kind="ownedShip" title="Take the wing throttle — conduct the fleet line" aria-label="Take the wing throttle">Throttle</button>
+          <button class="au-throttle" data-act="conduct" data-ref="fleet" data-kind="ownedShip" data-why="Take the wing throttle — conduct the fleet line" aria-label="Take the wing throttle">Throttle</button>
           <button class="au-buy" data-act="assignFleet" data-ref="${i}" data-kind="ownedShip">Assign as Wingman</button>`;
         frag.appendChild(card);
       }
