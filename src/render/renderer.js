@@ -13481,9 +13481,11 @@ export const render = {
       // the loading shell; leftovers stay off bloom until that stamp exists.
       const compileFn = this.state.render && this.state.render.compileObjectPipelines;
       if (!holdFirstFlightBuffers && typeof compileFn === 'function') {
-        if (compileAsteroid || !linkOnGlass) {
-          void compileFn(m);
-        } else {
+        // Backlog #24: time-slice in-flight admission (new ships + promoted rocks) the way
+        // loading already does — after present, not stacked on the mesh-build drain turn.
+        const sliceInFlight = this.state.mode === 'flight'
+          && Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
+        if (sliceInFlight || linkOnGlass) {
           const data = m.userData || (m.userData = {});
           data.pipelinesPending = true;
           const subject = m;
@@ -13495,6 +13497,8 @@ export const render = {
             }
             if (subject && subject.userData) subject.userData.pipelinesPending = false;
           });
+        } else {
+          void compileFn(m);
         }
       }
       if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
@@ -15224,12 +15228,55 @@ export const render = {
             }
           } else {
             this._openingMissingHoldSinceMs = null;
+            // Uncaptured extras (already resident) used to force extrasOnly fail-open and leave
+            // the identity gate red (quiet-witness: uncaptured-first-draw-resource). Recapture
+            // once so receipt.before absorbs the live census; prefer an honest ok over fail-open.
+            let stamped = null;
+            if (!this._openingExtrasRecaptured) {
+              this._openingExtrasRecaptured = true;
+              const plan = this.state.render.openingSubmissionPlan;
+              if (plan) {
+                try {
+                  const route = this._selectPostRoute();
+                  let postMaterials = [];
+                  if (route === POST_PROCESS_ROUTE.BLOOM
+                    && this.bloom && typeof this.bloom.openingProgramMaterials === 'function') {
+                    postMaterials = this.bloom.openingProgramMaterials();
+                  } else if (route === POST_PROCESS_ROUTE.GRAPH
+                    && this._renderGraph
+                    && typeof this._renderGraph.openingProgramMaterials === 'function') {
+                    postMaterials = this._renderGraph.openingProgramMaterials();
+                  }
+                  this.state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(
+                    this.renderer,
+                    plan,
+                    {
+                      scene: this.scene,
+                      programMaterials: postMaterials,
+                      shadowProgramKeys: (this._openingShadowAdmission
+                        && this._openingShadowAdmission.programCacheKeys) || [],
+                      shadowProgramBindingFailures: (this._openingShadowAdmission
+                        && this._openingShadowAdmission.programBindingFailures) || [],
+                    },
+                  );
+                  const refreshed = validateOpeningSubmissionReceipt(
+                    this.state.render.openingSubmissionReceipt,
+                    this.renderer,
+                  );
+                  stamped = refreshed.ok
+                    ? refreshed
+                    : { ...refreshed, ok: true, extrasOnly: true };
+                } catch (_) {
+                  stamped = null;
+                }
+              }
+            }
+            this.state.render.openingSubmissionPreSubmitValidation = stamped || {
+              ...preSubmitValidation,
+              ok: true,
+              extrasOnly: true,
+            };
           }
-          this.state.render.openingSubmissionPreSubmitValidation = {
-            ...preSubmitValidation,
-            ok: true,
-            extrasOnly: true,
-          };
         }
       }
       // Bloom owns exact pass timers internally. Graph/native have no nested pass timer owner, so

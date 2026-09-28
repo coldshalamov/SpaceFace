@@ -158,16 +158,27 @@ export function yieldAfterPresent() {
 }
 
 /**
- * Dispatch admission work at background priority. A setTimeout(0) queued from a display
+ * Dispatch admission work off the frame's critical path. A setTimeout(0) queued from a display
  * callback lands the job at timer priority on that frame's compositor beat — it raced the
- * present and was the largest named hitch owner (externalScheduling). postTask keeps it off
- * the frame's critical path; the timeout remains the headless/legacy fallback.
+ * present and was the largest named hitch owner (externalScheduling). After present, prefer
+ * scheduler.yield() so the resume does not stack on the compositor beat; postTask(background)
+ * is the next-best and setTimeout remains the headless/legacy fallback.
+ * (vm-drop shader-admission-slice, PERF backlog #27)
  */
 export function postTaskAtBackgroundPriority(callback) {
-  const postTask = typeof globalThis.scheduler === 'object' && globalThis.scheduler
-    && typeof globalThis.scheduler.postTask === 'function'
-    ? globalThis.scheduler.postTask.bind(globalThis.scheduler)
+  const sched = typeof globalThis.scheduler === 'object' && globalThis.scheduler
+    ? globalThis.scheduler
     : null;
+  const yieldFn = sched && typeof sched.yield === 'function'
+    ? () => sched.yield()
+    : null;
+  const postTask = sched && typeof sched.postTask === 'function'
+    ? sched.postTask.bind(sched)
+    : null;
+  if (yieldFn) {
+    Promise.resolve(yieldFn()).then(callback, () => { callback(); });
+    return;
+  }
   if (postTask) postTask(callback, { priority: 'background' });
   else setTimeout(callback, 0);
 }
