@@ -1,0 +1,82 @@
+TAP version 13
+# Subtest: INF-042: windup, active, and dissipation with the spans fixed
+ok 1 - INF-042: windup, active, and dissipation with the spans fixed
+  ---
+  duration_ms: 1.940335
+  type: 'test'
+  ...
+# Subtest: INF-042: the kernel enforces the published phase on strength itself
+ok 2 - INF-042: the kernel enforces the published phase on strength itself
+  ---
+  duration_ms: 0.373648
+  type: 'test'
+  ...
+# Subtest: INF-042: cone, seed, and unclocked snares stay full-force
+ok 3 - INF-042: cone, seed, and unclocked snares stay full-force
+  ---
+  duration_ms: 0.340942
+  type: 'test'
+  ...
+# Subtest: INF-042: the sampled hazard IS the published strength
+ok 4 - INF-042: the sampled hazard IS the published strength
+  ---
+  duration_ms: 0.583622
+  type: 'test'
+  ...
+# Subtest: INF-042: the pill words the enforced phase, never a fully-armed lie
+ok 5 - INF-042: the pill words the enforced phase, never a fully-armed lie
+  ---
+  duration_ms: 0.500475
+  type: 'test'
+  ...
+# Subtest: PQ-177.06 programmed miner fills the operation shipment, not the player hold
+ok 6 - PQ-177.06 programmed miner fills the operation shipment, not the player hold
+  ---
+  duration_ms: 26.952115
+  type: 'test'
+  ...
+# Subtest: PQ-177.06 a worker sale cannot spend or discount the player hold
+ok 7 - PQ-177.06 a worker sale cannot spend or discount the player hold
+  ---
+  duration_ms: 7.968546
+  type: 'test'
+  ...
+# Subtest: PQ-177.06 retry and save/reload of a mid-sale intent duplicate nothing
+ok 8 - PQ-177.06 retry and save/reload of a mid-sale intent duplicate nothing
+  ---
+  duration_ms: 16.112158
+  type: 'test'
+  ...
+# Subtest: PQ-177.06 a market execute with an intent id is one commit
+ok 9 - PQ-177.06 a market execute with an intent id is one commit
+  ---
+  duration_ms: 36.973908
+  type: 'test'
+  ...
+# Subtest: PQ-177.06 mine_to_depot leaves the field when the shipment is full, not the player hold
+ok 10 - PQ-177.06 mine_to_depot leaves the field when the shipment is full, not the player hold
+  ---
+  duration_ms: 0.883408
+  type: 'test'
+  ...
+# Subtest: PQ-177.06 a full player hold does not freeze a worker with shipment room
+ok 11 - PQ-177.06 a full player hold does not freeze a worker with shipment room
+  ---
+  duration_ms: 0.256838
+  type: 'test'
+  ...
+# Subtest: PQ-177.06 the sell step quotes the depot station, not a missing beacon
+ok 12 - PQ-177.06 the sell step quotes the depot station, not a missing beacon
+  ---
+  duration_ms: 0.475128
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 667.39032
