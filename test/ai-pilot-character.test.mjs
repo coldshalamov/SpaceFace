@@ -189,8 +189,11 @@ test('engaged squads get an auto recipe and a flight id; disengagement releases 
     assert.equal(ship.data.ai.autoSquadRecipe, true);
     assert.equal(ship.data.ai.squadFrameId, 's1#0');
   }
-  // A marksman doctrine mix produces the standoff gunline instead of a passing recipe.
-  const mixed = [mkShip(21, { doctrine: 'ranged_disengager' }), mkShip(22), mkShip(23)];
+  // A marksman doctrine mix in a different squad produces the standoff gunline.
+  const mixed = [
+    mkShip(21, { squadId: 's2', doctrine: 'ranged_disengager' }),
+    mkShip(22, { squadId: 's2' }), mkShip(23, { squadId: 's2' }),
+  ];
   assignAutoSquadRecipes(state, [...ships, ...mixed], 7);
   assert.equal(mixed[0].data.ai.squadRecipe, SQUAD_RECIPE_STANDOFF_GUNLINE);
   // Weapons-free dropped → the auto stamp releases.
@@ -200,6 +203,31 @@ test('engaged squads get an auto recipe and a flight id; disengagement releases 
     assert.equal(ship.data.ai.squadRecipe, undefined);
     assert.equal(ship.data.ai.squadFrameId, undefined);
   }
+});
+
+test('an incumbent auto stamp survives a mid-fight doctrine reassignment', () => {
+  const state = { playerId: 'player', tick: 100 };
+  const ships = [
+    mkShip(41, { doctrine: 'ranged_disengager' }),
+    mkShip(42), mkShip(43), mkShip(44),
+  ];
+  assignAutoSquadRecipes(state, ships, 7);
+  assert.equal(ships[0].data.ai.squadRecipe, SQUAD_RECIPE_STANDOFF_GUNLINE);
+  // The enemy mind promotes the marksman to a specialist role — it must leave the
+  // formation, but the rest of the flight keeps its gunline instead of re-deriving
+  // and resetting the choreography mid-fight.
+  ships[0].data.ai.combatDoctrineId = 'shield_breaker';
+  assignAutoSquadRecipes(state, ships, 7);
+  assert.equal(ships[0].data.ai.squadRecipe, undefined, 'a specialist leaves the frame');
+  for (const s of ships.slice(1)) {
+    assert.equal(s.data.ai.squadRecipe, SQUAD_RECIPE_STANDOFF_GUNLINE,
+      'surviving members keep the incumbent recipe');
+    assert.equal(s.data.ai.squadFrameId, 's1#0');
+  }
+  // Once nobody is engaged anymore the stamp still releases cleanly.
+  for (const s of ships) s.data.ai.roe = 'hold_fire';
+  assignAutoSquadRecipes(state, ships, 7);
+  assert.equal(ships[1].data.ai.squadRecipe, undefined);
 });
 
 test('authored recipes, passive hulls, and solo hostiles are left alone', () => {

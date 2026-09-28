@@ -667,6 +667,11 @@ export function yieldToBrowser() {
  * the compositor beat, so the default dispatches at background priority like
  * armCallbackAfterPresent — bounded, so a saturated main thread cannot starve the admission
  * chain while it waits for an idle slot that never opens.
+ *
+ * options.boundMs tightens the unstick arm when a caller wants degraded cadence to keep
+ * draining: racing present-vs-bound means a healthy cadence always resumes post-present
+ * (identical behavior), while below ~1/boundMs fps each slice stops waiting a whole
+ * present for its slot. The default 48 stays the starved-rAF unstick it was written as.
  */
 export function yieldToNextPresent(options = {}) {
   return new Promise((resolve) => {
@@ -689,7 +694,10 @@ export function yieldToNextPresent(options = {}) {
       // An occluded or minimized headed window can starve rAF indefinitely; a parked admission
       // would hold its GPU work (and any scratch state) forever. Same unstick window
       // armCallbackAfterPresent documents for headless/background stalls.
-      setTimeout(fire, 48);
+      const boundMs = Number.isFinite(Number(options.boundMs))
+        ? Math.max(0, Number(options.boundMs))
+        : 48;
+      setTimeout(fire, boundMs);
       return;
     }
     scheduleTask(resolve);

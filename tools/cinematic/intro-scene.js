@@ -221,7 +221,7 @@ function makeAnomaly() {
       void main(){
         float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.6);
         float pulse = 0.82 + 0.18 * sin(uTime * 0.9);
-        gl_FragColor = vec4(uColor * f * pulse * 1.6, f * 0.9);
+        gl_FragColor = vec4(uColor * f * pulse * 1.05, f * 0.9);
       }`,
   });
   g.add(new THREE.Mesh(new THREE.SphereGeometry(23.6, 48, 32), haloMat));
@@ -442,40 +442,78 @@ function makeDust(count = 700) {
   return { pts, mat };
 }
 
-// Final grade pass — vignette, grain, chromatic aberration, split-tone, fades, flicker.
+// Final grade pass — noir split-tone, vignette, grain, chromatic aberration, scanlines,
+// rolling band, dropouts, and deterministic glitch bursts. CRT-signal-from-a-dead-ship look.
 const GradeShader = {
   uniforms: {
     tDiffuse: { value: null },
     uTime: { value: 0 },
     uFade: { value: 1 },      // 0 = black
     uFlicker: { value: 0 },   // luminance dip 0..1
-    uCA: { value: 0.018 },    // chromatic aberration — subtle edge fringes only
-    uGrain: { value: 0.038 },
-    uVig: { value: 0.30 },
+    uGlitch: { value: 0 },    // burst envelope 0..1
+    uGlitchSeed: { value: 0 },// decorrelates the band layout per burst-frame
+    uCA: { value: 0.022 },    // chromatic aberration — subtle edge fringes only
+    uGrain: { value: 0.05 },
+    uVig: { value: 0.34 },
+    uScan: { value: 0.055 },  // scanline darkening depth
+    uRes: { value: new THREE.Vector2(1920, 1080) },
   },
   vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
   fragmentShader: `
-    uniform sampler2D tDiffuse; uniform float uTime, uFade, uFlicker, uCA, uGrain, uVig;
+    uniform sampler2D tDiffuse; uniform float uTime, uFade, uFlicker, uGlitch, uGlitchSeed, uCA, uGrain, uVig, uScan;
+    uniform vec2 uRes;
     varying vec2 vUv;
     float rnd(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453); }
     void main(){
       vec2 uv = vUv;
+      // constant faint horizontal hold wander — signal never quite locks
+      uv.x += (rnd(vec2(floor(uTime * 24.0), 1.7)) - 0.5) * 0.0016;
+      // --- glitch burst: quantize rows into bands, shear the hot ones sideways ---
+      float row = floor(uv.y * uRes.y);
+      float band = floor(uv.y * 34.0);
+      float bh = rnd(vec2(band, uGlitchSeed));
+      float hot = step(1.0 - uGlitch * 0.6, bh);
+      uv.x += (bh - 0.5) * uGlitch * 0.09 * hot;
+      // sparse full-row tears
+      float rh = rnd(vec2(row, uGlitchSeed + 17.0));
+      uv.x += step(0.994, rh) * (rh - 0.5) * uGlitch * 0.9;
+      // VHS tracking shear crawling in the bottom of frame
+      uv.x += smoothstep(0.88, 1.0, uv.y) * uGlitch * (rnd(vec2(uGlitchSeed, 9.1)) - 0.5) * 0.3;
+
       vec2 c = uv - 0.5;
       float r2 = dot(c, c);
-      // chromatic aberration, stronger at edges
+      // chromatic aberration, stronger at edges, spiked and dragged horizontal mid-glitch
       vec2 off = c * (uCA * r2 * 2.2);
+      off.x += uGlitch * 0.006 * (rnd(vec2(uGlitchSeed, 3.3)) - 0.5) * 4.0;
       vec3 col;
       col.r = texture2D(tDiffuse, uv + off).r;
       col.g = texture2D(tDiffuse, uv).g;
       col.b = texture2D(tDiffuse, uv - off).b;
-      // split tone: cool shadows, faint warm highs
-      col = mix(col, col * vec3(0.92, 1.0, 1.12), (1.0 - smoothstep(0.0, 0.55, dot(col, vec3(0.333)))));
-      col += vec3(0.012, 0.010, 0.006) * smoothstep(0.55, 1.0, dot(col, vec3(0.333)));
-      // vignette
-      col *= 1.0 - uVig * smoothstep(0.12, 0.62, r2);
-      // film grain, animated
-      float g = rnd(uv * vec2(1920.0, 1080.0) + fract(uTime * 13.7) * 91.7) - 0.5;
-      col += g * uGrain * (0.4 + 0.6 * (1.0 - clamp(dot(col, vec3(0.333)) * 2.0, 0.0, 1.0)));
+
+      float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
+      // noir split tone: violet-cyan shadows, magenta-warm highs, crushed blacks
+      // with the faint phosphor floor of a dead CRT (never true black).
+      float shadowW = 1.0 - smoothstep(0.0, 0.5, lum);
+      col = mix(col, col * vec3(0.86, 0.97, 1.14), shadowW);
+      col += vec3(0.030, 0.008, 0.052) * smoothstep(0.55, 1.0, lum);   // violet bleed on highs
+      col = col * 0.965 + vec3(0.0110, 0.0070, 0.0200);                 // black floor lift
+
+      // scanlines + a coarse brightness row; deepen inside glitches
+      float scan = sin(uv.y * uRes.y * 3.14159);
+      col *= 1.0 - uScan * (0.5 + 0.5 * scan) * (1.0 + uGlitch * 1.4);
+      // rolling band — dirty mains sweeping slowly down the raster
+      col *= 1.0 - 0.045 * (0.5 + 0.5 * sin((uv.y - uTime * 0.055) * 6.2831));
+      // dropout rows inside a burst — lines the deck loses entirely
+      float drop = step(0.996, rnd(vec2(row, uGlitchSeed + 41.0)));
+      col *= 1.0 - drop * uGlitch * 0.85;
+
+      // vignette — tighter, colder corners
+      col *= 1.0 - uVig * smoothstep(0.10, 0.62, r2);
+      col *= 1.0 - 0.06 * smoothstep(0.34, 0.55, r2);
+      // film grain, animated; coarsens into static during a burst
+      float g = rnd(uv * uRes + fract(uTime * 13.7) * 91.7) - 0.5;
+      float gAmp = uGrain * (1.0 + uGlitch * 2.6);
+      col += g * gAmp * (0.4 + 0.6 * (1.0 - clamp(lum * 2.0, 0.0, 1.0)));
       // flicker dip (frames where the signal skips)
       col *= 1.0 - uFlicker * 0.24;
       // fade
@@ -496,8 +534,13 @@ async function loadAll(renderer) {
     const asset = await gltf.loadAsync(ASSET_ROOT + rel);
     const root = asset.scene;
     // Assets ship LOD0/1/2 meshes in one file — keep LOD0 only or they triple-render.
+    // Same for non-render helpers (COLLISION_HULL proxies etc.) — assetLoader.js:1165 contract.
     const drop = [];
-    root.traverse((o) => { if (/^LOD[12]_/.test(o.name)) drop.push(o); });
+    root.traverse((o) => {
+      if (/^LOD[12]_/.test(o.name)) { drop.push(o); return; }
+      const n = String(o.name || '').toUpperCase().replace(/[\s-]+/g, '_');
+      if (o.isMesh && (n === 'COLLISION_HULL' || o.userData?.nonRender === true || o.userData?.spaceface?.nonRender === true)) o.visible = false;
+    });
     for (const o of drop) o.parent && o.parent.remove(o);
     const box = new THREE.Box3().setFromObject(root);
     const size = new THREE.Vector3(); box.getSize(size);
@@ -598,9 +641,9 @@ export async function createIntroCinematic({ canvas, width = 1920, height = 1080
   witnessLamp.position.set(-7, -12, -140);
   const witnessLampLight = new THREE.PointLight(0xffa860, 3400, 900, 2);
   witnessLampLight.position.copy(witnessLamp.position);
-  const witnessRim = new THREE.DirectionalLight(0x9fb8e8, 4.2);
+  const witnessRim = new THREE.DirectionalLight(0x8aa8e8, 3.4);
   witnessRim.position.set(-0.7, 0.4, 0.6);
-  const witnessFill = new THREE.DirectionalLight(0x38445f, 0.85);
+  const witnessFill = new THREE.DirectionalLight(0x38445f, 0.6);
   witnessFill.position.set(0.5, -0.6, 0.4);
   witness.add(witnessLamp, witnessLampLight, witnessRim, witnessFill);
   // A shard crossing faster behind — parallax marker.
@@ -653,7 +696,7 @@ export async function createIntroCinematic({ canvas, width = 1920, height = 1080
   courierKey.position.set(-0.5, 0.8, 0.4);
   const courierRim = new THREE.DirectionalLight(0x7fa8ff, 1.7);
   courierRim.position.set(0.7, 0.3, -0.6);
-  const courierHemi = new THREE.HemisphereLight(0x2c3852, 0x0c0e16, 0.8);
+  const courierHemi = new THREE.HemisphereLight(0x2c3852, 0x0c0e16, 1.05);
   // Passing bar light — a station lamp the ship flies under.
   const barLight = new THREE.PointLight(0xffc080, 3200, 320, 2);
   barLight.position.set(0, 60, -120);
@@ -671,6 +714,22 @@ export async function createIntroCinematic({ canvas, width = 1920, height = 1080
   gate.position.set(0, 10, -220);
   // bore axis toward camera — the ring reads as a ring, not a wall
   gate.rotation.set(0.10, 1.5, -0.2);
+  // Dead-gate dressing: clone the materials off this instance and push every
+  // emissive toward votive amber/crimson at low drive — cathedral glass in a
+  // wrecked nave rather than a live cyan portal. farGate keeps the stock set.
+  gate.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    o.material = o.material.clone();
+    const m = o.material;
+    if (!m.emissive || (m.emissive.r + m.emissive.g + m.emissive.b) < 0.05) return;
+    const name = (m.name || '').toUpperCase();
+    const tint = name.includes('NAV') || name.includes('WARNING') ? 0xc21205
+      : name.includes('CYAN') ? 0xd8541e
+      : 0xe06a28;
+    m.emissive.setHex(tint);
+    m.emissiveIntensity = (m.emissiveIntensity || 1) * 0.5;
+    m.needsUpdate = true;
+  });
   gateShot.add(gate);
   const anomaly = makeAnomaly();
   anomaly.group.scale.setScalar(1.35);
@@ -692,11 +751,11 @@ export async function createIntroCinematic({ canvas, width = 1920, height = 1080
   rimLocal.position.copy(gate.position);
   rimLocal.rotation.copy(gate.rotation);
   gateShot.add(rimLocal);
-  const gateKey = new THREE.DirectionalLight(0x8ea8d8, 1.5);
+  const gateKey = new THREE.DirectionalLight(0x8ea8d8, 0.95);
   gateKey.position.set(0.4, 0.8, 0.5);
-  const gateViolet = new THREE.PointLight(0x7a3cff, 3800, 1200, 2);
+  const gateViolet = new THREE.PointLight(0x8a3cff, 2100, 1200, 2);
   gateViolet.position.copy(gate.position);
-  const gateHemi = new THREE.HemisphereLight(0x1c2438, 0x070810, 0.75);
+  const gateHemi = new THREE.HemisphereLight(0x1c2438, 0x070810, 0.55);
   // Foreground debris crossing while we approach.
   const gateDebris = scaleTo(assets.grating.clone(), 14);
   gateDebris.position.set(-30, 14, -60);
@@ -729,9 +788,10 @@ export async function createIntroCinematic({ canvas, width = 1920, height = 1080
   // ================================================================ POST
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), 0.65, 0.9, 0.72);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), 0.55, 0.7, 0.85);
   composer.addPass(bloom);
   const grade = new ShaderPass(GradeShader);
+  grade.uniforms.uRes.value.set(width, height);
   composer.addPass(grade);
   composer.addPass(new OutputPass());
 
@@ -762,6 +822,32 @@ export async function createIntroCinematic({ canvas, width = 1920, height = 1080
       if (d >= 0 && d < 3) f = Math.max(f, d < 1.5 ? 1 : 0.4);
     }
     return f;
+  }
+
+  // Glitch schedule — signal-tear bursts riding the shot cuts, plus two quiet
+  // creep beats: the helmet's eclipse heartbeat and the anomaly reveal shudder.
+  // Every burst is a pure function of t so the bake stays frame-exact.
+  const GLITCHES = [
+    { t: 9.55, dur: 0.32, amp: 0.7 },   // witness eclipse stutter
+    { t: 10.42, dur: 0.42, amp: 1.0 },  // → field
+    { t: 16.68, dur: 0.36, amp: 0.9 },  // → courier
+    { t: 22.50, dur: 0.40, amp: 1.0 },  // → gate
+    { t: 25.10, dur: 0.50, amp: 0.8 },  // anomaly reveal
+    { t: 27.90, dur: 0.45, amp: 1.0 },  // → lapse
+    { t: 31.30, dur: 0.38, amp: 0.75 }, // last gasp before the loop seam
+  ];
+  function glitchAt(t) {
+    let g = 0, seed = 0;
+    for (let i = 0; i < GLITCHES.length; i++) {
+      const e = GLITCHES[i];
+      const d = t - e.t;
+      if (d >= 0 && d < e.dur) {
+        // hard attack, fast decay, frame-rate stutter inside the envelope
+        const v = e.amp * Math.exp(-d * 8.0) * (0.55 + 0.45 * hash(Math.floor(t * 24) * 0.61 + i));
+        if (v > g) { g = v; seed = i * 7.13 + Math.floor(d * 24) * 1.37; }
+      }
+    }
+    return [g, seed];
   }
 
   function updateWake(t, u) {
@@ -894,7 +980,7 @@ export async function createIntroCinematic({ canvas, width = 1920, height = 1080
       s.material.opacity = clamp(v, 0, 1);
       s.scale.setScalar(5 + v * 6);
     }
-    gateViolet.intensity = 3800 * (0.75 + 0.25 * Math.sin(t * 0.9)) + u * 3200;
+    gateViolet.intensity = 2100 * (0.75 + 0.25 * Math.sin(t * 0.9)) + u * 2200;
     gateDebris.position.x = lerp(-70, 20, u);
     gateDebris.position.y = lerp(24, -6, u);
     gateDebris.rotation.set(0.4 + t * 0.2, t * 0.14, 0.1);
@@ -937,6 +1023,9 @@ export async function createIntroCinematic({ canvas, width = 1920, height = 1080
     grade.uniforms.uTime.value = t;
     grade.uniforms.uFade.value = fadeAt(t);
     grade.uniforms.uFlicker.value = flickerAt(t);
+    const [gAmt, gSeed] = glitchAt(t);
+    grade.uniforms.uGlitch.value = gAmt;
+    grade.uniforms.uGlitchSeed.value = gSeed;
     composer.render();
   }
 
