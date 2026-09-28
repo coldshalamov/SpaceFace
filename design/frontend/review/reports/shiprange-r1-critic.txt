@@ -1,0 +1,230 @@
+SHIP + RANGE r1 CRITIC — ORRERY frontend overhaul, build round r1
+Critic: ship-range r1 critic. Stills opened with own eyes + crops measured with sharp.
+Scoring law: design/frontend/review/CRITIC_BRIEF.md. PASS = overall >= 8.0 AND no axis
+< 7.0 AND owner (a) band-weight/generic test AND owner (b) signature interaction.
+Axes: Composition / Hierarchy / Legibility / ORRERY fidelity / Craft-detail /
+Interaction clarity. Previous scores: wave2-audit-critic.txt sections 1-2.
+Px are in the named shot's own pixels. 1280 shots are 1280x720, 1920 are 1920x1080.
+Crops: .devshots/ui-review/crops/sr-*.png. Bench sources .devshots/ui-bench/ship.png
+and range.png are byte-identical to the 1280 view stills.
+
+Contrast method: WCAG ratio of sampled composited pixels. Bone = rgb(236 230 216),
+amber Hand/Lamp = #F2B950 (242 185 80). "Glass" bg near-black ~(15 12 14).
+
+================================================================================
+1. SHIP (Hitch fit screen) — 6.8 — FAIL (r0 6.9; fixes landed, hull regressed)
+================================================================================
+Axes (score, previous, note):
+- Composition 6.5 (was 7.5): 1920 is strong; 1280 has NO hull — callouts float over
+  trusses. A missing hero craters composition at the gated size.
+- Hierarchy 7.5 (was 7.5): title / prose / hull / readings / rail order is clear.
+- Legibility 7.5 (was 6.5): unboxed callouts + demoted ambers read cleanly; sub-type
+  now ~12px; 1280 has zero glyph collisions (measured).
+- ORRERY fidelity 6.5 (was 6.0): lawful callouts, lamp, spine+ticks — but verb pills
+  remain, the wheel has no Hand, two stray ambers persist.
+- Craft/detail 7.0 (was 7.0): leaders/dots/spine are clean; wheel still a dead disc,
+  pills cheapen the mid-band.
+- Interaction clarity 6.0 (was 7.0): no selection state anywhere, and at 1280 the
+  slot-pick surface (the hull) does not exist — the signature is unplayable there.
+
+r0 fixes item by item (S1-S7):
+- S1 1280 overlap: DONE (fragile). Per-row bright-run analysis, 1280 y150-280
+  x340-560: all glyph runs disjoint, ZERO intersections. Tightest gaps 1-3px
+  (e.g. y=192 prose run ends x421, next ink x423). Passes the acceptance test but
+  a 1px gutter re-collides on any font/zoom shift — see SH6.
+- S2 1280 fold: DONE. Two-column stat band (Agility/Top speed | Inertia/Brake);
+  Brake + SAVE FIT fully above the fold (SAVE FIT 1280 y~620-660); rail helper,
+  S1/S2, DOCK TO EXTEND all visible to y~640.
+- S3 chips -> Leader Callouts: DONE (structure). Seven callouts unboxed: bone
+  label + OPEN/size on glass, elbowed 45deg leaders (sample 232,226,212) to bone
+  hull dots (218,215,198). No black chips. Chosen-slot bead+arm NOT verifiable:
+  no selection in either still (no amber on any callout — correct for
+  unselected). Selection-state proof owed, see SH2.
+- S4 systems wheel: HALF. Relight partial: arc core peaks (182,175,166) 8.96:1,
+  limbs (135,128,122) ~4.6:1, dim ends (109,102,97) 3.45:1 — ALL >= 2:1, tick
+  ring added (1920 x~1620-1780 y~135-215). But: no amber Hand to any system, no
+  labels at all, ~2px core with no 4-6px bloom under-stroke, still a near-black
+  disc. Passes the number, not the instrument. See SH4.
+- S5 Lamp Key: HALF. SAVE FIT is the Lamp Key (242,185,80 = #F2B950, 45deg cut)
+  ✓; ACTIVE demoted to warm bone (200,183,169) ✓; TOP SPEED label neutral
+  (124,120,115) ✓; S1/S2 bone ✓. Remainder: title underline still amber
+  (140,96,40 at 1920 y~126-130) + badge left edge still amber (x=76, y94-142).
+  Three amber UI things, no Hand. See SH5.
+- S6 right rail ladder: DONE. Spine + per-row ticks confirmed (1px spine column
+  through y384-396; ticks in rail crop 1920 x~1530-1850 y~330-690). Dividers
+  read as ladder rules, not box edges — keep. Chosen-row bead+arm unverifiable
+  (no selection) — same owed proof as S3, see SH2.
+- S7 contrast/type: DONE (marginal). "0/1 fitted" ink band 11px (rows 397-407)
+  ~= 12px type — hold, do not shrink. Cores (232,228,221) vs bg 15.35:1; bars
+  6-15:1. Wheel labels N/A (none exist — S4's problem, not S7's).
+
+RANKED FIXES (shipworks.js = src/ui/station/screens/shipworks.js; css = styles/station.css):
+SH1. (P0) Restore the hull at <=1366 widths. 1280 teal census 28/96600 px
+  (0.03%, noise) vs 1920 12.8% — the hull is ABSENT at 1280, leaders point at
+  dots floating over trusses behind the RECORD band. Hull must fill ~x300-700
+  y~120-330 at 1280. RULING (as charged): this is an owed fix, not acceptable
+  composition — the hero instrument and the slot-pick surface are gone; the
+  callouts are meaningless without them. Files: shipworks.js stage/hull mount
+  (.sx-sw__canvas/.sx-sw__stage) + css breakpoint. Re-shoot 1280: hull visible
+  AND S1/S2 still hold.
+SH2. (P0) Prove slot-pick alive (owner b). Neither still shows a selection: no
+  bead/arm on any hull dot or rail row, no preview delta, no stat ghosts.
+  Ship an r2 still WITH a slot chosen: amber bead+arm on the hull dot AND the
+  rail row (that arm IS the Hand per ruling), compatible-hardware preview +
+  ghost deltas on the stat bars. File: shipworks.js selection renderer
+  (.sx-hardpoint[data-spatial-slot], .sx-sw-flow.is-selected).
+SH3. Verb strip pills -> dotted words. 1920 x~620-1230 y~540-580 (TAKE THE
+  HITCH TO THE RANGE / RECORD / SELECT A SLOT): dark filled pills (bg
+  50,41,39) on a dark band — key-cap chrome, generic, violates the
+  cross-surface purge law. Bone dotted words on glass. Files: shipworks.js
+  ~L427/L1484 (.k-word verbs) + css.
+SH4. Wheel: instrument or delete (S4 remainder). 1920 x~1620-1780 y~135-215
+  (powerDialSvg in src/ui/orrery/shipworksLayouts.js): add 4-6px bloom
+  under-stroke, amber Hand to the fitted/highest-draw system, >=12px system
+  labels — or delete the disc and let the rail be the Ladder. A dim ring on a
+  black disc must not ship.
+SH5. Amber audit (S5 remainder). Title rule 1920 x~330-570 y~126-130
+  (140,96,40) -> bone; badge left edge (x~76 y~94-142) -> bone. End state: ONE
+  amber Hand (slot bead/arm when selected) + ONE amber Lamp Key (SAVE FIT).
+  (Hull livery stripes + lit trusses are produced art/scene light, not UI —
+  not counted.)
+SH6. Harden S1: 1px gutters (1280 y~192 x421->423) re-collide on any shift.
+  Cap prose max-width AND Guarantee >=8px clear gutter to the callout stack at
+  <=1366 widths. Files: shipworks.js callout layout + css.
+SH7. Stat-bar light (low): bars are 2px tall (y781-782 etc.); fill ~13:1 and
+  track ~6:1 pass, but add a 4px bloom under-stroke to the fill so it reads as
+  light, not rule.
+Memorable if: choosing a slot swung an amber arm from the wheel to the hull
+  point with live stat-delta ghosts — nothing here attempts that yet.
+
+Section 7 — owner criteria, SHIP:
+(a) FAIL. Fixed: slot chips are now lawful leader callouts; bars pass 2:1
+  (fill ~13:1, track ~6:1). Offenders: (1) the verb strip (1920 x~620-1230
+  y~540-580) — generic dark pills, needs unboxing to dotted words; (2) the
+  systems wheel — passes 2:1 by measurement (3.5-9:1) but is still a thin ring
+  on a dead disc with no Hand/labels/bloom, needs SH4. Two named offenders.
+(b) FAIL (HALF). Signature named — "pick a slot on the hull, preview
+  compatible hardware" — and distinct per-screen, but the stills show no
+  selection state, no bead/arm, no preview delta; at 1280 the hull is missing
+  so the signature is literally unplayable. Not strong, not memorable yet.
+Palette law: amber 3 UI things (badge edge, title rule, SAVE FIT), no Hand —
+  owing SH5. Bone discipline good (leaders/dots/readings bone). No red ✓. No
+  ice at rest ✓ (motion frozen). 4.5:1 ✓ (15:1 cores). >=12px marginal ✓
+  (11px ink band ~= 12px type). DOCK TO EXTEND dotted ✓; mid strip NOT dotted
+  ✗ (SH3). Reduced-motion info: unverifiable from stills, no evidence of loss.
+1280 gate: overlap ✓ (zero intersections), fold ✓ (Brake + SAVE FIT above
+  fold) — BUT hull absent: GATE FAILED, see SH1 ruling above.
+
+VERDICT SHIP: NOT PASSED, overall 6.8 (previous 6.9). r1 fixed S1/S2/S3/S6/S7
+  and half of S4/S5, but regressed the hero at 1280 and still shows no living
+  signature. r2 = SH1 + SH2 first, then SH3-SH6.
+
+================================================================================
+2. RANGE (flight drill room) — 7.6 — FAIL (r0 5.8; structure transformed, polish owed)
+================================================================================
+Axes (score, previous, note):
+- Composition 7.5 (was 5.5): unboxed hero, corner ticks, beam, rail, foot — a
+  real layout; y~900-990 dead band + sparse foot cost the last point.
+- Hierarchy 8.0 (was 6.5): title -> instrument -> rule scale -> foot; the Lamp
+  Key leads unambiguously.
+- Legibility 7.5 (was 7.5): bone-on-black everywhere; gate numerals ~8-10px
+  ink miss the 12px law.
+- ORRERY fidelity 8.0 (was 4.5): scales, beam, hand-bead, lamp, dotted words,
+  corner ticks; zero boxes, zero chips.
+- Craft/detail 7.0 (was 5.0): ticks/numerals/bead/arrowhead/ring all detailed;
+  blooms thin, pentagon+ring plain, foot minimal.
+- Interaction clarity 7.5 (was 6.0): run state readable (GATE 1/4, 2.5S timer,
+  bead on gate 1); the pale mid-beam dot's meaning is ambiguous.
+
+r0 fixes item by item (R1-R7): ALL DONE.
+- R1 unbox hero: DONE. Rectangle border gone both shots; four corner ticks
+  present (1920 inset ~x85-1835 y~375-705).
+- R2 gates -> Scales: DONE. Four ruled scales, major/minor ticks + numerals;
+  gate1 core (236,230,216) and gate3 core (227 avg) bone at ~14:1 vs glass.
+  Amber ONLY on the active-gate bead (242,184,79 = #F2B950 at 603,533);
+  gates 2-4 markers bone (gate2dot 236,230,216). Bloom shoulders present but
+  thin (1293: 63, 1297: 145) — widen in polish, see RG2.
+- R3 progress beam: DONE. Beam arrowhead x~190 to gate 1 x~597 at y~536-537:
+  2px bone core + bloom to ~8px (y534-541), amber bead at the active gate,
+  pale bone marker mid-beam (233,227,213 — correct frozen-at-rest; R3's "ice
+  pulse while running, frozen bone at rest"). The run is visible.
+- R4 keys: DONE. NEXT RULE amber Lamp Key (242,185,80, 45deg cut) ✓; AGAIN /
+  TRY IT EMPTY / RULES / BESTIARY / CLOSE all bone dotted words (sample
+  180,174,163) ✓. Zero dark chips anywhere.
+- R5 rule rail -> Ladder: DONE. Horizontal scale with spine + per-rule ticks +
+  bone light cursor (bead 202,197,185 under the chosen rule) — exactly the
+  "horizontal scale" alternative R5 allowed. No longer a row of links.
+- R6 polygon: DONE. Flat grey fill gone; bone pentagon outline + thin ticked
+  ring around the obstacle; BRUISER marker bone. Reads intentional, as R6's
+  fallback prescribed. Richness is now polish (RG4), not structure.
+- R7 fill the void: DONE (minimally). Rule scale y~820-890 + foot row
+  y~1000-1020 (verbs + gauge icon + "GATE 1/4 2.5S BEST —" readout) + 0/9 and
+  GATE 1/4 counters. The 40% void is gone; a ~90px dead band (y~900-990) and
+  a thin foot remain — polish, see RG1.
+
+RANKED FIXES (range.js = src/ui/screens/range.js + its stylesheet):
+RG1. Foot run instrument (the 8.0 delta). 1920 y~900-990 is a dead band and
+  the foot is one text line. Add the run instrument R7 named: progress arc
+  (GATE n/4 Arc Gauge) + best-time Counter at 1920 x~1500-1830 y~985-1025,
+  and pull the foot up so y~900-990 carries the ghost-line strip or the rule
+  dossier — no 90px of empty black on the drill screen.
+RG2. Bloom width (R2 polish). Gate cores are 1-2px with thin shoulders;
+  spec is a 4-6px bone under-stroke. Same treatment as the beam (which has
+  its ~8px envelope) so gates and beam match weights. File: range.js gate
+  renderer + stylesheet.
+RG3. Type law: gate numerals ~8-10px ink (box x600-630 y528-540) miss >=12px;
+  raise numerals + foot microcopy to >=12px and run ui-contrast (foot text
+  under threshold-300 in places — verify >=4.5:1 on composited pixels).
+RG4. Obstacle richness. Pentagon outline + ring are correct but plain; tick
+  the ring fully (now sparse) and take the pentagon to 2-3px bone, or ship
+  the produced rock render R6 preferred. 1920 x~780-1020 y~430-640.
+RG5. Legend the pale mid-beam dot (1920 x~525-532 y~542-548, 233,227,213):
+  origin tick, you-are-here, or ghost? One word on the rail or a tick glyph
+  so it isn't a mystery second bead. (NOT amber — correctly bone.)
+RG6. 1280 guard (holds today, pin it): gate 4 sits near the right corner
+  ticks (1280 x~1075 vs ticks x~1145) — keep >=24px clearance in layout so a
+  future nudge doesn't collide them.
+Memorable if: your best run's ghost-line hung in the air behind the beam when
+  you pressed the Lamp Key — a rehearsal you can see. Nothing here attempts
+  that yet; it + RG1 is the 8.5 screen.
+
+Section 7 — owner criteria, RANGE:
+(a) PASS. (1) Bordered box deleted, corner ticks in its place ✓. (2) Gates
+  are ruled bone scales at ~14:1 with major/minor ticks + numerals — body,
+  not wires ✓. (3) Grey polygon replaced by bone ring + outline ✓. (4) All
+  six chips converted: one amber Lamp Key + dotted words ✓. No generic web
+  components remain; no hairline-only instruments (ring/pentagon are outline
+  grammar around a real scale set, RG4 polishes).
+(b) PASS. Signature = the gate-run made visible: progress beam with arrowhead,
+  amber bead riding the active gate, live state (GATE 1/4, 2.5S timer, BEST,
+  0/9 cleared). Distinct per-screen, visible in the still, stateful. Strong;
+  the ghost-line (above) would make it memorable.
+Palette law: EXACTLY one amber Hand (gate-1 bead, 13px) + one amber Lamp Key
+  (NEXT RULE, 1748px) — amber census clean ✓. Bone exact (236,230,216) on
+  beam/gates ✓. Ice absent at rest ✓ (correct frozen). Red absent ✓
+  (correct). Dotted words throughout ✓. 4.5:1 ✓ on sampled readings (bone
+  ~14:1, rule words ~6:1; foot microcopy to be verified by script, RG3).
+  >=12px: body/labels ✓, gate numerals ✗ (~8-10px, RG3). Reduced-motion info:
+  unverifiable from stills, no evidence of loss.
+1280 gate: PASS. Title + keys + hero + two-row rule scale + foot all fit at
+  1280x720; nothing overlaps, nothing structural below y~700.
+
+VERDICT RANGE: NOT PASSED, overall 7.6 (previous 5.8). Every owed fix R1-R7
+  closed, (a) and (b) both pass, palette and 1280 gate clean — r1 was the
+  structural transformation (+1.8). It sits below 8.0 only on polish density
+  (dead band, thin foot, thin blooms, small numerals). r2 = RG1-RG4, then
+  re-shoot.
+
+================================================================================
+CROSS-SURFACE (from the wave2 audit list)
+================================================================================
+- Key-cap purge: range complete (0 chips). Ship owes 3 (mid verb strip, SH3);
+  SAVE FIT / NEXT RULE are lawful lamps; DOCK TO EXTEND / AGAIN / TRY IT
+  EMPTY / RULES / BESTIARY / CLOSE lawful dotted words.
+- Amber audit: range exactly Hand + Lamp. Ship 3 UI ambers, no Hand (SH5).
+- 1280 gate: range passes. Ship fails on the missing hull (SH1) despite
+  passing overlap + fold.
+- Bands >=2:1 measured: ship bars 6-13:1 ✓, ship wheel 3.5-9:1 ✓ (number
+  only — still an ornament), range gates ~14:1 ✓, range beam core+bloom ✓.
+- Reduced-motion: arrival states frozen as designed in all stills; per-screen
+  info-keeping unverified — builders to confirm, no contrary evidence.

@@ -32,8 +32,9 @@ Since 2026-09-25 late the bar is the OWNER'S: every surface must also answer (a)
 elements and (b) one distinct signature interaction (`design/frontend/OVERHAUL_PLAN_2026-09-25.md` §1, §2.1 —
 a band counts as body only at >= 2:1 on the glass, measured). Screens marked "letter" passed ORRERY before
 that bar existed and are re-scored after the weight sweep. Live per-surface status: the plan's §4 table.
-Latest critic report per surface: `design/frontend/review/reports/`. 24 surfaces approved (Replay 8.1,
-Clips 8.0 APPROVED via replayclips-r1); Title r2 + Crucible r2 + ship/range r1 verdict + automation r2 outstanding.
+Latest critic report per surface: `design/frontend/review/reports/`. 27 surfaces approved (Crucible
+suite fully APPROVED via crucible-r2: door 8.2, draft 8.1, refit 8.3, results 8.3); Title r2 + ship/range r2 +
+automation r2 outstanding.
 
 | Screen | State | Last score | Composition file | What is left |
 |---|---|---|---|---|
@@ -41,7 +42,7 @@ Clips 8.0 APPROVED via replayclips-r1); Title r2 + Crucible r2 + ship/range r1 v
 | Title / main menu | 8.2 NOT PASSED (frontdoor-rs1): (b) signature unbuilt | 8.2np | `arcRail.js` (`place`, `clearOf`), `screenLayouts.js`, `mainMenu.js` | r2: T-S1 Hand tracks pointer + ring parallax (stops-only under reduce-motion), T-C1 face band ≥Y70, T-C2 rays bone .38; queued behind crucible r2 (shared screenLayouts.js) |
 | Pause | **APPROVED 8.3** (frontdoor-rs1) | 8.3 | `arcRail.js` (`grouped`), `pause.js`, `screenLayouts.js` | Polish only: 0% gauge 2px + bead, 1280 LOCAL MAP nudge, brief name bone .92 |
 | New game | **APPROVED** (r7 8.2, both owner criteria): Spin the yard (`yardCarousel.js`, mass-weighted drag, stat arcs sweep between hulls), the difficulty stop-arc, the hull ring, the launch beat | **8.2 (r7)** | `yardCarousel.js`, `hullRing.js`, `stopDial.js`, `newGame.js`, `screenLayouts.js` | The form column's empty band (270 px at 1920); the Pelican poster is blockout (asset job) |
-| Crucible door / armory / refit / results | results **APPROVED 8.3** (crucible-rs1); door 7.8, draft 7.4, refit 8.0 NOT PASSED (fidelity floor) | 8.3 / 7.8 / 7.4 / 8.0np | `screenLayouts.js`, `slotJig.js`, `hullSchematic.js`, `deathDial.js` | r2: kbd→dotted-words stylesheet pass (all caps suite-wide), draft palette to 1 Hand + 1 Lamp, door arena carousel + amber needle + GHOST contrast + records row at 1280, refit Lamp on TAKE THE WIN + fit-count at 1280, results 1280 hit legend |
+| Crucible door / armory / refit / results | **ALL APPROVED** (crucible-r2): door 8.2, draft 8.1, refit 8.3, results 8.3 (rs1, unregressed) | 8.2 / 8.1 / 8.3 / 8.3 | `screenLayouts.js`, `slotJig.js`, `hullSchematic.js`, `deathDial.js` | Done; suite carry-over per r2 report only |
 | Station shell (all 7 tabs share it) | **APPROVED 8.0** (station3-r1, zero margin) | 8.0 | `stationLayouts.js` | Rail .27→.30 in tree; UNDOCK instrument + MUNITIONS band + thin dial numerals owed |
 | Station Market | **APPROVED 8.0** (market-r1, on the line) | 8.0 | `marketLayouts.js`, `market.js` | Carry-over: right-edge scale + spread bracket wires (~1.6:1), CIVILIAN clip, AVG stub, bead knot, unlabeled 40 |
 | Station Shipworks (dock host) | **APPROVED 8.1** (sw-r16); r17 landed (2334d326d: detents, centred hulls, lit view tag, rail part) | 8.1 | `shipworks.js`, `shipworksLayouts.js` | Not re-scored since r17; Pelican art (D72) |
