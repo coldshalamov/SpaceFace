@@ -920,14 +920,12 @@ ${W} :is(.sx-sw__salering, .sx-sw__jigband) .sx-sw__bezel-edge { fill:none; stro
 ${W} .sx-sw__salering .sx-sw__bezel-edge.sx-sw__salering-ring { stroke:rgb(${BONE} / var(--bezel-edge-a, .58)); stroke-width:1.5px; }
 ${W} .sx-sw__salering .sx-sw__bezel-notch { fill:none; stroke:rgb(4 6 9 / .8); stroke-width:1.5px; }
 ${W} .sx-sw__salering .sx-sw__bezel-major { fill:none; stroke:rgb(252 249 240 / .95); stroke-width:2px; }
-${W} .sx-sw__salering .sx-sw__bezel-lit { fill:none; stroke:rgb(246 242 232 / .96); stroke-linecap:butt; }
-${W} .sx-sw__salering .sx-sw__bezel-index { fill:none; stroke:rgb(${BONE} / .62); stroke-width:2px; stroke-linecap:butt; }
-${W} .sx-sw__salering .sx-sw__bezel-index.is-detent { stroke:rgb(255 252 244); }
-/* the view words ride inside the band, turned along it; the current one is dark ink on its lit stretch */
+${W} .sx-sw__salering .sx-sw__bezel-index { fill:none; stroke:rgb(240 236 226); stroke-width:2px; stroke-linecap:butt; }
+${W} .sx-sw__salering .sx-sw__bezel-index.is-detent { stroke:rgb(255 252 244); stroke-width:3.5px; filter:drop-shadow(0 0 3px rgb(255 240 214 / .9)); }
+/* the view words ride inside the band, turned along it (the current one is light, not a fill: see round 17) */
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { transform:var(--vw-rot, none) !important; translate:none !important; scale:none !important; transform-origin:50% 50% !important;
   font-size: 12px !important; font-weight:600 !important; font-variation-settings:"wdth" 112, "wght" 600 !important; letter-spacing:.16em !important; line-height:1 !important;
   padding:2px 3px !important; color:rgb(250 247 238 / .96) !important; }
-${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current { color:rgb(12 14 18) !important; }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera]:is(:hover, :focus-visible):not(.is-current) { color:rgb(255 253 246) !important; }
 @media (max-height:800px) {
   ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { font-size: 12px !important; letter-spacing:.12em !important; padding:1px 2px !important; }
@@ -946,14 +944,41 @@ ${W} .sx-sw-bar__track > .k-bar__fill { border-radius:0 !important; background:r
 ${W} .sx-sw-bar__track > .k-bar__fill::before { content:none !important; display:none !important; }
 ${W} .sx-sw-bar__track > .k-bar__fill::after { right:-1px !important; top:50% !important; width:2px !important; height:9px !important; margin-top:-4.5px !important; border-radius:0 !important;
   background:rgb(255 252 244) !important; box-shadow:none !important; }
+/* ============================ ROUND 17: the current view is light, not a fill ============================ */
+/* the other two words sit at the socket words' level, held to 4.5:1 on the band (lum ~180 on 69); the current
+   word is lit on the band (~250); its stretch is closed by two lit end ticks and the index over it (~236) */
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { color:rgb(184 180 170) !important; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current { color:rgb(252 249 240) !important; }
+${W} .sx-sw__salering .sx-sw__bezel-end { fill:none; stroke:rgb(240 236 226); stroke-width:2px; stroke-linecap:butt; }
+/* the fit dial's legend stands under the dial's foot: at the 12px floor it no longer fits between the WEAPON and
+   THRUSTERS words at the arc's two ends (a short stage shows no words round the arc and keeps it inside) */
+@media (min-height:801px) { ${W} .sx-sw-circuit__core .k-hero__w { top:auto; bottom:0; } }
+/* a roster row's role line runs under the price as well (at the 12px floor it wrapped inside the name column and,
+   on a short Fleet stage, into the readings under the roster) */
+${W} .sx-sw-row > .sx-sw-row__body { grid-column:1 / -1; grid-row:1; }
+${W} .sx-sw-row > .k-row__num { grid-column:2; grid-row:1; align-self:start; }
+${W} .sx-sw-row .k-row__sub { letter-spacing:.1em !important; }
+/* Fleet on a tall stage: both side columns stand on the same foot as the verb row under the dial. The hull's
+   readings (left) and the rack and readouts (right) sit down on it; the roster and the fit dial keep the top line */
+@media (min-height:960px) {
+  ${W}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats { top:auto !important; bottom:22px !important; }
+  ${W}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__side > .sx-sw-circuit { display:flex; flex-direction:column; min-height:100%; }
+  ${W}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__side > .sx-sw-circuit > .sx-sw-rack { margin-top:auto !important; }
+}
+
 /* the exploded schematic: the module riding its leader out of the socket */
 ${W} .orr-sw-jig > .sx-sw__explode { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:6; }
-${W} .sx-sw__explode .sx-sw__module-well { fill:rgb(4 6 9 / .92); }
-${W} .sx-sw__explode .sx-sw__module-bloom { fill:none; stroke:rgb(255 240 214 / .22); stroke-width:6px; }
-${W} .sx-sw__explode .sx-sw__module { fill:none; stroke:rgb(250 247 238); stroke-width:2px; }
-${W} .sx-sw__explode .sx-sw__module-core { fill:rgb(250 247 238 / .55); }
-${W} .sx-sw__explode.is-seated .sx-sw__module { fill:rgb(250 247 238); }
-${W} .sx-sw__explode.is-seated .sx-sw__module-core { fill:rgb(12 14 18); }
+/* round 17: the part itself, not a token: the module's own glyph (30 px) cut out of the schematic by a dark
+   halo of its own strokes (no disc behind it), its name riding the leader beside it */
+${W} .sx-sw__explode .sx-sw__module-halo, ${W} .sx-sw__explode .sx-sw__module-halo * { fill:none !important; stroke:rgb(4 6 9 / .94) !important; stroke-width:6px !important; opacity:1 !important; stroke-dasharray:none !important; }
+${W} .sx-sw__explode .sx-sw__module-ink { color:rgb(236 232 222); }
+${W} .sx-sw__explode .sx-sw__module-ink * { fill:none; stroke:currentColor; stroke-width:2px; }
+${W} .sx-sw__explode .sx-sw__module-glyph * { vector-effect:non-scaling-stroke; }
+${W} .sx-sw__explode.is-seated .sx-sw__module-ink { color:rgb(252 249 240); }
+${W} .sx-sw__explode.is-empty .sx-sw__module-ink { color:rgb(206 202 192); }
+${W} .sx-sw__explode.is-empty .sx-sw__module-ink * { stroke-dasharray:2 2.2; }
+${W} .sx-sw__explode .sx-sw__module-name { font-family:var(--dp-face-label, "Archivo"); font-size:12px; font-weight:650; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650;
+  letter-spacing:.12em; fill:rgb(236 232 222); paint-order:stroke; stroke:rgb(4 6 9 / .94); stroke-width:4px; stroke-linejoin:round; opacity:var(--explode-out, 1); }
 
 `;
 

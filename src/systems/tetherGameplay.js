@@ -110,6 +110,12 @@ const LINE_CONTROL_DENIAL_COPY = Object.freeze({
   reel_unavailable: 'winch unavailable',
   attachment_missing: 'line no longer attached',
 });
+const CUT_DENIAL_COPY = Object.freeze({
+  attachment_missing: 'line already gone',
+  not_attachment_owner: 'not your line',
+  physics_port_unavailable: 'winch unavailable',
+  cut_rejected: 'the line holds',
+});
 const NO_REEL_RESULT = Object.freeze({ changed: false, reason: null, attachment: null });
 
 export const tetherGameplay = {
@@ -136,6 +142,7 @@ export const tetherGameplay = {
     this._resetCadenceRuntime(this.state);
     this._lastLineControlDenial = null;
     this._lastLatchDenial = null;
+    this._lastCutDenial = null;
     this._bridleSetup = null;
     this._bridleActive = null;
     this._npcBridleCutTicks = new Map();
@@ -1504,6 +1511,7 @@ export const tetherGameplay = {
     this._ignoreReleaseCutUntilReelIdle = false;
     this._latchGraceUntil = 0;
     this._lastLineControlDenial = null;
+    this._lastCutDenial = null;
   },
 
   // PQ-030.00 — a taut Monofilament line is a blade. Crossing an NPC tether severs that line in
@@ -1699,8 +1707,18 @@ export const tetherGameplay = {
     const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
     if (!result || !result.ok) {
       this._pendingCut = null;
+      const reason = result && result.reason || 'cut_rejected';
       this.bus.emit('tether:cutDenied', { targetId, attachmentId: this._active.attachmentId,
-        reason: result && result.reason || 'cut_rejected' });
+        reason });
+      const key = `${this._active.attachmentId || 'missing'}:${reason}`;
+      if (this._lastCutDenial !== key) {
+        this._lastCutDenial = key;
+        this.bus.emit('toast', {
+          text: `Massline cut refused: ${CUT_DENIAL_COPY[reason] || String(reason).replaceAll('_', ' ')}`,
+          kind: 'warn',
+          ttl: 2,
+        });
+      }
       return false;
     }
     if (result && result.ok) {
@@ -1714,6 +1732,7 @@ export const tetherGameplay = {
     this._pendingCut = null;
     this._ignoreReleaseCutUntilReelIdle = false;
     this._lastLineControlDenial = null;
+    this._lastCutDenial = null;
     this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
@@ -2510,18 +2529,18 @@ function masslineTargetLabel(target) {
   return type === 'asteroid' ? 'Anchor' : type.charAt(0).toUpperCase() + type.slice(1);
 }
 
-/** Resolve physical world anchors once at latch time. Each end is the tether socket when the
- * body has one. A wreck, pod, or any other body with no socket uses the measured hardpoint,
- * not the entity origin. */
+/** Resolve physical world anchors once at latch time. Both ends of a dynamic attachment are
+ * the bodies' centers of mass — the standing remoteAttachmentWorld contract: a constraint
+ * hung on a hull socket applies steering torque by itself and becomes an accidental attitude
+ * controller. Static/terrain anchors keep the readable surface endpoint the player latched. */
 export function contextualAttachmentWorlds(player, target, acquiredTargetWorld) {
   const source = modelTruthRopeEnd(player);
-  const targetEnd = modelTruthRopeEnd(target);
-  const sourceWorld = source
-    ? { x: source.x, y: 0, z: source.z }
-    : { x: player.pos.x, y: 0, z: player.pos.z };
-  const targetWorld = targetEnd
-    ? { x: targetEnd.x, y: 0, z: targetEnd.z }
-    : acquiredTargetWorld;
+  const sourceWorld = TOW_TARGET_COM_TYPES.has(player && player.type) && player.pos
+    ? { x: player.pos.x, y: 0, z: player.pos.z }
+    : (source ? { x: source.x, y: 0, z: source.z } : { x: player.pos.x, y: 0, z: player.pos.z });
+  const targetWorld = target && TOW_TARGET_COM_TYPES.has(target.type) && target.pos
+    ? { x: target.pos.x, y: 0, z: target.pos.z }
+    : (modelTruthRopeEnd(target) || acquiredTargetWorld);
   return { sourceWorld, targetWorld };
 }
 

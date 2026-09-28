@@ -35,6 +35,7 @@ export {
   ageShieldContacts,
   readShieldContacts,
   clearShieldContacts,
+  shieldContactsActiveCount,
   SHIELD_HIT_SLOTS,
 } from './shieldContacts.js';
 export { WeaponVfxPresenter, createWeaponVfxPresenter } from './presenter.js';

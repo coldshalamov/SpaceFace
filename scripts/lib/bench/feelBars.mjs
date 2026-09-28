@@ -138,7 +138,8 @@ export const FEEL_BARS = [
     target: "≥ 9 of 11 beats in a deterministic scenario plus a headed capture at the shipping camera",
     benchReachable: false,
     scenarioIds: [],
-    unreachableReason: "needs the PQ-141 60-second proof scenario, which does not exist yet.",
+    unreachableReason:
+      "measured by the PQ-141 lab proof, not this bench: PROOF_SIXTY_SECONDS=1 node --test test/pq-141-00-sixty-seconds.test.mjs runs five seeds × 60 s at the Ceres pocket and prints the beat table (gate: ≥ 9 of 11 beats per seed).",
   },
   {
     id: "B13",

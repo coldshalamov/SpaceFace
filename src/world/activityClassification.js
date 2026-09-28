@@ -84,10 +84,42 @@ export function physicsReachWu(options = {}) {
 export function normalizePinReasons(list, scratch = null) {
   const out = scratch && Array.isArray(scratch.out) ? scratch.out : [];
   if (scratch && Array.isArray(scratch.out)) out.length = 0;
+  const src = Array.isArray(list) ? list : [];
+  const n = src.length;
+  // Quiet classify is dominated by 0–2 pin lists (Ceres rocks / idle traffic).
+  // Skip Set.clear + sort until the rare multi-pin path needs dedupe.
+  if (n === 0) return out;
+  if (n === 1) {
+    const reason = src[0];
+    if (PIN_SET.has(reason)) out.push(reason);
+    return out;
+  }
+  if (n === 2) {
+    const a = src[0];
+    const b = src[1];
+    const aOk = PIN_SET.has(a);
+    const bOk = PIN_SET.has(b);
+    if (aOk && bOk) {
+      if (a === b) {
+        out.push(a);
+        return out;
+      }
+      if (a < b) {
+        out.push(a);
+        out.push(b);
+      } else {
+        out.push(b);
+        out.push(a);
+      }
+      return out;
+    }
+    if (aOk) out.push(a);
+    else if (bOk) out.push(b);
+    return out;
+  }
   const seen = scratch && scratch.seen instanceof Set ? scratch.seen : new Set();
   if (scratch && scratch.seen instanceof Set) seen.clear();
-  const src = Array.isArray(list) ? list : [];
-  for (let i = 0; i < src.length; i++) {
+  for (let i = 0; i < n; i++) {
     const reason = src[i];
     if (!PIN_SET.has(reason) || seen.has(reason)) continue;
     seen.add(reason);

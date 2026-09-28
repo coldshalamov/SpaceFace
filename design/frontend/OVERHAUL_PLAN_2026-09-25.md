@@ -65,33 +65,33 @@ compose them.
 
 ## 4. Every surface — its mini-app and its signature
 
-Status as of 2026-09-26. **APPROVED** = passed §1 including (a) and (b). Other scores are critic scores under the owner criteria unless marked "letter" (scored before the criteria existed).
+Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 15 surfaces. Other scores are critic scores under the owner criteria unless marked "letter" (scored before the criteria existed). Latest critic report per surface: `design/frontend/review/reports/`.
 
 | Surface (bench id) | Mini-app | Signature interaction (distinct) | Assets | Status |
 |---|---|---|---|---|
-| Title (`title`) | The emblem orrery behind the name | The Hand follows the pointer round the dial; the rings answer with parallax | — | 8.1 letter; weight pass due |
-| Pause (`pause`) | Seven-stop dial over the held world | Rows as stops: the Hand steps row to row, left/right along a row | — | 8.0 letter; weight pass due |
+| Title (`title`) | The emblem orrery behind the name | The Hand follows the pointer round the dial; the rings answer with parallax | — | 8.1 letter; re-score under (a)/(b) owed |
+| Pause (`pause`) | Seven-stop dial over the held world | Rows as stops: the Hand steps row to row, left/right along a row | — | 8.0 letter; re-score under (a)/(b) owed |
 | New Game (`new-game`) | The yard: the hull on a turntable ring | **Spin the yard**: drag the ring; each hull's mass sets its swing (heavy drags, light flicks); the stat arcs sweep between hulls; release settles with overshoot; hold LAUNCH runs light down the run's scale into the jump | new backdrop (done), Pelican poster to hero grade | **APPROVED 8.2** (r7, 5d855f9cc + follow-ups) — (a) yes, (b) yes |
 | Loading (`boot`) | The emblem spinning up | Real load stages as ticks lighting round the ring | — | to audit |
-| Settings (`settings`) | Mixer + live HUD preview | Ride a slider and the miniature Cluster/mixer answers live | — | r1 built (9c0486c03…1acbb0caa); critic r1 running |
-| Save/Load (`save-load*`) | Filmstrip on a curved rail | Scrub the rail; the chosen save's hull and facts decrypt in | poster hulls | r1 built (4c6710549, f35eb7471); critic r1 running |
-| Game Over (`game-over`) | The cooled world | The cause decrypts; the career record is an instrument; restore = Lamp Key | — | r1 built; critic r1 running |
-| Codex (`codex`) | The archive | **Turn the plate's ring** (r10): every entry on the ring, the Hand a blade that swings as you drag; plates reveal, locked entries decrypt | generated plates (8 story; Comms/Graffiti/Discoveries pending) | 7.0 r1 — fails (a)(b); builder r10 |
-| Mission Log (`mission-log`) | Tracing-beam timeline | Trace the beam **and it drives a route band** that previews the traced contract's route and clock | — | 6.2 r1 — fails (a)(b); builder r10 |
-| Research (`tech-tree*`) | Constellation | Pan the sky with a lens; **the unlock ignites**: light runs the Hand into the star, sweeps down each new link, lights the next stars | generated stars per branch | 7.2 r1 — fails (a)(b); builder |
-| Achievements (`achievements`) | Ring grid of medal gauges | **Turn the orrery**: medals on four orbits round a hero gauge; a category turns its ring under the Hand | generated medal set (5 stock faces to replace) | 6.3 r1 — fails (a)(b); builder |
-| Credits (`credits`) | Scroll reveal over the drift field | Scroll-driven reveal | — | r1 built; critic r1 running |
-| Help (`help`) | The controls rig | **Press anything**: the pressed key/pad button lights its verb on a ship-and-controller instrument (live input echo) | controller + ship silhouette art | wave 2 |
-| Chart (`chart*`, `localmap`, `starmap`) | The galaxy as an orrery | Pan/zoom the orrery; a Lens under the pointer; drag a route and watch the amber beam lay itself; the inspector unfolds from the body | 24 sector tokens rendered in Blender (`assets/ui/deckplate/tools/render_sector_tokens.py` → `assets/ui/generated/chart/<sector id>.webp`) | builder r1 running |
-| Station shell | Tab rail + berth | Dock-style magnification on the tab rail | — | 8 letter; weight pass due |
-| Market (`station-market`) | Price dial | Turn the quantity dial; the ledger ticker streams prices | — | 8 letter; weight pass due |
-| Missions (`station-contracts`) | Route orrery + tether | Hold to accept: the tether pulse runs key → station → berth | — | 8.07 letter; weight pass |
-| Shipworks (`station-shipworks`) | The jig / the sale disc | Turn the hull on the disc (For Sale); **Exploded Schematic** (Fleet) | posters, Pelican hero grade | 7.9 r15 — fails (a); builder r16 (inward bezel annulus) |
-| Industry (`station-industry`) | Chain beam | Hold FABRICATE and the beam runs inputs → ring → output | — | 8.1 letter; weight pass |
-| Factions (`station-factions`) | Crest orbit | Turn the orbit to a crest; its relation chords draw | crests (exist) | 8.0 letter; weight pass |
-| Bar (`station-bar`) | The conversation | The voice arc speaks each line; replies as a dial | portraits (exist) | 8.1 letter; weight pass |
-| Ledger (`station-ledger`) | The tape | Scrub the tape; stems rise, the purse sweeps | — | 8.1 letter; weight pass |
-| Crucible door/draft/refit/results | (passed 09-23) | door swing, draft picks, slot jig, death dial | arena art (exist) | 8 letter; audit |
+| Settings (`settings`) | Mixer + live HUD preview | Ride a slider and the miniature Cluster/mixer answers live | — | **APPROVED 8.1** (setcr-r3) |
+| Save/Load (`save-load*`) | Filmstrip on a curved rail | Scrub the rail; the chosen save's hull and facts decrypt in | poster hulls | **APPROVED 8.1** (sav-r3) |
+| Game Over (`game-over`) | The cooled world | The cause decrypts; the career record is an instrument; restore = Lamp Key | — | **APPROVED 8.2** (sav-r3) |
+| Codex (`codex`) | The archive | **Turn the plate's ring**: every entry on the ring, the Hand a blade that swings as you drag; plates reveal, locked entries decrypt | generated plates (8 story; Comms/Graffiti/Discoveries pending codex imagen 09-29) | **APPROVED 8.1** (archive-r4) |
+| Mission Log (`mission-log`) | Tracing-beam timeline | Trace the beam **and it drives a route band** that previews the traced contract's route and clock | — | **APPROVED 8.0** (archive-r4) |
+| Research (`tech-tree*`) | Constellation | Pan the sky with a lens; **the unlock ignites**: light runs the Hand into the star, sweeps down each new link, lights the next stars | generated stars per branch | **APPROVED 8.0** (con-r5) |
+| Achievements (`achievements`) | Ring grid of medal gauges | **Turn the orrery**: medals on four orbits round a hero gauge; a category turns its ring under the Hand | generated medal set | **APPROVED 8.1** (con-r5) |
+| Credits (`credits`) | Scroll reveal over the drift field | Scroll-driven reveal | — | **APPROVED 8.2** (setcr-r3) |
+| Help (`help`) | The controls rig | **Press anything** + drag the price ring + pin to compare | controller + ship silhouette art | **APPROVED 8.0** (help-r4); r9 follow-ups landed (2ef883624) |
+| Chart (`chart*`, `localmap`, `starmap`) | The galaxy as an orrery | **Lay the line**: drag from your ship; the planner's route previews as the one amber line; release locks the course | 24 sector tokens rendered in Blender (`assets/ui/deckplate/tools/render_sector_tokens.py` → `assets/ui/generated/chart/<sector id>.webp`) | **APPROVED 8.1** (chart-r4); r5 polish landed (849a0a0dd) |
+| Station shell | Tab rail + berth | The needle rides the ruled rail to the tab; UNDOCK the shared verb | — | **APPROVED 8.0** (station3-r1, zero margin); rail .30 + UNDOCK/MUNITIONS fixes owed |
+| Market (`station-market`) | Price dial | Turn the quantity dial; the spin drives the counter, hold arc and price-impact ghost | — | 7.3 station3-r1 — structural rebuild owed (sweep never reached it); bench buyable-at-rest landed (58ba928db) |
+| Missions (`station-contracts`) | Route orrery + tether | Hold-to-charge the route: light runs key → station → berth with the hold, retracts on early release | — | 8.03 missions-r15 — (a) RISK/STANDING sliders, (b) signature not wired; routeOrrery groundwork in tree |
+| Shipworks (`station-shipworks`) | The jig / the sale disc | Turn the hull on the disc (For Sale); **Exploded Schematic** (Fleet) | posters, Pelican hero grade (D72) | **APPROVED 8.1** (sw-r16); r17 landed (2334d326d), not re-scored |
+| Industry (`station-industry`) | Chain beam | Hold FABRICATE: the bezel IS the hold ring, pulses leave the inputs, stocks drain, the product lights | filled pictograms (`industryGlyphs.js`) | 8.0 industry-r14 — signature + weight fixes in tree, uncommitted |
+| Factions (`station-factions`) | Crest orbit | Turn the orbit to a crest; its relation chords draw | crests (exist) | 8.0 station3-r1 — failed (a) on the sun only; fix landed (9e4a69d99), re-score owed |
+| Bar (`station-bar`) | The conversation | Replies as a dial on the voice arc: focus previews the reply's envelope against her voice | portraits (exist) | 8.1 bar-r15 — failed (b); reply dial + arc groundwork in tree, uncommitted |
+| Ledger (`station-ledger`) | The tape | Scrub the tape; stems rise, the purse sweeps | — | **APPROVED 8.1** (station3-r1) |
+| Crucible door/draft/refit/results | (passed 09-23) | door swing, draft picks, slot jig, death dial | arena art (exist) | 8 letter; re-audit under (a)/(b) owed |
 | THE SHIP (`ship`) | Fleet jig in flight | Explode the jig: sockets pull out along their leaders | posters | wave 2 |
 | Footprint (`footprint`) | Heat / wanted | A heat dial that cools in real time; each source a sector of the dial | — | wave 2 |
 | Range (`range`) | Handling course | Draw your line through the gates; the hull's turn radius previews on the line | — | wave 2 |
@@ -103,11 +103,13 @@ Status as of 2026-09-26. **APPROVED** = passed §1 including (a) and (b). Other 
 
 ## 5. Order of work
 
-1. **Wave 1 (running):** Settings/Credits, Save/Load/Game Over, Codex/Mission Log, Research/Achievements,
-   Shipworks r14 — builders with the owner criteria; persistent critics.
-2. **Weight system (§2)** in the library, proven on New Game + Missions + Title, then swept across every
-   screen (station tabs, front door, Crucible), each re-shot and re-scored with the owner criteria.
-3. **New Game "Spin the yard"** + the difficulty dial (fills the form column).
-4. **Wave 2:** Chart (tokens first), Help, THE SHIP, Footprint, Range, Automation, Replay/Clips.
-5. **Wave 3:** Asteroid Works, Drill, Base, Loading audit, Crucible re-audit, flight HUD weight (perf-gated).
+1. **Wave 1 (done 2026-09-28):** all meta screens approved — Settings 8.1, Credits 8.2, Save/Load 8.1,
+   Game Over 8.2, Codex 8.1, Mission Log 8.0, Research 8.0, Achievements 8.1 — plus New Game 8.2,
+   Shipworks 8.1, Footprint 8.2, Chart 8.1, Help 8.0, shell 8.0, Ledger 8.1.
+2. **Weight system (§2)** in the library, swept across the station (commits 73b5a87aa…138988b43);
+   Market never got the sweep — its structural rebuild is the largest job left.
+3. **Station gates (now):** land Industry/Missions/Bar signature rebuilds (groundwork in tree),
+   Market rebuild, Factions re-score (fix landed), Title/Pause re-scores, Crucible re-audit.
+4. **Wave 2:** THE SHIP, Range, Automation, Replay/Clips.
+5. **Wave 3:** Asteroid Works, Drill, Base, Loading audit, flight HUD weight (perf-gated), Sandbox last.
 6. Approval ledger: every surface's final report and score recorded in §4 here and in the handoff.

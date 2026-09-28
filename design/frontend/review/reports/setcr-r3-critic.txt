@@ -1,0 +1,129 @@
+SETTINGS + CREDITS — independent critic, round 3 (2026-09-27)
+Builder commit 3c86237b0. Scored from set-33-* and cr-16-* stills; px are the named still's own pixels.
+Crops: scratchpad/crops/sc3-*.png, cc3-*.png. Same standard as r2: a signature defect at 1920 in a routine
+state blocks; a defect confined to one secondary size is a ranked must-fix.
+
+Coverage: opened set-33-st-dmg-{1920,2560}, set-33-st-mute-1920, set-33-ride-flight-{1920,2560},
+set-33-ride-bloom-1920, set-33-ride-uiscale-1920, set-33-st-difficulty-1920, set-33-st-picker-1920,
+set-33-gameplay-{1920,1280}, set-33-ride-controls-1920, set-33-ride-video-1280, cr-16-{1920,1280,2560},
+cr-16-lib-1920, cr-16-mid-1280, cr-16-not-1280. Not opened (states covered at another size, or unchanged
+since r2): set-33-st-mute-2560, set-33-ride-bloom-2560, set-33-{audio,video,controls}-*, set-33-access-*,
+set-33-ride-{audio,video,gameplay,access}-1920, set-33-ride-audio-{1280,2560}, set-33-ride-rm-audio-1920,
+cr-16-mid-1920, cr-16-rm-mid-1920. Bench artefact unchanged from r2 (focus segment on rail item 01 in rest
+stills — settings.js:901 / credits.js:316 focus on show, the bench then switches by script); not deducted.
+
+=====================================================================================================
+SCREEN 1 — SETTINGS
+=====================================================================================================
+
+1. VERDICT: PASSED, overall 8.1 (previous 7.9).
+   No axis under 7.0 (lowest legibility 7.8). (a) PASS, (b) PASS. The r2 blocker is cleared at 1920 and 2560.
+
+2. AXES (previous in brackets)
+   Composition        8.1 (7.8)  Gameplay now spreads at a 76 px pitch to y841 (the r2 void is gone); every
+                                 beam reaches its instrument on a clean path; the preview column holds its mass.
+   Hierarchy          8.0 (7.9)  One number per instrument; rows with no visible target mark the legend's name
+                                 with a dot instead of drawing a line to a word.
+   Legibility         7.8 (7.8)  Unchanged: the 1280 miniature Cluster still draws its small readouts at
+                                 ~4-5 px cap (builder names it).
+   ORRERY fidelity    8.4 (8.2)  Beams now end with an arrowhead on the instrument, entering from outside it;
+                                 the open choice list is solid deep glass with the rail and the Hand's bead;
+                                 one amber throughout; ice only while riding.
+   Craft/detail       8.0 (7.6)  Collisions, top-edge remnants, the ridden row in the fade and the plain-text
+                                 checklist are all fixed. Left: the 5-line gamepad paragraph (builder names it)
+                                 and a stub of the Bloom Strength scale peeking beside the open list (fix 2).
+   Interaction clar.  8.5 (8.3)  Every worked setting shows its consequence without the line obscuring it; the
+                                 UI-scale outline makes "the size of every instrument" visible.
+
+3. ROUND-2 LIST, item by item
+   1. Beam keep-outs (the blocker) — DONE.
+      - Damage numbers (set-33-st-dmg-1920, col x1300): SPEED line ends y489, beam glow y511-523, boost-arc
+        tick y544 — 22 px above, 21 px below; lands on "-24" (1382,517). 2560: same route, ~20 px native clear.
+      - Mute (set-33-st-mute-1920): enters the hub level at y572 through the mixer's empty quadrant, arrowhead
+        on the hub rim (1425,572), 39 px above "100" (y611) and clear of MUTED (cc: sc3-mute).
+      - Flight model (set-33-ride-flight-1920, col x1300): SPEED y507, beam y529-540, next mark y562; arrowhead
+        drops onto the heading marker from above (1400,550); no boost-arc crossing at 1920 or 2560.
+      - Bloom (set-33-ride-bloom-1920, col x1250): SPEED y467-474, beam y500-511, sun marker y551.
+      - FOV at 1280 (set-33-ride-video-1280, col x920): beam y278-290, "149" begins below y300 — >=10 px.
+   2. Pane top edge — DONE (set-33-ride-controls-1920: DRILL / ASTEROID BASE fades at y220;
+      set-33-ride-uiscale-1920: READABLE FONT fades at y234).
+   3. Ridden row clear of the fade — DONE (UI SCALE row at y841, amber cursor 731,841, full contrast).
+   4. Rows with no target — DONE (set-33-st-difficulty-1920: no beam, dot at 1070,250 beside DIFFICULTY,
+      the chosen word amber).
+   5. UI-scale target — DONE (beam lands on the 1.00x outline corner 1110,487 with "1.40×" beside it).
+   6. Gameplay lower third — DONE.
+   7. 1280 miniature HUD — NOT (builder names it).
+   8. Body-copy walls — HALF: the Access checklist is rows with a bead on OFF/READY; the gamepad
+      default-layout paragraph remains (set-33-ride-controls-1920 x371-850 y640-725).
+   9. Open picker re-shot — DONE: solid glass matching the ground (row y340: 6,8,12 either side of the spine
+      at x600-601; no rectangle edge), rows beneath hidden, amber bead on the chosen option.
+  10. Focus artefact — unchanged, bench-only.
+
+4. RANKED FIXES (Settings) — none blocks
+   1. Miniature Cluster at <=1500 px wide: scale ~0.7, floor its labels at 9 px (set-33-gameplay-1280
+      x878-970 y356-580).
+   2. Open list width (set-33-st-picker-1920): the Bloom Strength scale's last 20 px and a tick (x827-847,
+      y372-390) show beside the open list next to "52%". Size the list to the row's full control width
+      (606-846 px) or hide the covered row's scale while the list is open.
+   3. Gamepad default layout (x371-850 y640-725): a ladder of button -> verb, like the shortcut rows.
+   4. The legend's top area (y245-300) is a label and one sentence on every tab; one small glyph of the
+      setting's effect beside the name (the dot already does this for no-target rows) would carry it.
+
+5. MEMORABLE: drag the instrument to set the value (ring head, fan edge, disc rim) — still the next level.
+
+=====================================================================================================
+SCREEN 2 — CREDITS
+=====================================================================================================
+
+1. VERDICT: PASSED, overall 8.2 (previous 8.1).
+   No axis under 7.0 (lowest legibility 8.0). (a) PASS, (b) PASS. The r2 must-fix (1280 alignment) is done.
+
+2. AXES (previous in brackets)
+   Composition        8.3 (8.1)  Plate moved in: bodies 03/04 now ~75 px from the frame (x~1845 at 1920);
+                                 two Type rows fit the 1280 reel.
+   Hierarchy          8.2 (8.1)  Reel heads drop their numbers, so the section index lives on the ladder and the
+                                 orbit only.
+   Legibility         8.0 (8.0)  At 1280 the body number sits on the lit band ("05" at 932-950,332-344 in
+                                 cr-16-not-1280, ~7 px cap, washed out against the band) — fix 1.
+   ORRERY fidelity    8.5 (8.4)  The caught section now lights: the band beside the Hand reads 238 vs ~165
+                                 elsewhere (cr-16-1920 x1232 y420-426 / y652-659).
+   Craft/detail       8.1 (7.7)  Hand meets its body at every size; licence unfolds without repeating itself.
+                                 Plate art still shared with the boot ring (builder names it).
+   Interaction clar.  8.3 (8.2)  Unchanged in kind; the lit arc makes "this one" read at a glance.
+
+3. ROUND-2 LIST, item by item
+   1. 1280 alignment — DONE (cr-16-1280: Hand core y359-360, body 353-369, centre 361).
+   2. Unfolded licence repeat — DONE (cr-16-not-1280: FOLD THE LICENCE, then name + licence body, no summary).
+   3. 1280 reel window — DONE (Archivo y459 and Bricolage y520 both clear of the mask).
+   4. Right-edge crowding — DONE (~75 px in).
+   5. Section label three times — DONE (reel heads unnumbered).
+   6. Brighter under the Hand — DONE (238 vs ~165).
+   7. Focus artefact — unchanged, bench-only.
+   8. Own plate art — NOT (builder names it; lowest).
+
+4. RANKED FIXES (Credits) — none blocks
+   1. At <=1500 px, set the body number outside the band (radius + 14 px) or give it a 2 px ground halo;
+      and floor it at 9 px (cr-16-not-1280 "05" 932-950,332-344; cr-16-1280 "01" 933-949,334-345).
+   2. Own plate art for Credits (the five section bodies drawn into it) — lowest.
+
+5. MEMORABLE (next level): grab the orbit and spin the orrery to scrub the reel.
+
+=====================================================================================================
+7. OWNER CRITERIA
+=====================================================================================================
+
+SETTINGS
+(a) no super-thin wireframe / generic elements — PASS. Beams are bands (3 px core in a 12 px glow) with
+    arrowheads; the bind dial is a glass disc in a ~24 px lit annulus; mixer rings are lit bands with the
+    held-back share as a dim band; choices are words over tick scales and open as a solid column of light;
+    switches are words with beads; the checklist is rows with beads. No boxes, stock selects or underlines.
+(b) signature interaction — PASS (strong). Working a setting sends a band of light into the exact part of a
+    per-category instrument it drives — a mixer ring that turns ice, the FOV fan, the heading marker, the
+    damage number, the caption, the UI-scale outline, the bind dial listening in ice — now on clean paths
+    that never cross the thing they point at.
+
+CREDITS
+(a) — PASS. Lit orbit band with bodies, a 3 px amber Hand in its glow, the band lit brighter where the Hand
+    rests, a 6 px progress band, the engraved plate lit. No boxes, cards or stock components.
+(b) — PASS. Scrolling turns the orrery so the section being read comes round under a fixed amber Hand;
+    picking a section swings it there. Unique to this screen and the ORRERY idea itself.

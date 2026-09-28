@@ -46,7 +46,7 @@ function makeDriver() {
     t: 1000,
     nextId: 1,
     ents: new Map(),
-    calls: { says: [], grants: [], reps: [], resolutions: [], aborts: [], despawns: [] },
+    calls: { says: [], grants: [], reps: [], resolutions: [], aborts: [], despawns: [], wrecks: [] },
     now() { return d.t; },
     setNow(t) { d.t = t; },
     spawnShips(live, ships) {
@@ -101,6 +101,24 @@ function makeDriver() {
       live.phase = 'done';
       live.outcome = `aborted:${reason}`;
       d.calls.aborts.push(reason);
+    },
+    spawnWreck(live, opts) {
+      const id = d.nextId++;
+      const pos = opts && opts.pos ? { ...opts.pos } : { x: 0, z: 0 };
+      const ent = {
+        id,
+        type: 'wreck',
+        alive: true,
+        pos,
+        data: {
+          salvagePool: (opts && opts.pool) || { cmdty_scrap_metal: 2 },
+          scanLabel: (opts && opts.scanLabel) || 'Wreck Debris',
+          storyPropKind: (opts && opts.storyPropKind) || null,
+        },
+      };
+      d.ents.set(id, ent);
+      d.calls.wrecks.push(ent);
+      return ent;
     },
   };
   return d;
@@ -200,6 +218,12 @@ test('B7 yard_towout: towed, crushed, hauler_lost, deadline, and no_budget branc
     mod.runtime.tick(d, live, {}, d.now());
     assert.equal(d.calls.resolutions.at(-1).outcome, 'crushed');
     assert.equal(d.calls.resolutions.at(-1).speak, true);
+    assert.equal(d.entsOf(live, 'hauler').length, 0);
+    assert.equal(d.calls.wrecks.length, 1);
+    assert.equal(d.calls.wrecks[0].type, 'wreck');
+    assert.equal(d.calls.wrecks[0].data.scanLabel, 'Crusher leavings');
+    assert.ok(d.calls.wrecks[0].data.salvagePool.cmdty_scrap_metal > 0);
+    assert.deepEqual(d.calls.despawns.at(-1).role, 'skiff');
   }
   {
     const { d, live } = fire();
@@ -214,6 +238,8 @@ test('B7 yard_towout: towed, crushed, hauler_lost, deadline, and no_budget branc
     mod.runtime.tick(d, live, {}, d.now());
     assert.equal(d.calls.resolutions.at(-1).outcome, 'crushed');
     assert.equal(d.calls.resolutions.at(-1).speak, false);
+    assert.equal(d.calls.wrecks.length, 1);
+    assert.equal(d.entsOf(live, 'hauler').length, 0);
   }
   {
     // A partial budget grant landing the hauler alone aborts: one hull is a
@@ -270,6 +296,10 @@ test('B7 archive_dive: recovered, stripped, core_lost, deadline, and no_budget b
     mod.runtime.tick(d, live, {}, d.now());
     assert.equal(d.calls.resolutions.at(-1).outcome, 'stripped');
     assert.equal(d.calls.resolutions.at(-1).speak, true);
+    assert.equal(core.data.stripped, true);
+    assert.deepEqual(core.data.salvagePool, {});
+    assert.equal(d.entsOf(live, 'core').length, 1);
+    assert.deepEqual(d.calls.despawns.at(-1).role, 'scavenger');
   }
   {
     const { d, live } = fire();
@@ -284,6 +314,11 @@ test('B7 archive_dive: recovered, stripped, core_lost, deadline, and no_budget b
     mod.runtime.tick(d, live, {}, d.now());
     assert.equal(d.calls.resolutions.at(-1).outcome, 'stripped');
     assert.equal(d.calls.resolutions.at(-1).speak, false);
+    const leftover = d.entsOf(live, 'core')[0];
+    assert.ok(leftover);
+    assert.equal(leftover.data.stripped, true);
+    assert.deepEqual(leftover.data.salvagePool, {});
+    assert.deepEqual(d.calls.despawns.at(-1).role, 'scavenger');
   }
   {
     const { d, live } = fire(ships.slice(0, 1));

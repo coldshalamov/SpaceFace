@@ -390,8 +390,14 @@ async function runWellArm(seed, { eventTrace }) {
 
     const grinds = [];
     const grindPrimes = [];
+    // Convergence is a property of UNMARKED craft — once the well's own grind cooks a hull, the
+    // law deliberately withholds its velocity term so the primed body arrives as a slam (see
+    // FIELD_DEFS.well.damping and WELL_CLUSTER: "a primed light skips that velocity term"). Its
+    // post-prime acceleration is ammunition in flight, not convergence, so it leaves the sample.
+    const primedIds = new Set();
     host.bus.on('well:grind', (p) => grinds.push({ tick: state.tick | 0, aId: p && p.aId, bId: p && p.bId, ticks: p && p.ticks }));
     host.bus.on('chain:primed', (p) => {
+      if (p && p.victimId != null) primedIds.add(p.victimId);
       if (p && p.reason === 'well_grind') grindPrimes.push({ tick: state.tick | 0, victimId: p.victimId });
     });
 
@@ -418,7 +424,7 @@ async function runWellArm(seed, { eventTrace }) {
         // sampled only in the band where the field is unambiguously acting and the body has had
         // room to reach the law's equilibrium.
         for (const e of [a, b]) {
-          if (!e.alive) continue;
+          if (!e.alive || primedIds.has(e.id)) continue;
           const r = Math.hypot(e.pos.x - WELL_CENTER.x, e.pos.z - WELL_CENTER.z);
           const frac = r / radius;
           if (frac < WELL_SAMPLE_BAND.lo || frac > WELL_SAMPLE_BAND.hi) continue;

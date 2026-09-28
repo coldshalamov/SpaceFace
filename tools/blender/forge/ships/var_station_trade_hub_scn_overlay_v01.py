@@ -39,11 +39,28 @@ MASTS = (38.0, 100.0, 142.0, 218.0, 260.0, 322.0)
 
 
 def build_cladding(s):
-    """Armour cladding wrapped round the ring's outer wall (r 54 + fenders to ~55.5), mouth open."""
+    """Layered armour cladding wrapped round the ring's outer wall: raised plates over
+    recessed dark seams, a navy identity band cut through, Concord-blue top rail."""
     K.ring_wall(s, 'Cladding', 56.6, K.RING_Z0 + 0.5, 30.2, 2.4, 'paint', segs=64, bevel=0.0,
                 skip=lambda a: K.in_mouth(a, 4.0))
+    # recessed dark seam course — a darker band the raised plates sit above
+    K.ring_wall(s, 'CladdingSeam', 56.85, K.RING_Z0 + 4.2, K.RING_Z0 + 6.0, 1.2, 'dark',
+                segs=64, bevel=0.0, skip=lambda a: K.in_mouth(a, 4.0))
+    # raised armour plates proud of the seam course — layered, not a flat band
+    s.detail = 1
+    plates = []
+    for i in range(14):
+        a = 24.0 + i * 23.0
+        if K.in_mouth(a, 6.0) or any(K.near(a, d, 9.0) for d in DIAGONALS):
+            continue
+        plates.append(K.tangent_box(a, 57.1, K.RING_Z0 + 5.1, 1.1, 9.0, 2.4))
+    F.boxes(s, 'ArmourPlate', plates, 'paint2', bevel=0.05)
+    s.detail = 0
     # Concord-blue top rail and a navy base rail: the claim reads as a blue line round the wall
     K.ring_wall(s, 'CladdingRail', 56.9, 29.8, 30.6, 0.9, 'stripe', segs=64, bevel=0.0,
+                skip=lambda a: K.in_mouth(a, 4.0))
+    # navy identity band cut through the cladding's mid-height
+    K.ring_wall(s, 'CladdingNavvy', 56.75, 24.6, 25.6, 1.0, 'paint2', segs=64, bevel=0.0,
                 skip=lambda a: K.in_mouth(a, 4.0))
     K.ring_wall(s, 'CladdingBase', 56.9, K.RING_Z0 + 0.4, K.RING_Z0 + 1.4, 0.9, 'paint2', segs=64,
                 bevel=0.0, skip=lambda a: K.in_mouth(a, 4.0))
@@ -62,13 +79,30 @@ def build_bastion(s, k, a):
     for e in (-1, 1):
         F.box(s, f'Bastion{k}Leg{e:+d}', K.polar(60.5, a + e * 5.0, 16.5), (3.0, 2.6, 1.6),
               material='dark', rot_z=math.radians(a + e * 5.0), bevel=0.0)
-    # the keep: pale coat block over the wall crest
+    # the keep: pale coat block over the wall crest — an armoured casemate, not a box
     F.box(s, f'Bastion{k}', K.polar(57.5, a, 25.4), (16.0, 15.0, 12.6), material='paint',
           rot_z=math.radians(a), bevel=0.25)
     F.band(s, f'Bastion{k}', K.polar(57.5, a, 28.7), (0, 0, 1), 1.0, 'stripe', inset=0.05, depth=0.1)
-    # sloped-look outer armour: a navy plate layered proud on the seaward face
+    # chamfered armour cheeks: sloped-look plates layered proud on the seaward face
     F.box(s, f'Bastion{k}Face', K.polar(64.4, a, 25.8), (1.6, 11.0, 9.0), material='paint2',
           rot_z=math.radians(a), bevel=0.12)
+    for e in (-1, 1):
+        F.box(s, f'Bastion{k}Cheek{e:+d}', K.polar(63.6, a + e * 8.0, 25.6), (2.2, 3.0, 8.0),
+              material='paint2', rot_z=math.radians(a + e * 8.0), bevel=0.3)
+    # dark gun slits in the seaward face — the casemate's eyes
+    s.detail = 1
+    for e in (-1, 0, 1):
+        F.box(s, f'Bastion{k}Slit{e:+d}', K.polar(65.3, a + e * 4.5, 27.0), (0.3, 2.0, 0.6),
+              material='dark', rot_z=math.radians(a + e * 4.5), bevel=0.02)
+    s.detail = 0
+    # a lit watch row under the parapet — the keep is crewed
+    s.detail = 1
+    wins = []
+    for i in (-2, -1, 0, 1, 2):
+        p = K.polar(57.5 + 7.6, a + i * 3.2, 30.4)
+        wins.append(((p[0], p[1], p[2]), (0.25, 0.9, 0.35), math.radians(a + i * 3.2)))
+    F.boxes(s, f'Bastion{k}WinRow', wins, 'glow_warm')
+    s.detail = 0
     # parapet deck, watch posts, fittings
     F.box(s, f'Bastion{k}Deck', K.polar(57.5, a, 32.3), (14.0, 13.0, 1.6), material='paint.graphite',
           rot_z=math.radians(a), bevel=0.1)

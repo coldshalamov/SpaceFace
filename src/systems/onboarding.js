@@ -458,6 +458,16 @@ export const onboarding = {
       this._showHint('firstCargoFull', firstUseLine('firstCargoFull'), p);
     });
 
+    // First frontier crossing (2026-09-28 INFERENCE): the first uncharted sector the player
+    // enters gets ONE line — the chart ends here, the rim is theirs to name. Fires on
+    // world's firstVisit flag so return trips never re-teach; player.hints keeps it once-only.
+    bus.on('sector:enter', (p) => {
+      if (!p || !p.firstVisit) return;
+      const sector = p.sector;
+      if (!sector || sector.charted !== false) return;
+      this._showHint('firstFrontier', firstUseLine('firstFrontier'), p);
+    });
+
     // ── Mid/late-game system onboarding (P1-10) ─────────────────────────────────────────────
     // The first-session rail covers flight + first dock/sell, but drill-mining, outfitting, the tech
     // tree, automation, claims/bases, and crafting are all un-onboarded — the player hits a steep

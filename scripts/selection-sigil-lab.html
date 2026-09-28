@@ -37,17 +37,24 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x05070a);
 
 // The flight camera: a chase view looking down the plane at a shallow angle. Judging the mark
-// from straight overhead is how a flat instrument gets designed wrong.
+// from straight overhead is how a flat instrument gets designed wrong. The rig pulls back with the
+// instrument's size, because the game camera frames its subject — a capital hull is never seen
+// from the same distance as a fighter.
 const tilt = THREE.MathUtils.degToRad(num('tilt', 52));
-const dist = 150;
-const camera = new THREE.PerspectiveCamera(46, W / H, 0.5, 2000);
+const dist = num('dist', 150);
+const camera = new THREE.PerspectiveCamera(46, W / H, 0.5, 4000);
 camera.position.set(0, Math.cos(tilt) * dist, Math.sin(tilt) * dist);
 camera.lookAt(0, 0, 0);
 
 // A stand-in hull so the mark is judged against something, not against a void.
+const bodyRadius = num('hull', 11);
+const sigilRadiusUnits = sigilRadius(bodyRadius);
+const rig = Math.max(1, sigilRadiusUnits / 33);
+camera.position.set(0, Math.cos(tilt) * dist * rig, Math.sin(tilt) * dist * rig);
+camera.lookAt(0, 0, 0);
 if (!q.has('noHull')) {
   const hull = new THREE.Mesh(
-    new THREE.CylinderGeometry(9, 11, 5, 12),
+    new THREE.CylinderGeometry(bodyRadius * 0.82, bodyRadius, bodyRadius * 0.45, 12),
     new THREE.MeshStandardMaterial({ color: 0x7d8794, roughness: 0.55, metalness: 0.65 }),
   );
   hull.position.y = 0.5;
@@ -59,7 +66,7 @@ if (!q.has('noHull')) {
   scene.add(key);
   // A ground plane, so the mark can be judged against a lit surface as well as against space.
   const deck = new THREE.Mesh(
-    new THREE.CircleGeometry(150, 48),
+    new THREE.CircleGeometry(150 * rig, 48),
     new THREE.MeshStandardMaterial({ color: 0x2b323c, roughness: 0.95, metalness: 0.1 }),
   );
   deck.rotation.x = -Math.PI / 2;
@@ -70,7 +77,6 @@ if (!q.has('noHull')) {
 const sigil = new SelectionSigil(scene);
 const klass = (q.get('klass') || 'hostile').toLowerCase();
 const klassCode = { hostile: SIGIL_CLASS.HOSTILE, friendly: SIGIL_CLASS.FRIENDLY, cargo: SIGIL_CLASS.CARGO }[klass] || SIGIL_CLASS.HOSTILE;
-const bodyRadius = num('hull', 11);
 const settings = {
   video: { motionReduce: q.has('reduced') ? true : false, flashReduce: q.has('flash') ? true : false },
   accessibility: {},
@@ -85,7 +91,6 @@ for (let i = 0; i < Math.round(t / STEP); i++) {
 }
 
 window.__sigil = { sigil, renderer, scene, camera, sigilRadius, klass };
-if (q.has('mask')) sigil.mesh.material.uniforms.uMask.value = num('mask', 0);
 window.__ready = true;
 renderer.render(scene, camera);
 </script>

@@ -620,9 +620,22 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
       let prevY = -Infinity;
       for (const a of anchors.filter((q) => q.side === side)) {
         let [px, py] = at(P[a.spec.part]);
-        if (Math.abs(px - cx) < S * 0.02) px += side * S * 0.017;
+        // a centreline part leans toward the verb's column far enough that the two columns' anchors
+        // stand a full separation apart across the keel too
+        if (Math.abs(px - cx) < S * 0.02) px = cx + side * Math.max(S * 0.017, minSep / 2);
         py = Math.max(py, prevY + minSep);
         prevY = py;
+        // no anchor ring may sit on the berth's band (BOW and AFT ride in it): keep it inside the rim
+        const ringR = small ? 3.5 : 5.4;
+        const lim = Rin - ringR - 6;
+        const dx = px - cx; const dy = py - cy;
+        const dd = Math.hypot(dx, dy);
+        if (dd > lim) { px = cx + (dx * lim) / dd; py = cy + (dy * lim) / dd; }
+        // the rim can pull two anchors onto one point (throttle and brake at a small drive): step the
+        // later one a full separation across its column's side
+        for (const [qx, qy] of anchorAt.values()) {
+          if (Math.hypot(qx - px, qy - py) < minSep) { px += side * minSep; break; }
+        }
         anchorAt.set(a.spec.id, [px, py]);
       }
     }
@@ -716,7 +729,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
     // reverse: the retro thrusters fire forward out of the bow's shoulders
     {
       const g = fxGroup('retro');
-      for (const k of ['bowL', 'bowR']) { const [x, y] = at(P[k]); plume(g, x, y, k === 'bowL' ? -12 : 12, Math.max(10, Math.min(S * 0.12, y - (cy - Rin) - 6)), S * 0.013, { core: false }); }
+      for (const k of ['bowL', 'bowR']) { const [x, y] = at(P[k]); const len = Math.min(S * 0.12, y - (cy - Rin) - 6); if (len >= 6) plume(g, x, y, k === 'bowL' ? -12 : 12, len, S * 0.013, { core: false }); }
     }
     // steer: the hull's rim of light swings through the turn; an arc ahead of the bow shows it
     for (const [key, sign] of [['steerL', -1], ['steerR', 1]]) {
@@ -744,8 +757,8 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
       const g = fxGroup('fire');
       // the streaks stop short of the berth's inner edge, so BOW stays readable
       const stop = cy - Rin + 8;
-      const reach = Math.max(8, Math.min(S * 0.11, wy - 8 - stop));
-      for (const off of [-S * 0.014, S * 0.014]) {
+      const reach = Math.max(0, Math.min(S * 0.11, wy - 8 - stop));
+      for (const off of reach < 6 ? [] : [-S * 0.014, S * 0.014]) {
         const d = `M ${f(wx + off)} ${f(wy - 8)} L ${f(wx + off)} ${f(wy - 8 - reach)}`;
         g.appendChild(svg('path', { d, class: 'orr-hrig__fx-bloom', style: 'stroke-width:6px' }));
         g.appendChild(svg('path', { d, class: 'orr-hrig__fx-line orr-hrig__fx-draw', pathLength: 1, style: 'stroke-width:2px' }));

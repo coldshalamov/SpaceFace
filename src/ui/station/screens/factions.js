@@ -359,6 +359,13 @@ export function createFactionsScreen(ctx) {
   railEl.addEventListener('click', onFactionClick);
   stageEl.addEventListener('click', onFactionClick);
 
+  // Pointing at a power in the list ghosts the Hand toward its crest on the orbit (a preview; the pick is a click).
+  railEl.addEventListener('pointerover', (ev) => {
+    const btn = ev.target.closest && ev.target.closest('[data-fac]');
+    if (orbit && orbit.preview) orbit.preview(btn ? btn.getAttribute('data-fac') : null);
+  });
+  railEl.addEventListener('pointerleave', () => { if (orbit && orbit.preview) orbit.preview(null); });
+
   // Arrow keys walk the powers (a tablist: roving tabindex, selection follows focus).
   railEl.addEventListener('keydown', (ev) => {
     const rows = [...railEl.querySelectorAll('[data-fac]')];

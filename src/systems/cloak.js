@@ -214,8 +214,9 @@ export const cloak = {
   // a bounded window (revealUntil) honored by cloakHidesEntityFrom, which is the single gate
   // aiPorts contacts, weapon locks, and in-flight seekers all share — one write, every seam.
   //
-  // scanner.js today emits 'scan:pulse' with only { pos }; the sweep radius defaults to its
-  // NEAR_SCAN_RADIUS constant. If the event grows an explicit `radius` field it wins verbatim.
+  // scanner.js emits 'scan:pulse' with { pos, radius }; the radius is the pulse's authored sweep
+  // (profile.nearRadius, upgrade-scaled). The NEAR_SCAN_RADIUS default below only covers emitters
+  // that predate the field.
   _onScanPulse(payload) {
     const state = this.state;
     if (!state || !cloakEnabledForState(state)) return;

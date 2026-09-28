@@ -17,7 +17,7 @@ import { COMBAT_LAB_STARTER_PACKAGES } from '../../../../src/data/combatLabSetup
 import { wrapAngle } from '../../../../src/core/rng.js';
 import { buildSlotList, getDerivedStats, outfitBudgetForFittings } from '../../../../src/systems/ships.js';
 import { SHIPS } from '../../../../src/data/ships.js';
-import { bootRealPath, writeRealPathInput } from '../realPath.mjs';
+import { bootRealPath, OPEN_SPACE_BOUNDS, writeRealPathInput } from '../realPath.mjs';
 
 const HULL_ID = 'ship_hornet';
 const BUILDS = Object.freeze([
@@ -171,6 +171,9 @@ async function boot(seed, hullId, fittings) {
     seed,
     systems: ['actions', 'flightV3', 'physics'],
     hulls: [{ hullId, pos: { x: 0, z: 0 }, rot: 0, isPlayer: true, factionId: 'faction_free', fittings: fittings.slice() }],
+    // A full-throttle burn at the travel ceiling (~330 WU/s post-retune) out-runs the boot-default
+    // 2600 WU lab disk in seconds; the sector fence would then measure containment, not drive.
+    bounds: OPEN_SPACE_BOUNDS,
   });
 }
 

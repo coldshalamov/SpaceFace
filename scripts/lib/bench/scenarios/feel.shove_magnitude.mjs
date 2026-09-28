@@ -31,6 +31,7 @@
 // `deltaVRawTick` is the uncorrected tick delta. Nothing is hidden.
 
 import { resolveWeaponImpulseForHit } from '../../../../src/combat/impulseKernel.js';
+import { bindStuntEvidence, registerStuntImpulseObserver } from '../../../../src/combat/stuntEvidence.js';
 import { readPhysicsTelemetry } from '../../../../src/core/physicsAuthority.js';
 import { WEAPONS } from '../../../../src/data/weapons.js';
 import { makeEnemySpawnSpec } from '../../../../src/systems/combat.js';
@@ -357,6 +358,21 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace, straigh
     let eventTick = null;
     let pendingEvent = false;
     let deliveryError = null;
+    // The hit's own causal delta-V, read where physics applies it: the impulse journal's
+    // linvel before/after at the application instant — before the rest of the tick's drag
+    // and the victim's steering answer can spend any of it. The paired-control difference
+    // stays published beside it; only this number can honestly equal the carried impulse.
+    let appliedHitDeltaV = null;
+    let impulseExpected = false;
+    bindStuntEvidence(host.state);
+    const unImpulse = registerStuntImpulseObserver(host.state, (obs) => {
+      if (!impulseExpected || !obs) return;
+      if (!obs.entity || obs.entity.id !== victim.id) return;
+      if (weaponId && obs.provenance && obs.provenance.weaponId && obs.provenance.weaponId !== weaponId) return;
+      const dv = Math.hypot(finite(obs.after && obs.after.x) - finite(obs.before && obs.before.x),
+        finite(obs.after && obs.after.z) - finite(obs.before && obs.before.z));
+      if (dv > 1e-8) appliedHitDeltaV = dv;
+    });
     let vBefore = { x: 0, z: 0 };
     let speedBefore = 0;
     let vAfter = null;
@@ -391,6 +407,7 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace, straigh
           impulseMagnitude = resolved && Number.isFinite(resolved.magnitude) ? resolved.magnitude : 0;
           const nx = direction === 'along' ? lineDir.x : -lineDir.z;
           const nz = direction === 'along' ? lineDir.z : lineDir.x;
+          impulseExpected = true;
           const result = deliverProductionGunHit(host, victim, {
             attackerId: player ? player.id : null,
             nx,
@@ -404,6 +421,7 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace, straigh
           }
         }
         pendingEvent = true;
+        impulseExpected = false;
         shotsAtEvent = victimShots;
       },
       after: ({ state }) => {
@@ -442,6 +460,7 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace, straigh
         }
       },
     });
+    unImpulse();
 
     if (readPhysicsTelemetry(victim) == null) {
       return {
@@ -488,6 +507,7 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace, straigh
       vBefore,
       vAfter,
       rawTickDeltaV,
+      appliedDeltaV: appliedHitDeltaV,
       screenDepths: perp / SCREEN_DEPTH_WU,
       helmLossDurationS: helmLossTicks / 60,
       victimMass: finite(victim.mass, 0),
@@ -768,9 +788,16 @@ function unmeasuredArm(proof, reason, cruise) {
  * The delta-V the hit CAUSED: |v_after(arm) - v_after(control)| at the same tick of an otherwise
  * identical run. Returns null (and notes it) if the two arms did not share a pre-event state, which
  * would make the subtraction meaningless.
+ *
+ * The impulse journal's application-instant read (`arm.appliedDeltaV`) is the stronger instrument:
+ * physics samples linvel before and after the impulse lands, so the tick's own drag — and the
+ * victim's same-tick steering answer to being hit — never enter it. The differenced value stays
+ * published as the "what the victim kept after one tick" diagnostic beside it.
  */
 function causalDeltaV(arm, control, notes, label) {
-  if (!arm || arm.measured !== true || !arm.vAfter) return null;
+  if (!arm || arm.measured !== true) return null;
+  if (Number.isFinite(arm.appliedDeltaV)) return arm.appliedDeltaV;
+  if (!arm.vAfter) return null;
   if (!control || control.measured !== true || !control.vAfter) {
     notes.push(`${label} causal delta-V fail-closed: the matched no-weapon control arm did not measure.`);
     return null;

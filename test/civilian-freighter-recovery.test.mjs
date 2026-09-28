@@ -7,6 +7,7 @@ import { ensureCombatState } from '../src/combat/runtime.js';
 import { save } from '../src/save/saveSystem.js';
 import {
   CIVILIAN_RECOVERY_WINDOW_S,
+  SURRENDER_READOPT_CADENCE_TICKS,
   SURRENDER_SECURE_REEL_WU,
   surrenderRecovery,
 } from '../src/systems/surrenderRecovery.js';
@@ -222,6 +223,15 @@ function spawnRematerializedFreighter(t, annotation, cargoManifest, x = 1240) {
 function oneCivilianReceipt(t, outcome, eventName = 'encounter:receipt') {
   return t.events[eventName].filter((item) => item.shape === 'civilian_freight_recovery'
     && item.outcome === outcome);
+}
+
+// Saved-annotation re-adoption is cadence-gated (SURRENDER_READOPT_CADENCE_TICKS), and core preStep
+// increments state.tick before systems update — a bare sim.step() can land off-boundary and skip the
+// scan. Step until the update that ran on a cadence boundary has completed.
+function stepThroughReadopt(t) {
+  do {
+    t.sim.step();
+  } while (t.state.tick % SURRENDER_READOPT_CADENCE_TICKS !== 0);
 }
 
 test('an NPC-caused drive disable opens one timed civilian Massline recovery without taking flight authority', () => {
@@ -587,7 +597,7 @@ test('a valid JSON-rematerialized annotation re-adopts durable manifest identity
   const rematerialized = spawnRematerializedFreighter(t, annotation, manifestCopy);
   rematerialized.data.ai.fsm = 'surrender';
   assert.notEqual(rematerialized.id, originalId);
-  t.sim.step();
+  stepThroughReadopt(t);
   const record = t.state.surrenderRecovery.records[`surrender:${rematerialized.id}`];
   assert.ok(record, 'the entity annotation rebuilds the transient coordinator');
   assert.equal(record.id, stableRecordId);
@@ -615,7 +625,7 @@ test('a stale saved destination fails closed after current-sector stations are m
   t.station.alive = false;
   const rematerialized = spawnRematerializedFreighter(t, annotation, manifestCopy);
 
-  t.sim.step();
+  stepThroughReadopt(t);
 
   assert.equal(Object.keys(t.state.surrenderRecovery.records).length, 0);
   assert.equal(rematerialized.data.surrenderRecovery.phase, 'lost');
@@ -637,7 +647,7 @@ test('invalid saved civilian annotations fail closed once and release only recov
   assert.equal(rematerialized.flags.persistent, undefined);
   rematerialized.flags.persistent = true;
 
-  t.sim.step();
+  stepThroughReadopt(t);
   t.sim.step();
   assert.equal(Object.keys(t.state.surrenderRecovery.records).length, 0);
   assert.equal(rematerialized.data.surrenderRecovery.phase, 'lost');
@@ -662,7 +672,7 @@ test('invalid saved recovery relinquishes C ownership without dropping an active
     role: 'carrier',
   };
 
-  t.sim.step();
+  stepThroughReadopt(t);
   assert.equal(rematerialized.data.surrenderRecovery.phase, 'lost');
   assert.equal(rematerialized.data.surrenderRecovery.ownedPersistent, false);
   assert.equal(rematerialized.flags.persistent, true);
@@ -702,7 +712,7 @@ test('real save Continue preserves the open disabled hull and re-adopts its reco
   assert.equal(runtime.capabilities.drive, false);
   assert.equal(runtime.subsystems.subsystem_drive.effectiveDisabled, true);
 
-  t.sim.step();
+  stepThroughReadopt(t);
   const record = t.state.surrenderRecovery.records[`surrender:${restored.id}`];
   assert.ok(record, 'the real post-load update re-adopts the saved annotation');
   assert.equal(record.id, oldRecoveryId);
@@ -745,7 +755,7 @@ test('real save Continue re-derives a secured civilian tow from the restored Mas
   assert.equal(restoredAttachment.targetId, restored.id);
   assert.ok(restoredAttachment.restLength <= SURRENDER_SECURE_REEL_WU);
 
-  t.sim.step();
+  stepThroughReadopt(t);
   const record = t.state.surrenderRecovery.records[`surrender:${restored.id}`];
   assert.ok(record);
   assert.equal(record.id, recoveryId);
@@ -769,7 +779,7 @@ test('duplicate JSON rematerializations have one durable owner and cannot settle
     custodyId: 'freight-custody:duplicate-fixture',
     role: 'carrier',
   };
-  t.sim.step();
+  stepThroughReadopt(t);
 
   const durableRecords = Object.values(t.state.surrenderRecovery.records)
     .filter((record) => record && record.id === annotation.id);
@@ -900,7 +910,7 @@ test('retired recovery identity remains closed after visible receipt eviction an
   }));
   assert.equal(t.state.surrenderRecovery.receipts.some((receipt) => receipt.recoveryId === retiredId), false);
   const stale = spawnRematerializedFreighter(t, staleAnnotation, staleManifest, 1400);
-  t.sim.step();
+  stepThroughReadopt(t);
   assert.equal(stale.data.surrenderRecovery.id, retiredId);
 
   attachAndReel(t, stale);

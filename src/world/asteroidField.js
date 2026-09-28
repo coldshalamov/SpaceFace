@@ -5,6 +5,8 @@
 import { allocateEntityId, makeEntity, clearEntityRuntime } from '../core/entity.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
+import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
+import { NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { indexedTypeScan } from './livingWorldViews.js';
 import { advanceResourceBody } from './worldCatchup.js';
 
@@ -268,6 +270,10 @@ function resolveAdmitOverlap(state, pos, colliderR, reason) {
   return null;
 }
 
+function isOpticRockData(data) {
+  return !!(data && typeof data.opticMaterial === 'string' && data.opticMaterial);
+}
+
 export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote') {
   if (!state || id == null) return null;
   const live = state.entities && typeof state.entities.get === 'function'
@@ -288,7 +294,15 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
   catchUpFieldRock(rec, simTime);
   const data = rec.data && typeof rec.data === 'object' ? { ...rec.data } : {};
   delete data.fieldResident;
-  const colliderR = asteroidColliderRadius(data.typeId, rec.radius);
+  const optic = isOpticRockData(data);
+  const hull = Number.isFinite(data.oreHP) ? data.oreHP
+    : (Number.isFinite(rec.hull) ? rec.hull : (optic ? 1e6 : undefined));
+  const hullMax = Number.isFinite(data.oreHPMax) ? data.oreHPMax
+    : (Number.isFinite(rec.hullMax) ? rec.hullMax : (optic ? 1e6 : undefined));
+  // Optic lattices are authored against entity.radius; bump colliders must not seal the mouth.
+  const colliderR = optic
+    ? Math.max(0.5, finite(rec.radius, 8))
+    : asteroidColliderRadius(data.typeId, rec.radius);
   const admitPos = resolveAdmitOverlap(state, rec.pos, colliderR, reason);
   if (!admitPos) return null;
   const ent = spawn({
@@ -300,8 +314,8 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     angVel: rec.angVel,
     radius: rec.radius,
     mass: rec.mass,
-    hull: data.oreHP,
-    hullMax: data.oreHPMax,
+    hull,
+    hullMax,
     collides: true,
     physicsBody: { radius: colliderR },
     data,
@@ -316,6 +330,152 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
   rec.promoteReason = String(reason || 'promote');
   removeFieldRecord(ensureAsteroidField(state), rec);
   return ent;
+}
+
+/** Shelve a live optic lattice body back into the compact field (far-actor style). */
+export function demoteOpticAsteroidToField(state, entity, helpers, reason = 'optic-shelve') {
+  if (!state || !entity || entity.type !== 'asteroid') return null;
+  if (!isOpticRockData(entity.data)) return null;
+  const id = entity.id;
+  const snapshot = {
+    id,
+    pos: entity.pos ? { x: finite(entity.pos.x), z: finite(entity.pos.z) } : { x: 0, z: 0 },
+    vel: entity.vel ? { x: finite(entity.vel.x), z: finite(entity.vel.z) } : { x: 0, z: 0 },
+    rot: finite(entity.rot),
+    angVel: finite(entity.angVel),
+    radius: Math.max(0.5, finite(entity.radius, 8)),
+    mass: finite(entity.mass, 400),
+    hull: Number.isFinite(entity.hull) ? entity.hull : 1e6,
+    hullMax: Number.isFinite(entity.hullMax) ? entity.hullMax : 1e6,
+    homeSectorId: entity.homeSectorId || (entity.data && entity.data.homeSectorId) || null,
+    data: entity.data && typeof entity.data === 'object' ? { ...entity.data } : {},
+  };
+  const remove = helpers && typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
+  if (remove) remove(id, { immediate: true, reason: String(reason || 'optic-shelve') });
+  else entity.alive = false;
+  snapshot.data.opticShelveReason = String(reason || 'optic-shelve');
+  return insertAsteroidFieldRock(state, snapshot);
+}
+
+function opticTableRadii(state, player) {
+  const speed = tableTravelSpeed(state);
+  const decodeR = authoredPrefetchRadius(speed);
+  const enter = Math.max(decodeR, 1);
+  const exit = enter + (NEAR_EXIT_PAD_WU - NEAR_ENTER_PAD_WU);
+  return { enter, exit, enter2: enter * enter, exit2: exit * exit };
+}
+
+/** Bench A/B: production default ON. Quiet latch skips optic query+shelve when no interest. */
+let OPTIC_FAR_QUIET_LATCH = true;
+export function setOpticFarQuietLatchForBench(enabled) {
+  OPTIC_FAR_QUIET_LATCH = enabled !== false;
+}
+export function getOpticFarQuietLatchForBench() {
+  return OPTIC_FAR_QUIET_LATCH !== false;
+}
+
+/** Membership / field-version rescan while latched (0.5 s @ 60 Hz). */
+const OPTIC_FAR_QUIET_RESCAN_TICKS = 30;
+
+function entityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+function publishOpticQuiet(state, latched) {
+  const world = state && state.world;
+  if (!world) return;
+  const rt = world.opticFieldRuntime || (world.opticFieldRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
+/**
+ * Optic lattices stay field-resident until the player enters the authored decode
+ * disc, then promote like far actors. Beyond exit they shelve again so a quiet
+ * Ceres pocket does not keep ~40 combat asteroids warm for a gallery kilometers away.
+ */
+export function tickOpticFieldRocks(state, helpers) {
+  if (!state || state.mode !== 'flight') return { promoted: 0, shelved: 0 };
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  if (!player || !player.pos) return { promoted: 0, shelved: 0 };
+
+  // Quiet settled flight: when no optic lattice sits in the decode disc and no live
+  // optic body needs exit-shelve, production still paid queryAsteroidField (large
+  // authored-prefetch disc) + entityList optic scan every tick. Latch after an empty
+  // interest probe; wake on asteroidField.version, entity-index membership, player
+  // move beyond a fraction of enter, or a 0.5 s rescan.
+  const field = state.world && state.world.asteroidField;
+  const fieldVersion = field && Number.isFinite(field.version) ? field.version : null;
+  const membership = entityIndexVersion(state);
+  const px = finite(player.pos.x);
+  const pz = finite(player.pos.z);
+  if (OPTIC_FAR_QUIET_LATCH !== false) {
+    const quiet = tickOpticFieldRocks._quiet;
+    const tick = state.tick | 0;
+    if (quiet
+      && quiet.fieldVersion === fieldVersion
+      && quiet.membership === membership
+      && ((tick - (quiet.armedTick | 0)) < OPTIC_FAR_QUIET_RESCAN_TICKS)) {
+      const mdx = px - quiet.x;
+      const mdz = pz - quiet.z;
+      if (mdx * mdx + mdz * mdz <= quiet.wakeMove2) {
+        publishOpticQuiet(state, true);
+        return { promoted: 0, shelved: 0 };
+      }
+    }
+  } else if (tickOpticFieldRocks._quiet) {
+    tickOpticFieldRocks._quiet = null;
+  }
+
+  const radii = opticTableRadii(state, player);
+  let promoted = 0;
+  let shelved = 0;
+  let opticInterest = false;
+
+  const hits = queryAsteroidField(state, player.pos, radii.enter, tickOpticFieldRocks._scratch || (tickOpticFieldRocks._scratch = []));
+  for (let i = 0; i < hits.length; i++) {
+    const rec = hits[i];
+    if (!rec || !isOpticRockData(rec.data) || !rec.pos) continue;
+    const dx = rec.pos.x - px;
+    const dz = rec.pos.z - pz;
+    if (dx * dx + dz * dz > radii.enter2) continue;
+    opticInterest = true;
+    const ent = promoteAsteroidFieldRock(state, rec.id, helpers, 'optic-approach');
+    if (ent) promoted += 1;
+  }
+
+  const list = state.entityList || [];
+  for (let i = list.length - 1; i >= 0; i--) {
+    const entity = list[i];
+    if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
+    if (!isOpticRockData(entity.data) || !entity.pos) continue;
+    opticInterest = true;
+    const dx = entity.pos.x - px;
+    const dz = entity.pos.z - pz;
+    if (dx * dx + dz * dz <= radii.exit2) continue;
+    if (demoteOpticAsteroidToField(state, entity, helpers, 'optic-exit')) shelved += 1;
+  }
+
+  if (OPTIC_FAR_QUIET_LATCH !== false && promoted === 0 && shelved === 0 && !opticInterest) {
+    const wakeR = Math.max(32, radii.enter * 0.15);
+    tickOpticFieldRocks._quiet = {
+      fieldVersion,
+      membership,
+      armedTick: state.tick | 0,
+      x: px,
+      z: pz,
+      wakeMove2: wakeR * wakeR,
+    };
+    publishOpticQuiet(state, true);
+  } else {
+    tickOpticFieldRocks._quiet = null;
+    publishOpticQuiet(state, false);
+  }
+  return { promoted, shelved };
 }
 
 export function asteroidFieldCensus(state) {

@@ -7,6 +7,7 @@ import { BOMB_DEFS, BOMB_DRIFT, bombDef } from '../data/bombs.js';
 import { bombFieldEnvelope } from '../combat/bombDynamics.js';
 import { readFrameOrigin, interpolateGlobalToFrame } from './frameCoordinates.js';
 import { resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
+import { entityIndexVersion } from '../world/livingWorldViews.js';
 import { FIELD_LIFECYCLES, smooth01 } from './forceLanguage/effectLifecycle.js';
 import { FlowEnvironment } from './forceLanguage/flowEnvironment.js';
 import { BombFlowSurface, createBombFlowPrecompileMesh } from './forceLanguage/bombFlowSurface.js';
@@ -280,9 +281,31 @@ export class BombPresentationBatch {
     this.stats = { bombs: 0, vertices: 0, particles: 0, drawCalls: 0, overflow: 0 };
     this.count = 0;
     this.disposed = false;
+    // Quiet settled flight: after the first bomb owner exists, empty ticks still
+    // paid frustum rebuild + a11y + source walk + setDrawRange(0)/visible=false
+    // every frame. Latch after first empty publish; wake on entityIndexVersion
+    // or bombs.length. Soft-GPU fps not claimed.
+    this._quietEmpty = false;
+    this._quietVersion = -1;
+  }
+  // Cheap dirty wake for quiet bomb-telegraph latch — entityIndexVersion only.
+  // No index (version null) refuses the latch so entityList fallback stays truthful.
+  // False-wake falls through to one full update and re-latches when empty.
+  _quietMaybeAwake(state) {
+    const version = entityIndexVersion(state);
+    if (version == null) return true;
+    return version !== this._quietVersion;
   }
   update(state, source, alpha) {
     if (this.disposed) return;
+    // Quiet settled flight: empty bomb telegraph still paid frustum rebuild + a11y
+    // + source walk + setDrawRange(0)/visible=false every tick after the owner was
+    // created by a prior bomb. Latch after first empty publish; wake on
+    // entityIndexVersion. Soft-GPU fps not claimed.
+    if (this._quietEmpty) {
+      if (!this._quietMaybeAwake(state)) return;
+      this._quietEmpty = false;
+    }
     this.count = 0;
     this.flow?.begin();
     const stats = this.stats;
@@ -365,6 +388,20 @@ export class BombPresentationBatch {
     if (this.particles?.live) this.particles.publish();
     stats.particles = this.particles?.live || 0;
     stats.drawCalls = (this.count > 0 ? 1 : 0) + (stats.particles > 0 ? 1 : 0) + (this.flow?.count > 0 ? 1 : 0);
+    // Fully idle empty (no bombs, no aftermath parcels or particles still animating)
+    // → quiet latch when membership version is trustworthy. Soft-GPU fps not claimed.
+    if (this.count === 0 && stats.particles === 0 && (this.flow?.count || 0) === 0) {
+      const version = entityIndexVersion(state);
+      if (version != null) {
+        this._quietEmpty = true;
+        this._quietVersion = version;
+      } else {
+        this._quietEmpty = false;
+        this._quietVersion = -1;
+      }
+    } else {
+      this._quietEmpty = false;
+    }
   }
   fieldParticles(x, z, radius, kind, age, shutdownAge, seed, envelope, growth, cooling, accessibility) {
     if (kind !== 'singularity' && kind !== 'goo') return;
@@ -786,6 +823,8 @@ export class BombPresentationBatch {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this._quietEmpty = false;
+    this._quietVersion = -1;
     this.particles?.dispose();
     this.flow?.dispose();
     this.scene.remove(this.mesh);

@@ -253,7 +253,11 @@ test('quota still flows: a 3-kill breath does not stall wave 1', () => {
   }
   assert.ok(cleared, 'wave 1 still met its kill quota');
   assert.ok(cleared.killed >= 15, `quota flowed (${cleared.killed} kills)`);
-  assert.ok(cleared.survivors > 0, 'survivors still roll into wave 2');
+  // A finite-quota round clears only when every admitted body has resolved — survivors is
+  // structurally 0 (survivalWave._checkCleared gates on _cohort.size). Nothing rolls forward;
+  // wave 2 opens fresh. The >0 read belonged to the retired duration-clear ruleset.
+  assert.equal(cleared.completionKind, 'cohort', 'wave 1 cleared on its kill quota, not a clock');
+  assert.equal(cleared.survivors, 0, 'a cohort clear leaves nothing behind for wave 2');
   teardown(h);
 });
 

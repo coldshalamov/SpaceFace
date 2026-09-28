@@ -29,7 +29,7 @@ import { getOccupationalSilhouetteRule } from '../data/occupationalSilhouettes.j
 import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { ensureActivityClassified } from '../world/activityRuntime.js';
-import { forEachLivingWorldActor, indexedTypeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, forEachLivingWorldActor, indexedTypeScan } from '../world/livingWorldViews.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
 import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, witnessLineOfSight } from '../combat/stuntWitnesses.js';
@@ -47,6 +47,40 @@ export const BODY_NEAR_MISS_RADIUS_WU = 70;
 export const BODY_NEAR_MISS_EXIT_WU = 90;
 export const BODY_NEAR_MISS_WINDOW_TICKS = 480;
 export const BODY_NEAR_MISS_COOLDOWN_TICKS = 120;
+
+/** Bench A/B: production default ON. Quiet latch skips barkDirector
+ * ensureActivityClassified + living-actor bark/hail census when no eligible
+ * speak/hail/near-miss/stunt work remains. Soft-GPU fps not claimed. Fresh
+ * registry.step / HUD-adjacent radio residual after #152 flybyFocus (not
+ * flyby / pirate-star / bounty / salvage / sanctuary / cones / catch-nets clusters). */
+let BARK_DIRECTOR_QUIET_LATCH = true;
+export function setBarkDirectorQuietLatchForBench(enabled) {
+  BARK_DIRECTOR_QUIET_LATCH = enabled !== false;
+}
+export function getBarkDirectorQuietLatchForBench() {
+  return BARK_DIRECTOR_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const BARK_DIRECTOR_QUIET_RESCAN_TICKS = 30;
+
+function publishBarkDirectorQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.barkDirectorRuntime || (state.barkDirectorRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
+function isBarkQuietWakeCandidate(entity) {
+  if (!entity || entity.alive === false) return false;
+  return entity.type === 'ship' || entity.type === 'drone';
+}
+
+function barkPendingStuntBusy(state) {
+  const own = state && state.barkDirector;
+  const pending = own && own.stuntRecognition && own.stuntRecognition.pending;
+  return Array.isArray(pending) && pending.length > 0;
+}
+
 
 /** What a near-miss bark calls the body. A thrown rock is a rock, a pod is a pod. */
 export function nearMissBodyNoun(body) {
@@ -232,14 +266,21 @@ export const barkDirector = {
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
     this._bodyNearMisses = new Map();
+    this._barkQuiet = null;
+    this._barkWakeSeq = 0;
+    this._onEntitySpawnedBark = (payload) => {
+      const entity = payload && payload.entity;
+      if (!isBarkQuietWakeCandidate(entity)) return;
+      this.noteBarkWake();
+    };
     this._onFlee = (payload) => this._speakFromEvent(payload, 'flee', 'ai:flee');
     this._onReinforcement = (payload) => this._speakFromEvent(payload, 'reinforce', 'ai:reinforcementScheduled');
-    this._onCombatOutcome = () => this._enterPostCombatSilence();
+    this._onCombatOutcome = () => { this.noteBarkWake(); this._enterPostCombatSilence(); };
     // The ship-history owner (systems/ships.js) is the single writer of the living-hull record and
     // republishes it whenever a witnessed act attaches to the hull. Listening to that receipt keeps
     // this observer independent of system init order.
     this._onHullHistory = (payload) => this._speakHullRecognition(payload || {});
-    this._onStuntTrick = payload => this._speakStunt(payload || {});
+    this._onStuntTrick = payload => { this.noteBarkWake(); this._speakStunt(payload || {}); };
     this._onStuntSurface = payload => this._stuntSurface(payload || {});
     this._onStuntLoad = () => {
       const record=stuntRecognitionRecord(ensureState(this.state));
@@ -253,9 +294,10 @@ export const barkDirector = {
     this._onCargoJettisoned = (payload) => this._speakCargoSpill(payload || {}, 'cargo:jettisoned');
     this._onCargoKilled = (payload) => this._speakCargoSpill(payload || {}, 'entity:killed');
     this._onVictimKilled = (payload) => this._speakVictimDistress(payload || {});
-    this._onBodyReleased = (payload) => this._trackBodyNearMiss(payload && payload.targetId, 'throw', this.state && this.state.playerId);
+    this._onBodyReleased = (payload) => { this.noteBarkWake(); this._trackBodyNearMiss(payload && payload.targetId, 'throw', this.state && this.state.playerId); };
     this._onBodyShoved = (payload) => {
       if (!payload || payload.attackerId !== (this.state && this.state.playerId) || !(Number(payload.deltaV) > 0)) return;
+      this.noteBarkWake();
       this._trackBodyNearMiss(payload.victimId, 'shove', payload.attackerId);
     };
     this._onBodyImpact = (payload) => this._markBodyNearMissHit(payload || {});
@@ -268,6 +310,7 @@ export const barkDirector = {
     this._onLawReportReceipt = (payload) => this._speakLawWitness(payload || {});
     this._onHeatWantedCrossed = (payload) => this._speakWantedCrossing(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('entity:spawned', this._onEntitySpawnedBark);
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('save:loaded', this._onStuntLoad);
       this.bus.on('ai:reinforcementScheduled', this._onReinforcement);
@@ -296,8 +339,41 @@ export const barkDirector = {
     if (this.state) this.state.barkDirector = freshState();
   },
 
+  /** External wake when bark-relevant activity is stamped without a membership bump. */
+  noteBarkWake() {
+    this._barkWakeSeq = (this._barkWakeSeq | 0) + 1;
+    this._barkQuiet = null;
+  },
+
   update(_dt, state) {
     if (state.mode && state.mode !== 'flight') return;
+    this.state = state;
+    // Quiet open flight: no eligible bark/hail/near-miss/stunt work still paid
+    // ensureActivityClassified + living-actor census every tick. Latch when the
+    // census stays quiet; wake on membership, ship/drone spawn, combat/stunt/
+    // body-near-miss cues, or 0.5 s rescan. Soft-GPU fps not claimed. Fresh
+    // radio residual after #152 flybyFocus.
+    if (BARK_DIRECTOR_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tick = state.tick | 0;
+      const wakeSeq = this._barkWakeSeq | 0;
+      const quiet = this._barkQuiet;
+      const nearMissBusy = !!(this._bodyNearMisses && this._bodyNearMisses.size);
+      const stuntBusy = barkPendingStuntBusy(state);
+      if (quiet
+        && !nearMissBusy
+        && !stuntBusy
+        && membership != null
+        && quiet.membership === membership
+        && quiet.wakeSeq === wakeSeq
+        && ((tick - (quiet.armedTick | 0)) < BARK_DIRECTOR_QUIET_RESCAN_TICKS)) {
+        publishBarkDirectorQuiet(state, true);
+        return;
+      }
+    } else if (this._barkQuiet) {
+      this._barkQuiet = null;
+    }
+
     ensureActivityClassified(state);
     ensureState(state);
     this._advanceStuntBarks();
@@ -311,16 +387,36 @@ export const barkDirector = {
       sleepPeriodTicks: 8,
       activePeriodTicks: 1,
     };
+    let spoke = false;
     forEachLivingWorldActor(state, (entity) => {
       if (!shouldOwnerThink(state.tick, entity, thinkOpts)) return;
       this._queueKnownStunt(entity);
       const situation = classifyBarkSituation(entity, state);
       if (situation) {
-        this._speak(entity, situation, 'state');
+        if (this._speak(entity, situation, 'state')) spoke = true;
         return;
       }
-      this._hailPassingTraffic(entity, state, player);
+      if (this._hailPassingTraffic(entity, state, player)) spoke = true;
     });
+
+    if (BARK_DIRECTOR_QUIET_LATCH !== false) {
+      const nearMissBusy = !!(this._bodyNearMisses && this._bodyNearMisses.size);
+      const stuntBusy = barkPendingStuntBusy(state);
+      if (!spoke && !nearMissBusy && !stuntBusy) {
+        const membership = entityIndexVersion(state);
+        if (membership != null) {
+          this._barkQuiet = {
+            membership,
+            wakeSeq: this._barkWakeSeq | 0,
+            armedTick: state.tick | 0,
+          };
+          publishBarkDirectorQuiet(state, true);
+        }
+      } else {
+        this._barkQuiet = null;
+        publishBarkDirectorQuiet(state, false);
+      }
+    }
   },
 
   _speakFromEvent(payload, situation, reason) {
@@ -1021,6 +1117,7 @@ export const barkDirector = {
 
   destroy() {
     if (this.bus && typeof this.bus.off === 'function') {
+      if (this._onEntitySpawnedBark) this.bus.off('entity:spawned', this._onEntitySpawnedBark);
       if (this._onFlee) this.bus.off('ai:flee', this._onFlee);
       if (this._onReinforcement) this.bus.off('ai:reinforcementScheduled', this._onReinforcement);
       if (this._onCombatOutcome) this.bus.off('combat:outcome', this._onCombatOutcome);
@@ -1043,6 +1140,7 @@ export const barkDirector = {
       if (this._onBodyShoved) this.bus.off(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
       if (this._onBodyImpact) this.bus.off('physics:impact', this._onBodyImpact);
     }
+    this._onEntitySpawnedBark = null;
     this._onFlee = null;
     this._onReinforcement = null;
     this._onCombatOutcome = null;
@@ -1062,6 +1160,9 @@ export const barkDirector = {
     this._onBodyImpact = null;
     if (this._bodyNearMisses) this._bodyNearMisses.clear();
     this._bodyNearMisses = null;
+    this._barkQuiet = null;
+    this._barkWakeSeq = 0;
+    if (this.state) publishBarkDirectorQuiet(this.state, false);
   },
 };
 

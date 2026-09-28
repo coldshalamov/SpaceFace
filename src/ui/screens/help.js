@@ -901,11 +901,13 @@ export const helpScreen = {
       ]));
       // what the dial measures against, and the Pin verb that changes it
       const isPinned = s.id === this._pin;
-      const vsLine = el('p', 'orr-help-reading__vs');
-      vsLine.append(el('i', 'orr-help-reading__vs-bead'), el('span', '', isPinned ? 'Pinned: every hull reads against ' : 'The dial reads against '), el('b', '', pinned.name));
-      reading.appendChild(vsLine);
+      if (!isPinned) {
+        const vsLine = el('p', 'orr-help-reading__vs');
+        vsLine.append(el('i', 'orr-help-reading__vs-bead'), el('span', '', 'The dial reads against '), el('b', '', pinned.name));
+        reading.appendChild(vsLine);
+      }
       pinBtn.textContent = '';
-      pinBtn.append(el('span', 'orr-help-verb__word', isPinned ? 'Pinned for comparison' : 'Pin for comparison'), keyGlyph('C', { small: true }));
+      pinBtn.append(el('span', 'orr-help-verb__word', isPinned ? 'Pinned' : 'Pin to compare'), keyGlyph('C', { small: true }));
       pinBtn.setAttribute('aria-disabled', String(isPinned));
       pinBtn.setAttribute('aria-label', isPinned ? `${s.name} is pinned: every hull reads against it` : `Pin ${s.name}: read every hull against it (C)`);
       reading.appendChild(pinBtn);

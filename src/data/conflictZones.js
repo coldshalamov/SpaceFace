@@ -19,6 +19,11 @@ export const CONTESTED_SECTOR_BY_PAIR = Object.freeze({
   'faction_reach:faction_vael': 'sector_ashfall_reach',
   'faction_quiet:faction_scn': 'sector_io_reach',
   'faction_dmc:faction_reach': 'sector_charon_expanse',
+  // The south's war has a front: Concord's Dione Customs picket holds the one lawful toll
+  // gate on the southern run, and Vael packs (SCN relation -0.5) press the munitions lane
+  // that feeds it. The front starts cold and arrives through play — a kill on the lane banks
+  // front momentum through the same PQ-170.00 pipeline as every other front.
+  'faction_scn:faction_vael': 'sector_dione_lane',
 });
 
 // What each war stage looks like from the cockpit. pickets are lane garrisons (passive loiterers),

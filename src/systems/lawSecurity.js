@@ -4205,7 +4205,9 @@ function freshState() {
     wantedCheckpoint: null,
     wantedImpound: null,
     // Kills the law evaluated as crimes but could not see: the bounded discovered-crime ledger.
-    // Keyed by the victim's entity id; entries hold the stable reportId the witnessed path uses.
+    // Keyed by the victim's STABLE id (victimStableId — world-record id where one exists, else the
+    // entity:<id> fallback). Entity ids recycle through freeIds, so an id-keyed ledger would let a
+    // new hull inherit a dead stranger's warrant or let a real crime escape a recycled key.
     unreportedKills: {},
     highSecWarrant: null,
     highSecWantedS: 0,

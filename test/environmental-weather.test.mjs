@@ -37,9 +37,12 @@ function alongPoint(volume, along, across) {
   };
 }
 
-test('Veil and Vesta each carry a storm lane and a radiation belt on a schedule', () => {
+test('Veil, Vesta, and Io Reach each carry a storm lane and a radiation belt on a schedule', () => {
+  // 2026-09-28 INFERENCE unit: Io Reach joins the same one-storm/one-belt roster.
   const roles = WEATHER_VOLUMES.map((row) => `${row.sectorId}:${row.role}`).sort();
   assert.deepEqual(roles, [
+    'sector_io_reach:radiation_belt',
+    'sector_io_reach:storm',
     'sector_veil_nebula:radiation_belt',
     'sector_veil_nebula:storm',
     'sector_vesta_forge:radiation_belt',

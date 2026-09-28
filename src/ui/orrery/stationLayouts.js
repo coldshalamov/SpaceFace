@@ -177,7 +177,7 @@ ${S} .sxb-ops .sx-tile__seat { display:none !important; }
 ${S} :is(.sxb-ops .so-berth-status, .sx-comms__toggle, .sxb-help) > .so-icon { display:none !important; }
 ${S} .sxb-ops .orr-stationrow__beam { display:none !important; }
 /* weight, not wire: the tab rail is a luminous band under a 2px line, 1.5px fine ticks, 2px station ticks; the needle has body */
-${S} .sxb-ops .orr-stationrow__rule { background:linear-gradient(90deg, rgb(${BONE} / 0), rgb(${BONE} / .27) 40px, rgb(${BONE} / .27) calc(100% - 40px), rgb(${BONE} / 0)) 0 6.5px / 100% 7px no-repeat; }
+${S} .sxb-ops .orr-stationrow__rule { background:linear-gradient(90deg, rgb(${BONE} / 0), rgb(${BONE} / .3) 40px, rgb(${BONE} / .3) calc(100% - 40px), rgb(${BONE} / 0)) 0 6.5px / 100% 7px no-repeat; }
 ${S} .sxb-ops .orr-stationrow:is(:hover, :focus-within) .orr-stationrow__rule { background:linear-gradient(90deg, rgb(${BONE} / 0), rgb(${BONE} / .38) 40px, rgb(${BONE} / .38) calc(100% - 40px), rgb(${BONE} / 0)) 0 6.5px / 100% 7px no-repeat; }
 ${S} .sxb-ops .orr-stationrow__rule path.orr-rest { stroke:rgb(${BONE} / .62); stroke-width:2px; }
 ${S} .sxb-ops .orr-stationrow__rule path.orr-faint { stroke:rgb(${BONE} / .26); stroke-width:1.5px; }

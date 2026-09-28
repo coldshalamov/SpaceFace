@@ -75,6 +75,13 @@ function boot() {
     factionId: 'faction_scn',
     pos: { x: stationPos.x, z: stationPos.z },
     radius: 60,
+    // Production stations spawn hull 1e6 (src/systems/world.js station bootstrap): the
+    // jurisdictional anchor cannot die to a patrol's stray shot mid-incident. A paper hull
+    // here let one friendly round kill the station, which froze lastDamageAt, collapsed the
+    // protection lookup, and let the incident resolve 'disengaged' while the assault ran.
+    mass: 1e6,
+    hull: 1e6,
+    hullMax: 1e6,
     data: {
       stationId: 'station_coalition',
       dockRadius: 90,

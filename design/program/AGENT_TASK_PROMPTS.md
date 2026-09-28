@@ -15,13 +15,16 @@ one task and stops; it does not start an open-ended campaign.
 ## Prompt 0 — the default (no scope words)
 
 ```text
-Read build_map.md section 1 and do exactly what it says: node scripts/program-dispatch.mjs --next is your unit (fresh lookahead reservations are skipped); read its packet, especially "How agents get this wrong"; before mutation create a checkpoint for the current unit and reserve at most the next four units if this prompt is a sequence; finish the whole unit to its done-when in player units on a fixed seed; if it is feel or combat, run design/program/FUN_CONVERGENCE_LOOP.md; commit only your files by pathspec and push the current branch by name; report in the section 1.4 format in plain words; then close the checkpoint before taking the next unit. Stop only for a section 1.5 stop condition, and say which.
+Read build_map.md section 1 and do exactly what it says: node scripts/program-dispatch.mjs --next is your unit (fresh lookahead reservations are skipped); if it reports the queue drained, your unit is the lowest-numbered OPEN row on the board in build_map.md §1C instead; read the row's named source before mutating; before mutation create a checkpoint for the current unit and reserve at most the next four units if this prompt is a sequence; finish the whole unit to its done-when in player units on a fixed seed; if it is feel or combat, run design/program/FUN_CONVERGENCE_LOOP.md; commit only your files by pathspec and push the current branch by name; report in the section 1.4 format in plain words; then close the checkpoint before taking the next unit. Stop only for a section 1.5 stop condition, and say which.
 ```
 
 ## Which door? Exact task vs. develop the game
 
 - **Finish a known exact task** → use Prompts A/B/C below, or
   `node scripts/program-dispatch.mjs --next/--ready/--id`. The queue is unchanged.
+- **"Do the next N tasks" / batch parallel work** → the numbered board in
+  `build_map.md` §1C — one OPEN row per agent, lowest first (queue drained 2026-09-27).
+  Prompt B below.
 - **Spend inference making the game better** — say `INFERENCE` (no spec) to
   look at play and rotate real weaknesses, or `INFERENCE 3 MISSIONS` to stay
   in a domain → copy [`INFERENCE_GOAL.txt`](./INFERENCE_GOAL.txt). Law:
@@ -32,6 +35,25 @@ Read build_map.md section 1 and do exactly what it says: node scripts/program-di
   [`INFERENCE_INTENTIONAL_FUN.md`](./INFERENCE_INTENTIONAL_FUN.md). Overlay, not a second queue.
 - **Finish an area of the game** — a strong agent takes a whole lane → Prompt L below. Law:
   [`FINISH_LANES.md`](./FINISH_LANES.md) and `build_map.md` §27.
+
+## Prompt B — a board row (the countable unit)
+
+The unit is one numbered row on the board in `build_map.md` §1C. Give one row to one agent;
+the lowest OPEN row whose named paths are free is the default — name a row number or ID to steer it.
+
+```text
+BOARD — read build_map.md §1C and take the lowest-numbered OPEN row whose named paths are not in a
+live NOW.md row and not marked CLAIMED/PARKED/ORRERY. If you were told a row number or ID, take that
+row instead. Read the source the row names (ledger row, vm-drop folder, packet, campaign brief §23,
+wave table §22) before mutating — the row routes, the source specifies. Add your NOW.md row and flip
+the board row to CLAIMED <your thread> in the same edit. Finish the row's outcome in player units on
+a fixed seed; run the checks that cover its real failure modes. Commit only your files by pathspec.
+On landing, delete the board row in the landing commit — and if it was a defect row, delete the
+ledger row too. Report in build_map §1.4 words. Stop only for a §1.5 stop condition, and say which.
+```
+
+For N rows: start N threads, one BOARD prompt each — or give one agent
+`BOARD — take the next N OPEN rows in order, finishing each before claiming the next`.
 
 ## Prompt A0 — INFERENCE (think, complete, rotate)
 

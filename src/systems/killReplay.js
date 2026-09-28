@@ -57,14 +57,14 @@ function nearestOther(state, player) {
   let bestD = Infinity;
   const px = player.pos.x;
   const pz = player.pos.z;
-  // Plain inlined loop: this runs every sim tick over the ship+wreck membership (the replay
-  // ring samples at 60 Hz), and the per-entity closure call showed up in the PQ-210.01
-  // Crucible CPU profile. Identical selection — first strict minimum in iteration order wins.
-  // The entity index's ships/wrecks buckets carry every live hull and hull-corpse, so the
-  // fat list is only walked when the index is not ready.
+  // Plain inlined loop: this runs every sim tick over live ships (the replay ring samples
+  // at 60 Hz). A closer wreck must not steal the body track — captureKillReplay stamps the
+  // death sample onto the victim. First strict minimum in iteration order wins. The entity
+  // index's ships bucket is the live-hull walk; the fat list is only used when the index
+  // is not ready.
   const consider = (ent) => {
     if (!ent || ent === player || ent.alive === false || !ent.pos) return;
-    if (ent.type !== 'ship' && ent.type !== 'wreck') return;
+    if (ent.type !== 'ship') return;
     const dx = ent.pos.x - px;
     const dz = ent.pos.z - pz;
     const d = dx * dx + dz * dz;
@@ -72,10 +72,9 @@ function nearestOther(state, player) {
   };
   const index = state.entityIndex;
   const indexed = index && index.__spacefaceEntityIndexV1 && index.ready === true
-    && Array.isArray(index.ships) && Array.isArray(index.wrecks);
+    && Array.isArray(index.ships);
   if (indexed) {
     for (let i = 0; i < index.ships.length; i += 1) consider(index.ships[i]);
-    for (let i = 0; i < index.wrecks.length; i += 1) consider(index.wrecks[i]);
     return best;
   }
   const list = state.entityList;

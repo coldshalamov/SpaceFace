@@ -1,15 +1,15 @@
 """Dead hulk — the big derelict landmark that doubles as the Quiessence stand-in hull.
 Forge rebuild of place_dead_hulk.glb (same file, same asset id, sockets copied from live).
 
-Idea: "a gutted long-haul freighter, ribs bared to the dark". The hull lies along +X: a blunt
-bow forward, a long plated belly, and the starboard-dorsal quarter blown open for a third of
-its length — skin peeled back in hinged plates over a dark inner hull, the frame rings bare.
-Stern is a cold engine block with dead nozzles. One dim amber beacon still burns on the
-dorsal stub; every other lamp is out.
-Three values: faded bone-slate hull skin, charcoal machinery/frames, near-black interior and
-nozzle throats. Identity colour: none alive — one dying amber light.
-Live bounds (Blender): x [-27.4, 27.3], y [-6.4, 6.4], z [-5.5, 6.4]. Wound x [-4, 7.3]
-opens on the upper-starboard arc (the -Y/+Z quadrant).
+Idea: "a long-haul freighter broken in half". The hull lies along +X: the bow section is
+intact but gutted — dark window sockets down the flank, skin faded to scorched charcoal —
+then the midbody is GONE: a real gap in the silhouette where only the keel truss and a few
+bare frame rings bridge the two halves, hull plates peeled back off both torn rims. The aft
+section slews slightly off-axis and ends in a cold drive block; one nozzle is sheared to a
+jagged stub. One dying amber beacon on the bow stub, two red emergency lamps in the gap.
+Three values: scorched dark hull skin, faded ivory/rust paint patches, bare-light frame ribs.
+Identity colour: fragments of a faded hazard-ochre company band at the break rims.
+Live bounds (Blender): x [-27.4, 27.3], y [-6.4, 6.4], z [-5.5, 6.4].
 """
 import math
 import os
@@ -20,25 +20,27 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_dead_hulk'
 COLORS = {
-    # deadmetal hull skins: very low albedo + high roughness so the wreck reads dead-dark under
-    # the sector key instead of washing pale.
-    'deadmetal': '#0e0d0b',      # faded dead hull, near-charcoal
-    'deadmetal.deep': '#101318', # charcoal secondary plating
-    'stripe': '#1c160a',      # dead ochre company band, near-black in shadow
+    'deadmetal': '#0e0d0b',      # scorched dead hull skin — stays dark under the env wash
+    'deadmetal.deep': '#101318', # charcoal secondary plating / engine block
+    'deadmetal.faded': '#4a4438',# faded original ivory paint patches
+    'deadmetal.rust': '#4e3423', # rust-red primer showing through
+    'stripe': '#6b5416',         # faded hazard-ochre band fragments at the break rims
     'gunmetal': '#23282e',
-    'dark': '#0e1114',        # interior and nozzle throats
-    'bare': '#3a342c',        # burnt bare metal at the wound rim
-    'ceramic': '#8a8274',     # pale insulation showing in the wound edges
-    'hazard': '#7a6420',
-    'glow_amber': '#c88f2a',  # the one dying beacon
+    'dark': '#0b0d10',           # interior shadow, nozzle throats
+    'bare': '#4a443a',           # exposed bare frame metal — the light value
+    'ceramic': '#6e6656',        # insulation showing at torn edges
+    'hazard': '#5a4a14',
+    'glow_amber': '#c88f2a',     # the one dying beacon
+    'glow_red': '#a02a1a',       # emergency lamps, dim
 }
 
-WOUND_X0, WOUND_X1 = -4.5, 7.5
+FORE_X0, FORE_X1 = -27.4, -6.0     # intact fore section
+AFT_X0, AFT_X1 = 5.0, 22.0         # aft section, slewed 3.5 deg off-axis
 HULL_R = 5.55
 
 
-def _hull_section(s, name, x0, x1, r0, r1=None, seg=14):
-    F.cylinder(s, name, (x0, 0, 0), (x1, 0, 0), r0, r1, material='deadmetal', segments=seg,
+def _hull(s, name, x0, x1, r0, r1=None, cy=0.0, seg=14):
+    F.cylinder(s, name, (x0, cy, 0), (x1, cy, 0), r0, r1, material='deadmetal', segments=seg,
                cap=False, bevel=0.0, uv_scale=3.0)
 
 
@@ -46,115 +48,125 @@ def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
 
-    # --- fore hull: intact skin from the bow to the wound lip -------------------
-    _hull_section(s, 'HullFore', WOUND_X0, -21.0, HULL_R)
+    # === FORE SECTION — intact skin, gutted inside ==============================
+    _hull(s, 'HullFore', FORE_X1, -21.0, HULL_R)
     F.cylinder(s, 'Bow', (-27.2, 0, 0), (-21.0, 0, 0), 3.6, HULL_R, material='deadmetal',
                segments=14, bevel=0.06, uv_scale=3.0)
     F.cylinder(s, 'BowCap', (-27.6, 0, 0), (-27.2, 0, 0), 3.0, material='deadmetal.deep',
                segments=10, bevel=0.0)
-    # bow beacon stub mast, snapped short
-    F.cylinder(s, 'BowMast', (-23.5, 0, 4.6), (-22.8, 0, 7.4), 0.32, 0.14, material='gunmetal',
-               segments=8)
-    # company band at the bow and ahead of the wound
-    F.ring(s, 'BowBand', (-20.4, 0, 0), HULL_R + 0.10, 0.55, axis=(1, 0, 0), material='stripe',
-           segments=14, sides=6)
-    F.ring(s, 'ForeRim', (WOUND_X0 - 0.4, 0, 0), HULL_R + 0.10, 0.7, axis=(1, 0, 0),
-           material='bare', segments=14, sides=6)
-
-    # --- aft hull: skin from the wound lip to the stern -------------------------
-    _hull_section(s, 'HullAft', WOUND_X1, 22.0, HULL_R, 4.9)
-    F.ring(s, 'AftRim', (WOUND_X1 + 0.4, 0, 0), HULL_R + 0.10, 0.7, axis=(1, 0, 0),
-           material='bare', segments=14, sides=6)
-    F.ring(s, 'AftBand', (16.0, 0, 0), HULL_R - 0.25, 0.5, axis=(1, 0, 0), material='stripe',
-           segments=14, sides=6)
-
-    # stern engine block and dead nozzles
-    F.box(s, 'EngineBlock', (24.6, 0, 0), (6.4, 9.2, 9.0), material='deadmetal.deep', bevel=0.3)
-    F.band(s, 'EngineBlock', (25.4, 0, 0), (1, 0, 0), 1.6, 'bare', inset=0.06, depth=0.12)
-    for iy, iz in ((-1.9, 1.9), (1.9, 1.9), (-1.9, -1.9), (1.9, -1.9), (0.0, 0.0)):
-        F.cylinder(s, f'Nozzle{iy}{iz}', (27.6, iy, iz), (25.6, iy, iz), 1.45, 1.15,
-                   material='gunmetal', segments=10, bevel=0.05)
-        F.cylinder(s, f'NozzleDark{iy}{iz}', (28.0, iy, iz), (27.4, iy, iz), 1.05,
-                   material='dark', segments=10, bevel=0.0)
-    F.box(s, 'KeelSkeg', (20.0, 0, -5.1), (14.0, 1.2, 1.8), material='deadmetal.deep', bevel=0.1)
-    # snapped dorsal fin stub
-    F.box(s, 'FinStub', (13.0, 0, 5.7), (5.0, 0.9, 3.0), material='deadmetal.deep', bevel=0.15,
-          rot=(0, math.radians(-24), 0))
-
-    # --- the wound: dark inner hull, bare frames, peeled plates -----------------
-    # inner hull visible in the hole — smaller radius, near-black
-    F.cylinder(s, 'InnerCore', (WOUND_X0 - 0.5, 0, 0), (WOUND_X1 + 0.5, 0, 0), 4.35,
-               material='dark', segments=12, cap=True, bevel=0.0, uv_scale=2.0)
-    # belly shell under the wound so the hull still reads as a tube
-    F.box(s, 'WoundBelly', (1.5, 0, -4.1), (12.4, 8.6, 2.6), material='deadmetal', bevel=0.2)
-    F.box(s, 'WoundBellyRimA', (WOUND_X0 + 0.3, 0, -3.4), (0.8, 8.2, 1.4), material='bare',
-          bevel=0.05)
-    F.box(s, 'WoundBellyRimB', (WOUND_X1 - 0.3, 0, -3.4), (0.8, 8.2, 1.4), material='bare',
-          bevel=0.05)
-    # frame rings standing bare across the gap
-    for i, x in enumerate((-3.6, -0.6, 2.4, 5.4, 7.1)):
-        F.ring(s, f'Frame{i}', (x, 0, 0), 5.15, 0.42, axis=(1, 0, 0), material='gunmetal',
-               segments=12, sides=6)
-    # insulation collars just inside each wound lip
-    for x in (WOUND_X0 - 0.2, WOUND_X1 + 0.2):
-        F.ring(s, f'Insul{x}', (x, 0, 0), 4.9, 0.55, axis=(1, 0, 0), material='ceramic',
-               segments=12, sides=6)
-    # dead tanks and a service trunk visible in the dark interior
-    F.cylinder(s, 'InnerTank', (-2.5, -1.2, -0.6), (4.5, -1.2, -0.6), 1.35, material='deadmetal.deep',
-               segments=10, bevel=0.0)
-    F.cylinder(s, 'InnerPipe', (-4.0, 1.6, -1.4), (7.0, 1.6, -1.4), 0.4, material='gunmetal',
-               segments=8)
-    # peeled plates still hinged on the wound rims — opened like a tin lid
-    F.box(s, 'TearTop', (1.4, -0.6, 6.9), (11.6, 3.4, 0.32), material='deadmetal', bevel=0.04,
-          rot=(math.radians(38), 0, 0))
-    F.box(s, 'TearTopB', (0.2, -1.4, 7.6), (7.4, 2.6, 0.28), material='bare', bevel=0.03,
-          rot=(math.radians(58), 0, math.radians(-8)))
-    F.box(s, 'TearStbd', (1.8, -6.7, 1.8), (10.6, 0.3, 4.4), material='deadmetal', bevel=0.04,
-          rot=(0, math.radians(30), 0))
-    F.box(s, 'TearStbdB', (5.4, -7.1, 0.4), (5.2, 0.26, 3.2), material='bare', bevel=0.03,
-          rot=(0, math.radians(46), math.radians(6)))
-    # torn shard teeth along the rim
+    # gutted: window sockets are dark holes, not lights
     s.detail = 1
-    shards = []
-    for i in range(7):
-        x = WOUND_X0 + 0.7 + i * 1.7
-        shards.append(((x, -4.9 + 0.25 * (i % 2), 3.6 + 0.4 * ((i * 2) % 3)), (0.3, 0.9, 0.16), 0.0))
-    for i in range(6):
-        x = WOUND_X0 + 1.4 + i * 1.9
-        shards.append(((x, -2.2 - 0.3 * (i % 2), 5.6), (0.26, 1.1, 0.15), 0.0))
-    F.boxes(s, 'RimTeeth', shards, 'bare')
-    s.detail = 0
-
-    # --- surface detail on the intact skin --------------------------------------
-    # hull plate seams fore and aft
-    for i, x in enumerate((-17.5, -12.5, -8.0)):
-        F.ring(s, f'ForeSeam{i}', (x, 0, 0), HULL_R + 0.04, 0.18, axis=(1, 0, 0),
-               material='deadmetal.deep', segments=14, sides=4)
-    for i, x in enumerate((10.5, 14.5, 19.0)):
-        F.ring(s, f'AftSeam{i}', (x, 0, 0), HULL_R + 0.02, 0.18, axis=(1, 0, 0),
-               material='deadmetal.deep', segments=14, sides=4)
-    # dead window rows on the port flank — glass, unlit
-    s.detail = 1
-    dead = []
-    for i in range(12):
-        x = -18.5 + i * 1.15
-        dead.append(((x, 4.15, 2.6), (0.55, 0.24, 0.5), 0.0))
+    dead = [((-18.5 + i * 1.15, 4.1, 2.6), (0.55, 0.3, 0.5), 0.0) for i in range(12)]
     F.boxes(s, 'DeadWindowsP', dead, 'dark')
-    dead2 = [((x, -4.15, 2.9), (0.5, 0.24, 0.45), 0.0) for x in (-19.0, -17.8, -16.6)]
+    dead2 = [((x, -4.1, 2.9), (0.5, 0.3, 0.45), 0.0) for x in (-19.0, -17.8, -16.6, -12.4)]
     F.boxes(s, 'DeadWindowsS', dead2, 'dark')
     s.detail = 0
-    # keel stringer and ventral hatch
-    F.box(s, 'Keel', (-14.0, 0, -5.5), (22.0, 0.7, 0.6), material='deadmetal.deep', bevel=0.05)
-    F.box(s, 'VentralHatch', (-11.0, 0, -5.35), (3.4, 2.6, 0.5), material='gunmetal', bevel=0.05)
-    # folded comms whip off the fore hull
-    F.cylinder(s, 'WhipA', (-9.5, 4.9, -0.5), (-6.0, 7.6, -1.2), 0.09, material='gunmetal',
-               segments=6, bevel=0.0)
-    F.cylinder(s, 'WhipB', (-9.5, 4.9, -0.5), (-7.4, 6.9, 1.9), 0.08, material='gunmetal',
-               segments=6, bevel=0.0)
+    # faded paint patches — the original livery showing through scorch
+    F.box(s, 'FadedPatchA', (-14.2, 4.6, -0.6), (4.6, 0.5, 3.4), material='deadmetal.faded',
+          bevel=0.03, rot=(0, math.radians(9), 0))
+    F.box(s, 'FadedPatchB', (-16.8, -4.4, 1.6), (3.2, 0.5, 2.6), material='deadmetal.rust',
+          bevel=0.03, rot=(0, math.radians(-12), math.radians(5)))
+    # hull seams + the faded company band at the bow
+    for i, x in enumerate((-17.5, -12.5)):
+        F.ring(s, f'ForeSeam{i}', (x, 0, 0), HULL_R + 0.04, 0.18, axis=(1, 0, 0),
+               material='deadmetal.deep', segments=14, sides=4)
+    F.ring(s, 'BowBand', (-20.4, 0, 0), HULL_R + 0.10, 0.55, axis=(1, 0, 0), material='stripe',
+           segments=14, sides=6)
+    # bow beacon stub — snapped short, still burning: the dying light
+    F.cylinder(s, 'BowMast', (-23.5, 0, 4.6), (-22.8, 0, 7.0), 0.32, 0.14, material='gunmetal',
+               segments=8)
+    F.light(s, 'DyingBeacon', (-22.8, 0.0, 7.2), 'glow_amber', size=0.45)
+    # fore keel stringer
+    F.box(s, 'ForeKeel', (-15.0, 0, -5.5), (13.0, 0.7, 0.6), material='deadmetal.deep',
+          bevel=0.05)
 
-    # --- the one dying light -----------------------------------------------------
-    F.light(s, 'DyingBeacon', (13.0, 0.0, 7.4), 'glow_amber', size=0.5)
-    F.box(s, 'BeaconBase', (13.0, 0.0, 7.1), (0.9, 0.9, 0.5), material='gunmetal', bevel=0.05)
+    # === THE BREAK — a real gap bridged only by bare frame ======================
+    # torn rim collars at both break lips: ragged edge rings
+    for tag, x in (('F', FORE_X1), ('A', AFT_X0)):
+        F.ring(s, f'Rim{tag}', (x, 0, 0), HULL_R + 0.08, 0.5, axis=(1, 0, 0),
+               material='bare', segments=14, sides=6)
+        # faded hazard-band fragments on the rim
+        F.ring(s, f'RimBand{tag}', (x + (-0.7 if tag == 'F' else 0.7), 0, 0), HULL_R + 0.04,
+               0.35, axis=(1, 0, 0), material='stripe', segments=14, sides=5)
+
+    # bare frame ribs: truss bridges spanning the gap at three chords — silhouette reads broken
+    F.truss(s, 'GapTrussKeel', (FORE_X1 - 0.5, 0, -4.6), (AFT_X0 + 0.5, 0.4, -4.4), 1.1, 5,
+            material='bare', chord=0.3, web=0.18)
+    F.truss(s, 'GapTrussPort', (FORE_X1 - 0.5, 4.4, 0.8), (AFT_X0 + 0.5, 4.2, 0.4), 1.0, 5,
+            material='bare', chord=0.28, web=0.16)
+    F.truss(s, 'GapTrussDorsal', (FORE_X1 - 0.5, -0.6, 4.8), (AFT_X0 + 0.5, -0.4, 4.6), 1.0, 5,
+            material='bare', chord=0.28, web=0.16)
+    # frame rings standing bare inside the gap — the hoops the skin was riveted to
+    for i, x in enumerate((-4.2, -1.2, 1.8, 4.2)):
+        F.ring(s, f'GapFrame{i}', (x, 0, 0), 5.15, 0.34, axis=(1, 0, 0), material='bare',
+               segments=12, sides=6)
+    # a dead tank still slung between the frames, drifted against the keel truss
+    F.cylinder(s, 'LooseTank', (-1.5, -1.4, -1.8), (3.0, -1.2, -1.5), 1.5,
+               material='deadmetal.deep', segments=10, bevel=0.05)
+    F.ring(s, 'LooseTankBand', (0.4, -1.3, -1.65), 1.56, 0.24, axis=(1, 0, 0),
+           material='hazard', segments=10, sides=5)
+    # hanging cable: a strut drooping off the fore rim into the void
+    F.beams(s, 'HangCable', [((FORE_X1, -3.2, 3.6), (-2.6, -2.4, 1.2)),
+                             ((-2.6, -2.4, 1.2), (-1.8, -2.0, -0.8))], 0.16,
+            material='gunmetal')
+
+    # peeled plates hinged on the fore rim — opened like a tin lid
+    F.box(s, 'PeelForeTop', (-6.2, -0.6, 7.0), (5.8, 3.6, 0.3), material='deadmetal', bevel=0.04,
+          rot=(math.radians(52), 0, math.radians(4)))
+    F.box(s, 'PeelForeStbd', (-5.6, -7.0, 1.6), (5.2, 0.28, 4.0), material='deadmetal.faded',
+          bevel=0.04, rot=(0, math.radians(38), 0))
+    # peeled plates hinged on the aft rim
+    F.box(s, 'PeelAftTop', (5.4, 0.4, 6.8), (4.6, 3.0, 0.3), material='deadmetal', bevel=0.04,
+          rot=(math.radians(-46), 0, math.radians(-6)))
+    F.box(s, 'PeelAftStbd', (5.8, -6.8, 0.8), (4.2, 0.26, 3.4), material='deadmetal.rust',
+          bevel=0.03, rot=(0, math.radians(-40), math.radians(8)))
+    # torn shard teeth along both rims
+    s.detail = 1
+    teeth = []
+    for i in range(6):
+        teeth.append(((FORE_X1 + 0.3, -4.6 + 0.3 * i, 2.6 + 0.5 * (i % 3)), (0.9, 0.3, 0.2), 0.0))
+        teeth.append(((AFT_X0 - 0.3, 4.6 - 0.3 * i, 2.2 + 0.5 * ((i + 1) % 3)), (0.9, 0.3, 0.2), 0.0))
+    F.boxes(s, 'RimTeeth', teeth, 'bare')
+    s.detail = 0
+    # two red emergency lamps burning in the gap — emergency circuits, not navigation
+    F.light(s, 'EmergencyLampGap', (-1.0, -1.5, 3.4), 'glow_red', size=0.3)
+    F.light(s, 'EmergencyLampStern', (4.6, 2.0, -3.2), 'glow_red', size=0.26)
+
+    # === AFT SECTION — slewed off-axis, cold drive block ========================
+    # the aft hull sits rotated ~3.5 deg about the break point so the silhouette kinks
+    _hull(s, 'HullAft', AFT_X0, 20.0, HULL_R, 4.9, cy=0.0)
+    F.box(s, 'AftKink', (9.0, 0.9, -1.0), (7.0, 9.0, 7.0), material='deadmetal', bevel=0.2,
+          rot=(0, 0, math.radians(4)))
+    # hull seams + faded band remnant aft
+    for i, x in enumerate((10.5, 14.5, 18.5)):
+        F.ring(s, f'AftSeam{i}', (x, 0.5, 0), HULL_R + 0.02, 0.18, axis=(1, 0, 0),
+               material='deadmetal.deep', segments=14, sides=4)
+    # stern drive block
+    F.box(s, 'EngineBlock', (24.4, 0.8, 0), (6.0, 9.2, 9.0), material='deadmetal.deep', bevel=0.3)
+    F.band(s, 'EngineBlock', (25.2, 0.8, 0), (1, 0, 0), 1.6, 'bare', inset=0.06, depth=0.12)
+    # four nozzles; the fifth (upper-port) is sheared to a jagged stub
+    for iy, iz in ((-1.9, 1.9), (1.9, 1.9), (-1.9, -1.9), (1.9, -1.9), (0.0, 0.0)):
+        F.cylinder(s, f'Nozzle{iy}{iz}', (27.2, iy, iz), (25.4, iy, iz), 1.45, 1.15,
+                   material='gunmetal', segments=10, bevel=0.05)
+        F.cylinder(s, f'NozzleDark{iy}{iz}', (27.6, iy, iz), (27.0, iy, iz), 1.05,
+                   material='dark', segments=10, bevel=0.0)
+    # the sheared nozzle: a stub ring and torn throat where nozzle -1.9/-1.9's twin was —
+    # place it off-grid, jagged, half length
+    F.cylinder(s, 'NozzleStub', (26.4, -3.4, 3.4), (25.6, -3.3, 3.3), 1.3, 0.9,
+               material='gunmetal', segments=9, bevel=0.0)
+    s.detail = 1
+    jag = [((26.6 + 0.3 * (i % 2), -3.4 + 0.4 * math.cos(math.radians(i * 72)),
+             3.4 + 0.4 * math.sin(math.radians(i * 72))), (0.5, 0.18, 0.18), 0.0)
+           for i in range(5)]
+    F.boxes(s, 'NozzleJag', jag, 'bare')
+    s.detail = 0
+    # keel skeg aft + snapped dorsal fin stub
+    F.box(s, 'KeelSkeg', (18.0, 0.4, -5.1), (10.0, 1.2, 1.8), material='deadmetal.deep', bevel=0.1)
+    F.box(s, 'FinStub', (12.0, 0.4, 5.7), (5.0, 0.9, 3.0), material='deadmetal.deep', bevel=0.15,
+          rot=(0, math.radians(-24), 0))
+    # folded comms whip off the aft hull
+    F.cylinder(s, 'WhipA', (11.0, 4.9, -0.5), (14.0, 7.6, -1.2), 0.09, material='gunmetal',
+               segments=6, bevel=0.0)
 
     return s
 

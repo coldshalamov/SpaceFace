@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
-import { MINE_ARM_DELAY_S, MINE_OWNER_CAP, MINE_TYPE, mines } from '../src/systems/mines.js';
+import { MINE_ARM_DELAY_S, MINE_OWNER_CAP, MINE_THROW_GRACE_S, MINE_TYPE, mines } from '../src/systems/mines.js';
 
 function bootMines() {
   const state = createGameState(47);
@@ -85,6 +85,35 @@ test('an owner cannot exceed the live mine cap', () => {
     }
     const overflow = system.placeMine({ ownerId: 1, pos: { x: 99, z: 40 }, team: 0, telegraph: false });
     assert.equal(overflow, null);
+  } finally {
+    bus.clear();
+  }
+});
+
+test('a thrown mine is a grenade: it latches, then cooks the owner team after grace', () => {
+  const { state, bus, system, routed, triggered } = bootMines();
+  try {
+    const pirate = {
+      id: 3, type: 'ship', alive: true, team: 1,
+      pos: { x: 80, z: 0 }, hull: 80, hullMax: 80,
+    };
+    state.entities.set(3, pirate);
+    state.entityList.push(pirate);
+    const mine = system.placeMine({
+      ownerId: 3, pos: { x: 78, z: 0 }, team: 1, armDelayS: 0, telegraph: false,
+    });
+    assert.equal(mine.data.masslineTetherable, true);
+    assert.equal(mine.data.armed, true);
+    system.update(1 / 60, state);
+    assert.equal(triggered.length, 0, 'friendly parked mines do not cook their owner pack');
+
+    bus.emit('massline:throw', { payloadId: mine.id });
+    assert.equal(mine.data.playerThrown, true);
+    state.simTime = MINE_THROW_GRACE_S + 0.05;
+    system.update(1 / 60, state);
+    assert.equal(triggered.length, 1);
+    assert.equal(triggered[0].targetId, pirate.id);
+    assert.equal(routed.length, 1);
   } finally {
     bus.clear();
   }

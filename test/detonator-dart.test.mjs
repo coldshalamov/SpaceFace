@@ -366,6 +366,35 @@ test('the fuse is exactly-once: duplicated kill receipts and a spent proximity p
     'three ticks and two receipts produce exactly one blast');
 });
 
+test('a recycled entity id keeps a live fuse — no permanent dud', () => {
+  const h = blastHarness({ dartAlive: false, dartX: 900 });
+  h.bus.emit('entity:killed', { id: 7, killerId: 1 });
+  h.system.update(1 / 60, h.state);
+  assert.equal(h.events.filter((e) => e.name === 'detonator:detonated').length, 1,
+    'the first dart still death-pops');
+
+  // Core hands the corpse's id to the next spawn: same id, NEW entity object.
+  h.state.entities.delete(7);
+  h.state.entityList.splice(h.state.entityList.findIndex((e) => e.id === 7), 1);
+  const second = dart(7, 900, 0);
+  h.state.entities.set(7, second);
+  h.state.entityList.push(second);
+
+  // A duplicated kill receipt arriving after the recycle resolves to the LIVE dart: refused.
+  h.bus.emit('entity:killed', { id: 7, killerId: 1 });
+  h.system.update(1 / 60, h.state);
+  h.system.update(1 / 60, h.state);
+  assert.equal(h.events.filter((e) => e.name === 'detonator:detonated').length, 1,
+    'a stale receipt on the recycled id cannot pop the living dart');
+
+  // And the recycled dart's own fuse still works — it reaches a hostile and pops.
+  second.pos.x = 30;
+  h.system.update(1 / 60, h.state);
+  assert.equal(h.events.filter((e) => e.name === 'detonator:detonated').length, 2,
+    'the recycled-id dart is not a permanent dud');
+  assert.equal(second.alive, false);
+});
+
 test('a dart does not cook off alone, and a wingman on its own team is not a fuse', () => {
   const wing = { id: 9, type: 'ship', alive: true, team: 1, mass: 60, radius: 12,
     pos: { x: 70, z: 0 }, vel: { x: 0, z: 0 }, hull: 200, hullMax: 200, data: {} };

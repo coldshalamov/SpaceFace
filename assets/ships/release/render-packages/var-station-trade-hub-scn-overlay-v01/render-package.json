@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ad917d47740873cf86d7acd2cd8e4f032acbea1830c63fdeaf0235d963b62830",
+  "contentHash": "63afbf8eb94e171911264b1a7d18e5b9902d0de0828a863503ef5098f3f527bb",
   "dynamicGroups": [
     {
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-hook-nav-port.dynamic",
@@ -49,18 +49,18 @@
     {
       "bounds": {
         "max": [
-          57.44990539550781,
-          53.12940216064453,
-          56.92243576049805
+          57.479923248291016,
+          53.12453842163086,
+          57.76607894897461
         ],
         "min": [
           -88.9000015258789,
-          15.696661949157715,
-          -57.323123931884766
+          15.701990127563477,
+          -57.80736541748047
         ]
       },
       "drawMode": 4,
-      "geometryHash": "269b992f6c7758981ecf47f89bc42e5ed2a3aeab390cff38d9880ed7b48117ef",
+      "geometryHash": "a94bb514c0821b3dd5fafdbe7a87c03f68c78466aed7628759a5feaa77f4ed7e",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -69,32 +69,32 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 741
+      "vertexCount": 748
     },
     {
       "bounds": {
         "max": [
-          57.44990539550781,
-          32.40359878540039,
-          56.92803955078125
+          57.479923248291016,
+          32.39635467529297,
+          57.76231384277344
         ],
         "min": [
           -88.80000305175781,
-          15.9964017868042,
-          -57.32872772216797
+          16.003646850585938,
+          -57.8036003112793
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5c90447461103e55e9d12fe3e20d1f3e59c6221f33b62d9ea4c6bc7c13373cdf",
+      "geometryHash": "5c5f497d7287179c661f10e2cd89a7f12e63c4de5137ddc71c3937751d034275",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-armor.primitive.0",
-      "indexCount": 21666,
+      "indexCount": 33564,
       "indexed": true,
       "materialHash": "e79e82266dcf335a1f888e39e288bcbffc7249f3ceda30f0a34c65f16d6689f6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 7288
+      "vertexCount": 11408
     },
     {
       "bounds": {
@@ -224,27 +224,27 @@
     {
       "bounds": {
         "max": [
-          35.45844268798828,
-          40.10539245605469,
-          40.52825164794922
+          54.25542068481445,
+          40.10039520263672,
+          51.253292083740234
         ],
         "min": [
           -88.2249984741211,
-          29.642107009887695,
-          -40.52825164794922
+          29.647104263305664,
+          -51.253292083740234
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5a789166e194d044511752b874cc98d4148c52f4f5efe3a0fe605f641b1567de",
+      "geometryHash": "2b39c8d832e752c8b4b6452d4bf405fd34f29446caec75637cab78276c1adc8a",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-lights-warm.primitive.0",
-      "indexCount": 324,
+      "indexCount": 1044,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Warm",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 696
     },
     {
       "bounds": {
@@ -299,52 +299,52 @@
     {
       "bounds": {
         "max": [
-          51.330379486083984,
-          17.302383422851562,
-          48.330379486083984
+          57.404605865478516,
+          27.3017635345459,
+          56.849998474121094
         ],
         "min": [
-          -45.330379486083984,
-          15.697615623474121,
-          -48.330379486083984
+          -53.85254669189453,
+          15.698235511779785,
+          -56.849998474121094
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba0a7e890694922c98f2c214af4815dedc6002553c4eedf67d7b25a735c0b9a2",
+      "geometryHash": "bb6d8595829b55f2c3cf66768aa94febacfceb455f61f154ae73b5b9f1fba28a",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 288,
+      "indexCount": 8802,
       "indexed": true,
       "materialHash": "eea413a4e49451ee18e762677ec119e72b6134f4fe41ffd1b309a76828d29650",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 192
+      "vertexCount": 3240
     },
     {
       "bounds": {
         "max": [
-          57.44990539550781,
-          32.402915954589844,
-          56.915184020996094
+          57.47423553466797,
+          32.395545959472656,
+          57.748680114746094
         ],
         "min": [
-          -88.78778076171875,
-          15.997086524963379,
-          -57.31418228149414
+          -88.79127502441406,
+          16.004453659057617,
+          -57.78799057006836
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef021ae868bf8acbd461f6044a9d74ecaa251696a3266be1e648a39d91319606",
+      "geometryHash": "431147362d4db002e89cab0c15c2d7a5d604a5c8500335c005bc3e591b7a519c",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-armor.primitive.0",
-      "indexCount": 4866,
+      "indexCount": 9792,
       "indexed": true,
       "materialHash": "e79e82266dcf335a1f888e39e288bcbffc7249f3ceda30f0a34c65f16d6689f6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2459
+      "vertexCount": 4584
     },
     {
       "bounds": {
@@ -399,52 +399,52 @@
     {
       "bounds": {
         "max": [
-          53.16674041748047,
-          33.09239959716797,
-          50.15545654296875
+          53.15305709838867,
+          33.09229278564453,
+          50.15532302856445
         ],
         "min": [
           -68.46224975585938,
-          18.63069725036621,
-          -50.167022705078125
+          18.632217407226562,
+          -50.15586853027344
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d8eeb2558cef99da34546eee628a0114ea12468cd783da4d282b8791c02aa554",
+      "geometryHash": "3659118fa920883647a047aa319a2646094a1c135fd4424233cfbc2ce0e959a6",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-hull-graphite.primitive.0",
-      "indexCount": 456,
+      "indexCount": 600,
       "indexed": true,
       "materialHash": "95ef056a28353a82c5b1d8cac4034171dabddf821e869a0fb491be2ace41bce1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_graphite",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-hull-graphite",
       "primitiveIndex": 0,
-      "vertexCount": 219
+      "vertexCount": 260
     },
     {
       "bounds": {
         "max": [
           57.16282272338867,
-          34.59688186645508,
+          34.599388122558594,
           56.60557174682617
         ],
         "min": [
           -88.88976287841797,
-          19.121112823486328,
+          19.10578727722168,
           -56.60557174682617
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6256ab9ca5975a49030073098385f9e433ee1f486197fe2d7fd27f0befd2f7d1",
+      "geometryHash": "7a684288d5bfd68333de4d7703bb352da578015a56c3f859e33bf4159e959637",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-hull.primitive.0",
-      "indexCount": 2472,
+      "indexCount": 2634,
       "indexed": true,
       "materialHash": "80b9861c1199a6326e77f52f2d392e0816608356fcd208eadd0fce3251607bb6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1364
+      "vertexCount": 1430
     },
     {
       "bounds": {
@@ -474,27 +474,27 @@
     {
       "bounds": {
         "max": [
-          35.45844268798828,
-          40.10539245605469,
-          40.52825164794922
+          54.25542068481445,
+          40.10039520263672,
+          51.253292083740234
         ],
         "min": [
           -88.2249984741211,
-          29.642107009887695,
-          -40.52825164794922
+          29.647104263305664,
+          -51.253292083740234
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1aac434e757c2efeaac52fa1f91855dc93c99523345abbcb33165321f7313999",
+      "geometryHash": "41c21a02e01d83ff709d7d4c80be2e91a9c1e999feeb9e9de291752f7bc245cb",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-lights-warm.primitive.0",
-      "indexCount": 324,
+      "indexCount": 1044,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Warm",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 696
     },
     {
       "bounds": {
@@ -510,16 +510,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc57523bf55d43dc73e44a2c3122d6d87c375707deb6187f61630fc8757842a3",
+      "geometryHash": "83ae77f1022a93de3768b646c54851910da0deb5b5718b626717db2bee8c4228",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-livery.primitive.0",
-      "indexCount": 2358,
+      "indexCount": 2568,
       "indexed": true,
       "materialHash": "1fbc30042cf20b84257c262e9b4c318b3baf6dc7bb63d277dd6970f5f9c24c87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-livery",
       "primitiveIndex": 0,
-      "vertexCount": 1251
+      "vertexCount": 1330
     },
     {
       "bounds": {
@@ -535,66 +535,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16a764a6e7feb99d8de02dda8f737dc8a56cccc7c4cb31caefbf60a9e8655434",
+      "geometryHash": "cd0d4a456be210f4f96e24cee0aea24ece21acce34c45fdb2fadc64b7b578623",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-mechanical.primitive.0",
-      "indexCount": 10488,
+      "indexCount": 10596,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 6842
+      "vertexCount": 6862
     },
     {
       "bounds": {
         "max": [
-          51.330379486083984,
-          17.302383422851562,
-          48.330379486083984
+          57.404605865478516,
+          27.29158592224121,
+          56.849998474121094
         ],
         "min": [
-          -45.330379486083984,
-          15.697615623474121,
-          -48.330379486083984
+          -53.85254669189453,
+          15.701937675476074,
+          -56.849998474121094
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ed176af040aad3832e5e9a1816e9466e280bfae98e72b1b5e3e7172219d6020f",
+      "geometryHash": "92ee9dfff8f214e344d5f5f3386641c7124af27ce0b6a512240715d0dd201c1c",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 288,
+      "indexCount": 2466,
       "indexed": true,
       "materialHash": "eea413a4e49451ee18e762677ec119e72b6134f4fe41ffd1b309a76828d29650",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 192
+      "vertexCount": 1400
     },
     {
       "bounds": {
         "max": [
-          57.02340316772461,
-          32.397727966308594,
-          56.90381622314453
+          57.80992889404297,
+          32.39767837524414,
+          56.90085983276367
         ],
         "min": [
-          -88.01702880859375,
-          16.002275466918945,
-          -56.90381622314453
+          -88.01702117919922,
+          16.0023250579834,
+          -56.90085983276367
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12c35b1b35f280cb1cf1dd3d4d9ef8c016f5d4e9b83cba426d485025dbf775d2",
+      "geometryHash": "460e23d999f49eebd9ccae4b4cc143b174a1b0d12e2cd5e738aea1d506af0473",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-armor.primitive.0",
-      "indexCount": 2778,
+      "indexCount": 4050,
       "indexed": true,
       "materialHash": "e79e82266dcf335a1f888e39e288bcbffc7249f3ceda30f0a34c65f16d6689f6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1568
+      "vertexCount": 2222
     },
     {
       "bounds": {
@@ -610,7 +610,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7b02068f346ca5d64f765ed4f725133be4f42117dcb3d54d4cb5319a2fe175ac",
+      "geometryHash": "927acdd0cc789a59e787c044fd471d319a03058c7dd6e7bc04c18b850bc53443",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-hook-nav-port.primitive.0",
       "indexCount": 3,
       "indexed": true,
@@ -635,7 +635,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8b32b279206a703a473bcea97e320d9e92a8af47a4d389ef5fd47fbd54d67f42",
+      "geometryHash": "04d8beaf5b76e2c00a72477a6f0d788f7dcf95d7e85d20e7545749e6c68f92ce",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-hook-nav-starboard.primitive.0",
       "indexCount": 3,
       "indexed": true,
@@ -649,52 +649,52 @@
     {
       "bounds": {
         "max": [
-          53.52299880981445,
-          32.31496810913086,
-          50.52024841308594
+          51.189449310302734,
+          32.31879806518555,
+          48.18858337402344
         ],
         "min": [
           -68.32727813720703,
-          19.00206184387207,
-          -50.52024841308594
+          18.99822998046875,
+          -48.18858337402344
         ]
       },
       "drawMode": 4,
-      "geometryHash": "48047c3edb1c307d2ad78807bd425adbf6977b751415dd64eee312b32f934e1f",
+      "geometryHash": "5e731527891180a5e5d025c485e0a96237df7a891e6c9edcd6cd8edb6690153c",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-hull-graphite.primitive.0",
-      "indexCount": 54,
+      "indexCount": 18,
       "indexed": true,
       "materialHash": "95ef056a28353a82c5b1d8cac4034171dabddf821e869a0fb491be2ace41bce1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_graphite",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-hull-graphite",
       "primitiveIndex": 0,
-      "vertexCount": 38
+      "vertexCount": 18
     },
     {
       "bounds": {
         "max": [
-          56.397274017333984,
-          34.59513854980469,
-          56.60216522216797
+          56.014495849609375,
+          34.597476959228516,
+          56.6038703918457
         ],
         "min": [
           -89.11943054199219,
-          19.12285804748535,
-          -56.60216522216797
+          19.502521514892578,
+          -56.6038703918457
         ]
       },
       "drawMode": 4,
-      "geometryHash": "14239b10143ee553b703a79a857dd62716e91177aaf838fe63a19865000ebdf5",
+      "geometryHash": "14a4f6555df038eca5d2761f3fdbab758cc6832af6e977c02a3a19009991e35e",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-hull.primitive.0",
-      "indexCount": 1989,
+      "indexCount": 1761,
       "indexed": true,
       "materialHash": "80b9861c1199a6326e77f52f2d392e0816608356fcd208eadd0fce3251607bb6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1109
+      "vertexCount": 979
     },
     {
       "bounds": {
@@ -710,7 +710,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98cea35cdff4b53d1e1b7cfd43baa1744d8e0887911b1189cc7068149755c04b",
+      "geometryHash": "500cff83e599faface10432f6e506eb31582b831ea9881df7199a50dbd5320ad",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-lights-cyan-scn.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -735,7 +735,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4af1a9da71ce439d11fb6990d634d29c5dde70d1b18ab34ac4ed0397282e2dd",
+      "geometryHash": "34fd7111161cf84e76b141ee06e7ced369790859cd1698872106884b35d1b15f",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-lights-warm.primitive.0",
       "indexCount": 27,
       "indexed": true,
@@ -750,42 +750,42 @@
       "bounds": {
         "max": [
           57.02181625366211,
-          31.174942016601562,
+          34.25645065307617,
           56.900001525878906
         ],
         "min": [
           -53.90253448486328,
-          28.521564483642578,
+          26.61583709716797,
           -56.900001525878906
         ]
       },
       "drawMode": 4,
-      "geometryHash": "601723495212c42973fbb91e5263e021496581a3ed2e501448bd64497693bb2f",
+      "geometryHash": "3e71831c5c50d73e6127c18ba535bdf12ed99646736b9ed5fbe6d2705712764e",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-livery.primitive.0",
-      "indexCount": 1899,
+      "indexCount": 1887,
       "indexed": true,
       "materialHash": "1fbc30042cf20b84257c262e9b4c318b3baf6dc7bb63d277dd6970f5f9c24c87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-livery",
       "primitiveIndex": 0,
-      "vertexCount": 998
+      "vertexCount": 991
     },
     {
       "bounds": {
         "max": [
-          46.216922760009766,
-          53.10035705566406,
-          43.21772384643555
+          45.58760452270508,
+          53.1013298034668,
+          42.83812713623047
         ],
         "min": [
-          -88.15130615234375,
-          27.380653381347656,
-          -42.839942932128906
+          -88.10865020751953,
+          27.379682540893555,
+          -42.83812713623047
         ]
       },
       "drawMode": 4,
-      "geometryHash": "446ecb2aa8eae0fcd2765d375f39a2e233fb2136dcdbd9483405b0c849dc7a6a",
+      "geometryHash": "cfc1900ba9d7cf8809f8bb91a77819a3080deb0cd6e8c9c226606b93e08bdd1d",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-mechanical.primitive.0",
       "indexCount": 846,
       "indexed": true,
@@ -799,27 +799,27 @@
     {
       "bounds": {
         "max": [
-          50.7558479309082,
-          16.89707374572754,
-          47.912567138671875
+          56.82604217529297,
+          24.99848175048828,
+          56.849998474121094
         ],
         "min": [
-          -44.912567138671875,
-          16.10292625427246,
-          -47.7558479309082
+          -53.848148345947266,
+          16.101518630981445,
+          -56.849998474121094
         ]
       },
       "drawMode": 4,
-      "geometryHash": "313f716e9fe3d5843df6be90a110bfd9573fe9a6b8014104a1b7a92cbf7836dd",
+      "geometryHash": "376046afb6644353b37dfb77b65919ec55776c47f0832e213591725ff0be0d7f",
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 24,
+      "indexCount": 1734,
       "indexed": true,
       "materialHash": "eea413a4e49451ee18e762677ec119e72b6134f4fe41ffd1b309a76828d29650",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 952
     }
   ],
   "hlods": [],
@@ -2621,42 +2621,42 @@
       "sha256": "3b368385b9021c8f23f6f93947c297a031738c92ae5a3b43262d9c328a3f26d0"
     },
     "sourceGlb": {
-      "bytes": 889024,
-      "sha256": "3c574233d50f0752b9a46716e6bff09509eacd13be896cb76c07ddc04c536987",
+      "bytes": 1065636,
+      "sha256": "35581582c1e3816c3736f7e629cec8762fb873a25c518d9905a80214d70a29ec",
       "uri": "var_station_trade_hub_scn_overlay_v01.glb"
     },
     "sourceManifest": {
-      "bytes": 203788,
-      "sha256": "8361e46abf91eba0b1e694e7dae87b812124bb990cf1bc562a95382c7c8d23b3",
+      "bytes": 205647,
+      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1437052,
-    "sha256": "5514bb2fbf1a6e6c1d9d2d6e15117056506aae393c78d2348cc87b2bbf5b632f",
+    "bytes": 1791584,
+    "sha256": "fbe4c514ec7167351ae8dc83bde5759142dded176a1e8c39b4d973477b0d2cf5",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -15.833488464355469,
-        34.41303205490112,
-        -0.20034408569335938
+        -15.65475082397461,
+        34.41138696670532,
+        -0.020643234252929688
       ],
       "max": [
-        57.45245361328125,
-        53.12940216064453,
-        56.92803955078125
+        57.80992889404297,
+        53.12453842163086,
+        57.76607894897461
       ],
       "min": [
         -89.11943054199219,
-        15.696661949157715,
-        -57.32872772216797
+        15.698235511779785,
+        -57.80736541748047
       ],
       "size": [
-        146.57188415527344,
-        37.432740211486816,
-        114.25676727294922
+        146.92935943603516,
+        37.426302909851074,
+        115.57344436645508
       ]
     },
     "hidden": [
@@ -3650,20 +3650,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/var_station_trade_hub_scn_overlay_v01.glb"
   },
-  "runtimeHash": "97e9e7394efb0cfeaa4c2e7c616a30394f71ca9e02f05313ae1a21ae7582396e",
+  "runtimeHash": "de5b637e0fad5f2988778483146f1286f7b19704177c8a207221045fae9af298",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          57.45245361328125,
-          53.12940216064453,
-          56.92803955078125
+          57.80992889404297,
+          53.12453842163086,
+          57.76607894897461
         ],
         "min": [
           -89.11943054199219,
-          15.696661949157715,
-          -57.32872772216797
+          15.698235511779785,
+          -57.80736541748047
         ]
       },
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.body",

@@ -1625,3 +1625,183 @@ test('the arrival band is judged at a body\'s nearest edge, not its centre', () 
   assert.equal(bodyIsInsideSectorArrivalBand(state, otherSector), false);
   assert.equal(bodyIsInsideSectorArrivalBand({ ...state, entities: new Map() }, cathedral), false, 'no player pose, no reveal');
 });
+
+// A generation or member superseded while publication is awaiting is a withdrawal, not an
+// invariant: the newer census owns the set. Only a member that provably failed — or one the
+// publisher refused while it is still claimed READY — stays a fail-closed loss.
+
+test('a member superseded during the publish await withdraws instead of failing the sector', async () => {
+  const { manager } = preparedManager();
+  const spec = reservation('superseded-mid-publish', 1);
+  const record = manager.reserve(spec);
+  await record.settled;
+  assert.equal(record.state, SECTOR_BOUNDARY_PREPARATION_STATE.ready);
+
+  // A newer reservation for the same body supersedes the READY member exactly like an
+  // entity:spawned restage or a generation bump does inside the publish await.
+  const replacement = manager.reserve({ ...spec, generation: 2 });
+  assert.equal(record.active, false);
+  assert.equal(record.state, SECTOR_BOUNDARY_PREPARATION_STATE.aborting);
+
+  const outcome = await publishSectorBoundaryRecordSnapshot(new Set([record]), {
+    publishRecords: (candidates) => manager.publishRecords(candidates),
+    currentRecordForId: (id) => manager.get(id),
+    sectorId: 'sector_tethys',
+  });
+  assert.equal(outcome.churned, true, 'a withdrawn member is churn, not a lost authored boundary');
+  assert.deepEqual([...outcome.withdrawn], [record.id]);
+  assert.equal(record.state, SECTOR_BOUNDARY_PREPARATION_STATE.disposed);
+
+  await replacement.settled;
+  assert.equal(replacement.state, SECTOR_BOUNDARY_PREPARATION_STATE.ready);
+});
+
+test('a member that fails publication while still claimed stays a fail-closed loss', async () => {
+  const { manager } = preparedManager({
+    publishBoundary() {
+      throw new Error('bind exploded');
+    },
+  });
+  const record = manager.reserve(reservation('lost-mid-publish'));
+  await record.settled;
+  assert.equal(record.state, SECTOR_BOUNDARY_PREPARATION_STATE.ready);
+
+  await assert.rejects(
+    publishSectorBoundaryRecordSnapshot(new Set([record]), {
+      publishRecords: (candidates) => manager.publishRecords(candidates),
+      currentRecordForId: (id) => manager.get(id),
+      sectorId: 'sector_tethys',
+    }),
+    (error) => error?.preventSectorFallbackRotation === true
+      && /lost a prepared authored boundary/.test(error.message)
+      && /lost-mid-publish/.test(error.message),
+  );
+});
+
+test('a fail-closed phase error on a superseded generation withdraws without an invariant', async () => {
+  const candidate = {
+    id: 'stale:publish',
+    entity: { id: 'stale:publish', alive: true },
+    fingerprint: 'fingerprint:stale:publish',
+    state: SECTOR_BOUNDARY_PREPARATION_STATE.ready,
+  };
+  const record = {
+    active: true,
+    promise: Promise.resolve([]),
+    boundaryRevision: 1,
+    boundaryRecords: new Set([candidate]),
+    liveBoundaryPromises: new Map(),
+  };
+  let generationActive = true;
+  let rotations = 0;
+
+  const settled = await settleSectorPrewarmPopulationFixpoint(record, {
+    isActive: () => generationActive,
+    settleBoundaryRecords() {},
+    async publishBoundaryRecords() {
+      // The whole generation is superseded while its publish is in flight.
+      generationActive = false;
+      const error = new Error('stale publication lost its generation');
+      error.code = 'SPACEFACE_SECTOR_PREWARM_INCOMPLETE_PUBLICATION';
+      error.preventSectorFallbackRotation = true;
+      throw error;
+    },
+  }).then((value) => {
+    if (value === true) rotations++;
+    return value;
+  });
+
+  assert.equal(settled, false, 'a superseded generation withdraws instead of logging an invariant');
+  assert.equal(rotations, 0, 'a superseded generation never reaches residency rotation');
+});
+
+test('a quarantined teardown stays loud even on a superseded generation', async () => {
+  const candidate = {
+    id: 'quarantine:stale',
+    entity: { id: 'quarantine:stale', alive: true },
+    fingerprint: 'fingerprint:quarantine:stale',
+    state: SECTOR_BOUNDARY_PREPARATION_STATE.ready,
+    cleanupBlocked: true,
+  };
+  const record = {
+    active: true,
+    promise: Promise.resolve([]),
+    boundaryRevision: 1,
+    boundaryRecords: new Set([candidate]),
+    liveBoundaryPromises: new Map(),
+  };
+  let generationActive = true;
+
+  await assert.rejects(
+    settleSectorPrewarmPopulationFixpoint(record, {
+      isActive: () => generationActive,
+      settleBoundaryRecords() {
+        generationActive = false;
+        const error = new Error('blocked teardown');
+        error.code = 'SPACEFACE_SECTOR_PREWARM_CLEANUP_QUARANTINE';
+        error.preventSectorFallbackRotation = true;
+        throw error;
+      },
+    }),
+    (error) => error?.code === 'SPACEFACE_SECTOR_PREWARM_CLEANUP_QUARANTINE',
+    'a real blocked cleanup is never demoted to quiet withdrawal',
+  );
+});
+
+test('a member superseded inside the publish await still lets the set certify its successor', async () => {
+  const { manager, events } = preparedManager();
+  const spec = reservation('supersede-during-fixpoint', 1);
+  const record = manager.reserve(spec);
+  await record.settled;
+  assert.equal(record.state, SECTOR_BOUNDARY_PREPARATION_STATE.ready);
+
+  const prewarm = {
+    active: true,
+    promise: Promise.resolve([]),
+    boundaryRevision: 1,
+    boundaryRecords: new Set([record]),
+    liveBoundaryPromises: new Map(),
+  };
+  let replacement = null;
+  let superseded = false;
+
+  const settled = await settleSectorPrewarmPopulationFixpoint(prewarm, {
+    settleBoundaryRecords: (snapshot) => manager.settleRecords(snapshot),
+    refreshPopulation() {
+      // The manager's retired members are pruned exactly like stageSectorPrewarmBoundaries does.
+      for (const prepared of [...prewarm.boundaryRecords]) {
+        if (prepared.state === SECTOR_BOUNDARY_PREPARATION_STATE.disposed
+            && prepared.cleanupBlocked !== true) {
+          prewarm.boundaryRecords.delete(prepared);
+          prewarm.boundaryRevision++;
+        }
+      }
+      if (replacement && !prewarm.boundaryRecords.has(replacement)) {
+        prewarm.boundaryRecords.add(replacement);
+        prewarm.boundaryRevision++;
+      }
+    },
+    publishBoundaryRecords: (snapshot) => publishSectorBoundaryRecordSnapshot(snapshot, {
+      publishRecords: (candidates) => {
+        if (!superseded) {
+          superseded = true;
+          replacement = manager.reserve({ ...spec, generation: 2 });
+        }
+        return manager.publishRecords(candidates);
+      },
+      currentRecordForId: (id) => manager.get(id),
+      sectorId: 'sector_tethys',
+    }),
+    validatePopulation() {
+      assert.ok([...prewarm.boundaryRecords].every((prepared) => (
+        prepared.state === SECTOR_BOUNDARY_PREPARATION_STATE.live
+      )));
+    },
+  });
+
+  assert.equal(settled, true, 'the set certifies the successor population, not an invariant');
+  assert.equal(replacement.state, SECTOR_BOUNDARY_PREPARATION_STATE.live);
+  assert.equal(record.state, SECTOR_BOUNDARY_PREPARATION_STATE.disposed);
+  const bound = events.filter(([kind, boundary]) => kind === 'bind' && boundary === record.boundary);
+  assert.equal(bound.length, 0, 'the withdrawn member was never published');
+});

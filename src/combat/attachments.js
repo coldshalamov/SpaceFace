@@ -534,6 +534,11 @@ export function createAttachmentService(context) {
   }
 
   function reconcilePhysics() {
+    // Quiet Ceres never deploys a line — byId stays {}. Skip orphan walk, Map.clear,
+    // and orderedAttachments materialize until something is actually attached.
+    if (!hasAttachmentKeys(state.combat && state.combat.attachments && state.combat.attachments.byId)) {
+      return { recreated: 0, pending: 0 };
+    }
     const physics = combatPhysics();
     if (!physics || typeof physics.createAttachment !== 'function' || typeof physics.getAttachmentTelemetry !== 'function') {
       return { recreated: 0, pending: 0 };
@@ -778,6 +783,10 @@ export function createAttachmentService(context) {
   }
 
   function updateTelemetryAndBreak() {
+    // Same quiet empty-byId gate as reconcilePhysics — no active or historic lines.
+    if (!hasAttachmentKeys(state.combat && state.combat.attachments && state.combat.attachments.byId)) {
+      return;
+    }
     const physics = combatPhysics();
     if (!physics || typeof physics.getAttachmentTelemetry !== 'function') return;
     for (const attachment of orderedAttachments()) {
@@ -1164,6 +1173,13 @@ function serializableHandle(handle) {
 }
 
 const EMPTY_ATTACHMENTS = Object.freeze([]);
+
+/** Own enumerable key probe — O(1) empty, avoids Object.keys alloc on the quiet path. */
+function hasAttachmentKeys(map) {
+  if (!map || typeof map !== 'object') return false;
+  for (const _ in map) return true;
+  return false;
+}
 
 function byId(a, b) {
   return compareText(String(a.id), String(b.id));

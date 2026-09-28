@@ -7,6 +7,7 @@ import { svg as orrSvg, arcD as orrArcD, ticksD as orrTicksD, polar as orrPolar 
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { hullPosterUrl } from '../../hullPosters.js';
+import { icon as stationIcon, hasIcon as hasStationIcon } from '../icons.js';
 // src/ui/station/screens/shipworks.js — "Shipworks" and THE SHIP: the shared stage (Frontend
 // Task C §1.9). The hull fills the panel behind everything, orbitable; the hulls (fleet / for sale)
 // as a column of rows down the hang; the hull's name at title size with its blurb; six compact
@@ -111,6 +112,36 @@ for (const sector of SECTORS) {
   }
 }
 const CENTERED_SHIP_YAW = 0;
+// THE FOR SALE DETENTS, from the hull. Every hull is built bow +X, starboard +Z (the asset contract), and the
+// preview's camera stands on one bearing from it (shipPreviewMount fitCameraToCurrent: -0.42 x, +0.72 z).
+// A hull faces a local direction (deg, atan2(z, x)) to the camera at yaw = direction - that bearing.
+// CENTER is the hero, the produced poster's bearing (on the nose side, 35 deg to port); LEFT is the port
+// profile (bow to the left); RIGHT the starboard profile (bow to the right: the 'side' poster), LEFT's mirror
+// about the bow axis.
+const SALE_CAMERA_BEARING = (Math.atan2(0.72, -0.42) * 180) / Math.PI;
+const SALE_HERO_YAW = -35 - SALE_CAMERA_BEARING;
+const SALE_PORT_YAW = -90 - SALE_CAMERA_BEARING;
+const SALE_STARBOARD_YAW = 90 - SALE_CAMERA_BEARING;
+// The bezel keeps its detents at +-60 and turns one to one with the hand; the hull runs through a gear so each
+// detent lands on its bearing (hero to port is 55 deg, hero to starboard 125 deg through the nose). The gear is
+// a monotone Hermite through the three with one slope at CENTER (no kink as the hand drags through it), and
+// runs on at each side's own rate past the detents.
+function hullYawAt(turn) {
+  const t = Number(turn) || 0;
+  const dL = SALE_HERO_YAW - SALE_PORT_YAW;       // the hull's turn at the LEFT detent (+55)
+  const dR = SALE_HERO_YAW - SALE_STARBOARD_YAW;  // and at the RIGHT detent (-125)
+  const m0 = (dL - dR) / 120;
+  const herm = (s, p0, p1, a, b) => {
+    const s2 = s * s; const s3 = s2 * s;
+    return (2 * s3 - 3 * s2 + 1) * p0 + (s3 - 2 * s2 + s) * 60 * a + (-2 * s3 + 3 * s2) * p1 + (s3 - s2) * 60 * b;
+  };
+  let d;
+  if (t >= 60) d = dL + (t - 60) * (dL / 60);
+  else if (t >= 0) d = herm(t / 60, 0, dL, m0, dL / 60);
+  else if (t >= -60) d = herm((t + 60) / 60, dR, 0, -dR / 60, m0);
+  else d = dR + (t + 60) * (-dR / 60);
+  return ((SALE_HERO_YAW - d) * Math.PI) / 180;
+}
 const FITTABLE = MODULES.concat(WEAPONS);
 const FITTABLE_BY_ID = new Map(FITTABLE.map((d) => [d.id, d]));
 
@@ -1793,20 +1824,26 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
   let saleRing = null;
   let saleZoomKey = '';
-  // The live hull on the glass. Once per hull (and ring size, and asset) the render is read back at five
-  // bearings across the whole turn (96px copies): the canvas is scaled about the hull's turn axis so its
-  // farthest pixel over the whole turn stays inside 82% of R, the axis is set on the ring's centre, and the
-  // render is lifted until its bright pixels match the produced poster's (so the hand-over does not change
-  // the ship's brightness).
+  const captionSpans = new Map();
+  // The live hull on the glass. Once per hull (and ring size, and asset) the render is read back across the
+  // whole turn (128px copies at thirteen bearings): at each bearing the silhouette's own box centre is kept, so
+  // the hull is carried on its box centre, not the model's origin, and sits centred on the ring at every
+  // bearing; the canvas is scaled so the farthest pixel over the whole turn stays inside 82% of R; and the
+  // render is lifted until its bright pixels match the produced poster's (so the hand-over keeps the ship's
+  // brightness).
   let saleLightKey = '';
   let saleLightTimer = 0;
   let saleSample = null;
   let saleLightHull = '';
   let saleLightTries = 0;
+  let saleCentres = null;
+  let saleCanvasSize = { cw: 0, ch: 0 };
   const SALE_HULL_P90 = 125;
   const SALE_FIT = 0.82;
-  // the authored hull arrives on its own clock (no projection follows it on a hull with no render):
-  // look again shortly while the picture is empty or still a stand-in
+  // every 12 deg of bezel across the detents (up to 25 deg of hull where the gear runs fast through the nose)
+  const SALE_SAMPLES = [-84, -60, -48, -36, -24, -12, 0, 12, 24, 36, 48, 60, 84];
+  // the look-again cadence while the authored hull is still arriving (no projection follows it on a hull with no
+  // render): look again shortly while the picture is empty or still a stand-in
   function relightSaleHullSoon(g) {
     if (saleLightTimer || saleLightTries >= 24) return;
     saleLightTries += 1;
@@ -1815,61 +1852,98 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (stageEl.isConnected && stageEl.classList.contains('has-salering')) lightSaleHull(stageRingGeo() || g);
     }, 500);
   }
+  // the silhouette's box centre at a bezel turn, between the sampled bearings (canvas px)
+  function saleCentreAt(t) {
+    const c = saleCentres;
+    if (!c || !c.length) return null;
+    if (t <= c[0].t) return c[0];
+    for (let i = 1; i < c.length; i++) {
+      if (t <= c[i].t) {
+        const a = c[i - 1]; const b = c[i];
+        const u = b.t > a.t ? (t - a.t) / (b.t - a.t) : 0;
+        return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u };
+      }
+    }
+    return c[c.length - 1];
+  }
+  // carry the hull on its box centre: that point of the canvas stands on the ring's centre, the fit scales about it
+  function placeSaleHull() {
+    if (!canvas || !saleCentres || !stageEl.classList.contains('has-salering')) return;
+    const c = saleCentreAt(bezelTurn);
+    if (!c) return;
+    // the canvas's size as the readback found it (a turn's frame reads no layout)
+    const { cw, ch } = saleCanvasSize;
+    canvas.style.setProperty('transform-origin', `${c.x.toFixed(1)}px ${c.y.toFixed(1)}px`);
+    canvas.style.setProperty('translate', `${(cw / 2 - c.x).toFixed(1)}px ${(ch / 2 - c.y).toFixed(1)}px`);
+  }
   function lightSaleHull(g, { force = false } = {}) {
     if (!mount || typeof mount.frame !== 'function' || typeof mount.setYaw !== 'function' || !canvas || !g) return false;
-    if (buyId !== saleLightHull) { saleLightHull = buyId; saleLightTries = 0; }
+    if (buyId !== saleLightHull) { saleLightHull = buyId; saleLightTries = 0; saleCentres = null; }
     if (!force && poster.has() && !poster.isLive()) return false;
     const state = typeof mount.getAssetState === 'function' ? mount.getAssetState() : '';
     const key = `${buyId}|${Math.round(g.R)}|${state}|${canvas.clientWidth}`;
     if (key === saleLightKey) return true;
     try {
-      const N = 96;
+      const N = 128;
       if (!saleSample) { saleSample = document.createElement('canvas'); saleSample.width = N; saleSample.height = N; }
       const c2 = saleSample.getContext('2d', { willReadFrequently: true });
       if (!c2) return false;
-      // measured on the plain canvas: the fit is recomputed from scratch
-      for (const p of ['scale', 'translate', 'transform-origin']) canvas.style.removeProperty(p);
       const cw = canvas.clientWidth || 0; const ch = canvas.clientHeight || 0;
       if (cw < 20 || ch < 20) return false;
-      const rect = canvas.getBoundingClientRect();
-      // the turn axis: the hull's own origin, where the preview turns it
-      let ax = cw / 2; let ay = ch / 2;
-      const o = typeof mount.projectLocalPoint === 'function' ? mount.projectLocalPoint({ x: 0, y: 0, z: 0 }) : null;
-      // (screen px back to the canvas's own px: the station scales its whole layout on a large screen)
-      const onScreen = rect.width > 0 ? rect.width / cw : 1;
-      if (o && Number.isFinite(o.x) && Number.isFinite(o.y)) { ax = (o.x - rect.left) / onScreen; ay = (o.y - rect.top) / onScreen; }
+      const sx = cw / N; const sy = ch / N;
       const lum = [];
+      const centres = [];
       let far = 0;
+      const rows = new Uint16Array(N); const cols = new Uint16Array(N);
       // the drawing buffer is only readable in the task that drew it: each bearing is drawn and read at once
-      for (const t of [-84, -42, 0, 42, 84]) {
-        mount.setYaw(CENTERED_SHIP_YAW - (t * Math.PI) / 180);
+      for (const t of SALE_SAMPLES) {
+        mount.setYaw(hullYawAt(t));
         c2.clearRect(0, 0, N, N);
         c2.drawImage(canvas, 0, 0, N, N);
         const d = c2.getImageData(0, 0, N, N).data;
+        rows.fill(0); cols.fill(0);
+        let n = 0;
         for (let y = 0; y < N; y++) {
           for (let x = 0; x < N; x++) {
             const i = (y * N + x) * 4;
             const l = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
             if (l < 6) continue;
-            lum.push(l);
-            const dist = Math.hypot(((x + 0.5) / N) * cw - ax, ((y + 0.5) / N) * ch - ay);
+            lum.push(l); rows[y] += 1; cols[x] += 1; n += 1;
+          }
+        }
+        if (n < 40) continue;
+        // the silhouette's box: rows and columns holding at least two lit pixels (a stray spark does not widen it)
+        let x0 = 0; while (x0 < N - 1 && cols[x0] < 2) x0++;
+        let x1 = N - 1; while (x1 > x0 && cols[x1] < 2) x1--;
+        let y0 = 0; while (y0 < N - 1 && rows[y0] < 2) y0++;
+        let y1 = N - 1; while (y1 > y0 && rows[y1] < 2) y1--;
+        const cx = ((x0 + x1 + 1) / 2) * sx; const cy = ((y0 + y1 + 1) / 2) * sy;
+        centres.push({ t, x: cx, y: cy });
+        for (let y = y0; y <= y1; y++) {
+          for (let x = x0; x <= x1; x++) {
+            const i = (y * N + x) * 4;
+            if (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2] < 6) continue;
+            const dist = Math.hypot(((x + 0.5) * sx) - cx, ((y + 0.5) * sy) - cy);
             if (dist > far) far = dist;
           }
         }
       }
-      mount.setYaw(CENTERED_SHIP_YAW - (bezelTurn * Math.PI) / 180);
-      if (lum.length < 200) { relightSaleHullSoon(g); return false; }
+      mount.setYaw(turnYaw());
+      if (lum.length < 200 || centres.length < 3) { relightSaleHullSoon(g); return false; }
       saleLightKey = key;
+      saleCentres = centres;
+      saleCanvasSize = { cw, ch };
       if (!/^authored/.test(String(state || ''))) relightSaleHullSoon(g);
       lum.sort((a, b) => a - b);
       const p90 = lum[Math.floor(lum.length * 0.9)];
       const k = Math.max(1.2, Math.min(3.4, SALE_HULL_P90 / Math.max(1, p90)));
       const scale = Math.max(0.5, Math.min(1.25, (SALE_FIT * g.R) / Math.max(1, far)));
       canvas.style.setProperty('filter', `brightness(${k.toFixed(2)}) saturate(.84) contrast(1.04)`);
-      canvas.style.setProperty('transform-origin', `${ax.toFixed(1)}px ${ay.toFixed(1)}px`);
       canvas.style.setProperty('scale', scale.toFixed(3));
-      canvas.style.setProperty('translate', `${(cw / 2 - ax).toFixed(1)}px ${(ch / 2 - ay).toFixed(1)}px`);
-      canvas.dataset.saleLight = `p90 ${Math.round(p90)} k ${k.toFixed(2)} far ${Math.round(far)} fit ${scale.toFixed(3)} axis ${Math.round(ax - cw / 2)},${Math.round(ay - ch / 2)}`;
+      placeSaleHull();
+      const at0 = saleCentreAt(0);
+      canvas.dataset.saleLight = `p90 ${Math.round(p90)} k ${k.toFixed(2)} far ${Math.round(far)} fit ${scale.toFixed(3)} centre0 ${Math.round(at0.x - cw / 2)},${Math.round(at0.y - ch / 2)}`;
+      canvas.dataset.saleCentres = centres.map((c) => `${c.t}:${Math.round(c.x - cw / 2)},${Math.round(c.y - ch / 2)}`).join(' ');
       return true;
     } catch (_) { return false; /* a render that cannot be read keeps the sheet's lift */ }
   }
@@ -1886,11 +1960,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       saleZoomKey = '';
       saleLightKey = '';
       saleGeo = null;
-      if (bezelTurn !== 0 || saleView !== 'reset') { saleView = 'reset'; turnSpring.set(0, { instant: true }); }
+      const wasSale = stageEl.classList.contains('has-salering');
       stageEl.classList.remove('has-salering', 'has-viewmarks', 'has-sockets', 'is-turning');
+      if (bezelTurn !== 0 || saleView !== 'reset') { saleView = 'reset'; turnSpring.set(0, { instant: true }); }
       if (canvas && canvas.style) { for (const p of ['filter', 'translate', 'scale', 'transform-origin']) canvas.style.removeProperty(p); }
+      saleCentres = null;
+      // the fleet's hull stands at the authored centred composition again
+      if (wasSale && mount && typeof mount.setYaw === 'function') { try { mount.setYaw(CENTERED_SHIP_YAW); } catch (_) { /* no yaw */ } }
       return;
     }
+    measureViewWords();
     if (!saleRing) {
       saleRing = orrSvg('svg', { class: 'orr-svg sx-sw__salering', 'aria-hidden': 'true', focusable: 'false' });
       stageEl.appendChild(saleRing);
@@ -1922,13 +2001,40 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (def) {
       const len = hullLengthM(def.id);
       const role = short ? '' : ((describeHullRole(def.id) || {}).roleLabel || def.role || '');
-      const text = [def.name, len ? `${len.toFixed(1)} m` : '', role].filter(Boolean).join(' \u00b7 ').toUpperCase();
-      if (text) {
-        const rc = captionRadius(g);
-        const t = captionArc(saleRing, g, rc, text, 'sx-sw-salecap');
+      // the caption keeps clear of the nearest socket word beside it (8 deg): the role, which the list
+      // beside also names, is the first thing it gives up
+      const mineNow = activeOwnedDef();
+      let room = 90;
+      for (const [type, bearing] of (short ? SOCKET_MARKS_SHORT : SOCKET_MARKS)) {
+        const has = ((def.slots && def.slots[type]) || []).length || ((mineNow && mineNow.id !== def.id && mineNow.slots && mineNow.slots[type]) || []).length;
+        if (has) room = Math.min(room, Math.abs(bearing - 180) - 8);
+      }
+      const rc = captionRadius(g);
+      const spanOf = (t, text) => {
+        const k = `${text}|${Math.round(rc)}`;
+        if (captionSpans.has(k)) return captionSpans.get(k);
         let span = 0;
         try { span = (t.getComputedTextLength() / rc) * (180 / Math.PI); } catch (_) { span = 0; }
-        if (!(span > 0)) span = (text.length * 8) / rc * (180 / Math.PI);
+        if (span > 0) captionSpans.set(k, span);
+        return span > 0 ? span : (text.length * 8) / rc * (180 / Math.PI);
+      };
+      const sep = ' · ';
+      let text = [def.name, len ? `${len.toFixed(1)} m` : '', role].filter(Boolean).join(sep).toUpperCase();
+      if (text) {
+        let t = captionArc(saleRing, g, rc, text, 'sx-sw-salecap');
+        let span = spanOf(t, text);
+        // then the length (a short stage's small dial): the name alone always stands
+        const fallbacks = [[def.name, len ? `${len.toFixed(1)} m` : ''], [def.name]]
+          .map((parts) => parts.filter(Boolean).join(sep).toUpperCase()).filter((s) => s.length < text.length);
+        for (const next of fallbacks) {
+          if (span / 2 <= room) break;
+          t.remove();
+          const arc = saleRing.querySelector('#sx-sw-salecap');
+          if (arc) arc.remove();
+          text = next;
+          t = captionArc(saleRing, g, rc, text, 'sx-sw-salecap');
+          span = spanOf(t, text);
+        }
         open.push([180 - span / 2 - 3, 180 + span / 2 + 3]);
       }
     }
@@ -1981,7 +2087,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       saleLightKey = '';
       try { mount.setZoom(1); } catch (_) { /* a mount without zoom keeps its own fit */ }
     }
+    // the hull stands at the bezel's bearing (a fresh show() puts every hull back at the authored yaw zero)
+    if (mount && typeof mount.setYaw === 'function' && typeof mount.getView === 'function' && !turnDrag) {
+      try { if (Math.abs((mount.getView().yaw || 0) - turnYaw()) > 1e-4) mount.setYaw(turnYaw()); } catch (_) { /* no yaw */ }
+    }
     lightSaleHull(g);
+    placeSaleHull();
     stageEl.style.setProperty('--sw-ring-x', `${Math.round(g.hx)}px`);
     stageEl.style.setProperty('--sw-ring-y', `${Math.round(g.hy)}px`);
     stageEl.style.setProperty('--sw-ring-r', `${Math.round(g.R)}px`);
@@ -2012,6 +2123,18 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let indexFlashTimer = 0;
   const norm360 = (a) => ((a % 360) + 360) % 360;
   const nearestView = (t) => VIEW_ORDER.reduce((best, k) => (Math.abs(VIEW_TURN[k] - t) < Math.abs(VIEW_TURN[best] - t) ? k : best), 'reset');
+  // the view words' boxes, read once per projection (in one batch, before the ring is redrawn): the bezel
+  // redraws every frame of a turn and must not force a layout of the station to find them
+  const viewWordSize = new Map();
+  function measureViewWords() {
+    const cam = el.querySelector('.sx-sw__camera');
+    if (!cam) return;
+    for (const b of cam.querySelectorAll('[data-camera]')) {
+      const w = b.offsetWidth; const h = b.offsetHeight;
+      if (w > 0 && h > 0) viewWordSize.set(b.getAttribute('data-camera'), { w, h });
+    }
+  }
+  const viewWord = (key) => viewWordSize.get(key) || { w: 44, h: 14 };
   // the bezel's body: a band you can grip, drawn inward so every word outside the ring keeps its place
   function bezelWidth(g) { return Math.max(13, Math.round(((g && g.R) || 272) * 0.059)); }
   function onTurnUpdate(v) {
@@ -2037,8 +2160,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     turnSpring.stop();
     turnSpring = makeTurnSpring(m);
   }
-  // the hull turns with the bezel, one to one (a clockwise drag turns it clockwise as seen from above)
-  const turnYaw = () => CENTERED_SHIP_YAW - (bezelTurn * Math.PI) / 180;
+  // the hull turns with the bezel through its gear (a clockwise drag turns it clockwise as seen from above)
+  function turnYaw() { return hullYawAt(bezelTurn); }
   function flashIndex() {
     const ix = saleRing && saleRing.querySelector('.sx-sw__bezel-index');
     if (!ix) return;
@@ -2053,8 +2176,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // it takes its bearing once when the bezel settles
     const liveOnGlass = !poster.has() || poster.isLive();
     if (liveOnGlass && mount && typeof mount.setYaw === 'function' && stageEl.classList.contains('has-salering')) {
-      try { mount.setYaw(turnYaw()); } catch (_) { /* a mount without yaw keeps its view */ }
+      try { mount.setYaw(turnYaw()); placeSaleHull(); } catch (_) { /* a mount without yaw keeps its view */ }
     }
+    stageEl.dataset.turn = bezelTurn.toFixed(2);
     // a detent as each major mark (every 30 degrees) reaches the top index, while the hand or the spring turns it
     if (turnDrag || turnMoving) {
       const cur = bezelTurn;
@@ -2072,7 +2196,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     saleView = nearestView(bezelTurn);
     stageEl.dataset.view = saleView;
     if (mount && typeof mount.setYaw === 'function' && stageEl.classList.contains('has-salering')) {
-      try { mount.setYaw(turnYaw()); } catch (_) { /* a mount without yaw keeps its view */ }
+      try { mount.setYaw(turnYaw()); placeSaleHull(); } catch (_) { /* a mount without yaw keeps its view */ }
     }
     if (mode === 'buy' && buyId && poster.has() && poster.view && poster.view() !== posterViewFor(buyId)) poster.setHull(buyId, posterViewFor(buyId));
     scheduleSpatialProjection();
@@ -2087,8 +2211,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (turnSpring.value === VIEW_TURN[view]) { turnMoving = false; afterTurnSettle(); }
   }
   // the bezel's moving parts: the tick scale cut across the band (dark notches, bright majors) and the three
-  // view words riding inside the band, upright along it; the current view is a lit stretch of the band with
-  // its word in dark ink. The scale opens where the fixed plate holds the caption and the sockets.
+  // view words riding inside the band, upright along it. The current view is light, not a fill: its word lit
+  // on the band, the stretch it stands in closed by two lit end ticks (the other words stay at the socket
+  // words' level). The scale opens where the fixed plate holds the caption and the sockets.
   function drawBezel() {
     const g = saleGeo;
     if (!saleRing || !g) return;
@@ -2102,7 +2227,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const cam0 = el.querySelector('.sx-sw__camera');
     const wordArcs = cam0 ? [...cam0.querySelectorAll('[data-camera]')].map((b) => {
       const a = norm360((VIEW_BASE[b.getAttribute('data-camera')] ?? 0) + bezelTurn);
-      const half = ((((b.offsetWidth || 44) + 10) / 2) / rMid) * (180 / Math.PI);
+      // the word's stretch and 4px past its end ticks stay clear of the scale
+      const half = (((viewWord(b.getAttribute('data-camera')).w + 14) / 2 + 4) / rMid) * (180 / Math.PI);
       return [a - half, a + half];
     }) : [];
     const shut = (a) => saleOpen.some((arc) => inArc(a, arc)) || wordArcs.some((arc) => inArc(a, arc));
@@ -2136,10 +2262,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
       b.style.opacity = vis >= 1 ? '' : vis.toFixed(2);
       b.style.pointerEvents = vis < 0.5 ? 'none' : '';
-      const w = b.offsetWidth || 44; const h = b.offsetHeight || 14;
+      const { w, h } = viewWord(key);
       if (on && vis > 0) {
         const half = (((w + 14) / 2) / rMid) * (180 / Math.PI);
-        bez.appendChild(orrSvg('path', { d: orrArcD(g.hx, g.hy, rMid, a - half, a + half), class: 'sx-sw__bezel-lit', 'stroke-width': Math.max(6, bw - 3) }));
+        let ends = '';
+        for (const e of [a - half, a + half]) {
+          const [x0, y0] = orrPolar(g.hx, g.hy, g.R - bw + 0.75, e); const [x1, y1] = orrPolar(g.hx, g.hy, g.R - 0.75, e);
+          ends += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
+        }
+        const endPath = orrSvg('path', { d: ends.trim(), class: 'sx-sw__bezel-end' });
+        if (vis < 1) endPath.style.opacity = vis.toFixed(2);
+        bez.appendChild(endPath);
       }
       // the word rides the band's middle, turned along it and never upside down
       const [px, py] = orrPolar(g.hx, g.hy, rMid, a);
@@ -2209,14 +2342,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   // THE EXPLODED SCHEMATIC (Fleet's signature): choosing a socket slides its module 48 px out along its
-  // leader, the leader the rail it rides; while the chooser previews a candidate the module on the rail is
-  // that candidate, seated; BUY & FIT drives it home into the socket. Reduced motion snaps.
+  // leader, the leader the rail it rides: the part itself, its own glyph at 30 px, its name riding the leader
+  // beside it. While the chooser previews a candidate the part on the rail is that candidate, lit; BUY & FIT
+  // drives it home into the socket. Reduced motion snaps.
   const EXPLODE_OUT = 48;
   let explodeSvg = null;
   let explodeSlot = -1;
   let explodeSeated = false;
   let explodeDist = 0;
   let explodeLockSeat = false;
+  let explodeModule = '';
+  const EXPLODE_GLYPH = 30;
   const explodeSpring = createSpring({
     value: 0,
     preset: 'swing',
@@ -2252,46 +2388,106 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     for (const q of rail) { const last = out[out.length - 1]; if (Math.hypot(q.x - last.x, q.y - last.y) > 0.5) out.push(q); }
     return out.length > 1 ? out : null;
   }
+  // the part on the rail: the candidate on preview, else the module fitted in the socket (none: the empty
+  // socket's own shape, dashed)
+  function explodePart() {
+    const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null;
+    const slot = def ? buildSlotList(def)[explodeSlot] : null;
+    const type = (slot && slot.type) || 'utility';
+    const id = (explodeSeated && explodeModule) || ((s && s.fittings) || [])[explodeSlot] || '';
+    const mod = id ? FITTABLE_BY_ID.get(id) : null;
+    return { type, id: mod ? id : '', name: mod ? String(mod.name || '') : '' };
+  }
+  function glyphMarkup(type) {
+    const name = hasStationIcon('slot_' + type) ? 'slot_' + type : (type === 'thruster' ? 'slot_engine' : 'slot_utility');
+    const markup = stationIcon(name, 24);
+    const open = markup.indexOf('>');
+    const close = markup.lastIndexOf('</svg>');
+    return open > 0 && close > open ? markup.slice(open + 1, close) : '';
+  }
   function placeExplode() {
     if (explodeSlot < 0 || !jigHost || !jigHost.classList.contains('orr-hull--on')) { if (explodeSvg) explodeSvg.style.display = 'none'; return; }
     const rail = explodeRail(explodeSlot);
     if (!rail) return;
     if (!explodeSvg) {
       explodeSvg = orrSvg('svg', { class: 'orr-svg sx-sw__explode', 'aria-hidden': 'true', focusable: 'false' });
-      explodeSvg.appendChild(orrSvg('circle', { class: 'sx-sw__module-well', r: 11 }));
-      explodeSvg.appendChild(orrSvg('circle', { class: 'sx-sw__module-bloom', r: 12 }));
-      explodeSvg.appendChild(orrSvg('circle', { class: 'sx-sw__module', r: 7 }));
-      explodeSvg.appendChild(orrSvg('circle', { class: 'sx-sw__module-core', r: 2.6 }));
+      const glyph = orrSvg('g', { class: 'sx-sw__module-glyph' });
+      glyph.appendChild(orrSvg('g', { class: 'sx-sw__module-halo' }));
+      glyph.appendChild(orrSvg('g', { class: 'sx-sw__module-ink' }));
+      explodeSvg.appendChild(glyph);
+      explodeSvg.appendChild(orrSvg('text', { class: 'sx-sw__module-name' }));
     }
     if (explodeSvg.parentNode !== jigHost) jigHost.appendChild(explodeSvg);
     const vb = jigRing ? `0 0 ${jigRing.W} ${jigRing.H}` : null;
     if (vb && explodeSvg.getAttribute('viewBox') !== vb) explodeSvg.setAttribute('viewBox', vb);
-    // walk the rail
-    let left = Math.max(0, explodeDist);
-    let x = rail[0].x; let y = rail[0].y;
-    for (let k = 1; k < rail.length && left > 0; k++) {
-      const dx = rail[k].x - rail[k - 1].x; const dy = rail[k].y - rail[k - 1].y;
-      const len = Math.hypot(dx, dy);
-      const u = len > 0 ? Math.min(1, left / len) : 1;
-      x = rail[k - 1].x + dx * u; y = rail[k - 1].y + dy * u;
-      left -= len;
-    }
-    for (const c of explodeSvg.querySelectorAll('circle')) { c.setAttribute('cx', x.toFixed(1)); c.setAttribute('cy', y.toFixed(1)); }
-    explodeSvg.classList.toggle('is-seated', explodeSeated);
+    // walk the rail to the part, keeping the tangent it rides on
+    const walk = (dist) => {
+      let left = Math.max(0, dist);
+      let x = rail[0].x; let y = rail[0].y;
+      let ux = rail[1].x - rail[0].x; let uy = rail[1].y - rail[0].y;
+      for (let k = 1; k < rail.length; k++) {
+        const dx = rail[k].x - rail[k - 1].x; const dy = rail[k].y - rail[k - 1].y;
+        const len = Math.hypot(dx, dy);
+        if (len <= 0) continue;
+        ux = dx / len; uy = dy / len;
+        const u = Math.min(1, left / len);
+        x = rail[k - 1].x + dx * u; y = rail[k - 1].y + dy * u;
+        left -= len;
+        if (left <= 0) break;
+      }
+      if (left > 0) { x += ux * left; y += uy * left; }
+      return { x, y, ux, uy };
+    };
+    const at = walk(explodeDist);
+    const part = explodePart();
+    const key = `${part.type}|${part.id}`;
+    const glyph = explodeSvg.querySelector('.sx-sw__module-glyph');
     explodeSvg.style.display = '';
+    if (glyph.dataset.part !== key) {
+      glyph.dataset.part = key;
+      const inner = glyphMarkup(part.type);
+      for (const layer of glyph.children) layer.innerHTML = inner;
+      // the glyph's own ink box (its 24-grid leaves a margin): the part's long side is drawn at 30 px
+      let bb = null;
+      try { bb = glyph.lastElementChild.getBBox(); } catch (_) { bb = null; }
+      glyph._ink = bb && bb.width > 0 && bb.height > 0 ? { cx: bb.x + bb.width / 2, cy: bb.y + bb.height / 2, long: Math.max(bb.width, bb.height) } : null;
+    }
+    const S = EXPLODE_GLYPH;
+    const ink = glyph._ink || { cx: 12, cy: 12, long: 24 };
+    const gk = S / ink.long;
+    glyph.setAttribute('transform', `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)}) scale(${gk.toFixed(4)}) translate(${(-ink.cx).toFixed(2)} ${(-ink.cy).toFixed(2)})`);
+    // the name rides the leader past the part, along the rail's run there, set beside the line and never upside down
+    const name = explodeSvg.querySelector('.sx-sw__module-name');
+    name.textContent = part.name.toUpperCase();
+    if (part.name) {
+      const from = walk(explodeDist + S / 2 + 6);
+      let deg = (Math.atan2(from.uy, from.ux) * 180) / Math.PI;
+      const flip = deg > 90 || deg < -90;
+      if (flip) deg += 180;
+      name.setAttribute('x', '0'); name.setAttribute('y', '-6');
+      name.setAttribute('text-anchor', flip ? 'end' : 'start');
+      name.setAttribute('transform', `translate(${from.x.toFixed(1)} ${from.y.toFixed(1)}) rotate(${deg.toFixed(1)})`);
+    }
+    explodeSvg.style.setProperty('--explode-out', Math.max(0, Math.min(1, explodeDist / EXPLODE_OUT)).toFixed(3));
+    explodeSvg.classList.toggle('is-seated', explodeSeated);
+    explodeSvg.classList.toggle('is-empty', !part.id);
+    explodeSvg.style.display = '';
+    explodeSvg.dataset.part = `${part.type} ${part.id || 'empty'} at ${at.x.toFixed(0)},${at.y.toFixed(0)} d ${explodeDist.toFixed(1)}`;
   }
   function explodeOut(slot) {
     if (host !== 'dock' || !jigHost || !jigHost.classList.contains('orr-hull--on')) return;
     if (explodeSlot !== slot) { explodeSpring.set(0, { instant: true }); explodeDist = 0; }
     explodeSlot = slot;
     explodeSeated = false;
+    explodeModule = '';
     explodeLockSeat = false;
     explodeSpring.set(EXPLODE_OUT);
     placeExplode();
   }
-  function explodeSeat(on) {
+  function explodeSeat(on, moduleId = '') {
     if (explodeSlot < 0) return;
     explodeSeated = !!on;
+    if (on && moduleId) explodeModule = String(moduleId);
     placeExplode();
   }
   function explodeHome() {
@@ -3619,7 +3815,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!ghost.ok || !Array.isArray(ghost.afterFittings)) return;
     ghostActive = true;
     ghostSource = 'module';
-    explodeSeat(true);
+    explodeSeat(true, ghost.moduleId || moduleId);
     previewShip(ghost.defId, ghost.afterFittings, true, {
       mode: 'module',
       moduleId: ghost.moduleId || moduleId,
@@ -4052,11 +4248,22 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }, { passive: false });
   canvas.addEventListener('keydown', (ev) => {
     if (!mount) return;
+    // on the For Sale disc the arrows step the bezel from view to view (the hull runs through its gear)
+    if (stageEl.classList.contains('has-salering') && (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight')) {
+      ev.preventDefault();
+      const at = VIEW_ORDER.indexOf(saleView);
+      turnToView(VIEW_ORDER[Math.max(0, Math.min(VIEW_ORDER.length - 1, at + (ev.key === 'ArrowLeft' ? -1 : 1)))]);
+      return;
+    }
     if (ev.key === 'ArrowLeft') { ev.preventDefault(); mount.rotateBy(-.14); scheduleSpatialProjection(); }
     else if (ev.key === 'ArrowRight') { ev.preventDefault(); mount.rotateBy(.14); scheduleSpatialProjection(); }
     else if (ev.key === '+' || ev.key === '=') { ev.preventDefault(); mount.zoomBy(.1); scheduleSpatialProjection(); }
     else if (ev.key === '-') { ev.preventDefault(); mount.zoomBy(-.1); scheduleSpatialProjection(); }
-    else if (ev.key === 'Home') { ev.preventDefault(); mount.setYaw(CENTERED_SHIP_YAW); mount.setZoom(1); scheduleSpatialProjection(); }
+    else if (ev.key === 'Home') {
+      ev.preventDefault();
+      if (stageEl.classList.contains('has-salering')) { turnToView('reset'); return; }
+      mount.setYaw(CENTERED_SHIP_YAW); mount.setZoom(1); scheduleSpatialProjection();
+    }
   });
   el.querySelector('.sx-sw__camera').addEventListener('click', (ev) => {
     const control = ev.target.closest('[data-camera]');
@@ -4165,7 +4372,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       }
       if (ctx.bus) { ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex, shipIndex: viewIdx }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); }
       // the bought module rides home into its socket
-      explodeSeat(true);
+      explodeSeat(true, defId);
       explodeLockSeat = true;
       closeChooser(); setTimeout(refresh, 70); return;
     }

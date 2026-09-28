@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "72e175bb0f148e5c91861fc4257d65c3968cced9ba4582c235e4f2c2c1acbf6e",
+  "contentHash": "75dc95906de59e36e5414c2470600ce1cc7d2445ba4c3ac561eea143c87c1811",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1308,8 +1308,8 @@
       "uri": "place_habitat_pod_derelict.glb"
     },
     "sourceManifest": {
-      "bytes": 203788,
-      "sha256": "8361e46abf91eba0b1e694e7dae87b812124bb990cf1bc562a95382c7c8d23b3",
+      "bytes": 205647,
+      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
       "uri": "pilots.json"
     }
   },
@@ -1868,7 +1868,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_habitat_pod_derelict.glb"
   },
-  "runtimeHash": "4d5282e22907109ba0fa8ddc58dd70c36849e466ac38154bcbd745d8dd33deac",
+  "runtimeHash": "62e5489b1ad1a2828f970243ecb799b1caaa4b40ef4305cfdae686271e97fc41",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

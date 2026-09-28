@@ -23,9 +23,11 @@ import {
   clearPendingSlam,
   closingSpeedFromImpact,
   isSlamFractureCandidate,
+  noteLethalBlow,
   notePendingSlam,
   resetPendingSlams,
 } from './hullFracture.js';
+import { OVERKILL_ORIGIN_KINDS } from '../data/hullFractureSeams.js';
 
 export const COLLISION_CONSEQUENCE_PAIR_COOLDOWN_TICKS = 12;
 
@@ -57,6 +59,7 @@ export const collisionConsequences = {
       this._unsubs.push(this.bus.on('tether:whipImpact', (payload) => this._onWhipImpact(payload || {})));
       this._unsubs.push(this.bus.on(RESOLVE_PENDING_CRAFT_CONTACT_EVENT,
         (payload) => this._resolvePendingCraftContact(payload || {})));
+      this._unsubs.push(this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {})));
       this._unsubs.push(this.bus.on('save:loaded', () => this._resetTransientState()));
       this._unsubs.push(this.bus.on('game:started', () => this._resetTransientState()));
       this._unsubs.push(this.bus.on('game:newGame', () => this._resetTransientState()));
@@ -144,6 +147,28 @@ export const collisionConsequences = {
     const heavyInvolved = positiveMass(pending.a) >= HEAVY_AS_TERRAIN_MASS
       || positiveMass(pending.b) >= HEAVY_AS_TERRAIN_MASS;
     this._resolveDeferredCraftContact(pending, !heavyInvolved);
+  },
+
+  _onCombatDamage(payload) {
+    // Overkill-fracture feed: damage.js clamps post-kill hull at zero, so the depth of the
+    // killing blow (pre-hit hull + raw blow) is remembered here against the shared seam
+    // catalog. Non-weapon/bomb/mine origins (collision, action, field) never qualify.
+    // combats:damage has no tick field, so stamp the current sim tick — damage routes
+    // synchronously inside entity:killed's own call stack (window: 2 ticks).
+    if (!payload || payload.targetId == null) return;
+    const originKind = payload.origin && payload.origin.kind;
+    if (!OVERKILL_ORIGIN_KINDS.includes(originKind)) return;
+    const hullBefore = Number(payload.before && payload.before.hull);
+    const hullMax = Number(payload.before && payload.before.hullMax);
+    const rawBlow = Number(payload.rawTotal ?? payload.amount ?? payload.applied ?? payload.hullDamage);
+    if (!(hullMax > 0) || !(rawBlow > 0) || !Number.isFinite(hullBefore)) return;
+    noteLethalBlow(payload.targetId, {
+      hullBefore,
+      hullMax,
+      rawBlow,
+      originKind,
+      tick: nonNegativeTick(this.state.tick),
+    });
   },
 
   _resolvePendingCraftContact(payload) {
@@ -337,6 +362,13 @@ export const collisionConsequences = {
     this._pairTicks = new Map();
     this._pendingCraftContacts = new Map();
     resetPendingSlams();
+  },
+
+  // Thin test seam: drive the overkill note path without booting the whole registry.
+  // The bus route is init()'s `combat:damage` subscription; the sim route is damage.js
+  // emitting combat:damage synchronously inside routeDamage's kill stack.
+  __noteLethalBlowForTest(payload) {
+    return this._onCombatDamage(payload || {});
   },
 };
 

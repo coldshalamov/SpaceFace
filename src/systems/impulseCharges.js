@@ -280,7 +280,9 @@ export const impulseCharges = {
     this._pendingDeaths = [];
     this._pendingCookoffs = [];
     this._pendingDetonations = [];
-    this._detonatedIds = new Set();
+    // Entity-object keyed, not id keyed: core recycles ids into freeIds the same step a body
+    // dies, so an id-keyed once-gate would mark the NEXT dart dealt that id as spent forever.
+    this._detonatedEnts = new WeakSet();
     this._cookoffDepth = 0;
     this._slamScratch = [];
   },
@@ -365,23 +367,29 @@ export const impulseCharges = {
   /**
    * entity:killed COLLECT for the kamikaze fuse. Like the primed-death handler, this only queues;
    * the blast itself runs in update() through _tickChain, never inside the kill path's own frame.
-   * The id set is the single exactly-once gate: a duplicated kill receipt (sweep + kill path) or
-   * a dart already spent on its proximity fuse both stop here.
+   * The once-gate keys on the entity OBJECT — ids recycle, so a stale receipt resolving to a
+   * recycled (live) hull is refused on alive, and a duplicated receipt for the same corpse
+   * dedupes on the same object.
    */
   _onDetonatorDeath(payload) {
-    if (!payload || payload.id == null || !this._detonatedIds) return;
-    if (this._detonatedIds.has(payload.id)) return;
+    if (!payload || payload.id == null || !this._detonatedEnts) return;
     const state = this.state;
     const victim = state && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(payload.id)
       : null;
     const spec = victim && victim.data && victim.data.detonator;
     if (!victim || !spec) return;
+    // Every entity:killed emitter fires after alive=false; a live lookup means the receipt's id
+    // was recycled onto a new hull and this is a stale or duplicated receipt, not a death.
+    if (victim.alive !== false) return;
+    if (this._detonatedEnts.has(victim)) return;
     if (!this._pendingDetonations) this._pendingDetonations = [];
     if (this._pendingDetonations.length >= 8) return;
-    // Snapshot the corpse's position — the entity pool may reuse the id before update() runs.
+    // Snapshot the corpse's position AND object — the id may be dealt to a new hull before
+    // update() runs; the object identity cannot be.
     this._pendingDetonations.push({
       id: victim.id,
+      ent: victim,
       pos: { x: Number(victim.pos && victim.pos.x) || 0, z: Number(victim.pos && victim.pos.z) || 0 },
       spec,
       killerId: payload.killerId == null ? null : payload.killerId,
@@ -412,7 +420,7 @@ export const impulseCharges = {
       if (!dart || dart.alive === false || !dart.pos) continue;
       const spec = dart.data && dart.data.detonator;
       if (!spec) continue;
-      if (this._detonatedIds && this._detonatedIds.has(dart.id)) continue;
+      if (this._detonatedEnts && this._detonatedEnts.has(dart)) continue;
       const triggerRange = Math.max(0, Number(spec.triggerRange) || 56);
       const near = stickCandidatesNear(state, dart.pos, triggerRange, this._stickScratch);
       let hostile = null;
@@ -446,9 +454,10 @@ export const impulseCharges = {
    * pop produces a canonical kill receipt rather than a scripted removal.
    */
   _detonatorBlast(state, rec, trigger, killerId, liveEntity) {
-    if (!rec || rec.id == null || !this._detonatedIds) return null;
-    if (this._detonatedIds.has(rec.id)) return null;
-    this._detonatedIds.add(rec.id);
+    if (!rec || rec.id == null || !this._detonatedEnts) return null;
+    const ent = liveEntity || rec.ent || null;
+    if (ent && this._detonatedEnts.has(ent)) return null;
+    if (ent) this._detonatedEnts.add(ent);
     const spec = rec.spec || {};
     const radius = Math.max(0, Number(spec.blastRadius) || 96);
     const damage = Math.max(0, Number(spec.damage) || 0);
@@ -496,7 +505,7 @@ export const impulseCharges = {
     });
     this.bus.emit('audio:cue', { id: 'sfx_explosion_small', position: pos, gain: 0.8 });
     const live = liveEntity && liveEntity.alive !== false ? liveEntity
-      : (state.entities && typeof state.entities.get === 'function' ? state.entities.get(rec.id) : null);
+      : (rec.ent && rec.ent.alive !== false ? rec.ent : null);
     if (live && live.alive !== false) {
       const packet = scalarHitToDamagePacket({
         // Enough to clear its own hull/armor/shield stack deterministically — a fuse that

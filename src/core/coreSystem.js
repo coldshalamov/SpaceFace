@@ -7,8 +7,46 @@ import { hasActiveSpatialHash } from './spatialQuery.js';
 import { initializePresentationAdmission } from './presentationAdmission.js';
 import { packCombatTable } from './combatTable.js';
 import { beginDirtyTick, markDirty, collectDirtyIds, DIRTY } from './dirtyJournal.js';
-import { stampNearWorkBudget } from './activityScheduler.js';
+import { stampNearWorkBudget, refreshNearWorkAlwaysAwake } from './activityScheduler.js';
 import { modelTruthProxyManifest } from '../data/modelTruth.js';
+
+
+// Bench A/B: production default ON. Quiet Ceres keeps short-lived lanes empty; the clocks walk
+// then only re-checks Infinity-ttl movers whose POSE was already published in preStep. Skip the
+// walk when short-lived lanes are empty and no shipLike carries despawnAt. Dirty-wake: any
+// projectile/fx/bomb/charge/pickup/mine/snare/payload on a lane, or a shipLike despawnAt, restores
+// the full clocks path. Different angle from held pose-rematch / sleeping-clocks / compact-skip.
+let LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = true;
+export function setLifetimeSweepQuietClocksSkipForBench(enabled) {
+  LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = enabled !== false;
+}
+export function getLifetimeSweepQuietClocksSkipForBench() {
+  return LIFETIME_SWEEP_QUIET_CLOCKS_SKIP !== false;
+}
+
+function shortLivedClockLanesEmpty(index) {
+  if (!index || index.__spacefaceEntityIndexV1 !== true || index.ready !== true) return false;
+  const empty = (lane) => !lane || lane.length === 0;
+  return empty(index.projectiles)
+    && empty(index.fx)
+    && empty(index.bombs)
+    && empty(index.charges)
+    && empty(index.pickups)
+    && empty(index.payloads)
+    && empty(index.mines)
+    && empty(index.vectorMines)
+    && empty(index.snares);
+}
+
+function shipLikeHasDespawnAt(index) {
+  const ships = index && index.shipLike;
+  if (!ships || ships.length === 0) return false;
+  for (let i = 0; i < ships.length; i++) {
+    const e = ships[i];
+    if (e && e.alive && e.data && e.data.despawnAt != null) return true;
+  }
+  return false;
+}
 
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
@@ -227,35 +265,37 @@ export const core = {
     state.meta.playtimeS += dt;
     const index = ensureEntityIndex(state);
     reconcileEntityIndexSource(index, state.entityList);
-    refreshVolatileEntityIndex(index, state.tick);
+    refreshVolatileEntityIndex(index, state);
     beginDirtyTick(state, state.tick);
+    // index.movables is append-gated by isMovableEntity. Re-checking every tick re-entered
+    // isDynamicPhysicsBodyEntity → authoredPhysicsBody/defaultDynamic on the quiet preStep
+    // pole (profile authoredPhysicsBody self under isMovableEntity). Trust the lane; mid-life
+    // dynamic flips already require re-index for spatial/physics lanes too.
     const movables = index.movables;
     for (const e of movables) {
       if (!e || !e.alive) continue;
-      if (isMovableEntity(e)) {
-        const noInterp = !!(e.flags && e.flags.noInterp);
-        if (e.physicsSleeping === true && !noInterp) {
-          const svx = e.vel ? Number(e.vel.x) || 0 : 0;
-          const svz = e.vel ? Number(e.vel.z) || 0 : 0;
-          const swy = Number(e.angVel) || 0;
-          const poseStill = e.prevPos
-            && e.prevPos.x === e.pos.x
-            && e.prevPos.z === e.pos.z
-            && e.prevRot === e.rot;
-          if (svx * svx + svz * svz <= 1e-8 && swy * swy <= 1e-8 && poseStill) continue;
-        }
-        const posChanged = !e.prevPos
-          || e.prevPos.x !== e.pos.x
-          || e.prevPos.z !== e.pos.z
-          || e.prevRot !== e.rot;
-        e.prevPos.copy(e.pos);
-        e.prevRot = e.rot;
-        e.prevBank = e.bank;   // snapshot roll for renderer interpolation (Phase 1 banking)
-        e.prevPitch = e.pitch; // snapshot pitch lean for renderer interpolation
-        const vx = e.vel ? Number(e.vel.x) || 0 : 0;
-        const vz = e.vel ? Number(e.vel.z) || 0 : 0;
-        if ((vx * vx + vz * vz) > 1e-8 || posChanged) markDirty(state, e.id, DIRTY.POSE);
+      const noInterp = !!(e.flags && e.flags.noInterp);
+      if (e.physicsSleeping === true && !noInterp) {
+        const svx = e.vel ? Number(e.vel.x) || 0 : 0;
+        const svz = e.vel ? Number(e.vel.z) || 0 : 0;
+        const swy = Number(e.angVel) || 0;
+        const poseStill = e.prevPos
+          && e.prevPos.x === e.pos.x
+          && e.prevPos.z === e.pos.z
+          && e.prevRot === e.rot;
+        if (svx * svx + svz * svz <= 1e-8 && swy * swy <= 1e-8 && poseStill) continue;
       }
+      const posChanged = !e.prevPos
+        || e.prevPos.x !== e.pos.x
+        || e.prevPos.z !== e.pos.z
+        || e.prevRot !== e.rot;
+      e.prevPos.copy(e.pos);
+      e.prevRot = e.rot;
+      e.prevBank = e.bank;   // snapshot roll for renderer interpolation (Phase 1 banking)
+      e.prevPitch = e.pitch; // snapshot pitch lean for renderer interpolation
+      const vx = e.vel ? Number(e.vel.x) || 0 : 0;
+      const vz = e.vel ? Number(e.vel.z) || 0 : 0;
+      if ((vx * vx + vz * vz) > 1e-8 || posChanged) markDirty(state, e.id, DIRTY.POSE);
     }
     packCombatTable(state);
     stampNearWorkBudget(state);
@@ -329,6 +369,9 @@ export const core = {
         pos: { x: e.pos.x, z: e.pos.z },
         radius: e.radius,
         factionId: e.factionId,
+        // Same generation ref as the single path: ids recycle, and a queued receipt that flushes
+        // after a new occupant took the id must not release that occupant's binding.
+        entity: e,
       };
       if (opts && opts.reason) destroyed.reason = opts.reason;
       this.bus.queue('entity:destroyed', destroyed);
@@ -367,25 +410,33 @@ export const core = {
       && Array.isArray(index.movables)
       ? index.movables
       : list;
-    for (let i = 0; i < clocks.length; i++) {
-      const e = clocks[i];
-      if (!e || e.id === state.playerId) continue;
-      if (e.alive && e.ttl !== Infinity) {
-        e.ttl -= dt;
-        if (e.ttl <= 0) {
+    // Quiet short-lived-lane clocks skip: when no projectile/fx/ordnance/pickup clocks exist and
+    // no shipLike carries despawnAt, the movable walk only re-checks Infinity-ttl ships whose
+    // POSE preStep already published. Skip the walk; dirty publish + corpse compact still run.
+    const skipQuietClocks = LIFETIME_SWEEP_QUIET_CLOCKS_SKIP
+      && shortLivedClockLanesEmpty(index)
+      && !shipLikeHasDespawnAt(index);
+    if (!skipQuietClocks) {
+      for (let i = 0; i < clocks.length; i++) {
+        const e = clocks[i];
+        if (!e || e.id === state.playerId) continue;
+        if (e.alive && e.ttl !== Infinity) {
+          e.ttl -= dt;
+          if (e.ttl <= 0) {
+            e.alive = false;
+            markDirty(state, e.id, DIRTY.MEMBERSHIP);
+          }
+        }
+        if (e.alive && e.data && e.data.despawnAt != null && state.simTime >= e.data.despawnAt) {
           e.alive = false;
           markDirty(state, e.id, DIRTY.MEMBERSHIP);
         }
-      }
-      if (e.alive && e.data && e.data.despawnAt != null && state.simTime >= e.data.despawnAt) {
-        e.alive = false;
-        markDirty(state, e.id, DIRTY.MEMBERSHIP);
-      }
-      if (e.alive) {
-        const pos = e.pos;
-        const prev = e.prevPos;
-        if (pos && prev && (pos.x !== prev.x || pos.z !== prev.z)) markDirty(state, e.id, DIRTY.POSE);
-        else if (e.prevRot != null && e.rot !== e.prevRot) markDirty(state, e.id, DIRTY.POSE);
+        if (e.alive) {
+          const pos = e.pos;
+          const prev = e.prevPos;
+          if (pos && prev && (pos.x !== prev.x || pos.z !== prev.z)) markDirty(state, e.id, DIRTY.POSE);
+          else if (e.prevRot != null && e.rot !== e.prevRot) markDirty(state, e.id, DIRTY.POSE);
+        }
       }
     }
     const dirty = collectDirtyIds(
@@ -909,12 +960,13 @@ function markEntityIndexSourceSynced(index, list) {
 // ticks without paying the walk 60 Hz.
 const VOLATILE_INDEX_PERIOD_TICKS = 8;
 
-function refreshVolatileEntityIndex(index, tick = 0) {
+function refreshVolatileEntityIndex(index, stateOrTick = 0) {
   if (!index || !index.__spacefaceEntityIndexV1) return false;
+  const state = stateOrTick && typeof stateOrTick === 'object' ? stateOrTick : null;
+  const tick = state ? (state.tick | 0) : (Number.isInteger(stateOrTick) ? stateOrTick : Math.floor(Number(stateOrTick) || 0));
   if (index._volatileReady === true) {
     const period = VOLATILE_INDEX_PERIOD_TICKS;
-    const t = Number.isInteger(tick) ? tick : Math.floor(Number(tick) || 0);
-    if (((t % period) + period) % period !== 0) return false;
+    if (((tick % period) + period) % period !== 0) return false;
   }
   index.aiShips.length = 0;
   index.weaponShips.length = 0;
@@ -924,6 +976,13 @@ function refreshVolatileEntityIndex(index, tick = 0) {
     if (!e || !e.alive || e.type !== 'ship') continue;
     if (e.data && e.data.ai) index.aiShips.push(e);
     if (e.data && e.data.weapons && e.data.weapons.length) index.weaponShips.push(e);
+  }
+  // Mid-life combatant / activity-slot attach shares this cadence. Refresh the
+  // near-work always-awake cache here so stampNearWorkBudget stays a boolean
+  // read on the quiet 60 Hz path (same staleness window as aiShips).
+  const shipLike = index.shipLike;
+  for (let i = 0; i < shipLike.length; i++) {
+    refreshNearWorkAlwaysAwake(shipLike[i], state);
   }
   index._volatileReady = true;
   return true;

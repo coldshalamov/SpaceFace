@@ -33,13 +33,16 @@ const CSS = `
 .orr-route.is-off::before, .orr-route.is-off > svg, .orr-route.is-off > .orr-route__caption { display:none; }
 .orr-route.is-tether > .orr-route__caption { display:none; }
 /* weight, not wire: every ring of depth is a luminous band under a crisp edge; the near ring is the brighter */
-.orr-svg .orr-route__ring { --orr-edge-a:.52; --orr-band-a:.29; --orr-w-band:7px; --orr-w-edge:1.5px; }
-.orr-svg .orr-route__ring--near { --orr-edge-a:.64; --orr-band-a:.32; }
+.orr-svg .orr-route__ring { --orr-edge-a:.34; --orr-band-a:.29; --orr-w-band:7px; --orr-w-edge:1.5px; }
+.orr-svg .orr-route__ring--near { --orr-edge-a:.42; --orr-band-a:.32; }
+/* the band's edge is light, not a tube: a wider faint stroke under it takes the last pixels down to the glass */
+.orr-svg .orr-route__ring-halo { fill:none; stroke:rgb(${BONE} / .1); stroke-width:11px; vector-effect:non-scaling-stroke; }
 .orr-svg .orr-route__lane { stroke:rgb(${BONE} / .26); }
 .orr-svg .orr-route__beam { stroke:var(--dp-hand, #f2b950); }
-.orr-svg .orr-route__beam-bloom { stroke:var(--dp-hand, #f2b950); opacity:.2; }
+/* the Hand is the heaviest line on the dial: its glow outweighs every ring of rest light */
+.orr-svg .orr-route__beam-bloom { stroke:var(--dp-hand, #f2b950); opacity:.56; }
 .orr-svg .orr-route__swing { stroke:var(--dp-hand, #f2b950); }
-.orr-svg .orr-route__swing-bloom { stroke:var(--dp-hand, #f2b950); opacity:.2; }
+.orr-svg .orr-route__swing-bloom { stroke:var(--dp-hand, #f2b950); opacity:.56; }
 .orr-route__beamg { transition:opacity .25s linear; }
 .orr-svg .orr-route__leader { stroke:rgb(${BONE} / .45); }
 .orr-svg .orr-route__leader--dest { stroke:rgb(${BONE} / .7); }
@@ -55,6 +58,10 @@ const CSS = `
 .orr-svg .orr-route__hand-glow { fill:var(--dp-hand, #f2b950); opacity:.1; }
 .orr-svg .orr-route__hand-bead { fill:var(--dp-hand, #f2b950); opacity:.85; }
 .orr-svg .orr-route__hand-ring { stroke:var(--dp-hand, #f2b950); }
+/* ignition: on commit the berth burns hot amber for a beat (flashBerth toggles .is-ignited) */
+.orr-svg .orr-route__hand-ring.is-ignited { stroke:#ffd98c; stroke-width:3.5; }
+.orr-svg .orr-route__hand-bead.is-ignited { fill:#ffd98c; opacity:1; }
+.orr-svg .orr-route__hand-glow.is-ignited { fill:#ffd98c; opacity:.42; }
 .orr-svg .orr-route__threat { stroke:var(--dp-danger, #ff5038); opacity:.85; }
 .orr-svg .orr-route__threat-bloom { stroke:var(--dp-danger, #ff5038); opacity:.22; }
 .orr-svg text.orr-route__name { font-size: 12px; font-weight:650; letter-spacing:.1em; fill:rgb(${BONE} / .78); text-transform:uppercase;
@@ -166,7 +173,7 @@ let pathSeq = 0;
  * @param {HTMLElement} host a block the instrument fills
  * @param {{ maxRings?: number }} [opts]
  */
-export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = 'foot', onLayout = null } = {}) {
+export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = 'foot', onLayout = null, pulse: ownPulse = true } = {}) {
   const doc = host && host.ownerDocument ? host.ownerDocument : globalThis.document;
   const inert = { el: host, set() {}, relayout() {}, active: () => false, dispose() {} };
   if (!host || !doc || typeof doc.createElementNS !== 'function' || typeof host.getBoundingClientRect !== 'function') return inert;
@@ -190,6 +197,22 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
   let lastEnd = null;      // where the arm last pointed (bearing), for the swing to the next berth
   let swingFrom = null;    // the bearing the next layout swings the arm from, or null
   let swingSpring = null;
+  let igniteTimer = 0;
+
+  /** The commit beat: the berth marker burns hot amber for 180 ms, then cools. */
+  function flashBerth() {
+    try {
+      const hg = layer.querySelector('.orr-route__hand');
+      if (!hg) return;
+      const parts = hg.querySelectorAll('.orr-route__hand-ring, .orr-route__hand-bead, .orr-route__hand-glow');
+      for (const n of parts) n.classList.add('is-ignited');
+      if (igniteTimer) clearTimeout(igniteTimer);
+      igniteTimer = setTimeout(() => {
+        for (const n of parts) if (n.isConnected) n.classList.remove('is-ignited');
+        igniteTimer = 0;
+      }, 180);
+    } catch (_) { /* cosmetic */ }
+  }
 
   const schedule = () => {
     if (frame) return;
@@ -267,6 +290,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
     const ringsG = svg('g', { class: 'orr-route__rings' });
     for (let k = 1; k <= rings; k += 1) {
       const ringCls = `orr-route__ring${k === 1 ? ' orr-route__ring--near' : ''}`;
+      ringsG.appendChild(svg('path', { d: arcD(cx, cy, ringR(k), 0, 360), class: 'orr-route__ring-halo' }));
       ringsG.appendChild(svg('path', { d: arcD(cx, cy, ringR(k), 0, 360), class: `orr-band ${ringCls}` }));
       ringsG.appendChild(svg('path', { d: arcD(cx, cy, ringR(k), 0, 360), class: `orr-edge ${ringCls}` }));
     }
@@ -447,7 +471,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
       const core = svg('path', { id, d: beamD, class: `orr-core orr-route__beam${arriveNow && !swinging ? ' orr-draw' : ''}`, 'stroke-width': 2.4, pathLength: 1, 'stroke-linejoin': 'round' });
       core.style.setProperty('--orr-delay', '120ms');
       beamG.appendChild(core);
-      if (arriveNow) {
+      if (arriveNow && ownPulse) {
         const pulse = svg('g', { class: 'orr-route__pulse-g' });
         const bloom = svg('circle', { r: 8, class: 'orr-route__pulse-bloom' });
         const dot = svg('circle', { r: 3, class: 'orr-route__pulse' });
@@ -522,7 +546,15 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
         svg('circle', { cx: f(endPoint.x), cy: f(endPoint.y), r: 3.8, class: 'orr-route__hand-bead' }),
       );
       beamG.appendChild(fade(hg, 520));
-      if (destSpot && destSpot.leader) layer.appendChild(fade(svg('path', { d: leaderD(destSpot.leader), class: 'orr-core orr-route__leader orr-route__leader--dest', 'stroke-width': 1.5 }), 540));
+      // the berth's leader starts at the marker's rim, never inside the amber
+      if (destSpot && destSpot.leader) {
+        const ld = destSpot.leader;
+        const ldx = ld.x2 - ld.x1; const ldy = ld.y2 - ld.y1;
+        const llen = Math.hypot(ldx, ldy) || 1;
+        const rim = (local ? 6 : 7) + 2;
+        const rimmed = { x1: ld.x1 + (ldx / llen) * rim, y1: ld.y1 + (ldy / llen) * rim, x2: ld.x2, y2: ld.y2 };
+        layer.appendChild(fade(svg('path', { d: leaderD(rimmed), class: 'orr-core orr-route__leader orr-route__leader--dest', 'stroke-width': 1.5 }), 540));
+      }
       if (destSpot && destLines) layer.appendChild(fade(textLines(destSpot, destLines), 560));
       if (local) {
         const t = svg('text', { x: f(endPoint.x + 12), y: f(endPoint.y + 3), 'text-anchor': 'start', class: 'orr-route__name orr-route__name--live' });
@@ -550,7 +582,8 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
     // the screen may draw the reading itself, on a line from its own key to this origin
     if (typeof onLayout === 'function') {
       const o = place.get(data.origin) || { x: cx, y: cy };
-      try { onLayout({ W, H, cx, cy, R, origin: { x: o.x, y: o.y }, jumpsText: jumps.textContent, viaText: via.textContent }); } catch (_) { /* the screen's overlay is cosmetic */ }
+      const beam = endPoint ? (dest && !local ? routePts : [{ x: cx, y: cy }, endPoint]).map((p) => ({ x: p.x, y: p.y })) : [];
+      try { onLayout({ W, H, cx, cy, R, origin: { x: o.x, y: o.y }, beam, berthR: local ? 6 : 7, jumpsText: jumps.textContent, viaText: via.textContent }); } catch (_) { /* the screen's overlay is cosmetic */ }
     }
 
     // the arm swings from the last berth to this one (a spring with a little overshoot), and only
@@ -591,7 +624,9 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
     },
     relayout: schedule,
     active: () => on,
+    flashBerth,
     dispose() {
+      if (igniteTimer) { clearTimeout(igniteTimer); igniteTimer = 0; }
       if (ro) ro.disconnect();
       if (frame && typeof globalThis.cancelAnimationFrame === 'function') globalThis.cancelAnimationFrame(frame);
       frame = 0;

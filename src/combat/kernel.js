@@ -4,6 +4,7 @@ import { createDamageRouter } from './damage.js';
 import { createCombatCatalog, ensureCombatant, ensureCombatState, entityKey, removeCombatantRuntime, resolveCombatProfile, syncCombatantBounds } from './runtime.js';
 import { createStatusService } from './statuses.js';
 import { applyMomentumSink } from './momentumSink.js';
+import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSubsystem } from './subsystems.js';
 import { appendCombatTrace, canonicalize, readCombatTrace } from './trace.js';
 import { assertValidCombatCatalog } from './validate.js';
@@ -24,11 +25,28 @@ export function getCombatPrePhysicsQuietLatchForBench() {
   return COMBAT_PREPHYSICS_QUIET_LATCH !== false;
 }
 
+// Quiet residual after #154 prePhysics latch: postPhysics still walked every
+// living combatant for ensureCombatant + syncCombatantBounds even though
+// attachments already empty-early-out and vitals clamp at mutation sites.
+// Skip that walk while the prePhysics quiet latch is armed; same wake set.
+let COMBAT_POSTPHYSICS_QUIET_SKIP = true;
+export function setCombatPostPhysicsQuietSkipForBench(enabled) {
+  COMBAT_POSTPHYSICS_QUIET_SKIP = enabled !== false;
+}
+export function getCombatPostPhysicsQuietSkipForBench() {
+  return COMBAT_POSTPHYSICS_QUIET_SKIP !== false;
+}
+
 const COMBAT_PREPHYSICS_QUIET_RESCAN_S = 0.5;
 
 function publishCombatPrePhysicsQuiet(state, latched) {
   const rt = state.combatRuntime || (state.combatRuntime = {});
   rt.quietLatched = !!latched;
+}
+
+function publishCombatPostPhysicsQuiet(state, skipped) {
+  const rt = state.combatRuntime || (state.combatRuntime = {});
+  rt.postPhysicsQuietSkipped = !!skipped;
 }
 
 function combatRuntimeBusy(runtime) {
@@ -139,10 +157,12 @@ export function createCombatKernel(ctx, options = {}) {
   function noteCombatPrePhysicsWake() {
     if (!quietLatch) {
       publishCombatPrePhysicsQuiet(state, false);
+      publishCombatPostPhysicsQuiet(state, false);
       return;
     }
     quietLatch = null;
     publishCombatPrePhysicsQuiet(state, false);
+    publishCombatPostPhysicsQuiet(state, false);
   }
 
   for (const entity of sortedEntitiesForTick()) initializeEntity(entity);
@@ -229,15 +249,22 @@ export function createCombatKernel(ctx, options = {}) {
       const response = runtime.physicsResponse;
       const scaledResponse = !!(response
         && (response.massScale !== 1 || response.inertiaScale !== 1));
-      if (isDynamicPhysicsBodyEntity(entity) && scaledResponse) {
-        sawBusy = true;
-        writePhysicsBodyResponse(entity, response);
-      }
-      if (isDynamicPhysicsBodyEntity(entity)) {
-        applyMomentumSink(state, entity, runtime, dt, momentumSinkImpulse);
+      const sinkActive = !!(runtime.statuses && runtime.statuses[MOMENTUM_SINK_STATUS_ID]);
+      // Quiet fleets keep identity mass/inertia and no momentum-sink status — skip the
+      // isDynamicPhysicsBodyEntity walk (authoredPhysicsBody) and sink miss entirely.
+      if (scaledResponse || sinkActive) {
+        if (isDynamicPhysicsBodyEntity(entity)) {
+          if (scaledResponse) {
+            sawBusy = true;
+            writePhysicsBodyResponse(entity, response);
+          }
+          if (sinkActive) applyMomentumSink(state, entity, runtime, dt, momentumSinkImpulse);
+        }
       }
       coolCombatHeat(entity, runtime, dt);
-      syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));
+      // ensureCombatant already clamped vitals/heat; cool only lowers heat (Math.max 0).
+      // Re-sync only when statuses may have rewritten vitals this tick. Profile is on runtime.
+      if (statusChanged) syncCombatantBounds(entity, runtime);
       if (!sawBusy && (statusChanged || combatRuntimeBusy(runtime))) sawBusy = true;
     }
     actions.advance();
@@ -266,11 +293,45 @@ export function createCombatKernel(ctx, options = {}) {
   function postPhysics() {
     reconcilePhysicsAttachments();
     attachments.updateTelemetryAndBreak();
+    const indexVersion = combatTickIndexVersion(state);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (
+      COMBAT_POSTPHYSICS_QUIET_SKIP !== false
+      && COMBAT_PREPHYSICS_QUIET_LATCH !== false
+      && quietLatch
+      && quietLatch.membership === indexVersion
+      && quietLatch.cacheRevision === sortedCacheRevision
+      && now < quietLatch.rescanAt
+    ) {
+      // PrePhysics already armed quiet latch this cadence — bounds synced on the
+      // preceding busy walk / mutation sites; attachment pair already early-out.
+      publishCombatPostPhysicsQuiet(state, true);
+      return;
+    }
+    // Quiet postPhysics: prePhysics already ensured every living combatant on this tick's
+    // roster. Physics does not mutate vitals/heat. Skip the first-seen ensure walk when the
+    // sorted cache is still valid for this tick (no spawn/destroy invalidate mid-step).
+    // A mid-tick roster change bumps sortedCacheRevision / index version and falls through.
+    if (
+      COMBAT_POSTPHYSICS_QUIET_SKIP !== false
+      && sortedCache
+      && sortedCacheTick === state.tick
+      && sortedCacheSeenRevision === sortedCacheRevision
+      && sortedCacheIndexVersion === indexVersion
+    ) {
+      publishCombatPostPhysicsQuiet(state, true);
+      return;
+    }
+    // Quiet postPhysics re-ensured every combatant (resolve profile + sync bounds) after
+    // prePhysics already did both. Physics does not mutate vitals/heat; first-seen combatants
+    // still get ensureCombatant.
+    const table = state.combat && state.combat.entities;
     for (const entity of sortedEntitiesForTick()) {
       if (!entity.alive || !isCombatantType(entity.type)) continue;
-      const runtime = ensureCombatant(state, entity, catalog);
-      syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));
+      if (table && table[entityKey(entity.id)]) continue;
+      ensureCombatant(state, entity, catalog);
     }
+    publishCombatPostPhysicsQuiet(state, false);
   }
 
   function reconcilePhysicsAttachments() {
@@ -355,8 +416,12 @@ export function createCombatKernel(ctx, options = {}) {
   }
 
   function coolCombatHeat(entity, runtime, dt) {
-    const profile = resolveCombatProfile(entity, catalog);
-    const basePerTick = profile && profile.heat && Number(profile.heat.dissipationPerTick) || 0;
+    // Quiet combatants sit at heat 0 — skip dissipation arithmetic until heat is applied.
+    if (!(runtime.heat > 0)) return;
+    // Dissipation is stashed on the runtime at ensureCombatant (profile is tick-stable).
+    const basePerTick = Number.isFinite(runtime.heatDissipationPerTick)
+      ? runtime.heatDissipationPerTick
+      : 0;
     const normalizedTicks = Number.isFinite(dt) && dt > 0 ? dt * 60 : 1;
     const multiplier = runtime.multipliers && Number.isFinite(runtime.multipliers.heatDissipation) ? runtime.multipliers.heatDissipation : 1;
     runtime.heat = Math.max(0, runtime.heat - basePerTick * multiplier * normalizedTicks);

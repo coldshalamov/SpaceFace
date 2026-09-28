@@ -1,11 +1,14 @@
-"""Tally post — the cargo-weigh gantry standing in the Helios lanes.
+"""Tally post — "Helios Weigh-Point", the cargo weigh gate standing in the lanes.
 Forge rebuild of place_tally_post.glb (same file, same asset id).
 
-Idea: "the foreman's scale". A mast with a railed operator deck at its head; under the deck
-a hung yoke carries a pair of tally tongs that read a pallet's mass. A ledger plate, an
-invoice lamp over the operator's nook, grating floor, four splayed feet.
-Three values: pale deck coat, charcoal mast and tongs, dark nook. Identity colour: Helios
-teal on the ledger band. Lights: invoice lamp under the deck, one warm window on the nook.
+Idea: "a gate you fly under to be weighed". From the top-down camera the read is a square
+frame — a small gantry gate: two legs, a lintel, and a lit amber scale-bar readout strip
+across the lintel's TOP face so it reads from above like a weighing scale's needle bar. A
+keeper's nook under one leg, sensor pods under the lintel aimed into the gate mouth, and a
+teal band marking it Helios property.
+Three values: pale frame coat, charcoal structure, dark sensors. Identity colour: Helios
+teal bands; signal amber for the lit scale bars. Lights: the scale-bar strip on top, sensor
+eyes in the gate mouth, one warm window.
 Live bounds (Blender): x [-1.9, 1.9], y [-1.9, 1.9], z [-1.0, 15.5] — pivot near the foot.
 """
 import math
@@ -25,81 +28,77 @@ COLORS = {
     'ceramic': '#867e6e',
     'hazard': '#9a7a1e',
     'glow_warm': '#ffdba6',
-    'glow_amber': '#ffb345',
+    'glow_amber': '#ffb345',   # the scale bars
+    'glow_cyan': '#6ee7e0',
     'glow_red': '#ff3a2a',
 }
+
+GATE_W = 3.6      # the mouth's half-width in Y
+GATE_H = 7.4      # lintel height
 
 
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
 
-    # feet: four splayed legs off a ballast collar
-    F.ring(s, 'Collar', (0, 0, -0.6), 0.9, 0.3, axis=(0, 0, 1), material='paint2',
-           segments=14, sides=8)
-    for i in range(4):
-        a = math.radians(45 + i * 90)
-        x, y = 1.8 * math.cos(a), 1.8 * math.sin(a)
-        F.beams(s, f'Leg{i}', [((0.5 * math.cos(a), 0.5 * math.sin(a), -0.3),
-                                (x, y, -0.9))], 0.32, material='gunmetal')
-        F.box(s, f'LegPad{i}', (x, y, -0.98), (0.8, 0.8, 0.4), material='paint2', bevel=0.06)
-        # knee brace from the pad up to the mast
-        F.beams(s, f'LegBrace{i}', [((x * 0.9, y * 0.9, -0.7), (x * 0.3, y * 0.3, 1.6))],
-                0.18, material='gunmetal')
-    # mast
-    F.box(s, 'Mast', (0, 0, 6.0), (0.9, 0.9, 14.2), material='paint', bevel=0.06)
-    F.band(s, 'Mast', (0, 0, 10.6), (0, 0, 1), 0.5, 'stripe', depth=0.05)
-    # ledger plate mid-mast
-    F.box(s, 'LedgerPlate', (0, -0.52, 7.2), (0.7, 0.08, 1.6), material='paint2', bevel=0.03)
-    F.band(s, 'LedgerPlate', (0, -0.52, 7.5), (0, 0, 1), 0.3, 'stripe')
+    # === the square gate frame ====================================================
+    # two legs at +-GATE_W, lintel across the top — a doorway in plan, a square from above
+    for e in (-1, 1):
+        y = e * GATE_W
+        F.box(s, f'Leg{e:+d}', (0, y, 4.2), (2.2, 2.2, 9.6), material='paint', bevel=0.1)
+        F.band(s, f'Leg{e:+d}', (0, y, 6.8), (0, 0, 1), 0.6, 'stripe')
+        # foot + splayed stub bracing
+        F.box(s, f'Foot{e:+d}', (0, y, -0.55), (3.4, 3.4, 1.1), material='paint2', bevel=0.1)
+        F.beams(s, f'FootBrace{e:+d}', [((0, y, 0.2), (e * 0.9 * 1.8, y - e * 1.8, -0.2)),
+                                        ((0, y, 0.2), (-e * 0.9 * 1.8, y + e * 1.8, -0.2))],
+                0.26, material='gunmetal')
+    # lintel — the weighing bar
+    F.box(s, 'Lintel', (0, 0, GATE_H), (2.6, 2 * GATE_W + 2.2, 2.0), material='paint',
+          bevel=0.1)
+    F.band(s, 'Lintel', (0, 0, GATE_H), (0, 0, 1), 0.8, 'stripe')
+    # end caps
+    for e in (-1, 1):
+        F.box(s, f'LintelCap{e:+d}', (0, e * (GATE_W + 1.1), GATE_H), (2.8, 1.2, 2.4),
+              material='paint2', bevel=0.08)
 
-    # operator deck at the head — grating floor, rails, scale-house nook
-    F.plate(s, 'Deck', [(-2.3, -1.7), (2.3, -1.7), (2.3, 1.7), (-2.3, 1.7)], 13.0, 0.4,
-            material='paint2', chamfer=0.08)
-    F.box(s, 'DeckSkirt', (0, 0, 12.7), (4.7, 3.5, 0.5), material='paint', bevel=0.05)
+    # === the scale bars on the lintel's TOP face — the top-view read ==============
+    # a strip of lit amber bars along the lintel top, like the needle row on a scale
     s.detail = 1
-    grates = [((-1.9 + i * 0.76, 0, 13.24), (0.14, 3.2, 0.06), 0.0) for i in range(6)]
-    F.boxes(s, 'Grates', grates, 'gunmetal')
+    bars = []
+    n = 9
+    for i in range(n):
+        y = -GATE_W + 1.2 + i * (2 * GATE_W - 2.4) / (n - 1)
+        bars.append(((0, y, GATE_H + 1.15), (1.5, 0.62, 0.28), 0.0))
+    F.boxes(s, 'ScaleBars', bars, 'glow_amber')
     s.detail = 0
-    for e in (-1, 1):
-        F.beams(s, f'Rail{e:+d}', [((-2.3, e * 1.7, 14.0), (2.3, e * 1.7, 14.0))], 0.12,
-                material='gunmetal')
-        for i in range(4):
-            F.box(s, f'RailPost{e:+d}{i}', (-2.1 + i * 1.4, e * 1.7, 13.65),
-                  (0.1, 0.1, 0.9), material='gunmetal', bevel=0.0)
-    for e in (-1, 1):
-        F.beams(s, f'RailEnd{e:+d}', [((e * 2.3, -1.7, 14.0), (e * 2.3, 1.7, 14.0))], 0.12,
-                material='gunmetal')
+    # centre index marker — the "needle" seat, brighter
+    F.box(s, 'ScaleIndex', (0, 0, GATE_H + 1.2), (1.7, 1.1, 0.4), material='glow_amber',
+          bevel=0.03)
 
-    # scale-house nook on the deck edge
-    F.box(s, 'Nook', (-1.5, 0.7, 14.1), (1.6, 1.8, 2.0), material='paint', bevel=0.1)
-    F.box(s, 'NookRoof', (-1.5, 0.7, 15.25), (1.9, 2.1, 0.3), material='paint2', bevel=0.06)
-    F.box(s, 'NookWindow', (-1.5, -0.21, 14.3), (1.0, 0.06, 0.7), material='glow_warm',
+    # === sensors aimed into the gate mouth =========================================
+    # pods under the lintel pointing down into the weighing volume
+    for e in (-1, 1):
+        F.box(s, f'Sensor{e:+d}', (0, e * (GATE_W - 1.6), GATE_H - 1.3), (1.2, 1.6, 0.8),
+              material='dark', bevel=0.05)
+        F.light(s, f'SensorEye{e:+d}', (0, e * (GATE_W - 1.6), GATE_H - 1.8), 'glow_cyan',
+                size=0.3)
+    # status beacons on the caps
+    for e in (-1, 1):
+        F.light(s, f'CapLamp{e:+d}', (0, e * (GATE_W + 1.1), GATE_H + 1.4),
+                'glow_red' if e > 0 else 'glow_cyan', size=0.24)
+
+    # === the keeper's nook under the -Y leg ========================================
+    F.box(s, 'Nook', (2.6, -GATE_W, 1.6), (2.4, 2.8, 3.4), material='paint', bevel=0.1)
+    F.box(s, 'NookRoof', (2.6, -GATE_W, 3.5), (2.8, 3.2, 0.5), material='paint2', bevel=0.05)
+    F.box(s, 'NookWindow', (3.85, -GATE_W, 2.0), (0.1, 1.4, 0.7), material='glow_warm',
           bevel=0.0)
-    # mast cap
-    F.box(s, 'MastCap', (0, 0, 15.4), (1.2, 1.2, 0.5), material='paint2', bevel=0.05)
-    F.beacon(s, 'TopBeacon', (0, 0, 15.85), 'glow_red', size=0.16)
-
-    # the hung yoke under the deck with tally tongs
-    F.box(s, 'YokeHub', (0.8, 0, 12.0), (1.0, 1.0, 1.2), material='gunmetal', bevel=0.08)
-    F.cylinder(s, 'YokeDropA', (0.8, -0.35, 12.6), (0.8, -0.35, 13.0), 0.1, material='gunmetal',
-               segments=6, bevel=0.0)
-    F.cylinder(s, 'YokeDropB', (0.8, 0.35, 12.6), (0.8, 0.35, 13.0), 0.1, material='gunmetal',
-               segments=6, bevel=0.0)
-    # the tongs: two arms angled in, pads at the ends
-    for e in (-1, 1):
-        F.beams(s, f'Tong{e:+d}A', [((0.8, e * 0.4, 11.6), (0.8, e * 1.5, 9.6))], 0.28,
-                material='gunmetal')
-        F.beams(s, f'Tong{e:+d}B', [((0.8, e * 1.5, 9.6), (0.8, e * 0.9, 8.6))], 0.24,
-                material='gunmetal')
-        F.box(s, f'TongPad{e:+d}', (0.8, e * 0.85, 8.3), (0.7, 0.5, 0.7), material='paint2',
-              bevel=0.06)
-    F.box(s, 'TongCrossbar', (0.8, 0, 9.6), (0.3, 3.1, 0.3), material='gunmetal', bevel=0.03)
-    # invoice lamp under the deck edge
-    F.work_lamp(s, 'InvoiceLamp', (1.9, -1.4, 12.6), aim=(-0.3, 0.2, 0.9), size=0.22)
-    # wear cup under the tongs — the pale dished weigh mark on the base collar
-    F.cylinder(s, 'WearCup', (0.8, 0, -0.62), (0.8, 0, -0.2), 0.5, 0.62, material='ceramic',
-               segments=10, bevel=0.04)
+    # a ledger plate on the lintel's face — the weigh-station's seal
+    F.box(s, 'LedgerPlate', (1.4, 0, GATE_H - 0.2), (0.12, 2.2, 1.2), material='paint2',
+          bevel=0.02)
+    F.box(s, 'LedgerMark', (1.5, 0, GATE_H - 0.2), (0.1, 1.6, 0.3), material='hazard',
+          bevel=0.0)
+    # work lamp over the gate mouth
+    F.work_lamp(s, 'GateLamp', (0, GATE_W - 0.8, GATE_H - 1.1), aim=(0, -0.4, -0.9), size=0.3)
 
     return s
 

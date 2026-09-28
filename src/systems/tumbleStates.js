@@ -93,6 +93,11 @@ export const tumbleStates = {
       // system only through the bus. subsystemDisabled can flip capabilities.drive
       // with no membership change, producing drift the latch would otherwise miss
       // until rescan.
+      // The kernel's expiresTick sweep lands on the same tick as a tumble's `data.until` and
+      // ticks first (actions precedes this system in update order), so in production the
+      // natural end of a tumble arrives here — the status is already gone — rather than
+      // through the update walk's own `until` check. Kernel-absent boots still take the walk.
+      this._unsubs.push(this.bus.on('combat:statusExpired', (p) => this._onStatusExpired(p || {})));
       this._unsubs.push(this.bus.on('save:loaded', () => this._clearQuietLatch()));
       this._unsubs.push(this.bus.on('game:new', () => this._clearQuietLatch()));
       this._unsubs.push(this.bus.on('game:newGame', () => this._clearQuietLatch()));
@@ -166,15 +171,7 @@ export const tumbleStates = {
         const elapsed = now - finite(tumble.data && tumble.data.startedAt, now);
         if (now >= finite(tumble.data && tumble.data.until, now)) {
           this._clearTumbleStatus(e, 'duration_elapsed');
-          // INF-027: the opening ends in stabilization, not in full tactics. The helm keeps
-          // damping spin while a fraction of the AI's thrust comes back and guns stay silent;
-          // massline:recovered closes the beat so the end of the opening is recognizable.
-          const recoverUntil = now + TUMBLE_RECOVERY_S;
-          if (e.data) e.data.recoveringUntil = recoverUntil;
-          if (this.bus) {
-            this.bus.emit('massline:tumbleEnd', { victimId: e.id, durationS: elapsed, recoverUntil });
-            this.bus.emit('massline:recovering', { victimId: e.id, recoverUntil });
-          }
+          this._beginRecovery(e, now, elapsed);
           tumbleActive = false;
         }
       }
@@ -450,6 +447,29 @@ export const tumbleStates = {
     }
   },
 
+  // INF-027: the opening ends in stabilization, not in full tactics. The helm keeps damping
+  // spin while a fraction of the AI's thrust comes back and guns stay silent;
+  // massline:recovered closes the beat so the end of the opening is recognizable.
+  _beginRecovery(entity, now, durationS) {
+    const recoverUntil = now + TUMBLE_RECOVERY_S;
+    if (entity.data) entity.data.recoveringUntil = recoverUntil;
+    if (this.bus) {
+      this.bus.emit('massline:tumbleEnd', { victimId: entity.id, durationS, recoverUntil });
+      this.bus.emit('massline:recovering', { victimId: entity.id, recoverUntil });
+    }
+  },
+
+  _onStatusExpired(payload) {
+    if (payload.statusId !== TUMBLE_STATUS_ID) return;
+    const state = this.state;
+    if (!state || state.mode !== 'flight') return;
+    const victim = entityById(state, payload.targetId);
+    if (!victim || victim.alive === false || victim.id === state.playerId) return;
+    const now = finite(state.simTime, state.tick / 60);
+    const data = payload.data && typeof payload.data === 'object' ? payload.data : null;
+    this._beginRecovery(victim, now, now - finite(data && data.startedAt, now));
+  },
+
   _scheduleTumbleStatus(victim, durationS, data) {
     const kernel = combatKernel(this);
     if (!kernel || !kernel.statuses || !kernel.catalog) return false;
@@ -523,7 +543,8 @@ function recoveryControl(entity, dt, kind) {
   const maxAlpha = positive(propulsion && propulsion.yawBrake, finite(profile.angularBrake, 8)) * Math.max(0.05, yaw);
   const error = -finite(entity.angVel, 0);
   const alpha = clamp(error / Math.max(dt, 1 / 120), -maxAlpha, maxAlpha);
-  RECOVERY_CONTROL_SCRATCH.torque.y = alpha * inertia;
+  // `+ 0` folds -0 (from -angVel at exact rest) into +0 without masking NaN.
+  RECOVERY_CONTROL_SCRATCH.torque.y = alpha * inertia + 0;
   RECOVERY_CONTROL_SCRATCH.source = kind === MASSLINE_TUMBLE_KIND ? 'massline_tumble' : 'hitstun';
   return RECOVERY_CONTROL_SCRATCH;
 }

@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Dock_Approach",
       "nodePath": [
         0,
-        16
+        43
       ],
       "parentNodeId": "sf.render.outpost-catcher.root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        17
+        44
       ],
       "parentNodeId": "sf.render.outpost-catcher.root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Module_Defense",
       "nodePath": [
         0,
-        18
+        45
       ],
       "parentNodeId": "sf.render.outpost-catcher.root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Module_Depot",
       "nodePath": [
         0,
-        19
+        46
       ],
       "parentNodeId": "sf.render.outpost-catcher.root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_Module_Refinery",
       "nodePath": [
         0,
-        20
+        47
       ],
       "parentNodeId": "sf.render.outpost-catcher.root",
       "worldTransform": [
@@ -254,7 +254,7 @@
       "nodeName": "SOCKET_Module_Teleporter",
       "nodePath": [
         0,
-        21
+        48
       ],
       "parentNodeId": "sf.render.outpost-catcher.root",
       "worldTransform": [
@@ -300,7 +300,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        22
+        49
       ],
       "parentNodeId": "sf.render.outpost-catcher.root",
       "worldTransform": [
@@ -335,408 +335,1114 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "45194685542b0a1e168e8d7a5f37afb01b0a2a815294b7bcf5297aab4f5a9320",
-  "dynamicGroups": [],
+  "contentHash": "72086e6c814fc26062aa10fa14f8d9665210c1b4e041109c68d8cea656657eab",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod0-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-hook-nav-port"
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod0-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-hook-nav-port"
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-hook-nav-port"
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-hook-nav-starboard"
+    }
+  ],
   "geometry": [
     {
       "bounds": {
         "max": [
-          46.135169982910156,
-          42.32236862182617,
-          13.574302673339844
+          56.497928619384766,
+          44.766448974609375,
+          15.240193367004395
         ],
         "min": [
-          -46.135169982910156,
-          -42.32236862182617,
-          -13.574302673339844
+          -44.766754150390625,
+          -44.76689910888672,
+          -17.410381317138672
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38d5fde74ce8024edbd24861c39e149bbeeb6689b1bcbb1124a18bc0cda30a19",
+      "geometryHash": "0cc478c2ce2653ff8cdc4868ffdfe4f82cc8a9336fc08bcc731b6246dfd112ec",
       "id": "sf.render.outpost-catcher.mesh.collision-hull.primitive.0",
-      "indexCount": 132,
+      "indexCount": 900,
       "indexed": true,
-      "materialHash": "ac73081deca614576c1d96974348e9f7ce8ed020a2c4186a1796b9a172c878c0",
+      "materialHash": null,
       "materialPipelineKey": "non-render",
-      "meshName": "Cube.065",
+      "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.outpost-catcher.mesh.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 819
     },
     {
       "bounds": {
         "max": [
-          49.5,
-          7.824635982513428,
-          -0.5022583603858948
+          51.63751983642578,
+          30.899616241455078,
+          3.099591016769409
         ],
         "min": [
-          -21.5,
-          -13.299635887145996,
-          -12.49774169921875
+          -30.899999618530273,
+          -30.899616241455078,
+          -12.599591255187988
         ]
       },
       "drawMode": 4,
-      "geometryHash": "faa86d1549eff81dd3cd8d710e9fe3531626efe56545ce4729fbea88cc7b22a3",
-      "id": "sf.render.outpost-catcher.mesh.lod0-station-material-accent.primitive.0",
-      "indexCount": 2256,
+      "geometryHash": "df483f9b10b97673503eb0eda2acd561aca93862db7d5f2fbd28c099ed310509",
+      "id": "sf.render.outpost-catcher.mesh.lod0-armor.primitive.0",
+      "indexCount": 19932,
       "indexed": true,
-      "materialHash": "b8ca75c0548f3790b31529d93a451e88f0fb76464652e0a751eee972e39c549e",
+      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.063",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod0-station-material-accent",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1932
+      "vertexCount": 7778
     },
     {
       "bounds": {
         "max": [
-          11.75,
-          -9.200363159179688,
-          -2.9002153873443604
+          26.174999237060547,
+          26.123279571533203,
+          -3.124955892562866
         ],
         "min": [
-          -18.399999618530273,
-          -14.139636993408203,
-          -5.174784183502197
+          -14.175000190734863,
+          -14.12328052520752,
+          -13.31004524230957
         ]
       },
       "drawMode": 4,
-      "geometryHash": "875a55dd085261b973c533a8a38fe4cee54198a0a8a7d04dc71badb99d14a226",
-      "id": "sf.render.outpost-catcher.mesh.lod0-station-material-glass.primitive.0",
-      "indexCount": 2820,
+      "geometryHash": "a739a7fae6e6ee88383abc7a04b4c9fdfb3f22ffdf2ca40623e3aa5094d4738e",
+      "id": "sf.render.outpost-catcher.mesh.lod0-beacon-amber.primitive.0",
+      "indexCount": 828,
       "indexed": true,
-      "materialHash": "1bc9d9d86efba9710ed125c5cfabbdbb50278e631b243c14807c8b34c6748b5b",
-      "materialPipelineKey": "blend",
-      "meshName": "Cube.078",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod0-station-material-glass",
-      "primitiveIndex": 0,
-      "vertexCount": 2460
-    },
-    {
-      "bounds": {
-        "max": [
-          53.099998474121094,
-          18.901094436645508,
-          9.598958015441895
-        ],
-        "min": [
-          -30.25,
-          -18.901094436645508,
-          -8.898957252502441
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "1b19c2f1bbd05087f7f9db22260b3de5f88b879f726ad977d800ea6870c36c64",
-      "id": "sf.render.outpost-catcher.mesh.lod0-station-material-hull.primitive.0",
-      "indexCount": 14664,
-      "indexed": true,
-      "materialHash": "cdedddb8442772574016435d30008702c97f113bea7afe2721ffd0a1548e2fc0",
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.014",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod0-station-material-hull",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 12380
+      "vertexCount": 368
     },
     {
       "bounds": {
         "max": [
-          52,
-          47.02115249633789,
-          17.66948890686035
+          51.80147269113892,
+          44.13999938964844,
+          -2.301480801340447
         ],
         "min": [
-          -47.02259826660156,
-          -47.02115249633789,
-          -11.19989013671875
+          -0.2014734570586043,
+          -44.13999938964844,
+          -5.798518626454963
         ]
       },
       "drawMode": 4,
-      "geometryHash": "86a262bf460ce2b065dd9591729e8af7794053cf61a541d809b3c3a018586e5b",
-      "id": "sf.render.outpost-catcher.mesh.lod0-station-material-mechanical.primitive.0",
-      "indexCount": 29352,
+      "geometryHash": "796c2871c010281c1910fe051455e5a40f683f775d449818f463d1d19f218964",
+      "id": "sf.render.outpost-catcher.mesh.lod0-hook-nav-port.primitive.0",
+      "indexCount": 108,
       "indexed": true,
-      "materialHash": "ac73081deca614576c1d96974348e9f7ce8ed020a2c4186a1796b9a172c878c0",
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod0-station-material-mechanical",
+      "meshName": "LOD0_HOOK_NAV_PORT",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 24550
+      "vertexCount": 72
     },
     {
       "bounds": {
         "max": [
-          55.5,
-          43.05447769165039,
-          15.698596000671387
+          51.79999923706055,
+          4.5379619545656835,
+          -2.300922898809354
         ],
         "min": [
-          -43.048152923583984,
-          -43.05447769165039,
-          -9.098594665527344
+          -44.20000076293945,
+          -0.13796199330870262,
+          -5.799076528986056
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c8e46339d9c3196c1095a4b8d063943148741ac2e49349b5141ac900cc637a4",
-      "id": "sf.render.outpost-catcher.mesh.lod0-station-material-warm.primitive.0",
-      "indexCount": 23880,
+      "geometryHash": "3d60174a60e1d02a6801713287bd92e26bee42af4c6a668cdf0222446740fa87",
+      "id": "sf.render.outpost-catcher.mesh.lod0-hook-nav-starboard.primitive.0",
+      "indexCount": 108,
       "indexed": true,
-      "materialHash": "6767f6fd0d2e3f83db027d2824b3cfe7b8f2875039d857184df42985cf5e2106",
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod0-station-material-warm",
+      "meshName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-hook-nav-starboard",
       "primitiveIndex": 0,
-      "vertexCount": 18594
+      "vertexCount": 72
     },
     {
       "bounds": {
         "max": [
-          49.5,
-          7.824635982513428,
-          -0.5022583603858948
+          56.5,
+          27.413375854492188,
+          0.10045330226421356
         ],
         "min": [
-          -21.5,
-          -13.299635887145996,
-          -12.49774169921875
+          -40.93907165527344,
+          -40.93998336791992,
+          -3.075453281402588
         ]
       },
       "drawMode": 4,
-      "geometryHash": "039773ac06778567d66df00ecd50623b584838e2a02cf43c881f88c7236918e8",
-      "id": "sf.render.outpost-catcher.mesh.lod1-station-material-accent.primitive.0",
-      "indexCount": 1296,
+      "geometryHash": "ec196c1f3836884bd8359a572d28bdd0961c04e91e73bf35681d2e00648ad3da",
+      "id": "sf.render.outpost-catcher.mesh.lod0-hull-aged.primitive.0",
+      "indexCount": 7656,
       "indexed": true,
-      "materialHash": "b8ca75c0548f3790b31529d93a451e88f0fb76464652e0a751eee972e39c549e",
+      "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.156",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod1-station-material-accent",
+      "meshName": "LOD0_Hull_aged",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-hull-aged",
       "primitiveIndex": 0,
-      "vertexCount": 1068
+      "vertexCount": 2356
     },
     {
       "bounds": {
         "max": [
-          11.75,
-          -9.200363159179688,
-          -2.9002153873443604
+          52.25022888183594,
+          6.349787712097168,
+          -10.911018371582031
         ],
         "min": [
-          -18.399999618530273,
-          -14.139636993408203,
-          -5.174784183502197
+          37.597354888916016,
+          -6.349787712097168,
+          -17.409271240234375
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da9564de4366c8f0dbf6c67818de4bc35ba41c357584dd8395ff409fde03581e",
-      "id": "sf.render.outpost-catcher.mesh.lod1-station-material-glass.primitive.0",
-      "indexCount": 1296,
+      "geometryHash": "304af0baf38f92da550b44980c0583c2a546f138542e2fb641023899e4733d3f",
+      "id": "sf.render.outpost-catcher.mesh.lod0-hull-role.primitive.0",
+      "indexCount": 2016,
       "indexed": true,
-      "materialHash": "1bc9d9d86efba9710ed125c5cfabbdbb50278e631b243c14807c8b34c6748b5b",
-      "materialPipelineKey": "blend",
-      "meshName": "Cube.170",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod1-station-material-glass",
-      "primitiveIndex": 0,
-      "vertexCount": 1096
-    },
-    {
-      "bounds": {
-        "max": [
-          53.099998474121094,
-          18.901094436645508,
-          9.598958015441895
-        ],
-        "min": [
-          -30.25,
-          -18.901094436645508,
-          -8.898957252502441
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a7aa1980f6a187cef27a6d22fb5bf87d3f6b73a0bf576db6ed3e51195292fd26",
-      "id": "sf.render.outpost-catcher.mesh.lod1-station-material-hull.primitive.0",
-      "indexCount": 8100,
-      "indexed": true,
-      "materialHash": "cdedddb8442772574016435d30008702c97f113bea7afe2721ffd0a1548e2fc0",
+      "materialHash": "7780fef1788101fa4a9b3d158b96e488d3d43969ff1d593dd072f76bcc878dea",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.115",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod1-station-material-hull",
+      "meshName": "LOD0_Hull_role",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-hull-role",
       "primitiveIndex": 0,
-      "vertexCount": 6798
+      "vertexCount": 1344
     },
     {
       "bounds": {
         "max": [
-          52,
-          47.02115249633789,
-          17.66948890686035
+          54.5,
+          44.00139617919922,
+          1.6006510257720947
         ],
         "min": [
-          -47.02259826660156,
-          -47.02115249633789,
-          -11.19989013671875
+          -44,
+          -44.00139617919922,
+          -15.601603507995605
         ]
       },
       "drawMode": 4,
-      "geometryHash": "77af4f0655b006f4f0a884d243934d6e6721d8d3dc53f301ed184daff2003a34",
-      "id": "sf.render.outpost-catcher.mesh.lod1-station-material-mechanical.primitive.0",
-      "indexCount": 15732,
+      "geometryHash": "e3a481d00d56aa7f52784a1eb24f4afa29844436751bc39341d65554a9a91977",
+      "id": "sf.render.outpost-catcher.mesh.lod0-hull.primitive.0",
+      "indexCount": 13212,
       "indexed": true,
-      "materialHash": "ac73081deca614576c1d96974348e9f7ce8ed020a2c4186a1796b9a172c878c0",
+      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.103",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod1-station-material-mechanical",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 13088
+      "vertexCount": 4460
     },
     {
       "bounds": {
         "max": [
-          55.5,
-          43.07817840576172,
-          15.701955795288086
+          49.175010681152344,
+          5.322499752044678,
+          -12.224954605102539
         ],
         "min": [
-          -43.074859619140625,
-          -43.07817840576172,
-          -9.10195541381836
+          38.824989318847656,
+          -5.322499752044678,
+          -16.1750431060791
         ]
       },
       "drawMode": 4,
-      "geometryHash": "573817fc4f6a15eca018310bf656d6c7f2c756124b856388c319abcb92c8ad62",
-      "id": "sf.render.outpost-catcher.mesh.lod1-station-material-warm.primitive.0",
-      "indexCount": 10200,
+      "geometryHash": "53ad775fa397b509974427f823344748af86e60444d805e932d2403dc6c47e9f",
+      "id": "sf.render.outpost-catcher.mesh.lod0-lights-cyan.primitive.0",
+      "indexCount": 216,
       "indexed": true,
-      "materialHash": "6767f6fd0d2e3f83db027d2824b3cfe7b8f2875039d857184df42985cf5e2106",
+      "materialHash": "a5d306846cc6d84de0d6bf45aa0f589b734d4d7c1a73bb436694f409ab8fa592",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.108",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod1-station-material-warm",
+      "meshName": "LOD0_Lights_Cyan",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 7968
+      "vertexCount": 144
     },
     {
       "bounds": {
         "max": [
-          49.5,
-          7.824635982513428,
-          -0.5022583603858948
+          48.29999923706055,
+          44.37387466430664,
+          -2.154268741607666
         ],
         "min": [
-          -21.5,
-          -13.299635887145996,
-          -12.49774169921875
+          -44.37336349487305,
+          -44.37387466430664,
+          -15.900992393493652
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bf317860ee437b0069236411a279457d3e7fe2245941cd3dc9a062d00bb292e0",
-      "id": "sf.render.outpost-catcher.mesh.lod2-station-material-accent.primitive.0",
+      "geometryHash": "a1d881553bc40b1d169d05c634170e6e7301bab63c87718d898c6d2002bdade4",
+      "id": "sf.render.outpost-catcher.mesh.lod0-lights-warm.primitive.0",
+      "indexCount": 7500,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Warm",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 2803
+    },
+    {
+      "bounds": {
+        "max": [
+          53.89999771118164,
+          6.999545097351074,
+          -1.7994716167449951
+        ],
+        "min": [
+          -10.199999809265137,
+          -5.199544906616211,
+          -10.200528144836426
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8498218ee8a43a1a8f6e846d279ce2a105756932720a26a349635f825fd3ce57",
+      "id": "sf.render.outpost-catcher.mesh.lod0-livery.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "a4d87ca525c4a04848c638111c61f2fc525c3029b0318d5f0851d8d5134c8272",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          44.763973236083984,
+          44.76397705078125,
+          -2.253138780593872
+        ],
+        "min": [
+          -44.763973236083984,
+          -44.76396942138672,
+          -13.395293235778809
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "15e309317a8285086917ba3209a74b701142dd641831cca89b2f2c485d8f0286",
+      "id": "sf.render.outpost-catcher.mesh.lod0-mechanical.primitive.0",
+      "indexCount": 3996,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 1580
+    },
+    {
+      "bounds": {
+        "max": [
+          49.58000183105469,
+          44.76626968383789,
+          -1.001298427581787
+        ],
+        "min": [
+          -44.766754150390625,
+          -44.76626205444336,
+          -16.7987003326416
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e96118864474b3bb296cd7ee2f48541e3cd0228a7eb8a699bfc0fd8a64e75238",
+      "id": "sf.render.outpost-catcher.mesh.lod0-mechanicaldark.primitive.0",
+      "indexCount": 3900,
+      "indexed": true,
+      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 1480
+    },
+    {
+      "bounds": {
+        "max": [
+          25.63135528564453,
+          30.397647857666016,
+          15.240650177001953
+        ],
+        "min": [
+          -31.633193969726562,
+          -24.07768440246582,
+          -8.508750915527344
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e42f5a05cebebc1d52ef8b67fcc65efb903fb95fc3e520f61d3cc66d37f38d88",
+      "id": "sf.render.outpost-catcher.mesh.lod0-stone.primitive.0",
+      "indexCount": 480,
+      "indexed": true,
+      "materialHash": "139067918fee2c91b39f7ea9d74cc6ea38b7bb83e885f77e86c7d04b446f2a69",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 360
+    },
+    {
+      "bounds": {
+        "max": [
+          52.5,
+          44.003257751464844,
+          2.1991586685180664
+        ],
+        "min": [
+          -44,
+          -44.003257751464844,
+          -3.2491586208343506
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9427ba7c9bc6e42dfc3529283ad1e4136bccd717066d4178e6d99308b02d2922",
+      "id": "sf.render.outpost-catcher.mesh.lod0-warning.primitive.0",
+      "indexCount": 5400,
+      "indexed": true,
+      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 1920
+    },
+    {
+      "bounds": {
+        "max": [
+          51.63751983642578,
+          30.883867263793945,
+          3.100027084350586
+        ],
+        "min": [
+          -30.884841918945312,
+          -30.883867263793945,
+          -12.596272468566895
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c8ed5af3abd363cdb63ba7950fa5eaeb0a43855c36beb2324ddc819bc72482ab",
+      "id": "sf.render.outpost-catcher.mesh.lod1-armor.primitive.0",
+      "indexCount": 8604,
+      "indexed": true,
+      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 4507
+    },
+    {
+      "bounds": {
+        "max": [
+          26.174999237060547,
+          26.123279571533203,
+          -3.124617576599121
+        ],
+        "min": [
+          -14.175000190734863,
+          -14.12328052520752,
+          -13.31217098236084
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f5d6cbfa6b0133c1028273c0c48546783ca574cbbd47c4af30e87922dac6f04e",
+      "id": "sf.render.outpost-catcher.mesh.lod1-beacon-amber.primitive.0",
+      "indexCount": 462,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 284
+    },
+    {
+      "bounds": {
+        "max": [
+          51.80147269113892,
+          44.13999938964844,
+          -2.301480801340447
+        ],
+        "min": [
+          -0.2014734570586043,
+          -44.13999938964844,
+          -5.798518626454963
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "42a35f824171936f7ca84560f81ab1e17e1cc86f7d628a013cf5fd1432c52421",
+      "id": "sf.render.outpost-catcher.mesh.lod1-hook-nav-port.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_PORT",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          51.79999923706055,
+          4.5379619545656835,
+          -2.300922898809354
+        ],
+        "min": [
+          -44.20000076293945,
+          -0.13796199330870262,
+          -5.799076528986056
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5039bff9ef50a2a36d6298ccd01d483108ce72becb970a18e72077a71fb403da",
+      "id": "sf.render.outpost-catcher.mesh.lod1-hook-nav-starboard.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          56.48640441894531,
+          27.417346954345703,
+          0.09532002359628677
+        ],
+        "min": [
+          -40.92940139770508,
+          -40.93157958984375,
+          -3.0679361820220947
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bd40f054e6896aa939ab56be2b225359aa781f7ecb788254347052417b1b3838",
+      "id": "sf.render.outpost-catcher.mesh.lod1-hull-aged.primitive.0",
+      "indexCount": 1290,
+      "indexed": true,
+      "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_aged",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-hull-aged",
+      "primitiveIndex": 0,
+      "vertexCount": 543
+    },
+    {
+      "bounds": {
+        "max": [
+          52.25022888183594,
+          6.349787712097168,
+          -10.911018371582031
+        ],
+        "min": [
+          37.597354888916016,
+          -6.349787712097168,
+          -17.409271240234375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "282cd9d652206705fb8d4de1a904f9a1221ca7134b03c99a61ec6a9fa6329953",
+      "id": "sf.render.outpost-catcher.mesh.lod1-hull-role.primitive.0",
+      "indexCount": 2016,
+      "indexed": true,
+      "materialHash": "7780fef1788101fa4a9b3d158b96e488d3d43969ff1d593dd072f76bcc878dea",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_role",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-hull-role",
+      "primitiveIndex": 0,
+      "vertexCount": 1344
+    },
+    {
+      "bounds": {
+        "max": [
+          54.48887252807617,
+          43.98395538330078,
+          1.597476601600647
+        ],
+        "min": [
+          -43.985538482666016,
+          -43.98395538330078,
+          -15.600308418273926
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7b8624a661abdd291835faf1cf107139ae1ffffbb62392be5abd448191179ddc",
+      "id": "sf.render.outpost-catcher.mesh.lod1-hull.primitive.0",
+      "indexCount": 4566,
+      "indexed": true,
+      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 2011
+    },
+    {
+      "bounds": {
+        "max": [
+          49.175010681152344,
+          5.322499752044678,
+          -12.224954605102539
+        ],
+        "min": [
+          38.824989318847656,
+          -5.322499752044678,
+          -16.1750431060791
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ccd30539ee02f18e938b198df43d2db2bb2ea41602465ca6ccc8c4309e699358",
+      "id": "sf.render.outpost-catcher.mesh.lod1-lights-cyan.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "a5d306846cc6d84de0d6bf45aa0f589b734d4d7c1a73bb436694f409ab8fa592",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Cyan",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          48.29999923706055,
+          44.37387466430664,
+          -2.154566764831543
+        ],
+        "min": [
+          -44.37336349487305,
+          -44.37387466430664,
+          -15.901289939880371
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "57ab1822b9350916121c84029286b21284c101f5fe0b0fb53045b7ba7e9e1766",
+      "id": "sf.render.outpost-catcher.mesh.lod1-lights-warm.primitive.0",
+      "indexCount": 3828,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Warm",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 1773
+    },
+    {
+      "bounds": {
+        "max": [
+          53.89999771118164,
+          6.999545097351074,
+          -1.7994716167449951
+        ],
+        "min": [
+          -10.199999809265137,
+          -5.199544906616211,
+          -10.200528144836426
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0e88e3b0065b4b3a48668ae4ef45540d3baa1501631dbce5c6df8bc649f786d8",
+      "id": "sf.render.outpost-catcher.mesh.lod1-livery.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "a4d87ca525c4a04848c638111c61f2fc525c3029b0318d5f0851d8d5134c8272",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Livery",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          44.76734924316406,
+          44.76713562011719,
+          -2.252466917037964
+        ],
+        "min": [
+          -44.766571044921875,
+          -44.76678466796875,
+          -13.395364761352539
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "63d72301ad60c19a7e4c3dd2347248a3ad2dbd89d08b088d4a0c7698f9fdc016",
+      "id": "sf.render.outpost-catcher.mesh.lod1-mechanical.primitive.0",
+      "indexCount": 1140,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 496
+    },
+    {
+      "bounds": {
+        "max": [
+          49.58000183105469,
+          44.76634979248047,
+          -1.003074049949646
+        ],
+        "min": [
+          -44.76655960083008,
+          -44.76599884033203,
+          -16.800443649291992
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a1985915f997b8d5d9a9b91363e645a09f1353ab22beff888cd359c7498a67a5",
+      "id": "sf.render.outpost-catcher.mesh.lod1-mechanicaldark.primitive.0",
+      "indexCount": 1332,
+      "indexed": true,
+      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 716
+    },
+    {
+      "bounds": {
+        "max": [
+          25.63135528564453,
+          30.397647857666016,
+          15.240650177001953
+        ],
+        "min": [
+          -31.633193969726562,
+          -24.07768440246582,
+          -8.508750915527344
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e42f5a05cebebc1d52ef8b67fcc65efb903fb95fc3e520f61d3cc66d37f38d88",
+      "id": "sf.render.outpost-catcher.mesh.lod1-stone.primitive.0",
+      "indexCount": 480,
+      "indexed": true,
+      "materialHash": "139067918fee2c91b39f7ea9d74cc6ea38b7bb83e885f77e86c7d04b446f2a69",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 360
+    },
+    {
+      "bounds": {
+        "max": [
+          52.5,
+          43.98456573486328,
+          2.1926381587982178
+        ],
+        "min": [
+          -43.984832763671875,
+          -43.98456573486328,
+          -3.2489330768585205
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "547cf7635e714e9dc292cf54c09530306c8ff7f3a142cc7853d9eab96bc7627d",
+      "id": "sf.render.outpost-catcher.mesh.lod1-warning.primitive.0",
+      "indexCount": 1944,
+      "indexed": true,
+      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 928
+    },
+    {
+      "bounds": {
+        "max": [
+          51.63751983642578,
+          30.883867263793945,
+          3.0996150970458984
+        ],
+        "min": [
+          -30.884841918945312,
+          -30.883867263793945,
+          -12.596684455871582
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d1d25052a1b40cefd751a92d776c7668b7b2b706d7a81e46369c717472d3d41e",
+      "id": "sf.render.outpost-catcher.mesh.lod2-armor.primitive.0",
+      "indexCount": 3816,
+      "indexed": true,
+      "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1988
+    },
+    {
+      "bounds": {
+        "max": [
+          26.174999237060547,
+          26.042007446289062,
+          -3.1247684955596924
+        ],
+        "min": [
+          -14.17500114440918,
+          -14.042006492614746,
+          -13.319710731506348
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aed5137bbf14167d7864209ca566ffd9ee0e402be365c07a032083044eb18a4e",
+      "id": "sf.render.outpost-catcher.mesh.lod2-beacon-amber.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 26
+    },
+    {
+      "bounds": {
+        "max": [
+          51.800262011912096,
+          44.04666519165039,
+          -2.299801335429514
+        ],
+        "min": [
+          -0.20026279273293923,
+          -44.04666519165039,
+          -5.800198569203054
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5603a186efede9b847c7bae336668d2056991e084d679fe1ab1842b03d38f6c1",
+      "id": "sf.render.outpost-catcher.mesh.lod2-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_PORT",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          51.79999923706055,
+          4.4442092254731165,
+          -2.300923067725865
+        ],
+        "min": [
+          -44.20000457763672,
+          -0.044209178534458715,
+          -5.799076836906703
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6f6da2e2c11db0cee4d1069d575202e226e71b3815bfdc1b73b60e32cde98f96",
+      "id": "sf.render.outpost-catcher.mesh.lod2-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          56.4821662902832,
+          27.406837463378906,
+          0.08435243368148804
+        ],
+        "min": [
+          -40.9234733581543,
+          -40.92306900024414,
+          -3.066683053970337
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2bb54052f99d6e0a73c01871bfec5e0d0f9973358b2247b339cdb6f29bc62a84",
+      "id": "sf.render.outpost-catcher.mesh.lod2-hull-aged.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_aged",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-hull-aged",
+      "primitiveIndex": 0,
+      "vertexCount": 336
+    },
+    {
+      "bounds": {
+        "max": [
+          52.25022888183594,
+          6.349787712097168,
+          -10.911149024963379
+        ],
+        "min": [
+          37.597354888916016,
+          -6.349787712097168,
+          -17.37720489501953
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "587820951e3d77b04ea879dd41b55de36c487dc024be6c87d72ec2e4d110c3d3",
+      "id": "sf.render.outpost-catcher.mesh.lod2-hull-role.primitive.0",
+      "indexCount": 822,
+      "indexed": true,
+      "materialHash": "7780fef1788101fa4a9b3d158b96e488d3d43969ff1d593dd072f76bcc878dea",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_role",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-hull-role",
+      "primitiveIndex": 0,
+      "vertexCount": 656
+    },
+    {
+      "bounds": {
+        "max": [
+          54.428688049316406,
+          43.98711013793945,
+          1.593279480934143
+        ],
+        "min": [
+          -43.985538482666016,
+          -43.98711013793945,
+          -15.557952880859375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bf5590442bb4a33377688106cdb897b89049f489bb67601fa03564d4b240ffc0",
+      "id": "sf.render.outpost-catcher.mesh.lod2-hull.primitive.0",
+      "indexCount": 2301,
+      "indexed": true,
+      "materialHash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 1071
+    },
+    {
+      "bounds": {
+        "max": [
+          49.1749382019043,
+          5.240833282470703,
+          -12.2247896194458
+        ],
+        "min": [
+          38.82506561279297,
+          -5.240833282470703,
+          -16.175207138061523
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "17ed246e12073b3d44b9f24054b4d9cea74f5f039b448674a3a1fa8634309882",
+      "id": "sf.render.outpost-catcher.mesh.lod2-lights-cyan.primitive.0",
+      "indexCount": 18,
+      "indexed": true,
+      "materialHash": "a5d306846cc6d84de0d6bf45aa0f589b734d4d7c1a73bb436694f409ab8fa592",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Cyan",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 18
+    },
+    {
+      "bounds": {
+        "max": [
+          48.29999923706055,
+          44.37065124511719,
+          -2.134186029434204
+        ],
+        "min": [
+          -44.39026641845703,
+          -44.37065124511719,
+          -15.900388717651367
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2b361444a65a22a1ac213cc1f1e481d4fc0f9bf33d8051c7debec920484c1682",
+      "id": "sf.render.outpost-catcher.mesh.lod2-lights-warm.primitive.0",
+      "indexCount": 744,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Warm",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 510
+    },
+    {
+      "bounds": {
+        "max": [
+          53.70000076293945,
+          7.0000152587890625,
+          -1.798926591873169
+        ],
+        "min": [
+          -10.199999809265137,
+          -5.200015068054199,
+          -10.20107364654541
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "14779339dca0cf5d45c3b8a70cebe5e5cce9597b4924a9de7a362e7cda3e2a5c",
+      "id": "sf.render.outpost-catcher.mesh.lod2-livery.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "a4d87ca525c4a04848c638111c61f2fc525c3029b0318d5f0851d8d5134c8272",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Livery",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          44.766178131103516,
+          44.76620864868164,
+          -2.2460978031158447
+        ],
+        "min": [
+          -44.76607131958008,
+          -44.76604080200195,
+          -13.383322715759277
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "15be432b25e20b3071a5623bbe9aab253a8a025ae063b675e23995a90810b285",
+      "id": "sf.render.outpost-catcher.mesh.lod2-mechanical.primitive.0",
       "indexCount": 396,
       "indexed": true,
-      "materialHash": "b8ca75c0548f3790b31529d93a451e88f0fb76464652e0a751eee972e39c549e",
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.229",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod2-station-material-accent",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 316
+      "vertexCount": 232
     },
     {
       "bounds": {
         "max": [
-          11.75,
-          -13.86031723022461,
-          -4.02512264251709
+          48.96434020996094,
+          44.765621185302734,
+          -1.0235222578048706
         ],
         "min": [
-          0.25,
-          -14.13968276977539,
-          -5.174877166748047
+          -44.76596450805664,
+          -44.76545333862305,
+          -15.676480293273926
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a2ce15b95d561ab7b2fcb67894d9b6bf7d5b267a6c9460c837417dbb3a89328",
-      "id": "sf.render.outpost-catcher.mesh.lod2-station-material-glass.primitive.0",
-      "indexCount": 264,
+      "geometryHash": "219590155ef3ad63c66ef5c586326094841116d351aacf9e1855b1850c7382bd",
+      "id": "sf.render.outpost-catcher.mesh.lod2-mechanicaldark.primitive.0",
+      "indexCount": 183,
       "indexed": true,
-      "materialHash": "1bc9d9d86efba9710ed125c5cfabbdbb50278e631b243c14807c8b34c6748b5b",
-      "materialPipelineKey": "blend",
-      "meshName": "Cube.243",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod2-station-material-glass",
+      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 137
     },
     {
       "bounds": {
         "max": [
-          53.099998474121094,
-          18.901094436645508,
-          9.598958015441895
+          25.63135528564453,
+          30.397647857666016,
+          15.240650177001953
         ],
         "min": [
-          -30.25,
-          -18.901094436645508,
-          -8.898957252502441
+          -31.633193969726562,
+          -24.07768440246582,
+          -8.508750915527344
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9382e4462ddcb6e3439c46320d7d395928b648b2e4c61f50bae9d6b1baab18a",
-      "id": "sf.render.outpost-catcher.mesh.lod2-station-material-hull.primitive.0",
-      "indexCount": 3168,
+      "geometryHash": "e42f5a05cebebc1d52ef8b67fcc65efb903fb95fc3e520f61d3cc66d37f38d88",
+      "id": "sf.render.outpost-catcher.mesh.lod2-stone.primitive.0",
+      "indexCount": 480,
       "indexed": true,
-      "materialHash": "cdedddb8442772574016435d30008702c97f113bea7afe2721ffd0a1548e2fc0",
+      "materialHash": "139067918fee2c91b39f7ea9d74cc6ea38b7bb83e885f77e86c7d04b446f2a69",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.196",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod2-station-material-hull",
+      "meshName": "LOD2_Stone",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-stone",
       "primitiveIndex": 0,
-      "vertexCount": 2536
+      "vertexCount": 360
     },
     {
       "bounds": {
         "max": [
-          52,
-          47.02115249633789,
-          17.66948890686035
+          52.5,
+          43.98456573486328,
+          2.1926381587982178
         ],
         "min": [
-          -47.02259826660156,
-          -47.02115249633789,
-          -11.19989013671875
+          -43.984832763671875,
+          -43.98456573486328,
+          -3.2489330768585205
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6aa344f770d9cb73827c0597f5cf5ab9085fdb49ee06501e14df8177c565ba26",
-      "id": "sf.render.outpost-catcher.mesh.lod2-station-material-mechanical.primitive.0",
-      "indexCount": 5580,
+      "geometryHash": "8a522724455e51eb0b9fbc9948240101700203a7e0e03b483724dac38c4ae6e7",
+      "id": "sf.render.outpost-catcher.mesh.lod2-warning.primitive.0",
+      "indexCount": 1800,
       "indexed": true,
-      "materialHash": "ac73081deca614576c1d96974348e9f7ce8ed020a2c4186a1796b9a172c878c0",
+      "materialHash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.188",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod2-station-material-mechanical",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.outpost-catcher.mesh.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 4462
-    },
-    {
-      "bounds": {
-        "max": [
-          55.5,
-          23.599979400634766,
-          2.5994479656219482
-        ],
-        "min": [
-          -20.800003051757812,
-          -23.5999813079834,
-          -6.649601936340332
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "70904b407792abf03e01ca8f7d197cb1b66249fbceb39e675baa55dcfbb4c963",
-      "id": "sf.render.outpost-catcher.mesh.lod2-station-material-warm.primitive.0",
-      "indexCount": 2520,
-      "indexed": true,
-      "materialHash": "6767f6fd0d2e3f83db027d2824b3cfe7b8f2875039d857184df42985cf5e2106",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.221",
-      "nodeId": "sf.render.outpost-catcher.mesh.lod2-station-material-warm",
-      "primitiveIndex": 0,
-      "vertexCount": 1780
+      "vertexCount": 832
     }
   ],
   "hlods": [],
@@ -744,160 +1450,298 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1bc9d9d86efba9710ed125c5cfabbdbb50278e631b243c14807c8b34c6748b5b",
-      "id": "material:1bc9d9d86efba9710ed125c5",
-      "name": "Material_Glass",
+      "hash": "139067918fee2c91b39f7ea9d74cc6ea38b7bb83e885f77e86c7d04b446f2a69",
+      "id": "material:139067918fee2c91b39f7ea9",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "id": "material:1596da2f23e2c1dd543b727e",
+      "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "PQ019_Base_Glass_BaseColor",
+          "name": "forge_machinery_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Glass_ORM",
+          "name": "forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Glass_Normal",
+          "name": "forge_machinery_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Glass_ORM",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "6767f6fd0d2e3f83db027d2824b3cfe7b8f2875039d857184df42985cf5e2106",
-      "id": "material:6767f6fd0d2e3f83db027d28",
-      "name": "Material_Warm",
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7780fef1788101fa4a9b3d158b96e488d3d43969ff1d593dd072f76bcc878dea",
+      "id": "material:7780fef1788101fa4a9b3d15",
+      "name": "Material_Hull_role",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "PQ019_Base_Warm_BaseColor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Warm_ORM",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Warm_Normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Warm_ORM",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "ac73081deca614576c1d96974348e9f7ce8ed020a2c4186a1796b9a172c878c0",
-      "id": "material:ac73081deca614576c1d9697",
+      "hash": "7c9a3daaaa00f25157b72e5007ba68f3aeb4b26078e0ecca112780f90651d8cc",
+      "id": "material:7c9a3daaaa00f25157b72e50",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
+      "id": "material:7d49b2b274926ec08348a5fd",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "id": "material:7dbce0f058ce69aeee64664b",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "PQ019_Base_Mechanical_BaseColor",
+          "name": "forge_machinery_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Mechanical_ORM",
+          "name": "forge_machinery_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Mechanical_Normal",
+          "name": "forge_machinery_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Mechanical_ORM",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "b8ca75c0548f3790b31529d93a451e88f0fb76464652e0a751eee972e39c549e",
-      "id": "material:b8ca75c0548f3790b31529d9",
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "a4d87ca525c4a04848c638111c61f2fc525c3029b0318d5f0851d8d5134c8272",
+      "id": "material:a4d87ca525c4a04848c63811",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "PQ019_Base_Accent_BaseColor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Accent_ORM",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Accent_Normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Accent_ORM",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "cdedddb8442772574016435d30008702c97f113bea7afe2721ffd0a1548e2fc0",
-      "id": "material:cdedddb8442772574016435d",
+      "hash": "a5d306846cc6d84de0d6bf45aa0f589b734d4d7c1a73bb436694f409ab8fa592",
+      "id": "material:a5d306846cc6d84de0d6bf45",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "d53e5ef9a99fb30a7a241f6f2d7a8702b419b65f4ab3d8f8f9e5d381a258bc85",
+      "id": "material:d53e5ef9a99fb30a7a241f6f",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "PQ019_Base_Hull_BaseColor",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Hull_ORM",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Hull_Normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Hull_ORM",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f2bfd6ad2d8243301a15508ef6ce090e9c10e47551e2f14e4abf1f48ba1c5f7f",
+      "id": "material:f2bfd6ad2d8243301a15508e",
+      "name": "Material_Hull_aged",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -955,7 +1799,7 @@
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod0-station-material-accent",
+      "id": "sf.render.outpost-catcher.mesh.lod0-armor",
       "localTransform": [
         1,
         0,
@@ -975,8 +1819,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Station_Material_Accent",
-      "nodeName": "LOD0_Station_Material_Accent",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
       "nodePath": [
         0,
         1
@@ -1004,7 +1848,7 @@
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod0-station-material-glass",
+      "id": "sf.render.outpost-catcher.mesh.lod0-beacon-amber",
       "localTransform": [
         1,
         0,
@@ -1023,9 +1867,9 @@
         0,
         1
       ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD0_Station_Material_Glass",
-      "nodeName": "LOD0_Station_Material_Glass",
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
       "nodePath": [
         0,
         2
@@ -1053,105 +1897,105 @@
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod0-station-material-hull",
+      "id": "sf.render.outpost-catcher.mesh.lod0-hook-nav-port",
       "localTransform": [
-        1,
+        44.13999938964844,
         0,
         0,
         0,
         0,
-        1,
+        44.13999938964844,
         0,
         0,
         0,
         0,
-        1,
+        22.06999969482422,
         0,
+        25.799999617040157,
         0,
-        0,
-        0,
+        -4.049999713897705,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Station_Material_Hull",
-      "nodeName": "LOD0_Station_Material_Hull",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+      "nodeName": "LOD0_HOOK_NAV_PORT",
       "nodePath": [
         0,
         3
       ],
       "parentId": "sf.render.outpost-catcher.root",
-      "role": "immutable",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.outpost-catcher.body",
       "worldTransform": [
-        1,
+        44.13999938964844,
         0,
         0,
         0,
         0,
-        1,
+        44.13999938964844,
         0,
         0,
         0,
         0,
-        1,
+        22.06999969482422,
         0,
+        25.799999617040157,
         0,
-        0,
-        0,
+        -4.049999713897705,
         1
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod0-station-material-mechanical",
+      "id": "sf.render.outpost-catcher.mesh.lod0-hook-nav-starboard",
       "localTransform": [
-        1,
+        48,
         0,
         0,
         0,
         0,
-        1,
+        48,
         0,
         0,
         0,
         0,
-        1,
+        24,
         0,
-        0,
-        0,
-        0,
+        3.799999237060547,
+        2.1999999806284904,
+        -4.049999713897705,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Station_Material_Mechanical",
-      "nodeName": "LOD0_Station_Material_Mechanical",
+      "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
         4
       ],
       "parentId": "sf.render.outpost-catcher.root",
-      "role": "immutable",
+      "role": "dynamic",
       "spatialClusterId": "sf.render.outpost-catcher.body",
       "worldTransform": [
-        1,
+        48,
         0,
         0,
         0,
         0,
-        1,
+        48,
         0,
         0,
         0,
         0,
-        1,
+        24,
         0,
-        0,
-        0,
-        0,
+        3.799999237060547,
+        2.1999999806284904,
+        -4.049999713897705,
         1
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod0-station-material-warm",
+      "id": "sf.render.outpost-catcher.mesh.lod0-hull",
       "localTransform": [
         1,
         0,
@@ -1171,8 +2015,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Station_Material_Warm",
-      "nodeName": "LOD0_Station_Material_Warm",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
       "nodePath": [
         0,
         5
@@ -1200,7 +2044,7 @@
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod1-station-material-accent",
+      "id": "sf.render.outpost-catcher.mesh.lod0-hull-aged",
       "localTransform": [
         1,
         0,
@@ -1220,8 +2064,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Station_Material_Accent",
-      "nodeName": "LOD1_Station_Material_Accent",
+      "mergeBoundary": "LOD0_Hull_aged",
+      "nodeName": "LOD0_Hull_aged",
       "nodePath": [
         0,
         6
@@ -1249,7 +2093,7 @@
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod1-station-material-glass",
+      "id": "sf.render.outpost-catcher.mesh.lod0-hull-role",
       "localTransform": [
         1,
         0,
@@ -1268,9 +2112,9 @@
         0,
         1
       ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD1_Station_Material_Glass",
-      "nodeName": "LOD1_Station_Material_Glass",
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_role",
+      "nodeName": "LOD0_Hull_role",
       "nodePath": [
         0,
         7
@@ -1298,7 +2142,7 @@
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod1-station-material-hull",
+      "id": "sf.render.outpost-catcher.mesh.lod0-lights-cyan",
       "localTransform": [
         1,
         0,
@@ -1318,8 +2162,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Station_Material_Hull",
-      "nodeName": "LOD1_Station_Material_Hull",
+      "mergeBoundary": "LOD0_Lights_Cyan",
+      "nodeName": "LOD0_Lights_Cyan",
       "nodePath": [
         0,
         8
@@ -1347,7 +2191,7 @@
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod1-station-material-mechanical",
+      "id": "sf.render.outpost-catcher.mesh.lod0-lights-warm",
       "localTransform": [
         1,
         0,
@@ -1367,8 +2211,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Station_Material_Mechanical",
-      "nodeName": "LOD1_Station_Material_Mechanical",
+      "mergeBoundary": "LOD0_Lights_Warm",
+      "nodeName": "LOD0_Lights_Warm",
       "nodePath": [
         0,
         9
@@ -1396,7 +2240,7 @@
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod1-station-material-warm",
+      "id": "sf.render.outpost-catcher.mesh.lod0-livery",
       "localTransform": [
         1,
         0,
@@ -1416,8 +2260,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Station_Material_Warm",
-      "nodeName": "LOD1_Station_Material_Warm",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
       "nodePath": [
         0,
         10
@@ -1445,7 +2289,7 @@
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod2-station-material-accent",
+      "id": "sf.render.outpost-catcher.mesh.lod0-mechanical",
       "localTransform": [
         1,
         0,
@@ -1465,8 +2309,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Station_Material_Accent",
-      "nodeName": "LOD2_Station_Material_Accent",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
         11
@@ -1494,7 +2338,7 @@
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod2-station-material-glass",
+      "id": "sf.render.outpost-catcher.mesh.lod0-mechanicaldark",
       "localTransform": [
         1,
         0,
@@ -1513,9 +2357,9 @@
         0,
         1
       ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD2_Station_Material_Glass",
-      "nodeName": "LOD2_Station_Material_Glass",
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
         12
@@ -1543,7 +2387,7 @@
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod2-station-material-hull",
+      "id": "sf.render.outpost-catcher.mesh.lod0-stone",
       "localTransform": [
         1,
         0,
@@ -1563,8 +2407,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Station_Material_Hull",
-      "nodeName": "LOD2_Station_Material_Hull",
+      "mergeBoundary": "LOD0_Stone",
+      "nodeName": "LOD0_Stone",
       "nodePath": [
         0,
         13
@@ -1592,7 +2436,7 @@
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod2-station-material-mechanical",
+      "id": "sf.render.outpost-catcher.mesh.lod0-warning",
       "localTransform": [
         1,
         0,
@@ -1612,8 +2456,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Station_Material_Mechanical",
-      "nodeName": "LOD2_Station_Material_Mechanical",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
       "nodePath": [
         0,
         14
@@ -1641,7 +2485,7 @@
       ]
     },
     {
-      "id": "sf.render.outpost-catcher.mesh.lod2-station-material-warm",
+      "id": "sf.render.outpost-catcher.mesh.lod1-armor",
       "localTransform": [
         1,
         0,
@@ -1661,11 +2505,1334 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Station_Material_Warm",
-      "nodeName": "LOD2_Station_Material_Warm",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
         15
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-hook-nav-port",
+      "localTransform": [
+        44.13999938964844,
+        0,
+        0,
+        0,
+        0,
+        44.13999938964844,
+        0,
+        0,
+        0,
+        0,
+        22.06999969482422,
+        0,
+        25.799999617040157,
+        0,
+        -4.049999713897705,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+      "nodeName": "LOD1_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        44.13999938964844,
+        0,
+        0,
+        0,
+        0,
+        44.13999938964844,
+        0,
+        0,
+        0,
+        0,
+        22.06999969482422,
+        0,
+        25.799999617040157,
+        0,
+        -4.049999713897705,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-hook-nav-starboard",
+      "localTransform": [
+        48,
+        0,
+        0,
+        0,
+        0,
+        48,
+        0,
+        0,
+        0,
+        0,
+        24,
+        0,
+        3.799999237060547,
+        2.1999999806284904,
+        -4.049999713897705,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        48,
+        0,
+        0,
+        0,
+        0,
+        48,
+        0,
+        0,
+        0,
+        0,
+        24,
+        0,
+        3.799999237060547,
+        2.1999999806284904,
+        -4.049999713897705,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-hull-aged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_aged",
+      "nodeName": "LOD1_Hull_aged",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-hull-role",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_role",
+      "nodeName": "LOD1_Hull_role",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Cyan",
+      "nodeName": "LOD1_Lights_Cyan",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Warm",
+      "nodeName": "LOD1_Lights_Warm",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Livery",
+      "nodeName": "LOD1_Livery",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-stone",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone",
+      "nodeName": "LOD1_Stone",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-hook-nav-port",
+      "localTransform": [
+        44.04666519165039,
+        0,
+        0,
+        0,
+        0,
+        44.04666519165039,
+        0,
+        0,
+        0,
+        0,
+        22.023332595825195,
+        0,
+        25.799999609589577,
+        0,
+        -4.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
+      "nodeName": "LOD2_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        44.04666519165039,
+        0,
+        0,
+        0,
+        0,
+        44.04666519165039,
+        0,
+        0,
+        0,
+        0,
+        22.023332595825195,
+        0,
+        25.799999609589577,
+        0,
+        -4.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-hook-nav-starboard",
+      "localTransform": [
+        48.00000190734863,
+        0,
+        0,
+        0,
+        0,
+        48.00000190734863,
+        0,
+        0,
+        0,
+        0,
+        24.000000953674316,
+        0,
+        3.799997329711914,
+        2.200000023469329,
+        -4.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        48.00000190734863,
+        0,
+        0,
+        0,
+        0,
+        48.00000190734863,
+        0,
+        0,
+        0,
+        0,
+        24.000000953674316,
+        0,
+        3.799997329711914,
+        2.200000023469329,
+        -4.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-hull-aged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_aged",
+      "nodeName": "LOD2_Hull_aged",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-hull-role",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_role",
+      "nodeName": "LOD2_Hull_role",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Cyan",
+      "nodeName": "LOD2_Lights_Cyan",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Warm",
+      "nodeName": "LOD2_Lights_Warm",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Livery",
+      "nodeName": "LOD2_Livery",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-stone",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone",
+      "nodeName": "LOD2_Stone",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.outpost-catcher.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.outpost-catcher.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.outpost-catcher.mesh.lod2-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        42
       ],
       "parentId": "sf.render.outpost-catcher.root",
       "role": "immutable",
@@ -1740,45 +3907,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "30261ea65a2c83b16590054c54acf85d0d55b2f7bbb5378ac8db61b1eeab9f46"
+      "sha256": "9a2904a2650f9b2b5edab19c03d00c16487cdaa6a24fa37a2badf64a4100eee6"
     },
     "sourceGlb": {
-      "bytes": 1575284,
-      "sha256": "48e4f76d137f32ad0e707a4ca71176e352cac14e96afd7561408e59220501dea",
+      "bytes": 1018412,
+      "sha256": "40020a7796a56823909e0c86d1eb1c9ade36bb380cb40407012f2a24a2574c50",
       "uri": "place_claim_outpost_catcher.glb"
     },
     "sourceManifest": {
-      "bytes": 203788,
-      "sha256": "8361e46abf91eba0b1e694e7dae87b812124bb990cf1bc562a95382c7c8d23b3",
+      "bytes": 205647,
+      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2776952,
-    "sha256": "99befaad56201585009aa57567dcbe356b8dfd31fcbdd6d849f35835fcc3da3c",
+    "bytes": 1774452,
+    "sha256": "91daee48e41a9d65e6ac85c1ead910f51c978469c240578a4f2a884c68db6690",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        4.238700866699219,
-        0,
-        2.047593116760254
+        5.8666229248046875,
+        0.000118255615234375,
+        -1.0848655700683594
       ],
       "max": [
-        55.5,
-        47.02115249633789,
-        17.66948890686035
+        56.5,
+        44.76713562011719,
+        15.240650177001953
       ],
       "min": [
-        -47.02259826660156,
-        -47.02115249633789,
-        -13.574302673339844
+        -44.766754150390625,
+        -44.76689910888672,
+        -17.410381317138672
       ],
       "size": [
-        102.52259826660156,
-        94.04230499267578,
-        31.243791580200195
+        101.26675415039062,
+        89.5340347290039,
+        32.651031494140625
       ]
     },
     "hidden": [
@@ -1806,7 +3973,7 @@
           1
         ],
         "name": "SOCKET_Dock_Approach",
-        "planIndex": 18,
+        "planIndex": 45,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -1843,7 +4010,7 @@
           1
         ],
         "name": "SOCKET_Emissive",
-        "planIndex": 19,
+        "planIndex": 46,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -1880,7 +4047,7 @@
           1
         ],
         "name": "SOCKET_Module_Defense",
-        "planIndex": 20,
+        "planIndex": 47,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -1917,7 +4084,7 @@
           1
         ],
         "name": "SOCKET_Module_Depot",
-        "planIndex": 21,
+        "planIndex": 48,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -1954,7 +4121,7 @@
           1
         ],
         "name": "SOCKET_Module_Refinery",
-        "planIndex": 22,
+        "planIndex": 49,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -1991,7 +4158,7 @@
           1
         ],
         "name": "SOCKET_Module_Teleporter",
-        "planIndex": 23,
+        "planIndex": 50,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2028,7 +4195,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 24,
+        "planIndex": 51,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2048,94 +4215,230 @@
     ],
     "materialProfileRoles": {
       "accent": 3,
-      "glass": 3,
-      "hull": 3,
-      "mechanical": 4,
-      "signal": 3
+      "geology": 3,
+      "hull": 13,
+      "mechanical": 6,
+      "signal": 15,
+      "warning": 3
     },
     "materialProfiles": [
       {
-        "allowTextures": true,
+        "allowTextures": false,
         "planIndex": 2,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "glass"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "glass"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 13,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 14,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
+        "planIndex": 13,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
         "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "warning"
       }
     ],
-    "nodeCount": 25,
+    "nodeCount": 52,
     "primitives": [
       {
         "canopy": false,
@@ -2157,7 +4460,7 @@
           0,
           1
         ],
-        "name": "LOD0_Station_Material_Accent",
+        "name": "LOD0_Armor",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -2184,7 +4487,7 @@
           0,
           1
         ],
-        "name": "LOD0_Station_Material_Glass",
+        "name": "LOD0_Beacon_Amber",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -2194,54 +4497,56 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          44.13999938964844,
           0,
           0,
           0,
           0,
-          1,
+          44.13999938964844,
           0,
           0,
           0,
           0,
-          1,
+          22.06999969482422,
           0,
+          25.799999617040157,
           0,
-          0,
-          0,
+          -4.049999713897705,
           1
         ],
-        "name": "LOD0_Station_Material_Hull",
+        "name": "LOD0_HOOK_NAV_PORT",
         "planIndex": 5,
         "tags": {
           "canopy": false,
+          "damageRole": "navLight",
           "lod": "lod0"
         }
       },
       {
         "canopy": false,
         "matrix": [
-          1,
+          48,
           0,
           0,
           0,
           0,
-          1,
+          48,
           0,
           0,
           0,
           0,
-          1,
+          24,
           0,
-          0,
-          0,
-          0,
+          3.799999237060547,
+          2.1999999806284904,
+          -4.049999713897705,
           1
         ],
-        "name": "LOD0_Station_Material_Mechanical",
+        "name": "LOD0_HOOK_NAV_STARBOARD",
         "planIndex": 6,
         "tags": {
           "canopy": false,
+          "damageRole": "navLight",
           "lod": "lod0"
         }
       },
@@ -2265,7 +4570,7 @@
           0,
           1
         ],
-        "name": "LOD0_Station_Material_Warm",
+        "name": "LOD0_Hull",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -2292,11 +4597,11 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Accent",
+        "name": "LOD0_Hull_aged",
         "planIndex": 8,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -2319,11 +4624,11 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Glass",
+        "name": "LOD0_Hull_role",
         "planIndex": 9,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -2346,11 +4651,11 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Hull",
+        "name": "LOD0_Lights_Cyan",
         "planIndex": 10,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -2373,11 +4678,11 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Mechanical",
+        "name": "LOD0_Lights_Warm",
         "planIndex": 11,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -2400,10 +4705,145 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Warm",
+        "name": "LOD0_Livery",
         "planIndex": 12,
         "tags": {
           "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Stone",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
           "lod": "lod1"
         }
       },
@@ -2427,8 +4867,361 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Accent",
-        "planIndex": 13,
+        "name": "LOD1_Beacon_Amber",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          44.13999938964844,
+          0,
+          0,
+          0,
+          0,
+          44.13999938964844,
+          0,
+          0,
+          0,
+          0,
+          22.06999969482422,
+          0,
+          25.799999617040157,
+          0,
+          -4.049999713897705,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          48,
+          0,
+          0,
+          0,
+          0,
+          48,
+          0,
+          0,
+          0,
+          0,
+          24,
+          0,
+          3.799999237060547,
+          2.1999999806284904,
+          -4.049999713897705,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull_aged",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull_role",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Lights_Cyan",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Lights_Warm",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Livery",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Stone",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2454,8 +5247,91 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Glass",
-        "planIndex": 14,
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          44.04666519165039,
+          0,
+          0,
+          0,
+          0,
+          44.04666519165039,
+          0,
+          0,
+          0,
+          0,
+          22.023332595825195,
+          0,
+          25.799999609589577,
+          0,
+          -4.049999952316284,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          48.00000190734863,
+          0,
+          0,
+          0,
+          0,
+          48.00000190734863,
+          0,
+          0,
+          0,
+          0,
+          24.000000953674316,
+          0,
+          3.799997329711914,
+          2.200000023469329,
+          -4.049999952316284,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2481,8 +5357,8 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Hull",
-        "planIndex": 15,
+        "name": "LOD2_Hull_aged",
+        "planIndex": 36,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2508,8 +5384,8 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Mechanical",
-        "planIndex": 16,
+        "name": "LOD2_Hull_role",
+        "planIndex": 37,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2535,8 +5411,170 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Warm",
-        "planIndex": 17,
+        "name": "LOD2_Lights_Cyan",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Lights_Warm",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Livery",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Stone",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2547,40 +5585,67 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_catcher.glb"
   },
-  "runtimeHash": "d90bcaeb8dba52a1de214e3f8b0427030c20aabc72b1721d5e1ab88d70c13495",
+  "runtimeHash": "945aa34908e96837c97c67172fde7379d1aef6e96cd24ab68d55b2dbba93beb0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          55.5,
-          47.02115249633789,
-          17.66948890686035
+          56.5,
+          44.76713562011719,
+          15.240650177001953
         ],
         "min": [
-          -47.02259826660156,
-          -47.02115249633789,
-          -13.574302673339844
+          -44.766754150390625,
+          -44.76689910888672,
+          -17.410381317138672
         ]
       },
       "id": "sf.render.outpost-catcher.body",
       "nodeIds": [
         "sf.render.outpost-catcher.mesh.collision-hull",
-        "sf.render.outpost-catcher.mesh.lod0-station-material-accent",
-        "sf.render.outpost-catcher.mesh.lod0-station-material-glass",
-        "sf.render.outpost-catcher.mesh.lod0-station-material-hull",
-        "sf.render.outpost-catcher.mesh.lod0-station-material-mechanical",
-        "sf.render.outpost-catcher.mesh.lod0-station-material-warm",
-        "sf.render.outpost-catcher.mesh.lod1-station-material-accent",
-        "sf.render.outpost-catcher.mesh.lod1-station-material-glass",
-        "sf.render.outpost-catcher.mesh.lod1-station-material-hull",
-        "sf.render.outpost-catcher.mesh.lod1-station-material-mechanical",
-        "sf.render.outpost-catcher.mesh.lod1-station-material-warm",
-        "sf.render.outpost-catcher.mesh.lod2-station-material-accent",
-        "sf.render.outpost-catcher.mesh.lod2-station-material-glass",
-        "sf.render.outpost-catcher.mesh.lod2-station-material-hull",
-        "sf.render.outpost-catcher.mesh.lod2-station-material-mechanical",
-        "sf.render.outpost-catcher.mesh.lod2-station-material-warm",
+        "sf.render.outpost-catcher.mesh.lod0-armor",
+        "sf.render.outpost-catcher.mesh.lod0-beacon-amber",
+        "sf.render.outpost-catcher.mesh.lod0-hook-nav-port",
+        "sf.render.outpost-catcher.mesh.lod0-hook-nav-starboard",
+        "sf.render.outpost-catcher.mesh.lod0-hull",
+        "sf.render.outpost-catcher.mesh.lod0-hull-aged",
+        "sf.render.outpost-catcher.mesh.lod0-hull-role",
+        "sf.render.outpost-catcher.mesh.lod0-lights-cyan",
+        "sf.render.outpost-catcher.mesh.lod0-lights-warm",
+        "sf.render.outpost-catcher.mesh.lod0-livery",
+        "sf.render.outpost-catcher.mesh.lod0-mechanical",
+        "sf.render.outpost-catcher.mesh.lod0-mechanicaldark",
+        "sf.render.outpost-catcher.mesh.lod0-stone",
+        "sf.render.outpost-catcher.mesh.lod0-warning",
+        "sf.render.outpost-catcher.mesh.lod1-armor",
+        "sf.render.outpost-catcher.mesh.lod1-beacon-amber",
+        "sf.render.outpost-catcher.mesh.lod1-hook-nav-port",
+        "sf.render.outpost-catcher.mesh.lod1-hook-nav-starboard",
+        "sf.render.outpost-catcher.mesh.lod1-hull",
+        "sf.render.outpost-catcher.mesh.lod1-hull-aged",
+        "sf.render.outpost-catcher.mesh.lod1-hull-role",
+        "sf.render.outpost-catcher.mesh.lod1-lights-cyan",
+        "sf.render.outpost-catcher.mesh.lod1-lights-warm",
+        "sf.render.outpost-catcher.mesh.lod1-livery",
+        "sf.render.outpost-catcher.mesh.lod1-mechanical",
+        "sf.render.outpost-catcher.mesh.lod1-mechanicaldark",
+        "sf.render.outpost-catcher.mesh.lod1-stone",
+        "sf.render.outpost-catcher.mesh.lod1-warning",
+        "sf.render.outpost-catcher.mesh.lod2-armor",
+        "sf.render.outpost-catcher.mesh.lod2-beacon-amber",
+        "sf.render.outpost-catcher.mesh.lod2-hook-nav-port",
+        "sf.render.outpost-catcher.mesh.lod2-hook-nav-starboard",
+        "sf.render.outpost-catcher.mesh.lod2-hull",
+        "sf.render.outpost-catcher.mesh.lod2-hull-aged",
+        "sf.render.outpost-catcher.mesh.lod2-hull-role",
+        "sf.render.outpost-catcher.mesh.lod2-lights-cyan",
+        "sf.render.outpost-catcher.mesh.lod2-lights-warm",
+        "sf.render.outpost-catcher.mesh.lod2-livery",
+        "sf.render.outpost-catcher.mesh.lod2-mechanical",
+        "sf.render.outpost-catcher.mesh.lod2-mechanicaldark",
+        "sf.render.outpost-catcher.mesh.lod2-stone",
+        "sf.render.outpost-catcher.mesh.lod2-warning",
         "sf.render.outpost-catcher.root"
       ]
     }

@@ -50,9 +50,10 @@ import {
 } from './fhChrome.js';
 import { bindStationMarkup, stationControlAttrs } from '../stationBindingMap.js';
 import { createRouteOrrery, sectorOfStation } from '../../orrery/routeOrrery.js';
+import { arcGauge } from '../../orrery/instruments.js';
+import { polar } from '../../orrery/svg.js';
 import { createCounter, decrypt } from '../../orrery/text.js';
 import { reducedMotion, stagger } from '../../orrery/motion.js';
-import { attachHoldVerb } from '../../kit/holdVerb.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 
@@ -331,46 +332,68 @@ function finalDispositionDossierHtml(mission, filing, options = {}) {
 }
 
 /**
- * The consequences as scales of light (ORRERY §3.2: a quantity is an arc or a scale): RISK as a
- * five-tick ruler with a light cursor at the tier, STANDING as a centred scale with the gain
- * marked to the right and the loss (red: a loss is the threat) to the left of zero.
+ * The STANDING gauge's arc in each scales box: a shallow arc over the row's centre, bipolar
+ * about the top (bearing 0). The loss half runs 0 to -half, the gain half 0 to +half; the labels
+ * stand outside the arc's ends. composeDossier mounts the two arcGauge halves into the
+ * `.orr-ct-standgauge` placeholder; the ticks, key and labels below are static string.
+ */
+const CT_STAND = { cx: 264, cy: 96, r: 46, half: 40, keyY: 61, labelY: 61, labelL: 226, labelR: 302, flatY: 42 };
+const CT_STAND_COMPACT = { cx: 192, cy: 76, r: 40, half: 40, keyY: 48, labelY: 51, labelL: 158, labelR: 226, flatY: 28 };
+
+/**
+ * The consequences as instruments of light (ORRERY §3.2: a quantity is an arc or a scale): RISK
+ * as a banded track — a luminous band under a 1.5 core, the stretch from ROUTINE to the cursor
+ * lit, a blade for a cursor — and STANDING as a library Arc Gauge, bipolar about a centre tick:
+ * the failure half dim (the gauge's ghost tone), the success half lit, each half's head marking
+ * the live end. Pure string; composeDossier mounts the gauge halves into the placeholder.
  */
 export function consequenceScalesSvg(m, { compact = false } = {}) {
   // compact: a short screen draws the scales at 1:1 in a 400x60 box (no endpoint captions), so the labels never shrink
   const w = compact ? 400 : 520; const h = compact ? 60 : 84;
   const f = (n) => Math.round(n * 100) / 100;
   const r = Math.min(risk(m), 5);
+  const high = r >= 3;
   const consequences = missionConsequenceSummary(m);
   const gain = Math.max(0, Number(consequences.repReward) || 0);
   const loss = Math.max(0, -(Number(consequences.repPenalty) || 0));
   let out = `<svg class="orr-svg" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`;
-  // risk: five stops
+  // risk: a banded track with a lit stretch and a blade cursor
   const rx0 = compact ? 84 : 96; const rx1 = compact ? 300 : 336; const ry = compact ? 14 : 20;
+  const rxc = rx0 + ((rx1 - rx0) * r) / 5;
   out += `<text class="orr-ct-scale__key" x="0" y="${ry + 4}">RISK</text>`;
-  out += `<path class="orr-core orr-ct-scale__rule" d="M ${rx0} ${ry} L ${rx1} ${ry}" stroke-width="1"/>`;
+  out += `<path class="orr-ct-scale__band" d="M ${rx0} ${ry} L ${rx1} ${ry}" fill="none" stroke="rgb(236 230 216 / .27)" stroke-width="7" stroke-linecap="butt"/>`;
+  out += `<path class="orr-ct-scale__fill${high ? ' is-high' : ''}" d="M ${rx0} ${ry} L ${f(rxc)} ${ry}" stroke-width="3.5" opacity=".6" stroke-linecap="butt"/>`;
+  out += `<path class="orr-core orr-ct-scale__rule" d="M ${rx0} ${ry} L ${rx1} ${ry}" stroke-width="1.5"/>`;
   let ticks = '';
   for (let i = 0; i <= 5; i += 1) { const x = rx0 + ((rx1 - rx0) * i) / 5; ticks += `M ${f(x)} ${ry - 4} L ${f(x)} ${ry + 5} `; }
   out += `<path class="orr-core orr-ct-scale__tick" d="${ticks}" stroke-width="1"/>`;
-  const rxc = rx0 + ((rx1 - rx0) * r) / 5;
-  out += `<path class="orr-bloom orr-ct-scale__cursor${r >= 3 ? ' is-high' : ''}" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="6"/>`;
-  out += `<path class="orr-core orr-ct-scale__cursor${r >= 3 ? ' is-high' : ''}" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="1.6"/>`;
+  const blade = high ? 'rgb(255 80 56)' : 'rgb(248 244 234)';
+  out += `<g class="orr-ct-scale__blade"><rect x="${f(rxc - 5)}" y="${ry - 11}" width="10" height="22" fill="${blade}" opacity=".16"/><rect x="${f(rxc - 2)}" y="${ry - 9}" width="4" height="18" fill="${blade}"/></g>`;
   // the reading rides above its own cursor tick, never in a column 150px away
   out += `<text class="orr-ct-scale__word" x="${f(rxc)}" y="${ry - 12}" text-anchor="middle">${escapeHtml(String(RISK_LABEL[r] || '').toUpperCase())}</text>`;
   if (!compact) out += `<text class="orr-ct-scale__end" x="${rx0}" y="${ry + 20}" text-anchor="start">ROUTINE</text><text class="orr-ct-scale__end" x="${rx1}" y="${ry + 20}" text-anchor="end">SEVERE</text>`;
-  // standing: a centred scale, the loss to the left of zero in red, the gain to the right in light
-  const sy = compact ? 44 : 62; const sx0 = rx0; const sx1 = rx1; const mid = (sx0 + sx1) / 2; const span = 10;
-  const xOf = (v) => mid + ((sx1 - sx0) / 2) * Math.max(-1, Math.min(1, v / span));
-  out += `<text class="orr-ct-scale__key" x="0" y="${sy + 4}">STANDING</text>`;
-  out += `<path class="orr-core orr-ct-scale__rule" d="M ${sx0} ${sy} L ${sx1} ${sy}" stroke-width="1"/>`;
-  out += `<path class="orr-core orr-ct-scale__tick" d="M ${mid} ${sy - 5} L ${mid} ${sy + 6}" stroke-width="1.2"/>`;
-  if (gain > 0) out += `<path class="orr-core orr-ct-scale__fill" d="M ${mid} ${sy} L ${f(xOf(gain))} ${sy}" stroke-width="3" stroke-linecap="butt"/>`;
-  if (loss > 0) out += `<path class="orr-core orr-ct-scale__loss" d="M ${f(xOf(-loss))} ${sy} L ${mid} ${sy}" stroke-width="3" stroke-linecap="butt"/>`;
-  // the reading runs the way the scale does: the loss to the left, the gain to the right
-  const words = [];
-  if (loss > 0) words.push(`<tspan class="orr-ct-scale__lossword">−${loss}</tspan>`);
-  if (gain > 0) words.push(`<tspan class="orr-ct-scale__gain">+${gain}</tspan>`);
-  out += `<text class="orr-ct-scale__word" x="${sx1 + 12}" y="${sy + 4}">${words.length ? words.join('<tspan class="orr-ct-scale__sep">  ·  </tspan>') : 'NO CHANGE'}</text>`;
-  if (!compact) out += `<text class="orr-ct-scale__end" x="${sx0}" y="${sy + 20}" text-anchor="start">ON FAILURE</text><text class="orr-ct-scale__end" x="${sx1}" y="${sy + 20}" text-anchor="end">ON SUCCESS</text>`;
+  // standing: the gauge's skeleton — centre tick, end ticks, key and labels; the halves arrive as DOM
+  const P = compact ? CT_STAND_COMPACT : CT_STAND;
+  const [ccx0, ccy0] = polar(P.cx, P.cy, P.r - 5, 0);
+  const [ccx1, ccy1] = polar(P.cx, P.cy, P.r + 5, 0);
+  out += `<path class="orr-core orr-tick orr-tick--major" d="M ${f(ccx0)} ${f(ccy0)} L ${f(ccx1)} ${f(ccy1)}"/>`;
+  for (const a of [-P.half, P.half]) {
+    const [ix, iy] = polar(P.cx, P.cy, P.r - 4, a);
+    const [ox, oy] = polar(P.cx, P.cy, P.r + 4, a);
+    out += `<path class="orr-core orr-tick" d="M ${f(ix)} ${f(iy)} L ${f(ox)} ${f(oy)}"/>`;
+  }
+  out += `<g class="orr-ct-standgauge"></g>`;
+  out += `<text class="orr-ct-scale__key" x="0" y="${P.keyY}">STANDING</text>`;
+  // the reading runs the way the gauge does: the loss outside the left end, the gain outside the right
+  if (compact) {
+    if (loss > 0) out += `<text class="orr-ct-scale__word" x="${P.labelL}" y="${P.labelY}" text-anchor="end"><tspan class="orr-ct-scale__lossword">−${loss}</tspan></text>`;
+    if (gain > 0) out += `<text class="orr-ct-scale__word" x="${P.labelR}" y="${P.labelY}" text-anchor="start"><tspan class="orr-ct-scale__gain">+${gain}</tspan></text>`;
+    if (!loss && !gain) out += `<text class="orr-ct-scale__word" x="${P.cx}" y="${P.flatY}" text-anchor="middle">NO CHANGE</text>`;
+  } else {
+    out += `<text class="orr-ct-scale__end" x="${P.labelL}" y="${P.labelY}" text-anchor="end">${loss > 0 ? `<tspan class="orr-ct-scale__lossword">−${loss}</tspan><tspan> · ON FAILURE</tspan>` : 'ON FAILURE'}</text>`;
+    out += `<text class="orr-ct-scale__end" x="${P.labelR}" y="${P.labelY}" text-anchor="start">${gain > 0 ? `<tspan class="orr-ct-scale__gain">+${gain}</tspan><tspan> · ON SUCCESS</tspan>` : 'ON SUCCESS'}</text>`;
+    if (!loss && !gain) out += `<text class="orr-ct-scale__word" x="${P.cx}" y="${P.flatY}" text-anchor="middle">NO CHANGE</text>`;
+  }
   out += `</svg>`;
   return out;
 }
@@ -466,8 +489,20 @@ export function createContractsScreen(ctx) {
   // dossier, the dossier's words resolving on arrival, the reward rolling, and Accept held (a ring
   // fills) when collateral is at risk. The tab arrives once per show; a selection re-renders quietly.
   let routeInstrument = null;
-  let holdVerb = null;
-  let holdFired = false;
+  // The commit hold owns its own clock (the Industry FABRICATE pattern): pointer, keyboard and
+  // the pad's A feed one rAF loop that fills the key's ring AND the route's combined hold path
+  // together. hold = { frac, dir, source, ms, last, frame, done }.
+  let hold = null;
+  let acceptHoldMs = 450;
+  let pointerAt = -1;
+  let keyAt = -1;
+  // the tether's hold painter, armed by layTether once the combined path is measured; the bench
+  // reaches it as dossier.__ctHoldPath.set(p) for the deterministic 50%-hold still
+  let paintHoldPath = null;
+  let lastTetherG = null;
+  let tetherTailArmed = false;
+  let tetherTailTimer = 0;
+  const standGauges = [];
   let arriving = false;
   const stopDecrypt = [];
   const raf = typeof globalThis.requestAnimationFrame === 'function' ? globalThis.requestAnimationFrame : null;
@@ -672,29 +707,60 @@ export function createContractsScreen(ctx) {
   // The tether: choosing a mission draws one line across the whole screen — the ladder's arm, the terms'
   // spine, the key, then this line from the key's edge across the glass into the orrery's origin, where
   // the beam takes over to the destination. The route reading (jumps, destination) rides the line.
+  // The hold IS the route: one combined path (tether, then beam, key to station to berth) in one mpath
+  // carries the one ambient pulse, and the hold's progress lights a fill along that same path.
   let tetherSeq = 0;
   function layTether(dossier, routeHost, g) {
     try {
       const SVG_NS = 'http://www.w3.org/2000/svg';
+      const mk = (name, cls) => {
+        const node = document.createElementNS(SVG_NS, name);
+        node.setAttribute('class', cls);
+        return node;
+      };
       let tether = dossier.querySelector(':scope > .sx-ct-tether');
       let cap = dossier.querySelector(':scope > .sx-ct-tether__caption');
       if (!tether) {
         tether = document.createElementNS(SVG_NS, 'svg');
         tether.setAttribute('class', 'sx-ct-tether');
         tether.setAttribute('aria-hidden', 'true');
-        for (const [name, cls] of [['path', 'sx-ct-tether__bloom'], ['path', 'sx-ct-tether__core'], ['circle', 'sx-ct-tether__bead']]) {
-          const el = document.createElementNS(SVG_NS, name);
-          el.setAttribute('class', cls);
-          if (name === 'circle') el.setAttribute('r', '2.5');
-          tether.appendChild(el);
-        }
-        // the pulse: a bead of ice rests at the key, flies the tether into this station, rests, and goes again --
-        // the one moving light on the tab, so the eye learns the key and the chart are one instrument
+        for (const [name, cls] of [['path', 'sx-ct-tether__bloom'], ['path', 'sx-ct-tether__core']]) tether.appendChild(mk(name, cls));
+        const bead = mk('circle', 'sx-ct-tether__bead');
+        bead.setAttribute('r', '2.5');
+        tether.appendChild(bead);
+        // the hold's light on the combined path: amber bloom under an amber core, pathLength 100 so the
+        // hold fraction paints it, plus a head bead the clock seats with getPointAtLength each frame
+        const holdBloom = mk('path', 'sx-ct-tether__holdbloom');
+        holdBloom.setAttribute('fill', 'none');
+        holdBloom.setAttribute('stroke-width', '10');
+        holdBloom.setAttribute('stroke-linecap', 'round');
+        holdBloom.setAttribute('stroke-linejoin', 'round');
+        holdBloom.setAttribute('opacity', '.3');
+        holdBloom.style.stroke = 'var(--dp-hand, #f2b950)';
+        const holdCore = mk('path', 'sx-ct-tether__hold');
+        holdCore.setAttribute('fill', 'none');
+        holdCore.setAttribute('stroke-width', '2.5');
+        holdCore.setAttribute('stroke-linecap', 'round');
+        holdCore.setAttribute('stroke-linejoin', 'round');
+        holdCore.style.stroke = 'var(--dp-hand, #f2b950)';
+        tether.append(holdBloom, holdCore);
+        const headBloom = mk('circle', 'sx-ct-tether__headbloom');
+        headBloom.setAttribute('r', '8');
+        headBloom.setAttribute('opacity', '.3');
+        headBloom.style.fill = 'var(--dp-hand-hot, #ffd98c)';
+        const head = mk('circle', 'sx-ct-tether__head');
+        head.setAttribute('r', '3');
+        head.style.fill = 'var(--dp-hand-hot, #ffd98c)';
+        headBloom.style.display = 'none';
+        head.style.display = 'none';
+        tether.append(headBloom, head);
+        // the pulse: one bead of ice on the ONE combined path — it rests at the key, runs key to
+        // station to berth, rests, and goes again. The only moving light on the tab, so the eye learns
+        // the key and the chart are one instrument. (The orrery's own beam pulse is off on this tab.)
         const reduce = document.documentElement && document.documentElement.classList.contains('sf-reduce-motion');
         if (!reduce) {
-          const core = tether.querySelector('.sx-ct-tether__core');
-          const id = `sx-ct-tether-core-${++tetherSeq}`;
-          core.setAttribute('id', id);
+          const id = `sx-ct-route-core-${++tetherSeq}`;
+          holdCore.setAttribute('id', id);
           const pulse = document.createElementNS(SVG_NS, 'g');
           pulse.setAttribute('class', 'sx-ct-tether__pulse');
           for (const [r, cls] of [['6', 'sx-ct-tether__pulse-bloom'], ['2.2', 'sx-ct-tether__pulse-dot']]) {
@@ -703,7 +769,7 @@ export function createContractsScreen(ctx) {
             pulse.appendChild(c);
           }
           const motion = document.createElementNS(SVG_NS, 'animateMotion');
-          for (const [k, v] of [['dur', '3.6s'], ['repeatCount', 'indefinite'], ['calcMode', 'spline'], ['keyPoints', '0;0;1;1'], ['keyTimes', '0;0.3;0.78;1'], ['keySplines', '0 0 1 1;0.45 0 0.2 1;0 0 1 1']]) motion.setAttribute(k, v);
+          for (const [k, v] of [['dur', '4.6s'], ['repeatCount', 'indefinite'], ['calcMode', 'spline'], ['keyPoints', '0;0;1;1'], ['keyTimes', '0;0.22;0.86;1'], ['keySplines', '0 0 1 1;0.45 0 0.2 1;0 0 1 1']]) motion.setAttribute(k, v);
           const mpath = document.createElementNS(SVG_NS, 'mpath');
           mpath.setAttribute('href', `#${id}`);
           motion.appendChild(mpath);
@@ -728,22 +794,85 @@ export function createContractsScreen(ctx) {
       // at 1440p the station shell is zoomed: rects come back in zoomed px while the route orrery's origin and
       // every style length are the element's own css px. The tether's viewBox is the dossier's rect, so path
       // coordinates stay in rect px; the orrery's origin is scaled INTO rect px and style lengths OUT of it.
-      const z = dossier.offsetWidth > 0 ? dr.width / dossier.offsetWidth : 1;
-      const zr = routeHost.offsetWidth > 0 ? rr.width / routeHost.offsetWidth : z;
-      const kx = kr.right - dr.left + 20 * z;
+      let z = dossier.offsetWidth > 0 ? dr.width / dossier.offsetWidth : 1;
+      if (!Number.isFinite(z) || z <= 0) z = 1;
+      let zr = routeHost.offsetWidth > 0 ? rr.width / routeHost.offsetWidth : z;
+      if (!Number.isFinite(zr) || zr <= 0) zr = z;
+      // the bead stands 20 css px off the key's edge, never closer than 16 at any scale: the key's hold
+      // silhouette reaches 9 px past the field, and the r11 fusion put the hold ring on the bead
+      const kx = kr.right - dr.left + Math.max(16, 20) * z;
       // snapped to the pixel grid so the 1px core reads as one row, not two half rows
       const ky = Math.round(kr.top - dr.top + kr.height / 2) + 0.5;
       const ox = rr.left - dr.left + g.origin.x * zr;
       const oy = rr.top - dr.top + g.origin.y * zr;
       if (!(ox > kx + 80 * z)) { hide(); return; }
+      lastTetherG = g;
       const dy = ky - oy;
       const ex = ox - Math.abs(dy);
       const d = ex > kx + 24 * z ? `M ${kx} ${ky} H ${ex.toFixed(1)} L ${ox.toFixed(1)} ${oy.toFixed(1)}` : `M ${kx} ${ky} L ${ox.toFixed(1)} ${oy.toFixed(1)}`;
+      // the combined path: the tether, then the beam's own points (the first is the origin again, so it
+      // is dropped) carried from the orrery's css px into this rect. One path, key to station to berth.
+      const beamTail = (Array.isArray(g.beam) ? g.beam : []).slice(1)
+        .map((p) => `L ${(rr.left - dr.left + p.x * zr).toFixed(1)} ${(rr.top - dr.top + p.y * zr).toFixed(1)}`)
+        .join(' ');
+      const combinedD = beamTail ? `${d} ${beamTail}` : d;
       tether.setAttribute('viewBox', `0 0 ${Math.max(1, dr.width)} ${Math.max(1, dr.height)}`);
-      tether.querySelector('.sx-ct-tether__core').setAttribute('d', d);
+      const core = tether.querySelector('.sx-ct-tether__core');
+      core.setAttribute('d', d);
       tether.querySelector('.sx-ct-tether__bloom').setAttribute('d', d);
+      const holdCore = tether.querySelector('.sx-ct-tether__hold');
+      const holdBloom = tether.querySelector('.sx-ct-tether__holdbloom');
+      const head = tether.querySelector('.sx-ct-tether__head');
+      const headBloom = tether.querySelector('.sx-ct-tether__headbloom');
+      if (holdCore) {
+        holdCore.setAttribute('d', combinedD);
+        holdCore.setAttribute('pathLength', '100');
+        holdCore.setAttribute('stroke-dasharray', '100');
+        holdCore.setAttribute('stroke-dashoffset', '100');
+      }
+      if (holdBloom) {
+        holdBloom.setAttribute('d', combinedD);
+        holdBloom.setAttribute('pathLength', '100');
+        holdBloom.setAttribute('stroke-dasharray', '100');
+        holdBloom.setAttribute('stroke-dashoffset', '100');
+      }
       const bead = tether.querySelector('.sx-ct-tether__bead');
       bead.setAttribute('cx', String(kx)); bead.setAttribute('cy', String(ky));
+      // where the tether ends on the combined run: the hold's midpoint lands exactly on THIS STATION —
+      // the first half of the press charges the tether, the second half the beam
+      let junction = 0.45;
+      let runLen = 0;
+      try {
+        const tl = core.getTotalLength ? core.getTotalLength() : 0;
+        const al = holdCore && holdCore.getTotalLength ? holdCore.getTotalLength() : 0;
+        if (tl > 0 && al > 0) { junction = Math.max(0.05, Math.min(0.95, tl / al)); runLen = al; }
+      } catch (_) { /* a headless host has no lengths to measure */ }
+      const fracOf = (p) => {
+        const c = Math.max(0, Math.min(1, p));
+        if (c <= 0) return 0;
+        if (c >= 1) return 1;
+        return c <= 0.5 ? (c / 0.5) * junction : junction + ((c - 0.5) / 0.5) * (1 - junction);
+      };
+      paintHoldPath = (p) => {
+        const frac = fracOf(p);
+        const off = String(100 - frac * 100);
+        if (holdCore) holdCore.setAttribute('stroke-dashoffset', off);
+        if (holdBloom) holdBloom.setAttribute('stroke-dashoffset', off);
+        const show = head && headBloom && frac > 0.001 && frac < 0.999 && runLen > 0;
+        if (head) head.style.display = show ? '' : 'none';
+        if (headBloom) headBloom.style.display = show ? '' : 'none';
+        if (show) {
+          try {
+            const pt = holdCore.getPointAtLength(frac * runLen);
+            head.setAttribute('cx', pt.x.toFixed(1)); head.setAttribute('cy', pt.y.toFixed(1));
+            headBloom.setAttribute('cx', pt.x.toFixed(1)); headBloom.setAttribute('cy', pt.y.toFixed(1));
+          } catch (_) { head.style.display = 'none'; headBloom.style.display = 'none'; }
+        }
+        return { p: Math.max(0, Math.min(1, p)), frac, junction };
+      };
+      // the deterministic hold still: dossier.__ctHoldPath.set(0.5) seats the head on THIS STATION
+      try { dossier.__ctHoldPath = { set: (p) => (paintHoldPath ? paintHoldPath(p) : null) }; } catch (_) { /* inert */ }
+      if (hold && hold.frac > 0) paintHoldPath(hold.frac);
       cap.querySelector('.orr-route__jumps').textContent = g.jumpsText || '';
       cap.querySelector('.orr-route__via').textContent = g.viaText || '';
       cap.style.left = `${Math.round(kx / z + 22)}px`;
@@ -812,6 +941,19 @@ export function createContractsScreen(ctx) {
         });
         again(1);
       }
+      // the tail: the reward counter and the resolving words keep nudging the key's edge for most of a
+      // second after the settle passes run, which once reseated the bead on the key's edge at 1920. One
+      // re-lay per dossier, after the arrival motion lands.
+      if (!tetherTailArmed && typeof setTimeout === 'function') {
+        tetherTailArmed = true;
+        if (tetherTailTimer) clearTimeout(tetherTailTimer);
+        tetherTailTimer = setTimeout(() => {
+          tetherTailTimer = 0;
+          try {
+            if (dossier.isConnected && routeHost.isConnected && lastTetherG) layTether(dossier, routeHost, { ...lastTetherG, __settled: true });
+          } catch (_) { /* cosmetic */ }
+        }, 900);
+      }
     } catch (_) { /* a headless host has no boxes to tether */ }
   }
 
@@ -820,13 +962,20 @@ export function createContractsScreen(ctx) {
     if (!dossier) return;
     for (const stop of stopDecrypt.splice(0)) stop();
     if (routeInstrument) { routeInstrument.dispose(); routeInstrument = null; }
-    if (holdVerb) { holdVerb.dispose(); holdVerb = null; }
+    endHold();
+    for (const gauge of standGauges.splice(0)) { try { gauge.dispose(); } catch (_) { /* inert */ } }
+    paintHoldPath = null;
+    lastTetherG = null;
+    tetherTailArmed = false;
+    if (tetherTailTimer) { clearTimeout(tetherTailTimer); tetherTailTimer = 0; }
     // the route orrery beside the reading
     const routeHost = document.createElement('div');
     routeHost.className = 'orr-ct-route';
     routeHost.setAttribute('aria-hidden', 'true');
     dossier.appendChild(routeHost);
-    routeInstrument = createRouteOrrery(routeHost, { caption: 'tether', onLayout: (g) => layTether(dossier, routeHost, g) });
+    // pulse:false: the tab's one ambient pulse rides the combined key-to-berth path in layTether,
+    // not a second loop on the beam
+    routeInstrument = createRouteOrrery(routeHost, { caption: 'tether', pulse: false, onLayout: (g) => layTether(dossier, routeHost, g) });
     routeInstrument.set({
       origin: originSectorId(state),
       originName: (ctx.station && ctx.station.name) || 'This station',
@@ -834,15 +983,31 @@ export function createContractsScreen(ctx) {
       destName: destName(m),
       tether: true,
     });
-    // the consequences as instruments: the risk on a five-tick scale, the standing as a gain and a
-    // loss on one small scale (the loss red: it is the one threat here). The sentence stays for the ear.
+    // the consequences as instruments: the risk on a banded track, the standing as a bipolar Arc
+    // Gauge — the loss half dim like a ghost, the gain half lit. The sentence stays for the ear.
     const risky = dossier.querySelector('.sx-dossier__risk');
     if (risky) {
       const scales = document.createElement('div');
       scales.className = 'orr-ct-scales';
       scales.setAttribute('aria-hidden', 'true');
-      scales.innerHTML = consequenceScalesSvg(m, { compact: typeof window !== 'undefined' && window.innerHeight > 0 && window.innerHeight <= 800 });
+      const compact = typeof window !== 'undefined' && window.innerHeight > 0 && window.innerHeight <= 800;
+      scales.innerHTML = consequenceScalesSvg(m, { compact });
       risky.insertAdjacentElement('afterend', scales);
+      const slot = scales.querySelector('.orr-ct-standgauge');
+      if (slot) {
+        const cons = missionConsequenceSummary(m);
+        const sLoss = Math.max(0, -(Number(cons.repPenalty) || 0));
+        const sGain = Math.max(0, Number(cons.repReward) || 0);
+        const P = compact ? CT_STAND_COMPACT : CT_STAND;
+        try {
+          const lossGauge = arcGauge({ cx: P.cx, cy: P.cy, r: P.r, from: 0, to: -P.half, width: 3, tone: 'hi', head: false });
+          const gainGauge = arcGauge({ cx: P.cx, cy: P.cy, r: P.r, from: 0, to: P.half, width: 3, tone: 'phos', head: true });
+          slot.append(lossGauge.el, gainGauge.el);
+          lossGauge.set(sLoss / 10, { instant: true });
+          gainGauge.set(sGain / 10, { instant: true });
+          standGauges.push(lossGauge, gainGauge);
+        } catch (_) { /* a headless host keeps the static skeleton */ }
+      }
     }
     // the words resolve; the reward rolls
     if (!reducedMotion()) {
@@ -864,14 +1029,24 @@ export function createContractsScreen(ctx) {
       if (raf && !reducedMotion()) { counter.set(0); raf(() => raf(() => counter.set(value))); }
       else counter.set(value);
     }
-    // Accept is the tab's Lamp Key. When collateral is at risk it is held: the ring at its side
-    // fills with the Hand, and letting go early empties it.
+    // Accept is the tab's Lamp Key, and every Accept is held: 450 ms with nothing at risk,
+    // 720 ms with collateral. The hold's progress lights the combined key-to-berth path; letting go
+    // early retracts it; at full the berth ignites and the mission commits.
     const accept = dossier.querySelector('.sx-ct-commit[data-accept]');
     const consequences = missionConsequenceSummary(m);
-    if (accept && !accept.disabled && consequences.collateral > 0) {
-      accept.setAttribute('aria-label', `${accept.getAttribute('aria-label') || 'Accept'} Hold to accept: ${cr(consequences.collateral)} collateral is at risk.`);
-      holdVerb = attachHoldVerb(accept, { ms: 720, onFire: () => { holdFired = true; accept.classList.remove('is-holding'); acceptMission(accept); holdFired = false; } });
-      dressLampKey(accept, { hold: true, note: 'hold' });
+    acceptHoldMs = consequences.collateral > 0 ? 720 : 450;
+    if (accept && !accept.disabled) {
+      const hint = consequences.collateral > 0
+        ? ` Hold to accept: ${cr(consequences.collateral)} collateral is at risk.`
+        : ' Hold to accept.';
+      accept.setAttribute('aria-label', `${accept.getAttribute('aria-label') || 'Accept'}${hint}`);
+      if (!accept.querySelector('.dp-holdring')) {
+        const ring = document.createElement('span');
+        ring.className = 'dp-holdring';
+        ring.setAttribute('aria-hidden', 'true');
+        accept.appendChild(ring);
+      }
+      dressLampKey(accept, { hold: true, note: consequences.collateral > 0 ? 'hold' : '' });
     } else if (accept) {
       dressLampKey(accept);
     }
@@ -879,11 +1054,148 @@ export function createContractsScreen(ctx) {
     if (accept && typeof globalThis.matchMedia === 'function' && globalThis.matchMedia('(max-height:800px)').matches) accept.classList.add('orr-lampkey--small');
   }
 
-  function feedHold(held) {
-    if (!holdVerb) return;
-    holdVerb.feed(held);
-    const accept = dossierEl.querySelector('.sx-ct-commit[data-hold]');
-    if (accept) accept.classList.toggle('is-holding', !!held);
+  const holdClock = () => (globalThis.performance && performance.now ? performance.now() : Date.now());
+  const acceptKey = () => dossierEl.querySelector('.sx-ct-commit[data-accept]:not(:disabled)');
+  function padHeld() {
+    try {
+      const pads = typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : [];
+      for (const p of pads || []) if (p && p.buttons && p.buttons[0] && p.buttons[0].pressed) return true;
+    } catch (_) { /* no pads */ }
+    return false;
+  }
+  /** One paint for the whole hold: the key's ring and the route's combined path move together. */
+  function paintHold() {
+    const key = acceptKey();
+    const frac = hold ? hold.frac : 0;
+    if (key) {
+      const ring = key.querySelector('.dp-holdring');
+      if (ring && ring.style) ring.style.setProperty('--sf-hold-p', String(frac));
+      key.classList.toggle('is-holding', !!hold && hold.dir > 0 && !hold.done);
+    }
+    if (paintHoldPath) paintHoldPath(frac);
+  }
+  function endHold() {
+    if (hold && hold.frame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(hold.frame);
+    hold = null;
+    paintHold();
+  }
+  function stepHold() {
+    if (!hold) return;
+    hold.frame = 0;
+    const t = holdClock();
+    const dt = Math.min(64, Math.max(0, t - hold.last));
+    hold.last = t;
+    if (hold.source === 'pad' && hold.dir > 0 && !padHeld()) hold.dir = -1;
+    // filling runs at the hold's pace; a released hold falls back twice as fast
+    hold.frac += (dt / hold.ms) * (hold.dir > 0 ? 1 : -2);
+    if (hold.frac >= 1) { hold.frac = 1; paintHold(); fireHold(); return; }
+    // reduced motion shows the end state at once: no retract travel, the light simply goes out
+    if (hold.frac <= 0 && hold.dir < 0) { endHold(); return; }
+    paintHold();
+    if (typeof requestAnimationFrame === 'function') hold.frame = requestAnimationFrame(stepHold);
+  }
+  function startHold(source) {
+    const key = acceptKey();
+    if (!key) return;
+    if (hold && hold.done) return;
+    if (!hold) hold = { frac: 0, dir: 1, source, ms: acceptHoldMs, last: holdClock(), frame: 0, done: false };
+    else { hold.dir = 1; hold.source = source; }
+    if (!hold.frame && typeof requestAnimationFrame === 'function') { hold.last = holdClock(); hold.frame = requestAnimationFrame(stepHold); }
+    else if (typeof requestAnimationFrame !== 'function') { hold.frac = 1; fireHold(); }
+  }
+  function releaseHold(source) {
+    if (!hold || hold.done || hold.source === 'auto') return;
+    if (source && hold.source !== source) return;
+    if (reducedMotion()) { endHold(); return; }
+    hold.dir = -1;
+    if (!hold.frame && typeof requestAnimationFrame === 'function') { hold.last = holdClock(); hold.frame = requestAnimationFrame(stepHold); }
+  }
+  function fireHold() {
+    if (!hold || hold.done) return;
+    hold.done = true;
+    const key = acceptKey();
+    drainAndCommit(key);
+  }
+  /**
+   * The commit beat, in order: the berth flashes hot amber; the lit run retracts berth-to-key
+   * into the tether's bead, which flares; the mission commits; and a pulse flies home from the
+   * key to the new YOURS row's Track control. Reduced motion skips the travel and commits.
+   */
+  function drainAndCommit(key) {
+    const missionId = key ? key.getAttribute('data-accept') : null;
+    const fromRect = key && typeof key.getBoundingClientRect === 'function' ? key.getBoundingClientRect() : null;
+    if (routeInstrument && typeof routeInstrument.flashBerth === 'function') {
+      try { routeInstrument.flashBerth(); } catch (_) { /* cosmetic */ }
+    }
+    const commit = () => {
+      const acc = key && key.isConnected ? key : acceptKey();
+      if (key) key.classList.remove('is-holding');
+      endHold();
+      if (acc) acceptMission(acc);
+      if (missionId && fromRect && !reducedMotion() && typeof setTimeout === 'function') {
+        setTimeout(() => flyHomeTrack(missionId, fromRect), 160);
+      }
+    };
+    if (reducedMotion() || typeof requestAnimationFrame !== 'function') { commit(); return; }
+    // the retract: the head travels the run backwards, berth to key, in about a quarter second
+    const t0 = holdClock();
+    const bead = dossierEl.querySelector('.sx-ct-tether__bead');
+    const step = () => {
+      const t = Math.min(1, (holdClock() - t0) / 260);
+      if (hold) { hold.frac = 1 - t; paintHold(); }
+      if (t < 1) { requestAnimationFrame(step); return; }
+      // the bead takes the light back: it swells as the run lands in it, then settles
+      try {
+        if (bead && bead.isConnected) {
+          bead.setAttribute('r', '4.5');
+          setTimeout(() => { if (bead.isConnected) bead.setAttribute('r', '2.5'); }, 280);
+        }
+      } catch (_) { /* cosmetic */ }
+      commit();
+    };
+    requestAnimationFrame(step);
+  }
+  /** The last leg of the commit: a pulse from the key to the new YOURS row's Track control. */
+  function flyHomeTrack(missionId, fromRect) {
+    try {
+      const target = activeEl.querySelector(`[data-active-mid="${missionId}"] .sx-job__track`)
+        || el.querySelector(`[data-active-mid="${missionId}"] .sx-job__track`);
+      if (!target || typeof target.getBoundingClientRect !== 'function') return;
+      const tr = target.getBoundingClientRect();
+      if (!(tr.width > 0) || !(fromRect.width > 0)) return;
+      // fixed overlay, so viewport rects come back in the shell's zoomed px and must be carried
+      // into css px before they are drawn
+      const dr = dossierEl.getBoundingClientRect();
+      const z = dossierEl.offsetWidth > 0 ? dr.width / dossierEl.offsetWidth : 1;
+      const zz = Number.isFinite(z) && z > 0 ? z : 1;
+      const x1 = (fromRect.left + fromRect.right) / 2 / zz;
+      const y1 = (fromRect.top + fromRect.bottom) / 2 / zz;
+      const x2 = (tr.left + tr.right) / 2 / zz;
+      const y2 = (tr.top + tr.bottom) / 2 / zz;
+      const SVG_NS = 'http://www.w3.org/2000/svg';
+      const ov = document.createElementNS(SVG_NS, 'svg');
+      ov.setAttribute('class', 'sx-ct-flyhome');
+      ov.setAttribute('aria-hidden', 'true');
+      ov.setAttribute('width', '100vw');
+      ov.setAttribute('height', '100vh');
+      ov.style.cssText = 'position:fixed;left:0;top:0;pointer-events:none;z-index:50;overflow:visible;';
+      const ex = x2 + Math.abs(y1 - y2) * Math.sign(x1 - x2 || 1);
+      const dd = `M ${x1.toFixed(1)} ${y1.toFixed(1)} H ${ex.toFixed(1)} L ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+      const mk = (name, attrs) => {
+        const n = document.createElementNS(SVG_NS, name);
+        for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+        return n;
+      };
+      const id = `sx-ct-flyhome-${Date.now() % 100000}`;
+      const trail = mk('path', { d: dd, fill: 'none', stroke: '#f2b950', 'stroke-width': '2', 'stroke-linejoin': 'round', opacity: '.8', id });
+      const dot = mk('circle', { r: '3', fill: '#ffd98c' });
+      const motion = mk('animateMotion', { dur: '.45s', repeatCount: '1', calcMode: 'spline', keyPoints: '0;1', keyTimes: '0;1', keySplines: '.4 0 .2 1' });
+      motion.appendChild(mk('mpath', { href: `#${id}` }));
+      dot.appendChild(motion);
+      ov.append(trail, dot);
+      el.appendChild(ov);
+      setTimeout(() => { if (ov.isConnected) ov.remove(); }, 650);
+    } catch (_) { /* cosmetic */ }
   }
 
   function renderDossier(state) {
@@ -976,6 +1288,7 @@ export function createContractsScreen(ctx) {
 
   function select(id, focus) {
     if (id == null) return;
+    if (hold && !hold.done) endHold();
     selectedId = String(id);
     const state = ctx.state || {};
     renderBoard(state); renderDossier(state);
@@ -1038,27 +1351,35 @@ export function createContractsScreen(ctx) {
     setTimeout(() => renderAll(state), 60);
   }
 
-  // A held Accept fires from its ring, never from the tap that started the hold. Pointer, keyboard
-  // and the pad's confirm all feed the same clock; the plain click is swallowed while it is armed.
-  const holdTarget = (ev) => (holdVerb && ev.target && ev.target.closest ? ev.target.closest('.sx-ct-commit[data-hold]') : null);
-  el.addEventListener('pointerdown', (ev) => { if (holdTarget(ev) && ev.button === 0) feedHold(true); });
+  // Accept is held, never clicked: pointer down arms, up / cancel / leave lets go; keyboard
+  // Enter/Space arms on keydown and lets go on keyup. The click that follows a pointer or key hold
+  // belongs to that hold; the pad's A (a synthetic click) arms a hold that lasts while A stays down;
+  // a bare activation with nothing held (assistive tech) runs the hold through on its own.
+  const onAccept = (ev) => (ev.target && ev.target.closest ? ev.target.closest('.sx-ct-commit[data-accept]:not(:disabled)') : null);
+  el.addEventListener('pointerdown', (ev) => { if (onAccept(ev) && ev.button === 0) { pointerAt = holdClock(); startHold('pointer'); } });
   for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
-    el.addEventListener(type, (ev) => { if (holdTarget(ev)) feedHold(false); }, true);
+    el.addEventListener(type, (ev) => { if (onAccept(ev)) { pointerAt = holdClock(); releaseHold('pointer'); } }, true);
   }
   el.addEventListener('keydown', (ev) => {
-    if (!holdTarget(ev) || ev.repeat || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    if (!onAccept(ev) || (ev.key !== 'Enter' && ev.key !== ' ')) return;
     ev.preventDefault();
-    feedHold(true);
+    keyAt = holdClock();
+    if (!ev.repeat) startHold('key');
   });
-  el.addEventListener('keyup', (ev) => { if (holdTarget(ev) && (ev.key === 'Enter' || ev.key === ' ')) feedHold(false); });
-  el.addEventListener('click', (ev) => {
-    if (holdTarget(ev) && !holdFired) { ev.preventDefault(); ev.stopImmediatePropagation(); }
-  }, true);
+  el.addEventListener('keyup', (ev) => {
+    if (!onAccept(ev) || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    ev.preventDefault();
+    keyAt = holdClock();
+    releaseHold('key');
+  });
 
   el.addEventListener('click', (ev) => {
     const acc = ev.target.closest('[data-accept]');
     if (acc && !acc.disabled) {
-      acceptMission(acc);
+      // a held Accept fires from its ring, never from the tap that started the hold
+      const t = holdClock();
+      if (t - pointerAt < 1500 || t - keyAt < 1500) return;
+      startHold(padHeld() ? 'pad' : 'auto');
       return;
     }
     const trk = ev.target.closest('[data-track]');
@@ -1090,7 +1411,10 @@ export function createContractsScreen(ctx) {
       if (ctx.bus && ctx.bus.off) ctx.bus.off('mission:updated', onMissionChanged);
       for (const stop of stopDecrypt.splice(0)) stop();
       if (routeInstrument) { routeInstrument.dispose(); routeInstrument = null; }
-      if (holdVerb) { holdVerb.dispose(); holdVerb = null; }
+      endHold();
+      for (const gauge of standGauges.splice(0)) { try { gauge.dispose(); } catch (_) { /* inert */ } }
+      if (tetherTailTimer) { clearTimeout(tetherTailTimer); tetherTailTimer = 0; }
+      paintHoldPath = null;
     },
   };
 }

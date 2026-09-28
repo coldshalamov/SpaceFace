@@ -14,7 +14,7 @@ import { stationOperationToSurface } from '../commandDeckRefitHooks.js';
 import { createCommandDock } from './dock.js';
 import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import { el } from '../kit/index.js';
-import { disabledServiceWhy, disabledVitalActHtml } from './serviceQuotes.js';
+import { disabledServiceWhy, disabledVitalActHtml, factionPresenceServiceRows, runFactionPresenceDockAction } from './serviceQuotes.js';
 import { stationIcon } from './stationArt.js';
 import { createStationEffects, stationMotionAllowed } from './stationEffects.js';
 import { ensureStylesheet } from './stationStyles.js';
@@ -278,6 +278,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         const cost = actionCosts()[id] || {};
         return { label, icon, detail: cost.title || cost.text || 'Station service', disabled: !!cost.disabled, run: () => runAction(id) };
       }),
+      ...factionPresenceServiceRows(state(), stationId()).map((row) => ({
+        label: row.label,
+        icon: 'factions',
+        detail: row.desc || row.disabledReason || 'Faction desk',
+        disabled: !row.available,
+        keywords: 'faction archive pitborn understory',
+        run: () => runAction(row.id),
+      })),
       { label: 'Review departure', detail: 'Check hull, fuel, cargo and tracked mission before undocking', keywords: 'launch flight exit', icon: 'launch', run: openDeparturePop },
     ],
   });
@@ -865,6 +873,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     }
     const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash', insurance: 'insurance', rights: 'redeem_rights' };
     const type = typeMap[id];
+    if (!type && bus) {
+      const presence = runFactionPresenceDockAction(bus, state(), stationId(), id);
+      if (presence.ok && presence.targetTab) navigate(presence.targetTab);
+      if (presence.ok || presence.reason) {
+        setTimeout(refresh, 60);
+        return presence.ok;
+      }
+    }
     if (type && bus) {
       if (type === 'hull_wash' && !resolveStation(ctx).services.includes('repair')) return false;
       let quote = null;

@@ -7530,10 +7530,12 @@ _draw() {
     const field = this._clearField(cw, ch);
     const pad = SECTOR_ORIGIN_LATTICE_WU * 1.25;
     const minor = Math.min(cw, ch);
-    const span = Math.max(
-      (maxX - minX + pad * 2) * minor / Math.max(1, field.width),
-      (maxZ - minZ + pad * 2) * minor / Math.max(1, field.height),
-    );
+    const fitX = (maxX - minX + pad * 2) * minor / Math.max(1, field.width);
+    const fitZ = (maxZ - minZ + pad * 2) * minor / Math.max(1, field.height);
+    // names hang beside their tokens: the outermost tokens keep a name's width of room in the field,
+    // where that costs the chart little scale (at most a tenth)
+    const roomX = (maxX - minX + pad * 2) * minor / Math.max(1, field.width - Math.min(150, field.width * 0.16));
+    const span = Math.max(fitX, fitZ, Math.min(roomX, Math.max(fitX, fitZ) * 1.1));
     return {
       focusGlobal: { x: (minX + maxX) / 2, z: (minZ + maxZ) / 2 },
       spanWU: Math.max(LEVEL_SYSTEM_AT_SPAN_WU * 1.6, Math.min(CHART_SPAN_MAX_WU, span)),
@@ -7589,12 +7591,16 @@ _draw() {
     if (reach.length) {
       candidates = candidates.map((c) => (reach.some((tail) => String(c.id || '').endsWith(tail)) ? { ...c, force: true } : c));
     }
+    // ...and keep off the line being laid (last frame's beam): a name never sits on the Hand
+    const beam = [];
+    const bp = this._line && Array.isArray(this._previewPts) ? this._previewPts : [];
+    for (let i = 1; i < bp.length; i += 1) beam.push({ x1: bp[i - 1].x, y1: bp[i - 1].y, x2: bp[i].x, y2: bp[i].y });
     const placed = placeChartLabels(candidates, {
       bounds: field,
       reserved: this._reservedLabelRects(w, h, reserved.concat(keepOff)),
       discs: marks.concat(discs),
       rings,
-      segments,
+      segments: beam.length ? segments.concat(beam, beam, beam, beam, beam, beam) : segments,
       priorityOf: mapLabelPriority,
       eligible: mapLabelEligible,
       maxLeader: 64,
@@ -8403,20 +8409,32 @@ _drawSystem(g, state, w, h) {
         g.font = chartFont(640, 12, { stretch: 'normal' });
         g.textAlign = 'left'; g.textBaseline = 'middle';
         g.lineJoin = 'round';
-        const lx = ox + R * 0.707 + 10, ly = oy - R * 0.707 - 8;
+        const tw = (t, px) => (typeof g.measureText === 'function' ? (g.measureText(t).width || t.length * px * 0.6) : t.length * px * 0.6);
         const ringText = `GATE RING ${formatDistanceWU(ringWU)}`;
+        const ringW = tw(ringText, 12);
+        // The radius inside the ring is not linear, and the dial says so beside its own figure: on
+        // one line where the field has room, on two where it has not, and never past its edge.
+        g.font = chartFont(600, 12, { stretch: 'normal' });
+        const oneLine = 'RADIAL SCALE \u221A  \u00B7  NOT LINEAR';
+        const fieldRight = field.x + field.width - 6;
+        let lx = ox + R * 0.707 + 10;
+        const ly = oy - R * 0.707 - 8;
+        let scaleLines = [oneLine];
+        if (lx + Math.max(ringW, tw(oneLine, 12)) > fieldRight) scaleLines = ['RADIAL SCALE \u221A', 'NOT LINEAR'];
+        const blockW = Math.max(ringW, ...scaleLines.map((t) => tw(t, 12)));
+        if (lx + blockW > fieldRight) lx = Math.max(field.x + 6, fieldRight - blockW);
+        g.font = chartFont(640, 12, { stretch: 'normal' });
         g.strokeStyle = 'rgba(5, 7, 10, 0.86)'; g.lineWidth = 4;
         g.strokeText(ringText, lx, ly);
         g.fillStyle = CHART_INK.phos(0.92);
         g.fillText(ringText, lx, ly);
-        // The radius inside the ring is not linear, and the dial says so beside its own figure.
-        const scaleText = 'RADIAL SCALE \u221A  \u00B7  NOT LINEAR';
         g.font = chartFont(600, 12, { stretch: 'normal' });
-        g.strokeText(scaleText, lx, ly + 16);
-        g.fillStyle = CHART_INK.bone(0.72);
-        g.fillText(scaleText, lx, ly + 16);
-        const tw = (t, px) => (typeof g.measureText === 'function' ? (g.measureText(t).width || t.length * px * 0.6) : t.length * px * 0.6);
-        dialWords.push({ x: lx - 2, y: ly - 9, width: Math.max(tw(ringText, 12), tw(scaleText, 12)) + 4, height: 34 });
+        scaleLines.forEach((t, i) => {
+          g.strokeText(t, lx, ly + 16 + i * 15);
+          g.fillStyle = CHART_INK.bone(0.72);
+          g.fillText(t, lx, ly + 16 + i * 15);
+        });
+        dialWords.push({ x: lx - 2, y: ly - 9, width: blockW + 4, height: 34 + (scaleLines.length - 1) * 15 });
         g.restore();
         // The half ring stands at a true quarter of the gate ring's reach; its figure is seated on
         // the ring once the marks are down (where it is clearest of them).
@@ -8856,7 +8874,7 @@ _drawSystem(g, state, w, h) {
         if (target) this._clickTargets.push(target);
       }
       const objectiveLabel = waypointMapLabel(wp);
-      labelCandidates.push(makeMapLabelCandidate(g, {
+      const goalLabel = makeMapLabelCandidate(g, {
         id: 'objective:active-waypoint',
         kind: 'objective',
         objective: true,
@@ -8866,7 +8884,11 @@ _drawSystem(g, state, w, h) {
         y: wy,
         anchorRadius: 16,
         color: INK.amberHot,
-      }));
+      });
+      // where the dial is tight the goal's words set on two lines instead of crossing its ring
+      const goalTwo = makeMapLabelCandidate(g, { ...goalLabel, lines: ['GOAL', objectiveLabel.toUpperCase()] });
+      goalLabel.alts = [{ lines: goalTwo.lines, width: goalTwo.width, height: goalTwo.height, nameLines: 2 }];
+      labelCandidates.push(goalLabel);
     }
     const systemReserved = [];
     if (wpScreen && this._layers.route && model.player && model.player.drawPos) {

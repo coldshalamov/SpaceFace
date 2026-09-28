@@ -122,6 +122,12 @@ test('rejected cut keeps its active line and emits no success', () => {
   assert.equal(host._cutActive(f.attachments, f.state, f.player, f.state.simTime), false);
   assert.equal(host._active.attachmentId, 'line'); assert.equal(f.bus.count('tether:cut'), 0);
   assert.equal(f.bus.count('tether:releaseRated'), 0); assert.equal(f.bus.count('tether:cutDenied'), 1);
+  const toasts = f.bus.events.filter(e => e.name === 'toast');
+  assert.equal(toasts.length, 1);
+  assert.equal(toasts[0].payload.kind, 'warn');
+  assert.equal(toasts[0].payload.text, 'Massline cut refused: test rejected');
+  assert.equal(host._cutActive(f.attachments, f.state, f.player, f.state.simTime), false);
+  assert.equal(f.bus.count('tether:cutDenied'), 2); assert.equal(f.bus.count('toast'), 1);
 });
 test('release rating uses current endpoint motion, not previous telemetry', async () => {
   const { rateRelease } = await isolate('src/systems/tetherGameplay.js', {

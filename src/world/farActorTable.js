@@ -14,6 +14,37 @@ import { resolveFarEncounters } from './farEncounterOutcomes.js';
 export const FAR_ACTOR_SCHEMA = 'spaceface.farActors.v1';
 export const FAR_ACTOR_CELL = 400;
 
+/** Bench A/B: production default ON. Quiet latch skips shelve-candidate walk when far empty. */
+let FAR_EMPTY_QUIET_LATCH = true;
+export function setFarEmptyQuietLatchForBench(enabled) {
+  FAR_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getFarEmptyQuietLatchForBench() {
+  return FAR_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const FAR_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function entityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+function farRowCount(state) {
+  const table = state && state.world && state.world.farActors;
+  return table && Array.isArray(table.rows) ? table.rows.length : 0;
+}
+
+function publishFarQuiet(state, latched) {
+  const world = state.world || (state.world = {});
+  const rt = world.farActorsRuntime || (world.farActorsRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
+
 function finite(n, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
@@ -204,6 +235,10 @@ export function shouldVirtualizeFarActor(entity, state) {
   const data = entity.data || {};
   if (flags.persistent || flags.missionPinned || data.missionPinned || data.missionId) return false;
   if (data.isBoss || data.namedAceId || data.uniqueWreckId || data.uniqueWreck) return false;
+  // A marker-bound wreck's body belongs to the aftermath marker (state.aftermathWrecks), which
+  // respawns the full hulk on sector entry. The lean far row drops markerId, so a shelved wreck
+  // would promote as an unbindable shell duplicating the marker's own respawn (D89).
+  if (data.markerId) return false;
   if (data.activityActorSlotId || data.wingman || data.role === 'wingman') return false;
   if (flags.tethered || data.tethered) return false;
   if (state.player && state.player.tether && state.player.tether.targetId === entity.id) return false;
@@ -463,6 +498,13 @@ export function dropFarActorSector(state, sectorId) {
   return dropped;
 }
 
+function pushFarInRadius(out, rec, x, z, r2) {
+  if (!rec || rec.alive === false || !rec.pos) return;
+  const dx = rec.pos.x - x;
+  const dz = rec.pos.z - z;
+  if (dx * dx + dz * dz <= r2) out.push(rec);
+}
+
 export function queryFarActors(state, pos, radius, out = []) {
   out.length = 0;
   const table = state && state.world && state.world.farActors;
@@ -475,18 +517,21 @@ export function queryFarActors(state, pos, radius, out = []) {
   const maxC = Math.floor((x + r) / FAR_ACTOR_CELL);
   const minR = Math.floor((z - r) / FAR_ACTOR_CELL);
   const maxR = Math.floor((z + r) / FAR_ACTOR_CELL);
+  const cellSpan = (maxC - minC + 1) * (maxR - minR + 1);
+  const rows = table.rows;
+  // Prefetch / enter discs are often thousands of WU while the far table stays ≤ FAR_ROW_BUDGET.
+  // Walking empty grid cells then dominates; a linear row scan is correct and cheaper whenever
+  // the disc covers more cells than live rows (typical quiet Ceres + decode runway).
+  if (Array.isArray(rows) && rows.length > 0 && cellSpan > rows.length) {
+    for (let i = 0; i < rows.length; i++) pushFarInRadius(out, rows[i], x, z, r2);
+    return out;
+  }
   for (let cx = minC; cx <= maxC; cx++) {
     const rowBase = (cx + CELL_KEY_OFFSET) * CELL_KEY_STRIDE + CELL_KEY_OFFSET;
     for (let cz = minR; cz <= maxR; cz++) {
       const bucket = table.grid && table.grid.get(rowBase + cz);
       if (!bucket) continue;
-      for (let i = 0; i < bucket.length; i++) {
-        const rec = bucket[i];
-        if (!rec || rec.alive === false || !rec.pos) continue;
-        const dx = rec.pos.x - x;
-        const dz = rec.pos.z - z;
-        if (dx * dx + dz * dz <= r2) out.push(rec);
-      }
+      for (let i = 0; i < bucket.length; i++) pushFarInRadius(out, bucket[i], x, z, r2);
     }
   }
   return out;
@@ -632,15 +677,44 @@ function collectFarActorCandidateIds(state, out) {
 
 export function tickFarActors(state, helpers, bus) {
   if (!state || state.mode !== 'flight' || survivalHold(state)) return { shelved: 0, restored: 0 };
-  ensureActivityClassified(state);
   const player = state.entities && state.entities.get && state.entities.get(state.playerId);
   if (!player || !player.pos) return { shelved: 0, restored: 0 };
+
+  // Quiet settled flight: empty far table still paid ensureActivityClassified + shipLike/wreck
+  // shelve-candidate walk every tick when no S2/S3/S4 virt candidates existed. Latch when far
+  // rows are empty AND a probe found no virt candidates; wake on entity-index membership or a
+  // 0.5 s rescan. ALWAYS run the restore path when far rows exist (never skip promote-on-approach).
+  const farCount = farRowCount(state);
+  if (farCount > 0) {
+    // Rows present → full path (restore must stay live). Clear any empty latch.
+    tickFarActors._quiet = null;
+    publishFarQuiet(state, false);
+  } else if (FAR_EMPTY_QUIET_LATCH !== false) {
+    const membership = entityIndexVersion(state);
+    if (membership != null) {
+      const tick = state.tick | 0;
+      const quiet = tickFarActors._quiet;
+      if (quiet
+        && quiet.membership === membership
+        && ((tick - (quiet.armedTick | 0)) < FAR_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishFarQuiet(state, true);
+        return { shelved: 0, restored: 0 };
+      }
+    } else if (tickFarActors._quiet) {
+      tickFarActors._quiet = null;
+    }
+  } else if (tickFarActors._quiet) {
+    tickFarActors._quiet = null;
+  }
+
+  ensureActivityClassified(state);
   const radii = tableRadii(state, player);
   const exit2 = radii.exit * radii.exit;
   const enter2 = radii.enter * radii.enter;
   const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
   let shelved = 0;
   let restored = 0;
+  let virtSeen = 0;
 
   const farIds = tickFarActors._idScratch || (tickFarActors._idScratch = []);
   collectFarActorCandidateIds(state, farIds);
@@ -650,6 +724,7 @@ export function tickFarActors(state, helpers, bus) {
       ? entities.get(farIds[i])
       : null;
     if (!shouldVirtualizeFarActor(entity, state)) continue;
+    virtSeen++;
     if (dist2(entity.pos, player.pos) <= exit2) continue;
     const rec = insertFarActor(state, entity, simTime, helpers);
     const remove = helpers && typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
@@ -667,6 +742,7 @@ export function tickFarActors(state, helpers, bus) {
     shelved++;
   }
 
+  // Restore ALWAYS when rows may exist — query is cheap when empty; never gate this behind latch.
   const hits = queryFarActors(state, player.pos, radii.enter, tickFarActors._scratch || (tickFarActors._scratch = []));
   for (let i = 0; i < hits.length; i++) {
     const rec = hits[i];
@@ -689,6 +765,19 @@ export function tickFarActors(state, helpers, bus) {
   }
   resolveFarEncounters(state, simTime);
   enforceFarRowBudget(state);
+
+  // Arm empty+no-virt latch only when far stayed empty and probe saw no virt candidates.
+  const farAfter = farRowCount(state);
+  if (FAR_EMPTY_QUIET_LATCH !== false && farAfter === 0 && virtSeen === 0) {
+    const membership = entityIndexVersion(state);
+    if (membership != null) {
+      tickFarActors._quiet = { membership, armedTick: state.tick | 0 };
+      publishFarQuiet(state, true);
+      return { shelved, restored };
+    }
+  }
+  tickFarActors._quiet = null;
+  publishFarQuiet(state, false);
   return { shelved, restored };
 }
 

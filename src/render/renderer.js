@@ -209,6 +209,10 @@ import { createCrucibleGhostPresentation } from './crucibleGhost.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
 import { hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
+import {
+  shouldPresentShieldBubble,
+  updateEntityShieldBubblePresentation,
+} from './weapons/shieldBubblePresentation.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
@@ -453,6 +457,17 @@ const _overheadCuesOptions = { reducedMotion: false, reducedFlash: false, simTim
 // _shadowPolicyOptions only reads .id, so one frozen-shape object replaces the old
 // per-entity `{ type: typeName }` allocation.
 const _shadowFallbackEntity = { id: undefined, type: '' };
+
+// Projection/LOD retain: skip updateLod when hysteresis keeps the same band.
+// Asteroid/station updateLod used to re-traverse every visible frame; ships already self-retain.
+// Bench toggle restores always-call for A/B. Picture-identical while the band is unchanged.
+let SYNC_ENTITY_LOD_RETAIN = true;
+export function setSyncEntityLodRetainForBench(enabled) {
+  SYNC_ENTITY_LOD_RETAIN = enabled !== false;
+}
+export function getSyncEntityLodRetainForBench() {
+  return SYNC_ENTITY_LOD_RETAIN !== false;
+}
 
 // The activity frame publishes every sim tick through one retained record instead of a fresh
 // `{...frame, complete:true}` spread — consumers only read it, and the membership sets inside
@@ -716,6 +731,10 @@ export function collectOpeningEntityRootCandidates(meshes, entities, options = {
     if (scene && mesh.parent !== scene) continue;
     const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
     if (!entity || entity.alive === false || entity._noMesh) continue;
+    const authoredState = mesh.userData && mesh.userData.authoredAssetState;
+    // Boundaries still waiting on authored GLB admission only expose a temporary marker (or
+    // nothing). They must not block the opening submission plan; mid-flight admission owns them.
+    if (authoredState === 'awaiting-authored-admission' || authoredState === 'loading') continue;
     const leaves = collectOpeningSubmissionLeaves(mesh, { camera });
     if (leaves.length === 0) continue;
     candidates.push({
@@ -749,6 +768,8 @@ export function collectOpeningShadowCasterRootCandidates(meshes, entities, optio
     if (scene && root.parent !== scene) continue;
     const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
     if (!entity || entity.alive === false || entity._noMesh) continue;
+    const authoredState = root.userData && root.userData.authoredAssetState;
+    if (authoredState === 'awaiting-authored-admission' || authoredState === 'loading') continue;
     const shadowLeaves = collectOpeningSubmissionLeaves(root, { camera });
     if (!shadowLeaves.some((leaf) => leaf && leaf.castShadow === true)) continue;
     candidates.push({
@@ -2181,6 +2202,28 @@ function syncResolvingMarker(mesh) {
   marker.visible = isAuthoredPendingStatus(mesh.userData.authoredAssetState);
 }
 
+/**
+ * Whether a pending authored boundary owns a readable stand-in that may draw in place of the
+ * hidden seat. The shared resolving marker and the same-envelope geology body both draw shared,
+ * already-linked programs, and the authored commit stages its content off-glass before it ever
+ * swaps in — so a first-arrival body never sits visible-but-undrawn while its authored
+ * composition, link, and upload run serially behind it.
+ *
+ * The latches matter: while the substrate's own `pipelinesPending`/`geometryPending` are
+ * outstanding, drawing the stand-in would still link or upload inside the presented pass — the
+ * exact brick the authored-pending gate exists for — so the hidden seat stays until they clear.
+ * An empty wrap substrate (station/place/ship boundary with its fallback hidden) also keeps the
+ * seat: submitting it would flip root visibility for zero drawables and falsify the
+ * on-screen/missing-frame accounting.
+ */
+function authoredPendingBoundarySubmitsStandIn(mesh) {
+  const userData = mesh && mesh.userData;
+  if (!userData) return false;
+  if (userData.pipelinesPending === true || userData.geometryPending === true) return false;
+  if (userData.authoredResolvingMarker === true || userData.resolvingMarker) return true;
+  return userData.authoredGeologySkin === true;
+}
+
 function kickDecodeRunwayAssets(owner, entities) {
   const state = owner && owner.state;
   const renderer = owner && owner.renderer;
@@ -2696,12 +2739,8 @@ const SHIELD_POOL_FRAG = /* glsl */`
   }
 `;
 
-const SHIELD_PRESENTATION_EPSILON = 0.015;
-
 /** Shields read on impact instead of coating every healthy ship in a permanent translucent sphere. */
-export function shouldPresentShieldBubble(shield, flash, hasContact = false, collapseTime = 0) {
-  return (Number(shield) > 0 || collapseTime > 0) && (Number(flash) > SHIELD_PRESENTATION_EPSILON || Boolean(hasContact) || collapseTime > 0);
-}
+export { shouldPresentShieldBubble } from './weapons/shieldBubblePresentation.js';
 
 export function createShipAuxPool(scene, options = {}) {
   const pool = {
@@ -3577,8 +3616,13 @@ export async function settleSectorPrewarmPopulationFixpoint(record, options = {}
     try {
       await phase();
     } catch (error) {
-      if (error?.preventSectorFallbackRotation === true) throw error;
-      if (!isActive()) return false;
+      if (!isActive()) {
+        // A generation superseded or retired while its phase was in flight withdraws quietly:
+        // whatever the phase failed on belongs to the population census the newer generation
+        // re-verifies on its own pass, not to this stale record. A quarantined teardown is a real
+        // blocked cleanup rather than handoff noise, so it stays loud even on a stale generation.
+        if (error?.code !== 'SPACEFACE_SECTOR_PREWARM_CLEANUP_QUARANTINE') return false;
+      }
       throw error;
     }
     return isActive();
@@ -3665,28 +3709,76 @@ export async function settleSectorPrewarmPopulationFixpoint(record, options = {}
   );
 }
 
-/** Publish exactly one settled boundary snapshot. READY records must all publish successfully;
- * already-LIVE records are idempotent members from an earlier fixpoint pass. Any other state is a
- * fail-closed admission error rather than a silently omitted hidden reservation. */
+/** Publish exactly one settled boundary snapshot. READY (and in-flight PUBLISHING) records must
+ * all publish successfully; already-LIVE records are idempotent members from an earlier fixpoint
+ * pass. A member that already left the claim — superseded by a newer reservation for the same id
+ * or self-aborted on its own stale-before-publish path — is ordinary population churn, not a lost
+ * authored boundary: the fixpoint re-verifies the live census after this phase either way. Any
+ * other non-ready state or a member carrying a real failure stays a fail-closed admission error
+ * rather than a silently omitted hidden reservation. */
 export async function publishSectorBoundaryRecordSnapshot(records, options = {}) {
   if (typeof options.publishRecords !== 'function') {
     throw new TypeError('publishSectorBoundaryRecordSnapshot requires publishRecords');
   }
   const candidates = [];
+  const withdrawn = [];
+  const failed = [];
+  // A member is provably retired when its own record shows the claim is gone, or — when the
+  // caller can answer — a different record now owns the id. In-flight members stay candidates so
+  // the publisher's memoized share can complete them instead of starting a competing reveal.
+  const provablyRetired = (prepared) => !!prepared
+    && (prepared.active !== true
+      || !!prepared.abortReason
+      || (typeof options.currentRecordForId === 'function'
+        && options.currentRecordForId(prepared?.id) !== prepared));
+  const recordFailed = (prepared) => prepared?.cleanupBlocked === true
+    || !!(prepared && (prepared.error || prepared.cleanupError || prepared.restoreError));
   for (const prepared of records || []) {
     if (prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.live) continue;
-    if (prepared?.state !== SECTOR_BOUNDARY_PREPARATION_STATE.ready) {
-      throw failClosedSectorPrewarm(prepared?.cleanupError
-        || prepared?.restoreError
-        || prepared?.error
-        || new Error(`Incoming authored boundary ${prepared?.id ?? 'unknown'} was not ready to publish`));
+    if (recordFailed(prepared)) {
+      failed.push(prepared);
+      continue;
     }
-    candidates.push(prepared);
+    if (prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.ready
+        || prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.publishing) {
+      candidates.push(prepared);
+      continue;
+    }
+    if (provablyRetired(prepared)) {
+      withdrawn.push(prepared);
+      continue;
+    }
+    failed.push(prepared
+      || new Error('unknown prepared boundary'));
+  }
+  if (failed.length > 0) {
+    const prepared = failed[0];
+    throw failClosedSectorPrewarm(prepared?.cleanupError
+      || prepared?.restoreError
+      || prepared?.error
+      || new Error(`Incoming authored boundary ${prepared?.id ?? 'unknown'} was not ready to publish`));
   }
   const published = await options.publishRecords(candidates);
   if (!Array.isArray(published)
-      || published.length !== candidates.length
-      || published.some((value) => value !== true)) {
+      || published.length !== candidates.length) {
+    throw failClosedSectorPrewarm(
+      new Error(`Incoming sector ${options.sectorId ?? 'unknown'} publish returned an incomplete receipt`),
+    );
+  }
+  for (let index = 0; index < candidates.length; index++) {
+    if (published[index] === true) continue;
+    const prepared = candidates[index];
+    if (recordFailed(prepared)
+        || (prepared?.active === true
+          && (prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.ready
+            || prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.publishing))
+        || !provablyRetired(prepared)) {
+      failed.push(prepared);
+    } else {
+      withdrawn.push(prepared);
+    }
+  }
+  if (failed.length > 0) {
     // Per-candidate status at throw time distinguishes a genuine publish loss (still
     // claimed by this generation) from a mid-await supersede/abort rotation.
     const detail = candidates.map((prepared, i) => {
@@ -3698,6 +3790,12 @@ export async function publishSectorBoundaryRecordSnapshot(records, options = {})
     throw failClosedSectorPrewarm(
       new Error(`Incoming sector ${options.sectorId ?? 'unknown'} lost a prepared authored boundary before publish [${detail}]`),
     );
+  }
+  if (withdrawn.length > 0) {
+    return Object.freeze({
+      churned: true,
+      withdrawn: Object.freeze(withdrawn.map((prepared) => prepared?.id)),
+    });
   }
   return true;
 }
@@ -9484,8 +9582,21 @@ export const render = {
           || plan.firstPlayablePipelineSet.complete !== true) {
           // Refusing here left New Game on gpu-resources until the 90s playable
           // gate fired. Enter flight and keep admitting behind the first picture.
+          const failRole = Array.isArray(plan && plan.blockingReasons)
+            ? plan.blockingReasons.find((entry) => entry && (
+              entry.role === 'productionBoundary'
+              || entry.role === 'producerResourceIdentityCensus'
+              || entry.role === 'firstPlayablePipelineSet'
+              || (entry.reason && String(entry.reason).includes('no-currently-instantiated'))
+            ))
+            : null;
           recordOpeningCookStep(state.render, 'opening.plan', openingNow(), 'skipped', {
             reason: 'opening-plan-incomplete',
+            fail: failRole
+              ? `${failRole.role || ''}:${String(failRole.reason || '').slice(0, 48)}`
+              : (plan && plan.firstPlayablePipelineSet && plan.firstPlayablePipelineSet.reason)
+                || 'unknown',
+            drawLeaves: plan && Array.isArray(plan.drawLeaves) ? plan.drawLeaves.length : 0,
           });
           return { skipped: true, reason: 'opening-plan-incomplete' };
         }
@@ -10552,11 +10663,24 @@ export const render = {
           'sector-prewarm-preparation-failed',
         );
         error = promoteSectorPrewarmAbortQuarantine(abortingRecords, abortOutcomes, error);
+        const preInvalidationError = error;
         error = promoteSectorPrewarmGenerationInvalidation(
           prewarm,
           currentSectorPrewarmEnvelope(prewarm),
           error,
         );
+        if (error !== preInvalidationError
+            && preInvalidationError?.preventSectorFallbackRotation !== true) {
+          // A raw rejection that lands after the generation's renderer envelope already moved on
+          // is a stale-generation withdrawal, not an invariant: the newer generation owns the
+          // census, publication, and residency rotation now. Retire any still-claimed record and
+          // resolve quietly — the same terminal state a cleanly declined settle produces — while
+          // a genuine fail-closed failure (e.g. a quarantined teardown) stays loud below.
+          if (prewarm.active === true) {
+            releaseSectorPrewarm(prewarm, 'sector-prewarm-generation-invalidated');
+          }
+          return null;
+        }
         if (error?.preventSectorFallbackRotation !== true) prewarm.boundaryRecords?.clear();
         if (error?.preventSectorFallbackRotation === true) {
           releaseSectorPrewarm(prewarm, 'sector-prewarm-invariant-failed');
@@ -12451,6 +12575,8 @@ export const render = {
     }
     mesh.userData.presentationEntityId = entity.id;
     mesh.userData.sfStableEntityKey = stableMeshKeyForEntity(entity);
+    // Fresh bind must re-apply LOD even if a prior owner left the same band stamp.
+    mesh.userData._appliedLodLevel = undefined;
     const lanes = this._persistentSubmitLanes;
     const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
       ? SUBMIT_LANE.TRANSPARENT
@@ -13498,7 +13624,8 @@ export const render = {
       _submitVisibilityOptions.hidden = true;
       _submitVisibilityOptions.snapshotMissing = !posed;
       _submitVisibilityOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
-      _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState);
+      _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState)
+        && !authoredPendingBoundarySubmitsStandIn(mesh);
       _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
       _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
       _submitVisibilityOptions.activityFrame = this._activityFrame;
@@ -13608,7 +13735,12 @@ export const render = {
       if (userData.lod && userData.updateLod) {
         lodChecked++;
         lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx);
-        userData.updateLod(lodLevel);
+        // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
+        // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
+        if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {
+          userData.updateLod(lodLevel);
+          userData._appliedLodLevel = lodLevel;
+        }
       }
       const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
       // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
@@ -13666,7 +13798,8 @@ export const render = {
       _submitVisibilityOptions.allowShadowCast = false;
       _submitVisibilityOptions.snapshotMissing = !posed;
       _submitVisibilityOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
-      _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState);
+      _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState)
+        && !authoredPendingBoundarySubmitsStandIn(mesh);
       _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
       _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
       _submitVisibilityOptions.activityFrame = this._activityFrame;
@@ -13779,50 +13912,19 @@ export const render = {
       // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
       // frame and is punched up whenever the entity's shield value drops.
       const shieldBubble = userData.shieldBubble;
-      if (entity && shieldBubble && shieldBubble.material && shieldBubble.material.uniforms) {
-        const uniforms = shieldBubble.material.uniforms;
-        const previousShield = shieldBubble.userData._prevShield != null
-          ? shieldBubble.userData._prevShield
-          : entity.shield;
-        // Flash decay rides the time-effects-scaled frame delta: under a hard freeze it is 0,
-        // which holds uFlash still instead of decaying on the wall clock.
-        const dt = Math.min(0.1, presFrameDt);
-        setShieldShellClock(shieldBubble.material, simNow, _worldSiteA11y && _worldSiteA11y.reducedMotion === true);
-
-        const up = entity.shield > 0;
-        let flash = 0;
-
-        if (shieldBubble.userData._collapseTimer == null) {
-          shieldBubble.userData._collapseTimer = 0;
-        }
-
-        if (up) {
-          if (entity.shield < previousShield - 0.5) {
-            uniforms.uFlash.value = Math.min(1.0, uniforms.uFlash.value + 0.8);
-          } else if (entity.shield > previousShield + 1.0) {
-            // Shield capacitor recovery wave
-            uniforms.uFlash.value = Math.max(uniforms.uFlash.value, 0.28);
-          }
-          uniforms.uFlash.value *= Math.pow(0.05, dt);
-          flash = uniforms.uFlash.value;
-          shieldBubble.userData._collapseTimer = 0;
-        } else {
-          // Shield broke this frame or is in collapse sequence
-          if (previousShield > 0) {
-            // Initiate dielectric rupture overload sequence
-            shieldBubble.userData._collapseTimer = 0.32;
-            uniforms.uFlash.value = 2.4; // blinding break flare
-          }
-          if (shieldBubble.userData._collapseTimer > 0) {
-            shieldBubble.userData._collapseTimer -= dt;
-            uniforms.uFlash.value *= Math.pow(0.1, dt);
-            flash = uniforms.uFlash.value;
-          }
-        }
-        shieldBubble.userData._prevShield = entity.shield;
-
-        const visible = shouldPresentShieldBubble(entity.shield, flash, hasShieldContact(entity.id), shieldBubble.userData._collapseTimer);
-        if (shieldBubble.visible !== visible) shieldBubble.visible = visible;
+      if (entity && shieldBubble) {
+        // Per-ship fallback material: same shell clock as the pooled lane, same sim-time source.
+        // Quiet-latches while flash/contact/collapse are cold (see shieldBubblePresentation.js).
+        // simNow already anchors to state.simTime; presFrameDt carries the flash decay so a hard
+        // freeze holds uFlash still instead of decaying on the wall clock.
+        updateEntityShieldBubblePresentation(
+          entity,
+          shieldBubble,
+          now,
+          simNow,
+          _worldSiteA11y && _worldSiteA11y.reducedMotion === true,
+          presFrameDt,
+        );
       }
 
       const hlod = userData.hlod;

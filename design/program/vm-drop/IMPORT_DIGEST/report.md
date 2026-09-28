@@ -1,3 +1,321 @@
+# IMPORT ledger — 20260928 owner-side import (devin-w2-vm-latchb, board §1C row 23)
+
+Quiet-latch vein B (`combat-*` / `weapon-*` / `bombs-*` / `bomb-*` / `quarks-*` /
+`wave-presenter-*` / `bounty-hunt-*` / `midflight-*` / `well-distortion-*` /
+`wreck-wisps-*`). Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `combat-prephysics-quiet-residual` | `b6b1cc24c` | focused combat battery 101/101 |
+| `combat-postphysics-quiet-latch` | `d2144d2a9` | focused 38/38 |
+| `combat-postphysics-quiet-skip` | `8cdcea557` | focused 106/106 (test contract widened) |
+| `weapon-ribbon-quiet-live-skip` | `72fb13a88` | focused 57/57 |
+| `weapon-light-quiet-live-skip` | `5f04e0f57` | focused 98/98 |
+| `weapon-discharge-quiet-active-skip` | `d8998d4a7` | focused 36/36 |
+| `well-distortion-quiet-empty-latch` | `c63314bbc` | focused 51/51 |
+| `quarks-quiet-empty-update` | `04d700449` | quarks 26/26 + vfx-techniques 10/10 + debris-sling |
+| `weapon-presenter-composite-quiet-latch` | `351d6ab84` | focused 26/26 |
+| `wreck-wisps-quiet-irrelevant-latch` | `a267379e2` | latch 4/4; named 7-file suite 12/13 (sole red pre-existing at HEAD → D89) |
+| `bomb-presentation-quiet-empty-latch` | `64b8a0869` | focused 9/9 |
+
+Already on master before this pass (verified, no re-import):
+
+- `combat-prephysics-quiet-latch` — `d1aaaace5` + `2b1874f53`
+- `combat-outcome-quiet-latch` — `df8e5f3b9`
+- `combat-actions-advance-quiet-skip` — `2a71dc877`
+- `combat-status-subsystem-quiet-skip` — `8d192bfe1`
+- `combat-subsystem-key-cache` — `f698dc20d`
+- `combat-table-pose-incremental` — `39d58e4f5`
+- `weapons-npc-quiet-latch` — `3c24a1ee9` (D62 carry-note already folded in at that
+  commit; ledger row D62 retired this pass — `_tickLock(e, dt, state)` is live at
+  `src/systems/weapons.js:776`)
+- `bombs-empty-quiet-latch` — `cfc932285`
+- `bounty-hunt-empty-quiet-latch` — `45a2e0897` (+ hardening `cf3f8272f`,
+  republish `24294629b`)
+- `combat-kernel-profile-reuse` — fully superseded on master: `statusChanged`-gated
+  trailing `syncCombatantBounds` (`src/combat/kernel.js:267`), `coolCombatHeat`
+  cooling from the `runtime.heatDissipationPerTick` stash (`kernel.js:422`), the
+  stash stamped/backfilled in `runtime.js:73-96,182`, and the postPhysics ensure
+  skip subsumed by the fresh-cache skip landed in `8cdcea557`. No re-export needed.
+
+Skipped this pass:
+
+- `midflight-wave-hull-decode` — measured miss on the remote host by its own
+  DONE.md (hitch callbacks 253→279, game speed 42.5%→30.8%, peak admission
+  11→22 ms); ships no patches. Deliberate non-import.
+
+Merge notes:
+
+- `combat-prephysics-quiet-residual`, `combat-postphysics-quiet-skip`: hand-merged
+  onto the newer latch/sorted-cache structures the earlier combat packages left;
+  the postphysics test was updated to the widened skip contract (postPhysics may
+  now skip on a tick-fresh sorted cache even when the prePhysics latch is disarmed).
+- `quarks-quiet-empty-update`: gate additionally checks `flow.live` — a live
+  force-transport burst must never be frozen by the ordinary-family latch.
+- `weapon-presenter-composite-quiet-latch`: adapted for `heavyImpacts.live/dirty`
+  (post-export pool) and for `quarks._quietEmpty` arming on zero-dt frames
+  (simTime-frozen frames still record an empty observe); test drain loop advances
+  `state.simTime` to match the current `dt<=0` update guard.
+- `wreck-wisps-quiet-irrelevant-latch`: boundary-reset hunk re-applied onto the
+  current `sector:enter`/`game:newGame`/`save:loaded` flag lists (drifted since
+  export).
+- `bomb-presentation-quiet-empty-latch`: latch additionally requires no live
+  aftermath parcels (`flow.count`) or particles; test drawCall/children-count
+  assertions updated from `== 1` to `>= 1` for the multi-pool pipeline.
+
+Stale board note for the next lane: §1C row 29 (`VM-WEAPONS-D62`) is satisfied —
+`weapons-npc-quiet-latch` landed at `3c24a1ee9` with the carry note applied.
+
+# IMPORT ledger — 20260928 owner-side import (devin-w2-vm-latchd, board §1C row 25)
+
+Latch-wave-D batch (docking-*/customs-*/opening-plan-*/undock-host-*/catch-nets-*/
+npc-job-signatures/loot-magnet/law-heat/bark-director) processed on master.
+
+Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `docking-cradle-quiet-skip` | content swept into `726c821e8` (sibling vfx amend; original commit `0bcb475f9` orphaned) | focused 2/2 |
+| `loot-magnet-quiet-empty-latch` | src restored+landed by latchc in `30d61a3dc` after a shared-tree checkout wiped my unstaged apply (incl. my hand-merged reset-line insertions); test `2ec74a6d9` | focused 4/4 |
+| `docking-corridor-far-quiet-latch` | `c61cfc085` | focused 6/6; corridor suite 48/51 = bare-master failure set |
+| `bark-director-quiet-latch` | `6e46f9722` | focused 3/3 |
+| `opening-plan-complete` | `c654be977` | focused 23/23 |
+
+Already on master before this pass (verified, no re-import): `law-heat-telegraph-quiet-skip`
+(`546f75f78`), `catch-nets-empty-quiet-latch` (`61724111f`), `docking-corridor-publish-scratch`
+(`977ed0b85`), `customs-scan-cone-scratch` (`dec9613bc`), `npc-jobs-id-list-cache` (`f59b91b49`).
+
+Skipped this pass:
+
+- `npc-job-signatures-quiet-sleep-latch` — still the documented trap, now wider: the vfx.js
+  reset-line hunk still needs sibling resets (`_statusAttachedQuiet*`/`_tumbleBodyQuiet*`/
+  `_trailEmitQuiet*`/`_wreckWispsQuiet*`), and on top of that the `_sleepNpcJobSignatures`/
+  `sub.npcJobSignatures` dispatch region plus `npcJobsRuntime` `_ensureState`/`_byId` hunks have
+  drifted under the fatlist typed-index refactor. Needs sibling latches first / re-export.
+- `customs-cones-empty-quiet-latch` — master's `78fd174b3` empty-payloads early-out now covers the
+  dominant empty case and sits *before* the patch's census-tail arm, so the latch can never arm and
+  its own test would fail. Subsumed by the early-out; re-export only if a residuals profile still
+  shows the census cost (arm would need to live inside the early-out branch).
+- `undock-host-*` — no folder exists on disk or on `origin/vm-drop`; board-list name only.
+
+Shared-tree notes: `docking-corridor-far-quiet-latch` and `bark-director-quiet-latch` were
+hand-merged around post-export drift (`_manifestCache`, `_manifestFor`, `_onVictimKilled`) — all
+`+` insertions preserved verbatim. Stray root `artifacts/` payload from the loot-magnet patch
+removed — identical copies live in the job folder. See latchc's ledger above for their side of
+the mid-flight sweep.
+
+# IMPORT ledger — 20260928 owner-side import (devin-w2-vm-latchc, board §1C row 24)
+
+Quiet-latch vein C (`field-force` / `fields-*` / `energy-*` / `flight-*` / `gas` /
+`momentum-sink` / `far-*` / `asteroid-field-*` / `track-pulse` / `flyby-focus` /
+`optic-lattice` / `continuous-plume-profile`). Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `fields-idle-quiet-latch` | `26b4e5ff9` | latch 5/5 + fields regression 53/53 |
+| `field-force-quiet-empty-latch` | `86f3beac9` | latch 3/3 |
+| `far-empty-quiet-latch` | `902e0b536` | latch + far-actor suite 21/21 |
+| `optic-field-resident` | `50cc3f2b7` | optic-focused suite 19/19 |
+| `optic-far-quiet-latch` | `2f520206e` | 21/21 |
+| `asteroid-field-interact-still-quiet-latch` | `4aa43250d` | 6/6 |
+| `flyby-focus-empty-quiet-latch` | `b85654a83` | 10/10 |
+| `flight-propulsion-scratch` | `76c03a7d6` | flight suite 55/55 |
+| `continuous-plume-fleet-quiet-asleep` | `e654a81d4` | plume/VP-220 suite 78/81 |
+| `energy-bolt-quiet-begin-commit` | `f410f490f` | weapons/vfx suite 51/53 |
+| `energy-quiet-hide-latch` + `energy-quiet-relevant-skip` + `gas-quiet-empty-latch` | `30d61a3dc` | gas latch 4/4, vfx-field-geometry-sleep 3/3 |
+
+Merge notes:
+
+- `optic-far-quiet-latch`: its `asteroidField.js` source hunks were folded into the preceding
+  `50cc3f2b7` commit during the partial-apply sequence; `2f520206e` carries the test.
+- `fields-idle-quiet-latch`: hand-merged over master's newer seed-lock/inside-ring fields work;
+  quiet fast-return additionally gated on empty `_wellBodies` so deferred well drains still run.
+- `field-force-quiet-empty-latch`: hand-merged over master's `particles` subsystem; latch gated
+  on `particles.live` so a live release burst is never frozen.
+- `optic-field-resident`: intentionally moves Ceres optic lattices from live `entityList` into
+  `state.world.asteroidField.rocks` until decode-disc approach. Six older tests asserting the
+  live-entity contract were adapted to field records (`field.rocks`/`byId`, `opticStructureId`,
+  `opticCell`, `opticMaterial`); behavioral assertions preserved.
+- `flight-propulsion-scratch`: master already carried the equivalent optimization
+  (`bodySnapshotInto` out-param + `stepPropulsion` packet buffers); landed the residual
+  stepTorch `coolRuntime` call-site — the only remaining `{ ...runtime }` spread.
+- `energy-quiet-relevant-skip` depends on `energy-quiet-hide-latch` (`_energyQuietHidden`
+  comment/reset context) — applied in that order.
+- `gas-quiet-empty-latch`: reset-line hunks keyed on ~10 sibling latches absent on master
+  (statusAttached/tumbleBody/trailEmit/projectileTrails/overlayQuartet/wreckWisps/
+  npcJobSignatures) — context-only drift, not a functional dependency. Hand-merged additively:
+  `_gasQuietEmpty` init + `= false` in the three boundary-reset handler lines.
+
+Shared-tree incidents this pass (named, not unpicked, per AGENTS.md):
+
+- `76c03a7d6` index-wide commit swept two foreign staged files
+  (`src/render/weapons/shieldBubblePresentation.js`, `test/shield-bubble-quiet-latch.test.mjs`
+  — devin-w2-vm-head/#159 work); noted in its commit body.
+- During devin-w2-vm-latchd's mid-merge window a `git checkout` accident reverted their
+  UNSTAGED `loot-magnet-quiet-empty-latch` apply in `vfx.js`. It was reconstituted additively
+  from the remote patch (constructor + reset lines + update latch; their untracked
+  test/artifacts left for them). Those restored hunks rode along in `30d61a3dc` — named there.
+- An amend race rewrote a sibling vfx+docking commit's message; corrected at `726c821e8`.
+
+Already on master before this pass (verified by marker/commit, no re-import):
+
+- `flight-dormant-skip` — `2beba5609`
+- `momentum-sink-quiet-empty-latch` — `546f75f78`
+- `fields-npc-plan-cadence` — `95501f84f` + `50298eba1`
+- `far-query-row-scan` — `b535d8a0b` (+ `test/far-query-row-scan.test.mjs`)
+
+Not found on disk (vein names from the brief with no matching package folder):
+`track-pulse`; literal `optic-lattice` — the optic-lattice vein was served by
+`optic-field-resident` + `optic-far-quiet-latch` above.
+
+Baseline: `check:baseline` 15/16. The `pq020-ceres-topology` red is the pre-existing,
+ledger-owned D83 `structuralCostDigest` drift (Forge merge; adjudicate-then-re-pin owned by
+graphics/forge lane — do-not-silently-re-record). The optic-resident import legitimately
+changes Ceres live-entity census and may shift that digest further; flagged for the owning
+lane, pin untouched.
+
+Focused-suite non-blocking reds seen but not caused by these imports (verified by
+revert-rerun): `kestrel-production-thruster-bind` 3 fails (plume visuals, sibling churn);
+`vfx-mach-tracers`/`weapon-source-identity` 2 fails (Mach-tracer/wake, sibling churn).
+
+# IMPORT ledger — 20260928 owner-side import (devin-w2-vm-head, board §1C row 19)
+
+Digest head-of-queue batch. Most of the named list was already on master (the #166–#170 head
+packages landed 2026-09-24; the #160–#163 registry latches landed earlier too). Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `perf-heap-sample-gate` (#165) | `747b49e2e` | focused 38/38 (`test/perf-counters.test.mjs`) |
+| `shield-bubble-quiet-latch` (#159) | swept into foreign commits `726c821e8` (renderer.js + module) + `76c03a7d6` (test file) — content verified on HEAD | focused latch 6/6; ship-aux suite 13/14 (1 pre-existing: `vfx-shield-shell-and-field-material` GLSL pin expects `iPivot.z`, source has `floor(iPivot.z)` — stale test, unrelated) |
+| `sync-entity-lod-retain` (#157) | `0ce3ff965` | focused 23/23 |
+
+#159 merge note: `git apply --3way` conflicted on one hunk — master's fallback-bubble block had
+drifted to a freeze-aware `presFrameDt` decay + inline `shouldPresentShieldBubble`. Resolved
+keeping BOTH: the patch's extracted module/latch, and master's freeze contract via a new optional
+`frameDt` arg on `updateEntityShieldBubblePresentation` (null = patch's shipped `now`-derived dt;
+tests exercise that path unchanged).
+
+Already on master before this pass (verified by marker/commit, no re-import):
+
+- `render-package-digest-zero-copy` (#166) — `98477e85c`
+- `embedded-ktx2-single-copy` (#167) — `57761c64e`
+- `glb-body-in-place` (#168) **incl. `patches-after-167`** — `42217a40a` (the +8 hunk into
+  `embeddedKtx2Textures.js` is inside that commit; `parser.glbBodySliceRange` present at
+  `embeddedKtx2Textures.js:151`)
+- `shader-readiness-no-isprogram` (#169) — `a0824bc3d`
+- `retail-gltfloader-vendored-alias` (#170) — `69f471d89`
+- `combat-outcome-quiet-latch` (#163) — `df8e5f3b9`
+- `difficulty-director-quiet-latch` (#162) — `c7067ccc9`
+- `ai-encounter-quiet-latch` (#161) — `a2584c946`
+- `faction-presence-quiet-latch` (#160) — `3b6f2c20f`
+
+Skipped this pass:
+
+- `hull-integrity-quiet-latch` (#164) — its only src hunk edits `src/ui/views/hullIntegrity.js`;
+  `src/ui/**` is the ORRERY-claimed lane (same boundary as the row-21/22 `hud-*`/`massline` skips).
+  Left for a UI-owning sitting.
+- `radar-contacts-still-layer` (#158) — src hunk edits `src/ui/radar.js`; ORRERY-claimed. Left for
+  a UI-owning sitting.
+- `radar-asteroid-still-layer` (#156) — same `src/ui/radar.js`; ORRERY-claimed. Left for a
+  UI-owning sitting.
+
+# IMPORT ledger — 20260928 owner-side import (devin-w2-vm-latcha, board §1C row 22)
+
+Quiet-latch vein A (`hud-*` / `classify-*` / `decode-runway-*` + `overlay-quartet`). Most of the
+vein is stale against current master: `selectClassifyEntities` has been rewritten since the VM
+exported (discovery-authority walk, `discoverWu`, `entityPresenceRadius`, coherent hash cache),
+and every patch keyed on the old catch-up walk or runtime init block fails `git apply` on content,
+not whitespace. Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `classify-physics-partition-cache` | `05f3b71e0` | focused 75/75 (7-file activity/physics set) |
+| `classify-normalize-pins-small-n` | `c14767a78` | focused 35/35 |
+
+Already on master before this pass (verified, no re-import): `flyby-focus-empty-quiet-latch`
+(`b85654a83` — nearest match for the brief's `classify-flyby-ui-empty`).
+
+Skipped this pass:
+
+- `hud-credits-pulse-no-reflow`, `hud-glag-transform-cache`, `hud-objective-plate-cache`,
+  `hud-screen-transform-cache`, `hud-settext-cache` — every patch edits `src/ui/hud.js`;
+  `src/ui/**` is the ORRERY-claimed lane (same boundary as `massline-settext-cache` row 21).
+  Left for a UI-owning sitting.
+- `classify-closed-form-index` (#37), `classify-signature-prune-membership` (#38),
+  `classify-signature-record` (#45), `classify-rock-body-context` (#48),
+  `classify-pinfacts-cache`, `classify-closed-form-scan`,
+  `classify-rock-visit-quiet-retain` (#127), `classify-frame-quiet-retain` (#128),
+  `classify-early-quiet-latch` (#138), `classify-flying-rock-retain` (#141) — context drift
+  vs current `src/world/activityRuntime.js` (the catch-up walk the patches re-key was
+  rewritten; the #127→#128→#138→#141 retain chain also stacks on the missing earlier
+  packages). Non-trivial; needs re-export against current master. `classify-closed-form-scan`
+  is superseded by `classify-pinfacts-cache` regardless — re-export the combined one.
+- `decode-runway-empty-far-quiet-latch` — `presentationSources.js` hunk fails (context
+  drifted); `farActorTable.js` is also in the row-24 sibling's claimed paths. Needs re-export.
+- `decode-runway-top2-select` — `renderer.js` hunk fails; `src/render/renderer.js` was also
+  mid-merge (unmerged UU index state) this pass — foreign operation in flight. Needs re-export.
+- `overlay-quartet-quiet-empty-latch` (#123) — its `vfx.js` hunks stack on #122
+  `projectile-trails-quiet-empty-latch` fields (`_projectileTrailsQuietEmpty`,
+  `_projectileTrailsQuietIndexVersion`, `_seamMarkersWereRelevant`) not on master; #122 sits
+  in the row-23 sibling vein. Re-try after the sibling lands, else needs re-export.
+
+# IMPORT ledger — 20260928 owner-side import (devin-w1-vm-prestep1, board §1C row 20)
+
+Sim/preStep batch landed on master. Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `prestep-movables-trust` | `379b834ce` | focused 29/29 |
+| `stamp-near-work-awake-cache` | `cde7e2c6b` | focused 96/96 |
+| `stamp-near-work-budget-early-exit` | `0df8e3f87` | focused 93/93 |
+| `lifetime-sweep-quiet-clocks-skip` (#143) | `657bb7a4a` | focused 7/7 |
+
+Already on master before this pass (verified, no re-import): `combat-table-pose-incremental`
+(`39d58e4f5`), `npc-field-role-cache` (`e59537847`), `npc-jobs-id-list-cache` (`f59b91b49`).
+
+Skipped this pass:
+
+- `npc-job-signatures-quiet-sleep-latch` — vfx.js hunks edit the `sector:enter`/`newGame`/`save:loaded`
+  reset lines that depend on sibling latch packages not yet on master (statusAttached/tumbleBody/
+  trailEmit/lootMagnet/wreckWisps resets); current lines also carry newer `_explosionRupture` /
+  `_resetMonofilamentBlade` resets. Needs the sibling latches imported first (or a re-export).
+- `lifetime-corpse-lane-compact` — master's `lifetimeSweep` corpse compact was restructured to
+  `corpseIndices` + batch `_removeEntitiesAtIndices`; the patch's fail-open path revives the old
+  per-corpse loop. Needs re-export against current master (adapted to the batch path).
+- `registry-step-dispatch` — fails on 3/4 files vs current master (catchupPolicy head,
+  authoritativeSystemManifest, sim-clock-catchup test).
+
+`stamp-near-work-flag`, `-gate`, `-incremental`, `-prepared`, `-skip`, `-tap`, `-contract`, `-dense`
+do not exist on `origin/vm-drop` or master — never shipped.
+
+# IMPORT ledger — 20260928 owner-side import (devin-w1-vm-prestep2, board §1C row 21)
+
+Sim/cache batch landed on master. Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `far-query-row-scan` (after-cell-key patch; master's `1bb1b818a` keys are numeric) | `b535d8a0b` | focused 18/18 |
+| `emergent-hot-spatial` | `d22de0301` | focused 5/5 |
+| `event-trace-thrust-sanitize` | `6f02ea568` | focused 6/6 (patch's root `artifacts/` payload excluded — identical copies live in the folder) |
+| `gamepad-idle-clean-skip` | `e60ce713b` | focused 21/21 (patch file is one trailing line short of its last hunk header; applied `--recount`, result verified complete and syntax-clean) |
+
+Already on master before this pass (verified, no re-import): `far-actor-cell-key`
+(`1bb1b818a` — its residual `ensureFarActorTable` legacy string-key migration hunk + focused
+test were **not** hand-merged), `alloc-journal-churn` (`650ce5a32`, src + test).
+
+Skipped this pass:
+
+- `prestep-movables-trust`, `lifetime-sweep-quiet-clocks-skip`, `npc-field-role-cache`,
+  `npc-jobs-id-list-cache` — row-20 folders per the devin-w1-vm-prestep1 NOW.md claim; landed or
+  verified on master there. Not re-imported here (non-overlap).
+- Board-listed names that are not folders resolved to real packages: `emergent-hot-spatial-index`
+  → `emergent-hot-spatial`, `event-trace-priority-cache` → `event-trace-thrust-sanitize`,
+  `gamepad-idle-quiet-latch` → `gamepad-idle-clean-skip`, `far-actor-scan-columnar-cache` → the
+  `far-actor-*` pair above. `lifetime-quiet-policy-clock-gate` → nearest lifetime package is
+  `lifetime-corpse-lane-compact`, which needs a re-export (see row-20 ledger).
+- `massline-settext-cache` — its only patch edits `src/ui/masslineHud.js`; `src/ui/**` is the
+  ORRERY-claimed lane and out of scope for this import batch. Left for a UI-owning sitting.
+
 # IMPORT_DIGEST report — 20260926c (post-#168; **#170 ship** retail-gltfloader-vendored-alias)
 
 Master tip: **`97c88f92b`** (fetched; unchanged). No restack needed. No vm-drop package has been imported since dz.
@@ -330,10 +648,12 @@ cross-check; Picture ON, soft-GPU; tip through #64).
 | **166** | **`render-package-digest-zero-copy`** (live digest lane ~14.6× median, ≥9.7× floor; 2–9 ms per-package bursts removed) |
 | **167** | **`embedded-ktx2-single-copy`** (lane 1.9–2.1×, floor 1.39×; −55.6 ms per 10 heaviest packages; bytes identical) |
 
-Including already-packaged but **not yet on master** (do not re-ship):
-`combat-table-pose-incremental` (~4.78×), `stamp-near-work-awake-cache`,
+Including already-packaged but **not yet on master** (do not re-ship).
+**20260928 update:** `combat-table-pose-incremental` (~4.78×), `stamp-near-work-awake-cache`,
 `stamp-near-work-budget-early-exit`, `prestep-movables-trust`,
-`lifetime-sweep-quiet-clocks-skip` (#143), customs cones / sanctuary /
+`lifetime-sweep-quiet-clocks-skip` (#143), `npc-field-role-cache` and
+`npc-jobs-id-list-cache` are **now on master** (see the import ledger above). Remaining:
+customs cones / sanctuary /
 combat pre+postPhysics (#145–#155), classify flying-rock / frame / early
 parked latches, `sync-entity-views-closure-gate`, `micromotion-settled-skip`,
 `hull-scorch-quiet-live-skip`, `countermeasures-quiet-empty-latch`,

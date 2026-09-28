@@ -1381,6 +1381,7 @@ export async function runProofSixtySeconds(seed, options = {}) {
       applyProofTapeTick(state, player, driver, inputSys, state.tick | 0);
       runtime.step(SIM_DT);
       ticks += 1;
+      if (typeof options.tickProbe === 'function') options.tickProbe(state, ticks, runtime);
       if (ticks === PROOF_CENSUS_SETTLE_TICKS) setup = takeSetupCensus(state, player, censusPocketIds);
       if (countDetected(times) >= SIXTY_SECOND_BEATS.length) break;
       if (finite(state.simTime) >= PROOF_HARD_CAP_S) break;

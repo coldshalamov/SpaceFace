@@ -12,24 +12,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4546189885292c93583328cae15cdb26742a9f383793f383ee4c8831e293a8e2",
+  "contentHash": "059dfa822d184c942b8b70e9fc50d18feca5c1ca9a80d67e4332e2b31d6469ca",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          1.5475835800170898,
-          3.30570387840271,
-          1.5475835800170898
+          2.6845908164978027,
+          3.7127132415771484,
+          3.0711164474487305
         ],
         "min": [
-          -1.5475835800170898,
-          -0.25,
-          -1.5475835800170898
+          -2.6845908164978027,
+          -0.4498412609100342,
+          -3.0711164474487305
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3a1a248a3b5ab114bd52771344659eb168ea5c0903745b194b70421044d70668",
+      "geometryHash": "5c854fe475c2fbb60d8a218c6991c41bff2b4eabae8cad7976361cd04ed9833d",
       "id": "sf.render.ash-pin.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -38,382 +38,532 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.ash-pin.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 752
+      "vertexCount": 754
     },
     {
       "bounds": {
         "max": [
-          1.5476406812667847,
-          0.6496837139129639,
-          1.5476406812667847
+          1.5939079523086548,
+          0.6799752712249756,
+          1.395073413848877
         ],
         "min": [
-          -1.5476406812667847,
-          -0.2500799298286438,
-          -1.5476406812667847
+          -1.4957916736602783,
+          0.5800247192382812,
+          -1.197513461112976
         ]
       },
       "drawMode": 4,
-      "geometryHash": "60655699a30912267c23aae6b2ad4850342c486094533f56ee41201e8fd1cd57",
+      "geometryHash": "2726ad9f0c79b59a770b0773e09d34ae29dfe1677ec95b23b5b9027cac578d8d",
       "id": "sf.render.ash-pin.node.lod0-armor.primitive.0",
-      "indexCount": 3120,
+      "indexCount": 888,
       "indexed": true,
-      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
+      "materialHash": "25354c38d39f28f70903403a8196cfc45a3bed6979ed2f4c206968028ab3811a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.ash-pin.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 978
+      "vertexCount": 303
     },
     {
       "bounds": {
         "max": [
-          1.2878724336624146,
-          2.950000047683716,
-          1.41996169090271
+          0.6700000166893005,
+          1.2840040922164917,
+          0.3700000047683716
         ],
         "min": [
-          -0.4499431550502777,
-          0.25,
-          -0.7579521536827087
+          0.4300000071525574,
+          1.11599600315094,
+          0.12999999523162842
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23225f7445c599ea7a4371b5edcb9e8024e9899e8856b836a20c86c7dcc49908",
-      "id": "sf.render.ash-pin.node.lod0-brushedmetal.primitive.0",
-      "indexCount": 2256,
-      "indexed": true,
-      "materialHash": "e75488514a9e220045949fcabcbd1a8117446e2c6ae620c7af1c6358c7576438",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_BrushedMetal",
-      "nodeId": "sf.render.ash-pin.node.lod0-brushedmetal",
-      "primitiveIndex": 0,
-      "vertexCount": 724
-    },
-    {
-      "bounds": {
-        "max": [
-          1.5434789657592773,
-          0.899990975856781,
-          1.5434789657592773
-        ],
-        "min": [
-          -1.5434789657592773,
-          0.00000899055703484919,
-          -1.5434789657592773
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fa24a310a136cb7df1348b8565581650b9cb4789f8f6e12151f5ace5bd0d7f47",
-      "id": "sf.render.ash-pin.node.lod0-hull.primitive.0",
-      "indexCount": 852,
-      "indexed": true,
-      "materialHash": "af4523165c75dd77ff9334f58c1e93abef17021cfd7d3bcd44ef64e5d482ee12",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Hull",
-      "nodeId": "sf.render.ash-pin.node.lod0-hull",
-      "primitiveIndex": 0,
-      "vertexCount": 313
-    },
-    {
-      "bounds": {
-        "max": [
-          1.086400032043457,
-          2.9479920864105225,
-          -0.41359996795654297
-        ],
-        "min": [
-          0.8136000037193298,
-          2.8170077800750732,
-          -0.6863999962806702
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d0ec8765538075904ef2eb1870cf217dbb65f1732a4ecf3f52d3b8f70bff8cc8",
-      "id": "sf.render.ash-pin.node.lod0-lights-warm.primitive.0",
-      "indexCount": 468,
-      "indexed": true,
-      "materialHash": "a95c24dd907809020b9d16211242e92f78d61d142c4dbe010c5b6965dec54340",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Lights_Warm",
-      "nodeId": "sf.render.ash-pin.node.lod0-lights-warm",
-      "primitiveIndex": 0,
-      "vertexCount": 128
-    },
-    {
-      "bounds": {
-        "max": [
-          1.5099968910217285,
-          3.30570387840271,
-          1.4500337839126587
-        ],
-        "min": [
-          -1.3595106601715088,
-          0.34847304224967957,
-          -1.3595476150512695
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b2513694c0c725fba29fa3c7780b8f59e46cf47b6f570496e2086637e746399c",
-      "id": "sf.render.ash-pin.node.lod0-mechanical.primitive.0",
-      "indexCount": 4332,
-      "indexed": true,
-      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Mechanical",
-      "nodeId": "sf.render.ash-pin.node.lod0-mechanical",
-      "primitiveIndex": 0,
-      "vertexCount": 1596
-    },
-    {
-      "bounds": {
-        "max": [
-          1.5483916997909546,
-          0.6495994329452515,
-          1.5483300685882568
-        ],
-        "min": [
-          -1.5483916997909546,
-          -0.24719855189323425,
-          -1.5480751991271973
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0cba0a9b8ea006f371010b4512b682dc90b1df32f644dabc8a6a8094e16f4c1b",
-      "id": "sf.render.ash-pin.node.lod1-armor.primitive.0",
-      "indexCount": 1698,
-      "indexed": true,
-      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Armor",
-      "nodeId": "sf.render.ash-pin.node.lod1-armor",
-      "primitiveIndex": 0,
-      "vertexCount": 546
-    },
-    {
-      "bounds": {
-        "max": [
-          1.2871273756027222,
-          2.9484846591949463,
-          1.416994571685791
-        ],
-        "min": [
-          -0.44825276732444763,
-          0.2517567574977875,
-          -0.7579506039619446
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "ebad736bcfb4468830d1dbb2497e5836bd6bd1060b2f52328b6edb42abb1379b",
-      "id": "sf.render.ash-pin.node.lod1-brushedmetal.primitive.0",
-      "indexCount": 300,
-      "indexed": true,
-      "materialHash": "e75488514a9e220045949fcabcbd1a8117446e2c6ae620c7af1c6358c7576438",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_BrushedMetal",
-      "nodeId": "sf.render.ash-pin.node.lod1-brushedmetal",
-      "primitiveIndex": 0,
-      "vertexCount": 148
-    },
-    {
-      "bounds": {
-        "max": [
-          1.5440528392791748,
-          0.8989331126213074,
-          1.544074535369873
-        ],
-        "min": [
-          -1.5440587997436523,
-          0.0008766239625401795,
-          -1.544037103652954
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b5f45539288450f280a9cc9bf9c0850d5540c1659f650f10ec0a5d7944649715",
-      "id": "sf.render.ash-pin.node.lod1-hull.primitive.0",
-      "indexCount": 420,
-      "indexed": true,
-      "materialHash": "af4523165c75dd77ff9334f58c1e93abef17021cfd7d3bcd44ef64e5d482ee12",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Hull",
-      "nodeId": "sf.render.ash-pin.node.lod1-hull",
-      "primitiveIndex": 0,
-      "vertexCount": 137
-    },
-    {
-      "bounds": {
-        "max": [
-          1.087531566619873,
-          2.947998046875,
-          -0.4137501120567322
-        ],
-        "min": [
-          0.8124684691429138,
-          2.8177740573883057,
-          -0.6864292025566101
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e0a873670e8a789ff8fe010cc63c62c46e254d671a896d58832504f0e8767048",
-      "id": "sf.render.ash-pin.node.lod1-lights-warm.primitive.0",
-      "indexCount": 150,
-      "indexed": true,
-      "materialHash": "a95c24dd907809020b9d16211242e92f78d61d142c4dbe010c5b6965dec54340",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Lights_Warm",
-      "nodeId": "sf.render.ash-pin.node.lod1-lights-warm",
-      "primitiveIndex": 0,
-      "vertexCount": 53
-    },
-    {
-      "bounds": {
-        "max": [
-          1.5099246501922607,
-          3.3044393062591553,
-          1.447452187538147
-        ],
-        "min": [
-          -1.359438419342041,
-          0.34847304224967957,
-          -1.3594844341278076
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "52b82c3377ee45a4e16318e26c8d856620bd6076bd2dc0f788749b1d24c595ef",
-      "id": "sf.render.ash-pin.node.lod1-mechanical.primitive.0",
-      "indexCount": 1842,
-      "indexed": true,
-      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Mechanical",
-      "nodeId": "sf.render.ash-pin.node.lod1-mechanical",
-      "primitiveIndex": 0,
-      "vertexCount": 892
-    },
-    {
-      "bounds": {
-        "max": [
-          1.547559380531311,
-          0.659750759601593,
-          1.5462168455123901
-        ],
-        "min": [
-          -1.547559380531311,
-          -0.23051981627941132,
-          -1.5455013513565063
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c1b2e21fee02c66516e568d0ba65f204ac0ff900032138d72221dd0ecc570642",
-      "id": "sf.render.ash-pin.node.lod2-armor.primitive.0",
-      "indexCount": 360,
-      "indexed": true,
-      "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Armor",
-      "nodeId": "sf.render.ash-pin.node.lod2-armor",
-      "primitiveIndex": 0,
-      "vertexCount": 174
-    },
-    {
-      "bounds": {
-        "max": [
-          0.4436631500720978,
-          0.7435293197631836,
-          1.413524866104126
-        ],
-        "min": [
-          -0.4436631202697754,
-          0.2564706802368164,
-          1.3464750051498413
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "04c541f6f3efed52310cffa28a66469cb63591668b9f3ee1e946340eff33796f",
-      "id": "sf.render.ash-pin.node.lod2-brushedmetal.primitive.0",
+      "geometryHash": "0974a7eef4851a58a5f4d317ebd68e25ce81947f0a3b1eb39bb5678953f5194c",
+      "id": "sf.render.ash-pin.node.lod0-beacon-amber.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e75488514a9e220045949fcabcbd1a8117446e2c6ae620c7af1c6358c7576438",
+      "materialHash": "098634467503dc778d721e028756863fe212681e141735b0267d42324c0cb810",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_BrushedMetal",
-      "nodeId": "sf.render.ash-pin.node.lod2-brushedmetal",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.ash-pin.node.lod0-beacon-amber",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          1.541861891746521,
-          0.8954439759254456,
-          1.5422720909118652
+          0.5389143228530884,
+          3.71287202835083,
+          1.781904697418213
         ],
         "min": [
-          -1.541235327720642,
-          0.0037883890327066183,
-          -1.541954517364502
+          -2.3630001544952393,
+          0.47145286202430725,
+          -0.36848968267440796
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5b9907c0774e5e4bc7398fe72dd80b26bac0c2b0d1a5ce180b6ab92c7743fb2d",
-      "id": "sf.render.ash-pin.node.lod2-hull.primitive.0",
-      "indexCount": 204,
+      "geometryHash": "2ea6f883fe8e28b93ac3df165d878c4bdf1514a3f7d2ad581b4d1c1870c2f00d",
+      "id": "sf.render.ash-pin.node.lod0-brushedmetal.primitive.0",
+      "indexCount": 672,
       "indexed": true,
-      "materialHash": "af4523165c75dd77ff9334f58c1e93abef17021cfd7d3bcd44ef64e5d482ee12",
+      "materialHash": "8aaad8b01fef8dbf149ceef13a611c49689b8eccc6766406282b6f76bc305b32",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Hull",
-      "nodeId": "sf.render.ash-pin.node.lod2-hull",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.ash-pin.node.lod0-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 88
+      "vertexCount": 248
     },
     {
       "bounds": {
         "max": [
-          1.0888739824295044,
-          2.9525442123413086,
-          -0.41375553607940674
+          0.5739233493804932,
+          3.062812328338623,
+          0.16259916126728058
         ],
         "min": [
-          0.8111313581466675,
-          2.8177380561828613,
-          -0.6933068633079529
+          -0.043509095907211304,
+          1.5874671936035156,
+          -0.43988484144210815
         ]
       },
       "drawMode": 4,
-      "geometryHash": "33478bfc9336cd5ee2667b26acf254428e8a38e5b9dc095fab4a011e40853e6c",
-      "id": "sf.render.ash-pin.node.lod2-lights-warm.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "8b8729708cbfe347e4824fd29732e132a60a56f4e89121b063c56a020bc779df",
+      "id": "sf.render.ash-pin.node.lod0-deadmetal-deep.primitive.0",
+      "indexCount": 3360,
       "indexed": true,
-      "materialHash": "a95c24dd907809020b9d16211242e92f78d61d142c4dbe010c5b6965dec54340",
+      "materialHash": "f4ef8739c5f97e8854c022e723e0289edb657c31cadf3581e86c8801e7bf61ac",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Lights_Warm",
-      "nodeId": "sf.render.ash-pin.node.lod2-lights-warm",
+      "meshName": "LOD0_deadmetal_deep",
+      "nodeId": "sf.render.ash-pin.node.lod0-deadmetal-deep",
       "primitiveIndex": 0,
-      "vertexCount": 32
+      "vertexCount": 1234
     },
     {
       "bounds": {
         "max": [
-          1.5100353956222534,
-          3.3011839389801025,
-          1.4468494653701782
+          2.6845908164978027,
+          3.4091169834136963,
+          3.0711164474487305
         ],
         "min": [
-          -1.0058107376098633,
-          0.34847304224967957,
-          -1.1100878715515137
+          -2.6845908164978027,
+          0.00011881110549438745,
+          -3.0711164474487305
         ]
       },
       "drawMode": 4,
-      "geometryHash": "db113a6084c44eb963717d5a0987c719bcfe668578d04e2a6d28f115137aa0f0",
+      "geometryHash": "eca2fafd6ff0092ffab5e515410daa007e23770ea6d87e354602ac6044d0554f",
+      "id": "sf.render.ash-pin.node.lod0-deadmetal.primitive.0",
+      "indexCount": 4008,
+      "indexed": true,
+      "materialHash": "76818f4a859579ea532563f2514cea054c4d1678e59afc46d78043e1cb847821",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deadmetal",
+      "nodeId": "sf.render.ash-pin.node.lod0-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 1255
+    },
+    {
+      "bounds": {
+        "max": [
+          2.273742914199829,
+          1.3998898267745972,
+          2.169602632522583
+        ],
+        "min": [
+          -2.1696066856384277,
+          -0.4498898684978485,
+          -2.169602632522583
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b4c0cf0f6533d3ad8fe9e1f7f95830b3ada4d9b5f73a05bc4cb18b514f2b358f",
+      "id": "sf.render.ash-pin.node.lod0-mechanical.primitive.0",
+      "indexCount": 3000,
+      "indexed": true,
+      "materialHash": "7fb22a28e13f54b6d8b5a8644fb6575b2f8388b74ccafd7ed30ff0468ca61677",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.ash-pin.node.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 992
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.1219539642333984,
+          1.2812210321426392,
+          1.5713905096054077
+        ],
+        "min": [
+          -1.97804594039917,
+          1.018778920173645,
+          0.9886094331741333
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c9b8a54755fc317e777de23ed659e0505104f004bfc9e8061e0c1e49d3c41863",
+      "id": "sf.render.ash-pin.node.lod0-warning.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "a35225cfaae8d46d77a8f04bc65f526bb2864f862cdb3a4b6ebba5fb5c429f2c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.ash-pin.node.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.593834638595581,
+          0.6800520420074463,
+          1.395045518875122
+        ],
+        "min": [
+          -1.495822787284851,
+          0.5808570981025696,
+          -1.1978830099105835
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0acc834529cdd16ca96fb04098cd95d04fe54393f2e36814bedd5993062680da",
+      "id": "sf.render.ash-pin.node.lod1-armor.primitive.0",
+      "indexCount": 258,
+      "indexed": true,
+      "materialHash": "25354c38d39f28f70903403a8196cfc45a3bed6979ed2f4c206968028ab3811a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.ash-pin.node.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 85
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6700000166893005,
+          1.2840040922164917,
+          0.3700000047683716
+        ],
+        "min": [
+          0.4300000071525574,
+          1.11599600315094,
+          0.12999999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "815ccd729beceee8a5958439685e58af67a6809c2f136b6ec527f2f84b63f541",
+      "id": "sf.render.ash-pin.node.lod1-beacon-amber.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "098634467503dc778d721e028756863fe212681e141735b0267d42324c0cb810",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.ash-pin.node.lod1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5388530492782593,
+          3.71287202835083,
+          1.7821394205093384
+        ],
+        "min": [
+          -2.3633389472961426,
+          0.4698162376880646,
+          -0.3685489892959595
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1ad535907009d829643f0954ba0898793c99a6b64a216fcd4bc4961c5df9f836",
+      "id": "sf.render.ash-pin.node.lod1-brushedmetal.primitive.0",
+      "indexCount": 408,
+      "indexed": true,
+      "materialHash": "8aaad8b01fef8dbf149ceef13a611c49689b8eccc6766406282b6f76bc305b32",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_BrushedMetal",
+      "nodeId": "sf.render.ash-pin.node.lod1-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 184
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5728581547737122,
+          3.0665528774261475,
+          0.16217555105686188
+        ],
+        "min": [
+          -0.04325513169169426,
+          1.5831092596054077,
+          -0.438907265663147
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7bb83dd2f3e5fbf23e6d3f45168e2bfa267c9ca37d003e539297d491a50508ab",
+      "id": "sf.render.ash-pin.node.lod1-deadmetal-deep.primitive.0",
+      "indexCount": 1002,
+      "indexed": true,
+      "materialHash": "f4ef8739c5f97e8854c022e723e0289edb657c31cadf3581e86c8801e7bf61ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal_deep",
+      "nodeId": "sf.render.ash-pin.node.lod1-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 334
+    },
+    {
+      "bounds": {
+        "max": [
+          2.6845908164978027,
+          3.4075121879577637,
+          3.0711164474487305
+        ],
+        "min": [
+          -2.6845908164978027,
+          0.000013507160474546254,
+          -3.0711164474487305
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "560c5c90dfa16cfe4e9dc132f0de2e3869a0914449c48b798b17a1f0904b78ba",
+      "id": "sf.render.ash-pin.node.lod1-deadmetal.primitive.0",
+      "indexCount": 1404,
+      "indexed": true,
+      "materialHash": "76818f4a859579ea532563f2514cea054c4d1678e59afc46d78043e1cb847821",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deadmetal",
+      "nodeId": "sf.render.ash-pin.node.lod1-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 468
+    },
+    {
+      "bounds": {
+        "max": [
+          2.273742914199829,
+          1.3983747959136963,
+          2.168569326400757
+        ],
+        "min": [
+          -2.1696066856384277,
+          -0.44760799407958984,
+          -2.169551134109497
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "332552621a1f228e6141f439789ef2baf3ffd2aa7893739b55292793c628d9f8",
+      "id": "sf.render.ash-pin.node.lod1-mechanical.primitive.0",
+      "indexCount": 1656,
+      "indexed": true,
+      "materialHash": "7fb22a28e13f54b6d8b5a8644fb6575b2f8388b74ccafd7ed30ff0468ca61677",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.ash-pin.node.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 616
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.1219539642333984,
+          1.2812210321426392,
+          1.5713905096054077
+        ],
+        "min": [
+          -1.97804594039917,
+          1.018778920173645,
+          0.9886094331741333
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5db27d94f95ad3a53a948ab4a3f9404445ffc13ca0b1ca0f9c8acb4606d0801f",
+      "id": "sf.render.ash-pin.node.lod1-warning.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "a35225cfaae8d46d77a8f04bc65f526bb2864f862cdb3a4b6ebba5fb5c429f2c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.ash-pin.node.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5957379341125488,
+          0.6799400448799133,
+          1.396193027496338
+        ],
+        "min": [
+          -1.4965370893478394,
+          0.5844359993934631,
+          -1.1974222660064697
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "528722cd9cff472977b65168f0c8a852c903d47b6127bd838fcf286678483f2f",
+      "id": "sf.render.ash-pin.node.lod2-armor.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "25354c38d39f28f70903403a8196cfc45a3bed6979ed2f4c206968028ab3811a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.ash-pin.node.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 49
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6700000166893005,
+          1.2840040922164917,
+          0.3700000047683716
+        ],
+        "min": [
+          0.4300000071525574,
+          1.11599600315094,
+          0.12999999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "815ccd729beceee8a5958439685e58af67a6809c2f136b6ec527f2f84b63f541",
+      "id": "sf.render.ash-pin.node.lod2-beacon-amber.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "098634467503dc778d721e028756863fe212681e141735b0267d42324c0cb810",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.ash-pin.node.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.8366338610649109,
+          1.7280369997024536,
+          1.7835006713867188
+        ],
+        "min": [
+          -2.3633713722229004,
+          0.47172969579696655,
+          0.6164669394493103
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "94056af69d60198f6cf719eca3223d1b783a963a490477c22ec0b1c2accf633f",
+      "id": "sf.render.ash-pin.node.lod2-brushedmetal.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "8aaad8b01fef8dbf149ceef13a611c49689b8eccc6766406282b6f76bc305b32",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.ash-pin.node.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 52
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5735850930213928,
+          3.0602893829345703,
+          0.16334547102451324
+        ],
+        "min": [
+          -0.04445868730545044,
+          1.583914041519165,
+          -0.4395592212677002
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aa0d7702b302747d2ea1a1ce9057cd6f133200f71dd7b0d10fed7f8582ec8223",
+      "id": "sf.render.ash-pin.node.lod2-deadmetal-deep.primitive.0",
+      "indexCount": 486,
+      "indexed": true,
+      "materialHash": "f4ef8739c5f97e8854c022e723e0289edb657c31cadf3581e86c8801e7bf61ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal_deep",
+      "nodeId": "sf.render.ash-pin.node.lod2-deadmetal-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 175
+    },
+    {
+      "bounds": {
+        "max": [
+          2.681349754333496,
+          3.407536029815674,
+          3.0700066089630127
+        ],
+        "min": [
+          -2.6810481548309326,
+          -0.000010255896995658986,
+          -3.069610357284546
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2a74a2f644d56c9093928998d94b369c7878fe6ce8cdce28fbd24ee7b350a367",
+      "id": "sf.render.ash-pin.node.lod2-deadmetal.primitive.0",
+      "indexCount": 642,
+      "indexed": true,
+      "materialHash": "76818f4a859579ea532563f2514cea054c4d1678e59afc46d78043e1cb847821",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deadmetal",
+      "nodeId": "sf.render.ash-pin.node.lod2-deadmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 250
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1662700176239014,
+          1.3952943086624146,
+          2.1662700176239014
+        ],
+        "min": [
+          -2.1662700176239014,
+          -0.4453774392604828,
+          -2.1662700176239014
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4ff5a9f231c3d0b724a6472bbf9252023cf6a1d494e7efbed13e4e8a94258488",
       "id": "sf.render.ash-pin.node.lod2-mechanical.primitive.0",
-      "indexCount": 984,
+      "indexCount": 648,
       "indexed": true,
-      "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
+      "materialHash": "7fb22a28e13f54b6d8b5a8644fb6575b2f8388b74ccafd7ed30ff0468ca61677",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.ash-pin.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 538
+      "vertexCount": 270
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.1219539642333984,
+          1.2812210321426392,
+          1.5713905096054077
+        ],
+        "min": [
+          -1.97804594039917,
+          1.018778920173645,
+          0.9886094331741333
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5db27d94f95ad3a53a948ab4a3f9404445ffc13ca0b1ca0f9c8acb4606d0801f",
+      "id": "sf.render.ash-pin.node.lod2-warning.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "a35225cfaae8d46d77a8f04bc65f526bb2864f862cdb3a4b6ebba5fb5c429f2c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.ash-pin.node.lod2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 24
     }
   ],
   "hlods": [],
@@ -421,8 +571,15 @@
   "lods": [],
   "materials": [
     {
-      "hash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
-      "id": "material:3a3b2f67d6688939e22c4df2",
+      "hash": "098634467503dc778d721e028756863fe212681e141735b0267d42324c0cb810",
+      "id": "material:098634467503dc778d721e02",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "25354c38d39f28f70903403a8196cfc45a3bed6979ed2f4c206968028ab3811a",
+      "id": "material:25354c38d39f28f70903403a",
       "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -453,47 +610,8 @@
       ]
     },
     {
-      "hash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
-      "id": "material:486547a174710d4494bcbd4e",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "a95c24dd907809020b9d16211242e92f78d61d142c4dbe010c5b6965dec54340",
-      "id": "material:a95c24dd907809020b9d1621",
-      "name": "Material_Emissive_Warm",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "af4523165c75dd77ff9334f58c1e93abef17021cfd7d3bcd44ef64e5d482ee12",
-      "id": "material:af4523165c75dd77ff9334f5",
+      "hash": "76818f4a859579ea532563f2514cea054c4d1678e59afc46d78043e1cb847821",
+      "id": "material:76818f4a859579ea532563f2",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -524,9 +642,105 @@
       ]
     },
     {
-      "hash": "e75488514a9e220045949fcabcbd1a8117446e2c6ae620c7af1c6358c7576438",
-      "id": "material:e75488514a9e220045949fca",
+      "hash": "7fb22a28e13f54b6d8b5a8644fb6575b2f8388b74ccafd7ed30ff0468ca61677",
+      "id": "material:7fb22a28e13f54b6d8b5a864",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8aaad8b01fef8dbf149ceef13a611c49689b8eccc6766406282b6f76bc305b32",
+      "id": "material:8aaad8b01fef8dbf149ceef1",
       "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a35225cfaae8d46d77a8f04bc65f526bb2864f862cdb3a4b6ebba5fb5c429f2c",
+      "id": "material:a35225cfaae8d46d77a8f04b",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f4ef8739c5f97e8854c022e723e0289edb657c31cadf3581e86c8801e7bf61ac",
+      "id": "material:f4ef8739c5f97e8854c022e7",
+      "name": "Material_Hull_deep",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -656,7 +870,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.node.lod0-brushedmetal",
+      "id": "sf.render.ash-pin.node.lod0-beacon-amber",
       "localTransform": [
         1,
         0,
@@ -676,8 +890,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_BrushedMetal",
-      "nodeName": "LOD0_BrushedMetal",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
       "nodePath": [
         0,
         2
@@ -705,7 +919,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.node.lod0-hull",
+      "id": "sf.render.ash-pin.node.lod0-brushedmetal",
       "localTransform": [
         1,
         0,
@@ -725,8 +939,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Hull",
-      "nodeName": "LOD0_Hull",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
       "nodePath": [
         0,
         3
@@ -754,7 +968,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.node.lod0-lights-warm",
+      "id": "sf.render.ash-pin.node.lod0-deadmetal",
       "localTransform": [
         1,
         0,
@@ -774,11 +988,60 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Lights_Warm",
-      "nodeName": "LOD0_Lights_Warm",
+      "mergeBoundary": "LOD0_deadmetal",
+      "nodeName": "LOD0_deadmetal",
       "nodePath": [
         0,
         4
+      ],
+      "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ash-pin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ash-pin.node.lod0-deadmetal-deep",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deadmetal_deep",
+      "nodeName": "LOD0_deadmetal_deep",
+      "nodePath": [
+        0,
+        5
       ],
       "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
       "role": "immutable",
@@ -827,7 +1090,56 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        5
+        6
+      ],
+      "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ash-pin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ash-pin.node.lod0-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        7
       ],
       "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
       "role": "immutable",
@@ -876,7 +1188,56 @@
       "nodeName": "LOD1_Armor",
       "nodePath": [
         0,
-        6
+        8
+      ],
+      "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ash-pin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ash-pin.node.lod1-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        9
       ],
       "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
       "role": "immutable",
@@ -925,7 +1286,7 @@
       "nodeName": "LOD1_BrushedMetal",
       "nodePath": [
         0,
-        7
+        10
       ],
       "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
       "role": "immutable",
@@ -950,7 +1311,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.node.lod1-hull",
+      "id": "sf.render.ash-pin.node.lod1-deadmetal",
       "localTransform": [
         1,
         0,
@@ -970,11 +1331,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Hull",
-      "nodeName": "LOD1_Hull",
+      "mergeBoundary": "LOD1_deadmetal",
+      "nodeName": "LOD1_deadmetal",
       "nodePath": [
         0,
-        8
+        11
       ],
       "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
       "role": "immutable",
@@ -999,7 +1360,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.node.lod1-lights-warm",
+      "id": "sf.render.ash-pin.node.lod1-deadmetal-deep",
       "localTransform": [
         1,
         0,
@@ -1019,11 +1380,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Lights_Warm",
-      "nodeName": "LOD1_Lights_Warm",
+      "mergeBoundary": "LOD1_deadmetal_deep",
+      "nodeName": "LOD1_deadmetal_deep",
       "nodePath": [
         0,
-        9
+        12
       ],
       "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
       "role": "immutable",
@@ -1072,7 +1433,56 @@
       "nodeName": "LOD1_Mechanical",
       "nodePath": [
         0,
-        10
+        13
+      ],
+      "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ash-pin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ash-pin.node.lod1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        14
       ],
       "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
       "role": "immutable",
@@ -1121,7 +1531,56 @@
       "nodeName": "LOD2_Armor",
       "nodePath": [
         0,
-        11
+        15
+      ],
+      "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ash-pin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ash-pin.node.lod2-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        16
       ],
       "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
       "role": "immutable",
@@ -1170,7 +1629,7 @@
       "nodeName": "LOD2_BrushedMetal",
       "nodePath": [
         0,
-        12
+        17
       ],
       "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
       "role": "immutable",
@@ -1195,7 +1654,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.node.lod2-hull",
+      "id": "sf.render.ash-pin.node.lod2-deadmetal",
       "localTransform": [
         1,
         0,
@@ -1215,11 +1674,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Hull",
-      "nodeName": "LOD2_Hull",
+      "mergeBoundary": "LOD2_deadmetal",
+      "nodeName": "LOD2_deadmetal",
       "nodePath": [
         0,
-        13
+        18
       ],
       "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
       "role": "immutable",
@@ -1244,7 +1703,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.node.lod2-lights-warm",
+      "id": "sf.render.ash-pin.node.lod2-deadmetal-deep",
       "localTransform": [
         1,
         0,
@@ -1264,11 +1723,11 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Lights_Warm",
-      "nodeName": "LOD2_Lights_Warm",
+      "mergeBoundary": "LOD2_deadmetal_deep",
+      "nodeName": "LOD2_deadmetal_deep",
       "nodePath": [
         0,
-        14
+        19
       ],
       "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
       "role": "immutable",
@@ -1317,7 +1776,56 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        15
+        20
+      ],
+      "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ash-pin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ash-pin.node.lod2-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        21
       ],
       "parentId": "sf.render.ash-pin.node.sf-place-ash-pin-root",
       "role": "immutable",
@@ -1392,45 +1900,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "0016cf01930395061ca4f4aaffb983001e61995b0f50a282a58e7ab4bb23e3fc"
+      "sha256": "78b19a95946bce73d192811686e031e235a6a694bb0e1749e7a69ae3fde1fb99"
     },
     "sourceGlb": {
-      "bytes": 418152,
-      "sha256": "06040fd3679f7ae1b2c77eca19168089fb5f6b1192425f17c6afc8362b6f3277",
+      "bytes": 425040,
+      "sha256": "f20ee8d476bd0afd8de188594343133fea5d8c4ecc9a5780df95354645d997c1",
       "uri": "place_ash_pin.glb"
     },
     "sourceManifest": {
-      "bytes": 203788,
-      "sha256": "8361e46abf91eba0b1e694e7dae87b812124bb990cf1bc562a95382c7c8d23b3",
+      "bytes": 205647,
+      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 548332,
-    "sha256": "197f14b5ebea2206231ca0d7a756cd06044d45762ab3e1a20d74465485d0a056",
+    "bytes": 574352,
+    "sha256": "a6f06cd65d71567129163dc46423f5625c6739a6b671e2ea232941d9b1e5c791",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        1.527811974287033,
-        0.00012743473052978516
+        1.6314910799264908,
+        0
       ],
       "max": [
-        1.5483916997909546,
-        3.30570387840271,
-        1.5483300685882568
+        2.6845908164978027,
+        3.71287202835083,
+        3.0711164474487305
       ],
       "min": [
-        -1.5483916997909546,
-        -0.2500799298286438,
-        -1.5480751991271973
+        -2.6845908164978027,
+        -0.4498898684978485,
+        -3.0711164474487305
       ],
       "size": [
-        3.096783399581909,
-        3.5557838082313538,
-        3.096405267715454
+        5.3691816329956055,
+        4.162761896848679,
+        6.142232894897461
       ]
     },
     "hidden": [
@@ -1439,9 +1947,10 @@
     "legacyPart": false,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 7,
+      "hull": 10,
       "mechanical": 6,
-      "signal": 3
+      "signal": 3,
+      "warning": 3
     },
     "materialProfiles": [
       {
@@ -1457,32 +1966,32 @@
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 5,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 6,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 7,
+        "planIndex": 5,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 8,
+        "planIndex": 6,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 9,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -1507,25 +2016,55 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
         "role": "hull"
       },
       {
         "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 16,
-        "role": "signal"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "warning"
       }
     ],
-    "nodeCount": 18,
+    "nodeCount": 24,
     "primitives": [
       {
         "canopy": false,
@@ -1574,7 +2113,7 @@
           0,
           1
         ],
-        "name": "LOD0_BrushedMetal",
+        "name": "LOD0_Beacon_Amber",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -1601,7 +2140,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hull",
+        "name": "LOD0_BrushedMetal",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -1628,7 +2167,7 @@
           0,
           1
         ],
-        "name": "LOD0_Lights_Warm",
+        "name": "LOD0_deadmetal",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -1655,7 +2194,7 @@
           0,
           1
         ],
-        "name": "LOD0_Mechanical",
+        "name": "LOD0_deadmetal_deep",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -1682,11 +2221,11 @@
           0,
           1
         ],
-        "name": "LOD1_Armor",
+        "name": "LOD0_Mechanical",
         "planIndex": 8,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -1709,11 +2248,11 @@
           0,
           1
         ],
-        "name": "LOD1_BrushedMetal",
+        "name": "LOD0_Warning",
         "planIndex": 9,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -1736,7 +2275,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hull",
+        "name": "LOD1_Armor",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -1763,7 +2302,7 @@
           0,
           1
         ],
-        "name": "LOD1_Lights_Warm",
+        "name": "LOD1_Beacon_Amber",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -1790,7 +2329,7 @@
           0,
           1
         ],
-        "name": "LOD1_Mechanical",
+        "name": "LOD1_BrushedMetal",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -1817,8 +2356,143 @@
           0,
           1
         ],
-        "name": "LOD2_Armor",
+        "name": "LOD1_deadmetal",
         "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deadmetal_deep",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -1845,7 +2519,7 @@
           1
         ],
         "name": "LOD2_BrushedMetal",
-        "planIndex": 14,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -1871,8 +2545,8 @@
           0,
           1
         ],
-        "name": "LOD2_Hull",
-        "planIndex": 15,
+        "name": "LOD2_deadmetal",
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -1898,8 +2572,8 @@
           0,
           1
         ],
-        "name": "LOD2_Lights_Warm",
-        "planIndex": 16,
+        "name": "LOD2_deadmetal_deep",
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -1926,7 +2600,34 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 17,
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -1937,40 +2638,46 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ash_pin.glb"
   },
-  "runtimeHash": "44bc7a9328ba28affe0b6c230ac3c13068163dd1a5b0bc3b80bea04db2c40dc2",
+  "runtimeHash": "b152fba4c2665dc7de4bfc2b5b5f108f72f557268aec93c0a5350294d67b7847",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          1.5483916997909546,
-          3.30570387840271,
-          1.5483300685882568
+          2.6845908164978027,
+          3.71287202835083,
+          3.0711164474487305
         ],
         "min": [
-          -1.5483916997909546,
-          -0.2500799298286438,
-          -1.5480751991271973
+          -2.6845908164978027,
+          -0.4498898684978485,
+          -3.0711164474487305
         ]
       },
       "id": "sf.render.ash-pin.body",
       "nodeIds": [
         "sf.render.ash-pin.node.collision-hull",
         "sf.render.ash-pin.node.lod0-armor",
+        "sf.render.ash-pin.node.lod0-beacon-amber",
         "sf.render.ash-pin.node.lod0-brushedmetal",
-        "sf.render.ash-pin.node.lod0-hull",
-        "sf.render.ash-pin.node.lod0-lights-warm",
+        "sf.render.ash-pin.node.lod0-deadmetal",
+        "sf.render.ash-pin.node.lod0-deadmetal-deep",
         "sf.render.ash-pin.node.lod0-mechanical",
+        "sf.render.ash-pin.node.lod0-warning",
         "sf.render.ash-pin.node.lod1-armor",
+        "sf.render.ash-pin.node.lod1-beacon-amber",
         "sf.render.ash-pin.node.lod1-brushedmetal",
-        "sf.render.ash-pin.node.lod1-hull",
-        "sf.render.ash-pin.node.lod1-lights-warm",
+        "sf.render.ash-pin.node.lod1-deadmetal",
+        "sf.render.ash-pin.node.lod1-deadmetal-deep",
         "sf.render.ash-pin.node.lod1-mechanical",
+        "sf.render.ash-pin.node.lod1-warning",
         "sf.render.ash-pin.node.lod2-armor",
+        "sf.render.ash-pin.node.lod2-beacon-amber",
         "sf.render.ash-pin.node.lod2-brushedmetal",
-        "sf.render.ash-pin.node.lod2-hull",
-        "sf.render.ash-pin.node.lod2-lights-warm",
+        "sf.render.ash-pin.node.lod2-deadmetal",
+        "sf.render.ash-pin.node.lod2-deadmetal-deep",
         "sf.render.ash-pin.node.lod2-mechanical",
+        "sf.render.ash-pin.node.lod2-warning",
         "sf.render.ash-pin.node.sf-place-ash-pin-root"
       ]
     }

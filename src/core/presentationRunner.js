@@ -803,7 +803,13 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       // performance.memory is Chromium-only: every link in this chain is optional so the absent
       // case is a no-op — a throw here would escape into the rAF loop's catch and be logged
       // every frame (handoff §9 trap 8).
-      perf.tier1?.sampleHeap(globalThis.performance?.memory?.usedJSHeapSize);
+      // The getter is not free in Chromium (it builds a MemoryInfo from V8 heap statistics —
+      // ~50–90 µs per frame on the quiet VM profile), and sampleHeap discards the value while
+      // Tier-1 counters are off (the production default). Read it only when a capture is live.
+      const tier1 = perf.tier1;
+      if (tier1 && (typeof tier1.isEnabled !== 'function' || tier1.isEnabled())) {
+        tier1.sampleHeap(globalThis.performance?.memory?.usedJSHeapSize);
+      }
       const fixedDt = Number.isFinite(simulationRunner.fixedDt)
         ? simulationRunner.fixedDt
         : LOOP_FIXED_DT;

@@ -517,7 +517,7 @@ test('R5B materializes six inert object slots and two existing-budget collision 
     total: 24,
     byType: { asteroid: 6, fx: 10, ship: 2, station: 6 },
     collidable: 14,
-    colliders: 187,
+    colliders: 184,
     opticCells: 42,
   }, 'a sixth logical object must still add no entity, type, or collider cost to full Ceres');
 

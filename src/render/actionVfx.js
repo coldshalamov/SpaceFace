@@ -37,6 +37,28 @@ export const ACTION_VFX_RECIPES=Object.freeze({
   'cargo:caughtByNet':recipe('catch',0x85e7cf,.65,{surfaceCapture:true}),
   'mining:richCoreCompleted':recipe('harvest',0xffdf96,.85),
   'mining:richCoreFizzle':recipe('cool',0x8cacca,.6),
+  // EAR+FIGHT shared packet C: bombs:detonated already has pooled bomb-material VFX wired in
+  // vfx.js via _onBombDetonated. This actionVfx row is the second, lightweight surface answer on
+  // the shared batch: a 'shove' pressure cross-section in concussion orange, mirroring
+  // weapons:mineDetonated below. vfx.js auto-subscribes every ACTION_VFX_EVENTS key — and
+  // ACTION_VFX_EVENTS is Object.keys(THIS table) — so a row here is live the moment it lands.
+  // Never add a manual add('<event>', ...) for a name in this table: it would double-subscribe.
+  'bombs:detonated':recipe('shove',0xffb271,.7),
+  // hull:fractured is a brittle split, not a boom: a 'cool' deposition patch in pale fracture
+  // blue on the victim hull, mirroring mining:richCoreFizzle. Emitted by
+  // src/systems/hullFracture.js as { victimId, seamId, hullClass, closingSpeed, pieceIds,
+  // pieceCount }; _onActionVfx resolves victimId to the hull, so the receipt forwards as-is.
+  'hull:fractured':recipe('cool',0x9fc4d4,.8,{surfaceWork:true}),
+  // dock/undock/jump travel presentation is owned elsewhere and is NOT duplicated here:
+  // dock clunks ride the verb-cue route (sfx_dock_clunk / sfx_undock_release) plus the docking
+  // cradle holo; jump start/arrive ride the semantic journey cues (travel.jump.committed,
+  // travel.transition.continuity, travel.arrival). No actionVfx row is authored for them, and
+  // none is needed — the absence is deliberate, not a gap.
+  // player:respawn is a UI-layer beat (respawn chime + spawn placement), not a surface receipt.
+  // mining:ventReady is visual-only: the vent-ready lamp rides presentation.mining.vent_ready
+  // (worldCueRecipes 'mining.vent.ready', cool deposition); no actionVfx row is authored.
+  // brake has no bus event at all: the brake bite is a direct audio one-shot in
+  // audioSystem._updateBrakeHiss plus the existing thrust/RCS motion read. No row here either.
   'weapons:mineArmed':recipe('arm',0x80d4ff,.75),
   'weapons:mineDetonated':recipe('shove',0xa1dcff,.6),
   ...additional,

@@ -238,9 +238,13 @@ async function runLive({ simTime, ticks, withHauler, withShot }) {
   }
 }
 
-test('PQ-027.02 Veil and Vesta each carry one storm and one nebula belt', () => {
+test('PQ-027.02 Veil, Vesta, and Io Reach each carry one storm and one nebula belt', () => {
+  // 2026-09-28 INFERENCE unit: Io Reach joins the weather roster on the same one-storm/
+  // one-belt shape (the contested floor's war is visible weather).
   const roles = WEATHER_VOLUMES.map((row) => `${row.sectorId}:${row.role}:${row.hazardType}`).sort();
   assert.deepEqual(roles, [
+    'sector_io_reach:radiation_belt:nebula',
+    'sector_io_reach:storm:debris_current',
     'sector_veil_nebula:radiation_belt:nebula',
     'sector_veil_nebula:storm:debris_current',
     'sector_vesta_forge:radiation_belt:nebula',

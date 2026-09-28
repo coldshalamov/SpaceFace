@@ -31,6 +31,36 @@ import {
 const ROWS = Array.isArray(census.rows) ? census.rows : [];
 const BY_ID = new Map(ROWS.map((row) => [row.id, row]));
 
+// MODEL SUBSTANCE TRUTH TABLE (Rapier SG-02 live collider truth — READ-ONLY data).
+//
+// Verified live behavior (do not re-litigate; encode it):
+//   debris ghost:false, rock ghost:false, pickup ghost:true (sensor).
+// Sources: src/core/physicsAuthority.js defaultDynamic/defaultMaterial/ensurePhysicsBodySpec,
+//   src/core/sg02DynamicBodyOwner.js CONTACT_MATERIALS + contactMaterialFor (pickup ghost
+//   override), src/systems/hullFracture.js wreckPhysicsBody (capsule debris dynamic),
+//   src/data/wreckClasses.js WRECK_COLLIDER_PROPORTIONS (wreck capsule fit).
+// The custom-backend mask path (DEFAULT_MASK in src/core/entity.js) is compatibility-only and
+// NOT live: DEFAULT_MASK.wreck = 0 must stay 0; live wreck solidity is the Rapier debris body.
+//
+// Pure data: frozen, no rng, no side effects. `proportionsRef` names the capsule-fit source:
+//   'craft' = sg02 resolveCraftProportions (data.proportions ?? ship/enemy silhouette catalog
+//   ?? 1.35/0.42 default); 'drone-fallback' = { length: 1.0, halfWidth: 0.45, height: 0.30 };
+//   'WRECK_COLLIDER_PROPORTIONS' = src/data/wreckClasses.js capsule fit; null for ball bodies.
+// `note` records the live caveat where a stamped spawn differs from the bare default.
+export const MODEL_SUBSTANCE_TABLE = Object.freeze({
+  ship_light: Object.freeze({ shape: 'capsule', material: 'ship', dynamic: true, sensor: false, ghost: false, proportionsRef: 'craft', note: null }),
+  ship_medium: Object.freeze({ shape: 'capsule', material: 'ship', dynamic: true, sensor: false, ghost: false, proportionsRef: 'craft', note: null }),
+  ship_heavy: Object.freeze({ shape: 'capsule', material: 'ship', dynamic: true, sensor: false, ghost: false, proportionsRef: 'craft', note: null }),
+  drone: Object.freeze({ shape: 'capsule', material: 'ship', dynamic: true, sensor: false, ghost: false, proportionsRef: 'drone-fallback', note: null }),
+  rock: Object.freeze({ shape: 'ball', material: 'rock', dynamic: false, sensor: false, ghost: false, proportionsRef: null, note: null }),
+  chunk: Object.freeze({ shape: 'ball', material: 'rock', dynamic: true, sensor: false, ghost: false, proportionsRef: null, note: 'isChunk asteroids promote to dynamic (defaultDynamic); mining stamps radius only, so the shape stays ball' }),
+  wreck: Object.freeze({ shape: 'ball', material: 'debris', dynamic: true, sensor: false, ghost: false, proportionsRef: 'WRECK_COLLIDER_PROPORTIONS', note: 'bare default is the legacy ball collider (bit-identical); live spawn sites (hullFracture/aftermath/mining) stamp physicsBody:{shape:capsule}, which plus data.proportions is the capsule fit' }),
+  pickup: Object.freeze({ shape: 'ball', material: 'sensor', dynamic: true, sensor: true, ghost: true, proportionsRef: null, note: 'CONTACT_MATERIALS.sensor.ghost is false; sg02 contactMaterialFor forces ghost:true for pickups (JS-overlap collection)' }),
+  station: Object.freeze({ shape: 'ball', material: 'station', dynamic: false, sensor: false, ghost: false, proportionsRef: null, note: 'adopted measured skins become a fixed compound proxy (modelTruthProxyManifest); the body stays fixed' }),
+  payload: Object.freeze({ shape: 'ball', material: 'payload', dynamic: true, sensor: false, ghost: false, proportionsRef: null, note: 'massline_sensor variant is ghost:true (attachment authority)' }),
+  projectile: Object.freeze({ shape: 'ball', material: 'projectile', dynamic: true, sensor: false, ghost: true, proportionsRef: null, note: null }),
+});
+
 export function modelTruthCensus() {
   return census;
 }

@@ -1,14 +1,15 @@
 """Debris chunk — the torn hull-section landmark found at yards, caches and stashes.
 Forge rebuild of place_debris_chunk.glb (same file, same asset id, sockets copied from live).
 
-Idea: "a ship's flank, sheared off whole". One intact face — a patch of hull plating with its
-frame rings still inside — and every other edge ragged: bent stringers, a ruptured pressure
-tank, slag teeth, a drift of small plates still welded at the tear line. The mass tumbles
-slowly; nothing about it is lit or alive.
-Three values: oxidised hull grey skin, charcoal frame, black torn interior. Identity colour:
-a dead ochre cargo stencil band across the face. Lights: none — debris carries no lamps.
+Idea: "a ship's flank sheared off and turned into a shelf". One intact face — a curved hull
+shell whose plating still follows the hull arc — with bare ribs running along the torn edge
+like a ribcage. The find: two cargo pods and a container lashed hard against the shell by
+strap beams (someone cached salvage here), plus a small amber locator lamp blinking on the
+frame — it is meant to be found again.
+Three values: scorched dark shell, charcoal frame ribs, pale bare metal at the tear. Identity
+colour: a dead ochre stencil band on the shell. Lights: one locator lamp only.
 Live bounds (Blender): x [0.2, 24.1], y [-5.0, 5.5], z [-4.0, 3.7] — pivot at the stem end.
-The live SOCKET_Tether_Massline sits near (2.0, 0.0, -1.0) Blender — put a mooring eye there.
+The live SOCKET_Tether_Massline sits near (2.0, 0.0, -1.0) Blender — the lash point lands there.
 """
 import math
 import os
@@ -19,14 +20,18 @@ import forge as F  # noqa: E402
 
 SHIP_ID = 'place_debris_chunk'
 COLORS = {
-    'deadmetal': '#100f0d',      # oxidised hull grey, near-black under the wash
+    'deadmetal': '#141110',      # scorched shell
     'deadmetal.deep': '#0e1013', # charcoal inner structure
-    'stripe': '#2a2416',      # dead ochre stencil band
+    'deadmetal.faded': '#4a4438',
+    'stripe': '#6b5416',         # dead ochre stencil band
     'gunmetal': '#23282e',
     'dark': '#0d1013',
-    'bare': '#38322a',        # burnt torn metal
-    'ceramic': '#867e6e',     # insulation at the tear
-    'hazard': '#7a6420',
+    'bare': '#4a443a',           # torn bare metal — the light value
+    'ceramic': '#6e6656',
+    'hazard': '#5a4a14',
+    'paint2': '#3a3f45',         # lashed cargo pod coats
+    'paint.patch': '#57504a',
+    'glow_amber': '#ffb345',     # the locator lamp
 }
 
 
@@ -34,70 +39,81 @@ def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
 
-    # --- the intact face: a hull-plate patch, bulged like the ship's flank -------
-    # face plate in the YZ plane at the -X end, slightly domed by stacked slabs
-    F.plate_v(s, 'Face', [(-5.0, -3.9), (4.6, -3.4), (5.4, 0.4), (4.2, 3.9), (-4.4, 3.6),
-                          (-5.4, 0.2)],
-              0.3, 0.6, plane='yz', material='deadmetal', chamfer=0.5, uv_scale=2.0)
-    F.plate_v(s, 'FaceInset', [(-3.2, -2.2), (3.0, -2.0), (3.8, 0.3), (2.8, 2.4), (-3.0, 2.4),
-                               (-4.0, 0.2)],
-              -0.35, 0.6, plane='yz', material='deadmetal.deep', chamfer=0.3)
-    # dead ochre stencil band across the face
-    F.box(s, 'Stencil', (-0.05, 0.4, 0.4), (0.24, 7.6, 1.1), material='stripe', bevel=0.02,
-          rot=(0, 0, math.radians(7)))
+    # === the curved shell: a hull arc, plating still following the curve ==========
+    # five faceted skin panels fanned around the X axis on a 6.5 m radius — a sheared
+    # cylinder band, the plating seams read as the facets
+    shell_r = 6.5
+    cz = -3.0                       # arc centre sunk so the face bows up
+    span = math.radians(55)         # half-angle of the arc
+    for i in range(5):
+        t = -span + 2 * span * (i + 0.5) / 5.0
+        y = shell_r * math.sin(t)
+        z = cz + shell_r * math.cos(t)
+        F.box(s, f'Shell{i}', (4.6, y, z), (8.8, 2.6, 0.35),
+              material='deadmetal' if i != 2 else 'deadmetal.faded', bevel=0.05,
+              rot=(t, 0, 0), uv_scale=2.0)
+    # dead ochre stencil band across the shell face
+    F.box(s, 'Stencil', (4.6, 0.0, cz + shell_r + 0.15), (8.4, 1.1, 0.14), material='stripe',
+          bevel=0.02, rot=(0, 0, 0))
 
-    # --- ribs and stringers running aft from the face ----------------------------
-    # frame hoops at the tear stations
-    for i, x in enumerate((4.6, 9.4, 14.2)):
-        r = 4.5 - i * 0.5
-        F.cylinder(s, f'HoopT{i}', (x, 0.3, -r * 0.62), (x, 0.3, r * 0.95), 0.22,
-                   material='gunmetal', segments=8, bevel=0.0)
-        F.cylinder(s, f'HoopL{i}', (x, -r * 0.62, 0.2), (x, r * 0.9, 0.2), 0.22,
-                   material='gunmetal', segments=8, bevel=0.0)
-    # longitudinal stringers, bent ragged at the tear
+    # === the ribcage along the torn edge ========================================
+    # frame hoops at the tear stations — bare arcs poking past the shell edge
+    for i, x in enumerate((5.0, 9.4, 13.8, 18.0)):
+        r = 4.6 - i * 0.35
+        F.ring(s, f'Rib{i}', (x, 0.3, -0.6), r, 0.26, axis=(1, 0, 0), material='bare',
+               segments=12, sides=5)
+    # longitudinal stringers bent ragged where the tear ran
     F.beams(s, 'StringerA', [((0.8, 3.9, 1.4), (8.5, 3.4, 1.0)), ((8.5, 3.4, 1.0), (15.6, 4.1, 0.2)),
-                             ((15.6, 4.1, 0.2), (20.5, 3.0, 0.9))], 0.42, material='gunmetal')
+                             ((15.6, 4.1, 0.2), (21.0, 3.0, 0.9))], 0.42, material='bare')
     F.beams(s, 'StringerB', [((0.8, -3.9, 1.0), (9.5, -3.4, 0.6)), ((9.5, -3.4, 0.6), (17.0, -2.6, -0.8))],
-            0.42, material='gunmetal')
+            0.42, material='bare')
     F.beams(s, 'StringerC', [((0.9, 0.4, -3.2), (10.0, 0.2, -2.8)), ((10.0, 0.2, -2.8), (18.6, 0.9, -1.6))],
             0.38, material='gunmetal')
     F.beams(s, 'StringerD', [((1.0, -3.6, -2.2), (12.0, -2.9, -1.8))], 0.36, material='gunmetal')
 
-    # --- skin patches still on the frame ----------------------------------------
-    F.box(s, 'SkinTop', (5.4, 0.6, 2.2), (7.2, 5.8, 0.34), material='deadmetal', bevel=0.04,
-          rot=(math.radians(6), math.radians(-16), math.radians(-4)))
-    F.box(s, 'SkinStbd', (8.0, -3.9, -0.4), (7.4, 0.32, 5.2), material='deadmetal', bevel=0.04,
-          rot=(0, math.radians(-7), math.radians(5)))
-    F.box(s, 'SkinMid', (12.2, 1.2, 1.4), (5.4, 4.6, 0.3), material='deadmetal', bevel=0.04,
-          rot=(math.radians(14), math.radians(26), math.radians(-10)))
-    F.box(s, 'SkinLoose', (17.9, 2.2, 1.6), (3.6, 2.8, 0.24), material='bare', bevel=0.03,
-          rot=(math.radians(20), math.radians(28), math.radians(-12)))
+    # === the find: salvage lashed hard against the shell ========================
+    # cargo pod 1 — a small canister strapped to the shell's inner face
+    F.cylinder(s, 'PodA', (5.6, -1.8, -1.4), (9.4, -1.8, -1.4), 1.15, material='paint2',
+               segments=12, bevel=0.06)
+    F.cylinder(s, 'PodACap', (9.4, -1.8, -1.4), (9.9, -1.8, -1.4), 0.9, material='paint.patch',
+               segments=10, bevel=0.03)
+    # strap beams over the pod into the frame — it is lashed, not parked
+    for e in (-1, 1):
+        F.beams(s, f'PodAStrap{e:+d}', [((5.9 + e * 1.6, -2.9, -1.4), (5.9 + e * 1.6, -0.7, -1.4)),
+                                        ((5.9 + e * 1.6, -0.7, -1.4), (5.9 + e * 1.6, -0.7, -3.0))],
+                0.18, material='hazard')
+    # container box wedged between two ribs
+    F.box(s, 'Crate', (12.6, 1.4, 0.4), (3.4, 2.6, 2.2), material='paint.patch', bevel=0.08,
+          rot=(0, math.radians(-8), math.radians(6)))
+    F.band(s, 'Crate', (12.6, 1.4, 0.4), (1, 0, 0), 0.5, 'hazard')
+    F.beams(s, 'CrateStrap', [((11.4, 2.8, 0.4), (11.4, 0.0, 0.4)),
+                              ((13.8, 2.8, 0.4), (13.8, 0.0, 0.4))], 0.16, material='hazard')
+    # a second pod half-buried at the tear end
+    F.cylinder(s, 'PodB', (16.6, -1.0, -2.0), (20.2, -0.6, -1.6), 1.0, material='paint2',
+               segments=10, bevel=0.05)
+    F.ring(s, 'PodBStrap', (18.4, -0.8, -1.8), 1.1, 0.18, axis=(1, 0, 0), material='hazard',
+           segments=10, sides=5)
 
-    # --- embedded ruptured pressure tank, half inside the mass ------------------
-    F.cylinder(s, 'Tank', (13.5, -0.6, -1.6), (20.8, -0.2, -0.9), 2.0, material='deadmetal.deep',
-               segments=12, bevel=0.1)
-    F.ring(s, 'TankBand', (15.4, -0.55, -1.5), 2.06, 0.3, axis=(1, 0, 0), material='hazard',
-           segments=12, sides=6)
-    F.sphere(s, 'TankCap', (21.2, -0.15, -0.85), 1.9, material='bare', segments=12)
-    # torn plumbing off the tank
+    # torn plumbing off the mass
     F.cylinder(s, 'PipeA', (14.2, -0.5, -2.6), (15.8, 1.4, -3.4), 0.22, material='gunmetal',
                segments=8)
     F.cylinder(s, 'PipeB', (14.4, -0.6, -2.5), (16.4, -2.2, -2.9), 0.18, material='gunmetal',
                segments=8)
 
-    # --- slag teeth and shrapnel welded at the tear line -------------------------
+    # slag teeth along the tear line
     s.detail = 1
     teeth = []
     for i in range(9):
         a = -2.4 + i * 0.62
         teeth.append(((21.5 + 0.6 * (i % 3), a, -2.6 + 0.5 * (i % 4)), (1.6, 0.5, 0.3), 0.0))
-    for i in range(7):
-        a = -3.0 + i * 0.9
-        teeth.append(((18.5 + 0.4 * (i % 2), a, 2.9 + 0.2 * i), (1.1, 0.42, 0.24), 0.0))
     F.boxes(s, 'SlagTeeth', teeth, 'bare')
     s.detail = 0
 
-    # --- the mooring eye where the live tether socket sits -----------------------
+    # the locator lamp on a rib: one amber beacon, meant to be found
+    F.light(s, 'LocatorLamp', (9.4, 0.3, 4.2), 'glow_amber', size=0.3)
+    F.box(s, 'LocatorBase', (9.4, 0.3, 4.0), (0.5, 0.5, 0.3), material='gunmetal', bevel=0.02)
+
+    # mooring eye where the live tether socket sits — the lash point
     F.ring(s, 'TetherEye', (2.0, 0.0, 1.0), 0.55, 0.16, axis=(1, 0, 0), material='hazard',
            segments=16, sides=8)
 

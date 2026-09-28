@@ -191,7 +191,7 @@ export const PROPULSION_PROFILES = Object.freeze({
     yawAccel: 18,
     yawBrake: 24,
     maxYawRate: 3.6,
-    solverSpeedLimit: 275,
+    solverSpeedLimit: 550,
     travelCeiling: 252,
     resources: {
       idleEnergyPerS: 0.35,
@@ -213,7 +213,7 @@ export const PROPULSION_PROFILES = Object.freeze({
     yawAccel: 12,
     yawBrake: 18,
     maxYawRate: 2.8,
-    solverSpeedLimit: 240,
+    solverSpeedLimit: 480,
     travelCeiling: 225,
     resources: {
       idleEnergyPerS: 0.55,

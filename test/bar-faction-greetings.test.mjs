@@ -28,7 +28,8 @@ const APPROACH_FACTIONS = Object.keys(BAR_APPROACH_BARKS);
 const WORD_LIMIT = 12;
 
 function wordCount(line) {
-  return String(line).trim().split(/\s+/).filter(Boolean).length;
+  // Punctuation-only tokens (a standalone em-dash) are not words.
+  return String(line).trim().split(/\s+/).filter((tok) => /[\p{L}\p{N}]/u.test(tok)).length;
 }
 
 function greetingPool(factionId, role) {
@@ -37,8 +38,8 @@ function greetingPool(factionId, role) {
 }
 
 test('every bar faction has non-empty greeting and approach pools', () => {
-  assert.equal(GREETING_FACTIONS.length, 8, 'greeting table covers the eight reachable houses');
-  assert.equal(APPROACH_FACTIONS.length, 8, 'approach table covers the eight reachable houses');
+  assert.equal(GREETING_FACTIONS.length, 13, 'greeting table covers every voiced house');
+  assert.equal(APPROACH_FACTIONS.length, 13, 'approach table covers every voiced house');
   for (const id of GREETING_FACTIONS) {
     const cell = BAR_GREETING_BARKS[id];
     assert.ok(Array.isArray(cell.any) && cell.any.length >= 3, `${id} greeting.any non-empty`);

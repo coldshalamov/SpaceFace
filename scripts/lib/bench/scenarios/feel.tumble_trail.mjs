@@ -30,7 +30,10 @@ export const HISTORICAL_BASELINE = Object.freeze({
 export const SCENARIO_SYSTEMS = Object.freeze(['actions', 'flightV3', tumbleStates, 'physics']);
 
 const SETTLE_TICKS = 30;
-const TOTAL_TICKS = 270; // 4.5 seconds: 0.5s pre-throw, tumble duration, plus recovery observation
+// 11 seconds: 0.5s settle + ~3s tumble + 0.9s stabilization + the return-to-flight realign —
+// the thrown hull carries its drift on a mismatched nose line and needs ~5s of thrust before
+// the retained wake is measurably straight again (terminal residual asymptotes under 0.05 WU).
+const TOTAL_TICKS = 660;
 
 export const scenario = {
   id: 'feel.tumble_trail',

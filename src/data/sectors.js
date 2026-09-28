@@ -110,6 +110,16 @@ const CORE_SECTORS = [
           body: 'A pressurized ore-sample locker anchored to the starter seam bedrock. Heavy Concord inspection seals from the initial Helios survey remain intact over an untouched specimen compartment.',
         },
       },
+      {
+        id: 'poi_helios_bay7',
+        type: 'cache',
+        scannerSignalKind: 'cache',
+        name: 'Helios Bay 7',
+        discoveryPlate: {
+          title: 'Bay 7 — Shelved Grid',
+          body: 'A maintenance pad the station still files tickets for. The odor is consistent with transit. No action.',
+        },
+      },
       { id: 'poi_helios_ash_pin', type: 'derelict', name: 'Ash Pin — SPAN-HOLD' },
       { id: 'poi_helios_whistle', type: 'derelict', name: 'Outer Yard Whistle' },
       {

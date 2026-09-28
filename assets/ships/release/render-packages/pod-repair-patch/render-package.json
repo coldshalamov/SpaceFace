@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "15be6f92a086066ec9f663f5dec324608abc17d86d49140d0780d502d9d0f87e",
+  "contentHash": "b3d2c937a532342999f2f6b9e182cc654067956e47eb353491acc4fbe4304233",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -343,8 +343,8 @@
       "uri": "pod_repair_patch.glb"
     },
     "sourceManifest": {
-      "bytes": 203788,
-      "sha256": "8361e46abf91eba0b1e694e7dae87b812124bb990cf1bc562a95382c7c8d23b3",
+      "bytes": 205647,
+      "sha256": "0252252b107cfe4a6c175b0cfc3fed5afc78e3aa6ecfb90d41b0836c9a6276e2",
       "uri": "pilots.json"
     }
   },
@@ -486,7 +486,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_repair_patch.glb"
   },
-  "runtimeHash": "fe7d8d81c2d9354be2deec09b5c22828bf12793b4d6ff057f4dcb993115d34be",
+  "runtimeHash": "28dda78c118ad48f8b4f80bbf2982794c400cade53a5892f4d0decf665491ae2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

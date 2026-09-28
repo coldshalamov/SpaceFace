@@ -43,6 +43,21 @@ import { weapons } from '../../../src/systems/weapons.js';
 export const REAL_PATH_DT = SIM_DT;
 
 /**
+ * A real sector's playable envelope (worldRadius 3500–5500 WU) does not hold a post-retune
+ * long-straight measurement: a 2x cruise exit at ~380 WU/s travels ~2900 WU during the burn-in
+ * and ~3800 WU inside the bar's 10 s window, and the boot default lab disk (radius 2600,
+ * hard 3000) turns the ship back with `sector-fence` impulses mid-measurement — which reads
+ * exactly like "earned speed was spent" (fun bench, 2026-09-28). Scenarios whose contract is
+ * open-space flight pass `bounds: OPEN_SPACE_BOUNDS` — the fence stays real and fail-closed,
+ * just at a radius the tape can never reach.
+ */
+export const OPEN_SPACE_BOUNDS = Object.freeze({
+  center: { x: 0, z: 0 },
+  radius: 12000,
+  hardRadius: 12500,
+});
+
+/**
  * Node-safe systems addressable by name. `tacticalAI` is a factory (one instance per runtime), so
  * it is stored as a thunk and constructed at boot.
  */
@@ -137,10 +152,12 @@ export function realPathProof(runtime) {
  *   ship's operational mass, so a hold filled after the spawn would be measured on the wrong fit).
  *   Omitted, boot is byte-for-byte what it always was.
  * @param {string} [options.profileId] Runtime profile (default `'production'`).
+ * @param {object} [options.bounds] Playable envelope override (`{ center, radius, hardRadius }`),
+ *   written to `state.bounds` before spawn — see OPEN_SPACE_BOUNDS for the open-space contract.
  * @returns {Promise<object>} `{ runtime, state, bus, dt, player, hulls, spawnShip, spawnObstacle,
  *   step, proof, dispose }`
  */
-export async function bootRealPath({ seed, systems, hulls = [], prepareState = null, profileId = 'production' } = {}) {
+export async function bootRealPath({ seed, systems, hulls = [], prepareState = null, profileId = 'production', bounds = null } = {}) {
   if (!Number.isFinite(seed)) throw new Error('bootRealPath: `seed` must be a finite number (fixed seeds or it did not happen)');
   const resolved = resolveSystems(systems);
   if (!resolved.some((s) => s && s.name === 'physics')) resolved.push(physics);
@@ -149,6 +166,10 @@ export async function bootRealPath({ seed, systems, hulls = [], prepareState = n
   const state = runtime.state;
   if (!state) throw new Error('bootRealPath: runtime has no simulation state');
   state.mode = 'flight';
+  // The lab boots on a small placeholder disk; open-space flight measurements declare the
+  // envelope they actually need (see OPEN_SPACE_BOUNDS) so the real sector fence cannot reach
+  // into the tape and corrupt it.
+  if (bounds) state.bounds = bounds;
   state.settings.gameplay.physicsBackend = 'rapier-dynamic';
   state.settings.gameplay.flightBackend = 'v3';
   state.settings.gameplay.aiBackend = 'sg06-tactical';

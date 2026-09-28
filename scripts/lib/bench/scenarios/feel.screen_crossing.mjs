@@ -8,7 +8,7 @@ import {
 import { resolveExceptionalSpeed } from '../../../../src/render/velocityLanguage.js';
 import { queuePhysicsImpulse } from '../../../../src/core/physicsAuthority.js';
 import { resolveGovernedCombatSpeed } from '../../../../src/core/flight/propulsionCatalog.js';
-import { bootRealPath, writeRealPathInput } from '../realPath.mjs';
+import { bootRealPath, OPEN_SPACE_BOUNDS, writeRealPathInput } from '../realPath.mjs';
 
 const SETTLE_TICKS = 18;
 const CRUISE_HOLD_TICKS = 900;
@@ -190,6 +190,10 @@ export function bootPlayer(seed, hullId = HULL_ID) {
     systems: ['actions', 'flightV3', 'physics'],
     hulls: [{ hullId, pos: { x: 0, z: 0 }, rot: 0, isPlayer: true, factionId: 'faction_free' }],
     profileId: 'production',
+    // These tapes measure open-space flight (2x/3x cruise exits, 10 s holds): post-retune the
+    // boot-default 2600 WU lab disk cannot contain the run and the sector fence would consume
+    // the impulse as containment. OPEN_SPACE_BOUNDS keeps the real fence beyond reach.
+    bounds: OPEN_SPACE_BOUNDS,
   });
 }
 

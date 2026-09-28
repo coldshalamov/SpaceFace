@@ -459,6 +459,13 @@ const CERES_CAUSAL_CHAIN_CYCLE_GAP_S = 45;
 const CERES_MINER_HAULER_HANDOFF_SCHEMA = 'spaceface.ceresMinerHaulerHandoff.v1';
 const CERES_MINER_HAULER_SAVE_SCHEMA = 'spaceface.traffic.ceresMinerHaulerSave.v1';
 const CERES_MINER_HAULER_HANDOFF_RANGE_WU = 72;
+// The rendezvous is an arrive problem, not an intercept: the miner is parked, so the hauler's
+// job is to lose speed, not gain it. A flat pursuit burn lets a fast hull carry more speed than
+// its turn authority can wrap inside the transfer window — it locks into a stable orbit one
+// turn-radius wide (observed ~336 wu circling at ~140 wu/s) and never touches the 72 wu ring.
+// Desired closing speed scales with the distance left to cover; carried speed above it brakes.
+const CERES_HANDOFF_ARRIVE_GAIN = 0.4;
+const CERES_HANDOFF_ARRIVE_HYSTERESIS_WU_S = 6;
 const CERES_REFINERY_HAULER_CAPACITY_U = 28;
 const CERES_MINER_HAULER_HANDOFF_STATES = new Set([
   'requested', 'rendezvous', 'in_transit', 'delivered', 'interrupted',
@@ -1678,6 +1685,7 @@ export const traffic = {
       if (!record || record.kind !== RECORD_KIND.CONVOY || !record.trafficRole
         || home !== CERES_ACTIVITY_SECTOR_ID || authoredRecordIds.has(recordId)
         || record.itinerary?.kind === 'claim_depot'
+        || record.itinerary?.kind === 'claim_convoy'
         || terminalWorldRecord(record)) continue;
       if (worldOwner && typeof worldOwner.markWorldRecordDestroyed === 'function') {
         worldOwner.markWorldRecordDestroyed(recordId, { outcome: 'destroyed' });
@@ -4641,7 +4649,10 @@ export const traffic = {
         // arrived: emit owner-safe freight arrival (manifest → stock pressure), wait, re-route
         rec.nextTradeT -= dt;
         if (rec.nextTradeT <= 0 && role.trades) {
-          this._emitArrival(e, rec, target);
+          // A claim convoy whose job was released (not completed) inside dock range still carries
+          // its manifest for the beat before re-assignment — that freight settles through
+          // claim:convoyDocked, never through an ambient trade (D96).
+          if (!(e.data && e.data.claimConvoy)) this._emitArrival(e, rec, target);
           rec.nextTradeT = TRADE_INTERVAL_S + this._rng() * 6;
         }
         rec.waitT = 2.5 + this._rng() * 2;
@@ -8008,14 +8019,25 @@ export const traffic = {
     const distance = Math.hypot(dx, dz);
     const aim = Number.isFinite(distance) && distance > 0.0001 ? Math.atan2(dz, dx) : hauler.entity.rot || 0;
     setIntent(miner.entity, 0, 0, false, false, null, miner.entity.rot || 0);
+    miner.entity.data.intent.brake = true;
     if (!Number.isFinite(distance) || distance > CERES_MINER_HAULER_HANDOFF_RANGE_WU) {
       handoff.state = 'rendezvous';
-      setIntent(hauler.entity, 0, 1, false, false, null, aim);
+      const haulerSpeed = Math.hypot(
+        Number(hauler.entity.vel && hauler.entity.vel.x) || 0,
+        Number(hauler.entity.vel && hauler.entity.vel.z) || 0,
+      );
+      const desiredSpeed = Math.max(0, (distance - CERES_MINER_HAULER_HANDOFF_RANGE_WU * 0.8)
+        * CERES_HANDOFF_ARRIVE_GAIN);
+      const braking = haulerSpeed > desiredSpeed + CERES_HANDOFF_ARRIVE_HYSTERESIS_WU_S;
+      setIntent(hauler.entity, 0, braking ? 0 : 1, false, false, null, aim);
+      hauler.entity.data.intent.brake = braking;
       this._stampCeresHandoffStatus(miner.entity, handoff, 'HOLDING FOR HAULER', hauler.entity);
-      this._stampCeresHandoffStatus(hauler.entity, handoff, 'RENDEZVOUS INBOUND', miner.entity);
+      this._stampCeresHandoffStatus(hauler.entity, handoff,
+        braking ? 'RENDEZVOUS BRAKING' : 'RENDEZVOUS INBOUND', miner.entity);
       return;
     }
     setIntent(hauler.entity, 0, 0, false, false, null, aim);
+    hauler.entity.data.intent.brake = true;
     this._stampCeresHandoffStatus(miner.entity, handoff,
       this._ceresHandoffTransferWindow() ? 'TRANSFER WINDOW OPEN' : 'TRANSFER WINDOW PENDING', hauler.entity);
     this._stampCeresHandoffStatus(hauler.entity, handoff,

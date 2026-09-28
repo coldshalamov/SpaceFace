@@ -1,0 +1,168 @@
+FOOTPRINT (F3) — CRITIC ROUND 2
+Commits: 8364e003b, 8f7f7d7f0, 9189dcfdd, re-scored against footprint-r1-critic.txt.
+Stills: fp-r24-{wanted,marked,clean,trace}-{1280,1920,2560}, fp-r24-scrub-{1920,1280}, fp-r24-cool-{a,b,c}-1920,
+  fp-r24-rm-wanted-1920, fp-r24-rm-trace-1280, fp-r24-empty-1920, fp-r24-loading-1280.
+Crops: scratchpad/crops/fp2-*.png.
+How I measured: sharp .raw() radial and row profiles from the dial centre (527,595 at 1920), with
+  WCAG ratios on composited pixels. L = 8-bit luma. Glass is L7-8.
+
+=====================================================================================================
+1. VERDICT: PASSED. Overall 8.2 (previous 7.8).
+   Owner (a): PASS. Owner (b): PASS.
+   - Every round-1 blocker is fixed, and I measured each fix on the pixels.
+   - The time scrub turns a good signature into Footprint's own.
+   - No blockers remain. The fixes below are polish.
+
+=====================================================================================================
+2. THE SIX AXES (round 1 in brackets)
+
+   Composition 8.3 [8.1]
+     - The dead annulus now holds two things: seated crest pads, and the escape-clock hub ring.
+     - The column is one instrument: the beam with its stamps, then the verbs, then one short
+       record band. At 1280 it fits with nothing under the fade (trace-1280 and marked-1280 end at
+       y≈660).
+     - The empty state is still half a screen of nothing on the right. Only 3 lines sit at
+       y 170-310 (empty-1920).
+
+   Hierarchy 8.2 [7.7]
+     - Open sectors are down from L148 to L108 (radials at 225° and 300°, r 309-334).
+     - The lit heat bezel (L163 near its start, up to L206-252 at the head) now leads its dial.
+       The traced sector (L235) and the numeral still lead overall, which is right.
+     - The chain reads once, not twice.
+     - The deltas (−18, −60 at x≈1590-1620) float ~230 px from their rows (see fix 3).
+
+   Legibility 8.3 [8.0]
+     - The words are player words now: "Concord hunts you on sight in Helios Prime", "Concord
+       sided with Meridian", "MERIDIAN · KILL" / "MERIDIAN · CONTRABAND", "T0 · NO SEARCH".
+     - Measured:
+       · beam sub-lines 8.2:1;
+       · stage caps 10.2:1;
+       · long-record subs 8.1:1;
+       · hint engraving 8.3:1;
+       · 1280 beam sub 16.5:1.
+     - The weakest run I found is the disabled "TAKE AMENDS CONTRACT" at 5.36:1.
+     - Minor: the trace act line runs long — "Yara No-Cut remembers you · fled once · returns
+       bigger" (trace-1920 at 1071-1557, y 309).
+
+   ORRERY fidelity 8.2 [7.6]
+     - No underlines. footprintLayouts.js keeps text-decoration:none, with an underline only under
+       forced-colors, which is an accessibility fallback. The names read as bold INK in the stills.
+     - WANTED is bone in marked, clean and empty (red pixels: 0), and red only while wanted.
+     - Amber is the Hand and one Lamp Key, nothing else.
+     - Ice is used for motion: the cooling, the clock, the scrub preview, the pulses.
+     - Minor: while Footprint pauses the sim, the escape clock and the cooled arc sit still in ice.
+       That is acceptable because they depict a clock.
+
+   Craft/detail 8.1 [7.5]
+     - The cooled arc is continuous; the proof is in section 3.
+     - The crests sit on lit pads with a rim.
+     - The hub ring is cut at each level drop.
+     - The grip mark is on the Hand.
+     - Left:
+       · the spillover loop on the beam (1034-1050, 370-485) is still a hand-drawn C bracket;
+       · the long record uses hollow-circle list bullets and dash-prefixed headings (fix 2).
+
+   Interaction clarity 8.4 [7.9]
+     - "DRAG OR ‹ › TO TRACE" is engraved under the hub until the first trace.
+     - The Lamp Key follows the traced source.
+     - The scrub reads plainly. In scrub-1920:
+       · the numeral shows 40;
+       · the hub reads "IN 8 S → T2 · BOUNTY";
+       · the bezel back to T2 turns ice;
+       · the rule reads "STAY OUT 8 S → T2 · 4 SOURCES OUTLIVE THE HEAT".
+     - Bug: the hint also shows in the empty state, where there is nothing to trace (fix 1).
+
+=====================================================================================================
+3. ROUND-1 LIST, ITEM BY ITEM
+   1. Cooled part continuous: DONE. Sampled along the bezel at r 368:
+      - cool-a: needle at 340°, ice 342°-348°;
+      - cool-b: needle at 331°, ice 333°-348°;
+      - cool-c: needle at 326°, ice 327°-329° (round 1 showed none).
+      No gap in any of the three.
+   2. Chain spine body: DONE. Band x 1049-1058 at L73-74 = 2.26:1, with a core at L186 (row y 355).
+   3. Hub rim body: DONE, at the bar.
+      - Unlit clock band: 11 px (r 190-200) at L65 = 1.97:1 (radials at 225° and 300°).
+      - Lit clock: L209.
+      - Round 1 was L29-40.
+   4. Underlines: DONE. None in any still. Hover and focus now use a vertical segment.
+   5. Record folded into the beam: DONE.
+      - Each bead carries its stage, cycle, "7 min ago" and its delta.
+      - The drawer, tabs and dashed rows are gone.
+      - 1280 fits without scrolling.
+   6. Copy: DONE. No board, no aggro, no ticks. The two Meridian chains are named apart. The
+      marked hub reads "T0 · NO SEARCH". A settled chain shows one line plus SHOW ON CHART.
+   7. Heat leads its dial: DONE. Open sectors L148 → L108.
+   8. Token pads: DONE, near the bar. Discs are L56-73 inside a rim at L159-211 (row y 461 across
+      the Meridian pad), so about 1.9-2.2:1.
+   9. Affordance: DONE (grip mark and hint). But the hint shows in the empty state (fix 1).
+  10. Focus and red: DONE. WANTED is bone below the threshold; the verbs light a vertical segment.
+
+   AMBER COUNT PER STILL (the Hand counted as one thing)
+   - wanted 2 (Hand with grip + PAY BOUNTY);
+   - trace 2 (Hand + BRIBE);
+   - marked 2;
+   - scrub 2;
+   - clean 1 (Hand only);
+   - empty 0; loading 0;
+   - rm-trace 2.
+   Red: the WANTED cut and its word, in wanted, trace and scrub only.
+
+=====================================================================================================
+4. RANKED FIXES (none blocking)
+   1. Hide the hint when there is nothing to trace.
+      - Where: empty-1920 (430-625, 780-815). "DRAG OR ‹ › TO TRACE" shows with no sources.
+      - Fix: hide the hint when sources.length === 0.
+   2. The long record reads as a small web footer.
+      - Where: `.fp-read` long record, wanted-1920 (1021-1680, 855-960). Hollow-circle bullets
+        ("○ Wrong Side of Cover") and dash-prefixed headings ("– LINE CONTRACTS").
+      - Fix:
+        · draw the three line contracts as three 10 px proof pips on one short scale (lit = proved);
+        · drop the leading dashes from the three headings.
+   3. Deltas far from their rows.
+      - Where: −18 / −60 at x≈1590-1620, about 230 px from the text they belong to.
+      - Fix: set each delta 24 px after its row's name, as a thin numeral, or pin the column at
+        x≈1400.
+   4. Hub band headroom.
+      - Where: `.fp-hubrim-band` unlit, at 1.97:1.
+      - Fix: raise alpha about .02, to L≥70 (≈2.2:1), so a lighter world under the glass cannot
+        drop it below the bar.
+   5. Spillover bracket.
+      - Where: the C-shaped loop at 1034-1050, 370-485.
+      - Fix: draw it as a Beam — a 2 px arc offset 14 px left of the spine, dashed, with its own
+        bead, the same weight as the link.
+   6. Long act line.
+      - Where: trace-1920, y 309.
+      - Fix: move "Yara No-Cut remembers you · fled once · returns bigger" to its own line under
+        the act, or keep only "Yara No-Cut returns bigger".
+   7. Empty-state column.
+      - Where: empty-1920, the right half below y 310.
+      - Fix: fill it with the long record (line contracts, titles, ship ledger), which a clean
+        player still has. Today the column is 3 lines.
+
+=====================================================================================================
+5. MEMORABLE: it now attempts the thing — scrub time and watch the heat, the clock and the sources
+   answer. What is left is the payoff on commit: when a verb lands, the settled sector should
+   collapse into a cold sliver with a spring, and the Hand should swing to the next open source.
+
+=====================================================================================================
+7. OWNER CRITERIA
+
+(a) No super-thin wireframe or generic elements: PASS.
+   - Heat bezel unlit: 25 px at L74-75 = 2.26:1.
+   - Heat bezel lit: L163-252.
+   - Open sectors: 27 px at L108 (≈3.9:1). Traced sector: L235.
+   - Settled and clean ring: L76 (2.3:1).
+   - Chain spine: 10 px at L73-74 (2.26:1).
+   - Hub escape-clock band: 11 px at L65 (1.97:1, at the bar; fix 4 adds headroom). Lit clock: L209.
+   - Crest pads: L56-73 with a lit rim.
+   - The link stays a 2 px relationship beam, which is acceptable.
+   - Generic parts: the underlines, tabs and bulleted record rows are gone. Only the long record's
+     hollow bullets remain (fix 2). They are not boxes and they do not fail (a).
+
+(b) Signature interaction: PASS. Memorability 8.5/10 (round 1: 7).
+   - "Trace a source": drag, arrows or pad; the Hand swings; the chain unfolds; each verb previews
+     on the dial what it would settle; the Lamp Key moves to the answering verb.
+   - It now joins "scrub time": drag the heat needle and the numeral, hub clock, bezel ice and rim
+     text project the heat ahead and name the sources that outlive it. It springs back on release
+     and writes nothing.
+   - No other screen lets the player play with time on its instrument. It is Footprint's own.

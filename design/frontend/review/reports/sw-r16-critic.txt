@@ -1,0 +1,130 @@
+SHIPWORKS — round 16 (b715d1675) — art-director score against ORRERY.md and the owner criteria (brief §7)
+
+Stills: shots/sw16-b-{fleet,weapon,sale,left,right,drag,mule}-{1920,1280,2560}, copied to view/ as crit16-*.
+Measured at 1920 unless noted. Of the 2560 set I read sale, weapon, fleet and mule. Scored against my round-15
+report (7.9).
+Not scored (motion, invisible in a still): the mass-weighted spring, the detent click and index flash, the 180 ms
+poster → live cross-fade and its wait for a drawn frame, and hover. I judged them as described; the lead should
+confirm them in one live walk.
+
+1. VERDICT: PASSED — overall 8.1 (previous 7.9). Owner criterion (a) PASS; criterion (b) PASS.
+   This is a threshold pass. Two axes 0.2 lower would put it at 8.0 exactly, and the (b) PASS rests partly on motion
+   no still can show (mass, detents, cross-fade). Confirm those in one live walk before calling Shipworks closed.
+   The ring is now an object: a 14 px band that reads at 2:1 against the glass, a bezel you can see to grip. The
+   scales stopped being sliders. Fleet has its own interaction. The disabled key is the law's outline. What remains
+   is craft (section 4), and none of it blocks.
+
+2. AXES
+   Composition          8.1  (prev 7.9)  The bezelled disc is now the heaviest object on both modes and holds the
+                                          centre. Against it: the Mule sits 43 px left of the ring centre; the RIGHT
+                                          view shrinks the Pelican to 36% of the dial; Fleet 1920 still has two empty
+                                          column feet.
+   Hierarchy            8.1  (prev 8.1)  Price, comparison ghosts and key read in order. The current-view tag (lum
+                                          235, dark ink) is now the brightest shape on the stage, brighter than the
+                                          hull (hull pixels average 74), so on arrival the eye lands on "CENTER" before
+                                          the ship.
+   Legibility           8.1  (prev 7.9)  Words in the band are bright bone (237) and turn along it. At 720 they are
+                                          about 7-8 px caps in a 13 px band: small but clean. Disabled state: "BUY
+                                          SHIP" at 131, "16,600 CR SHORT" at 159.
+   ORRERY fidelity      8.1  (prev 7.9)  Rings with weight, scales with a head, one Hand plus one Lamp Key, the
+                                          disabled key as a 1 px outline of the cut shape. Against it: the current-view
+                                          tag is a second filled shape with dark ink (the law keeps that for the Lamp
+                                          Key), and the exploded module is a generic disc rather than the part.
+   Craft / detail       8.0  (prev 7.7)  Of the round-15 list: five are DONE in the stills, the fit is HALF, and two
+                                          (mass, owned-hull slot) cannot be verified from stills. New or left: the RIGHT
+                                          view shows the stern; the Mule's turn axis is off its silhouette; the tag.
+   Interaction clarity  8.1  (prev 8.0)  The band is a visible grab target and brightens +57 while turning. Words
+                                          beyond ±95° hide, so there is no pile-up. The disabled key keeps its verb and
+                                          states the reason. Fleet shows which socket is previewed by pulling the module
+                                          out. Against it: the control labelled RIGHT shows the stern (fix 1). Hover is
+                                          unmeasured.
+
+3. ROUND-15 LIST, ONE BY ONE
+   1. Bezel body — DONE.
+      - For Sale at rest, row 560: band 666-679 at lum 69 on glass 10 (≈ 2.1:1), edges 139/118 and 128/121.
+      - While turning (drag still): band 126, edges 191/181.
+      - Current view: a lit stretch at 903-962 × 341-354 (235) with the word in dark ink.
+      - The in-band words are 237 and turn along the arc; the scale opens under each word.
+      - Fleet has the same band, static (row 560: 666-679 at 68-69, edges 127/128). At 720 the band reads the same.
+   2. Handling scales — DONE. Row 874: a square fill at 205-215 (398-435), a 2 px head at 252 (436-437), then a track
+      at 120-121 with ticks at 166 (438-506). No thumb. They read as scales.
+   3. Hand-over and fit — HALF.
+      - Fit: Pelican at CENTER has a hull box of 741-1117 (centre 929, 3.5 px off) and its farthest pixel at 71% of R.
+        LEFT and drag reach 82%, the Mule 83%. The cap holds.
+      - But the Mule's box is 708-1071 (centre x 889.5, 43 px left of 932.5): 32 px from the band's inner edge on the
+        left, 118 px on the right.
+      - Grade: the Pelican's hull pixels now average 74 (68 in r15). The claimed p90 of 100 against the poster's 122
+        narrows the gap without closing it.
+      - Drawn-frame wait and cross-fade: motion, not verifiable in a still.
+   4. View words vs socket words — DONE by construction. The words ride inside the band. In the LEFT still the RIGHT
+      word's slot (1143-1180 × 719-769) holds the same band and socket tick as the CENTER still (p99 199 in both) and
+      no word: the word beyond ±95° is hidden. The socket labels outside keep clear.
+   5. Mass in the turn and detents — claimed, not verifiable in a still.
+   6. Fleet signature — DONE, minimal. The Weapon still pulls a bone module disc (885-919 × 370-419) out along the
+      Pulse Laser leader, off the amber socket 01 at (932, 376), with a short amber dashed tail between. It is a token
+      disc, not the part.
+   7. Brighten while turning — DONE: band 69 → 126 (+57), edges +50 to +60.
+   8. Owned-hull slot ("Starter" in the price numeral) — NOT VERIFIED (no owned-hull For Sale still).
+   Also from the coordinator:
+   - 2560 verb row — DONE. sale-2560 verbs at y ≈ 1297 and dock words at ≈ 1362 (displayed 1013 / 1064 × 1.28),
+     about 65 px clear.
+   - Leaders crossing the Fleet band — checked. Row 509 (the Weapon leader) reads 81 off the band and 120 where it
+     crosses it (681-695, band 69, edges 200 / 168), about 2.3:1 against the band. The line stays continuous; there
+     is no seam at the rim.
+   Round 13's open items, now shot:
+   - Dark hull — DONE. The Mule's hull pixels average 81 and read as a dark freighter with copper detail. The record
+     shows a canvas brightness filter of 2.76 (a CSS filter over a paused world is allowed by ORRERY §3.1).
+   - Disabled key — DONE. A 1 px outline of the cut shape (1625-1776 × 625-680), "BUY SHIP" inside at 131, and
+     "16,600 CR SHORT" under it (1625-1747 × 690-705, 159). No amber on the Mule screen apart from the chevron.
+
+4. BLOCKERS IN ORDER — none block the pass. What to fix next, in order:
+   1. The RIGHT view shows the stern, not the right side.
+      - In sw16-b-right the Pelican's hull box is 856-1009 × 531-727: a long axis of 196 px, 36% of the dial. LEFT
+        shows 390 px (72%).
+      - The detents sit at ±60° around a 3/4 hero, so one side lands on a profile and the other nearly end-on.
+      - Set the detents from the hull: LEFT = port profile, RIGHT = starboard profile (the mirror of LEFT about the
+        bow axis), CENTER = the hero.
+   2. The Mule turns about an off-centre axis. Its CENTER silhouette sits 43 px left (box 708-1071). Put the turn axis
+      at the hull's plan-view box centre, not the model origin, so every hull sits centred at every bearing.
+   3. The current-view tag (903-962 × 341-354: a fill at 235 with dark ink).
+      - It is a second filled key-shape on a screen whose law keeps fill for the Lamp Key, and it is the brightest
+        shape on the stage.
+      - It was built to my own round-15 spec ("a lit segment of about lum 220"). Revise that spec: no fill.
+        - Drop the non-current in-band words to about 150 (the socket words' level, 142-149). Today they sit at 237,
+          so a lit current word would not stand out from them.
+        - Light the current word at about 250 on the band (69).
+        - Light the stretch's two end-ticks and the index tick at about 235.
+   4. The exploded module is a token disc. Pull the module's own glyph out instead — the chooser's art for the Pulse
+      Laser, at 28-32 px, on the same 48 px path — with its name riding the leader. Then Fleet's interaction is the
+      part itself, not a marker.
+   5. Fleet 1920 still ends both side columns about 250 px above the dock. This is acceptable as negative space; last
+      in the order.
+
+5. LANDMARKS — do not regress
+   - The bezel: a 14 px band at 69, edges about 128-139, 2:1 at rest and 5:1 while turning, words riding in it and
+     turning with it. The same band stands static under the Fleet jig.
+   - Scales with a lit fill and a 2 px head, no thumb.
+   - One Hand plus one Lamp Key:
+     - Fleet: chevron only (49-57 × 362-373).
+     - Weapon: socket, leader and tail (58-943 × 365-612, including the key).
+     - For Sale: chevron plus BUY SHIP.
+     - Mule: chevron only, with the key as an outline.
+   - The comparison column, ice for a gain and dim bone for a cost, now including SPEED "←195" for the Mule.
+
+6. MEMORABLE, NOT YET ATTEMPTED
+   On BUY SHIP, the bought hull's bezel settles and hands its ring to FLEET: the tab flips, the same ring stays still,
+   and the schematic of your new ship draws itself inside it.
+
+7. OWNER CRITERIA
+   (a) Thin wireframe or generic elements — PASS.
+     - The rings now carry a real band (2.1:1 at rest), and the fit dial's unlit band is 53-55 (row 390, 1681-1689,
+       core 133).
+     - The scales are instrument scales, not sliders. The disabled key follows the law.
+     - Still thin, but acceptable as what they are: the jig's 2 px leaders and its dashed socket circles.
+   (b) Signature interaction — PASS.
+     - For Sale: turn the hull on a bezel you grip. It has mass by hull, detents, three named views, a flick, arrows
+       and click. The bezel and view states are visible in the stills; the mass and detents are taken as described.
+     - Fleet: the Exploded Schematic. Choosing a socket pulls the module out along its leader, and BUY & FIT drives it
+       home.
+     - To make it memorable: fix 1 (LEFT and RIGHT that show the two sides), and fix 4 (the part itself slides out,
+       not a disc).

@@ -747,14 +747,14 @@ export function createRegistry(ctx) {
   // membrane (queuePhysicsImpulse, additive — never overwriting the pilot's control) so the same
   // tick's SG-02 solve applies them; one slot later and every field force would be a tick stale.
   // Its math is pure (positions/authored strengths/state.simTime; no rng, no wall clock), it is
-  // NOT in the sf-sim curated list, and it is gated OFF under node (FIELD_FLAGS Tier-B) — three
-  // independent layers keep the 47-A golden byte-identical, and nothing auto-spawns a field.
+  // NOT in the sf-sim curated list, and the legacy47a profile pins FIELD_FLAGS OFF (Tier-B) —
+  // three independent layers keep the 47-A golden byte-identical, and nothing auto-spawns a field.
   // planetRuntime (PQ-013) sits between fields and physics: it re-binds the planet's annular
   // attraction into the SAME field kernel (registered through fields.registerExternal, so fields'
   // force pass applies it this tick), then queues its own bounded drag/recovery impulses on the
   // physics-command membrane — one slot later and both would be a tick stale. Its writes are its
   // own state.planet subtree, membrane impulses, and routed damage; golden safety is the fields
-  // recipe (PLANET_FLAGS Tier-B OFF under node + authored only in sector_tethys_junction which 47a
+  // recipe (legacy47a pins PLANET_FLAGS OFF + authored only in sector_tethys_junction which 47a
   // never enters + absent from the sf-sim curated list).
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
   byName.set('ai', aiSlot);

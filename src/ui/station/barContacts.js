@@ -50,9 +50,28 @@ const FACTION_BY_ID   = new Map(FACTION_META.map(f => [f.id, f]));
 const SECTOR_BY_ID    = new Map(SECTORS.map(s => [s.id, s]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map(c => [c.id, c]));
 
+const KURTZ_DESK_CHOICES = new Set(['takeLedger', 'openLedger', 'approach', 'desk']);
+
+function isKurtzDeskChoice(payload = {}) {
+  const key = payload.canonicalKey;
+  const id = payload.contactId;
+  const kurtz = key === 'kurtz'
+    || id === 'contact_kurtz'
+    || id === 'contact_station_ashcache_kurtz';
+  return kurtz && KURTZ_DESK_CHOICES.has(payload.choiceId);
+}
+
 /** Route Orrin's physical-evidence control outside generic station-contact memory. */
 export function emitBarContactChoice(bus, payload = {}) {
   if (!bus || typeof bus.emit !== 'function') return null;
+  if (isKurtzDeskChoice(payload)) {
+    bus.emit('ui:kurtzInteract', {
+      action: payload.choiceId,
+      stationId: payload.stationId,
+      contactId: payload.contactId,
+    });
+    return 'ui:kurtzInteract';
+  }
   const event = payload.contactId === ORRIN_WITNESS_CONTACT_ID
     && payload.stationId === ORRIN_WITNESS_STATION_ID
     && payload.choiceId === 'evidence'
@@ -221,6 +240,20 @@ const CANONICAL_CONTACTS = [
     factionId: 'faction_dmc',
     line: 'The writ wall tracks raiders, wrecks, and radiation lanes. Pick a name; the ledger does the rest.',
   },
+  {
+    key: 'kurtz',
+    stationIds: ['station_ashcache'],
+    name: 'Kurtz',
+    role: 'merchant',
+    roleLabel: 'Ashfall Witness',
+    factionId: 'faction_vael',
+    line: 'Eleven years counting the same mass.',
+    choices: [
+      { id: 'openLedger', label: 'Open the desk ledger.' },
+      { id: 'takeLedger', label: 'Take the ledger.' },
+      { id: 'approach', label: 'Ask what he is counting.' },
+    ],
+  },
 ];
 
 const CANONICAL_BY_STATION = new Map();
@@ -243,6 +276,7 @@ function canonicalContactForStation(stationId) {
     factionId: base.factionId,
     line: base.line,
     canonicalKey: base.key,
+    choices: Array.isArray(base.choices) ? base.choices.slice() : undefined,
   };
 }
 
@@ -344,6 +378,8 @@ export function generateContacts(stationId, state = {}) {
     : [];
   const listed = [...endingCourier, ...authoredBarContactsForStation(stationId, state), ...contacts];
   stampUnheardBarRumor(listed, stationId, state);
+  stampHeliosBay7Rumor(listed, stationId, state);
+  stampChoirReliefMemory(listed, stationId, state);
   return listed;
 }
 
@@ -357,6 +393,34 @@ function stampUnheardBarRumor(contacts, stationId, state) {
   const sentence = String(rumor.text || '').split(/(?<=\.)\s/)[0];
   if (sentence && /silver-draft/i.test(sentence) && !host.canonicalKey) {
     host.line = sentence;
+  }
+}
+
+function stampHeliosBay7Rumor(contacts, stationId, state) {
+  if (stationId !== 'station_helios') return;
+  const story = state && state.story;
+  if (!story || !story.flags || !story.flags.helios_bay7_available || story.flags.helios_bay7_scanned) return;
+  const kessler = contacts.find((contact) => contact && contact.canonicalKey === 'kessler');
+  if (!kessler) return;
+  kessler.line = 'Maintenance still files tickets about a smell in Bay 7. Nobody walks the pad.';
+  kessler.bay7Rumor = true;
+}
+
+function stampChoirReliefMemory(contacts, stationId, state) {
+  if (stationId !== 'station_helios' && stationId !== 'station_coalition') return;
+  const relief = state && state.player && state.player.uniqueWrecks && state.player.uniqueWrecks.choirRelief;
+  if (!relief) return;
+  const host = contacts.find((contact) => contact && contact.role === 'barkeep') || contacts[0];
+  if (!host) return;
+  if (relief.evacuated) {
+    host.line = 'Mercy made the medical berth. The Choir paid in person this time.';
+    host.choirReliefMemory = 'evacuated';
+  } else if (relief.attendantLost || relief.patientLost) {
+    host.line = 'Last Light never came back. Helios logged the empty berth.';
+    host.choirReliefMemory = 'lost';
+  } else if (relief.driveRestored) {
+    host.line = 'Something Choir-flagged is crawling Mercy toward the medical pad.';
+    host.choirReliefMemory = 'returning';
   }
 }
 
@@ -1230,6 +1294,15 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
       if (choiceId === 'action') return { text: 'The radiation lane east of the intake churns. Raiders den where patrols will not loiter, and the Lung swallows anything that stalls there.' };
       if (choiceId === 'low') return { text: 'I never do. The wall remembers every name I did not post.' };
       return null;
+
+    case 'kurtz':
+      if (choiceId === 'takeLedger' || choiceId === 'openLedger') {
+        return { text: 'The mass stays. The paper is yours. Do not ask me to count it twice.' };
+      }
+      if (choiceId === 'approach' || choiceId === 'desk') {
+        return { text: 'Eleven years. The mass stays. Only the manifest changes.' };
+      }
+      return { text: 'The count continues until you choose.' };
 
     default:
       return null;
