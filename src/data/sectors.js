@@ -370,6 +370,11 @@ const CORE_SECTORS = [
         runtimeOwner: 'asteroidSites',
         scannerSignalKind: 'anomaly',
       },
+      // Alien Ecology waves A/B + machine layer: second sites spawn via materializeAlienEcology /
+      // materializeMachineLayer — markerless rows carry scanner/map identity only.
+      { id: 'poi_charon_warm_freighter', type: 'anomaly', name: 'Warm Freighter', pos: { x: -2200, z: 900 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_charon_hull_garden', type: 'anomaly', name: 'Three Hull Garden', pos: { x: 800, z: 2400 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_charon_pylon_field', type: 'anomaly', name: 'Unidentified Lattice', pos: { x: 2400, z: 600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -453,6 +458,10 @@ const CORE_SECTORS = [
         },
       },
       { id: 'poi_wormhole', type: 'wormhole', name: 'Wormhole', gatedBy: 'tech:tech_long_range_survey' },
+      // Alien Ecology (AE-066) + Verge-Layer structures (AE-101/102/108).
+      { id: 'poi_veil_quiet_ice', type: 'anomaly', name: 'Quiet Ice', pos: { x: 900, z: 1500 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_veil_survey_monolith', type: 'anomaly', name: 'Pale Spire', pos: { x: -1400, z: 600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_veil_revoked_gate', type: 'anomaly', name: 'Silent Gate', pos: { x: 2100, z: -1600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -515,6 +524,12 @@ const CORE_SECTORS = [
           body: 'A heavily armored pre-collapse archive sealed behind interlocking petal-plates. The locking seam bears thousands of false cryptographic keyways tied to ancient defensive countermeasures, guarding historical ledgers expunged from all modern sector registries.',
         },
       },
+      // Alien Ecology wave B + Verge-Layer structures (AE-086, AE-103..106).
+      { id: 'poi_ashfall_breathing_dock', type: 'anomaly', name: 'Breathing Dock', pos: { x: -1200, z: 1800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ashfall_gate_underlayer', type: 'anomaly', name: 'Gate Underlayer', pos: { x: 1600, z: -1600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ashfall_ossuary', type: 'anomaly', name: 'Ranked Frames', pos: { x: -2000, z: -1200 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ashfall_black_vault', type: 'anomaly', name: 'Black Vault', pos: { x: 2200, z: 2000 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ashfall_maintenance', type: 'anomaly', name: 'Active Maintenance', pos: { x: 600, z: -2200 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
 ];

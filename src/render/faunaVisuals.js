@@ -184,11 +184,329 @@ function buildHullLeech(colors) {
   return g;
 }
 
+// Lantern Cyst: a translucent bioluminescent sac — drifts warm-facing, ruptures if killed.
+function buildLanternCyst(colors) {
+  const g = new THREE.Group();
+  const sac = new THREE.Mesh(
+    geo('lc_sac', () => {
+      const s = new THREE.SphereGeometry(1, 14, 10);
+      s.scale(1, 1.25, 1);
+      return s;
+    }),
+    new THREE.MeshStandardMaterial({
+      color: colors.tissue, roughness: 0.35, metalness: 0.0,
+      transparent: true, opacity: 0.55,
+      emissive: colors.glow, emissiveIntensity: 0.35,
+    }),
+  );
+  sac.scale.setScalar(7);
+  g.add(sac);
+  const core = new THREE.Mesh(geo('lc_core', () => new THREE.SphereGeometry(0.42, 10, 8)), glowMat(colors.glow, 1.6));
+  core.scale.setScalar(7);
+  core.position.y = -1;
+  g.add(core);
+  const rootlet = geo('lc_root', () => {
+    const s = new THREE.CylinderGeometry(0.03, 0.09, 1.6, 5);
+    s.translate(0, -0.8, 0);
+    return s;
+  });
+  for (let i = 0; i < 5; i += 1) {
+    const r = new THREE.Mesh(rootlet, tissueMat(colors.filament));
+    const a = (i / 5) * Math.PI * 2;
+    r.position.set(Math.cos(a) * 2.2, -4.5, Math.sin(a) * 2.2);
+    r.rotation.z = Math.cos(a) * 0.4;
+    r.rotation.x = Math.sin(a) * 0.4;
+    g.add(r);
+  }
+  g.name = 'SF_Fauna_lantern_cyst';
+  return g;
+}
+
+// Casket Worm: a low segmented hull-crawler — armored plates, no glow until it moves.
+function buildCasketWorm(colors) {
+  const g = new THREE.Group();
+  const seg = geo('cw_seg', () => {
+    const s = new THREE.BoxGeometry(1.4, 0.5, 1.1);
+    s.scale(1, 1, 1);
+    return s;
+  });
+  for (let i = 0; i < 6; i += 1) {
+    const m = new THREE.Mesh(seg, tissueMat(i % 2 ? colors.tissue : colors.filament));
+    m.position.set(0, (i % 2) * 0.5 - 0.3, -i * 2.2);
+    m.scale.set(8 - i * 0.6, 6, 8);
+    g.add(m);
+  }
+  const head = new THREE.Mesh(geo('cw_head', () => {
+    const s = new THREE.ConeGeometry(0.8, 1.6, 6);
+    s.rotateX(Math.PI / 2);
+    return s;
+  }), tissueMat(colors.tissue));
+  head.position.z = 2.4;
+  head.scale.setScalar(8);
+  g.add(head);
+  g.name = 'SF_Fauna_casket_worm';
+  return g;
+}
+
+// Bristle Ram: a blunt wedge of plate and quill — reads dangerous at a glance.
+function buildBristleRam(colors) {
+  const g = new THREE.Group();
+  const hull = new THREE.Mesh(geo('br_hull', () => {
+    const s = new THREE.SphereGeometry(1, 14, 8);
+    s.scale(1.5, 0.5, 1.1);
+    return s;
+  }), tissueMat(colors.tissue));
+  hull.scale.setScalar(11);
+  g.add(hull);
+  const wedge = new THREE.Mesh(geo('br_wedge', () => {
+    const s = new THREE.ConeGeometry(0.7, 2.8, 4);
+    s.rotateX(Math.PI / 2);
+    return s;
+  }), tissueMat(colors.filament));
+  wedge.position.z = 13;
+  wedge.scale.set(10, 8, 10);
+  g.add(wedge);
+  const quill = geo('br_quill', () => {
+    const s = new THREE.ConeGeometry(0.09, 1.8, 4);
+    s.translate(0, 0.9, 0);
+    return s;
+  });
+  const quillMat = tissueMat(colors.filament);
+  for (let i = 0; i < 9; i += 1) {
+    const q = new THREE.Mesh(quill, quillMat);
+    const a = -0.8 + (i / 8) * 1.6;
+    q.position.set(Math.sin(a) * 8, 4.2, -Math.cos(a) * 6);
+    q.rotation.z = a * 0.6;
+    q.rotation.x = -0.7;
+    q.scale.setScalar(5);
+    g.add(q);
+  }
+  g.name = 'SF_Fauna_bristle_ram';
+  return g;
+}
+
+// Mourning Kite: a tall thin sail on a filament tether — reads mournful and aware.
+function buildMourningKite(colors) {
+  const g = new THREE.Group();
+  const sail = new THREE.Mesh(geo('mk_sail', () => {
+    const s = new THREE.SphereGeometry(1, 10, 14);
+    s.scale(0.35, 2.6, 1.4);
+    return s;
+  }), new THREE.MeshStandardMaterial({
+    color: colors.tissue, roughness: 0.5, metalness: 0.0,
+    transparent: true, opacity: 0.7, emissive: colors.glow, emissiveIntensity: 0.15,
+  }));
+  sail.scale.setScalar(9);
+  g.add(sail);
+  const line = new THREE.Mesh(geo('mk_line', () => new THREE.CylinderGeometry(0.05, 0.05, 9, 4)), tissueMat(colors.filament));
+  line.position.y = -11;
+  g.add(line);
+  const knot = new THREE.Mesh(geo('mk_knot', () => new THREE.SphereGeometry(0.3, 8, 6)), glowMat(colors.glow, 0.9));
+  knot.position.y = -15.5;
+  knot.scale.setScalar(6);
+  g.add(knot);
+  g.name = 'SF_Fauna_mourning_kite';
+  return g;
+}
+
+// Anchor Beast: a mound fused to the wreck — sessile, the size of a small station module.
+function buildAnchorBeast(colors) {
+  const g = new THREE.Group();
+  const mound = new THREE.Mesh(geo('ab_mound', () => {
+    const s = new THREE.SphereGeometry(1, 18, 10);
+    s.scale(1.4, 0.6, 1.4);
+    return s;
+  }), tissueMat(colors.tissue));
+  mound.scale.setScalar(26);
+  g.add(mound);
+  const spike = geo('ab_spike', () => {
+    const s = new THREE.ConeGeometry(0.4, 3.4, 6);
+    s.translate(0, 1.7, 0);
+    return s;
+  });
+  for (let i = 0; i < 8; i += 1) {
+    const a = (i / 8) * Math.PI * 2;
+    const sp = new THREE.Mesh(spike, i % 3 ? tissueMat(colors.tissue) : glowMat(colors.glow, 0.6));
+    sp.position.set(Math.cos(a) * 24, 6, Math.sin(a) * 24);
+    sp.rotation.z = Math.cos(a) * 1.1;
+    sp.rotation.x = -Math.sin(a) * 1.1;
+    sp.scale.setScalar(9);
+    g.add(sp);
+  }
+  const crown = new THREE.Mesh(geo('ab_crown', () => new THREE.SphereGeometry(0.5, 12, 8)), glowMat(colors.glow, 1.2));
+  crown.position.y = 18;
+  crown.scale.setScalar(14);
+  g.add(crown);
+  g.name = 'SF_Fauna_anchor_beast';
+  return g;
+}
+
+// Furnace Maw: a squat vent-bowl with a heat core — reads as a static hazard until it moves.
+function buildFurnaceMaw(colors) {
+  const g = new THREE.Group();
+  const bowl = new THREE.Mesh(geo('fm_bowl', () => {
+    const s = new THREE.SphereGeometry(1, 16, 10, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.55);
+    return s;
+  }), tissueMat(colors.tissue));
+  bowl.scale.set(18, 14, 18);
+  bowl.rotation.x = Math.PI;
+  g.add(bowl);
+  const throat = new THREE.Mesh(geo('fm_throat', () => new THREE.SphereGeometry(0.55, 12, 8)), glowMat(0xff6a28, 2.2));
+  throat.position.y = 2;
+  throat.scale.setScalar(16);
+  g.add(throat);
+  const jaw = geo('fm_jaw', () => {
+    const s = new THREE.ConeGeometry(0.3, 2.2, 5);
+    s.translate(0, 1.1, 0);
+    return s;
+  });
+  for (let i = 0; i < 7; i += 1) {
+    const a = (i / 7) * Math.PI * 2;
+    const j = new THREE.Mesh(jaw, tissueMat(colors.filament));
+    j.position.set(Math.cos(a) * 13, 8, Math.sin(a) * 13);
+    j.rotation.z = Math.cos(a) * 0.9;
+    j.rotation.x = -Math.sin(a) * 0.9;
+    j.scale.setScalar(7);
+    g.add(j);
+  }
+  g.name = 'SF_Fauna_furnace_maw';
+  return g;
+}
+
+// Glassback: a translucent dome-carapace quadruped — beam-resistant, reads delicate.
+function buildGlassback(colors) {
+  const g = new THREE.Group();
+  const dome = new THREE.Mesh(geo('gb_dome', () => {
+    const s = new THREE.SphereGeometry(1, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+    return s;
+  }), new THREE.MeshStandardMaterial({
+    color: 0xbfd8d4, roughness: 0.15, metalness: 0.1,
+    transparent: true, opacity: 0.5, emissive: colors.glow, emissiveIntensity: 0.2,
+  }));
+  dome.scale.setScalar(10);
+  g.add(dome);
+  const leg = geo('gb_leg', () => new THREE.CylinderGeometry(0.14, 0.22, 3.2, 5));
+  for (let i = 0; i < 4; i += 1) {
+    const a = Math.PI / 4 + (i / 4) * Math.PI * 2;
+    const l = new THREE.Mesh(leg, tissueMat(colors.tissue));
+    l.position.set(Math.cos(a) * 7, -3.5, Math.sin(a) * 7);
+    l.rotation.z = Math.cos(a) * 0.5;
+    l.rotation.x = -Math.sin(a) * 0.5;
+    l.scale.setScalar(4);
+    g.add(l);
+  }
+  const node = new THREE.Mesh(geo('gb_node', () => new THREE.SphereGeometry(0.22, 8, 6)), glowMat(colors.glow, 1.0));
+  node.position.y = 3;
+  node.scale.setScalar(8);
+  g.add(node);
+  g.name = 'SF_Fauna_glassback';
+  return g;
+}
+
+// Wake Eel: a ribbon of tapering segments — its visual IS its motion.
+function buildWakeEel(colors) {
+  const g = new THREE.Group();
+  const segMat = tissueMat(colors.tissue);
+  const seg = geo('we_seg', () => {
+    const s = new THREE.SphereGeometry(1, 8, 6);
+    s.scale(0.9, 0.5, 1.3);
+    return s;
+  });
+  for (let i = 0; i < 9; i += 1) {
+    const m = new THREE.Mesh(seg, i === 0 ? glowMat(colors.glow, 0.7) : segMat);
+    const w = 1 - i * 0.09;
+    m.scale.setScalar(7 * w);
+    m.position.set(Math.sin(i * 0.7) * 3.5, 0, -i * 4.5);
+    g.add(m);
+  }
+  g.name = 'SF_Fauna_wake_eel';
+  return g;
+}
+
+// Spindle Mother: a vertical spindle ringed with spore sacs — unmistakably a carrier.
+function buildSpindleMother(colors) {
+  const g = new THREE.Group();
+  const spindle = new THREE.Mesh(geo('sm_spindle', () => {
+    const s = new THREE.CylinderGeometry(0.35, 0.55, 4.6, 10);
+    s.translate(0, 2.3, 0);
+    return s;
+  }), tissueMat(colors.tissue));
+  spindle.scale.setScalar(8);
+  g.add(spindle);
+  const sacMat = glowMat(colors.glow, 0.8);
+  const sac = geo('sm_sac', () => new THREE.SphereGeometry(0.34, 8, 6));
+  for (let ring = 0; ring < 3; ring += 1) {
+    const y = 6 + ring * 8;
+    const rr = 5.5 - ring * 1.2;
+    for (let i = 0; i < 6; i += 1) {
+      const a = (i / 6) * Math.PI * 2 + ring * 0.5;
+      const s = new THREE.Mesh(sac, sacMat);
+      s.position.set(Math.cos(a) * rr, y, Math.sin(a) * rr);
+      s.scale.setScalar(5);
+      g.add(s);
+    }
+  }
+  const crown = new THREE.Mesh(geo('sm_crown', () => new THREE.SphereGeometry(0.5, 10, 8)), glowMat(colors.glow, 1.4));
+  crown.position.y = 32;
+  crown.scale.setScalar(8);
+  g.add(crown);
+  g.name = 'SF_Fauna_spindle_mother';
+  return g;
+}
+
+// Archive Crab: a low scavenger platform carrying stacked debris plates on its back.
+function buildArchiveCrab(colors) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(geo('ac_body', () => {
+    const s = new THREE.SphereGeometry(1, 12, 7);
+    s.scale(1.6, 0.4, 1.2);
+    return s;
+  }), tissueMat(colors.tissue));
+  body.scale.setScalar(7);
+  g.add(body);
+  const plate = geo('ac_plate', () => new THREE.BoxGeometry(1.6, 0.12, 1.1));
+  const plateMat = tissueMat(colors.filament);
+  for (let i = 0; i < 4; i += 1) {
+    const p = new THREE.Mesh(plate, plateMat);
+    p.position.set((i % 2) * 2 - 1, 2.6 + i * 0.5, -1 + i * 0.6);
+    p.rotation.y = i * 0.4;
+    p.rotation.z = (i % 2 ? 1 : -1) * 0.12;
+    p.scale.setScalar(6);
+    g.add(p);
+  }
+  const leg = geo('ac_leg', () => new THREE.CylinderGeometry(0.1, 0.16, 2.4, 4));
+  for (let i = 0; i < 6; i += 1) {
+    const a = (i / 6) * Math.PI * 2;
+    const l = new THREE.Mesh(leg, segLegMat(colors));
+    l.position.set(Math.cos(a) * 8, -2, Math.sin(a) * 8);
+    l.rotation.z = Math.cos(a) * 1.0;
+    l.rotation.x = -Math.sin(a) * 1.0;
+    l.scale.setScalar(3);
+    g.add(l);
+  }
+  g.name = 'SF_Fauna_archive_crab';
+  return g;
+}
+
+function segLegMat(colors) {
+  return tissueMat(colors.tissue);
+}
+
 const BUILDERS = {
   veil_ray: (c, s) => buildVeilRay(c),
   needle_swarm: (c, s) => buildNeedleSwarm(c, s),
   blind_shepherd: (c, s) => buildBlindShepherd(c),
   hull_leech: (c, s) => buildHullLeech(c),
+  lantern_cyst: (c) => buildLanternCyst(c),
+  casket_worm: (c) => buildCasketWorm(c),
+  bristle_ram: (c) => buildBristleRam(c),
+  mourning_kite: (c) => buildMourningKite(c),
+  anchor_beast: (c) => buildAnchorBeast(c),
+  furnace_maw: (c) => buildFurnaceMaw(c),
+  glassback: (c) => buildGlassback(c),
+  wake_eel: (c) => buildWakeEel(c),
+  spindle_mother: (c) => buildSpindleMother(c),
+  archive_crab: (c) => buildArchiveCrab(c),
 };
 
 export function buildFaunaMesh(entity) {

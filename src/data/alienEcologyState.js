@@ -15,6 +15,14 @@ export function createAlienEcologyState() {
     taxonomy: {},
     // Per-site aftermath records keyed by ALIEN_SITES siteId.
     sites: {},
+    // AE-076 ship biofilm exposure (0..1) — accrues in contaminated space, decays in clean.
+    exposure: 0,
+    // AE-091/108/109 machine-layer state: what machines have granted the player.
+    machineAccess: {},
+    // Per-machine-site beat records keyed by MACHINE_SITES siteId.
+    machineSites: {},
+    // AE-074 map contamination knowledge — what the player has learned per sector.
+    mapKnowledge: {},
   };
 }
 
@@ -30,5 +38,9 @@ export function ensureAlienEcologyState(state) {
   if (!ae.taxonomy || typeof ae.taxonomy !== 'object') ae.taxonomy = {};
   if (typeof ae.machineProtocol !== 'string') ae.machineProtocol = 'unknown';
   if (!Number.isFinite(ae.revelation)) ae.revelation = 0;
+  if (!Number.isFinite(ae.exposure)) ae.exposure = 0;
+  if (!ae.machineAccess || typeof ae.machineAccess !== 'object') ae.machineAccess = {};
+  if (!ae.machineSites || typeof ae.machineSites !== 'object') ae.machineSites = {};
+  if (!ae.mapKnowledge || typeof ae.mapKnowledge !== 'object') ae.mapKnowledge = {};
   return ae;
 }

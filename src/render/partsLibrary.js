@@ -17,6 +17,7 @@ import { MODULES } from '../data/modules.js';
 import { EVERYDAY_SPACE_KIT_MODEL_BY_ID, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
 import { WRECK_AFTERMATH_MODEL_BY_ID, WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '../data/wreckAftermathDressing.js';
 import { buildAlienGrowthProp } from './faunaVisuals.js'; // Alien Ecology — procedural infestation kit
+import { buildMachineProp } from './machineVisuals.js'; // Verge-Layer machine structures (doc 07)
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
@@ -2322,7 +2323,8 @@ export function buildAuthoredPlaceProp(entity, options = {}) {
     const data = entity && entity.data || {};
     // Procedural-only place families have no registered GLB by design; the fallback
     // builder owns their geometry, so return it directly instead of an empty admit.
-    if (String(data.placeId || '').startsWith('alien_growth_')) {
+    const pid = String(data.placeId || '');
+    if (pid.startsWith('alien_growth_') || pid.startsWith('machine_')) {
       return buildFallbackPlaceProp(entity);
     }
     return null;
@@ -4000,6 +4002,11 @@ export function buildFallbackPlaceProp(entity, placeFile = '') {
   // `alien_growth_<module>` placeIds resolve to organic geometry instead of an empty group.
   if (placeId.startsWith('alien_growth_')) {
     group.add(buildAlienGrowthProp(placeId, data.scale ? data.scale * 10 : entity && entity.radius));
+  }
+  // Verge-Layer machine layer (doc 07): `machine_<prop>` placeIds resolve to pale-metal
+  // machine geometry — procedurally distinct from the organic kit on purpose.
+  if (placeId.startsWith('machine_')) {
+    group.add(buildMachineProp(placeId, data.scale ? data.scale * 10 : entity && entity.radius));
   }
   return group;
 }

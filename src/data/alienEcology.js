@@ -10,6 +10,7 @@
 // They move independently: a wreck can read C3 while the pilot still knows nothing.
 
 import { zonesForSector } from './sectorZones.js';
+import { ensureAlienEcologyState } from './alienEcologyState.js';
 
 // ── Contamination model (doc 01) ────────────────────────────────────────────────────────────
 // C = clamp(G + L + T + E, 0, 1)
@@ -84,6 +85,15 @@ export const ALIEN_STRAINS = Object.freeze({
     tissueColor: 0x9aa08e,
     glowColor: 0xff9a4a,
     note: 'Wreck-fed lineage inside the Charon graveyard seam; thick calcified collars, slow pulse.',
+    // AE-052 host memory priors — a small deterministic vector, updated only at coarse
+    // ecological events (doc 01 §memory). Fauna drives read these as drive biases.
+    memoryPriors: Object.freeze({
+      avoids_beam_band: 0.6,
+      follows_reactor_heat: 0.8,
+      precursor_signal_fear: 0.95,
+      massline_contact_aversion: 0.2,
+      vibration_wake_sensitivity: 0.8, // DMC pulse frequencies taught it to wake
+    }),
   }),
   veil_glass: Object.freeze({
     id: 'veil_glass',
@@ -92,6 +102,13 @@ export const ALIEN_STRAINS = Object.freeze({
     tissueColor: 0x8faebe,
     glowColor: 0x9fe8ff,
     note: 'Nebula lineage — glassy translucent sheeting, spores drift on charge gradients.',
+    memoryPriors: Object.freeze({
+      avoids_beam_band: 0.3,
+      follows_reactor_heat: 0.2,
+      precursor_signal_fear: 0.95, // strong prism-tone avoidance (doc 01)
+      massline_contact_aversion: 0.4,
+      scan_sensitivity: 0.9,       // inquisitive until illuminated by active scan
+    }),
   }),
   ashfall_choir: Object.freeze({
     id: 'ashfall_choir',
@@ -100,6 +117,13 @@ export const ALIEN_STRAINS = Object.freeze({
     tissueColor: 0xa89070,
     glowColor: 0xffd070,
     note: 'Radiation-hardened lineage; resonant chimney stacks vent hot spores on the burn cycle.',
+    memoryPriors: Object.freeze({
+      avoids_beam_band: 0.8,
+      follows_reactor_heat: 0.6,
+      precursor_signal_fear: 0.7,
+      massline_contact_aversion: 0.3,
+      route_memory_strength: 0.95, // repeated approach vectors toward a deep-domain bearing
+    }),
   }),
 });
 
@@ -204,6 +228,133 @@ export const ALIEN_SITES = Object.freeze({
     relayComponentId: 'relay_choir_node',
     powerComponentId: 'power_bus',
     growthRing: Object.freeze({ inner: 34, outer: 120, count: 22 }),
+  }),
+
+  // ── Phase 6 wave A sites (AE-065, AE-066) ────────────────────────────────────────────
+  // These are ecology-only dressing sites (no beam-op manifest): materializeAlienEcology
+  // reads them identically — growth ring + fauna cast + arrival beats + scan language.
+  warm_freighter: Object.freeze({
+    siteId: 'warm_freighter',
+    sectorId: 'sector_charon_expanse',
+    zoneId: 'zone_charon_warm_freighter',
+    poiId: 'poi_charon_warm_freighter',
+    name: 'The Warm Freighter',
+    strainId: 'charon_grave',
+    // C02: power still running, crew gone, biology riding waste heat (catalog C02).
+    baseContamination: 0.30,
+    center: Object.freeze({ x: -2200, z: 900 }),
+    arrivalBands: Object.freeze({ long: 2200, mid: 1300, close: 460 }),
+    arrivalLines: Object.freeze({
+      long: 'Long-range return: a freighter still holding reactor standby — crew manifest empty.',
+      mid: 'Heat plume against the cold field. Surface contacts shift toward your drive signature.',
+      close: 'The hull breathes warm air through open seams. The things feeding on it notice you.',
+    }),
+    faunaCast: Object.freeze({
+      hull_leech: 3,
+      wake_eel: 2,
+      lantern_cyst: 2,
+    }),
+    growthRing: Object.freeze({ inner: 20, outer: 70, count: 12 }),
+    // AE-068: a biological-survey offer hooks off this site's discovery.
+    surveyOfferId: 'em_bio_survey_warm_freighter',
+  }),
+  quiet_ice: Object.freeze({
+    siteId: 'quiet_ice',
+    sectorId: 'sector_veil_nebula',
+    zoneId: 'zone_veil_quiet_ice',
+    poiId: 'poi_veil_quiet_ice',
+    name: 'Quiet Ice',
+    strainId: 'veil_glass',
+    // C05: frozen asteroid, dormant cysts that wake under mining heat. The Veil's low-C
+    // teaching site — trace contamination, dormant carriers, veil rays overhead (AE-066).
+    baseContamination: 0.16,
+    center: Object.freeze({ x: 900, z: 1500 }),
+    arrivalBands: Object.freeze({ long: 2000, mid: 1200, close: 420 }),
+    arrivalLines: Object.freeze({
+      long: 'A cold asteroid body ahead — spectral return is clean ice and rock.',
+      mid: 'Faint subsurface pockets register organic mass. Everything reads dormant.',
+      close: 'Your drive plume warms the scarred face — subsurface cysts answer the heat.',
+    }),
+    faunaCast: Object.freeze({
+      lantern_cyst: 4,
+      veil_ray: 3,
+      mourning_kite: 1,
+    }),
+    // AE-055: the mourning kite loops a remembered approach through this site.
+    migrationRoute: Object.freeze({
+      waypoints: Object.freeze([
+        Object.freeze({ x: -300, z: 200 }),
+        Object.freeze({ x: 400, z: -100 }),
+        Object.freeze({ x: 100, z: -600 }),
+        Object.freeze({ x: -500, z: -200 }),
+      ]),
+    }),
+    growthRing: Object.freeze({ inner: 26, outer: 90, count: 14 }),
+    surveyOfferId: 'em_quarantine_cargo_veil',
+  }),
+
+  // ── Phase 8 wave B sites (AE-085, AE-086) ────────────────────────────────────────────
+  three_hull_garden: Object.freeze({
+    siteId: 'three_hull_garden',
+    sectorId: 'sector_charon_expanse',
+    zoneId: 'zone_charon_hull_garden',
+    poiId: 'poi_charon_hull_garden',
+    name: 'Three Hull Garden',
+    strainId: 'charon_grave',
+    // C03: three unrelated wrecks physically bridged into one ecosystem — the integrated
+    // wreck colony (AE-085). Anchor Beast lives here.
+    baseContamination: 0.62,
+    center: Object.freeze({ x: 800, z: 2400 }),
+    arrivalBands: Object.freeze({ long: 2400, mid: 1400, close: 500 }),
+    arrivalLines: Object.freeze({
+      long: 'Three wreck returns on one bearing — too close to be a coincidence of salvage.',
+      mid: 'Filament bridges span the gaps between hulls. One organism tends all three.',
+      close: 'Something immense is anchored to the middle hull. The swarm defends its perimeter.',
+    }),
+    faunaCast: Object.freeze({
+      anchor_beast: 1,
+      needle_swarm: 4,
+      lantern_cyst: 3,
+      archive_crab: 2,
+      blind_shepherd: 1,
+    }),
+    growthRing: Object.freeze({ inner: 40, outer: 150, count: 26 }),
+    surveyOfferId: 'em_contaminated_claim_garden',
+  }),
+  breathing_dock: Object.freeze({
+    siteId: 'breathing_dock',
+    sectorId: 'sector_ashfall_reach',
+    zoneId: 'zone_ashfall_breathing_dock',
+    poiId: 'poi_ashfall_breathing_dock',
+    name: 'The Breathing Dock',
+    strainId: 'ashfall_choir',
+    // C06 + C12: an abandoned docking collar cycling pressure — an organism uses the
+    // station valves as lungs; the inhabited half is quarantined (AE-086 colonized section).
+    baseContamination: 0.58,
+    center: Object.freeze({ x: -1200, z: 1800 }),
+    arrivalBands: Object.freeze({ long: 2600, mid: 1500, close: 520 }),
+    arrivalLines: Object.freeze({
+      long: 'A station fragment with a slow mechanical rhythm — pressure cycling with no crew logged.',
+      mid: 'The docking collar opens and closes on a breathing period. Predators hold the far edge.',
+      close: 'Filament columns pulse with the collar cycle. The furnace glow is not the reactor.',
+    }),
+    faunaCast: Object.freeze({
+      furnace_maw: 1,
+      glassback: 2,
+      spindle_mother: 1,
+      wake_eel: 2,
+      casket_worm: 2,
+    }),
+    migrationRoute: Object.freeze({
+      waypoints: Object.freeze([
+        Object.freeze({ x: 600, z: -400 }),
+        Object.freeze({ x: 900, z: 300 }),
+        Object.freeze({ x: -200, z: 700 }),
+        Object.freeze({ x: -800, z: -100 }),
+      ]),
+    }),
+    growthRing: Object.freeze({ inner: 36, outer: 130, count: 24 }),
+    surveyOfferId: 'em_carrier_diversion_breathing',
   }),
 });
 
@@ -321,4 +472,278 @@ export function planFaunaCast(site, rng) {
     }
   }
   return out;
+}
+
+// ── Phase 7 — contamination progression (AE-070..079) ────────────────────────────────────
+
+// AE-070 regional contamination map: the authored C baseline per named zone-type already
+// lives in ZONE_CONTAMINATION_BASELINE; this table adds named *place* overrides — sites and
+// corridors whose C is authored, not derived from the zone prior (doc 01 §spatial structure).
+// `siteOverride` (above) already adds live site state on top. This is the static half: a
+// per-point contribution map keyed by sector so dressing, scanner noise, and encounter
+// weighting all read the same authored field.
+export const CONTAMINATION_SITE_BASE = Object.freeze(
+  Object.fromEntries(Object.values(ALIEN_SITES).map((site) => [
+    site.siteId,
+    Object.freeze({
+      siteId: site.siteId,
+      sectorId: site.sectorId,
+      baseContamination: site.baseContamination,
+      center: site.center,
+      radius: (site.growthRing && site.growthRing.outer * 6) || 600,
+    }),
+  ])),
+);
+
+/**
+ * Point contamination: the authored local field a position sits in, BEFORE live site state.
+ * Returns the strongest site contribution at (x, z) in sector-local coordinates.
+ */
+export function pointContaminationAt(state, sectorId, x, z) {
+  let c = SECTOR_CONTAMINATION_LEAN[sectorId] || 0;
+  for (const site of alienSitesForSector(sectorId)) {
+    const base = CONTAMINATION_SITE_BASE[site.siteId];
+    if (!base) continue;
+    const dx = x - base.center.x;
+    const dz = z - base.center.z;
+    const d = Math.sqrt(dx * dx + dz * dz);
+    if (d > base.radius) continue;
+    // Smooth falloff: full C at the site center, feathered to sector lean at the edge.
+    const t = Math.max(0, 1 - d / base.radius);
+    const local = base.baseContamination * (0.35 + 0.65 * t);
+    if (local > c) c = local;
+  }
+  // Live site state (bloom/severe/awake) stacks on top — existing override.
+  return Math.min(1, c + siteOverride(state, sectorId));
+}
+
+// AE-071 dressing-by-C: for each live site, bloom/awake state spills ambient growth rows
+// beyond the authored ring (the colony reads bigger than its prop ring). materializeAlienEcology
+// consumes this plan for the same deterministic rng.
+export function planAmbientGrowth(state, site, rng) {
+  const ae = state && state.world && state.world.alienEcology;
+  const rec = ae && ae.sites && ae.sites[site.siteId];
+  const boost = rec && rec.state === 'bloom' ? 1.0
+    : rec && rec.state === 'awake' ? 0.5
+    : 0.15;
+  const count = Math.floor(site.growthRing.count * boost * 0.5);
+  const out = [];
+  for (let i = 0; i < count; i += 1) {
+    const ang = rng() * Math.PI * 2;
+    const r = site.growthRing.outer * (1.1 + rng() * 1.4);
+    out.push({ dx: Math.cos(ang) * r, dz: Math.sin(ang) * r, rot: rng() * Math.PI * 2, scale: 0.5 + rng() * 0.6 });
+  }
+  return out;
+}
+
+// AE-072 encounter weighting (doc 01 §system outputs — encounter director consumes C):
+// extends ecologyEncounterWeights with an ecology-deck shape pick for high-C zones. The
+// director calls this when an anomaly/mystery pull fires inside a contaminated zone.
+export const ECOLOGY_DECK = Object.freeze([
+  Object.freeze({ shape: 'ecology_observation',    minC: 0.15, weight: 3, label: 'Unaligned contacts ahead', kind: 'info' }),
+  Object.freeze({ shape: 'ecology_crossing',       minC: 0.25, weight: 2, label: 'Migration crosses your lane', kind: 'info' }),
+  Object.freeze({ shape: 'ecology_carrier_drift',  minC: 0.35, weight: 2, label: 'Buoyant sac adrift — rupture risk', kind: 'warn' }),
+  Object.freeze({ shape: 'ecology_relay_pulse',    minC: 0.45, weight: 2, label: 'Field coherence spike nearby', kind: 'warn' }),
+  Object.freeze({ shape: 'ecology_predator_wake',  minC: 0.55, weight: 1, label: 'Predator wake ahead', kind: 'warn' }),
+]);
+
+/** Weighted ecology encounter pick for a zone (deterministic via the caller's rng). */
+export function pickEcologyEncounter(state, sectorId, zoneId, rng) {
+  const c = contaminationAt(state, sectorId, zoneId);
+  const eligible = ECOLOGY_DECK.filter((row) => c >= row.minC);
+  if (!eligible.length) return null;
+  let total = 0;
+  for (const row of eligible) total += row.weight * (1 + c);
+  let roll = (typeof rng === 'function' ? rng() : 0.5) * total;
+  for (const row of eligible) {
+    roll -= row.weight * (1 + c);
+    if (roll <= 0) return row;
+  }
+  return eligible[eligible.length - 1];
+}
+
+// AE-073 scanner noise & field-coherence presentation: at high C the scanner surface
+// reports phantom contacts — deterministic seeded anomaly pings that resolve to nothing
+// when approached. (The player learns to distrust the instrument before they learn why.)
+export const SCANNER_PHANTOMS = Object.freeze({
+  minC: 0.40,          // phantoms begin in ACTIVE ECOLOGY bands
+  maxPerSector: 3,
+  resolveRadius: 180,  // flying this close collapses the phantom
+});
+
+/** Seeded phantom anomaly contacts for a sector — pure function of rng. */
+export function planPhantomContacts(state, sectorId, rng) {
+  const c = contaminationAt(state, sectorId, null);
+  if (c < SCANNER_PHANTOMS.minC) return [];
+  const n = Math.min(SCANNER_PHANTOMS.maxPerSector, 1 + Math.floor(c * 3));
+  const out = [];
+  for (let i = 0; i < n; i += 1) {
+    const ang = rng() * Math.PI * 2;
+    const r = 600 + rng() * 2400;
+    out.push({
+      id: `phantom_${sectorId}_${i}`,
+      dx: Math.cos(ang) * r,
+      dz: Math.sin(ang) * r,
+      phantom: true,
+    });
+  }
+  return out;
+}
+
+// AE-074 — map contamination knowledge: what the player has *learned* about a sector's
+// background field. Written into the discovery record when a site completes a scan or a
+// phantom is resolved; read back by map/intel surfaces via contaminationAt.
+export function recordContaminationKnowledge(state, sectorId, summary) {
+  const ae = ensureAlienEcologyState(state);
+  if (!ae.mapKnowledge || typeof ae.mapKnowledge !== 'object') ae.mapKnowledge = {};
+  const rec = ae.mapKnowledge[sectorId] || (ae.mapKnowledge[sectorId] = { seenAt: 0, notes: [] });
+  rec.seenAt = Number(state && state.simTime) || 0;
+  if (summary && !rec.notes.includes(summary)) {
+    rec.notes.push(summary);
+    if (rec.notes.length > 6) rec.notes.shift();
+  }
+  return rec;
+}
+
+// AE-075/077/078 — station quarantine + contaminated-salvage market + faction reactions.
+// One policy table drives all three: sector C band + station type + faction posture.
+export const CONTAMINATION_FACTION_POLICY = Object.freeze({
+  // priceMult applies to biohazard-flagged commodities at that faction's stations;
+  // refuses = listing hidden entirely; note = customs text.
+  faction_scn:     Object.freeze({ priceMult: 0.55, refuses: true,  note: 'Custody refusal — biological lot must be surrendered to quarantine.' }),
+  faction_dmc:     Object.freeze({ priceMult: 0.80, refuses: false, note: 'Industrial intake at quarantine discount.' }),
+  faction_mts:     Object.freeze({ priceMult: 1.60, refuses: false, note: 'Meridian pays exclusivity premium on live samples.' }),
+  faction_quiet:   Object.freeze({ priceMult: 1.90, refuses: false, note: 'No questions. Premium for what cannot move legally.' }),
+  faction_reach:   Object.freeze({ priceMult: 1.30, refuses: false, note: 'If it bites a Concord cutter, it is worth double.' }),
+  faction_free:    Object.freeze({ priceMult: 1.25, refuses: false, note: 'Open-research bounty on uncontained samples.' }),
+  faction_choir:   Object.freeze({ priceMult: 1.10, refuses: false, note: 'Relic significance assessed, not content.' }),
+  faction_vael:    Object.freeze({ priceMult: 1.15, refuses: false, note: 'Containment information paid for in margin.' }),
+  faction_understory: Object.freeze({ priceMult: 2.10, refuses: false, note: 'The Understory recognizes what it is.' }),
+});
+
+/** Sector-band posture multiplier on top of faction policy: clean sectors fear it more. */
+export function contaminationSaleMult(state, sectorId, factionId) {
+  const pol = CONTAMINATION_FACTION_POLICY[factionId];
+  if (!pol) return { priceMult: 1, refuses: false, note: null };
+  if (pol.refuses) {
+    const c = contaminationAt(state, sectorId, null);
+    // In deep contaminated space even Concord-adjacent buyers bend — nobody asks there.
+    if (c >= 0.5) return { priceMult: 0.9, refuses: false, note: 'Quarantine waived — nobody is watching out here.' };
+    return pol;
+  }
+  const c = contaminationAt(state, sectorId, null);
+  // In high-C sectors the premium softens — samples are less rare there.
+  const localDiscount = c >= 0.4 ? 0.8 : 1.0;
+  return { priceMult: pol.priceMult * localDiscount, refuses: false, note: pol.note };
+}
+
+// AE-076 — ship exposure model: living tissue accrues on the hull in high-C space.
+// Filters (module mods.bioFilterMult) throttle accumulation; exposure decays in clean space.
+// It is logistics pressure, not a health bar (doc 01 §9).
+export const EXPOSURE_MODEL = Object.freeze({
+  gainPerSecPerC: 0.0016,   // C1 sector ≈ full exposure in ~10 min idle
+  decayPerSec: 0.002,
+  warnAt: 0.5,
+  severeAt: 0.85,
+  // Consequence surface at high exposure — scanner reliability, not hull damage.
+  scannerNoiseAtSevere: true,
+});
+
+// AE-079 — revelation sources: what raises R beyond the scripted nursery beats.
+// Each row: one-time bump evaluated by the systems layer.
+export const REVELATION_SOURCES = Object.freeze([
+  Object.freeze({ id: 'site_close_scan',   tier: 1, label: 'close-range site scan' }),
+  Object.freeze({ id: 'fauna_scanned',     tier: 1, label: 'organism scanned' }),
+  Object.freeze({ id: 'sample_collected',  tier: 2, label: 'filament sample recovered' }),
+  Object.freeze({ id: 'relay_observed',    tier: 2, label: 'relay coherence witnessed' }),
+  Object.freeze({ id: 'machine_encounter', tier: 3, label: 'precursor machine contact' }),
+]);
+
+// ── Phase 6/8 ecology mission offers (AE-067/068/069, AE-087/088/089) ────────────────────
+// These hang off site discovery like wreckMissions hang off salvage points: the site emits
+// `mission:offered` when its close band fires, carrying one of these templates. `type`
+// reuses an existing MISSION_TYPES row so the accept path needs no new machinery.
+export const ECOLOGY_MISSIONS = Object.freeze([
+  // AE-067 — quarantine cargo encounter (Veil teaching beat)
+  Object.freeze({
+    id: 'em_quarantine_cargo_veil',
+    siteId: 'quiet_ice',
+    title: 'Quarantined Sample Lot',
+    type: 'salvage_retrieval',
+    giver: 'Veil quarantine beacon',
+    params: { cmdtyId: 'cmdty_filament_sample', qty: 2 },
+    log: 'AUTOMATED NOTICE: salvage lot flagged biological-active. Removal authorized under containment protocol — unsealed transport prohibited.',
+    summary: 'A flagged sample lot sits inside the ice scar. Recover it and decide who gets to hold it.',
+    reward_cr: 1150,
+    tag: 'ecology',
+  }),
+  // AE-068 — biological survey (Charon second site)
+  Object.freeze({
+    id: 'em_bio_survey_warm_freighter',
+    siteId: 'warm_freighter',
+    title: 'Unregistered Biological Signature',
+    type: 'recon_scan',
+    giver: 'Free Frontier field desk',
+    params: { scanTargets: 2 },
+    log: 'The freighter runs warm with no crew aboard and its scans keep coming back "organic." Meridian wants the organism cataloged before Concord seals the site.',
+    summary: 'Close-scan the resident organisms without destroying them. The field desk pays for readings, not corpses.',
+    reward_cr: 1350,
+    tag: 'ecology',
+  }),
+  // AE-069 — contaminated claim (Charon integrated colony)
+  Object.freeze({
+    id: 'em_contaminated_claim_garden',
+    siteId: 'three_hull_garden',
+    title: 'Claim Dispute — Living Site',
+    type: 'salvage_retrieval',
+    giver: 'Drift Claims arbitration',
+    params: { cmdtyId: 'cmdty_filament_sample', qty: 1 },
+    log: 'Two crews filed on the same hull cluster. Nobody disputes the coordinates — they dispute whether the thing growing on it counts as the claim.',
+    summary: 'Pull one clean tissue sample so the arbitrators can classify what the claim is actually sitting on.',
+    reward_cr: 1500,
+    tag: 'ecology',
+  }),
+  // AE-087 — carrier diversion (Ashfall breathing dock)
+  Object.freeze({
+    id: 'em_carrier_diversion_breathing',
+    siteId: 'breathing_dock',
+    title: 'Divert the Carrier',
+    type: 'recon_scan',
+    giver: 'Ashfall perimeter watch',
+    params: { scanTargets: 1 },
+    log: 'A reproductive carrier is drifting toward the cordon. Killing it blooms the whole seam — mark its thermal track so the tow crew can steer it out.',
+    summary: 'Close-scan the carrier to expose its heat profile. The diversion crew handles the rest.',
+    reward_cr: 1700,
+    tag: 'ecology',
+  }),
+  // AE-088 — relay mapping (Charon garden)
+  Object.freeze({
+    id: 'em_relay_mapping_garden',
+    siteId: 'three_hull_garden',
+    title: 'The Organizing Pulse',
+    type: 'recon_scan',
+    giver: 'Unmarked research buoy',
+    params: { scanTargets: 2 },
+    log: 'Every animal in the cluster turns when the pale shepherd emits. Triangulate the relay tissue by watching where the swarm answers.',
+    summary: 'Scan the relay-linked organisms until the network pulse triangulates itself.',
+    reward_cr: 1600,
+    tag: 'ecology',
+  }),
+  // AE-089 — missing crew (Veil quiet ice — the answer is not guaranteed to be alien)
+  Object.freeze({
+    id: 'em_missing_crew_quiet_ice',
+    siteId: 'quiet_ice',
+    title: 'Crew Absent, Transponder Live',
+    type: 'salvage_retrieval',
+    giver: 'Drifting crew log',
+    params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
+    log: 'Ship intact, transponder live, airlocks cycled. The crew compartment is empty and the last entry ends mid-word. Bring back the recorder — carefully.',
+    summary: 'Recover the crew log. Do not power anything that does not need to be on.',
+    reward_cr: 1400,
+    tag: 'ecology',
+  }),
+]);
+
+export function ecologyMissionForSite(siteId) {
+  return ECOLOGY_MISSIONS.find((m) => m.siteId === siteId) || null;
 }

@@ -67,6 +67,7 @@ import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandMode
 import { priceModForState } from './factions.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
+import { contaminationSaleMult } from '../data/alienEcology.js'; // AE-077/078 biohazard market policy
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
 // M3 courier/freight balance (2026-07): produce=2.0 / consume=0.35 at baseEq=1000 left a permanent
@@ -1261,11 +1262,23 @@ export const economy = {
       result = effectiveDemandFor({ state: this.state, sectorId, commodity: def });
     }
     const prevMult = Number(entry.demandMult) || 1;
-    const nextMult = Number(result.multiplier) || 1;
+    let nextMult = Number(result.multiplier) || 1;
+    // Alien Ecology AE-077/078 — biohazard lots price off the station faction's
+    // contamination policy (custody refusal deep-discounts; Meridian/Understory pay premiums).
+    let biohazardPolicy = null;
+    if (def.biohazard === true && info && info.factionId) {
+      biohazardPolicy = contaminationSaleMult(this.state, sectorId, info.factionId);
+      if (biohazardPolicy && Number.isFinite(biohazardPolicy.priceMult)) {
+        nextMult *= biohazardPolicy.priceMult;
+      }
+    }
     // demandModel returns fresh frozen driver rows per projection and every consumer reads or
     // clones them — nothing mutates — so store the projection's rows directly instead of
     // re-cloning them into every listing on every tick.
-    const nextDrivers = Array.isArray(result.drivers) ? result.drivers : EMPTY_DRIVERS;
+    const nextDrivers = biohazardPolicy
+      ? [...(Array.isArray(result.drivers) ? result.drivers : EMPTY_DRIVERS),
+        { kind: 'contamination_policy', note: biohazardPolicy.note || 'biohazard pricing policy' }]
+      : (Array.isArray(result.drivers) ? result.drivers : EMPTY_DRIVERS);
     const changed = Math.abs(prevMult - nextMult) > 1e-9
       || !demandDriversEqual(entry.demandDrivers, nextDrivers);
     entry.demandMult = nextMult;

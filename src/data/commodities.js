@@ -43,7 +43,7 @@ export const COMMODITIES = [
   { id: 'cmdty_exotic_xenium',      name: 'Xenium',                category: 'exotic',    basePrice: 739, volatility: 0.28, elasticity: 0.536492, legality: 'legal',      volPerU: 1.0, massPerU: 1.2, fineMult: 0, marketTier: 4, producedBy: ['mining'],                         consumedBy: ['research','blackmarket'] },
   // Alien Ecology program (doc 09 rewards): contaminated salvage. Nobody sells it — it only
   // comes off colonized hulls — and stations that buy it are buying a live biology sample.
-  { id: 'cmdty_filament_sample',    name: 'Living Filament Sample', category: 'exotic',   basePrice: 620, volatility: 0.32, elasticity: 0.5,      legality: 'restricted', volPerU: 0.5, massPerU: 0.3, fineMult: 1.0, marketTier: 4, producedBy: [],                              consumedBy: ['research','blackmarket'] },
+  { id: 'cmdty_filament_sample',    name: 'Living Filament Sample', category: 'exotic',   basePrice: 620, volatility: 0.32, elasticity: 0.5,      legality: 'restricted', volPerU: 0.5, massPerU: 0.3, fineMult: 1.0, marketTier: 4, producedBy: [],                              consumedBy: ['research','blackmarket'], biohazard: true },
   { id: 'cmdty_dmc_black_box',      name: 'DMC Flight Recorder',    category: 'salvage',  basePrice: 900, volatility: 0.0,  elasticity: 0.0,      legality: 'legal',      volPerU: 0.4, massPerU: 0.5, fineMult: 0, marketTier: 4, producedBy: [],                              consumedBy: ['research','military'] },
 
   // --- REFINED ---

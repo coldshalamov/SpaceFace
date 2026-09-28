@@ -84,7 +84,8 @@ test('scanner vocabulary is revelation-gated, not distance-gated', () => {
 
 test('cinder nursery sits in charon expanse on a derelict-field contamination lean', () => {
   const sites = alienSitesForSector('sector_charon_expanse');
-  assert.equal(sites.length, 1);
+  // Wave A/B sites share the sector (AE-065/085); the nursery is the anchor.
+  assert.ok(sites.length >= 1);
   assert.equal(sites[0].siteId, 'cinder_nursery');
   assert.equal(sites[0].worldSiteId, 'world_site_charon_cinder_nursery');
   const zone = zonesForSector('sector_charon_expanse').find((z) => z.id === NURSERY.zoneId);
@@ -119,15 +120,20 @@ test('materializeAlienEcology seeds growth dressing + the fauna cast determinist
   };
   const first = run();
   const second = run();
-  const fauna = first.log;
-  const growth = first.active.dressing.filter((d) => d.placeId && d.placeId.startsWith('alien_growth_'));
+  const allFauna = first.log;
+  const fauna = allFauna.filter((e) => e.data && e.data.ecology && e.data.ecology.siteId === 'cinder_nursery');
+  // Dressing rows carry no data — scope to the nursery anchor (identity _toGlobal).
+  const growth = first.active.dressing.filter((d) => d.placeId && d.placeId.startsWith('alien_growth_')
+    && Math.hypot(d.pos.x - NURSERY.center.x, d.pos.z - NURSERY.center.z) < NURSERY.growthRing.outer * 1.05);
   assert.equal(fauna.length, 10); // 6 swarm + 2 ray + 1 shepherd + 1 leech
   assert.equal(growth.length, NURSERY.growthRing.count);
-  assert.deepEqual(fauna.map((e) => [e.type, e.pos.x, e.pos.z]), second.log.map((e) => [e.type, e.pos.x, e.pos.z]));
+  assert.deepEqual(allFauna.map((e) => [e.type, e.pos.x, e.pos.z]), second.log.map((e) => [e.type, e.pos.x, e.pos.z]));
   for (const e of fauna) {
     assert.equal(e.type, 'fauna');
     assert.equal(e.collides, false);
-    assert.equal(e.physicsBody, false);
+    // Capturable species get a massline sensor body (AE-059); everyone else is kinematic.
+    assert.ok(e.physicsBody === false
+      || (e.physicsBody && e.physicsBody.material === 'massline_sensor'));
     assert.equal(e.data.ecology.driveState, 'drift');
     assert.equal(e.data.strainId, 'charon_grave');
     assert.ok(e.data.scanLabel.length > 0);
@@ -139,11 +145,13 @@ test('killed fauna never respawn: deadFauna excludes them on re-materialize', ()
   const log = [];
   const world = makeWorld(state, log);
   materializeAlienEcology(world, { id: 'sector_charon_expanse' }, { dressing: [] });
-  const victim = state.entityList.find((e) => e.type === 'fauna');
+  const victim = state.entityList.find((e) => e.type === 'fauna' && e.data.ecology.siteId === 'cinder_nursery');
   handleAlienEcologyEvent(world, 'entity:killed', { id: victim.id });
-  const before = state.entityList.length;
+  const logLen = log.length;
   materializeAlienEcology(world, { id: 'sector_charon_expanse' }, { dressing: [] });
-  assert.equal(state.entityList.length - before, 9); // one of ten stays dead
+  // Re-materialize re-plans the cast but skips the dead member: one of ten stays dead.
+  const respawned = log.slice(logLen).filter((e) => e.data && e.data.ecology && e.data.ecology.siteId === 'cinder_nursery').length;
+  assert.equal(respawned, 9);
 });
 
 test('site events drive the arc: power wakes, sever breaks coherence, black box completes', () => {

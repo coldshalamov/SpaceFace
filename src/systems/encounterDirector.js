@@ -79,6 +79,7 @@ import {
   regionalEcologyReadout,
   regionalEncounterWeight,
 } from './regionalEcology.js';
+import { ecologyEncounterWeights } from '../data/alienEcology.js'; // AE-072 contamination→deck bias
 import {
   ActivityKind,
   RulesOfEngagement,
@@ -666,8 +667,13 @@ export const encounterDirector = {
       0.35 + sec * 0.45 + (zone && CIVIL_ZONE_TYPES.has(zone.type) ? 0.35 : 0);
     // Mystery accrues slow and strange — frontier drift plus a real pull where its wrecks lie.
     // Patrol accrues like the law it is: security-scaled, hot inside a cordon zone.
+    // AE-072: contamination presses the mystery deck — active biological space spawns
+    // observation/crossing/carrier beats more often (doc 01 §system outputs).
+    const ecoPull = zone
+      ? (ecologyEncounterWeights(state, sectorId, zone.id).anomalyBias || 0)
+      : 0;
     const mysteryRate =
-      0.05 + (1 - sec) * 0.12 + (zone && MYSTERY_ZONE_TYPES.has(zone.type) ? 0.25 : 0);
+      0.05 + (1 - sec) * 0.12 + (zone && MYSTERY_ZONE_TYPES.has(zone.type) ? 0.25 : 0) + ecoPull * 0.3;
     const patrolRate =
       0.08 + sec * 0.4 + (zone && LAWFUL_ZONE_TYPES.has(zone.type) ? 0.3 : 0);
     dir.pressure.combat = Math.min(POOL_MAX, dir.pressure.combat + combatRate * step * tensionAccrualScale(state, 'combat'));

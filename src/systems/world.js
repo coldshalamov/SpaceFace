@@ -185,6 +185,11 @@ import {
   serializeAlienEcologyState,
   deserializeAlienEcologyState,
 } from './alienEcology.js'; // Alien Ecology program (doc 08): world-owned library, not a registered system
+import {
+  materializeMachineLayer,
+  tickMachineLayer,
+  machineRouteOpen,
+} from './precursorMachines.js'; // Verge-Layer machine layer (doc 07, AE-090..109): same seam
 import { createAlienEcologyState } from '../data/alienEcologyState.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import {
@@ -579,6 +584,10 @@ export const world = {
     bus.on('alienEcology:relaySevered', (p) => handleAlienEcologyEvent(this, 'alienEcology:relaySevered', p));
     bus.on('alienEcology:nurseryBloom', (p) => handleAlienEcologyEvent(this, 'alienEcology:nurseryBloom', p));
     bus.on('alienEcology:blackBoxRecovered', (p) => handleAlienEcologyEvent(this, 'alienEcology:blackBoxRecovered', p));
+    // AE-051/079 stimulus + revelation intake: mining noise wakes dormant fauna; sector scans
+    // against live sites teach the taxonomy ladder.
+    bus.on('sectorsim:impulse', (p) => handleAlienEcologyEvent(this, 'sectorsim:impulse', p));
+    bus.on('scan:completed', (p) => handleAlienEcologyEvent(this, 'scan:completed', p));
     bus.on('pickup:collected', (p) => {
       // cargo's listener (registered earlier) has already written the acceptance receipt, so
       // the objective only fires on a committed, actually-accepted amount of THIS site's pod.
@@ -2658,6 +2667,9 @@ export const world = {
     // sector. Deterministic off its own rng stream — runs last so the world rng order is
     // untouched by ecology content.
     materializeAlienEcology(this, sector, active);
+    // Verge-Layer machine layer (AE-100..108): machine structures + kinematic machine
+    // entities, same deterministic seam, same dressing substrate.
+    materializeMachineLayer(this, sector, active);
   },
 
   // PQ-143.02 "six texture one-offs": memorable, non-systemic set pieces from
@@ -3723,6 +3735,7 @@ export const world = {
       gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
     }
     tickAlienEcology(this, dt);
+    tickMachineLayer(this, dt);
     tickFarActors(state, this.helpers, this.bus);
     // Lane C: ask Lane A helpers to rematerialize anything already inside the authored
     // decode disc (TABLE_AUTHORED_DECODE_SECONDS × top speed). tickFarActors covers the
@@ -5219,6 +5232,8 @@ export const world = {
     const [kind, key] = gate.split(':');
     if (kind === 'tech') return (this.state.player.researchedNodes || []).includes(key);
     if (kind === 'flag') return !!(this.state.story.flags || {})[key];
+    // AE-108 revoked routes: machine-protocol standing opens transit the tech tree cannot.
+    if (kind === 'machine') return machineRouteOpen(this.state, key);
     return false;
   },
 

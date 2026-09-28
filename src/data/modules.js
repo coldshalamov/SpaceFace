@@ -137,6 +137,14 @@ const SHIPPED_MODULES = [
     energyDraw: 1, mods: { revealCargo: true },
   },
   {
+    // Alien Ecology AE-075 — biofilm filter: throttles hull-contamination accrual in
+    // high-C space (ae.exposure), and slows cargo spoilage on biohazard lots.
+    id: 'mod_filter_stack_s', name: 'Biofilm Filter Stack', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 9500,
+    energyDraw: 1,
+    mods: { bioFilterMult: 0.35 },
+    description: 'Electrostatic mesh over the intakes and plate seams. Contaminated sectors stop fouling your hull — and your manifest.',
+  },
+  {
     id: 'unique_truesight_scanner', baseId: 'mod_cargo_scanner_s', name: 'Truesight Scanner', slotType: 'utility', size: 'S', tier: 1, mass: 1, price: 0,
     energyDraw: 1, purchasable: false, unique: true, salvageOnly: true,
     mods: { revealCargo: true, scanRangeMult: 1.50 },
