@@ -4,10 +4,15 @@
 // impulse derivation (mass from src/data/ships.js):
 //   ship_pelican (tier-1 mid miner): mass = 32
 //   ship_drifter (tier-2 multirole): mass = 48
-// Target Δv ≈ 25 wu/s at stick/contact (falloff = 1): impulse = Δv × mass.
-//   Pelican: 25 × 32 = 800  → ~25 wu/s at contact
-//   Drifter: 25 × 48 = 1200 → ~25 wu/s at contact
-// We use 800 so the tier-1 mid reference (Pelican) hits the 25 wu/s feel target; Drifter gets ~17 wu/s.
+//   ship_wasp (light fighter): mass = 16
+// Target: a plate that reaches a hull's centre still knocks it past the hitstun floor — the stun
+// law is cruise-relative (u = Δv/victimCruise > 0.14), so the impulse budget tracks the cruise
+// ceilings it works against. When light-hull combatSpeed doubled (105 → 210, propulsionCatalog
+// "restore fast cruise ceilings"), the authored 800 stopped clearing the floor at ANY distance —
+// no blast could ever prime, which is the structural death of PQ-137.09 chains. The capability the
+// radius note below calibrates for is falloff ≥ 0.294 on a wasp, i.e. Δv ≥ 0.14 × 210 = 29.4 →
+// impulse ≥ 29.4 × 16 / 0.294 = 1600. Contact Δv on the Pelican reference: 1600 / 32 = 50 wu/s —
+// the same ~0.24 u it was authored at, under the doubled cruise.
 // Linear falloff: Δv(r) = impulse × (1 − r/radius) / mass.
 
 export const IMPULSE_CHARGES = {
@@ -20,7 +25,7 @@ export const IMPULSE_CHARGES = {
     throwSpeed: 120,
     stickRadius: 6,
     armTimeS: 6, // throw cooldown between lobs (GDD §4.4) — NOT post-stick arm delay
-    impulse: 800,
+    impulse: 1600,
     damage: 12,
     // PQ-137.09 — 42 -> 84. THE NUMBER, and why it moved. A plate is a physical object stuck to a
     // physical face: `_tryStick` can seat it up to hostRadius + chargeRadius + stickRadius from
@@ -31,8 +36,8 @@ export const IMPULSE_CHARGES = {
     // of a wasp shoved at 57.5 WU/s into another wasp delivered 7.4 WU/s to the ship it hit
     // (0.07 of the stun law's threshold) and the chain fired on a BYSTANDER instead. Priming that
     // victim needs falloff >= 0.294, i.e. radius >= 49.2 / 0.706 = 69.7; 84 is that with margin
-    // and no knife edge, and it is unchanged at the centre — 800 / mass, exactly as before — so
-    // every bar written "at the centre" reads the same number it always did.
+    // and no knife edge. (The floor's Δv side tracks victim cruise — see the impulse note above;
+    // impulse 1600 keeps the same 0.294 falloff requirement under combatSpeed 210.)
     radius: 84,
     falloff: 'linear',
     maxActive: 4,
