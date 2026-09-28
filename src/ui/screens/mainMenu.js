@@ -402,6 +402,8 @@ export const mainMenuScreen = {
     // lettered, and the verbs ride its right side from just above east down to the south-east, so the name
     // and the choice are one object and the lower left goes back to the key art.
     arcRail = createArcRail({ host: stage, list, frame: rootEl, extra: [aside],
+      // T-S1: the title's signature — the Hand follows the pointer round the dial, the rings answer
+      freeTrack: true,
       // the pivot keeps the rim's ticks clear of the frame (re + 33) at every height
       place: (W, H) => { const re = Math.round(H * 0.278); const c = Math.max(Math.round(H * 0.305), re + 33); return { pivot: { x: c, y: c }, re, centerDeg: 112 }; },
       span: 74,

@@ -175,22 +175,24 @@ function drawFace(p, re) {
   // bold dots, the sun is a lit core in a halo, the bodies are filled worlds with a lit rim
   const g = svg('g', { class: 'orr-arcrail__face', style: `transform-origin:${p.x}px ${p.y}px`, fill: 'none' });
   const bone = (a) => `rgb(232 226 212 / ${a})`;
+  // T-C1: the band's body carries the 2:1 bar itself (bone ~.3 on glass ~10 reads ~Y75), not just its
+  // edge; the outer band is the brightest tier and they fade toward the hub.
   const band = (f, a, w) => {
-    g.appendChild(svg('path', { d: arcD(p.x, p.y, re * f, 0, 360), stroke: bone(a * 0.42), 'stroke-width': w }));
-    g.appendChild(svg('path', { d: arcD(p.x, p.y, re * f, 0, 360), stroke: bone(Math.min(0.62, a * 2.2)), 'stroke-width': 1.25 }));
+    g.appendChild(svg('path', { d: arcD(p.x, p.y, re * f, 0, 360), stroke: bone(a), 'stroke-width': w }));
+    g.appendChild(svg('path', { d: arcD(p.x, p.y, re * f, 0, 360), stroke: bone(Math.min(0.66, a * 1.5 + 0.14)), 'stroke-width': 1.25 }));
   };
   const dots = (f, a, gap) => g.appendChild(svg('path', { d: arcD(p.x, p.y, re * f, 0, 360), stroke: bone(a), 'stroke-width': 2.6, 'stroke-dasharray': `0 ${gap}`, 'stroke-linecap': 'round' }));
-  band(0.9, 0.2, 10);
+  band(0.9, 0.32, 10);
   dots(0.78, 0.34, 9);
-  band(0.66, 0.15, 8);
-  band(0.52, 0.11, 6);
+  band(0.66, 0.26, 8);
+  band(0.52, 0.21, 6);
   dots(0.38, 0.22, 7);
-  band(0.24, 0.08, 5);
+  band(0.24, 0.17, 5);
   g.appendChild(svg('path', { d: ticksD(p.x, p.y, re * 0.66 - 5, 180, { len: 4, major: 15, majorLen: 10, inward: true }), stroke: bone(0.24), 'stroke-width': 1.5 }));
   // the sun: a lit core in a halo, its rays with body
   g.appendChild(svg('circle', { cx: p.x, cy: p.y, r: re * 0.13, fill: bone(0.05) }));
   g.appendChild(svg('circle', { cx: p.x, cy: p.y, r: re * 0.075, fill: bone(0.12), stroke: bone(0.45), 'stroke-width': 1.5 }));
-  g.appendChild(svg('path', { d: ticksD(p.x, p.y, re * 0.17, 24, { len: re * 0.05, inward: true }), stroke: bone(0.26), 'stroke-width': 1.5, 'stroke-linecap': 'round' }));
+  g.appendChild(svg('path', { d: ticksD(p.x, p.y, re * 0.17, 24, { len: re * 0.05, inward: true }), stroke: bone(0.38), 'stroke-width': 1.5, 'stroke-linecap': 'round' }));
   // three bodies riding their orbits: filled worlds with a lit rim and a halo ring
   for (const [f, a, r] of [[0.66, 58, 10], [0.52, 128, 7], [0.9, 12, 6]]) {
     const [bx, by] = polar(p.x, p.y, re * f, a);
@@ -218,9 +220,14 @@ function drawFace(p, re) {
  * @param {string} [o.engraving]    micro text engraved along the lower rim
  * @param {boolean} [o.grouped]     verbs sharing a data-group ride ONE tick as a row, the group's
  *                                  name engraved over it (a long menu stays a readable dial)
+ * @param {boolean} [o.freeTrack]   T-S1: while the pointer is over the dial and off the verbs, the Hand
+ *                                  tracks the pointer's bearing on the stop spring and the face/orbit/rim
+ *                                  layers answer with differential parallax. Verb hover/focus still snaps to
+ *                                  the stop; reduced motion and keyboard/gamepad paths are unchanged. Only
+ *                                  the screens that pass it get it; the grouped dial never does.
  */
 export function createArcRail({ host, list, frame = null, extra = [], emblemUrl = null, engraving = '', grouped = false, dense = false,
-  clustered = false, span = null, pivotY = 0.56, place = null, engravingDeg = null, clearOf = null } = {}) {
+  clustered = false, span = null, pivotY = 0.56, place = null, engravingDeg = null, clearOf = null, freeTrack = false } = {}) {
   const doc = (host && host.ownerDocument) || globalThis.document;
   // Headless shims (tests) mount screens without a real document: the rail is presentation only, so
   // it steps aside and the menu stays exactly the list the screen built.
@@ -266,6 +273,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   let geo = null;
   let blade = null; let bladeBloom = null; let core = null; let tail = null; let bead = null; let beadBloom = null;
   let glint = null; let glintBloom = null; let trailHost = null; let ticks = []; let leader = null;
+  // T-S1: parallax wrappers round the face, the tick orbit and the rim ring. The wrapper carries the
+  // translate attribute; the wrapped group's own CSS rotation animation is untouched.
+  let pxFace = null; let pxOrbit = null; let pxRim = null;
+  const freeOn = freeTrack === true && grouped !== true;
   // a needle's spring: one slight overshoot, settled in about a quarter second
   const handSpring = createSpring({ value: 20, preset: { k: 95, c: 11.5 }, onUpdate: (deg) => paintHand(deg) });
   let handIndex = -1;
@@ -330,23 +341,31 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     const reach = ri + 420;
     Object.assign(glow.style, { width: `${reach * 2}px`, height: `${reach * 2}px`, left: `${pivot.x - reach}px`, top: `${pivot.y - reach}px` });
     // an outer orbit of fine ticks round the emblem, counter-drifting
-    if (!emblemUrl) layer.appendChild(drawFace(pivot, re));
+    pxFace = svg('g', { class: 'orr-arcrail__px' });
+    if (!emblemUrl) pxFace.appendChild(drawFace(pivot, re));
+    layer.appendChild(pxFace);
     // the rim scale is the brightest tier: bone ticks over a soft bloom, a lit rim ring
     const orbit = svg('g', { class: 'orr-arcrail__orbit', style: `transform-origin:${pivot.x}px ${pivot.y}px` });
     const rimTicks = ticksD(pivot.x, pivot.y, re + 9, 144, { len: 3, major: 12, majorLen: 8, inward: false });
     orbit.appendChild(svg('path', { d: rimTicks, class: 'orr-bloom orr-hi', 'stroke-width': 4, opacity: '.18' }));
     orbit.appendChild(svg('path', { d: rimTicks, stroke: 'rgb(236 230 216 / .72)', 'stroke-width': 1.5, fill: 'none' }));
-    layer.appendChild(orbit);
-    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-bloom orr-hi', 'stroke-width': 5, opacity: '.1' }));
-    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-band', style: '--orr-w-band:9px; --orr-band-a:.09' }));
-    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-edge', style: '--orr-edge-a:.7; --orr-w-edge:1.75px' }));
+    pxOrbit = svg('g', { class: 'orr-arcrail__px' });
+    pxOrbit.appendChild(orbit);
+    layer.appendChild(pxOrbit);
+    pxRim = svg('g', { class: 'orr-arcrail__px' });
+    pxRim.append(
+      svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-bloom orr-hi', 'stroke-width': 5, opacity: '.1' }),
+      svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-band', style: '--orr-w-band:9px; --orr-band-a:.22' }),
+      svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-edge', style: '--orr-edge-a:.7; --orr-w-edge:1.75px' }),
+    );
+    layer.appendChild(pxRim);
     glintBloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 8, opacity: '.18' });
     glint = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.4, opacity: '.55' });
     layer.append(glintBloom, glint);
     // the rail: an arc of light through the verbs' ticks
     const a0 = angles[0] - 8;
     const a1 = angles[angles.length - 1] + 8;
-    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, ri - 8, a0, a1), class: 'orr-band', style: '--orr-w-band:7px; --orr-band-a:.08' }));
+    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, ri - 8, a0, a1), class: 'orr-band', style: '--orr-w-band:7px; --orr-band-a:.2' }));
     layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, ri - 8, a0, a1), class: 'orr-core orr-rest orr-arcrail__rail', 'stroke-width': 1.5, pathLength: 1 }));
     layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, ri - 8, a0, a1), class: 'orr-bloom orr-rest', 'stroke-width': 4, opacity: '.12' }));
     ticks = angles.map((a) => {
@@ -554,6 +573,66 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     e.stopPropagation();
     if (target && typeof target.focus === 'function') target.focus();
   };
+  // T-S1: the title's signature. The host itself is pointer-transparent (only the verbs take
+  // events), so the free pointer is heard on the frame the host was lifted into. While the pointer is
+  // over the dial and off the verbs the Hand tracks its bearing on the same stop spring (unwrapped, so
+  // it never swings the long way round); the layers drift toward the pointer differentially, the deep
+  // face most and the rim housing least. Verb hover/focus still snaps to the stop through pointAt;
+  // reduced motion hears nothing and the layers sit at rest.
+  const PX_DEPTH = [7, 4, 2];
+  function paintParallax(ux, uy) {
+    const groups = [pxFace, pxOrbit, pxRim];
+    groups.forEach((g, i) => {
+      if (!g) return;
+      const m = PX_DEPTH[i];
+      g.setAttribute('transform', `translate(${(ux * m).toFixed(1)} ${(uy * m).toFixed(1)})`);
+    });
+  }
+  function clearParallax() {
+    for (const g of [pxFace, pxOrbit, pxRim]) if (g) g.removeAttribute('transform');
+  }
+  const motionOff = () => !!(doc.documentElement && doc.documentElement.classList.contains('sf-reduce-motion'));
+  const onFreeMove = (e) => {
+    if (!freeOn || !geo) return;
+    if (motionOff()) { clearParallax(); return; }
+    if (!e || typeof e.clientX !== 'number') return;
+    const hr = host.getBoundingClientRect();
+    const dx = e.clientX - hr.left - geo.pivot.x;
+    const dy = e.clientY - hr.top - geo.pivot.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 1) { clearParallax(); return; }
+    const dialR = geo.re * 1.7;
+    if (dist > dialR * 1.6) {
+      // off the dial: the rings settle home and the Hand returns to its stop
+      clearParallax();
+      if (handIndex >= 0) handSpring.set(geo.angles[handIndex]);
+      return;
+    }
+    paintParallax(dx / dist, dy / dist);
+    if (dist > dialR) {
+      if (handIndex >= 0) handSpring.set(geo.angles[handIndex]);
+      return;
+    }
+    // over a verb the stop owns the Hand (onOver snaps it there); elsewhere it follows the pointer
+    const t = e.target;
+    if (t && typeof t.closest === 'function' && t.closest('li')) return;
+    let deg = Math.atan2(dx, -dy) * 180 / Math.PI;
+    if (deg < 0) deg += 360;
+    const cur = handSpring.value;
+    while (deg - cur > 180) deg -= 360;
+    while (deg - cur < -180) deg += 360;
+    handSpring.set(deg);
+  };
+  const onFreeLeave = () => {
+    if (!freeOn || !geo) return;
+    clearParallax();
+    if (handIndex >= 0 && !motionOff()) handSpring.set(geo.angles[handIndex]);
+  };
+  const freeTarget = freeOn && frame && typeof frame.addEventListener === 'function' ? frame : null;
+  if (freeTarget) {
+    freeTarget.addEventListener('pointermove', onFreeMove);
+    freeTarget.addEventListener('pointerleave', onFreeLeave);
+  }
   host.addEventListener('keydown', onKey, true);
   host.addEventListener('pointerover', onOver);
   host.addEventListener('focusin', onFocus);
@@ -584,6 +663,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       clearTimeout(arrivalTimer);
       handSpring.stop();
       if (ro) ro.disconnect();
+      if (freeTarget) {
+        freeTarget.removeEventListener('pointermove', onFreeMove);
+        freeTarget.removeEventListener('pointerleave', onFreeLeave);
+      }
       host.removeEventListener('keydown', onKey, true);
       host.removeEventListener('pointerover', onOver);
       host.removeEventListener('focusin', onFocus);
