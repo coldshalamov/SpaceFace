@@ -1093,6 +1093,51 @@ export function evidenceById(id) {
   return EVIDENCE_TABLE[id] || null;
 }
 
+// ── Phase 26/31 — unique module grants ───────────────────────────────────────────────────
+// Where each salvageOnly alien-ecology module is actually earned. The depth-program loot
+// audit unions these ids into its unique-reservation set: unique:true equipment with no
+// declared acquisition route fails the audit. `via` keys map to real beats in
+// src/systems/{alienEcology,precursorMachines}.js. grantAlienUnique (below) is the
+// runtime seam that turns a beat into a once-per-save grant through ships.grantModule.
+export const ALIEN_UNIQUE_GRANTS = Object.freeze([
+  Object.freeze({ id: 'mod_lattice_coupler_s', kind: 'module',
+    via: 'machine_site_seen', siteId: 'charon_broken_shepherd',
+    text: 'Pried loose from the dead shepherd\'s sensor spine — a tap into site memory.' }),
+  Object.freeze({ id: 'mod_precursor_handshake_s', kind: 'module',
+    via: 'protocol_satisfied',
+    text: 'First directive resolved — the layer issues you a responder of your own.' }),
+  Object.freeze({ id: 'mod_quiet_equation_s', kind: 'module',
+    via: 'protocol_witnessed',
+    text: 'Held through a full witness procedure — the decode lattice was the lesson.' }),
+  Object.freeze({ id: 'mod_resonant_massline_m', kind: 'module',
+    via: 'relay_severed',
+    text: 'The severed relay\'s field coil — dead-matter signature, still tuned.' }),
+]);
+
+/** Grant declaration by module id. */
+export function alienUniqueGrantById(id) {
+  return ALIEN_UNIQUE_GRANTS.find((g) => g.id === id) || null;
+}
+
+/**
+ * Issue a declared unique module to the player through the real ships seam — once per
+ * save (ae.uniqueGrants is the once-flag ledger). Returns true when the grant landed.
+ */
+export function grantAlienUnique(world, defId, viaKey) {
+  const state = world && world.state;
+  if (!state) return false;
+  const ae = ensureAlienEcologyState(state);
+  if (!ae.uniqueGrants) ae.uniqueGrants = {};
+  // The ledger stores simTime; a grant at t=0 is still a grant — check presence, not truth.
+  if (ae.uniqueGrants[defId] != null) return false;
+  const ships = world.registry && typeof world.registry.get === 'function'
+    ? world.registry.get('ships') : null;
+  if (!(ships && typeof ships.grantModule === 'function')) return false;
+  if (!ships.grantModule({ defId, reason: `alien-ecology:${viaKey}` })) return false;
+  ae.uniqueGrants[defId] = Number(state.simTime) || 0;
+  return true;
+}
+
 // ── Phase 29 / AE-282..AE-290 — N-table setpieces: one-shot authored beats that fire on
 // condition, record evidence, and never refire. `rec.setpieces[id]` is the once-flag. ──
 // trigger: 'approach' (radius), 'close' (radius), 'hold' (seconds inside radius),

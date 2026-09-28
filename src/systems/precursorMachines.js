@@ -20,6 +20,7 @@ import {
   scannerMachineLabel,
 } from '../data/precursorMachines.js';
 import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
+import { grantAlienUnique } from '../data/alienEcology.js';
 import { insertDressingRow } from '../world/dressingTable.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
@@ -40,6 +41,15 @@ function directiveText(state, id) {
   if (!decoded) return line;
   const d = MACHINE_DIRECTIVES[id];
   return d && d.resolves ? `${line} — ${d.resolves}.` : line;
+}
+
+// AE-296 — the first resolved directive mints the handshake transponder once per save.
+function grantProtocolSatisfiedUnique(world) {
+  if (!grantAlienUnique(world, 'mod_precursor_handshake_s', 'protocol_satisfied')) return;
+  world.bus.emit('comms:log', {
+    from: 'Verge Layer', kind: 'machine',
+    text: 'COMPLIANCE LOGGED. A RESPONDER IS ISSUED — YOUR WINDOWS WILL READ SHORTER.',
+  });
 }
 
 const TWO_PI = Math.PI * 2;
@@ -202,6 +212,14 @@ export function tickMachineLayer(world, dt) {
         if (site.evidence) {
           world.bus.emit('ecology:evidence', { id: site.evidence, sectorId });
         }
+        // AE-296 — the broken shepherd's sensor spine is the lattice coupler grant.
+        if (site.siteId === 'charon_broken_shepherd'
+          && grantAlienUnique(world, 'mod_lattice_coupler_s', 'machine_site_seen')) {
+          world.bus.emit('comms:log', {
+            from: site.name, kind: 'machine',
+            text: 'The shepherd\'s sensor spine hangs loose. You pry free a tap into site memory.',
+          });
+        }
         refreshMachineLabels(world);
       }
     }
@@ -232,6 +250,7 @@ export function tickMachineLayer(world, dt) {
         if (d > site.radius + 120) {
           rec.directiveResolved = true;
           advanceMachineProtocol(state, 'satisfied');
+          grantProtocolSatisfiedUnique(world);
           refreshMachineLabels(world);
         } else if (rec.directiveT > windowS) {
           rec.directiveResolved = true;
@@ -250,7 +269,18 @@ export function tickMachineLayer(world, dt) {
           if (rec.holdT > holdWindowS(state)) {
             rec.directiveResolved = true;
             advanceMachineProtocol(state, 'satisfied');
-            if (site.directive === 'WITNESS') grantWitnessMark(state, site.siteId);
+            grantProtocolSatisfiedUnique(world);
+            if (site.directive === 'WITNESS') {
+              grantWitnessMark(state, site.siteId);
+              // AE-296 — holding through a full witness procedure teaches the decode
+              // lattice: the Quiet Equation lands with the first witness mark.
+              if (grantAlienUnique(world, 'mod_quiet_equation_s', 'protocol_witnessed')) {
+                world.bus.emit('comms:log', {
+                  from: site.name, kind: 'machine',
+                  text: 'The directive stream resolves into grammar — the sentence underneath is yours now.',
+                });
+              }
+            }
             // K09/K10 (Phase 26): satisfying the exception chamber's witness hold mints
             // the endgame credentials — route authority and the unbroken lens.
             if (site.siteId === 'veil_exception_chamber' && !rec.exceptionMinted) {

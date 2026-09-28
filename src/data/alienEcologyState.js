@@ -34,6 +34,8 @@ export function createAlienEcologyState() {
     // Phase 27/29/31 — L-table evidence ledger + N-table setpiece once-flags.
     evidence: {},
     setpieces: {},
+    // AE-296 — alien unique module grants issued this save (once-flags, moduleId -> time).
+    uniqueGrants: {},
   };
 }
 
@@ -58,6 +60,7 @@ export function ensureAlienEcologyState(state) {
   if (!Array.isArray(ae.lures)) ae.lures = [];
   if (!ae.evidence || typeof ae.evidence !== 'object') ae.evidence = {};
   if (!ae.setpieces || typeof ae.setpieces !== 'object') ae.setpieces = {};
+  if (!ae.uniqueGrants || typeof ae.uniqueGrants !== 'object') ae.uniqueGrants = {};
   ae.wrenRecognized = ae.wrenRecognized === true;
   return ae;
 }

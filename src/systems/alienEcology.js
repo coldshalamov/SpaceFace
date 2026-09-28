@@ -34,6 +34,7 @@ import {
   pickEcologyEncounter,
   EVIDENCE_TABLE,
   SETPIECE_DEFS,
+  grantAlienUnique,
 } from '../data/alienEcology.js';
 import { carrierSpecies, faunaSpeciesById } from '../data/alienFauna.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
@@ -357,6 +358,10 @@ export function handleAlienEcologyEvent(world, type, payload) {
       if (rec) { rec.state = 'severed'; rec.relaySevered = true; }
       setRevelation(state, 2);
       toast('The pale emitter goes dark — the swarm loses its order.', 'warn', 5);
+      // AE-296 — the severed relay's dead-matter coil is the resonant massline grant.
+      if (grantAlienUnique(world, 'mod_resonant_massline_m', 'relay_severed')) {
+        toast('You pry the dead relay\'s field coil free — it still holds its dead-matter tune.', 'good', 5);
+      }
       refreshAlienLabels(world);
       break;
     }
@@ -1484,6 +1489,7 @@ export function serializeAlienEcologyState(state) {
     machineSites: JSON.parse(JSON.stringify(ae.machineSites || {})),
     evidence: JSON.parse(JSON.stringify(ae.evidence || {})),
     setpieces: JSON.parse(JSON.stringify(ae.setpieces || {})),
+    uniqueGrants: JSON.parse(JSON.stringify(ae.uniqueGrants || {})),
   };
 }
 
@@ -1507,6 +1513,9 @@ export function deserializeAlienEcologyState(state, data) {
   }
   if (data.setpieces && typeof data.setpieces === 'object') {
     ae.setpieces = JSON.parse(JSON.stringify(data.setpieces));
+  }
+  if (data.uniqueGrants && typeof data.uniqueGrants === 'object') {
+    ae.uniqueGrants = JSON.parse(JSON.stringify(data.uniqueGrants));
   }
   if (data.taxonomy && typeof data.taxonomy === 'object') Object.assign(ae.taxonomy, data.taxonomy);
   if (data.sites && typeof data.sites === 'object') {

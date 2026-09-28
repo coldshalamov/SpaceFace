@@ -16,6 +16,7 @@ import {
   setpieceById,
   ECOLOGY_DECK,
   pickEcologyEncounter,
+  ALIEN_UNIQUE_GRANTS,
 } from '../src/data/alienEcology.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { MODULES } from '../src/data/modules.js';
@@ -48,9 +49,14 @@ function makeState(sectorId = 'sector_io_reach') {
   };
 }
 
-function makeWorld(state, emitLog = []) {
+function makeWorld(state, emitLog = [], granted = []) {
   const world = {
     state,
+    registry: {
+      get: (name) => (name === 'ships'
+        ? { grantModule: ({ defId }) => { granted.push(defId); return true; } }
+        : null),
+    },
     helpers: {
       mulberry32,
       hash32,
@@ -367,4 +373,41 @@ test('machineSites, evidence, and setpieces round-trip through serialization', (
   assert.equal(ae2.evidence.L01.tier, 1);
   assert.equal(ae2.setpieces.N05_witness_stands_down, true);
   assert.equal(ae2.revelation, ae.revelation);
+});
+
+// ── AE-296: unique module grants land through ships.grantModule, once per save ──────
+test('declared unique grants fire at their authored beats and never refire', () => {
+  assert.equal(ALIEN_UNIQUE_GRANTS.length, 4, 'all four salvageOnly uniques are declared');
+  for (const g of ALIEN_UNIQUE_GRANTS) {
+    const def = MODULES.find((m) => m.id === g.id);
+    assert.ok(def, `${g.id} exists in the module catalog`);
+    assert.equal(def.unique, true, `${g.id} stays unique-flagged`);
+  }
+
+  // The dead shepherd yields the lattice coupler on first observation.
+  const state = makeState('sector_charon_expanse');
+  const granted = [];
+  const world = makeWorld(state, [], granted);
+  materializeMachineLayer(world, { id: 'sector_charon_expanse' }, world.active);
+  const site = MACHINE_SITES.charon_broken_shepherd;
+  makePlayer(state, site.center.x, site.center.z);
+  tickMachineLayer(world, 0.1);
+  assert.ok(granted.includes('mod_lattice_coupler_s'), 'broken shepherd grants the coupler');
+  const ae = ensureAlienEcologyState(state);
+  assert.ok(ae.uniqueGrants.mod_lattice_coupler_s != null, 'once-flag recorded');
+
+  // A severed relay yields the resonant massline coil — once.
+  handleAlienEcologyEvent(world, 'alienEcology:relaySevered', { siteId: 'cinder_nursery' });
+  handleAlienEcologyEvent(world, 'alienEcology:relaySevered', { siteId: 'cinder_nursery' });
+  assert.equal(granted.filter((id) => id === 'mod_resonant_massline_m').length, 1,
+    'relay sever grants the coil exactly once');
+
+  // The grants survive a save round-trip — re-severing on a loaded save does not refire.
+  const saved = serializeAlienEcologyState(state);
+  const fresh = makeState('sector_charon_expanse');
+  deserializeAlienEcologyState(fresh, JSON.parse(JSON.stringify(saved)));
+  const granted2 = [];
+  const world2 = makeWorld(fresh, [], granted2);
+  handleAlienEcologyEvent(world2, 'alienEcology:relaySevered', { siteId: 'cinder_nursery' });
+  assert.equal(granted2.length, 0, 'loaded once-flags suppress regrant');
 });
