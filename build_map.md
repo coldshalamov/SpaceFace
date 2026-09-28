@@ -414,7 +414,7 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 34 | D8 | Crucible fight budget on quiet probe — recorded 12 fps mean / 100 % frames >33 ms on the soft-GPU VM; reproduce on real hardware or prove the VM number is host noise | BUILD | OPEN |
 | 35 | D3 | Same-material hull batching — gated: only if the draw census still names draw count as the pole after VM batches land | BUILD | PARKED gated on import results |
 | 36 | C7 | Per-hull chase-pass imports — all 9 `*-chase` drops are REVISE vs Hitch; needs new remote candidates | BUILD | PARKED needs new vm drops |
-| 38 | HAND-FIELDS-GUARD | Fields runtime-profile guard | BUILD | OPEN |
+| 38 | HAND-FIELDS-GUARD | Fields runtime-profile guard | BUILD | DONE 2026-09-28 — `test/fields-runtime-profile.test.mjs` pins production ON / legacy47a OFF through the real manifest+registry apply path (7/7) |
 | 39 | CV-GLASS-1 | Belt-tail throughput: serial GLB admission is still seconds per body on a busy host — parallelize/budget the lane (ZERO_TO_HERO §7.3) | BUILD | OPEN |
 | 40 | CV-GLASS-2 | AQ-HIT — three-mesh-bvh hit path, the last unlanded tool in §23.4's order | BUILD | OPEN |
 | 41 | CV-EAR-1 | AQ-VOICE — Elementary continuous voices: rope pitch follows load, engine follows throttle, silence at 0 (the CV-EAR signature) | BUILD | OPEN |
