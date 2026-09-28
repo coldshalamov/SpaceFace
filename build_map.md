@@ -403,7 +403,6 @@ ship stills (all REVISE — awaiting new remote candidates).
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
 | 19 | VM-HEAD | Digest head-of-queue: #166 render-package-digest-zero-copy → #167 embedded-ktx2 → #168 glb-body-in-place (+patches-after-167) → #169 shader-readiness → #170 retail-gltfloader alias; then #161–#165 quiet-latch ships | IMPORT | CLAIMED devin-wave2 |
-| 22 | VM-LATCH-A | Quiet-latch render/HUD wave A (~10 of ~50: hud-* series, bark-director, optic-lattice…) | IMPORT | CLAIMED devin-wave2 |
 | 23 | VM-LATCH-B | Quiet-latch render/HUD wave B | IMPORT | CLAIMED devin-wave2 |
 | 24 | VM-LATCH-C | Quiet-latch render/HUD wave C | IMPORT | CLAIMED devin-wave2 |
 | 25 | VM-LATCH-D | Quiet-latch render/HUD wave D | IMPORT | CLAIMED devin-wave2 |
@@ -2064,9 +2063,7 @@ here and there in the fixing commit.
 
 | Row | Outcome |
 |---|---|
-| **GFX-1** | Forge trade hub published; the three faction overlays verified sitting on it. |
 | **GFX-3** | Remaining pre-Forge places rebuilt, in order: opening route → claim outposts / conveyor / industry props → law & travel → the rest. |
-| **GFX-4** | Quiessence dark freighters as a Forge family (replaces the dead-hulk stand-ins). |
 | **GFX-7** | Wrecks derived from the Forge ships replace the pre-Forge aftermath pack. |
 | **GFX-8** | Rocks: procedural geology + authored rock places reviewed and rebuilt to the Forge material language. |
 | **GFX-9** | Bolt-on parts audit: no pre-Forge weapon, pod or engine draws on the default route. |

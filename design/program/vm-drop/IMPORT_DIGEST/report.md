@@ -1,3 +1,43 @@
+# IMPORT ledger — 20260928 owner-side import (devin-w2-vm-latcha, board §1C row 22)
+
+Quiet-latch vein A (`hud-*` / `classify-*` / `decode-runway-*` + `overlay-quartet`). Most of the
+vein is stale against current master: `selectClassifyEntities` has been rewritten since the VM
+exported (discovery-authority walk, `discoverWu`, `entityPresenceRadius`, coherent hash cache),
+and every patch keyed on the old catch-up walk or runtime init block fails `git apply` on content,
+not whitespace. Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `classify-physics-partition-cache` | `05f3b71e0` | focused 75/75 (7-file activity/physics set) |
+| `classify-normalize-pins-small-n` | `c14767a78` | focused 35/35 |
+
+Already on master before this pass (verified, no re-import): `flyby-focus-empty-quiet-latch`
+(`b85654a83` — nearest match for the brief's `classify-flyby-ui-empty`).
+
+Skipped this pass:
+
+- `hud-credits-pulse-no-reflow`, `hud-glag-transform-cache`, `hud-objective-plate-cache`,
+  `hud-screen-transform-cache`, `hud-settext-cache` — every patch edits `src/ui/hud.js`;
+  `src/ui/**` is the ORRERY-claimed lane (same boundary as `massline-settext-cache` row 21).
+  Left for a UI-owning sitting.
+- `classify-closed-form-index` (#37), `classify-signature-prune-membership` (#38),
+  `classify-signature-record` (#45), `classify-rock-body-context` (#48),
+  `classify-pinfacts-cache`, `classify-closed-form-scan`,
+  `classify-rock-visit-quiet-retain` (#127), `classify-frame-quiet-retain` (#128),
+  `classify-early-quiet-latch` (#138), `classify-flying-rock-retain` (#141) — context drift
+  vs current `src/world/activityRuntime.js` (the catch-up walk the patches re-key was
+  rewritten; the #127→#128→#138→#141 retain chain also stacks on the missing earlier
+  packages). Non-trivial; needs re-export against current master. `classify-closed-form-scan`
+  is superseded by `classify-pinfacts-cache` regardless — re-export the combined one.
+- `decode-runway-empty-far-quiet-latch` — `presentationSources.js` hunk fails (context
+  drifted); `farActorTable.js` is also in the row-24 sibling's claimed paths. Needs re-export.
+- `decode-runway-top2-select` — `renderer.js` hunk fails; `src/render/renderer.js` was also
+  mid-merge (unmerged UU index state) this pass — foreign operation in flight. Needs re-export.
+- `overlay-quartet-quiet-empty-latch` (#123) — its `vfx.js` hunks stack on #122
+  `projectile-trails-quiet-empty-latch` fields (`_projectileTrailsQuietEmpty`,
+  `_projectileTrailsQuietIndexVersion`, `_seamMarkersWereRelevant`) not on master; #122 sits
+  in the row-23 sibling vein. Re-try after the sibling lands, else needs re-export.
+
 # IMPORT ledger — 20260928 owner-side import (devin-w1-vm-prestep1, board §1C row 20)
 
 Sim/preStep batch landed on master. Landed this pass:
