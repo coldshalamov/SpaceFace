@@ -448,9 +448,20 @@ test('bounded authored drives retain engine-tier scaling beneath their solver en
   assert.ok(ion.travelCeiling < fusion.travelCeiling && fusion.travelCeiling < warp.travelCeiling,
     'the derived descriptor must retain each fitted engine tier multiplier before solver clamping');
   assert.ok(resolveTravelCeiling(ion) < resolveTravelCeiling(fusion),
-    'the fusion tier must raise Hornet V-MAX until the gravimetric solver envelope is reached');
-  assert.equal(resolveTravelCeiling(fusion), resolveTravelCeiling(warp),
-    'higher tiers must not bypass Hornet\'s finite gravimetric solver envelope');
+    'the fusion tier must raise Hornet V-MAX beneath the gravimetric solver envelope');
+  // Post-retune the gravimetric envelope (550) sits above every tier's authored ceiling, so the
+  // tiers now express their full separation; the envelope's clamp is asserted on a synthetic
+  // over-envelope ceiling rather than on two tiers that happen to meet it.
+  assert.ok(resolveTravelCeiling(warp) <= warp.solverSpeedLimit
+    && resolveTravelCeiling(fusion) <= fusion.solverSpeedLimit,
+    'engine tiers may express up to, but never past, Hornet\'s finite gravimetric solver envelope');
+  assert.ok(resolveTravelCeiling(fusion) < resolveTravelCeiling(warp),
+    'the warp tier must still raise Hornet V-MAX while every tier fits beneath the envelope');
+  assert.equal(
+    resolveTravelCeiling({ family: 'gravimetric', travelCeiling: 9999, solverSpeedLimit: warp.solverSpeedLimit }),
+    warp.solverSpeedLimit,
+    'an authored ceiling beyond the solver envelope is still clamped to it',
+  );
 });
 
 // --------------------------------------------------------------------------------------------
