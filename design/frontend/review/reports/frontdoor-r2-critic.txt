@@ -1,0 +1,125 @@
+FRONT-DOOR CRITIC, ROUND 2: TITLE VERDICT + PAUSE REGRESSION
+Stills (r2 set): title-r2-1920, title-r2-1280, title-r2-2560;
+title-r2-pause-regression-1920 (vs rs-pause-1920). Code: 34644cb29 only
+(arcRail.js + mainMenu.js freeTrack flag). State shots driven live by this
+critic with motion ON in the eval bench (probe scripts + shots in TEMP, out of
+the repo): fd-r2-base / tfree (pointer (150,750)) / thover / rm / rehov.
+Coordinates are px at 1920 unless marked. Y = Rec.709 luma; CR = WCAG contrast
+from composited pixels (98.5th-pct glyph vs 10th-pct ground, sharp .raw()).
+
+BENCH ARTEFACTS IGNORED: same as rs1 — the bench's aria-disabled "initializing"
+verbs (LOAD/CRUCIBLE/SETTINGS at bone .34) vs production rest bone .7 (QUIT is
+the true rest proxy: 7.18:1). Nothing below scores the .34 state.
+
+1. VERDICTS
+   TITLE: PASSED. Overall 8.3 (rs1 8.2 NOT PASSED). No axis under 7.0. Owner
+     gates: (a) PASSES — the bands now clear 2:1 themselves; (b) PASSES — the
+     signature is built, verified live, and safe (one fix owed, F1).
+   PAUSE: UNREGRESSED. 8.3 stands — every changed pixel sits inside the dial
+     (the shared band/ray lift); all landmarks, contrasts and the amber audit
+     re-measure equal. Detail in §8.
+
+2. AXES (TITLE)
+     Composition 8.0 [rs1 8.0] — unchanged: dial + logotype left, ship + planet
+       right. At 2560 the middle third is still empty sky; at 1280 everything
+       holds (QUIT clear of the ship, verbs legible). Acceptable, not composed.
+     Hierarchy 8.5 [rs1 8.5] — SPACEFACE → awake verb → rest verbs →
+       ARCHIVE/SANDBOX → footer. One read; untouched by r2.
+     Legibility 8.5 [rs1 8.5] — re-measured: QUIT rest 7.18:1, kicker 8.85:1,
+       footer 6.09:1, ARCHIVE 6.21:1 (all ≥4.5:1). Smallest glyphs 9px caps
+       ≈13px em (footer, kicker); verbs 23-38px. Bench .34 verbs not scored.
+     ORRERY fidelity 8.5 [rs1 8.5] — one amber Hand assembly (blade + hub disc +
+       bead + glint + lit tick + leader), bone rest, no boxes/borders/pills.
+       Amber audit: 428 px (step 2), 60 outside the Hand boxes at IDENTICAL
+       coords in rs1 and r2 = pre-existing world lamps (ship/shed), not UI.
+     Craft/detail 8.4 [rs1 8.0] — T-C1/C2 closed with room (see §3); rim band
+       .09→.22 and rail band .08→.2 read as light now. Against: bead sits ~10px
+       lower in the r2 still batch than rs1 (bead crop: still seated on the lit
+       tick, one awake word — bench seating variance, live rest is exact; obs).
+     Interaction clarity 7.8 [rs1 8.0] — the signature lives: track Δ0.1-0.6°,
+       5px parallax differential, deterministic stops, RM-safe, 7/7 focus stops.
+       -0.2: re-hovering the indexed verb after free-tracking strands the Hand
+       off-stop (F1, reproduced twice, visible in rehov shot).
+
+3. RS1 BLOCKERS, ITEM BY ITEM
+   T-S1 (signature: Hand tracks pointer, rings parallax): DONE, one fix owed.
+     - fd-rs1-tfree repeated live: pointer (150,750), Hand leaves NEW GAME
+       (75.0°) to 203.1-203.6° vs pointer bearing 203.7° — delta 0.1-0.6°.
+     - Parallax transforms: face translate(-2.8, 6.4), orbit (-1.6, 3.7), rim
+       (-0.8, 1.8); face-vs-rim differential 5.0px ≥ 2px. ✓
+     - Verb hover snaps to stops deterministically: SETTINGS reached from two
+       different pointer starts lands the same bearing (115.0° both ways when
+       the verb is not already indexed; see F1 for the indexed case).
+     - Reduced motion (html.sf-reduce-motion added live): pointer parked on the
+       dial → Hand stays on its stop, all three parallax transforms absent;
+       QUIT/SETTINGS/LOAD/CRUCIBLE/New Game/Archive/Sandbox focus → exact stop
+       bearings, identical to motion-ON stops (modulo spring settle tail). ✓
+     - Keyboard: all 7 visible verbs focusable, Hand visits each stop, exactly
+       one awake word throughout. Gamepad: no gamepad-specific branch in the
+       rail; it rides the same focus→pointAt path (same assumption as rs1, and
+       the r2 diff does not touch onFocus/pointAt/onKey). T-S1's "keyboard and
+       gamepad paths unchanged" holds by diff inspection.
+   T-C1 (face band body ≥Y70, row y=333 x58-67): DONE. 10/10 ≥Y70
+     (78-79 body, 135-137 edge; glass ~10). Was 0/10 body (Y28).
+   T-C2 (rays p98 ≥Y75, box 268,268-302,302): DONE. p98 Y110.2 (was 51.7).
+
+4. RANKED FIXES (one owed; everything else is an observation)
+   F1. arcRail.js pointAt() early return strands the Hand after free-tracking.
+     Where: Hand bead ~(196,646) while NEW GAME hovered/awake (rehov shot).
+     Wrong in one sentence: pointAt returns early when index === handIndex, but
+     free-tracking moves the spring without changing handIndex, so re-hovering
+     (or re-focusing) the indexed verb never returns the needle to its stop.
+     Fix: return early only when the needle is already AT the stop, e.g.
+       if (index === handIndex && !instant) {
+         let d = Math.abs(handSpring.value - geo.angles[index]) % 360;
+         if (Math.min(d, 360 - d) < 0.5) return;
+       }
+     Check: rehov repro — hover NEW GAME, park (150,750), re-hover NEW GAME —
+     bead must return to (663, 244.6). Self-heals today via any other verb or
+     pointer-leave, which is why this is owed rather than blocking.
+
+5. WHAT WOULD MAKE TITLE MEMORABLE THAT NOTHING ATTEMPTS YET: the stop-to-stop
+   trail exists, but free-tracking leaves no trace — let the bead stream a
+   short fading comet along the rim while it follows the pointer, so the first
+   thing every player does (drawing circles) paints light.
+
+6. LANDMARKS (@1920, r2 still — deltas vs rs1 §5 in parens)
+   Pivot still (334,332) by amber centroid; blade at x550 now y292-296 peak
+   Y234 (was y283-287 — 10px bench-batch variance, geometry identical: LOAD
+   tick/rail profile at y326 matches peak-for-peak, r2 brighter). Bead
+   (660,266) on the lit NEW GAME tick. Verbs/footer/aside/kicker boxes
+   unchanged. Face band Y78-79 body; rays p98 Y110.
+
+7. OWNER CRITERIA
+   (a) Weight, not wire: PASSES outright. The outer band reads Y78-79 on glass
+     ~10 (≈7:1 — the bar is 2:1); rays Y110; rim/rail bands lifted with it. No
+     generic elements anywhere. The ng-r7 precedent is no longer needed.
+   (b) Signature interaction: PASSES. "The Hand follows the pointer round the
+     dial; the rings answer with parallax" is exactly what is built and what
+     was verified live (Δ≤0.6°, 5px differential, spring-driven, Title-only —
+     Pause's grouped dial is excluded by construction, freeOn requires
+     grouped !== true). Reduced-motion safe (tracking + parallax fully gated,
+     stops exact); keyboard reaches every stop; gamepad rides focus. Pointer-
+     led by spec (T-S1: keyboard/gamepad paths unchanged), full function kept
+     for all three. Strong and memorable; F1 makes it clean.
+
+8. PAUSE REGRESSION (APPROVED 8.3 — holds)
+   Full-pixel diff regression-vs-rs still: 9808 changed samples (step 2), bbox
+   x0-476 y254-928, ZERO outside the dial region = the shared band/ray lift
+   landing on Pause's own dial, plus nothing else. Landmarks: RESUME 17.03:1
+   (was 17.11), GAME row 7.66, SHIP row 6.15, brief name 18.33 (P-C3 tie
+   intact, still owed as polish), ESC key 9.17, 0% ring present (peak Y236).
+   Amber: 396 px, one outside the Hand corridor at (1442,550) — byte-identical
+   pixel in rs1, a pre-existing world lamp. P-C1/C2/C3 carry as before (were
+   non-blocking polish). PAUSE UNREGRESSED.
+
+   Observations (not fixes, not ledger): (i) parallax stays active while the
+   pointer is over a verb (T-S1's letter says "off the verbs"; the rings lean
+   toward the hovered stop — coherent, keep); (ii) the awake word stays lit
+   during free-track (it is the rest selection — correct); (iii) motion-ON
+   stop samples trail the exact stop ~1° at 900ms (spring overshoot tail, not
+   a defect — the solver snaps exact on settle); (iv) one live run re-seated
+   the dial mid-probe (hidden Continue row counted, then save-store settle
+   rebuilt without it: NG stop 75°→83°) — pre-existing seating race, untouched
+   by r2, live rest stable across 5s windows; worth a look if title ever
+   re-seats visibly in production, not demonstrated here.

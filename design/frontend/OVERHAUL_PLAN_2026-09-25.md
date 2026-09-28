@@ -65,11 +65,11 @@ compose them.
 
 ## 4. Every surface — its mini-app and its signature
 
-Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 28 surfaces. Other scores are critic scores under the owner criteria unless marked "letter" (scored before the criteria existed). Latest critic report per surface: `design/frontend/review/reports/`.
+Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 29 surfaces. Other scores are critic scores under the owner criteria unless marked "letter" (scored before the criteria existed). Latest critic report per surface: `design/frontend/review/reports/`.
 
 | Surface (bench id) | Mini-app | Signature interaction (distinct) | Assets | Status |
 |---|---|---|---|---|
-| Title (`title`) | The emblem orrery behind the name | The Hand follows the pointer round the dial; the rings answer with parallax | — | 8.2 NOT PASSED (frontdoor-rs1): (a) yes, (b) signature not built — r2 owed: T-S1 pointer-track + parallax, T-C1/C2 band/ray lift (queued behind crucible r2: shared screenLayouts.js) |
+| Title (`title`) | The emblem orrery behind the name | The Hand follows the pointer round the dial; the rings answer with parallax | — | **APPROVED 8.3** (frontdoor-r2, T-S1 verified live; Pause unregressed) |
 | Pause (`pause`) | Seven-stop dial over the held world | Rows as stops: the Hand steps row to row, left/right along a row | — | **APPROVED 8.3** (frontdoor-rs1); polish carry-over: 0% gauge weight, 1280 LOCAL MAP touch, brief/RESUME tie |
 | New Game (`new-game`) | The yard: the hull on a turntable ring | **Spin the yard**: drag the ring; each hull's mass sets its swing (heavy drags, light flicks); the stat arcs sweep between hulls; release settles with overshoot; hold LAUNCH runs light down the run's scale into the jump | new backdrop (done), Pelican poster to hero grade | **APPROVED 8.2** (r7, 5d855f9cc + follow-ups) — (a) yes, (b) yes |
 | Loading (`boot`) | The emblem spinning up | Real load stages as ticks lighting round the ring | — | to audit |
