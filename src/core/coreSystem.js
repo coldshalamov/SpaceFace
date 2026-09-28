@@ -10,6 +10,44 @@ import { beginDirtyTick, markDirty, collectDirtyIds, DIRTY } from './dirtyJourna
 import { stampNearWorkBudget, refreshNearWorkAlwaysAwake } from './activityScheduler.js';
 import { modelTruthProxyManifest } from '../data/modelTruth.js';
 
+
+// Bench A/B: production default ON. Quiet Ceres keeps short-lived lanes empty; the clocks walk
+// then only re-checks Infinity-ttl movers whose POSE was already published in preStep. Skip the
+// walk when short-lived lanes are empty and no shipLike carries despawnAt. Dirty-wake: any
+// projectile/fx/bomb/charge/pickup/mine/snare/payload on a lane, or a shipLike despawnAt, restores
+// the full clocks path. Different angle from held pose-rematch / sleeping-clocks / compact-skip.
+let LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = true;
+export function setLifetimeSweepQuietClocksSkipForBench(enabled) {
+  LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = enabled !== false;
+}
+export function getLifetimeSweepQuietClocksSkipForBench() {
+  return LIFETIME_SWEEP_QUIET_CLOCKS_SKIP !== false;
+}
+
+function shortLivedClockLanesEmpty(index) {
+  if (!index || index.__spacefaceEntityIndexV1 !== true || index.ready !== true) return false;
+  const empty = (lane) => !lane || lane.length === 0;
+  return empty(index.projectiles)
+    && empty(index.fx)
+    && empty(index.bombs)
+    && empty(index.charges)
+    && empty(index.pickups)
+    && empty(index.payloads)
+    && empty(index.mines)
+    && empty(index.vectorMines)
+    && empty(index.snares);
+}
+
+function shipLikeHasDespawnAt(index) {
+  const ships = index && index.shipLike;
+  if (!ships || ships.length === 0) return false;
+  for (let i = 0; i < ships.length; i++) {
+    const e = ships[i];
+    if (e && e.alive && e.data && e.data.despawnAt != null) return true;
+  }
+  return false;
+}
+
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
 export const core = {
@@ -372,25 +410,33 @@ export const core = {
       && Array.isArray(index.movables)
       ? index.movables
       : list;
-    for (let i = 0; i < clocks.length; i++) {
-      const e = clocks[i];
-      if (!e || e.id === state.playerId) continue;
-      if (e.alive && e.ttl !== Infinity) {
-        e.ttl -= dt;
-        if (e.ttl <= 0) {
+    // Quiet short-lived-lane clocks skip: when no projectile/fx/ordnance/pickup clocks exist and
+    // no shipLike carries despawnAt, the movable walk only re-checks Infinity-ttl ships whose
+    // POSE preStep already published. Skip the walk; dirty publish + corpse compact still run.
+    const skipQuietClocks = LIFETIME_SWEEP_QUIET_CLOCKS_SKIP
+      && shortLivedClockLanesEmpty(index)
+      && !shipLikeHasDespawnAt(index);
+    if (!skipQuietClocks) {
+      for (let i = 0; i < clocks.length; i++) {
+        const e = clocks[i];
+        if (!e || e.id === state.playerId) continue;
+        if (e.alive && e.ttl !== Infinity) {
+          e.ttl -= dt;
+          if (e.ttl <= 0) {
+            e.alive = false;
+            markDirty(state, e.id, DIRTY.MEMBERSHIP);
+          }
+        }
+        if (e.alive && e.data && e.data.despawnAt != null && state.simTime >= e.data.despawnAt) {
           e.alive = false;
           markDirty(state, e.id, DIRTY.MEMBERSHIP);
         }
-      }
-      if (e.alive && e.data && e.data.despawnAt != null && state.simTime >= e.data.despawnAt) {
-        e.alive = false;
-        markDirty(state, e.id, DIRTY.MEMBERSHIP);
-      }
-      if (e.alive) {
-        const pos = e.pos;
-        const prev = e.prevPos;
-        if (pos && prev && (pos.x !== prev.x || pos.z !== prev.z)) markDirty(state, e.id, DIRTY.POSE);
-        else if (e.prevRot != null && e.rot !== e.prevRot) markDirty(state, e.id, DIRTY.POSE);
+        if (e.alive) {
+          const pos = e.pos;
+          const prev = e.prevPos;
+          if (pos && prev && (pos.x !== prev.x || pos.z !== prev.z)) markDirty(state, e.id, DIRTY.POSE);
+          else if (e.prevRot != null && e.rot !== e.prevRot) markDirty(state, e.id, DIRTY.POSE);
+        }
       }
     }
     const dirty = collectDirtyIds(
