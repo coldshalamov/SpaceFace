@@ -81,6 +81,8 @@ export const EXPLOSIVE_BLAST_RADIUS = 80;
 export const EXPLOSIVE_BLAST_IMPULSE = 900;
 export const CORROSIVE_HULL_TICK = 8;
 export const CORROSIVE_TICK_COOLDOWN_S = 0.35;
+export const THROWN_EXPLOSIVE_GRACE_S = 0.45;
+export const THROWN_EXPLOSIVE_PROXIMITY = 48;
 /** Extra fieldResponseMult on top of mass-shrug; fields.js still applies the unmarked pull. */
 export const SUPERDENSE_FIELD_RESPONSE = 2.5;
 
@@ -113,6 +115,7 @@ const LEGALITY_BY_ID = new Map((COMMODITIES || []).map((row) => [row.id, row.leg
 const VOLATILE_BLAST_TYPES = new Set(['ship', 'drone', 'payload']);
 const VOLATILE_HULL_TYPES = new Set(['ship', 'drone']);
 const _nearbyScratch = [];
+const _thrownFuseScratch = [];
 const _catchNetScratch = [];
 const _catchPodScratch = [];
 const _fieldDense = { ax: 0, az: 0 };
@@ -535,6 +538,7 @@ export const lootShards = {
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p || {})));
       this._unsubs.push(this.bus.on('physics:impact', (p) => this._onPodImpact(p || {})));
+      this._unsubs.push(this.bus.on('massline:throw', (p) => this._onThrownPayload(p || {})));
       this._unsubs.push(this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {})));
       this._unsubs.push(this.bus.on('game:started', () => {
         if (this._magnetTracked) this._magnetTracked.clear();
@@ -551,6 +555,7 @@ export const lootShards = {
   update(dt, state) {
     const live = state || this.state;
     this._catchPodsInNets(live);
+    this._tickThrownExplosiveFuse(live);
     this._pullSuperdensePods(dt, live);
     this._pullLootWithMagnet(dt, live);
   },
@@ -741,6 +746,85 @@ export const lootShards = {
     const net = isOutlawCatchNet(a) ? a : (isOutlawCatchNet(b) ? b : null);
     if (!pod || !net) return;
     this._markCaughtByNet(pod, net);
+  },
+
+  _onThrownPayload(payload) {
+    const id = payload && payload.payloadId;
+    if (id == null) return;
+    const pod = entityById(this.state, id);
+    if (!isJettisonedCargoPod(pod) || !pod.data) return;
+    const klass = volatileClassOf(pod.data) || volatileClassOf(pod.data.volatileClass);
+    if (!klass || klass.slam !== 'radial_impulse') return;
+    pod.data.playerThrownFuse = true;
+    pod.data.thrownAt = simNow(this.state);
+    pod.data.thrownBy = this.state && this.state.playerId;
+  },
+
+  _tickThrownExplosiveFuse(state) {
+    if (!state || state.mode !== 'flight') return;
+    const now = simNow(state);
+    const playerId = state.playerId;
+    const list = payloadScanList(state);
+    if (!Array.isArray(list)) return;
+    for (let i = 0; i < list.length; i++) {
+      const pod = list[i];
+      if (!isJettisonedCargoPod(pod) || !pod.data || !pod.pos) continue;
+      if (pod.data.playerThrownFuse !== true || pod.data.volatileDetonated) continue;
+      const klass = volatileClassOf(pod.data) || volatileClassOf(pod.data.volatileClass);
+      if (!klass || klass.slam !== 'radial_impulse') continue;
+      const thrownAt = Number(pod.data.thrownAt) || 0;
+      const nearby = queryNearbyEntities(
+        state,
+        pod.pos,
+        THROWN_EXPLOSIVE_PROXIMITY,
+        _thrownFuseScratch,
+        (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1
+          && Array.isArray(state.entityIndex.shipLike))
+          ? state.entityIndex.shipLike
+          : state.entityList,
+      );
+      let victim = null;
+      for (let n = 0; n < nearby.length; n++) {
+        const entity = nearby[n];
+        if (!entity || entity.alive === false || !entity.pos) continue;
+        if (entity.id === pod.id) continue;
+        if (entity.type !== 'ship' && entity.type !== 'drone') continue;
+        if (entity.id === playerId && now - thrownAt < THROWN_EXPLOSIVE_GRACE_S) continue;
+        const dist = Math.hypot(entity.pos.x - pod.pos.x, entity.pos.z - pod.pos.z);
+        if (dist <= THROWN_EXPLOSIVE_PROXIMITY) {
+          victim = entity;
+          break;
+        }
+      }
+      if (!victim) continue;
+      this._detonateThrownExplosive(pod, klass);
+    }
+  },
+
+  _detonateThrownExplosive(pod, klass) {
+    if (!pod || !pod.data || pod.data.volatileDetonated) return;
+    const amount = Math.max(1, Number(pod.data.amount) || 1);
+    const magnitude = EXPLOSIVE_BLAST_IMPULSE * Math.min(2, 0.5 + amount / 16);
+    const applied = applyRadialPublishedImpulse(
+      this,
+      pod.pos,
+      pod.id,
+      magnitude,
+      EXPLOSIVE_BLAST_RADIUS,
+      'volatile_explosive_throw',
+      this.state && this.state.tick,
+    );
+    pod.data.volatileDetonated = true;
+    pod.data.volatileSlamImpulse = applied;
+    pod.data.thrownFuseDetonated = true;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('cargo:volatileSlam', {
+        class: klass.id,
+        podId: pod.id,
+        appliedImpulse: applied,
+        thrownFuse: true,
+      });
+    }
   },
 
   _onVolatileImpact(payload) {
