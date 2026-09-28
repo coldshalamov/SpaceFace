@@ -24,11 +24,28 @@ export function getCombatPrePhysicsQuietLatchForBench() {
   return COMBAT_PREPHYSICS_QUIET_LATCH !== false;
 }
 
+// Quiet residual after #154 prePhysics latch: postPhysics still walked every
+// living combatant for ensureCombatant + syncCombatantBounds even though
+// attachments already empty-early-out and vitals clamp at mutation sites.
+// Skip that walk while the prePhysics quiet latch is armed; same wake set.
+let COMBAT_POSTPHYSICS_QUIET_SKIP = true;
+export function setCombatPostPhysicsQuietSkipForBench(enabled) {
+  COMBAT_POSTPHYSICS_QUIET_SKIP = enabled !== false;
+}
+export function getCombatPostPhysicsQuietSkipForBench() {
+  return COMBAT_POSTPHYSICS_QUIET_SKIP !== false;
+}
+
 const COMBAT_PREPHYSICS_QUIET_RESCAN_S = 0.5;
 
 function publishCombatPrePhysicsQuiet(state, latched) {
   const rt = state.combatRuntime || (state.combatRuntime = {});
   rt.quietLatched = !!latched;
+}
+
+function publishCombatPostPhysicsQuiet(state, skipped) {
+  const rt = state.combatRuntime || (state.combatRuntime = {});
+  rt.postPhysicsQuietSkipped = !!skipped;
 }
 
 function combatRuntimeBusy(runtime) {
@@ -139,10 +156,12 @@ export function createCombatKernel(ctx, options = {}) {
   function noteCombatPrePhysicsWake() {
     if (!quietLatch) {
       publishCombatPrePhysicsQuiet(state, false);
+      publishCombatPostPhysicsQuiet(state, false);
       return;
     }
     quietLatch = null;
     publishCombatPrePhysicsQuiet(state, false);
+    publishCombatPostPhysicsQuiet(state, false);
   }
 
   for (const entity of sortedEntitiesForTick()) initializeEntity(entity);
@@ -266,11 +285,27 @@ export function createCombatKernel(ctx, options = {}) {
   function postPhysics() {
     reconcilePhysicsAttachments();
     attachments.updateTelemetryAndBreak();
+    const indexVersion = combatTickIndexVersion(state);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (
+      COMBAT_POSTPHYSICS_QUIET_SKIP !== false
+      && COMBAT_PREPHYSICS_QUIET_LATCH !== false
+      && quietLatch
+      && quietLatch.membership === indexVersion
+      && quietLatch.cacheRevision === sortedCacheRevision
+      && now < quietLatch.rescanAt
+    ) {
+      // PrePhysics already armed quiet latch this cadence — bounds synced on the
+      // preceding busy walk / mutation sites; attachment pair already early-out.
+      publishCombatPostPhysicsQuiet(state, true);
+      return;
+    }
     for (const entity of sortedEntitiesForTick()) {
       if (!entity.alive || !isCombatantType(entity.type)) continue;
       const runtime = ensureCombatant(state, entity, catalog);
       syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));
     }
+    publishCombatPostPhysicsQuiet(state, false);
   }
 
   function reconcilePhysicsAttachments() {
