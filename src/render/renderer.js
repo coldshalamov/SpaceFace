@@ -458,6 +458,17 @@ const _overheadCuesOptions = { reducedMotion: false, reducedFlash: false, simTim
 // per-entity `{ type: typeName }` allocation.
 const _shadowFallbackEntity = { id: undefined, type: '' };
 
+// Projection/LOD retain: skip updateLod when hysteresis keeps the same band.
+// Asteroid/station updateLod used to re-traverse every visible frame; ships already self-retain.
+// Bench toggle restores always-call for A/B. Picture-identical while the band is unchanged.
+let SYNC_ENTITY_LOD_RETAIN = true;
+export function setSyncEntityLodRetainForBench(enabled) {
+  SYNC_ENTITY_LOD_RETAIN = enabled !== false;
+}
+export function getSyncEntityLodRetainForBench() {
+  return SYNC_ENTITY_LOD_RETAIN !== false;
+}
+
 // The activity frame publishes every sim tick through one retained record instead of a fresh
 // `{...frame, complete:true}` spread — consumers only read it, and the membership sets inside
 // were already shared references under the old shallow copy.
@@ -12545,6 +12556,8 @@ export const render = {
     }
     mesh.userData.presentationEntityId = entity.id;
     mesh.userData.sfStableEntityKey = stableMeshKeyForEntity(entity);
+    // Fresh bind must re-apply LOD even if a prior owner left the same band stamp.
+    mesh.userData._appliedLodLevel = undefined;
     const lanes = this._persistentSubmitLanes;
     const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
       ? SUBMIT_LANE.TRANSPARENT
@@ -13703,7 +13716,12 @@ export const render = {
       if (userData.lod && userData.updateLod) {
         lodChecked++;
         lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx);
-        userData.updateLod(lodLevel);
+        // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
+        // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
+        if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {
+          userData.updateLod(lodLevel);
+          userData._appliedLodLevel = lodLevel;
+        }
       }
       const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
       // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
