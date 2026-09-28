@@ -288,6 +288,7 @@ export async function simulateCrucibleSwarm({
   const economySys = runtime.getSystem('economy');
   const inputSys = runtime.getSystem('input');
   const physicsSys = runtime.getSystem('physics');
+  const producedActions = captureProducedActions(inputSys);
 
   try {
     // ── THE FEATURE WINDOW (do not narrow it) ───────────────────────────────────
@@ -462,7 +463,7 @@ export async function simulateCrucibleSwarm({
       const tick = state.tick | 0;
       rememberCohortIds(state, cohortSeen);
       sampleFirstHostile(state, eventTrace, firstHostile);
-      lastAction = sampleIssuedVerbs(state, prevVerbs, tick, eventTrace, lastAction);
+      lastAction = sampleIssuedVerbs(state, prevVerbs, tick, eventTrace, lastAction, producedActions);
 
       const playerAfter = playerEntity(state) || player;
       const headingAfter = playerAfter && Number.isFinite(playerAfter.rot) ? playerAfter.rot : null;
@@ -955,9 +956,30 @@ function drivePhysicsStation({ player, best, rock, inputSys, acts, bestD, gunErr
  * pilot's intent list. Emits verb:used on false→true transitions only so "nothing happened"
  * can still see a held-W stretch as no input CHANGE.
  */
-function sampleIssuedVerbs(state, prevVerbs, tick, eventTrace, lastAction) {
+// Consumer systems clear edge verbs when they act on them inside the same step
+// (fields._handleInput: `actions.deployWell = false`; bombs/cargo/impulseCharges/massSeed/scanner
+// do the same). Sampling state.input.actions after step() therefore never sees a consumed verb —
+// the pilot pressed it, the field deployed, and the instrument still records nothing. Wrap
+// input.update so the actions map is captured the instant input produces it, the last moment every
+// verb is still visible. The snapshot is rewritten per tick; entries that were never produced stay
+// absent.
+function captureProducedActions(inputSys) {
+  if (!inputSys || typeof inputSys.update !== 'function') return null;
+  const produced = Object.create(null);
+  const origUpdate = inputSys.update;
+  inputSys.update = function (dt, st) {
+    const result = origUpdate.call(this, dt, st);
+    const actions = st && st.input && st.input.actions;
+    if (actions) for (const key of Object.keys(actions)) produced[key] = actions[key];
+    return result;
+  };
+  return produced;
+}
+
+function sampleIssuedVerbs(state, prevVerbs, tick, eventTrace, lastAction, produced = null) {
   const inp = state.input || {};
-  const acts = inp.actions || {};
+  const live = inp.actions || {};
+  const acts = produced || live;
   const held = new Set();
   if (Math.abs(inp.moveZ) > 0.05) held.add('thrust');
   if (inp.brake || acts.brake) held.add('brake');
@@ -2815,6 +2837,7 @@ export async function simulateCrucibleDuel({
   const economySys = runtime.getSystem('economy');
   const inputSys = runtime.getSystem('input');
   const physicsSys = runtime.getSystem('physics');
+  const producedActions = captureProducedActions(inputSys);
 
   try {
     const previousFlags = snapshotFeatureMaps();
@@ -2954,7 +2977,7 @@ export async function simulateCrucibleDuel({
       });
       if (onTick) onTick({ state, tick, t, events: newEvents, player: playerAfter });
 
-      lastAction = sampleIssuedVerbs(state, prevVerbs, tick, verbTrace, lastAction);
+      lastAction = sampleIssuedVerbs(state, prevVerbs, tick, verbTrace, lastAction, producedActions);
 
       // Engagement geometry: nearest live enemy distance to the player, per tick.
       if (playerAfter && playerAfter.pos) {
