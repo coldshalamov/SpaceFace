@@ -45,52 +45,79 @@ the patrol actually looks.
    Leaving the weir resets both the dwell and the one-read latch, so every
    entry is a new chance to be seen — matching the per-faction customs-hot
    memory that already exists.
-3. **Bribe it with a body rather than a menu** — `_emitPodCustomsScan` now
-   distinguishes a body still on a line (`podHasLiveAttachment`) from a body
-   cut loose. Only inside the weir is an unattached contraband pod a
-   **surrender**: it is impounded (`customsImpounded`, permanent
-   `pickupEmbargoUntil` so the magnet cannot reclaim it) and the emit carries
-   `surrendered: true`. `heat.js` skips the smuggling-bust raise and
-   `factions.js` skips the strike-ledger increment on surrendered payloads —
-   the loss of the goods is the payment. A field cone is not a gate: a pod
-   ditched under a patrol's scan is still evidence, and a pod still on your
-   line inside the weir is evidence in transit.
-4. **No double read** — a live lawful-inspection case already owns the read;
-   the weir waits while `activeLawfulInspection(state)` is set.
+3. **Bribe it with a body rather than a menu** — `_emitPodCustomsScan` reads
+   the pod's live attachment record (`livePodAttachment`). The gate seizes
+   every contraband body it finishes reading (`customsImpounded`, permanent
+   `pickupEmbargoUntil` so the magnet cannot reclaim it). Who pays depends on
+   whose line the body sat on: cut loose inside the weir it is a **surrender**
+   (emit carries `surrendered: true`; `heat.js` skips the bust raise and
+   `factions.js` skips the strike ledger — the loss of the goods is the
+   payment). On the player's line it is evidence in transit (`evidenceOwnerId`
+   = player id; the real bust still files). On anyone else's line the gate
+   seizes the body but the bust belongs to that owner — heat and factions skip
+   it, and the prompt surface toasts a third-party seizure instead of a bust
+   at the player. A field cone is not a gate: a pod ditched under a patrol's
+   scan is still evidence and nothing there is impounded.
+4. **No double read** — a live lawful-inspection case or a live patrolScan
+   intercept already owns the read (`activeLawfulInspection` +
+   `hasLivePatrolScan`); the weir waits. A docked hull belongs to the berth's
+   own customs post; a dead hull is not read.
+5. **Reachable surface** — the completed read leaves a `law:response`
+   (`weir_read`) row the instruments consume, plus the authored `law:voice`
+   line. `customsPrompt` excludes the weir source from the SUBMIT/BRIBE/RUN
+   deck (the scan resolves in the same tick — the verbs would be dead) and
+   reports an impound receipt rather than a bust for surrendered cargo.
+6. **Per-visit latches only** — `readT`/`readDone` reset when the hull leaves
+   the weir or the weir changes; `_resetWeirTransient` clears the record and
+   both dwell maps on save restore, save loaded, newGame, and deserialize, so
+   a half-finished read or a dead pod's dwell row can never leak into another
+   session.
 
 ## Files
 
 - `src/world/customsWeir.js` — `stationId`, `readDwellS`, `readSpeed`,
   `readText` on both defs.
 - `src/systems/lawSecurity.js` — readT/readDone latch on the weir record,
-  `_dwellWeirPlayer`, `podHasLiveAttachment`, surrendered semantics in
-  `_emitPodCustomsScan`.
-- `src/systems/heat.js` — surrendered bodies do not raise a bust.
-- `src/systems/factions.js` — surrendered bodies do not mint strikes.
-- `test/customs-weir.test.mjs` — 10 tests.
+  `_dwellWeirPlayer`, `livePodAttachment`, surrendered/evidenceOwnerId
+  semantics + impound in `_emitPodCustomsScan`, `_resetWeirTransient` wired to
+  save/newGame/deserialize, `weir_read` law-response row.
+- `src/systems/heat.js` — surrendered and foreign-owner bodies do not raise a
+  bust on the player.
+- `src/systems/factions.js` — same for the strike ledger.
+- `src/ui/customsPrompt.js` — weir scans never open the decision deck;
+  surrendered → impound receipt; foreign-owner → third-party seizure; pod
+  busts no longer print a phantom "— cr" fine.
+- `test/customs-weir.test.mjs` — 14 tests.
 
 ## Validation
 
-- `node --test test/customs-weir.test.mjs` — **10/10**.
-- Adjacent: `pq-148-02-smuggling-physics`, `pq048-lawful-cargo-inspection`,
-  `docked-customs-post`, `law-security-escalation` — **53/53**.
-- `audio-wanted-heat`, `living-poi-behaviors`, `pq-151-02-launder`,
-  `sector-law-presentation` — **45/45**.
+- `node --test test/customs-weir.test.mjs` — **14/14**.
+- Adjacent law/customs/heat/faction batch (pq-148-02, pq048, docked-customs,
+  law-security-escalation, audio-wanted-heat, living-poi-behaviors, launder,
+  sector-law-presentation, inf-079, inf-077) — **101/101**.
+- Prompt surface (economy-professional-anti-exploit, prompt-deck cluster,
+  prompt-deck, impound-pay-prompt) — **27/27**.
 
 ## Review history
 
-- First adjacent sweep caught a real defect pre-review: the initial
-  `surrendered` flag fired for *any* unattached pod, which broke
-  `pq-148-02` (a pod ditched in a patrol field cone must still bust). Fixed by
-  scoping surrender to `source === 'customs_weir'` — the weir is the gate;
-  a field cone is evidence collection. See §Review.
-- Adversarial reviewer: **PASS**.
+- Pre-review sweep caught a real defect: the first `surrendered` flag fired for
+  any unattached pod, breaking pq-148-02 (a pod ditched in a patrol cone must
+  still bust). Scoped to `source === 'customs_weir'`.
+- Round 1 (two reviewers): **FAIL** — phantom decision deck + lying bust toast
+  on the prompt surface; `law:voice` unreachable; read/dwell latches leaked
+  across save/newGame; NPC-towed pod busted the player; weir id stamped into
+  `patrolId`.
+- Round 2: five fixes verified, one remaining — `evidenceOwnerId` unchecked on
+  the prompt path (same lying-toast class). Fixed with the third-party
+  seizure receipt.
+- Round 3: **PASS**.
 
 ## Residual
 
 - `contraband:bribe` (credits) still exists as the menu-side path — the body
   path is the weir surrender; both coexist by design.
-- The weir read emits `player:scannedByPatrol` with `source: 'customs_weir'` —
-  presentation consumers that key on patrol presence see a gate read instead of
-  a patrol read; no consumer breakage found.
-- CR-BERTH remains the next CR spec block (one honest faction address).
+- `customsImpounded` has no render consumer — an impounded pod reads as
+  ordinary flotsam; the embargo is the enforcement.
+- Pod busts still never carry `faction:repDelta` (inherited — strikes only).
+- `_podConeDwell` keeps stale keys between boundary resets (pre-existing).
+- CR-BERTH remains the next CR spec block.

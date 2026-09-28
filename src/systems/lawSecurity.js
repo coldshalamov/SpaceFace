@@ -223,11 +223,13 @@ export const lawSecurity = {
     this._onSaveRestoring = () => {
       this._releaseAllJobResponses('save_restoring');
       this._resetInspectionTransient();
+      this._resetWeirTransient();
       this._sanctuaryQuiet = null;
       this._sanctuaryWakeSeq = 0;
     };
     this._onSaveLoaded = () => {
       this._resetInspectionTransient();
+      this._resetWeirTransient();
       normalizePersistedLawfulInspection(this.state);
       this._sanctuaryQuiet = null;
       this._sanctuaryWakeSeq = 0;
@@ -282,9 +284,21 @@ export const lawSecurity = {
     if (this.state) this.state.lawSecurity = freshState();
     if (this.state && this.state.player) delete this.state.player.lawfulInspection;
     this._resetInspectionTransient();
+    this._resetWeirTransient();
     this._sanctuaryQuiet = null;
     this._sanctuaryWakeSeq = 0;
     publishSanctuaryQuiet(this.state, false);
+  },
+
+  // Weir dwell/read latches are per-visit, per-session state. A save boundary or
+  // a new run must not let a half-finished read or a dead pod's dwell row leak
+  // into the next session — every entry into the gate is a fresh chance to be seen.
+  _resetWeirTransient() {
+    if (!this.state) return;
+    const own = ensureState(this.state);
+    if (own && own.customsWeir) own.customsWeir = null;
+    if (this._weirPodDwell) this._weirPodDwell.clear();
+    if (this._podConeDwell) this._podConeDwell.clear();
   },
 
   /**
@@ -311,6 +325,11 @@ export const lawSecurity = {
 
   deserialize(data) {
     const own = ensureState(this.state);
+    // Session-scoped weir latches never survive a load — the record/dwell rows
+    // reference live entity positions and visit state, not durable truth.
+    own.customsWeir = null;
+    if (this._weirPodDwell) this._weirPodDwell.clear();
+    if (this._podConeDwell) this._podConeDwell.clear();
     const src = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
     own.unreportedKills = normalizeUnreportedKillLedger(src.unreportedKills);
     if (src.reportedIncidents != null) {
@@ -2569,7 +2588,12 @@ export const lawSecurity = {
       ? state.entities.get(state.playerId)
       : null;
     const inside = !!(player && player.pos && pointInsideCustomsWeir(weir, player.pos));
-    const wasSeen = !!(own.customsWeir && own.customsWeir.seen === true && own.customsWeir.id === weir.id);
+    const prior = own.customsWeir && own.customsWeir.id === weir.id ? own.customsWeir : null;
+    const wasSeen = !!(prior && prior.seen === true);
+    // The read survives across ticks only while this visit continues — leaving
+    // the weir resets it, so each entry is one new chance to be seen.
+    let readT = inside && prior ? Number(prior.readT) || 0 : 0;
+    let readDone = inside && prior ? prior.readDone === true : false;
     own.customsWeir = {
       active: true,
       id: weir.id,
@@ -2577,11 +2601,51 @@ export const lawSecurity = {
       shape: weir.shape,
       segments: customsWeirSegments(weir),
       seen: inside,
+      readT,
+      readDone,
     };
     if (inside && !wasSeen) this._emit('customs:weirPresence', { weirId: weir.id, inside: true });
     if (!inside && wasSeen) this._emit('customs:weirPresence', { weirId: weir.id, inside: false });
     if (!(step > 0)) return;
+    this._dwellWeirPlayer(step, state, weir, player, inside);
     this._dwellWeirPods(step, state, weir);
+  },
+
+  // The gate reads the reader. A hull inside the weir and slow enough for the
+  // beam to finish accumulates the read; running the weir fast beats it, and a
+  // live lawful-inspection case already owns the read so the weir does not
+  // double-scan mid-compliance. One read per visit — leaving resets the latch.
+  _dwellWeirPlayer(step, state, weir, player, inside) {
+    const live = ensureState(state).customsWeir;
+    if (!live || live.id !== weir.id) return;
+    if (!inside || live.readDone === true) return;
+    const readDwellS = Number.isFinite(weir.readDwellS) ? weir.readDwellS : 0;
+    const readSpeed = Number.isFinite(weir.readSpeed) ? weir.readSpeed : 0;
+    if (!(readDwellS > 0) || !(readSpeed > 0)) return;
+    // A live inspection case or a live patrol intercept already owns the read —
+    // the weir does not double-scan mid-compliance.
+    if (activeLawfulInspection(state) || hasLivePatrolScan(state)) return;
+    // A docked hull belongs to the berth's own customs post, not the field gate.
+    if (state.ui && state.ui.docked) return;
+    if (!player || player.alive === false || entitySpeed(player) > readSpeed) return;
+    live.readT = (Number(live.readT) || 0) + step;
+    if (live.readT < readDwellS) return;
+    live.readDone = true;
+    this._lawResponse('weir_read', {
+      weirId: weir.id,
+      stationId: weir.stationId || null,
+      factionId: 'faction_scn',
+    });
+    this._say('alert', weir.readText || 'CUSTOMS WEIR: manifest read — transit logged.',
+      `law:weir-read:${weir.id}`, 'faction_scn');
+    const economySystem = this._economy();
+    if (economySystem && typeof economySystem.runScan === 'function') {
+      economySystem.runScan({
+        stationId: weir.stationId || null,
+        factionId: 'faction_scn',
+        source: 'customs_weir',
+      });
+    }
   },
 
   _dwellWeirPods(step, state, weir) {
@@ -2614,7 +2678,7 @@ export const lawSecurity = {
       const next = (Number(dwell.get(key)) || 0) + step;
       dwell.set(key, next);
       if (next < weir.dwellS) continue;
-      this._emitPodCustomsScan({ id: weir.id, factionId: 'faction_scn' }, pod, 'customs_weir');
+      this._emitPodCustomsScan({ weirId: weir.id, factionId: 'faction_scn' }, pod, 'customs_weir');
     }
     for (const key of dwell.keys()) {
       if (!seen.has(key) || !String(key).startsWith(`${weir.id}:`)) dwell.delete(key);
@@ -2692,14 +2756,31 @@ export const lawSecurity = {
     const units = Math.max(0, Number(pod.data.amount) || 0);
     pod.data.customsScanned = true;
     pod.data.customsScannedAt = inspectionNow(this.state);
+    // The gate seizes every contraband body it finishes reading. Who pays for it
+    // depends on whose line the body sat on: cut loose inside the weir it is
+    // surrendered cargo (the loss is the payment — no bust); on the player's
+    // line it is evidence in transit (a bust); on anyone else's line the gate
+    // takes the body but the bust belongs to that owner, not the player. A
+    // field cone is not a gate: a pod ditched under a patrol's scan is still
+    // evidence, and nothing there is impounded.
+    const attachment = livePodAttachment(this.state, pod.id);
+    const evidenceOwnerId = attachment ? attachment.ownerId : null;
+    const surrendered = source === 'customs_weir' && !attachment;
+    if (source === 'customs_weir') {
+      pod.data.customsImpounded = true;
+      pod.data.pickupEmbargoUntil = Number.MAX_SAFE_INTEGER;
+    }
     this._emit('contraband:scanned', {
       found: true,
       source,
       podId: pod.id,
       commodityId,
       units,
+      surrendered,
+      evidenceOwnerId,
       factionId: scanner && scanner.factionId ? scanner.factionId : 'faction_scn',
-      patrolId: scanner && scanner.id,
+      patrolId: scanner && scanner.id || null,
+      weirId: scanner && scanner.weirId || null,
       confiscated: commodityId ? [{ commodityId, qty: units }] : [],
     });
   },
@@ -4550,6 +4631,16 @@ function responderReachSpeed(responder) {
 function entitySpeed(entity) {
   const vel = entity && entity.vel;
   return Math.hypot(Number(vel && vel.x) || 0, Number(vel && vel.z) || 0);
+}
+
+function livePodAttachment(state, podId) {
+  const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!byId || typeof byId !== 'object') return null;
+  for (const key in byId) {
+    const attachment = byId[key];
+    if (attachment && attachment.targetId === podId && attachment.state === 'active') return attachment;
+  }
+  return null;
 }
 
 function publicWantedWarrant(warrant) {

@@ -246,9 +246,14 @@ export const heat = {
     // weapon can't spike heat to max instantly.
     bus.on('combat:damage', (p) => this._onDamage(p));
 
-    // Smuggling busts: contraband found on a patrol scan.
+    // Smuggling busts: contraband found on a patrol scan. A body surrendered to the
+    // gate is the legal off-ramp — the loss of the goods is already the payment.
+    // A body on someone else's line is their bust, not yours.
     bus.on('contraband:scanned', (p) => {
-      if (p && p.found) this._raise(BUST_CONTRABAND, 'smuggling bust');
+      if (!p || !p.found) return;
+      if (p.surrendered === true) return;
+      if (p.evidenceOwnerId != null && p.evidenceOwnerId !== this.state.playerId) return;
+      this._raise(BUST_CONTRABAND, 'smuggling bust');
     });
 
     // A faction going hostile is the strongest "the law noticed" signal short of a kill. The same
