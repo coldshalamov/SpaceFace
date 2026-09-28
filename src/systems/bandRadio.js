@@ -47,6 +47,28 @@ const LIVE_LANDMARK_SOURCES = Object.freeze({
     dataValue: 'landmark_c2_resonance_obelisk',
     falloffRadius: 1900,
   }),
+  // The Band wrote voice for these three carriers (040-band.js landmark_bleed idents + lines);
+  // the sampler never fed their strengths, so the lines could not fire. Same data-key shape as
+  // the obelisk: the landmark POI carries its flavorTargetRef, and a live bandProximityRadius
+  // on the entity outranks the falloff here.
+  wreck_cathedral: Object.freeze({
+    sectorId: 'sector_io_reach',
+    dataKey: 'flavorTargetRef',
+    dataValue: 'landmark_c1_wreck_cathedral_concord_vigilant',
+    falloffRadius: 1500,
+  }),
+  candle_fleet: Object.freeze({
+    sectorId: 'sector_helios_prime',
+    dataKey: 'flavorTargetRef',
+    dataValue: 'landmark_c3_candle_fleet',
+    falloffRadius: 1200,
+  }),
+  lung_of_charon: Object.freeze({
+    sectorId: 'sector_charon_expanse',
+    dataKey: 'flavorTargetRef',
+    dataValue: 'landmark_c7_lung_of_charon',
+    falloffRadius: 1600,
+  }),
 });
 const LIVE_LANDMARK_SOURCE_ENTRIES = Object.freeze(Object.entries(LIVE_LANDMARK_SOURCES));
 
