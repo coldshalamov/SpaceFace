@@ -118,7 +118,7 @@ usage-locked until **2026-09-29**, which is why the sector tokens were made in B
 
 ## 3. Status of every surface (2026-09-28)
 
-**APPROVED (≥ 8.0, both owner criteria) — 11:**
+**APPROVED (≥ 8.0, both owner criteria) — 12** (the 11 below + the Chart):
 
 | Surface | Score | Signature | Open polish (non-blocking) |
 |---|---|---|---|
@@ -135,14 +135,12 @@ usage-locked until **2026-09-29**, which is why the sector tokens were made in B
 | Footprint (F3) | 8.2 | **Trace a source** on the Heat Dial + **drag the heat needle to scrub time** (tier drops ahead) | hide the hint on empty; proof pips instead of bullets; hub band to L70+ |
 
 **IN FLIGHT at handoff (resume or re-dispatch; their builders may have left dirty files):**
-- **Chart / galaxy map** (`src/ui/galaxyMap.js` presentation layer + `src/ui/orrery/chartInstruments.js`,
-  `chartLayouts.js`, `chartLabels.js`) — round 3 scored **7.8**, both criteria PASS. Round 4 in progress:
-  **square-root radial scale for the SYSTEM dial** (the centre knot gets room), the drag reading docked in a
-  feathered pool (no dark rectangle, never occluding the gate ring), GALAXY ring bands to luma ≥ 75, labels
-  "Vesta Forge"/"Haumea Rift"/"Pallas Drift" against their own token, re-shoot the lock-in while the chart is
-  up. Signature: **Lay the line** — drag from your ship; the amber beam previews the real route (the game's own
-  planner), a large-numeral reading rides the target, release locks the course in. Report:
-  `review/reports/chart-r3-critic.txt`.
+- **Chart / galaxy map** — **APPROVED 8.1** (round 4, 07d6a3d05): square-root SYSTEM dial, one anchored
+  label placer (`chartLabels.js`), 24 Blender sector tokens, **Lay the line** (drag from your ship; the amber
+  beam previews the game's own route; release locks it in and the ship rides the line). Polish: the 1280 scale
+  note clips ("NOT LINEAF"), a 1280 leader dot touches GOAL, the long "Vesta Forge" leader in the all-sectors
+  view, the foot strip still teaches only double-click; next structural step (optional): orbital tracks + a
+  lens under the cursor. Report: `review/reports/chart-r4-critic.txt`.
 - **Help** (`src/ui/screens/help.js` + `src/ui/orrery/help*.js`) — critic round 3 **7.9** ("one narrow round
   from passing"); round 4 was shooting at handoff. Signature: **Press anything** — the live input echo on the
   Controls Rig (the hull's plan view with verb stations on leaders; pressing a key/pad button lights its verb and
@@ -240,7 +238,7 @@ its presentation layer only; never build a second route model).
 
 ## 8. How to finish
 
-1. Resume/re-dispatch Chart round 4 and Help round 4 to a pass (same critics).
+1. Resume/re-dispatch Help round 4 to a pass (same critic); land the Chart polish.
 2. Land the Shipworks r17 polish; re-score the station tabs, Title, Pause and Crucible under (a)/(b) and fix
    what fails (keep ≤ 4 agents at once).
 3. Build wave 2/3 surfaces in the plan's order: THE SHIP, Range, Automation, Replay/Clips, Loading, Comms/radials
