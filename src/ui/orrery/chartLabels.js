@@ -196,7 +196,7 @@ function seatsFor(c, w, h, { maxLeader }) {
       const sy = ay + dy * (RL + 2);
       const ey = ay + dy * (RL + 2 + L);
       const y = dy > 0 ? ey + 3 : ey - 3 - h;
-      [[ax - w / 2, 0], [ax - 8, 1], [ax - w + 8, 2]].forEach(([x, k]) => {
+      [[ax - w / 2, 0]].forEach(([x, k]) => {
         seats.push({ x, y, cost: 16 + rimCost + L * 0.35 + k * 0.6, side: 'leader', leader: { sx: ax, sy, ex: ax, ey, lx: ax, ly: ey } });
       });
     }
@@ -278,6 +278,8 @@ export function placeChartLabels(candidates, env = {}) {
   const anchorDiscs = list.map((c) => ({ id: c.id, x: c.x, y: c.y, r: Math.max(2, Number(c.anchorRadius) || 2) - 1, area: !!c.area }));
   const occupied = reserved.slice();
   const placedLeaders = [];
+  // where each laid leader ends: no other name may stand nearer that end than its own words
+  const placedEnds = [];
   const out = [];
   for (const c of list) {
     const { _i, ...pub } = c;
@@ -333,6 +335,8 @@ export function placeChartLabels(candidates, env = {}) {
       }
       // a mark that stands on a ring (a gate on the sector's gate ring) names itself on the outside
       if (c.outsideOf && Math.hypot(rect.x + w / 2 - c.outsideOf.x, rect.y + h / 2 - c.outsideOf.y) < c.outsideOf.r) cost += 60;
+      // words may not crowd the end of another name's leader (its end reads as pointing at them)
+      for (const pe of placedEnds) if (rectDiscGap(rect, { x: pe.x, y: pe.y, r: 0 }) < pe.gap + 8) { bad += 1; break; }
       // words may not lie across a leader already laid
       for (const ls of placedLeaders) if (segmentHitsRect(ls.x1, ls.y1, ls.x2, ls.y2, { x: rect.x - 2, y: rect.y - 2, width: rect.width + 4, height: rect.height + 4 })) { bad += 2; break; }
       if (seat.leader) {
@@ -361,20 +365,27 @@ export function placeChartLabels(candidates, env = {}) {
           if (hit) break;
           for (const ls of placedLeaders) if (segmentsNear(sg, ls, 6)) { hit = true; break; }
           if (hit) break;
+          // a leader that crosses a lane costs its length again: a short seat beside the mark wins
+          for (const s of segments) if (segmentsCross(sg, s)) cost += 10;
         }
         if (hit) bad += 2;
+        // the leader's end points at its own words: no name already down stands as near it
+        const endGap = rectDiscGap(rect, { x: seat.leader.lx, y: seat.leader.ly, r: 0 });
+        for (const o of occupied) if (rectDiscGap(o, { x: seat.leader.lx, y: seat.leader.ly, r: 0 }) < endGap + 8) { bad += 1; break; }
       } else if (seat.side !== 'inside' && !c.leaderOnly) {
         // words set against a mark must sit nearer their own mark than any other, or they take a leader
         const own = rectDiscGap(rect, { x: c.x, y: c.y, r: Math.max(2, Number(c.anchorRadius) || 2) });
+        // an area (a field) owns a wide rim: its words need only sit clearly nearer it than any mark
+        const margin = c.area ? 4 : 5;
         let rival = false;
         for (const d of anchorDiscs) {
           if (d.id === c.id || Math.hypot(d.x - c.x, d.y - c.y) < 1.5) continue;
-          if (rectDiscGap(rect, d) < own + 8) { rival = true; break; }
+          if (rectDiscGap(rect, d) < own + margin) { rival = true; break; }
         }
         if (!rival) {
           for (const d of discs) {
             if (Math.hypot(d.x - c.x, d.y - c.y) < 1.5) continue;
-            if (rectDiscGap(rect, d) < own + 8) { rival = true; break; }
+            if (rectDiscGap(rect, d) < own + margin) { rival = true; break; }
           }
         }
         if (rival) bad += 1;
@@ -398,6 +409,7 @@ export function placeChartLabels(candidates, env = {}) {
     if (pick.leader) {
       placement.leader = pick.leader;
       placedLeaders.push(...leaderSegments(pick.leader));
+      placedEnds.push({ x: pick.leader.lx, y: pick.leader.ly, gap: rectDiscGap(pick.rect, { x: pick.leader.lx, y: pick.leader.ly, r: 0 }) });
     }
     out.push(placement);
     occupied.push(pick.rect);

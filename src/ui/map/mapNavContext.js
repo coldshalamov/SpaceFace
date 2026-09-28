@@ -116,7 +116,7 @@ function sectorDisplayName(sectorId, sectorNames) {
  * empty.
  */
 function destinationDetail(destination) {
-  if (!destination) return 'Accept a contract or double-click a sector to set one';
+  if (!destination) return 'Accept a contract, drag from your ship or double-click a sector';
   if (destination.planned) {
     const n = destination.legCount;
     return `${destination.legsRemaining} of ${n} leg${n === 1 ? '' : 's'} remaining`;
