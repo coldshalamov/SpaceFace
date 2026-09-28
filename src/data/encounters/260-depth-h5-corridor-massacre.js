@@ -19,6 +19,7 @@ export default defineEncounter(trigger, {
   title: 'THE CORRIDOR MASSACRE', factionId: 'faction_scn', context: 'patrol',
   squad: {
     archetypes: ['lancer_sniper', 'bruiser_brawler'], size: [2, 3], doctrine: 'anchor',
+    squadRecipe: 'siege_orbit',
     formation: 'wedge', team: 1, passive: true,
   },
   primaryLine: 'CONCORD: witness contact. Prepare the pirate cover channel.',

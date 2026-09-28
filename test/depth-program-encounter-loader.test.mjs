@@ -61,6 +61,13 @@ function migrationBaselineCatalog() {
   // spawns behind cover at spawn time. Strip it for the migration baseline like the other
   // post-migration live-evolution fields above.
   delete catalog.ambush_snare.squad.terrain;
+  // The squad-choreography pass later stamped `squadRecipe` on authored squads so each fight
+  // boards a scripted frame (picket wall, wolfpack quarters, gunline…). A spawn-time choreography
+  // stamp moves no schedule identity either — strip it wherever a migration-era squad carries one.
+  for (const id of fixture.order) {
+    const sq = catalog[id] && catalog[id].squad;
+    if (sq) delete sq.squadRecipe;
+  }
   catalog.claim_threat.squad.archetypes = ['wasp_swarmer', 'reaver_pirate'];
   delete catalog.claim_threat.squad.anchorArchetype;
   catalog.claim_threat.squad.size = [2, 2];
@@ -122,8 +129,9 @@ test('encounter migration preserves every definition byte-for-byte under JSON se
   });
   assert.deepEqual(
     intentionalDrift,
-    ['pirate_toll', 'ambush_snare', 'claim_threat', 'named_hunter', 'distress_call', 'salvage_signal', 'anomaly_whisper'],
-    'only the later claim-defense, first-hour admission, and civilian-deck frontier-widening gates may differ from the F2 migration baseline',
+    ['pirate_toll', 'ambush_snare', 'patrol_scan', 'bounty_hunter', 'claim_threat', 'named_hunter',
+      'convoy_departure', 'patrol_beat', 'distress_call', 'salvage_signal', 'anomaly_whisper'],
+    'only the later claim-defense, first-hour admission, civilian-deck frontier-widening, and squad-choreography stamp passes may differ from the F2 migration baseline',
   );
   assert.equal(ENCOUNTERS.claim_threat.gates.externalOnly, true, 'claim defense is requested by the claims system, never ambient-scheduled');
 });
@@ -209,6 +217,9 @@ function migrationBaselinePlan(plan) {
       const next = { ...ship };
       const doctrine = MIGRATION_ERA_SHIP_DOCTRINE[ship.archetype];
       if (doctrine !== undefined) next.combatDoctrineId = doctrine;
+      // Post-migration choreography stamps ride the ship spec but do not move a schedule row.
+      delete next.squadRecipe;
+      delete next.squadSocket;
       return next;
     });
     return copy;

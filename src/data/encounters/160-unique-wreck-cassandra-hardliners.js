@@ -34,6 +34,7 @@ export default defineEncounter(trigger, {
     archetypes: ['bruiser_brawler', 'lancer_sniper'],
     size: [2, 2],
     doctrine: 'anchor',
+    squadRecipe: 'standoff_gunline',
     formation: 'wedge',
   },
   bossName: 'CASSANDRA DENIAL WING',

@@ -37,6 +37,7 @@ export default defineEncounter(trigger, {
       2
     ],
     "doctrine": "official",
+    "squadRecipe": "picket_wall",
     "formation": "wedge"
   },
   "bark": "patrol_scan_hail",

@@ -36,6 +36,7 @@ export default defineEncounter(trigger, {
     archetypes: ['customs_cutter', 'patrol_lawman'],
     size: [1, 2],
     doctrine: 'official',
+    squadRecipe: 'picket_wall',
     formation: 'line',
   },
   bark: 'patrol_scan',

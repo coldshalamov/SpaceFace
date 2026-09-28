@@ -44,6 +44,7 @@ export default defineEncounter(trigger, {
     archetypes: ['wasp_swarmer', 'reaver_pirate'],
     size: [3, 4],
     doctrine: 'scavenger',
+    squadRecipe: 'pincer_sweep',
     formation: 'wedge',
     // WF-02 terrain lee: the specialist lurks behind cover until your line is live — the
     // interdiction reads as a concealed cut, not a ring of ships in the void.

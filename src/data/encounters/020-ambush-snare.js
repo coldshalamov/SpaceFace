@@ -41,6 +41,7 @@ export default defineEncounter(trigger, {
       6
     ],
     "doctrine": "scavenger",
+    "squadRecipe": "wolfpack_quarter",
     "formation": "wedge",
     // WF-02 terrain lee: a snare waits in a rock's lee on the player's bearing — the spring
     // happens when you round the cover, not in open space (director spawnShips applies it).

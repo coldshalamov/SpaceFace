@@ -39,6 +39,7 @@ export default defineEncounter(trigger, {
     archetypes: ['corsair_raider'],
     size: [2, 3],
     doctrine: 'scavenger',
+    squadRecipe: 'wolfpack_quarter',
     formation: 'wedge',
   },
   bark: 'ambush_tele',

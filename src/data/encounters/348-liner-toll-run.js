@@ -107,6 +107,7 @@ export default defineEncounter(trigger, {
     minSeparation: 40,
     team: 2,
     doctrine: 'official',
+    squadRecipe: 'picket_wall',
     formation: 'line',
   },
   // Role names only — no `enabled`, so the planner borrows carrierRole/raiderRole

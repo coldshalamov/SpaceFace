@@ -322,6 +322,7 @@ function normalizeContact(value) {
     exposed: !!value.exposed,
     tethered: !!value.tethered,
     disabled: !!value.disabled,
+    hullFraction: saturate(finite(value.hullFraction, 1)),
     objectiveValue: Math.max(0, finite(value.objectiveValue, 0)),
     massClass: Math.max(0, finite(value.massClass, 1)),
     operationalMassBand: normalizeBand(value.operationalMassBand, ['light', 'medium', 'heavy', 'capital'], 'medium'),

@@ -1042,6 +1042,7 @@ function fillSensorContact(out, base, confidence, threat, hostile) {
   out.ownerId = base.ownerId;
   out.disabled = base.disabled;
   out.tethered = base.tethered;
+  out.hullFraction = base.hullFraction;
   out.exposed = base.exposed;
   out.ownedBySelf = base.ownedBySelf;
   out.objectiveValue = base.objectiveValue;
@@ -1180,6 +1181,7 @@ function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, 
     ownerId: other.ownerId == null ? null : other.ownerId,
     disabled,
     tethered,
+    hullFraction: fraction(other.hull, other.hullMax, 1),
     exposed: false,
     ownedBySelf: false,
     objectiveValue: objectiveValueFor(other),

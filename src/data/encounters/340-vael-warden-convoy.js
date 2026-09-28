@@ -41,6 +41,7 @@ export default defineEncounter(trigger, {
     archetypes: ['reaver_pirate', 'wasp_swarmer'],
     size: [2, 3],
     doctrine: 'scavenger',
+    squadRecipe: 'convoy_column',
     formation: 'loose',
   },
   civilian: {

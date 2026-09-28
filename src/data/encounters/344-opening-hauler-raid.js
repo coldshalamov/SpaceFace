@@ -173,6 +173,7 @@ export default defineEncounter(trigger, {
     clusterRadius: 75,
     minSeparation: 38,
     doctrine: 'thief',
+    squadRecipe: 'pincer_sweep',
     formation: 'wedge',
   },
   civilian: {

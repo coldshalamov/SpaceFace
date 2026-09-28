@@ -37,6 +37,7 @@ export default defineEncounter(trigger, {
     archetypes: ['choir_zealot'],
     size: [4, 6],
     doctrine: 'scavenger',
+    squadRecipe: 'harassment_ring',
     formation: 'ring',
   },
   bark: 'attack',

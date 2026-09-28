@@ -37,6 +37,7 @@ export default defineEncounter(trigger, {
     archetypes: ['wasp_swarmer'],
     size: [2, 2],
     doctrine: 'scavenger',
+    squadRecipe: 'interceptor_scissors',
     formation: 'wedge',
   },
   claimVictim: {

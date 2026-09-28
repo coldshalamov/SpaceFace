@@ -38,6 +38,7 @@ export default defineEncounter(trigger, {
     archetypes: ['mine_layer_jackal', 'pd_screen_escort'],
     size: [2, 3],
     doctrine: 'scavenger',
+    squadRecipe: 'shepherd_net',
     formation: 'loose',
   },
   bark: 'wake_tithe_demand',

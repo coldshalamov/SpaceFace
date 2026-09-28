@@ -40,6 +40,7 @@ export default defineEncounter(trigger, {
     archetypes: ['reaver_pirate', 'mine_layer_jackal'],
     size: [2, 4],
     doctrine: 'scavenger',
+    squadRecipe: 'shepherd_net',
     formation: 'wedge',
   },
   civilian: {
