@@ -410,7 +410,6 @@ ship stills (all REVISE — awaiting new remote candidates).
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
 | 19 | VM-HEAD | Digest head-of-queue: #166 render-package-digest-zero-copy → #167 embedded-ktx2 → #168 glb-body-in-place (+patches-after-167) → #169 shader-readiness → #170 retail-gltfloader alias; then #161–#165 quiet-latch ships | IMPORT | OPEN |
-| 21 | VM-PRESTEP-2 | Sim/preStep batch 2 (~13 folders: far-actor-scan, alloc-journal-churn, massline-settext, gamepad-idle…) | IMPORT | CLAIMED devin-wave1 |
 | 22 | VM-LATCH-A | Quiet-latch render/HUD wave A (~10 of ~50: hud-* series, bark-director, optic-lattice…) | IMPORT | OPEN |
 | 23 | VM-LATCH-B | Quiet-latch render/HUD wave B | IMPORT | OPEN |
 | 24 | VM-LATCH-C | Quiet-latch render/HUD wave C | IMPORT | OPEN |

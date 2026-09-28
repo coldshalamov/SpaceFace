@@ -27,6 +27,34 @@ Skipped this pass:
 `stamp-near-work-flag`, `-gate`, `-incremental`, `-prepared`, `-skip`, `-tap`, `-contract`, `-dense`
 do not exist on `origin/vm-drop` or master — never shipped.
 
+# IMPORT ledger — 20260928 owner-side import (devin-w1-vm-prestep2, board §1C row 21)
+
+Sim/cache batch landed on master. Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `far-query-row-scan` (after-cell-key patch; master's `1bb1b818a` keys are numeric) | `b535d8a0b` | focused 18/18 |
+| `emergent-hot-spatial` | `d22de0301` | focused 5/5 |
+| `event-trace-thrust-sanitize` | `6f02ea568` | focused 6/6 (patch's root `artifacts/` payload excluded — identical copies live in the folder) |
+| `gamepad-idle-clean-skip` | `e60ce713b` | focused 21/21 (patch file is one trailing line short of its last hunk header; applied `--recount`, result verified complete and syntax-clean) |
+
+Already on master before this pass (verified, no re-import): `far-actor-cell-key`
+(`1bb1b818a` — its residual `ensureFarActorTable` legacy string-key migration hunk + focused
+test were **not** hand-merged), `alloc-journal-churn` (`650ce5a32`, src + test).
+
+Skipped this pass:
+
+- `prestep-movables-trust`, `lifetime-sweep-quiet-clocks-skip`, `npc-field-role-cache`,
+  `npc-jobs-id-list-cache` — row-20 folders per the devin-w1-vm-prestep1 NOW.md claim; landed or
+  verified on master there. Not re-imported here (non-overlap).
+- Board-listed names that are not folders resolved to real packages: `emergent-hot-spatial-index`
+  → `emergent-hot-spatial`, `event-trace-priority-cache` → `event-trace-thrust-sanitize`,
+  `gamepad-idle-quiet-latch` → `gamepad-idle-clean-skip`, `far-actor-scan-columnar-cache` → the
+  `far-actor-*` pair above. `lifetime-quiet-policy-clock-gate` → nearest lifetime package is
+  `lifetime-corpse-lane-compact`, which needs a re-export (see row-20 ledger).
+- `massline-settext-cache` — its only patch edits `src/ui/masslineHud.js`; `src/ui/**` is the
+  ORRERY-claimed lane and out of scope for this import batch. Left for a UI-owning sitting.
+
 # IMPORT_DIGEST report — 20260926c (post-#168; **#170 ship** retail-gltfloader-vendored-alias)
 
 Master tip: **`97c88f92b`** (fetched; unchanged). No restack needed. No vm-drop package has been imported since dz.
