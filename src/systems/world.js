@@ -191,7 +191,8 @@ import {
   tickMachineLayer,
   machineRouteOpen,
 } from './precursorMachines.js'; // Verge-Layer machine layer (doc 07, AE-090..109): same seam
-import { createAlienEcologyState } from '../data/alienEcologyState.js';
+import { MACHINE_PROTOCOL_FAULTS } from '../data/precursorMachines.js';
+import { createAlienEcologyState, ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { removeCargo } from './cargo.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import {
@@ -2464,6 +2465,7 @@ export const world = {
           sectorId: sector.id,
           isWormhole: !!opts.wormhole,
           gatedBy: opts.gatedBy || null,
+          machineGate: opts.machineGate || null,
           archetypeGlb: opts.archetypeGlb || 'place_gate_jump_ring',
         },
       });
@@ -2477,6 +2479,7 @@ export const world = {
         spawnGate(g.to, this._toGlobal(g.pos, sector.id), {
           wormhole: isWh,
           gatedBy: isWh && sector.wormholeTo ? sector.wormholeTo.gatedBy : null,
+          machineGate: isWh && sector.wormholeTo ? sector.wormholeTo.machineGate || null : null,
           archetypeGlb: g.archetypeGlb,
         });
       }
@@ -2495,6 +2498,7 @@ export const world = {
         x: Math.cos(ang) * wr * 0.6, z: Math.sin(ang) * wr * 0.6,
       }, sector.id), {
         wormhole: true, gatedBy: sector.wormholeTo.gatedBy,
+        machineGate: sector.wormholeTo.machineGate || null,
       });
     }
     settleSkins();
@@ -5319,26 +5323,50 @@ export const world = {
   _wormholeUnlocked(sector) {
     if (!sector || !sector.wormholeTo) return false;
     const gate = sector.wormholeTo.gatedBy; // e.g. "tech:tech_long_range_survey"
-    if (!gate) return true;
-    const [kind, key] = gate.split(':');
-    if (kind === 'tech') return (this.state.player.researchedNodes || []).includes(key);
-    if (kind === 'flag') return !!(this.state.story.flags || {})[key];
-    // AE-108 revoked routes: machine-protocol standing opens transit the tech tree cannot.
-    if (kind === 'machine') {
-      if (machineRouteOpen(this.state, key)) return true;
-      // K01 (Phase 26): a Gate Handshake Token burns once to open a machine-gated route.
-      const cargo = this.state.player && this.state.player.cargo;
-      if (cargo && cargo.items && (cargo.items.cmdty_gate_handshake || 0) > 0) {
-        removeCargo(this.state, 'cmdty_gate_handshake', 1);
-        const ae = this.state.world && this.state.world.alienEcology;
-        if (ae) { if (!ae.machineAccess) ae.machineAccess = {}; ae.machineAccess[key] = true; }
-        this.bus.emit('toast', {
-          text: 'Handshake token accepted — the gate files you as a route-holder.',
-          kind: 'good', ttl: 6,
-        });
-        return true;
-      }
-      return false;
+    let open = !gate;
+    if (gate) {
+      const [kind, key] = gate.split(':');
+      if (kind === 'tech') open = (this.state.player.researchedNodes || []).includes(key);
+      else if (kind === 'flag') open = !!(this.state.story.flags || {})[key];
+      else if (kind === 'machine') {
+        // AE-108 revoked routes: machine-protocol standing opens transit the tech tree cannot.
+        if (machineRouteOpen(this.state, key)) return true;
+        // K01 (Phase 26): a Gate Handshake Token burns once to open a machine-gated route.
+        const cargo = this.state.player && this.state.player.cargo;
+        if (cargo && cargo.items && (cargo.items.cmdty_gate_handshake || 0) > 0) {
+          removeCargo(this.state, 'cmdty_gate_handshake', 1);
+          const ae = ensureAlienEcologyState(this.state);
+          if (!ae.machineAccess) ae.machineAccess = {};
+          ae.machineAccess[key] = true;
+          this.bus.emit('toast', {
+            text: 'Handshake token accepted — the gate files you as a route-holder.',
+            kind: 'good', ttl: 6,
+          });
+          return true;
+        }
+        return false;
+      } else open = false;
+    }
+    // AE-108: `machineGate` puts the machines' credential on a charted route — the gate
+    // keeps its authored prerequisite, but a fault verdict refuses transit outright and
+    // clean machine standing (or a burned handshake token) opens it without that research.
+    const machineKey = sector.wormholeTo.machineGate;
+    if (!machineKey) return open;
+    const ae = this.state.world && this.state.world.alienEcology;
+    if (ae && MACHINE_PROTOCOL_FAULTS.includes(ae.machineProtocol)) return false;
+    if (open) return true;
+    if (machineRouteOpen(this.state, machineKey)) return true;
+    const cargo2 = this.state.player && this.state.player.cargo;
+    if (cargo2 && cargo2.items && (cargo2.items.cmdty_gate_handshake || 0) > 0) {
+      removeCargo(this.state, 'cmdty_gate_handshake', 1);
+      const ae2 = ensureAlienEcologyState(this.state);
+      if (!ae2.machineAccess) ae2.machineAccess = {};
+      ae2.machineAccess[machineKey] = true;
+      this.bus.emit('toast', {
+        text: 'Handshake token accepted — the gate files you as a route-holder.',
+        kind: 'good', ttl: 6,
+      });
+      return true;
     }
     return false;
   },

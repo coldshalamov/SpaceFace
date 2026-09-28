@@ -886,6 +886,9 @@ function isFingerprintBoardSource(source) {
     // BP-01.1: a wreck-communicator offer's identity is its stable salvage-point id — receipts
     // dedupe a completed contract on replay/re-entry while distinct points still board.
     || source === 'salvage'
+    // Ecology desks carry stable per-mission ids and no cause — per-identity dedupe, not
+    // one-row-per-source, so a site holding several contracts surfaces all of them.
+    || source === 'ecology'
     || source === SET_PIECE_FOLLOW_ON_SOURCE;
 }
 

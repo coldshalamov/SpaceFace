@@ -17,6 +17,8 @@ import {
   ECOLOGY_DECK,
   pickEcologyEncounter,
   ALIEN_UNIQUE_GRANTS,
+  ALIEN_SITES,
+  ecologyMissionsForSite,
 } from '../src/data/alienEcology.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { MODULES } from '../src/data/modules.js';
@@ -36,6 +38,8 @@ import {
   serializeAlienEcologyState,
   deserializeAlienEcologyState,
 } from '../src/systems/alienEcology.js';
+import { world as liveWorld } from '../src/systems/world.js';
+import { missions as missionsProto } from '../src/systems/missions.js';
 
 function makeState(sectorId = 'sector_io_reach') {
   return {
@@ -410,4 +414,106 @@ test('declared unique grants fire at their authored beats and never refire', () 
   const world2 = makeWorld(fresh, [], granted2);
   handleAlienEcologyEvent(world2, 'alienEcology:relaySevered', { siteId: 'cinder_nursery' });
   assert.equal(granted2.length, 0, 'loaded once-flags suppress regrant');
+});
+
+// ── AE-108 runtime: the machines' credential on the real route ─────────────────
+test('machineGate refuses fault verdicts and honors standing beside the charted gate', () => {
+  const sector = SECTORS.find((s) => s.id === 'sector_veil_nebula');
+  assert.equal(sector.wormholeTo.machineGate, 'route_veil_ashfall');
+  const run = (state) => liveWorld._wormholeUnlocked.call(
+    { state, bus: { emit: () => {} } }, sector);
+  const fresh = () => { const s = makeState(); s.story = { flags: {} }; return s; };
+
+  const s1 = fresh();
+  assert.equal(run(s1), false, 'charted gate still holds without research or standing');
+  s1.player.researchedNodes = ['tech_long_range_survey'];
+  assert.equal(run(s1), true, 'the authored tech prerequisite still opens transit');
+
+  const s2 = fresh();
+  advanceMachineProtocol(s2, 'seen');
+  advanceMachineProtocol(s2, 'satisfied');
+  assert.equal(run(s2), true, 'compliant standing opens transit without research');
+  s2.player.researchedNodes = ['tech_long_range_survey'];
+  advanceMachineProtocol(s2, 'revoked');
+  assert.equal(run(s2), false, 'a revoked verdict vetoes even a researched route');
+
+  const s3 = fresh();
+  s3.player.cargo.items.cmdty_gate_handshake = 1;
+  assert.equal(run(s3), true, 'a handshake token burns once to open the route');
+  assert.equal(s3.player.cargo.items.cmdty_gate_handshake, undefined, 'token consumed');
+  assert.equal(ensureAlienEcologyState(s3).machineAccess.route_veil_ashfall, true,
+    'route authority recorded on the burn');
+  assert.equal(run(s3), true, 'recorded access re-opens without another token');
+
+  const s4 = fresh();
+  s4.player.cargo.items.cmdty_gate_handshake = 1;
+  advanceMachineProtocol(s4, 'violated');
+  assert.equal(run(s4), false, 'a fault verdict refuses even with a token in hold');
+  assert.equal(s4.player.cargo.items.cmdty_gate_handshake, 1, 'token is not wasted');
+});
+
+// ── Offer boarding contract: offers mark emitted only once the board takes them ──
+test('every desk offer boards at one station; a refused emit retries on re-entry', () => {
+  const site = ALIEN_SITES.three_hull_garden;
+  const missions = ecologyMissionsForSite(site.siteId);
+  assert.ok(missions.length >= 2, 'three_hull_garden carries several contracts');
+  const STATION = 'station_expanse';
+  const build = () => {
+    const state = makeState('sector_charon_expanse');
+    state.missions = { boards: {}, active: [], completedLog: [], receipts: [], nextId: 1, config: null };
+    state.world.sectors['sector_charon_expanse'] = { stations: [{ id: STATION }] };
+    const emitLog = [];
+    const world = makeWorld(state, emitLog);
+    const handlers = {};
+    world.bus = {
+      on: (t, fn) => { (handlers[t] = handlers[t] || []).push(fn); },
+      emit: (t, p) => {
+        emitLog.push({ type: t, p });
+        for (const fn of handlers[t] || []) fn(p);
+        if (t.startsWith('ecology:')) handleAlienEcologyEvent(world, t, p);
+      },
+    };
+    const missionSystem = { ...missionsProto };
+    missionSystem.init({ state, bus: world.bus, helpers: world.helpers, registry: { get: () => null } });
+    return { state, world, emitLog, missionSystem };
+  };
+  const offersAboard = (state) => ((state.missions.boards[STATION] || {}).slots || [])
+    .filter((o) => o && o.source === 'ecology');
+
+  // First entry: every authored desk boards — per-id dedupe, not one-row-per-source.
+  const first = build();
+  makePlayer(first.state, site.center.x, site.center.z);
+  tickAlienEcology(first.world, 1 / 60);
+  const ae = ensureAlienEcologyState(first.state);
+  const rec = ae.sites[site.siteId];
+  assert.equal(offersAboard(first.state).length, missions.length,
+    'all site contracts board together at the same station');
+  assert.equal(Object.keys(rec.offersEmitted).length, missions.length,
+    'emitted bits set only after boarding');
+  tickAlienEcology(first.world, 1 / 60);
+  assert.equal(offersAboard(first.state).length, missions.length, 'no duplicate rows on re-tick');
+
+  // Refusal: nothing aboard -> the key stays unset -> the next band entry retries.
+  const retry = build();
+  const p = makePlayer(retry.state, site.center.x, site.center.z);
+  const offered = [];
+  // Intercept the emit before it reaches the real board gate: simulate a refused boarding.
+  const baseEmit = retry.world.bus.emit;
+  retry.world.bus.emit = (t, payload) => {
+    if (t === 'mission:offered') { offered.push(payload); return; }
+    baseEmit(t, payload);
+  };
+  tickAlienEcology(retry.world, 1 / 60);
+  assert.equal(offered.length, missions.length, 'refused emits still fire');
+  const ae2 = ensureAlienEcologyState(retry.state);
+  assert.equal(Object.keys(ae2.sites[site.siteId].offersEmitted).length, 0,
+    'a refused row is never marked emitted');
+  // Leave the band far enough to re-arm, then re-enter: the emit retries and boards.
+  retry.world.bus.emit = baseEmit;
+  p.pos.z = site.center.z + site.arrivalBands.close * 2;
+  tickAlienEcology(retry.world, 1 / 60);
+  p.pos.z = site.center.z;
+  tickAlienEcology(retry.world, 1 / 60);
+  assert.equal(offersAboard(retry.state).length, missions.length, 'retry boards every desk');
+  assert.equal(Object.keys(ae2.sites[site.siteId].offersEmitted).length, missions.length);
 });

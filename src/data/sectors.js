@@ -462,7 +462,7 @@ const CORE_SECTORS = [
     palette: SECTOR_PALETTE_CLASSES.anomaly,
     trafficPerMin: 0, enemyDensity: 0.65, enemyLevel: [8, 12],
     neighbors: ['sector_io_reach', 'sector_sker_haven'],
-    wormholeTo: { sectorId: 'sector_ashfall_reach', gatedBy: 'tech:tech_long_range_survey' },
+    wormholeTo: { sectorId: 'sector_ashfall_reach', gatedBy: 'tech:tech_long_range_survey', machineGate: 'route_veil_ashfall' },
     stations: [
       { id: 'station_veil', name: 'Research Station Veil', type: 'research', factionId: 'faction_free', size: 'M', services: ['scan_tech','missions','repair'],
         chartNote: "Instruments first, hospitality never. Sells readings it won't explain." },
@@ -483,7 +483,7 @@ const CORE_SECTORS = [
           body: 'Material analysis returns nothing recognized as matter, and the pulse interval is shorter than every prior scan record. Vael patrol logs tighten after each pulse — the dark companion is a door that forgot its other side.',
         },
       },
-      { id: 'poi_wormhole', type: 'wormhole', name: 'Wormhole', gatedBy: 'tech:tech_long_range_survey' },
+      { id: 'poi_wormhole', type: 'wormhole', name: 'Wormhole', gatedBy: 'tech:tech_long_range_survey', machineGate: 'route_veil_ashfall' },
       // Alien Ecology (AE-066) + Verge-Layer structures (AE-101/102/108).
       { id: 'poi_veil_quiet_ice', type: 'anomaly', name: 'Quiet Ice', pos: { x: 900, z: 1500 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
       { id: 'poi_veil_survey_monolith', type: 'anomaly', name: 'Pale Spire', pos: { x: -1400, z: 600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },

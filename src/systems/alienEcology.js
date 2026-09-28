@@ -294,10 +294,12 @@ function emitEcologyOffer(world, site, sector) {
   const station = stations[0] || null;
   let emitted = 0;
   // AE-130..137 — every authored faction desk at the site emits once, each under its own
-  // offersEmitted key; a site carrying multiple contracts surfaces all of them.
+  // offersEmitted key; a site carrying multiple contracts surfaces all of them. The bit is
+  // set only after the row actually boards (or its mission is already active): the board
+  // answers synchronously inside mission:offered, so a rejected emit leaves the key unset
+  // and the offer retries on the next close-band entry instead of vanishing.
   for (const mission of missions) {
     if (rec.offersEmitted[mission.id]) continue;
-    rec.offersEmitted[mission.id] = true;
     const offer = {
       id: `ecology_${mission.id}`,
       offerId: `ecology_${mission.id}`,
@@ -328,11 +330,18 @@ function emitEcologyOffer(world, site, sector) {
         wreckSectorId: site.sectorId,
       },
     };
-    if (world.bus) {
-      world.bus.emit('comms:log', { from: mission.giver || 'Field contact', text: mission.log, kind: 'ecology' });
-      if (offer.stationId) world.bus.emit('mission:offered', offer);
-      emitted += 1;
-    }
+    if (!world.bus || !offer.stationId) continue;
+    world.bus.emit('mission:offered', offer);
+    const boards = state.missions && state.missions.boards;
+    const board = boards && boards[offer.stationId];
+    const aboard = !!(board && Array.isArray(board.slots)
+      && board.slots.some((slot) => slot && slot.id === offer.id));
+    const accepted = !!((state.missions && state.missions.active || []).some(
+      (m) => m && (m.id === offer.id || m.sourceOfferId === offer.id)));
+    if (!aboard && !accepted) continue;
+    rec.offersEmitted[mission.id] = true;
+    world.bus.emit('comms:log', { from: mission.giver || 'Field contact', text: mission.log, kind: 'ecology' });
+    emitted += 1;
   }
   if (emitted > 0 && world.bus) world.bus.emit('audio:cue', { id: 'scan_resolve' });
 }
@@ -962,9 +971,7 @@ export function tickAlienEcology(world, dt) {
             text: 'The ring structures under the growth are load-bearing and geometric — organized, machined, and old. DEEP-TRACE evidence logged.',
           });
         }
-        // Ecology mission offers — the site emits each of its authored hooks once.
-        const sector = (state.world.sectors && state.world.sectors[sectorId]) || null;
-        emitEcologyOffer(world, site, sector);
+
         // AE-177 module beats: a memory knot bleeds an archive fragment on close approach;
         // a mirror membrane keeps the board fogged with phantoms while the player is close.
         const mix = Array.isArray(site.morphologyMix) ? site.morphologyMix : [];
@@ -1004,6 +1011,17 @@ export function tickAlienEcology(world, dt) {
             }
           }
         }
+      }
+      // Ecology mission offers — the emit only marks rows the board actually took, so
+      // re-firing on each close-band entry is the retry path for a refused offer.
+      if (dSite < site.arrivalBands.close) {
+        if (rec.offerArmed !== true) {
+          rec.offerArmed = true;
+          const sectorForOffer = (state.world.sectors && state.world.sectors[sectorId]) || null;
+          emitEcologyOffer(world, site, sectorForOffer);
+        }
+      } else if (dSite > site.arrivalBands.close * 1.5) {
+        rec.offerArmed = false;
       }
       // AE-171 (G03): a fitted Host-Memory Cartography module resolves the site’s host
       // structure the first time the long band is crossed.
