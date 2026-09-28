@@ -59,6 +59,7 @@ function evalCtx(over = {}) {
     self: { ...BASE_SELF, ...(over.self || {}) },
     contacts: over.contacts || [],
     events: over.events || null,
+    squadMembers: over.squadMembers || null,
     target: over.target || null,
     intent: over.intent || INTENT,
     temperament: over.temperament || DASHY,
@@ -703,6 +704,94 @@ test('losing a wingmate splits pilots into breakers, avengers, and regroupers', 
   }));
   assert.equal(out.kind, REFLEX_KIND.SCATTER_LOSS);
   assert.ok(Math.abs(out.lateral) > 0);
+});
+
+test('a squadmate dying on the frame roster fires the loss reflexes without a hulk contact', () => {
+  // The live path reports wingmate deaths through the frame roster (plan.squadMates):
+  // a member's alive flag flips the tick it dies even when the wreck never becomes a
+  // contact. The loss must register identically to the contact-based path.
+  const engine = createReflexEngine({ seed: 5 });
+  const rs = emptyReflexState();
+  rs.lastHull = 0.9; // preseeded — old damage, not a fresh hit on the seeding frame
+  const ctx = {
+    self: { hullFraction: 0.9 },
+    temperament: PILOT({ verve: 0.3, poise: 0.3 }),
+    contacts: [],
+    squadMembers: [
+      { id: 'e7', alive: true }, // self — must be skipped
+      { id: 'a1', alive: true },
+    ],
+    reflexState: rs,
+  };
+  engine.evaluate(evalCtx(ctx)); // registers a1 alive; no loss yet
+  const out = engine.evaluate(evalCtx({
+    ...ctx,
+    tick: 1001,
+    squadMembers: [{ id: 'e7', alive: true }, { id: 'a1', alive: false }],
+  }));
+  assert.equal(out && out.kind, REFLEX_KIND.SCATTER_LOSS,
+    'a roster flip must read exactly like the wreck reaching contacts');
+});
+
+test('choreographed members twitch on reflexes but never brake off the frame', () => {
+  const choreoPlan = {
+    squadId: 'sq1', recipeId: 'standoff_gunline', phase: 'strike',
+    // A moving slot keeps the geometric formation brake out of the way so the only
+    // brake source in the request is the reflex channel itself.
+    slot: { x: 0, z: 0 }, slotVel: { x: 15, z: 0 }, bound: 170,
+    speedFraction: 1, faceTarget: true, fireAuthorized: true,
+    coast: false, breakFormation: false, targetId: 1,
+    live: null, squadMates: [{ id: 2, alive: true }],
+    reason: 'test',
+  };
+  const mkPlanner = (onFrame) => new ManeuverPlanner({
+    seed: 7,
+    config: {
+      inputSlewPerTick: 1, emergencyInputSlewPerTick: 1,
+      torqueSlewPerTick: 1, emergencyTorqueSlewPerTick: 1,
+      shipCollisionLookahead: 0,
+      squadFrames: onFrame ? { planFor: () => choreoPlan } : false,
+    },
+  });
+  const mine = {
+    // Inside the reflex's hazard skirt but wide of the obstacle-avoidance lane,
+    // so the dodge sweep never vetoes the trigger.
+    id: 'm1', kind: 'hazard', hostile: true, alive: true,
+    pos: { x: 120, z: 80 }, vel: { x: 0, z: 0 }, radius: 20, tags: [], confidence: 1,
+  };
+  const target = {
+    id: 1, kind: 'ship', hostile: true, pos: { x: 900, z: 0 }, vel: { x: 0, z: 0 },
+    radius: 10, tags: [], confidence: 1,
+  };
+  const perception = {
+    tick: 1,
+    self: {
+      id: 2, team: 2, pos: { x: 0, z: 0 }, vel: { x: 15, z: 0 }, rot: 0,
+      radius: 12, energyFraction: 1, heatFraction: 0.1,
+      combatDoctrineId: 'interceptor_flyby', hullFraction: 0.9,
+    },
+    contacts: [mine, target],
+  };
+  const input = {
+    entityId: 2, tick: 1, perception,
+    behavior: { maneuver: { kind: ManeuverKind.INTERCEPT, targetId: 1, faceTarget: true } },
+    directive: { squadId: 'sq1', formation: { slot: { x: 0, z: 0 }, bound: 170 } },
+  };
+
+  // Control: off a frame, the mine swerve carries its brake through.
+  const freePlanner = mkPlanner(false);
+  const free = freePlanner.plan(input);
+  assert.equal(freePlanner.byEntity.get(2).lastReflex, REFLEX_KIND.MINE_SWERVE);
+  assert.equal(free.brake, true, 'a lone ship must brake for the mine');
+
+  // On the frame: same trigger, twitch rides through, locomotion does not.
+  const boundPlanner = mkPlanner(true);
+  const bound = boundPlanner.plan(input);
+  assert.equal(boundPlanner.byEntity.get(2).lastReflex, REFLEX_KIND.MINE_SWERVE,
+    'a framed ship must still feel the trigger');
+  assert.equal(bound.brake, false, 'the frame owns locomotion — reflex brake is stripped');
+  assert.ok(Math.abs(bound.forceLocal.right) > 0.05,
+    'the lateral twitch must still ride the thruster request');
 });
 
 test('closing geometry, presence, and seeded-draw triggers all fire', () => {

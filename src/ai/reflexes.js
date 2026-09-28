@@ -145,7 +145,7 @@ function observeFrame(rs, self, contacts, hullHit, ctx) {
     allies: null,              // friendly ship contacts (for threatened-ward check)
     lostRecently: false,
   };
-  const lost = trackAllies(rs, self, contacts);
+  const lost = trackAllies(rs, self, contacts, ctx.squadMembers);
   obs.lostRecently = lost;
   for (const c of contacts) {
     if (!c || c.alive === false) continue;
@@ -232,10 +232,20 @@ function incomingTrack(self, selfR, c) {
   return { miss, eta, side: across >= 0 ? 1 : -1 };
 }
 
-function trackAllies(rs, self, contacts) {
+function trackAllies(rs, self, contacts, squadMembers) {
   let lostRecently = false;
   if (!rs.seenAllies) rs.seenAllies = new Map();
   const seen = rs.seenAllies;
+  // Frame members are the strongest wingmate signal: a squadmate's roster entry
+  // flips alive→false the tick it dies, whether or not the hulk reaches contacts.
+  if (squadMembers) {
+    for (const mate of squadMembers) {
+      if (!mate || mate.id === self.id) continue;
+      const was = seen.get(mate.id);
+      if (was === true && mate.alive === false) lostRecently = true;
+      seen.set(mate.id, mate.alive !== false);
+    }
+  }
   for (const c of contacts) {
     if (c.kind !== ContactKind.SHIP || c.id === self.id) continue;
     if (c.hostile === true || (c.team == null || self.team == null || c.team !== self.team)) continue;

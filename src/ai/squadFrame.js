@@ -956,6 +956,10 @@ function tagFireAndCommitment(frame, recipe, target) {
 
 function publishPlans(director, frame, recipe, tick) {
   const bound = Math.max(90, currentSpacing(frame) * 2.4);
+  // One shared roster per publish pass: reflexes read sibling liveness off it
+  // (a wingmate dying is the squad's most human trigger) without per-member copies.
+  const squadMates = [];
+  for (const rec of frame.members.values()) squadMates.push({ id: rec.id, alive: rec.alive });
   for (const rec of frame.members.values()) {
     if (!rec.plan) {
       rec.plan = {
@@ -989,6 +993,7 @@ function publishPlans(director, frame, recipe, tick) {
     const plan = rec.plan;
     plan.tick = tick;
     plan.phase = frame.phase;
+    plan.squadMates = squadMates;
     plan.role = rec.role;
     plan.socket = rec.socket;
     plan.token = rec.token;

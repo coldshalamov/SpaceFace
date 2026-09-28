@@ -236,12 +236,14 @@ export class ManeuverPlanner {
     }
 
     // Pilot reflexes (bounded trigger→impulse reactions: volley jink, hit weave, marked
-    // weave, brake-check, pounce, scatter, heat management). Choreographed and
-    // enemy-mind-owned hulls are already speaking with intent; emergency kinds already
-    // ARE the reaction. Reflexes shape the desired point, never write the thruster
-    // request directly, and never bypass ROE or fire authority.
+    // weave, brake-check, pounce, scatter, heat management). Enemy-mind-owned hulls
+    // are already speaking with intent; emergency kinds already ARE the reaction.
+    // Choreographed members keep their twitch (the frame owns the lane, not the
+    // pilot inside it) but locomotion channels are stripped so a jink never pulls a
+    // hull off its slot velocity. Reflexes shape the desired point, never write the
+    // thruster request directly, and never bypass ROE or fire authority.
     let reflex = null;
-    if (!choreo && !mindOwned && reflexAllowedForIntent(intent.kind)) {
+    if (!mindOwned && reflexAllowedForIntent(intent.kind)) {
       reflex = evaluateReflexes(this.seed, {
         entityId,
         tick,
@@ -251,8 +253,14 @@ export class ManeuverPlanner {
         target,
         intent,
         temperament,
+        squadMembers: choreo ? choreo.squadMates : null,
         reflexState: runtime.reflex || (runtime.reflex = emptyReflexState()),
       });
+      if (reflex && choreo) {
+        // Lateral/away/pull twitch inside the lane; never brake, settle, boost, or
+        // throttle off slot — the frame owns the hull's locomotion.
+        reflex = { ...reflex, brake: false, boost: false, settle: false, speedScale: 1 };
+      }
       if (reflex) desired = applyReflexToDesired(desired, selfPose, reflex);
       runtime.lastReflex = reflex ? reflex.kind : null;
     }
