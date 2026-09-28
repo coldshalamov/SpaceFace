@@ -20,6 +20,7 @@ import { createTimeEffects } from '../core/timeEffects.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import { WEAPONS } from '../data/weapons.js';
 import {
+  VL_WAKE_AT,
   VL_COLOR,
   VL_COMPOSITE,
   publishVelocityLanguage,
@@ -754,6 +755,33 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     this._slGrain = 0;         // current smooth-damped band-3 field opacity
     this._grainU = 0;          // grain scroll phase, px along the flow axis
     this._grainPattern = null; // rebuilt against the new context — a pattern outlives its canvas
+    // Quiet settled flight: speed-line overlay still paid governed-combat resolve +
+    // speedLineDrive + region + publishVelocityLanguage every tick at opacity/grain
+    // floor. Latch after first silent publish; cheap speed/boost/physics wake.
+    // Soft-GPU fps not claimed. Picture unchanged (overlay already opacity 0).
+    this._speedLinesQuietIdle = false;
+    this._speedLinesQuietMaxSpd = 1;
+  },
+
+
+  // Cheap dirty wake for quiet speed-lines latch — speed / boost / physicsEarned only.
+  // False-wake falls through to one full update (and re-latches when still silent).
+  // Soft-GPU fps not claimed.
+  _speedLinesQuietMaybeAwake() {
+    const ents = this.state && this.state.entities;
+    const pid = this.state && this.state.playerId;
+    const player = ents && pid != null ? ents.get(pid) : null;
+    if (!player || !player.vel) return false;
+    if (player.flags && player.flags.boosting) return true;
+    if (player._flightFrame && player._flightFrame.governor
+      && player._flightFrame.governor.physicsEarned === true) return true;
+    const speed = Math.hypot(player.vel.x || 0, player.vel.z || 0);
+    const maxSpd = this._speedLinesQuietMaxSpd > 0
+      ? this._speedLinesQuietMaxSpd
+      : Math.max(1, player.maxSpeed || 1);
+    // Early wake slightly below VL_WAKE_AT so the first non-silent drive frame
+    // still runs the full producer before streaks appear.
+    return speed > maxSpd * VL_WAKE_AT * 0.85;
   },
 
   _updateSpeedLines(frameDt) {
@@ -764,6 +792,26 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     const cvs = this._slCanvas;
     const ctx = this._slCtx;
     if (!cvs || !ctx) return;
+
+    // Quiet settled flight: speed-line overlay still paid governed-combat resolve +
+    // speedLineDrive + region + publishVelocityLanguage every tick at opacity/grain
+    // floor. Latch after first silent publish; cheap speed/boost/physics wake.
+    // Soft-GPU fps not claimed. Picture unchanged (overlay already opacity 0).
+    // Loading / photo-hide must not stay latched — those paths still need a fresh
+    // band-0 publish so the background never keeps a stale flight record.
+    if (this._speedLinesQuietIdle) {
+      const mode = this.state && this.state.mode;
+      // Inline photo-mode probe — photoModeFeelPresentation allocates a record.
+      const photoHide = !!(this.state && this.state.render && this.state.render.photoMode
+        && this.state.render.photoMode.active);
+      if (mode === 'loading' || photoHide) {
+        this._speedLinesQuietIdle = false;
+      } else if (!this._speedLinesQuietMaybeAwake()) {
+        return;
+      } else {
+        this._speedLinesQuietIdle = false;
+      }
+    }
 
     // Resolve player entity
     const ents = this.state.entities;
@@ -837,12 +885,14 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       this._slOpacity = 0;
       this._slGrain = 0;
       if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
+      this._speedLinesQuietIdle = false;
       return;
     }
 
     if (photoModeFeelPresentation(this.state).hideSpeedLines) {
       if (this._streaks) this._streaks.length = 0;
       if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
+      this._speedLinesQuietIdle = false;
       return;
     }
 
@@ -859,6 +909,11 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       if (this._streaks) this._streaks.length = 0;   // reset so streaks re-seed on next burst
       if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
       this._slSkippedLast = false;
+      // Fully idle silent (opacity/grain floor, no wake) → quiet latch.
+      this._speedLinesQuietMaxSpd = maxSpd;
+      if (!this._speedLinesQuietMaybeAwake()) {
+        this._speedLinesQuietIdle = true;
+      }
       return;
     }
 
