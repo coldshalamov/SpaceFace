@@ -378,6 +378,285 @@ export function buildProofInputTape() {
   return { events, frames: [] };
 }
 
+// --------------------------------------------------------------------------------------------
+// PQ-164.04 — the same 60-second proof, played on the pad's twin-stick scheme. The tape
+// below never writes input state: it drives a synthetic standard-layout pad through the
+// production navigator.getGamepads() poll, so every beat is produced by the real
+// gamepad.tick → input merge → massline grammar path a controller takes.
+
+/** Standard-layout button indices the tape drives (mirrors systems/gamepad.js STD). */
+export const PAD_STD = Object.freeze({
+  accept: 0, cancel: 1, action: 2, alt: 3, l1: 4, r1: 5, l2: 6, r2: 7,
+  view: 8, menu: 9, l3: 10, r3: 11, dUp: 12, dDown: 13, dLeft: 14, dRight: 15, home: 16,
+});
+
+export function createProofPad() {
+  return {
+    connected: true,
+    id: 'proof-twinstick',
+    axes: [0, 0, 0, 0],
+    buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })),
+  };
+}
+
+/** Scoped navigator.getGamepads stub; returns a restore() the caller must run in finally. */
+export function installProofPad(pad) {
+  const prev = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', {
+    value: { getGamepads: () => [pad] },
+    configurable: true,
+    writable: true,
+  });
+  return () => {
+    if (prev) Object.defineProperty(globalThis, 'navigator', prev);
+    else delete globalThis.navigator;
+  };
+}
+
+/**
+ * The keyboard tape translated one-to-one onto twin-stick channels:
+ *   KeyF   → accept (A)   — the massline grammar is the same press/hold grammar
+ *   Mouse0 → r2 (RT)      — fire
+ *   Mouse2 → l2 (LT)      — aimed mining beam, which is throwArm while latched to a
+ *                           throwable payload (the RMB arbitration input.js owns)
+ *   Shift  → r1 (RB)      — swing pump
+ *   W/S    → 'fwd'/'rev'  — twin-stick drive along the hull nose
+ *   W+A    → 'swing'      — the orbit circle, played as the honest pad analog: the left
+ *                           stick tracks the tangent of the latch circle, which is what a
+ *                           hand on the stick actually does to keep a flail fed.
+ */
+export function buildProofPadTape() {
+  return {
+    windows: [
+      { ch: 'drive', dir: -1, from: 160, to: 230 },
+      { ch: 'button', name: 'accept', from: 240, to: 340 },
+      { ch: 'button', name: 'accept', from: 360, to: 366 },
+      { ch: 'drive', dir: +1, from: 380, to: 430 },
+      { ch: 'button', name: 'r2', from: 430, to: 470 },
+      { ch: 'drive', dir: -1, from: 450, to: 505 },
+      { ch: 'button', name: 'accept', from: 505, to: 518 },
+      { ch: 'button', name: 'accept', from: 525, to: 540 },
+      { ch: 'button', name: 'accept', from: 548, to: 566 },
+      { ch: 'button', name: 'l2', from: 512, to: 2400 },
+      // The swing circle maps to a rotating drive stick. W alone after the A release is a
+      // plain forward drive — orbit assist keeps the nose working while the line stays fed.
+      { ch: 'swing', from: 580, to: 1700 },
+      { ch: 'drive', dir: +1, from: 1700, to: 2380 },
+      { ch: 'button', name: 'r1', from: 580, to: 2380 },
+      { ch: 'button', name: 'r2', from: 1680, to: 2400 },
+      { ch: 'button', name: 'accept', from: 2400, to: 3000 },
+      { ch: 'button', name: 'r1', from: 3000, to: 3600 },
+      { ch: 'button', name: 'r2', from: 3720, to: 4200 },
+      { ch: 'button', name: 'accept', from: 4320, to: 4800 },
+    ],
+  };
+}
+
+function padPress(pad, name, down) {
+  const b = pad.buttons[PAD_STD[name]];
+  b.pressed = !!down;
+  b.value = down ? 1 : 0;
+}
+
+/** Left-stick drive along the hull nose (dir +1 fwd / -1 rev), written as raw stick axes. */
+function padDriveHullAxis(player, pad, dir) {
+  const rot = finite(player && player.rot);
+  pad.axes[0] = Math.cos(rot) * dir;
+  pad.axes[1] = -Math.sin(rot) * dir;
+}
+
+/** Left-stick drive tangent to the latch circle — the twin-stick orbit. */
+function padDriveSwing(state, player, pad) {
+  const tether = state.player && state.player.tether;
+  const payload = tether && tether.active && state.entities && state.entities.get
+    ? state.entities.get(tether.targetId)
+    : null;
+  if (!payload || !payload.pos || !player || !player.pos) {
+    padDriveHullAxis(player, pad, 1);
+    return;
+  }
+  const rx = payload.pos.x - player.pos.x;
+  const rz = payload.pos.z - player.pos.z;
+  const r = Math.hypot(rx, rz) || 1;
+  // Drive tangent to the latch circle — the orbit direction the swing pump builds is
+  // symmetric, so the sign only chooses which way the flail winds up.
+  pad.axes[0] = rz / r;
+  pad.axes[1] = rx / r;
+}
+
+/** Right stick = aim — point it at the tape's live aim target each tick. */
+function padAimAt(state, player, pad, target) {
+  if (!target || !target.pos || !player || !player.pos) return;
+  const dx = finite(target.pos.x) - finite(player.pos.x);
+  const dz = finite(target.pos.z) - finite(player.pos.z);
+  const m = Math.hypot(dx, dz);
+  if (m < 1e-6) return;
+  pad.axes[2] = dx / m;
+  pad.axes[3] = -dz / m; // world +Z is "up" on the stick (input.js inverts rightY)
+}
+
+// The four hand-modeling guards from the keyboard tape, re-expressed on pad state — same
+// decisions, same constants, different actuator.
+function padFeatherSwingPump(state, tape, pad, tick) {
+  if (tick < 470 || tick >= 1680) return;
+  const tether = state.player && state.player.tether;
+  if (!tether || !tether.active) return;
+  const feather = tape._feather || (tape._feather = { easeTicks: 0, payTicks: 0 });
+  const payload = state.entities && state.entities.get ? state.entities.get(tether.targetId) : null;
+  const self = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  const selfRing = payload && self && payload.pos && self.pos
+    && Math.hypot(payload.pos.x - self.pos.x, payload.pos.z - self.pos.z)
+      < Math.max(34, finite(self.radius, 12) * 2.5);
+  if (selfRing) feather.payTicks = 18;
+  else if (feather.payTicks > 0) feather.payTicks -= 1;
+  if (tether.phase === 'overload' || selfRing) feather.easeTicks = 12;
+  else if (feather.easeTicks > 0) feather.easeTicks -= 1;
+  if (feather.easeTicks > 0) {
+    padPress(pad, 'r1', false);
+    pad.axes[0] = 0;
+    pad.axes[1] = 0;
+  }
+  if (feather.payTicks > 0 && payload && payload.pos && self && self.pos) {
+    // Drive away from the payload — the pay-out gesture's twin-stick equivalent.
+    const dx = self.pos.x - payload.pos.x;
+    const dz = self.pos.z - payload.pos.z;
+    const d = Math.hypot(dx, dz) || 1;
+    pad.axes[0] = dx / d;
+    pad.axes[1] = -dz / d;
+    padPress(pad, 'r1', false);
+  }
+}
+
+function padManualSwingCut(state, tape, pad, tick) {
+  const st = tape._swingCut || (tape._swingCut = { tap: 0, vid: null, hist: [] });
+  const tether = state.player && state.player.tether;
+  const active = !!(tether && tether.active && tether.targetId != null);
+  if (st.tap > 0) {
+    padPress(pad, 'accept', st.tap > 1);
+    st.tap -= 1;
+    if (st.tap === 0) padPress(pad, 'accept', false);
+    return;
+  }
+  if (tick < 560 || tick >= 2300) return;
+  if (!active) { st.hist.length = 0; st.vid = null; return; }
+  const self = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  const payload = state.entities && state.entities.get ? state.entities.get(tether.targetId) : null;
+  if (!self || !payload || !payload.pos || !payload.vel) return;
+  if (tape._reachLine && tape._reachLine.burst > 0) return;
+  const victim = aimTargetForTick(state, self, tick);
+  if (!victim || !victim.pos || !victim.vel || victim.id === payload.id) return;
+  if (st.vid !== victim.id) { st.vid = victim.id; st.hist.length = 0; }
+  st.hist.push({ t: state.simTime, vx: finite(victim.vel.x), vz: finite(victim.vel.z) });
+  while (st.hist.length && state.simTime - st.hist[0].t > SWING_CUT_TRACK_S) st.hist.shift();
+  const d = Math.hypot(victim.pos.x - payload.pos.x, victim.pos.z - payload.pos.z);
+  const payV = Math.hypot(payload.vel.x, payload.vel.z);
+  if (payV < SWING_CUT_MIN_SPEED || d > SWING_CUT_MAX_RANGE_WU || d < SWING_CUT_MIN_RANGE_WU) return;
+  const oldest = st.hist[0];
+  const spanS = oldest ? Math.max(1 / 60, state.simTime - oldest.t) : 0;
+  const ax = oldest ? (finite(victim.vel.x) - oldest.vx) / spanS : 0;
+  const az = oldest ? (finite(victim.vel.z) - oldest.vz) / spanS : 0;
+  let hx = payload.pos.x, hz = payload.pos.z;
+  let hvx = payload.vel.x, hvz = payload.vel.z;
+  let vx = victim.pos.x, vz = victim.pos.z;
+  let vvx = finite(victim.vel.x), vvz = finite(victim.vel.z);
+  let best = Infinity;
+  const stepS = 1 / 15, horizonS = Math.min(4, d / payV + 1.5);
+  for (let t = stepS; t <= horizonS; t += stepS) {
+    hx += hvx * stepS; hz += hvz * stepS;
+    const bleed = Math.max(0, 1 - SWING_CUT_HULL_DRAG * stepS);
+    hvx *= bleed; hvz *= bleed;
+    vx += vvx * stepS; vz += vvz * stepS;
+    vvx += ax * stepS; vvz += az * stepS;
+    const sep = Math.hypot(vx - hx, vz - hz);
+    if (sep < best) best = sep;
+    else if (sep > best + 5) break;
+  }
+  if (best >= SWING_CUT_HIT_WU) return;
+  st.tap = 4;
+  padPress(pad, 'accept', true);
+}
+
+function padReachLineForVictim(state, tape, pad, tick) {
+  const st = tape._reachLine || (tape._reachLine = { burst: 0, dir: 0 });
+  if (tick < 560 || tick >= 2300) return;
+  const tether = state.player && state.player.tether;
+  if (!tether || !tether.active) { st.burst = 0; return; }
+  const self = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  const payload = state.entities && state.entities.get ? state.entities.get(tether.targetId) : null;
+  if (!self || !self.pos || !payload || !payload.pos || !payload.vel) { st.burst = 0; return; }
+  if (st.burst > 0) {
+    if (padCutInProgress(tape)) { st.burst = 0; return; }
+    padPress(pad, 'accept', true);
+    padDriveHullAxis(self, pad, st.dir);
+    st.burst -= 1;
+    if (st.burst === 0) {
+      padPress(pad, 'accept', false);
+      pad.axes[0] = 0;
+      pad.axes[1] = 0;
+    }
+    return;
+  }
+  const victim = aimTargetForTick(state, self, tick);
+  if (!victim || !victim.pos || victim.id === payload.id) return;
+  const rx = payload.pos.x - self.pos.x, rz = payload.pos.z - self.pos.z;
+  const span = Math.hypot(rx, rz);
+  const rV = Math.hypot(victim.pos.x - self.pos.x, victim.pos.z - self.pos.z);
+  const payloadBearing = Math.atan2(rz, rx);
+  const victimBearing = Math.atan2(victim.pos.z - self.pos.z, victim.pos.x - self.pos.x);
+  let dAng = victimBearing - payloadBearing;
+  while (dAng > Math.PI) dAng -= 2 * Math.PI;
+  while (dAng < -Math.PI) dAng += 2 * Math.PI;
+  const cross = rx * payload.vel.z - rz * payload.vel.x;
+  const approaching = Math.abs(cross) > 1 && ((cross > 0 && dAng > 0) || (cross < 0 && dAng < 0));
+  if (!approaching || Math.abs(dAng) > 0.9) return;
+  if (tether.phase === 'overload' || Math.abs(rV - span) <= 15 || rV > span + 130) return;
+  st.dir = rV < span ? -1 : 1;
+  st.burst = 16;
+}
+
+function padCutInProgress(tape) {
+  const st = tape && tape._swingCut;
+  return !!(st && st.tap > 0);
+}
+
+function padGateThrowArmByRange(state, pad, tick) {
+  if (tick < 500 || tick >= 2200) return;
+  const tether = state.player && state.player.tether;
+  if (!tether || !tether.active) return;
+  const payload = state.entities && state.entities.get ? state.entities.get(tether.targetId) : null;
+  const self = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  if (!payload || !payload.pos || !self) return;
+  const aim = aimTargetForTick(state, self, tick);
+  if (!aim || !aim.pos) return;
+  const d = Math.hypot(aim.pos.x - payload.pos.x, aim.pos.z - payload.pos.z);
+  const v = Math.hypot(finite(payload.vel && payload.vel.x), finite(payload.vel && payload.vel.z));
+  if (d > THROW_ARM_GATE_RANGE_WU || v < THROW_ARM_GATE_SPEED_WU) padPress(pad, 'l2', false);
+}
+
+function padGuardFireThroughSwingPayload(state, pad) {
+  const tether = state.player && state.player.tether;
+  if (!tether || !tether.active) return;
+  const payload = state.entities && state.entities.get ? state.entities.get(tether.targetId) : null;
+  if (payload && payload.type === 'ship' && payload.id !== state.playerId) padPress(pad, 'r2', false);
+}
+
+function applyProofPadTick(state, player, tape, pad, inputSys, tick) {
+  pad.axes[0] = 0; pad.axes[1] = 0; pad.axes[2] = 0; pad.axes[3] = 0;
+  for (const b of pad.buttons) { b.pressed = false; b.value = 0; }
+  for (const w of tape.windows) {
+    if (tick < w.from || tick >= w.to) continue;
+    if (w.ch === 'button') padPress(pad, w.name, true);
+    else if (w.ch === 'drive') padDriveHullAxis(player, pad, w.dir);
+    else if (w.ch === 'swing') padDriveSwing(state, player, pad);
+  }
+  padAimAt(state, player, pad, aimTargetForTick(state, player, tick));
+  padFeatherSwingPump(state, tape, pad, tick);
+  padManualSwingCut(state, tape, pad, tick);
+  padReachLineForVictim(state, tape, pad, tick);
+  padGateThrowArmByRange(state, pad, tick);
+  padGuardFireThroughSwingPayload(state, pad);
+}
+
 function nearest(state, player, predicate) {
   let best = null;
   let bestD = Infinity;
@@ -1339,7 +1618,18 @@ export async function runProofSixtySeconds(seed, options = {}) {
   const relocatePocketId = options.relocatePocketId || PROOF_AMBUSH_POCKET_ID;
   const host = await bootCeresPocket(seed, { pocketId: bootPocketId });
   const { runtime, state, bus, player } = host;
-  const driver = createInputTapeDriver(options.tape || buildProofInputTape());
+  // PQ-164.04: inputDevice 'gamepad' replays the scenario through a synthetic standard-layout
+  // pad on the twin-stick scheme — the real navigator.getGamepads poll feeds input.js, so the
+  // beats are produced by the same axis/action merge a controller player drives.
+  const usePad = options.inputDevice === 'gamepad';
+  const padTape = usePad ? buildProofPadTape() : null;
+  const pad = usePad ? createProofPad() : null;
+  const restorePad = usePad ? installProofPad(pad) : null;
+  if (usePad) {
+    state.settings.controls = state.settings.controls || {};
+    state.settings.controls.gamepad = { ...(state.settings.controls.gamepad || {}), scheme: 'twinstick' };
+  }
+  const driver = usePad ? null : createInputTapeDriver(options.tape || buildProofInputTape());
   const times = emptyBeatTimes();
   const details = {};
   const receipts = [];
@@ -1378,7 +1668,8 @@ export async function runProofSixtySeconds(seed, options = {}) {
       if (relocateAfterTicks != null && ticks === relocateAfterTicks && bootPocketId !== relocatePocketId) {
         relocatePlayerToPocket(runtime, player, relocatePocketId, 'proof:sixty_seconds:relocate');
       }
-      applyProofTapeTick(state, player, driver, inputSys, state.tick | 0);
+      if (usePad) applyProofPadTick(state, player, padTape, pad, inputSys, state.tick | 0);
+      else applyProofTapeTick(state, player, driver, inputSys, state.tick | 0);
       runtime.step(SIM_DT);
       ticks += 1;
       if (typeof options.tickProbe === 'function') options.tickProbe(state, ticks, runtime);
@@ -1417,11 +1708,13 @@ export async function runProofSixtySeconds(seed, options = {}) {
       missing,
       setup,
       realPath: proof,
+      inputDevice: usePad ? 'gamepad' : 'keyboard',
       receiptCount: receipts.length,
       shields: host.shields || [],
     };
   } finally {
     for (const unsub of off) if (typeof unsub === 'function') unsub();
+    if (restorePad) restorePad();
     runtime.dispose();
   }
 }

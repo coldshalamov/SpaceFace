@@ -353,6 +353,8 @@ Current save version: `14`
 | `$.settings.controls.gamepad.deadzone` | number | 0.12 |
 | `$.settings.controls.gamepad.enabled` | boolean | true |
 | `$.settings.controls.gamepad.invertY` | boolean | false |
+| `$.settings.controls.gamepad.scheme` | string | drive |
+| `$.settings.controls.gamepad.schemeSuggested` | boolean | false |
 | `$.settings.controls.masslineBindingProfile` | string | space-v1 |
 | `$.settings.gameplay` | object | {} |
 | `$.settings.gameplay.aiBackend` | string | sg06-tactical |

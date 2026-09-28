@@ -51,7 +51,10 @@ function defaultSettings() {
       bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind
       masslineBindingProfile: 'space-v1', // new profiles: Space primary + persistent F alias
       flightMode: 'assisted',
-      gamepad: { enabled: true, deadzone: 0.12, invertY: false },
+      // scheme: 'drive' keeps the wheel-like pad map (left stick = yaw + throttle);
+      // 'twinstick' makes the left stick a world-frame drive vector while the right stick
+      // aims and steers the nose (PQ-164.04). schemeSuggested: the one-shot pad-connect toast.
+      gamepad: { enabled: true, deadzone: 0.12, invertY: false, scheme: 'drive', schemeSuggested: false },
     },
     // Accessibility (V2 §9/§12). motionReduce lives under video (feel/vfx read it there); uiScale is the
     // root field above. These are the net-new a11y fields driven by src/ui/accessibility.js.
