@@ -80,6 +80,18 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
 });
 const ACTION_MAP = GAMEPAD_DEFAULT_BINDINGS;
 
+// Quiet keyboard/mouse flight has no pad. Historically every disconnected poll rebuilt the
+// action map (21 fresh sample objects). Skip once the idle zero-state is already published.
+// Bench-only toggle restores the always-reset path for A/B.
+let GAMEPAD_IDLE_CLEAN_SKIP = true;
+export function setGamepadIdleCleanSkipForBench(enabled) {
+  GAMEPAD_IDLE_CLEAN_SKIP = enabled !== false;
+}
+export function getGamepadIdleCleanSkipForBench() {
+  return GAMEPAD_IDLE_CLEAN_SKIP !== false;
+}
+
+
 // Player-facing glyph per standard-layout button (PQ-164.01). Short primary names — the
 // Settings layout note and Help carry the dual Xbox/PlayStation naming.
 export const GAMEPAD_BUTTON_LABELS = Object.freeze({
@@ -409,6 +421,7 @@ export function createGamepad(ctx) {
         // acquisition keeps the historical first-tick edge contract (PQ-164.00).
         this._sawDisconnect = true;
         this._resetState();
+        this._idleClean = true;
         if (bus && bus.emit) bus.emit('gamepad:disconnected', {});
         return;
       }
@@ -441,9 +454,14 @@ export function createGamepad(ctx) {
         if (bus && bus.emit) bus.emit('gamepad:connected', { id: this.id });
       }
       if (!pad) {
-        this._resetState();
+        // Already zeroed and published — do not reallocate the action map every poll.
+        if (!(GAMEPAD_IDLE_CLEAN_SKIP && this._idleClean === true)) {
+          this._resetState();
+          this._idleClean = true;
+        }
         return;
       }
+      this._idleClean = false;
 
       this.axes.leftX = applyDeadzone(pad.axes[0] || 0, dz);
       this.axes.leftY = applyDeadzone(pad.axes[1] || 0, dz);
@@ -616,19 +634,89 @@ export function createGamepad(ctx) {
       this.axes.rightY = 0;
       this.axes.l2 = 0;
       this.axes.r2 = 0;
-      const actions = {};
+      const actions = this.actions || (this.actions = {});
       for (const action in ACTION_MAP) {
-        actions[action] = { held: false, pressed: false, released: false, value: 0 };
+        const sample = actions[action];
+        if (sample) {
+          sample.held = false;
+          sample.pressed = false;
+          sample.released = false;
+          sample.value = 0;
+        } else {
+          actions[action] = { held: false, pressed: false, released: false, value: 0 };
+        }
       }
-      this.actions = actions;
-      this._prev = {};
-      this._prevButtons = {};
-      this._pressQueue = [];
+      const prev = this._prev || (this._prev = {});
+      for (const key in prev) delete prev[key];
+      const prevButtons = this._prevButtons || (this._prevButtons = {});
+      for (const key in prevButtons) delete prevButtons[key];
+      if (Array.isArray(this._pressQueue)) this._pressQueue.length = 0;
+      else this._pressQueue = [];
       this.lastButton = null;
       this._wasActive = false;
     },
   };
 
   gp._resetState();
+  gp._idleClean = true;
   return gp;
+}
+
+/**
+ * Portable microbench: disconnected (no pad) poll cost.
+ * Before = always rebuild action map each tick (legacy).
+ * After  = idle-clean skip after first zero publish.
+ */
+export function runGamepadIdlePollMicrobench(options = {}) {
+  const iterations = Math.max(1, options.iterations | 0 || 20000);
+  const restoreSkip = getGamepadIdleCleanSkipForBench();
+  const gp = createGamepad({ bus: { emit() {} } });
+  // Ensure navigator reports no pads.
+  const prevNav = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', {
+    value: { getGamepads: () => [] },
+    configurable: true,
+    writable: true,
+  });
+  const live = { tick: 1, settings: { controls: { gamepad: { enabled: true } } } };
+  const run = (idleSkip) => {
+    setGamepadIdleCleanSkipForBench(idleSkip);
+    gp._idleClean = false;
+    gp._resetState();
+    if (idleSkip) gp._idleClean = true;
+    else gp._idleClean = false;
+    // warm
+    for (let i = 0; i < 200; i++) {
+      if (!idleSkip) gp._idleClean = false;
+      gp.tick(1 / 60, live, null);
+    }
+    let resets = 0;
+    const orig = gp._resetState.bind(gp);
+    gp._resetState = () => { resets++; return orig(); };
+    const t0 = performance.now();
+    for (let i = 0; i < iterations; i++) {
+      if (!idleSkip) gp._idleClean = false;
+      live.tick = i + 2;
+      gp.tick(1 / 60, live, null);
+    }
+    const ms = performance.now() - t0;
+    gp._resetState = orig;
+    return { ms, resets, iterations };
+  };
+  try {
+    const before = run(false);
+    const after = run(true);
+    return {
+      beforeMs: before.ms,
+      afterMs: after.ms,
+      speedup: before.ms / Math.max(after.ms, 1e-9),
+      beforeResets: before.resets,
+      afterResets: after.resets,
+      iterations,
+    };
+  } finally {
+    setGamepadIdleCleanSkipForBench(restoreSkip);
+    if (prevNav) Object.defineProperty(globalThis, 'navigator', prevNav);
+    else delete globalThis.navigator;
+  }
 }
