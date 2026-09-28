@@ -558,6 +558,16 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   for (let v = Math.ceil(repMin / 25) * 25; v <= REP_CAP; v += 25) { if (tiers.some((t) => t.min === v)) continue; const x = xAt(posOf(v)); fine += `M ${f(x)} ${y + 1} L ${f(x)} ${y + 5.5} `; }
   out += `<path class="orr-tick" d="${fine}" style="stroke:rgb(236 230 216 / .3)"/>`;
   out += '<!--pin-->';
+  // a narrow scale staggers the tier names on two rows above the rule, so neighbours never
+  // overprint: a name that fits its band stays put, otherwise alternate tiers rise one line
+  const bandW = (x1 - x0) / n;
+  const stagger = tiers.some((t) => {
+    const nm = String(t.name).toUpperCase();
+    const sp0 = nm.indexOf(' ');
+    const need = nm.length * 8.4 > bandW - 4 && sp0 > 0
+      ? Math.max(sp0, nm.length - sp0 - 1) * 8.4 : nm.length * 8.4;
+    return need > bandW - 4;
+  });
   tiers.forEach((t, i) => {
     const x = xAt(i);
     const hostile = t.min <= aggro;
@@ -566,11 +576,12 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
     const name = String(t.name).toUpperCase();
     const anchor = 'middle';
     const nx = xAt(i + 0.5);
-    const band = (x1 - x0) / n;
+    const band = bandW;
     const sp = name.indexOf(' ');
     const parts = name.length * 8.4 > band - 4 && sp > 0 ? [name.slice(0, sp), name.slice(sp + 1)] : [name];
+    const dy = stagger && i % 2 === 1 ? -13 : 0;
     parts.forEach((part, pi) => {
-      const py = y - 13 - (parts.length - 1 - pi) * 11;
+      const py = y - 13 + dy - (parts.length - 1 - pi) * 11;
       out += `<text class="orr-standing__name${i === current ? ' is-current' : ''}${hostile ? ' is-hostile' : ''}" x="${f(nx)}" y="${py}" text-anchor="${anchor}">${part}</text>`;
     });
     // the boundary's value under its tick: a ruler is labelled like equipment

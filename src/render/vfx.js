@@ -1251,6 +1251,11 @@ export const vfx = {
     this._collisionContactTicks = new Map();
     this._collisionMediumTicks = new Map();
     this._wreckWispSlots = new Map();
+    // Quiet settled flight: no-wrecks still paid player resolve + indexedTypeScan
+    // + Map.clear every tick. Latch after first empty observe; wake on
+    // entityIndexVersion. Soft-GPU fps not claimed.
+    this._wreckWispsQuietIdle = false;
+    this._wreckWispsQuietIndexVersion = -1;
     this._collisionPresentationTick = -1;
     this._spawnAdmissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
     this._admissionSerial = 0;
@@ -1316,6 +1321,11 @@ export const vfx = {
     this._momentumSinkParticleEnd = new THREE.Color(MOMENTUM_SINK_VFX_COLORS.particleEnd);
     this._cadenceStationSideEvent = 0;
     this._lootMagnetLive = 0;
+    // Quiet settled flight: empty pickups+payloads buckets still paid player
+    // resolve + dual indexedTypeScan every tick. Latch after first empty-bucket
+    // observe; wake on entityIndexVersion. Soft-GPU fps not claimed.
+    this._lootMagnetQuietEmpty = false;
+    this._lootMagnetQuietIndexVersion = -1;
     this._stationSideEventSlots = [];
     for (let i = 0; i < STATION_SIDE_EVENT_VFX_CAPACITY; i++) {
       this._stationSideEventSlots.push({
@@ -1426,7 +1436,16 @@ export const vfx = {
     this._projectileTrailPlanScratch = createProjectileTrailSpawnPlanScratch();
     this._projectileTrailsWereRelevant = false;
     this._seamMarkersWereRelevant = false;
+    // Quiet settled flight: empty gas pool still paid resolveVfxAccessibilityProfile
+    // + setAccessibility + empty update every tick. Latch after first empty observe
+    // (liveCount===0 after update publishes 0); wake on liveCount>0 (emit). Soft-GPU
+    // fps not claimed. (vm-drop gas-quiet-empty-latch)
+    this._gasQuietEmpty = false;
     this._energyPlumeWasRelevant = false;
+    // Quiet settled flight: _hideEnergyPlumes used to re-run plasma/retro/fleet.reset
+    // every idle tick (fleet walks ships + family plume/rcs and clears the #100
+    // asleep latch). Latch after the first hide; clear on plume/massline wake.
+    this._energyQuietHidden = false;
     this._doctrineTells = [];
     for (let i = 0; i < DOCTRINE_TELL_POOL; i++) {
       this._doctrineTells.push({
@@ -2319,12 +2338,12 @@ export const vfx = {
     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
     add('heat:changed', (p) => this._onLawHeatChanged(p));
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('save:restoring', () => this._resetRibbonTrails());
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('world:playerRelocated', () => this._resetRibbonTrails());
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
@@ -8797,6 +8816,7 @@ export const vfx = {
     mesh.visible = false;
     this._scene.add(mesh);
     this._dockingCradle = { mesh, cradle, scratch };
+    this._dockingCradleQuietHidden = false;
   },
 
   _resetDockingCradle() {
@@ -8806,6 +8826,16 @@ export const vfx = {
     dc.mesh.visible = false;
     dc.mesh.material.opacity = 0;
     dc.mesh.geometry.setDrawRange(0, 0);
+    this._dockingCradleQuietHidden = false;
+  },
+
+  // Cheap dirty wake for quiet cradle latch — corridor phase/berth only.
+  // False-wake falls through to one full update and re-latches when faded.
+  _dockingCradleQuietMaybeAwake(readout) {
+    if (!readout) return false;
+    const phase = readout.phase || 'none';
+    if (phase === 'none') return false;
+    return !!(readout.berth);
   },
 
   _updateDockingCradle(dt) {
@@ -8813,6 +8843,13 @@ export const vfx = {
     if (!dc) return false;
     const state = this.state;
     const readout = state && state.dockingCorridor;
+    // Quiet settled flight: cradle still paid proxy scan + updateDockingCradle +
+    // writeDockingCradleGeometry + a11y resolve every tick after fade-out. Latch
+    // when fully faded; cheap phase/berth wake. Soft-GPU fps not claimed.
+    if (this._dockingCradleQuietHidden) {
+      if (!this._dockingCradleQuietMaybeAwake(readout)) return false;
+      this._dockingCradleQuietHidden = false;
+    }
     // Match the engaged station's diagnostics row for the corridor axis and lane width. Rows are
     // frozen records — reading them here never touches sim state.
     let proxy = null;
@@ -8846,6 +8883,9 @@ export const vfx = {
         dc.mesh.visible = false;
         dc.mesh.material.opacity = 0;
         dc.mesh.geometry.setDrawRange(0, 0);
+      }
+      if (cradle.visible01 <= 0.004 && !this._dockingCradleQuietMaybeAwake(readout)) {
+        this._dockingCradleQuietHidden = true;
       }
       return false;
     }
@@ -11283,8 +11323,9 @@ export const vfx = {
         ? (this._updateWreckWisps() > 0 ? 1 : (sub.wreckWisps || 0))
         : (sub.wreckWisps || 0);
     } else {
+      // Cadence/slots cleared inside `_wreckWispsRelevant` on first empty observe
+      // (quiet latch). Soft-GPU fps not claimed.
       this._cadenceWreckWisps = 0;
-      if (this._wreckWispSlots) this._wreckWispSlots.clear();
       sub.wreckWisps = 0;
     }
     // Continuous, family-specific swept surfaces replace sparse particle fallthrough. Update
@@ -11346,13 +11387,22 @@ export const vfx = {
       sub.combatBeams = 0;
     }
     if (this._gas) {
-      // Phase runs on the SIM clock, never the display clock: a paused sim holds the gas still
-      // while frames keep being produced. An empty pool costs one branch and uploads nothing.
-      const gasSimTime = this.state && Number.isFinite(this.state.simTime)
-        ? this.state.simTime
-        : this._t;
-      this._gas.setAccessibility(resolveVfxAccessibilityProfile(this.state && this.state.settings));
-      this._gas.update(gasSimTime, cam);
+      // Quiet settled flight: empty gas still paid a11y resolve + setAccessibility +
+      // empty update every tick. Latch after first empty observe; wake on liveCount
+      // (emit). Soft-GPU fps not claimed. Different angle from held profile-id retain.
+      if (this._gasQuietEmpty && !(this._gas.liveCount > 0)) {
+        /* latched */
+      } else {
+        this._gasQuietEmpty = false;
+        // Phase runs on the SIM clock, never the display clock: a paused sim holds the gas still
+        // while frames keep being produced. An empty pool costs one branch and uploads nothing.
+        const gasSimTime = this.state && Number.isFinite(this.state.simTime)
+          ? this.state.simTime
+          : this._t;
+        this._gas.setAccessibility(resolveVfxAccessibilityProfile(this.state && this.state.settings));
+        this._gas.update(gasSimTime, cam);
+        if (!(this._gas.liveCount > 0)) this._gasQuietEmpty = true;
+      }
     }
     if (this._liveCount > 0) {
       this._integrateParticles(dt);
@@ -11403,14 +11453,41 @@ export const vfx = {
   // it carries. Cost is bounded three ways: a cadence gate, a hard cap on trailed drops, and a
   // whole-subsystem sleep when nothing is homing.
   // -------------------------------------------------------------------------
+  // Cheap dirty wake for quiet loot-magnet empty-bucket latch —
+  // entityIndexVersion only. No index (version null) refuses the latch so
+  // entityList fallback stays truthful. Soft-GPU fps not claimed.
+  _lootMagnetQuietMaybeAwake() {
+    const version = entityIndexVersion(this.state);
+    if (version == null) return true;
+    return version !== this._lootMagnetQuietIndexVersion;
+  },
+
   _lootMagnetRelevant() {
     const state = this.state;
     if (!state) return false;
+    // Quiet settled flight: empty pickups+payloads still paid player resolve +
+    // dual indexedTypeScan every tick. Latch after first empty-bucket observe;
+    // wake on entityIndexVersion. Soft-GPU fps not claimed.
+    if (this._lootMagnetQuietEmpty) {
+      if (!this._lootMagnetQuietMaybeAwake()) return false;
+      this._lootMagnetQuietEmpty = false;
+    }
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
     if (!player || !player.alive || !player.pos) return false;
     const pickups = indexedTypeScan(state, 'pickups');
     const payloads = indexedTypeScan(state, 'payloads');
-    if (!pickups.length && !payloads.length) return false;
+    if (!pickups.length && !payloads.length) {
+      const version = entityIndexVersion(state);
+      if (version != null) {
+        this._lootMagnetQuietEmpty = true;
+        this._lootMagnetQuietIndexVersion = version;
+      } else {
+        this._lootMagnetQuietEmpty = false;
+        this._lootMagnetQuietIndexVersion = -1;
+      }
+      return false;
+    }
+    this._lootMagnetQuietEmpty = false;
     const tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     for (let pass = 0; pass < 2; pass++) {
       const list = pass === 0 ? pickups : payloads;
@@ -11515,12 +11592,52 @@ export const vfx = {
   // cadence scan is cheap, the rhythm never shimmers frame-to-frame, and the slot map is bounded
   // (stale ids expire two intervals after they leave the draw table).
   // -------------------------------------------------------------------------
+  // Cheap dirty wake for quiet wreck-wisps empty latch —
+  // entityIndexVersion only. No index (version null) refuses the latch so
+  // entityList fallback stays truthful. Soft-GPU fps not claimed.
+  _wreckWispsQuietMaybeAwake() {
+    const version = entityIndexVersion(this.state);
+    if (version == null) return true;
+    return version !== this._wreckWispsQuietIndexVersion;
+  },
+
   _wreckWispsRelevant() {
     const state = this.state;
     if (!state) return false;
+    // Quiet settled flight: no wrecks still paid player resolve +
+    // indexedTypeScan + Map.clear every tick. Latch after first empty observe;
+    // wake on entityIndexVersion. Soft-GPU fps not claimed.
+    if (this._wreckWispsQuietIdle) {
+      if (!this._wreckWispsQuietMaybeAwake()) return false;
+      this._wreckWispsQuietIdle = false;
+    }
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
-    if (!player || !player.alive || !player.pos) return false;
-    return indexedTypeScan(state, 'wrecks').length > 0;
+    if (!player || !player.alive || !player.pos) {
+      this._wreckWispsQuietIdle = false;
+      return false;
+    }
+    const wrecks = indexedTypeScan(state, 'wrecks');
+    let hasWreck = false;
+    for (let i = 0; i < wrecks.length; i++) {
+      const e = wrecks[i];
+      if (e && e.alive !== false && e.type === 'wreck') { hasWreck = true; break; }
+    }
+    if (hasWreck) {
+      this._wreckWispsQuietIdle = false;
+      return true;
+    }
+    // Empty wrecks: clear residual slots once, then latch when version trustworthy.
+    this._cadenceWreckWisps = 0;
+    if (this._wreckWispSlots) this._wreckWispSlots.clear();
+    const version = entityIndexVersion(state);
+    if (version != null) {
+      this._wreckWispsQuietIdle = true;
+      this._wreckWispsQuietIndexVersion = version;
+    } else {
+      this._wreckWispsQuietIdle = false;
+      this._wreckWispsQuietIndexVersion = -1;
+    }
+    return false;
   },
 
   _updateWreckWisps() {
@@ -11991,6 +12108,84 @@ export const vfx = {
     return resolveBloomRadianceScale(video);
   },
 
+  // Cheap wake while `_energyQuietHidden`: input / actuators / throttle / boost /
+  // speed-proxy only — no full `_engineDriveFor` trail walk. Conservative: may
+  // false-wake into the full relevant path (hide latch still early-returns); must
+  // not miss a real thrust/coast wake. Soft-GPU fps not claimed.
+  _energyQuietMaybeAwake() {
+    const energy = this._energy;
+    if (energy && (
+      energy.plumeDrive > 0.02
+      || energy.boostBlend > 0.02
+      || (energy.rcsSystem && energy.rcsSystem.pool.activeImpulseCount > 0)
+    )) return true;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (player && player.alive && player.type === 'ship' && this._usesProductionThruster(player)) {
+      const actuators = this._actuatorsFor(player);
+      if (actuators && (
+        Math.abs(actuators.lateral || 0) > 0.001
+        || Math.abs(actuators.yaw || 0) > 0.001
+        || (actuators.reverse || 0) > 0.001
+      )) return true;
+      const inp = this.state.input;
+      if (inp) {
+        if (Number.isFinite(inp.turnIntent) && Math.abs(inp.turnIntent) > 0.2) return true;
+        if (Number.isFinite(inp.moveZ) && inp.moveZ > 0.05) return true;
+      }
+      if (player.flags && player.flags.boosting) return true;
+      const frame = player._flightFrame || {};
+      if ((Number.isFinite(frame.throttle) && frame.throttle > 0.03)
+        || (Number.isFinite(frame.commandedThrottle) && frame.commandedThrottle > 0.03)) {
+        return true;
+      }
+      // Coast wake: same speedDrive thresholds full relevant uses (0.15 / brake band).
+      const vx = player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0;
+      const vz = player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0;
+      if (vx !== 0 || vz !== 0) {
+        const speed = Math.hypot(vx, vz);
+        const maxFromEntity = Number.isFinite(player.maxSpeed) ? player.maxSpeed : 0;
+        const maxFromFrame = Number.isFinite(frame.maxSpeed) ? frame.maxSpeed : 0;
+        const maxSpeed = Math.max(1, maxFromEntity || maxFromFrame || 120);
+        const speedDrive = Math.min(1, speed / Math.max(40, maxSpeed * 0.75));
+        if (speedDrive > 0.15 || speedDrive * 0.40 > 0.03) return true;
+      }
+    }
+    const list = this._trailCandidates;
+    if (list) {
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e || !e.alive || e.type !== 'ship') continue;
+        if (player && e.id === player.id) continue;
+        if (e.flags && e.flags.docked) continue;
+        if (e.flags && e.flags.boosting) return true;
+        const frame = e._flightFrame || {};
+        if ((Number.isFinite(frame.throttle) && frame.throttle > 0.03)
+          || (Number.isFinite(frame.commandedThrottle) && frame.commandedThrottle > 0.03)) {
+          return true;
+        }
+        const actuators = this._actuatorsFor(e);
+        if (actuators && (
+          Math.abs(actuators.lateral || 0) > 0.001
+          || Math.abs(actuators.yaw || 0) > 0.001
+          || (actuators.reverse || 0) > 0.001
+          || (actuators.main || 0) > 0.03
+        )) return true;
+        const vx = e.vel && Number.isFinite(e.vel.x) ? e.vel.x : 0;
+        const vz = e.vel && Number.isFinite(e.vel.z) ? e.vel.z : 0;
+        if (vx !== 0 || vz !== 0) {
+          const speed = Math.hypot(vx, vz);
+          const maxFromEntity = Number.isFinite(e.maxSpeed) ? e.maxSpeed : 0;
+          const maxFromFrame = Number.isFinite(frame.maxSpeed) ? frame.maxSpeed : 0;
+          const maxSpeed = Math.max(1, maxFromEntity || maxFromFrame || 120);
+          const speedDrive = Math.min(1, speed / Math.max(40, maxSpeed * 0.75));
+          // Matches `_engineDriveFor` idle band: drive ≈ speedDrive*0.40 when throttle/boost idle.
+          if (speedDrive * 0.40 > 0.03) return true;
+        }
+      }
+    }
+    return false;
+  },
+
   _energyPlumeRelevant() {
     if (!this._productionThrusterEnabled()) return false;
     const energy = this._energy;
@@ -12080,6 +12275,15 @@ export const vfx = {
       this._disposeEnergy();
       return false;
     }
+    // Quiet-hidden residual after #103: consecutive idle ticks still paid full
+    // `_energyPlumeRelevant` (player `_engineDriveFor` + trail-candidate walk). Cheap
+    // maybe-awake first; false-wake falls through to full relevant (hide latch holds).
+    if (this._energyQuietHidden) {
+      const masslineWake = legacyEnergyMaterialsEnabled && this._energyMasslineRelevant();
+      if (!masslineWake && !(productionThrusterEnabled && this._energyQuietMaybeAwake())) {
+        return false;
+      }
+    }
     // The production Hitch exhaust is the ship's primary propulsion feedback. It follows the
     // Engine trails setting and must not disappear because a legacy profile disabled the older
     // HDR-energy-material experiment. That legacy toggle continues to own only the Massline volume.
@@ -12099,6 +12303,7 @@ export const vfx = {
       // Full display-rate pose/drive sample. Cadence here used to leave the jet one frame
       // behind the hull at high speed (~8u lag at SPD 255 / 30 Hz), which read as a doubled,
       // flickering thruster. The continuous plume is a few instanced cards — cheap enough.
+      this._energyQuietHidden = false;
       this._energyPlumeWasRelevant = true;
       this._updateEnergyPlume(dt);
       active = true;
@@ -12107,6 +12312,9 @@ export const vfx = {
       this._hideEnergyPlumes(0);
     }
     if (masslineRelevant) {
+      // Massline can wake energy while plumes stay quiet — drop the hide latch so a
+      // later quiet hide still publishes one cold reset.
+      this._energyQuietHidden = false;
       this._updateEnergyMassline(dt);
       active = true;
     } else if (this._energy.ribbon) {
@@ -12403,6 +12611,8 @@ export const vfx = {
 
   _initEnergy() {
     if (!this._scene) return;
+    // Fresh systems are not yet cold-published; allow the next hide to reset once.
+    this._energyQuietHidden = false;
     const textures = loadKestrelThrusterTextures();
     const fleet = new FamilyProductionFleet(THREE, {
       textures,
@@ -13038,9 +13248,15 @@ export const vfx = {
   },
 
   _hideEnergyPlumes() {
+    // Already cold after a prior quiet hide: skip plasma/retro/fleet.reset churn.
+    // Wake paths (_updateEnergy maybe-awake / plume/massline relevant) clear _energyQuietHidden.
+    if (this._energyQuietHidden) return;
     this._releasePlayerPlumeEventLight();
     const energy = this._energy;
-    if (!energy) return;
+    if (!energy) {
+      this._energyQuietHidden = true;
+      return;
+    }
     if (energy.plasmaStream) energy.plasmaStream.reset();
     if (energy.retroVolume) energy.retroVolume.reset();
     if (energy.fleet) energy.fleet.reset();
@@ -13053,9 +13269,11 @@ export const vfx = {
     energy.rcsCooldown = 0;
     // Production plume is hidden — never leave sticky ownership suppressing fallback trails.
     this._clearProductionOwnership();
+    this._energyQuietHidden = true;
   },
 
   _resetEnergyForBoundary() {
+    this._energyQuietHidden = false;
     this._hideEnergyPlumes();
     this._energyPlumeWasRelevant = false;
     if (this._energy && this._energy.ribbon) this._energy.ribbon.visible = false;
@@ -13143,6 +13361,7 @@ export const vfx = {
     disposeEnergyVolumeMaterials(this._energy.ribbon);
     if (this._energy.ribbonGeo) this._energy.ribbonGeo.dispose();
     this._energy = null;
+    this._energyQuietHidden = false;
     this._clearProductionOwnership();
   },
 

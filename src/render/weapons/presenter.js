@@ -12,7 +12,7 @@ import { DistortionField } from './distortionField.js';
 import { WeaponLightPool } from './weaponLights.js';
 import { HullScorchPool, heatForWeaponVariant } from './contactMarks.js';
 import { QuarksVfxSystem } from '../vfx/quarksSystem.js';
-import { addShieldContact, ageShieldContacts, clearShieldContacts } from './shieldContacts.js';
+import { addShieldContact, ageShieldContacts, clearShieldContacts, shieldContactsActiveCount } from './shieldContacts.js';
 import {
   shouldDrawTableVfx,
   tableLookAtDelta,
@@ -181,6 +181,23 @@ export class WeaponVfxPresenter {
     this._graph = null;
     this._disposed = false;
     this._nearMissAcc = 0;
+    // Quiet settled flight: empty well bag still paid a11y resolve + CAP slot zero +
+    // DistortionField.update (uTime write before live early-out) every tick. Latch after
+    // first empty sync when fields.active is empty; wake on active ref/len. Soft-GPU fps
+    // not claimed. Picture unchanged (already empty/hidden).
+    this._wellDistortionQuietEmpty = false;
+    this._wellDistortionQuietActiveLen = -1;
+    this._wellDistortionQuietActiveRef = null;
+    // Quiet settled flight: even with per-pool early-outs, update() still paid
+    // ageShieldContacts + a11y + setCamera/depth + empty syncBolts + nearMiss
+    // cadence + N pool.update calls every tick. Composite latch after first
+    // all-quiet observe; wake on pool live / quarks._quietEmpty / bolts /
+    // shields / fields.active / entityIndexVersion / projectiles. Soft-GPU
+    // fps not claimed. Picture unchanged.
+    this._presenterQuietEmpty = false;
+    this._presenterQuietIndexVersion = -1;
+    this._presenterQuietFieldsRef = null;
+    this._presenterQuietFieldsLen = -1;
   }
 
   attachGraph(graph) {
@@ -348,6 +365,10 @@ export class WeaponVfxPresenter {
     this.state = context.state || this.state;
     this.helpers = context.helpers || this.helpers;
     if (typeof context.toLocalXZ === 'function') this.toLocalXZ = context.toLocalXZ;
+    // Composite quiet latch: skip residual when every weapon surface is idle.
+    // Soft-GPU fps not claimed.
+    if (this._presenterQuietEmpty && !this._presenterQuietMaybeAwake()) return;
+    this._presenterQuietEmpty = false;
     const camera = context.camera;
     const alpha = Number.isFinite(context.interpolationAlpha) ? context.interpolationAlpha : 1;
     const viewportHeight = context.viewportHeight || 1000;
@@ -384,6 +405,87 @@ export class WeaponVfxPresenter {
       }
       this.quarks.update(particleDt, accessibilityProfile);
     }
+    if (this._presenterAllQuiet(entities)) this._presenterQuietLatch();
+  }
+
+  _presenterProjectileEntities() {
+    const index = this.state && this.state.entityIndex;
+    if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)) {
+      return index.projectiles;
+    }
+    return (this.state && this.state.entityList) || [];
+  }
+
+  _presenterEntityIndexVersion() {
+    const index = this.state && this.state.entityIndex;
+    return index && Number.isFinite(index.version) ? index.version : null;
+  }
+
+  _presenterAllQuiet(entities = this._presenterProjectileEntities()) {
+    if (this.discharges.activeCount > 0) return false;
+    if (this.scorches.live > 0 || (this.scorches.mesh && this.scorches.mesh.count > 0)) return false;
+    if (this.distortion.live > 0 || (this.distortion.mesh && this.distortion.mesh.count > 0)) return false;
+    if (this.lights.live > 0) return false;
+    if (this.ribbons.live > 0) return false;
+    // Post-export member: heavy impacts run on the same per-tick update; a live
+    // effect or an unpublished retire (dirty) is not quiet.
+    if (this.heavyImpacts && (this.heavyImpacts.live > 0 || this.heavyImpacts.dirty)) return false;
+    if (!this.bolts._quietEmpty || this.bolts.live > 0) return false;
+    if (this.quarks && !this.quarks._quietEmpty) return false;
+    if (this.wellDistortion.live > 0
+      || (this.wellDistortion.mesh && this.wellDistortion.mesh.count > 0)) return false;
+    if (shieldContactsActiveCount() > 0) return false;
+    if (!this._wellDistortionQuietEmpty) return false;
+    if (entities && entities.length > 0) {
+      // Typed projectiles lane may be empty while entityList fallback still holds ships.
+      const index = this.state && this.state.entityIndex;
+      if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)) {
+        if (index.projectiles.length > 0) return false;
+      } else {
+        for (let i = 0; i < entities.length; i++) {
+          const e = entities[i];
+          if (e && e.alive && e.type === 'projectile') return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  _presenterQuietLatch() {
+    const active = this.state && this.state.fields && this.state.fields.active;
+    this._presenterQuietEmpty = true;
+    this._presenterQuietIndexVersion = this._presenterEntityIndexVersion();
+    this._presenterQuietFieldsRef = active || null;
+    this._presenterQuietFieldsLen = active ? active.length : 0;
+  }
+
+  // Cheap dirty wake while composite-latched. Pool live counters catch external
+  // quarks.spawn* / addShieldContact / well pushes; entityIndexVersion catches
+  // projectile spawns. Soft-GPU fps not claimed.
+  _presenterQuietMaybeAwake() {
+    if (this.discharges.activeCount > 0) return true;
+    if (this.scorches.live > 0) return true;
+    if (this.distortion.live > 0) return true;
+    if (this.lights.live > 0) return true;
+    if (this.ribbons.live > 0) return true;
+    if (this.heavyImpacts && (this.heavyImpacts.live > 0 || this.heavyImpacts.dirty)) return true;
+    if (!this.bolts._quietEmpty || this.bolts.live > 0) return true;
+    if (this.quarks && !this.quarks._quietEmpty) return true;
+    if (this.wellDistortion.live > 0) return true;
+    if (shieldContactsActiveCount() > 0) return true;
+    const version = this._presenterEntityIndexVersion();
+    if (version !== this._presenterQuietIndexVersion) return true;
+    const active = this.state && this.state.fields && this.state.fields.active;
+    const activeLen = active ? active.length : 0;
+    if (active !== this._presenterQuietFieldsRef || activeLen !== this._presenterQuietFieldsLen) {
+      return true;
+    }
+    const index = this.state && this.state.entityIndex;
+    if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)
+      && index.projectiles.length > 0) {
+      return true;
+    }
+    return false;
   }
 
   _syncBolts(entities, alpha, camera, dt = 0, accessibilityProfile = this._a11y()) {
@@ -530,10 +632,21 @@ export class WeaponVfxPresenter {
 
   _syncWellDistortion() {
     const field = this.wellDistortion;
+    const active = this.state && this.state.fields && this.state.fields.active;
+    const activeLen = active ? active.length : 0;
+    // Quiet empty-active residual: a11y resolve + CAP zero + DistortionField.update
+    // (uTime write before live early-out) every idle tick. Latch only when the active
+    // bag is empty so reduced-motion + live wells keep syncing. Soft-GPU fps not claimed.
+    if (this._wellDistortionQuietEmpty
+      && active === this._wellDistortionQuietActiveRef
+      && activeLen === this._wellDistortionQuietActiveLen
+      && field.live === 0
+      && !(field.mesh && field.mesh.count > 0)) {
+      return;
+    }
     const slots = field.slots;
     let live = 0;
     if (!reducedMotionProfile(this._a11y())) {
-      const active = this.state && this.state.fields && this.state.fields.active;
       if (active) {
         const cap = field.capacity;
         for (let i = 0; i < active.length && live < cap; i++) {
@@ -560,6 +673,13 @@ export class WeaponVfxPresenter {
     // The well lens is re-synced from scratch each frame, so dt is 0; hand it the simulation clock
     // directly or its shader has no time at all. Reduced motion already zeroes every well above.
     field.update(0, this.state && this.state.simTime);
+    if (live === 0 && activeLen === 0) {
+      this._wellDistortionQuietEmpty = true;
+      this._wellDistortionQuietActiveLen = activeLen;
+      this._wellDistortionQuietActiveRef = active;
+    } else {
+      this._wellDistortionQuietEmpty = false;
+    }
   }
 
   _socketPose(ownerId, origin, angle) {
@@ -818,6 +938,13 @@ export class WeaponVfxPresenter {
   dispose() {
     if (this._disposed) return;
     this._disposed = true;
+    this._wellDistortionQuietEmpty = false;
+    this._wellDistortionQuietActiveLen = -1;
+    this._wellDistortionQuietActiveRef = null;
+    this._presenterQuietEmpty = false;
+    this._presenterQuietIndexVersion = -1;
+    this._presenterQuietFieldsRef = null;
+    this._presenterQuietFieldsLen = -1;
     this._detachGraph(this._graph);
     this._graph = null;
     clearShieldContacts();

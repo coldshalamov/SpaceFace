@@ -62,7 +62,11 @@ export function attachStationHlod(root, entity) {
     farDetailHidden: 0,
     proxyDisabledReason: 'stable-authored-identity',
   };
+  // Mirror shipKit: far-detail traverse only when the band changes.
+  let stationLodLevel = null;
   root.userData.updateLod = function updateStationStableLod(level) {
+    if (level === stationLodLevel) return;
+    stationLodLevel = level;
     if (typeof innerUpdateLod === 'function') innerUpdateLod(level);
     // Stations hold one LOD for seconds-to-minutes; the detail-hide traverse + per-node regex
     // only pays off when the level actually changes.

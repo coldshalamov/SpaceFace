@@ -176,11 +176,14 @@ function bootWorld(seed = 42) {
 test('world.js stamps the bolthole into the Cruiser Graveyard on sector entry', () => {
   const { state, world } = bootWorld(42);
   world.enterSector(SECTOR_ID);
-  const stamped = state.entityList.filter(
-    (e) => e.alive && e.data && e.data.opticStructureId === IO_BOLTHOLE_ID,
+  // Optic lattices stamp field-resident now: the compact field holds them until the
+  // decode disc promotes them onto the combat list.
+  const field = state.world && state.world.asteroidField;
+  const stamped = ((field && field.rocks) || []).filter(
+    (e) => e.alive !== false && e.data && e.data.opticStructureId === IO_BOLTHOLE_ID,
   );
   const bodies = compileOpticStructure(SPEC);
-  assert.equal(stamped.length, bodies.length, 'every recipe cell becomes a live body');
+  assert.equal(stamped.length, bodies.length, 'every recipe cell becomes a field-resident body');
   const sectorOrigin = sectorGlobalOrigin(SECTOR_ID);
   const byCell = new Map(stamped.map((e) => [e.data.opticCell, e]));
   for (const body of bodies) {

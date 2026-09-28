@@ -162,6 +162,7 @@ const MACHINE_FIELD_REGION_BY_SECTOR = Object.freeze({
   sector_ceres_belt: 'ceres',
   sector_helios_prime: 'helios',
   sector_sker_haven: 'sker',
+  sector_haumea_rift: 'haumea',
 });
 
 function buildKillMachine({
@@ -352,6 +353,38 @@ export const SKER_SCRAP_BALER = buildKillMachine({
   }],
 });
 
+// 2026-09-28 INFERENCE — one cracker on the northern frontier: the Rift Observatory's survey
+// drill works the Ice Fissure, and its crack cycle throws slab shards across the fissure mouth.
+// Same shove-into-an-anvil law as every mouth: warning registers quiet, surge is the short
+// bite, calm is the safe window. The cold drill platform stands just off the fissure landmark
+// (poi_haumea_fissure at (0,180)), aimed at it, clear of the Observatory, both ice fields, the
+// range buoy, and the probe shell (north.js anchors).
+export const RIFT_FISSURE_SECTOR_ID = 'sector_haumea_rift';
+export const RIFT_FISSURE_CRACKER = buildKillMachine({
+  id: 'fissure_cracker',
+  hazardType: 'debris',
+  placeId: 'place_drill_platform_cold',
+  sectorId: RIFT_FISSURE_SECTOR_ID,
+  localPos: { x: 180, z: 380 },
+  rot: -Math.PI * 0.75,
+  phaseOffsetS: 2,
+  hazardRadius: 104,
+  anvil: { radius: 22, mass: 10000, along: 56, across: 0 },
+  mouth: { name: 'Fissure Cracker', radius: 18 },
+  fields: [{
+    idSuffix: 'intake',
+    kind: 'cone',
+    strength: 720,
+    radius: 96,
+    halfAngleRad: 0.48,
+    edgeSoftRad: 0.12,
+    falloff: 1.08,
+    along: -14,
+    across: 0,
+    dirAlong: 1,
+  }],
+});
+
 // Every machine the adapter owns, in one list: Ceres mouths, the Helios starter cracker, and
 // the Sker baler. Per-sector slices come from killMachinesForSector; this is the census the
 // runtime uses to retire fields and anvils when a sector deactivates or a machine is absent.
@@ -359,12 +392,14 @@ export const ALL_KILL_MACHINES = Object.freeze([
   ...KILL_MACHINES,
   STARTER_FIELD_MACHINE,
   SKER_SCRAP_BALER,
+  RIFT_FISSURE_CRACKER,
 ]);
 
 export function killMachinesForSector(sectorId) {
   if (sectorId === KILL_MACHINE_SECTOR_ID) return KILL_MACHINES;
   if (sectorId === STARTER_FIELD_SECTOR_ID) return Object.freeze([STARTER_FIELD_MACHINE]);
   if (sectorId === SKER_SCRAP_BALER_SECTOR_ID) return Object.freeze([SKER_SCRAP_BALER]);
+  if (sectorId === RIFT_FISSURE_SECTOR_ID) return Object.freeze([RIFT_FISSURE_CRACKER]);
   return Object.freeze([]);
 }
 
@@ -563,6 +598,7 @@ export const PALLAS_REEF_CYCLE_S = PALLAS_REEF_CYCLE;
 // `radiation` zone type is forbidden here because world.js would chew hull.
 export const VEIL_WEATHER_SECTOR_ID = 'sector_veil_nebula';
 export const VESTA_WEATHER_SECTOR_ID = 'sector_vesta_forge';
+export const IO_REACH_WEATHER_SECTOR_ID = 'sector_io_reach';
 const WEATHER_CYCLE = Object.freeze({ warningS: 2, surgeS: 6, calmS: 4 });
 export const WEATHER_SCAN_SCALE_INSIDE = 0.4;
 
@@ -720,11 +756,50 @@ export const WEATHER_VOLUMES = Object.freeze([
       falloff: 1.2,
     },
   }),
+  // Io Reach's war is weather. The contested floor has changed hands by the week, and the
+  // fighting left two standing facts on the chart: a debris current thrown off the hulls that
+  // died crossing the southern approach (shots and hulls bend inside it), and a radiation
+  // belt off the west holdings nobody has held long enough to vent. Positions sit clear of
+  // both stations, all four gates, both ore fields, and the named POIs in sectorAnchors.js.
+  buildWeatherVolume({
+    id: 'io_reach_storm_lane',
+    role: 'storm',
+    sectorId: IO_REACH_WEATHER_SECTOR_ID,
+    hazardType: 'debris_current',
+    localPos: { x: 700, z: -1750 },
+    rot: -0.5,
+    scanScale: 1,
+    field: {
+      kind: 'sheet',
+      strength: 320,
+      radius: 460,
+      halfWidth: 78,
+      falloff: 1.05,
+    },
+  }),
+  buildWeatherVolume({
+    id: 'io_reach_radiation_belt',
+    role: 'radiation_belt',
+    sectorId: IO_REACH_WEATHER_SECTOR_ID,
+    hazardType: 'nebula',
+    localPos: { x: -2350, z: 1250 },
+    rot: 0,
+    scanScale: WEATHER_SCAN_SCALE_INSIDE,
+    field: {
+      kind: 'well',
+      strength: 210,
+      radius: 260,
+      innerRadius: 78,
+      innerSoft: 24,
+      falloff: 1.2,
+    },
+  }),
 ]);
 
 export const WEATHER_SECTOR_IDS = Object.freeze(new Set([
   VEIL_WEATHER_SECTOR_ID,
   VESTA_WEATHER_SECTOR_ID,
+  IO_REACH_WEATHER_SECTOR_ID,
 ]));
 
 // WEATHER_VOLUMES is frozen at module load, so per-sector slices are memoized: the tick loop

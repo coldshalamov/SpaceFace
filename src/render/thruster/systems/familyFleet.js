@@ -150,6 +150,9 @@ export class FamilyProductionFleet {
 
     // Per-frame family begin flags (Uint8, fixed)
     this._familyOpen = new Uint8Array(this.families.length);
+    // Quiet settled flight: after the first sleep publish (mesh counts/visibility cleared),
+    // skip re-zeroing every sleeping family's layer batches. Cleared when a family opens.
+    this._familyQuietAsleep = new Uint8Array(this.families.length);
     // Per-frame socket demand per family, used to size plume capacity before the write
     // pass. Fixed-length, reused — the growth check itself must not allocate.
     this._familySocketDemand = new Uint32Array(this.families.length);
@@ -560,7 +563,10 @@ export class FamilyProductionFleet {
 
     for (let fi = 0; fi < this.families.length; fi++) {
       if (!this._familyOpen[fi]) {
-        // Sleep family: reset GPU counts, keep resources.
+        // Sleep family: reset GPU counts, keep resources. After the first empty
+        // publish, trust _familyQuietAsleep and skip pool/layer re-zero churn —
+        // counts and visibility are already 0/false from the prior sleep frame.
+        if (this._familyQuietAsleep[fi]) continue;
         const fam = this.families[fi];
         fam.plume.pool.beginFrame();
         fam.plume.pool.endWrite();
@@ -575,9 +581,11 @@ export class FamilyProductionFleet {
           }
         }
         if (fam.plume.group) fam.plume.group.visible = false;
+        this._familyQuietAsleep[fi] = 1;
         continue;
       }
       const fam = this.families[fi];
+      this._familyQuietAsleep[fi] = 0;
       fam.plume.endUpdate(dt);
       if (fam.plume.group.visible) familiesActive += 1;
     }
@@ -670,6 +678,7 @@ export class FamilyProductionFleet {
       f.plume.reset();
       if (f.rcs) f.rcs.reset();
       f.activeEntities = 0;
+      this._familyQuietAsleep[i] = 0;
     }
   }
 

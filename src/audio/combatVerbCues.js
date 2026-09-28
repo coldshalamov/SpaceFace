@@ -31,8 +31,9 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'mining:yield': 'sfx_mining_impact',
   'mining:seamHit': 'sfx_mining_impact',
   'mining:beamLocked': 'sfx_mining_beam',
-  'mining:heatChanged': SILENT('Heat is a meter, not a sting.'),
-  'mining:ventReady': SILENT('The vent-ready lamp is visual.'),
+  'mining:heatChanged': SILENT('Heat is a meter, not a sting; the WANTED crossing already has its own heat voice.'),
+  // mining:ventReady row lives in the packet-C block at the foot of this table
+  // (sfx_vent_chime, shared with the presentation route); it is not duplicated here.
   'mining:ventBonus': 'sfx_mining_impact',
   'mining:richCoreChargeStart': 'sfx_mining_beam',
   'mining:richCoreCompleted': 'sfx_mining_impact',
@@ -49,8 +50,8 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'ship:boostPreKick': SILENT('The pre-kick is the same boost voice winding up.'),
   boost: 'sfx_engine_boost',
 
-  'jump:start': SILENT('Jump departure is the gate visual; no jump sting is authored.'),
-  'jump:arrive': SILENT('Jump arrival is the gate visual; no jump sting is authored.'),
+  // jump:start/arrive rows live in the packet-C block at the foot of this table
+  // (semantic journey voices); they are not duplicated here.
   'jump:chargeStart': SILENT('Jump charge is the travel drive already heard as thrust.'),
   'jump:chargeTick': SILENT('Jump charge ticks are the travel drive, not a new sting.'),
   'jump:chargeAbort': SILENT('Aborting a jump adds no authored sting.'),
@@ -127,6 +128,32 @@ export const PLAYER_ACTION_CUES = Object.freeze({
 
   'dock:docked': 'sfx_dock_clunk',
   'dock:undocked': 'sfx_undock_release',
+
+  // EAR+FIGHT shared packet C: every player-caused emit in the audit names an existing
+  // recipe, or stays SILENT with a reason. No new recordings.
+  // bombs:detonated already emits a per-payload audio:cue from bombs._emitDetonated
+  // (def.audioCue / def.collapseAudioCue, e.g. bombs.concussion.shove -> sfx_bomb_concussion_shove).
+  // This row lets the normalized verb-cue route (combatVerbRecipe) resolve the same family
+  // without duplicating that direct cue.
+  'bombs:detonated': 'sfx_bomb_concussion_shove',
+  // hull:fractured is a brittle rock/hull split: the mining fracture break (sub + noise) reads
+  // as breakage, not combustion, and stays distinct from sfx_explosion_small.
+  'hull:fractured': 'sfx_mining_fracture_break',
+  // jump start/arrive own semantic journey voices (travel.jump.committed / travel.arrival ->
+  // sfx_travel_commit / sfx_travel_arrival). The raw bus rows deliberately stay out of the
+  // verb-cue route so the audio lane never stacks a direct voice with the journey voice.
+  'jump:start': SILENT('Jump departure is owned by the semantic journey voice (travel.jump.committed); a verb-cue row would double it.'),
+  'jump:arrive': SILENT('Jump arrival is owned by the semantic journey voice (travel.arrival); a verb-cue row would double it.'),
+  // mining:ventReady already chimes via presentation (mining.vent.ready -> sfx_vent_chime).
+  // combatVerbRecipe must resolve the same existing recipe so a verb-route audit sees it.
+  'mining:ventReady': 'sfx_vent_chime',
+  // mining:heatChanged is a continuous meter, not a sting. The WANTED crossing already has a
+  // voice via the heat:changed packet; the mining meter itself stays silent (row above).
+  // player:respawn already chimes via audioSystem._onPlayerRespawn (sfx_respawn_chime x2).
+  // brake has no bus event at all: the brake's rising-edge bite (sfx_brake_bite) is played
+  // directly in audioSystem._updateBrakeHiss, one cue per press. There is no 'brake' verb
+  // to map, so no row is added here.
+  'player:respawn': 'sfx_respawn_chime',
 });
 
 export const COMBAT_VERB_IDS = Object.freeze(Object.keys(COMBAT_VERB_CUES));

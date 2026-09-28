@@ -213,8 +213,9 @@ export function shouldSyncPhysicsBodyEntity(entity) {
 
 export function isDynamicPhysicsBodyEntity(entity) {
   if (!entity || typeof entity !== 'object') return false;
-  const authored = authoredPhysicsBody(entity);
-  return authored && authored.dynamic != null ? !!authored.dynamic : defaultDynamic(entity);
+  // Single reader: dynamic resolution lives in substanceFor (authored override else
+  // defaultDynamic). Bit-identical to the inline branch this replaced.
+  return substanceFor(entity).dynamic;
 }
 
 /**
@@ -493,6 +494,33 @@ function defaultMaterial(entity) {
 function defaultMass(entity) {
   if (entity && entity.type === 'pickup') return 0.1;
   return 1;
+}
+
+/**
+ * Pure reader for an entity's live collider substance (Rapier SG-02 truth):
+ * { shape, material, dynamic, sensor }. Authored (non-null) physicsBody values always win;
+ * otherwise the answer is exactly ensurePhysicsBodySpec's defaults — defaultDynamic for
+ * dynamic, defaultMaterial for material, the isCraft capsule/ball rule for shape, and
+ * material === 'sensor' for sensor. No rng, no mutation, no side effects. The canonical
+ * per-model statement of this truth is MODEL_SUBSTANCE_TABLE in src/data/modelTruth.js;
+ * live ghost bits (debris/rock false, pickup true) live in sg02 CONTACT_MATERIALS +
+ * contactMaterialFor, not here — material 'sensor' is the pickup marker this reader maps
+ * to sensor:true/ghost-reading:true in substance terms.
+ */
+export function substanceFor(entity) {
+  if (!entity || typeof entity !== 'object') {
+    return { shape: 'ball', material: 'default', dynamic: false, sensor: false };
+  }
+  const authored = authoredPhysicsBody(entity);
+  const isCraft = entity.type === 'ship' || entity.type === 'drone';
+  // Coalescing mirrors ensurePhysicsBodySpec exactly (falsy authored values fall through
+  // to the same defaults); dynamic keeps isDynamicPhysicsBodyEntity's != null override rule.
+  const material = String((authored && authored.material) || defaultMaterial(entity));
+  const shape = (authored && authored.shape) ? String(authored.shape) : (isCraft ? 'capsule' : 'ball');
+  const dynamic = authored && authored.dynamic != null
+    ? !!authored.dynamic
+    : defaultDynamic(entity);
+  return { shape, material, dynamic, sensor: material === 'sensor' };
 }
 
 function finite(value, fallback = 0) {

@@ -543,6 +543,9 @@ export class ContinuousPlumeSystem {
     this._textures = opts.textures || {};
     this._initGpu = false;
     this._disposed = false;
+    // Quiet settled flight: after first empty GPU publish, skip event-light + layer
+    // batch clear/commit/uniform writes until activeCount > 0 again.
+    this._quietEmpty = false;
     this._nozzleScratch = { x: 0, y: 0, z: 0 };
     this._uniformScratch = null;
     this._emptyOpts = Object.freeze({ boost: 0, a11y: null });
@@ -908,7 +911,11 @@ export class ContinuousPlumeSystem {
     const a11y = this._batchA11y || this._a11y;
     const result = this.pool.endWrite();
     this._batching = false;
+    if (!(result.activeCount > 0) && this._quietEmpty) {
+      return result;
+    }
     this._commitGpu(result, a11y, null, dt || 0);
+    this._quietEmpty = !(result.activeCount > 0);
     return result;
   }
 
@@ -926,7 +933,13 @@ export class ContinuousPlumeSystem {
     const a11y = o.a11y == null ? this._a11y : o.a11y;
     if (a11y.qualityTier) this.setQualityTier(a11y.qualityTier);
     const result = this.pool.update(throttle, sockets, a11y, dt, boost, o);
+    // Quiet path: after the first empty publish, skip event-light + layer batch
+    // clear/commit/uniform writes. Active writes leave quiet on the spawn frame.
+    if (!(result.activeCount > 0) && this._quietEmpty) {
+      return result;
+    }
     this._commitGpu(result, a11y, sockets, dt || 0);
+    this._quietEmpty = !(result.activeCount > 0);
     return result;
   }
 
@@ -1054,6 +1067,7 @@ export class ContinuousPlumeSystem {
 
   /** Clear sim state; keep GPU resources. Idempotent. */
   reset() {
+    this._quietEmpty = false;
     this.pool.resetDrive();
     this.pool.beginFrame();
     for (let i = 0; i < this.pool.capacity; i++) this.pool.slots[i].alive = false;

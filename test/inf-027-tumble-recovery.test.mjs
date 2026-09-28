@@ -87,15 +87,25 @@ function makeKernel() {
   };
 }
 
-function drive(state) {
+function drive(state, between) {
   const events = [];
+  const handlers = new Map();
   const bus = {
-    on() { return () => {}; },
-    emit(event, payload) { events.push({ event, payload }); },
+    on(event, fn) {
+      const list = handlers.get(event) || [];
+      list.push(fn);
+      handlers.set(event, list);
+      return () => {};
+    },
+    emit(event, payload) {
+      events.push({ event, payload });
+      for (const fn of handlers.get(event) || []) fn(payload);
+    },
   };
   const combatSystem = { kernel: makeKernel() };
   tumbleStates.init({ state, bus, helpers: {}, registry: { get(name) { return name === 'combat' ? combatSystem : null; } } });
   try {
+    if (between) between(bus);
     tumbleStates.update(DT, state);
   } finally {
     tumbleStates.destroy();
@@ -150,6 +160,28 @@ test('the window closes recognizably and tactics resume at full authority', () =
   drive(state);
   assert.equal(npc.data.intent.moveX, 1, 'thrust returns whole after the beat');
   assert.equal(npc.data.intent.fire, true, 'guns decide for themselves again');
+});
+
+test('kernel status expiry still opens the stabilization window', () => {
+  const npc = makeNpc();
+  const state = makeState(npc, 10.0);
+  // Production order: `actions` ticks the kernel before tumbleStates, so the expiresTick
+  // sweep deletes the status on the boundary tick and only the receipt remains — the
+  // update walk never observes `until` crossing.
+  const expired = state.combat.entities[2].statuses.status_tumbling;
+  delete state.combat.entities[2].statuses.status_tumbling;
+  const events = drive(state, (bus) => bus.emit('combat:statusExpired', {
+    targetId: 2,
+    statusId: 'status_tumbling',
+    data: expired.data,
+  }));
+  assert.equal(npc.data.recoveringUntil, 10.9);
+  assert.equal(isRecovering(state, npc), true);
+  const end = events.find((e) => e.event === 'massline:tumbleEnd');
+  assert.ok(end, 'the end of the opening announces on the kernel-expired path');
+  assert.equal(end.payload.recoverUntil, 10.9);
+  const recovering = events.find((e) => e.event === 'massline:recovering');
+  assert.deepEqual(recovering.payload, { victimId: 2, recoverUntil: 10.9 });
 });
 
 test('the player never stabilizes: no window, no events', () => {

@@ -55,8 +55,11 @@ function isScatterCell(e) {
 }
 
 function scatterCellsFor(state, sectorId) {
-  return state.entityList.filter(
-    (e) => e.alive && isScatterCell(e)
+  // Optic lattices are field-resident until the decode disc promotes them: read the
+  // compact asteroid field, where the stamps keep pos/radius/collides/homeSectorId/data.
+  const field = state.world && state.world.asteroidField;
+  return ((field && field.rocks) || []).filter(
+    (e) => e.alive !== false && isScatterCell(e)
       && (e.homeSectorId === sectorId || (e.data && e.data.homeSectorId === sectorId)),
   );
 }
@@ -84,6 +87,8 @@ function rockSignature(state, sectorId) {
   for (const rec of (field && field.rocks) || []) {
     const home = rec.homeSectorId || (rec.data && rec.data.homeSectorId);
     if (home !== sectorId) continue;
+    // Optic lattice records are structural dressing, not part of the rock draw.
+    if (rec.data && rec.data.opticStructureId) continue;
     rows.push([
       'dormant',
       rec.data && rec.data.fieldId,
@@ -159,9 +164,10 @@ test('an ordinary belt grows a few small real lattices from the sector seed', ()
 
   // Scatter only fills the unauthored gap: authored sectors keep exactly their recipe.
   world.enterSector(CERES, { noTeleport: true });
+  const ceresField = state.world && state.world.asteroidField;
   const ceresIds = new Set(
-    state.entityList
-      .filter((e) => e.alive && e.data && e.data.opticStructureId
+    ((ceresField && ceresField.rocks) || [])
+      .filter((e) => e.alive !== false && e.data && e.data.opticStructureId
         && (e.homeSectorId === CERES || e.data.homeSectorId === CERES))
       .map((e) => e.data.opticStructureId),
   );
@@ -262,8 +268,10 @@ test('a spent scattered diamond persists through world serialize/deserialize', (
   assert.equal(midBurned.data.opticMaterial, 'spent', 'mid-cooldown scatter cell stays dark');
   assert.equal(midBurned.data.opticSpentAt, 5, 'the timer kept its absolute stamp');
   assert.equal(midBurned.data.tint, OPTIC_MATERIALS.spent.tint);
-  assert.ok(collectOpticSpentIds(mid.state).has(midBurned.id),
-    'the restored dark cell rejoins the rekindle watch');
+  // Field-resident records hold the spend until promote; the live body they later
+  // become rejoins the rekindle watch via collectOpticSpentIds at that point.
+  assert.ok(mid.state.world.asteroidField.byId.has(midBurned.id),
+    'the restored dark cell stays in the field until approach');
   if (untouched) {
     const midLive = midCells.find(
       (e) => e.data.opticStructureId === structureId && e.data.opticCell === untouched.data.opticCell,

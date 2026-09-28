@@ -35,8 +35,12 @@ test('WORLD-19: Vesta radiation hazard center sits inside vesta_radiation_belt w
   );
 });
 
-test('WORLD-19: weather sectors remain exactly two (Veil and Vesta)', () => {
-  assert.equal(WEATHER_SECTOR_IDS.size, 2, 'no third weather sector may be added');
+test('WORLD-19: weather sectors remain Veil, Vesta, and the deliberate Io Reach addition', () => {
+  // 2026-09-28 INFERENCE unit: Io Reach joins as the third weather sector — the contested
+  // floor's war is visible as weather. The pin grows with the deliberate policy; Veil and
+  // Vesta invariants are unchanged.
+  assert.equal(WEATHER_SECTOR_IDS.size, 3, 'the weather roster grows deliberately, not by sprawl');
   assert.ok(WEATHER_SECTOR_IDS.has('sector_vesta_forge'), 'Vesta remains a weather sector');
   assert.ok(WEATHER_SECTOR_IDS.has('sector_veil_nebula'), 'Veil remains a weather sector');
+  assert.ok(WEATHER_SECTOR_IDS.has('sector_io_reach'), 'Io Reach is the third weather sector');
 });

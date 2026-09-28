@@ -86,8 +86,17 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // every pinned socket transform verified unmoved), so worldSite.releaseSha256 moved
 // 32094bcd… → 6de8743a…. Only the embedded hash changed; all shape/census assertions still
 // pass. Prior digest was 78a37d85d07aa6be57bcf885cd94e0e327246edea1a29b5d0dc46a119d63b38b.
+// 2026-09-28: re-pinned after the Forge place/hull rebuild wave and the merge churn that carried
+// it. Bisected to 863fede8f (2026-09-26, the re-pin above) as the last commit where this canary
+// was green, then forward: the digest oscillated 78a37d85… / ee36315a… / db16cacc… purely because
+// `worldSite.releaseSha256` and the collider count are rewritten by sanctioned asset rebuilds —
+// this digest folds an asset-build hash into an authored-topology canary, so every rebuild
+// invalidates it. Nothing about the Ceres topology changed: cathedral 15/15 materialized
+// (14 shelved), sluice 5/5 (4 shelved), all exact-agreement and additive-census assertions pass,
+// and the structural census is unchanged at 23 entities / 184 colliders. Only the embedded hash
+// moved. Prior digest was ee36315ae7010ee127d17f10432c08ee8bbfc5a8737e3663f897a0d2b8827aa9.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'ee36315ae7010ee127d17f10432c08ee8bbfc5a8737e3663f897a0d2b8827aa9';
+  'db16cacc9f0af7a764c4be8157c9fc0db3d60839a545deb99ed4f8e2fa24cd08';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({

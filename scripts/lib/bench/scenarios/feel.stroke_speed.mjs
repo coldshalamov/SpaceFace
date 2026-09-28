@@ -12,7 +12,7 @@
 
 import { autoTargetAssist } from '../../../../src/systems/autoTargetAssist.js';
 import { wrapAngle } from '../../../../src/core/rng.js';
-import { bootRealPath, writeRealPathInput, REAL_PATH_DT } from '../realPath.mjs';
+import { bootRealPath, OPEN_SPACE_BOUNDS, writeRealPathInput, REAL_PATH_DT } from '../realPath.mjs';
 import {
   settle,
   planarSpeed,
@@ -399,6 +399,9 @@ function bootStrokePlayer(seed, { follower = true } = {}) {
     systems: follower ? FOLLOWER_SYSTEMS : NO_FOLLOWER_SYSTEMS,
     hulls: [{ hullId: HULL_ID, pos: { x: 0, z: 0 }, rot: 0, isPlayer: true, factionId: 'faction_free' }],
     profileId: 'production',
+    // A 900-tick full-forward hold at post-retune cruise (~195 WU/s) plus a 30 s turn sweep
+    // out-runs the boot-default 2600 WU lab disk; keep the real fence beyond the tape.
+    bounds: OPEN_SPACE_BOUNDS,
   });
 }
 

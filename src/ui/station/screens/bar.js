@@ -25,6 +25,7 @@ import {
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
 import { createWaveform, createVoiceArc, voiceEnvelope } from '../../orrery/waveform.js';
+import { createReplyDial } from '../../orrery/barReplyDial.js';
 import { typewriter, decrypt } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
 import { escapeHtml } from '../../comms.js';
@@ -62,10 +63,26 @@ function ensureBarStyle() {
   if (document.getElementById(STYLE_ID)) return;
   const style = document.createElement('style');
   style.id = STYLE_ID;
+  // ORRERY overrides (bar-r15 B2-B4): scoped past the station-tabs sheet's specificity so they win
+  // on weight alone, whatever the injection order. P matches that sheet's root plus our own column.
+  const P = 'html body #screens > .sx-berth.orr-station';
+  const PG = 'html.sf-gamepad-focus body #screens > .sx-berth.orr-station';
+  const BONE = '236 230 216';
+  const spine = (x, a) => `linear-gradient(90deg, transparent ${x}px, rgb(${BONE} / ${a}) ${x}px, rgb(${BONE} / ${a}) ${x + 2}px, transparent ${x + 2}px) 0 0 / 100% 100% no-repeat`;
+  const band = (x, a) => `linear-gradient(90deg, transparent ${x - 2.5}px, rgb(${BONE} / ${a}) ${x - 2.5}px, rgb(${BONE} / ${a}) ${x + 4.5}px, transparent ${x + 4.5}px) 0 0 / 100% 100% no-repeat`;
   style.textContent =
     '.sx-bar .k-word.fh-key::after{display:none!important}' +
     '.sx-bar .fh-keyrack{gap:6px!important;align-items:center!important;flex-wrap:wrap!important}' +
-    '.sx-bar .sx-lead.fh-row,.sx-bar .sx-intel.fh-row,.sx-bar .sx-bar-offer__stake.fh-row{box-shadow:none!important;background-color:transparent!important}';
+    '.sx-bar .sx-lead.fh-row,.sx-bar .sx-intel.fh-row,.sx-bar .sx-bar-offer__stake.fh-row{box-shadow:none!important;background-color:transparent!important}' +
+    // B4: the reply backings touch, so the per-reply spine paint tiles into one continuous band
+    `${P} .sx-bar .sx-talk .sx-talk__choices{gap:0!important;row-gap:0!important}` +
+    // B2: no rectangular focus plate — the spine cursor segment stays, the veil fades from the spine to 0 within 200px
+    `${P} .sx-bar .sx-talk .sx-talk__choices > li .sx-choice:is(:hover, :focus-visible),` +
+    `${PG} .sx-bar .sx-talk .sx-talk__choices > li .sx-choice:focus{background:${spine(30, 0.62)}, ${band(30, 0.38)}, ` +
+    'linear-gradient(90deg, transparent 0 30px, rgb(12 15 20 / .55) 34px, rgb(12 15 20 / 0) 230px)!important}' +
+    // B3: the ladder band off the floor (.27 -> .32, about lum 80); the hover lift restated so it survives
+    `${P} .sx-bar .sx-bar__hang::after{background:${spine(3, 0.55)}, ${band(3, 0.32)}!important}` +
+    `${P} .sx-bar .sx-bar__hang:is(:hover, :focus-within)::after{background:${spine(3, 0.62)}, ${band(3, 0.38)}!important}`;
   document.head.appendChild(style);
 }
 
@@ -120,6 +137,7 @@ export function createBarScreen(ctx) {
   // ORRERY (design/frontend/ORRERY.md §6 Bar): the portrait as cinema, the line typed as it is
   // spoken with a Waveform breathing under the name, the words resolving on arrival.
   let wave = null;
+  let dial = null;   // the replies as a dial on her voice arc (barReplyDial.js); the list mirrors it
   let spokenText = null;   // the line the waveform has already voiced
   let stopType = null;
   const stopDecrypt = [];
@@ -388,6 +406,7 @@ export function createBarScreen(ctx) {
 
   /** The waveform under the name; a fresh line is typed while the bars speak; labels resolve. */
   function composeStage(c) {
+    if (dial) { try { dial.dispose(); } catch (_) {} dial = null; }
     if (wave) { wave.dispose(); wave = null; }
     if (stopType) { stopType(); stopType = null; }
     for (const stop of stopDecrypt.splice(0)) stop();
@@ -416,7 +435,25 @@ export function createBarScreen(ctx) {
           const cy = (ar.top - sr.top + ar.height * 0.44) / z;
           const r = (ar.width * 0.42) / z;
           const speak = createVoiceArc(stageEl, { text: lineText, cx, cy, r, bars: compact ? 48 : 64, leaderFrom: { x: (mr.right - sr.left) / z, y: (mr.top - sr.top + mr.height / 2) / z } });
-          if (speak) wave = { speak() {}, idle() {}, dispose() { speak.dispose(); } };
+          if (speak) {
+            wave = { speak() {}, idle() {}, dispose() { speak.dispose(); } };
+            // B1: the replies as a dial on her voice arc — one tick per reply on a short arc
+            // concentric with the voice (outside her bars, in the dark glass), a bone cursor
+            // swinging on the existing dial.focus wiring, focus previewing the reply's own
+            // envelope against hers with her standing tick leaning warm or cold. Commit
+            // re-renders the stage, so her answer becomes the voice (lineText above).
+            try {
+              const btns = [...stageEl.querySelectorAll('.sx-talk__choices [data-choice]')];
+              dial = createReplyDial(speak, {
+                replies: btns.map((b) => b.textContent || ''),
+                leans: btns.map((b) => leanForChoice(b)),
+                focus: currentChoiceIndex(),
+                onHover: (i) => previewChoice(i),
+                onPick: (i) => { const t = choiceBtns()[i]; if (t && !t.disabled) t.click(); else previewChoice(i); },
+                onTurn: (dir) => previewChoice(currentChoiceIndex() + dir),
+              });
+            } catch (_) { dial = null; }
+          }
         }
       } catch (_) { wave = null; }
     }
@@ -542,18 +579,64 @@ export function createBarScreen(ctx) {
     for (const b of stageEl.querySelectorAll('.sx-choice.is-current')) if (b !== btn) b.classList.remove('is-current');
     if (btn) btn.classList.add('is-current');
   };
-  stageEl.addEventListener('pointerover', (ev) => { const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice'); if (b) setCurrentChoice(b); });
-  stageEl.addEventListener('focusin', (ev) => { const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice'); if (b) setCurrentChoice(b); });
-  // a reply's numeral is its key: 1..9 on the stage picks that reply
+  // the dial and the list are one control: every road to a reply (pointer, wheel, keys, gamepad focus)
+  // lands on the button AND swings the dial, so Enter always says the reply the cursor is on
+  const choiceBtns = () => [...stageEl.querySelectorAll('.sx-talk__choices [data-choice]')];
+  const currentChoiceIndex = () => {
+    const btns = choiceBtns();
+    const i = btns.findIndex((b) => b.classList.contains('is-current'));
+    return i < 0 ? 0 : i;
+  };
+  function previewChoice(i) {
+    const btns = choiceBtns();
+    if (!btns.length) return;
+    const btn = btns[((i % btns.length) + btns.length) % btns.length];
+    setCurrentChoice(btn);
+    if (dial) dial.focus(btns.indexOf(btn));
+    if (btn && typeof btn.focus === 'function' && document.activeElement !== btn) {
+      try { btn.focus({ preventScroll: true }); } catch (_) { btn.focus(); }
+    }
+  }
+  // a farewell or a refusal cools her; a question or an order warms her. Deterministic, from the
+  // reply's own id and words; the dial leans her standing tick with it.
+  const COLD_REPLY_RE = /(bye|farewell|safe flying|not interested|dismiss|clean\b|leave|never mind|no thanks|enough|threat|pay up|\blie\b)/i;
+  const leanForChoice = (btn) => (COLD_REPLY_RE.test(`${btn.getAttribute('data-choice') || ''} ${(btn.textContent || '')}`) ? -1 : 1);
+  stageEl.addEventListener('pointerover', (ev) => {
+    const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice');
+    if (!b) return;
+    const i = choiceBtns().indexOf(b);
+    if (i >= 0) previewChoice(i);
+    else setCurrentChoice(b);
+  });
+  stageEl.addEventListener('focusin', (ev) => {
+    const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice');
+    if (!b) return;
+    setCurrentChoice(b);
+    if (dial) dial.focus(choiceBtns().indexOf(b));
+  });
+  // a reply's numeral turns the dial first (the cursor swings, the reply previews); a second press says it
   stageEl.addEventListener('keydown', (ev) => {
     if (ev.altKey || ev.ctrlKey || ev.metaKey) return;
-    if (!/^[1-9]$/.test(ev.key)) return;
     const t = ev.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-    const btn = stageEl.querySelectorAll('.sx-talk__choices [data-choice]')[Number(ev.key) - 1];
-    if (!btn || btn.disabled) return;
-    ev.preventDefault();
-    btn.click();
+    const btns = choiceBtns();
+    if (/^[1-9]$/.test(ev.key)) {
+      const btn = btns[Number(ev.key) - 1];
+      if (!btn || btn.disabled) return;
+      ev.preventDefault();
+      if (btn.classList.contains('is-current') && document.activeElement === btn) btn.click();
+      else previewChoice(Number(ev.key) - 1);
+      return;
+    }
+    // arrows walk the dial (it wraps: dials turn round); Home/End jump its ends; Enter says it natively
+    if (t && t.closest && t.closest('.sx-choice')) {
+      const cur = btns.indexOf(t.closest('.sx-choice'));
+      if (cur < 0) return;
+      if (ev.key === 'ArrowDown' || ev.key === 'ArrowRight') { ev.preventDefault(); previewChoice(cur + 1); }
+      else if (ev.key === 'ArrowUp' || ev.key === 'ArrowLeft') { ev.preventDefault(); previewChoice(cur - 1); }
+      else if (ev.key === 'Home') { ev.preventDefault(); previewChoice(0); }
+      else if (ev.key === 'End') { ev.preventDefault(); previewChoice(btns.length - 1); }
+    }
   });
   railEl.addEventListener('keydown', (ev) => {
     const words = [...railEl.querySelectorAll('[data-contact]')];
@@ -696,6 +779,7 @@ export function createBarScreen(ctx) {
     refresh(c) { renderAll((c || ctx).state || {}); },
     dispose() {
       pinnedContact = null;
+      if (dial) { try { dial.dispose(); } catch (_) {} dial = null; }
       if (wave) { wave.dispose(); wave = null; }
       if (stopType) { stopType(); stopType = null; }
       for (const stop of stopDecrypt.splice(0)) stop();

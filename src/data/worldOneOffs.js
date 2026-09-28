@@ -131,6 +131,29 @@ export const WORLD_ONE_OFFS = Object.freeze([
     radius: 16,
     why: 'A memorial array parked off the customs gate, lit so the lane can find the toll.',
   }),
+  Object.freeze({
+    // 2026-09-28 INFERENCE — the contested floor's own texture. A customs pinnace died holding
+    // the Reach dock early in the fighting; whoever holds the dock this week keeps her lit
+    // rather than salvage her, because the pylon beside her is the only approach marker every
+    // flag agrees on. First frontier one-off: reachable the way the frontier is — a real
+    // anchor inside its own sector's radius.
+    id: 'oneoff_held_dock_pinnace',
+    name: 'The Held Dock — a customs pinnace that died holding it',
+    placeId: 'place_aftermath_aft_cockpit_section',
+    sectorId: 'sector_io_reach',
+    anchor: { type: 'station', id: 'station_reach' },
+    offsetLocal: Object.freeze({ x: -620, z: -560 }),
+    rot: 2.6,
+    spin: 0.18,
+    radius: 20,
+    cluster: Object.freeze({
+      props: Object.freeze([
+        Object.freeze({ placeId: 'place_customs_pylon', dx: 34, dz: -18, rot: 0.4, radius: 8 }),
+        Object.freeze({ placeId: 'place_memorial_array', dx: -26, dz: 30, rot: 1.1, radius: 10 }),
+      ]),
+    }),
+    why: 'She held the dock for the last flag that owned it. Every flag since keeps her lamps burning — the pylon is the only marker both sides obey.',
+  }),
 ]);
 
 // One ropeable cache beside a named Helios landmark. Not one of the six texture props:

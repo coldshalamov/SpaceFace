@@ -169,6 +169,7 @@ import {
   promoteAsteroidFieldRock,
   queryAsteroidField,
   shouldKeepLiveAsteroid,
+  tickOpticFieldRocks,
 } from '../world/asteroidField.js';
 import { asteroidMass } from '../data/sectorPhysical.js';
 import {
@@ -433,6 +434,28 @@ function poiMustStayLiveActor(poi, activityObjectSlotId) {
   return false;
 }
 
+/** Bench A/B: production default ON. Still-player latch skips asteroid-field ram query. */
+let ASTEROID_FIELD_INTERACT_STILL_QUIET = true;
+export function setAsteroidFieldInteractStillQuietForBench(enabled) {
+  ASTEROID_FIELD_INTERACT_STILL_QUIET = enabled !== false;
+}
+export function getAsteroidFieldInteractStillQuietForBench() {
+  return ASTEROID_FIELD_INTERACT_STILL_QUIET !== false;
+}
+
+/** Field-version / parked-pose rescan while latched (0.5 s @ 60 Hz). */
+const ASTEROID_FIELD_INTERACT_STILL_RESCAN_TICKS = 30;
+/** Player speed² below this is "parked" for the still-player latch. */
+const ASTEROID_FIELD_INTERACT_STILL_SPEED2 = 0.25;
+
+function publishAsteroidFieldInteractQuiet(state, latched) {
+  const worldState = state && state.world;
+  if (!worldState) return;
+  const rt = worldState.asteroidFieldInteractRuntime
+    || (worldState.asteroidFieldInteractRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
 export const world = {
   name: 'world',
   // records/embodiment serializers already return owned trees; the remaining live overlays are
@@ -485,6 +508,7 @@ export const world = {
     this._pallasDecisionNeedsRebind = false;
     this._hazardSet = new Set();      // hazard zone indices the player is currently inside
     this._hazardNextSet = new Set();  // scratch set reused while computing the next frame
+    this._fieldInteractQuiet = null;  // still-player asteroid-field ram latch
     this._burnVentToastAtS = -Infinity; // scanBlocked vent-toast throttle (one per surge beat)
     this._wireReportAt = new Map();     // sectorId → simTime; bounds offscreen wire reports
     // Floating-origin scratch (allocation-free no-shift path).
@@ -1257,8 +1281,10 @@ export const world = {
     }
   },
 
-  // Optic lattices are live colliders, spawned once per sector bag. They do not draw the
-  // field RNG and they are not ore. REDUCED neighbors stay empty until the sector is FULL.
+  // Optic lattices are field-resident colliders, stamped once per FULL sector bag.
+  // They promote into entityList only inside the authored decode disc (tickOpticFieldRocks)
+  // so a quiet Ceres pocket does not keep ~40 combat asteroids warm for a distant gallery.
+  // They do not draw the field RNG and they are not ore. REDUCED neighbors stay empty until FULL.
   _ensureOpticStructures(sector, active) {
     if (!sector || !active) return;
     // Array (even empty) means this bag already ran the stamp — do not double-spawn on promote.
@@ -1286,18 +1312,16 @@ export const world = {
           x: spec.origin.x + body.x,
           z: spec.origin.z + body.z,
         }, sector.id);
-        // Lattice spacing is authored against entity.radius (projectile sweep uses that). Keep the
-        // physics ball on the same radius so scaled rock colliders cannot seal the mouth shut.
-        const ent = this.helpers.spawnEntity({
-          type: 'asteroid',
+        // Lattice spacing is authored against entity.radius; promote keeps physicsBody on that
+        // radius so scaled rock colliders cannot seal the mouth shut.
+        const rec = insertAsteroidFieldRock(this.state, {
           pos,
           radius: body.radius,
           mass: 200 + body.radius * 40,
           angVel: 0,
           hull: 1e6,
           hullMax: 1e6,
-          collides: true,
-          physicsBody: { radius: body.radius },
+          homeSectorId: sector.id,
           data: {
             typeId: body.typeId,
             tint: body.tint,
@@ -1308,10 +1332,11 @@ export const world = {
             size: body.radius,
             // Not ore: skip massline latch so the mining beam cannot acquire via tether.
             masslineTetherable: false,
+            homeSectorId: sector.id,
+            sectorId: sector.id,
           },
         });
-        if (!ent) continue;
-        this._stampHomeSector(ent, sector.id);
+        if (!rec) continue;
         // A cell the player burned is durable state: restore it dark mid-quiet, or let a
         // lattice that healed while shelved come back live and forget the stale entry.
         const spentCells = this.state.world.opticSpent && this.state.world.opticSpent[spec.id];
@@ -1322,10 +1347,10 @@ export const world = {
             delete spentCells[`${body.ix},${body.iz}`];
             if (!Object.keys(spentCells).length) delete this.state.world.opticSpent[spec.id];
           } else {
-            recordOpticSpend(ent, spentAt); // entity side only — the ledger already holds it
+            recordOpticSpend(rec, spentAt); // record side only — the ledger already holds it
           }
         }
-        ids.push(ent.id);
+        ids.push(rec.id);
       }
     }
     active.opticStructureIds = ids;
@@ -3679,6 +3704,8 @@ export const world = {
       gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
     }
     tickFarActors(state, this.helpers, this.bus);
+    // Optic lattices: field-resident until decode-disc approach, then shelve past exit.
+    tickOpticFieldRocks(state, this.helpers);
     // Lane C: ask Lane A helpers to rematerialize anything already inside the authored
     // decode disc (TABLE_AUTHORED_DECODE_SECONDS × top speed). tickFarActors covers the
     // same disc for restore; this call also stamps renderRunwayIds so a just-promoted
@@ -3688,7 +3715,43 @@ export const world = {
 
   _tickAsteroidFieldInteractions(state) {
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
-    if (!player || !player.pos) return;
+    if (!player || !player.pos) {
+      this._fieldInteractQuiet = null;
+      publishAsteroidFieldInteractQuiet(state, false);
+      return;
+    }
+    // Quiet parked flight: dormant field rocks do not translate (vel defaults 0; only angVel
+    // spins). Still-player latch skips the near queryAsteroidField grid walk while parked;
+    // wake on asteroidField.version, player move beyond ~15% of reach, player unpark
+    // (speed), or a 0.5 s rescan. First probe (and any wake) still promotes rocks inside
+    // collide radius.
+    const field = state.world && state.world.asteroidField;
+    const fieldVersion = field && Number.isFinite(field.version) ? field.version : null;
+    const px = Number.isFinite(player.pos.x) ? player.pos.x : 0;
+    const pz = Number.isFinite(player.pos.z) ? player.pos.z : 0;
+    const pvx = player.vel ? Number(player.vel.x) || 0 : 0;
+    const pvz = player.vel ? Number(player.vel.z) || 0 : 0;
+    const parked = (pvx * pvx + pvz * pvz) <= ASTEROID_FIELD_INTERACT_STILL_SPEED2;
+    const tick = state.tick | 0;
+    const latchOn = ASTEROID_FIELD_INTERACT_STILL_QUIET !== false;
+
+    if (latchOn) {
+      const quiet = this._fieldInteractQuiet;
+      if (quiet
+        && parked
+        && quiet.fieldVersion === fieldVersion
+        && ((tick - (quiet.armedTick | 0)) < ASTEROID_FIELD_INTERACT_STILL_RESCAN_TICKS)) {
+        const mdx = px - quiet.x;
+        const mdz = pz - quiet.z;
+        if (mdx * mdx + mdz * mdz <= quiet.wakeMove2) {
+          publishAsteroidFieldInteractQuiet(state, true);
+          return;
+        }
+      }
+    } else if (this._fieldInteractQuiet) {
+      this._fieldInteractQuiet = null;
+    }
+
     // Reach must cover the largest promotion distance below: a rock promotes when the
     // player touches its real collider skin, which exceeds rec.radius by the authored
     // collider factor (worst 1.55x). 36 covers every authored rock size (radius <= 30).
@@ -3707,6 +3770,21 @@ export const world = {
       if (dx * dx + dz * dz <= rad * rad) {
         promoteAsteroidFieldRock(state, rec.id, this.helpers, 'ram');
       }
+    }
+
+    if (latchOn && parked) {
+      const wakeR = Math.max(2, reach * 0.15);
+      this._fieldInteractQuiet = {
+        fieldVersion,
+        armedTick: tick,
+        x: px,
+        z: pz,
+        wakeMove2: wakeR * wakeR,
+      };
+      publishAsteroidFieldInteractQuiet(state, true);
+    } else {
+      this._fieldInteractQuiet = null;
+      publishAsteroidFieldInteractQuiet(state, false);
     }
   },
 

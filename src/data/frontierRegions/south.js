@@ -283,6 +283,21 @@ export const SOUTH_SECTORS = Object.freeze([
         type: 'beacon',
         name: 'Lane Relay',
       }),
+      Object.freeze({
+        // 2026-09-28 INFERENCE — the southern front's dead drop. The pack that watches the
+        // cleared run keeps a bolt-hole under the customs scan line, off the relay, inside
+        // the field's shadow; the Concord sweep has never matched its bearing.
+        id: 'poi_dione_deaddrop',
+        type: 'cache',
+        name: 'Toll-Lane Dead Drop',
+        hidden: true,
+        factionId: 'faction_vael',
+        requiresActiveScan: true,
+        discoveryPlate: Object.freeze({
+          title: 'Toll-Lane Dead Drop',
+          body: 'A sealed case rides the field\'s shadow off the relay — pack marks on the clasp, Meridian rate cards inside. The toll lane quotes two prices, and the lawful one is the discount.',
+        }),
+      }),
     ]),
   }),
 ]);
@@ -426,6 +441,13 @@ export const SOUTH_ANCHORS = Object.freeze({
         pos: Object.freeze({ x: 320, z: -420 }),
         landmarkGlb: 'place_lane_beacon',
         landmark: true,
+      }),
+      Object.freeze({
+        // 2026-09-28 INFERENCE — the southern front's dead drop (identity lives on the card;
+        // this row is its placed body: a debris chunk off the relay, in the field's shadow).
+        id: 'poi_dione_deaddrop',
+        pos: Object.freeze({ x: -140, z: 860 }),
+        landmarkGlb: 'place_debris_chunk',
       }),
     ]),
   }),

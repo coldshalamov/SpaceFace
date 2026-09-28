@@ -379,14 +379,11 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 3 | ADOPT-CAMPAIGN10 | Land or close `devin-campaign-10` residue — re-check tree for leftover hunks after rows 1–2. | ADOPT | CLAIMED devin-wave1 |
 
 ### B. Defect ledger — open rows (ledger: `DEMO_READINESS_2026-09-20.md` §6)
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 6 | D46 | `check:all` foreign-red triage from 2026-09-25 — re-run sweep, re-row what is still red, delete the stale snapshot | FIX | CLAIMED devin-wave1 |
-| 10 | D80 | Hauler income band vs honest arbitrage — model fixed; structural balance adjudication owed | FIX | CLAIMED devin-wave1 |
 | 14 | D83 | pq020 Ceres structural-cost digest drift — adjudicate semantically, then re-derive the pin | FIX | CLAIMED devin-graphics |
 | 15 | D67 | Market-tab dispatch hang — not reproduced; one quiet-host sweep owed before delete | FIX | PARKED needs quiet host |
 | 16 | D24 | Renderer resource residency — fix landed `4365769c6`; 40-cycle uncontended soak owed | FIX | PARKED needs quiet host |
@@ -402,15 +399,9 @@ ship stills (all REVISE — awaiting new remote candidates).
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 19 | VM-HEAD | Digest head-of-queue: #166 render-package-digest-zero-copy → #167 embedded-ktx2 → #168 glb-body-in-place (+patches-after-167) → #169 shader-readiness → #170 retail-gltfloader alias; then #161–#165 quiet-latch ships | IMPORT | CLAIMED devin-wave2 |
-| 22 | VM-LATCH-A | Quiet-latch render/HUD wave A (~10 of ~50: hud-* series, bark-director, optic-lattice…) | IMPORT | CLAIMED devin-wave2 |
-| 23 | VM-LATCH-B | Quiet-latch render/HUD wave B | IMPORT | CLAIMED devin-wave2 |
-| 24 | VM-LATCH-C | Quiet-latch render/HUD wave C | IMPORT | CLAIMED devin-wave2 |
-| 25 | VM-LATCH-D | Quiet-latch render/HUD wave D | IMPORT | CLAIMED devin-wave2 |
-| 26 | VM-LATCH-E | Quiet-latch render/HUD wave E | IMPORT | OPEN |
-| 27 | VM-SKIPS | Quiet live/empty-skip batch (~15: distortion, hull-scorch, camera-clearance series…) | IMPORT | OPEN |
-| 28 | VM-HITCH | Hitch/admission batch (~8: hitch-asteroid-cell-key, opening-admission, drain-gate, dynres-target-pool, integrated-quality-preset…) | IMPORT | OPEN |
-| 29 | VM-WEAPONS-D62 | `weapons-npc-quiet-latch` + apply the D62 carry note (pre-INFERENCE-23 `_tickLock` 2-arg call needs updating on import) | IMPORT+FIX | OPEN |
+| 26 | VM-LATCH-E | Quiet-latch render/HUD wave E | IMPORT | CLAIMED devin-w3-vm-latche |
+| 27 | VM-SKIPS | Quiet live/empty-skip batch (~15: distortion, hull-scorch, camera-clearance series…) | IMPORT | CLAIMED devin-w3-vm-skips |
+| 28 | VM-HITCH | Hitch/admission batch (~8: hitch-asteroid-cell-key, opening-admission, drain-gate, dynres-target-pool, integrated-quality-preset…) | IMPORT | CLAIMED devin-w3-vm-hitch |
 | 30 | VM-REPORTS | Reports/stills/doc packages (~20: quiet-witness-baseline, cpu/alloc profiles, boot-times, contact sheets — docs-only imports, lowest production value; do after code batches) | IMPORT | OPEN |
 
 ### D. Build — measured-gap rows (§22 wave D), campaign remainders (§23/§24), seams
@@ -423,18 +414,17 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 34 | D8 | Crucible fight budget on quiet probe — recorded 12 fps mean / 100 % frames >33 ms on the soft-GPU VM; reproduce on real hardware or prove the VM number is host noise | BUILD | OPEN |
 | 35 | D3 | Same-material hull batching — gated: only if the draw census still names draw count as the pole after VM batches land | BUILD | PARKED gated on import results |
 | 36 | C7 | Per-hull chase-pass imports — all 9 `*-chase` drops are REVISE vs Hitch; needs new remote candidates | BUILD | PARKED needs new vm drops |
-| 37 | HAND-CUTDENIED | `tether:cutDenied` is emitted with zero subscribers — wire one visible/audio response | BUILD | OPEN |
-| 38 | HAND-FIELDS-GUARD | Fields runtime-profile guard | BUILD | OPEN |
+| 38 | HAND-FIELDS-GUARD | Fields runtime-profile guard | BUILD | DONE 2026-09-28 — `test/fields-runtime-profile.test.mjs` pins production ON / legacy47a OFF through the real manifest+registry apply path (7/7) |
 | 39 | CV-GLASS-1 | Belt-tail throughput: serial GLB admission is still seconds per body on a busy host — parallelize/budget the lane (ZERO_TO_HERO §7.3) | BUILD | OPEN |
 | 40 | CV-GLASS-2 | AQ-HIT — three-mesh-bvh hit path, the last unlanded tool in §23.4's order | BUILD | OPEN |
 | 41 | CV-EAR-1 | AQ-VOICE — Elementary continuous voices: rope pitch follows load, engine follows throttle, silence at 0 (the CV-EAR signature) | BUILD | OPEN |
-| 42 | CV-THROW-1 | Cut-grade learnability: nothing teaches why one cut was a razor and the next a tow — build the teaching slice on the default route | BUILD | OPEN |
+| 42 | CV-THROW-1 | Cut-grade learnability: nothing teaches why one cut was a razor and the next a tow — build the teaching slice on the default route | BUILD | DONE 2026-09-28 — deliberate cuts land a world-anchored verdict pill on the released body naming grade + measured cause (`receipts/CV-THROW-1-REPORT.md`, `test/cv-throw-1-release-verdict.test.mjs` 4/4) |
 | 43 | CV-AMMO-1 | Fields are on the keyboard and untaught — teaching moment + verify the opening no longer spreads bodies to gun range | BUILD | OPEN |
-| 44 | CV-DAY-1 | `sectorActivityPockets.js` is Ceres-only — Helios does not yet feel like a job in progress; extend pockets to named sectors | BUILD | OPEN |
+| 44 | CV-DAY-1 | `sectorActivityPockets.js` is Ceres-only — Helios does not yet feel like a job in progress; extend pockets to named sectors | BUILD | CLAIMED devin-boards-3x3 |
 | 45 | CV-MOTION-1 | The campaign's core invention was never built: one living-machine **score** deciding what stays in motion on the glass vs sleeps | BUILD | OPEN |
-| 46 | CV-QUIET-1 | The three minutes between jobs should be a place — detour texture density on the default route | BUILD | OPEN |
+| 46 | CV-QUIET-1 | The three minutes between jobs should be a place — detour texture density on the default route | BUILD | CLAIMED devin-boards-3x3 |
 | 47 | CR-CHAIN-1 | Named rumor-braids not yet built: volatile pod as moving mine, hitch on a working miner, wreck towed through a search, clothesline on existing rocks, planet-well + field-well as one curve — one braid per unit, update count in row | BUILD | OPEN |
-| 48 | CR-FEED-1 | Non-copy kill machines for the remaining named sectors (Vesta, Tethys-adjacent, Veil) | BUILD | OPEN |
+| 48 | CR-FEED-1 | Non-copy kill machines for the remaining named sectors (Vesta, Tethys-adjacent, Veil) | BUILD | CLAIMED devin-boards-3x3 |
 | 49 | CR-CHOIR-1 | Congregation-as-activity: the Choir tend the hurt and remember what you did with their dead — beyond one bar memory | BUILD | OPEN |
 | 50 | CR-ANVIL-1 | Sling variants for Vesta belt / Veil lanes; teach with waiting bodies beyond the Tethys witness | BUILD | OPEN |
 | 51 | CR-HOLLOW-1 | The illegal-pairing payoff: ships that should not be together, docked anyway, with something to steal or join | BUILD | OPEN |
@@ -2064,9 +2054,7 @@ here and there in the fixing commit.
 
 | Row | Outcome |
 |---|---|
-| **GFX-1** | Forge trade hub published; the three faction overlays verified sitting on it. |
 | **GFX-3** | Remaining pre-Forge places rebuilt, in order: opening route → claim outposts / conveyor / industry props → law & travel → the rest. |
-| **GFX-4** | Quiessence dark freighters as a Forge family (replaces the dead-hulk stand-ins). |
 | **GFX-7** | Wrecks derived from the Forge ships replace the pre-Forge aftermath pack. |
 | **GFX-8** | Rocks: procedural geology + authored rock places reviewed and rebuilt to the Forge material language. |
 | **GFX-9** | Bolt-on parts audit: no pre-Forge weapon, pod or engine draws on the default route. |

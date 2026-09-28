@@ -475,6 +475,11 @@ export class EnergyBoltPool {
     this.entityIds.fill(-1);
     this.byEntity = new Map();
     this.writeCount = 0;
+    // Quiet settled flight: beginFrame Map.clear + uniform writes + commit attr
+    // republish ran every tick after the last bolt died. Trust empty mesh after the
+    // first empty publish; defer begin until writeBolt (or drop on quiet commit).
+    this._quietEmpty = false;
+    this._deferredBegin = null;
     this._color = new THREE.Color();
     this._camera = null;
     this._time = 0;
@@ -524,6 +529,17 @@ export class EnergyBoltPool {
   }
 
   beginFrame(dt = 0, accessibilityProfile = null) {
+    // Already empty/invisible: defer Map.clear + uniform writes until a bolt is written.
+    // commit() drops the deferred begin when writeCount stays 0 — picture unchanged.
+    if (this._quietEmpty) {
+      this._deferredBegin = { dt, accessibilityProfile };
+      this.writeCount = 0;
+      return;
+    }
+    this._beginFrameNow(dt, accessibilityProfile);
+  }
+
+  _beginFrameNow(dt = 0, accessibilityProfile = null) {
     const profileId = accessibilityProfile && accessibilityProfile.id;
     const reducedMotion = profileId === 'reduced-motion' || profileId === 'reduced-motion-and-flash';
     const reducedFlash = profileId === 'reduced-flash' || profileId === 'reduced-motion-and-flash';
@@ -532,6 +548,7 @@ export class EnergyBoltPool {
     this.material.uniforms.uBoltFlicker.value = reducedFlash ? 0 : 1;
     this.writeCount = 0;
     this.byEntity.clear();
+    this._deferredBegin = null;
   }
 
   writeBolt({
@@ -544,6 +561,15 @@ export class EnergyBoltPool {
     sheathR, sheathG, sheathB,
     minPixels,
   }) {
+    if (this._deferredBegin) {
+      const deferred = this._deferredBegin;
+      this._deferredBegin = null;
+      this._quietEmpty = false;
+      this._beginFrameNow(deferred.dt, deferred.accessibilityProfile);
+    } else if (this._quietEmpty) {
+      this._quietEmpty = false;
+      this._beginFrameNow(0, null);
+    }
     const index = this.writeCount;
     if (index >= this.capacity) return -1;
     this.writeCount = index + 1;
@@ -645,6 +671,16 @@ export class EnergyBoltPool {
   }
 
   commit() {
+    // Quiet latch: deferred begin + no writes → stay empty without republishing.
+    if (this._deferredBegin && this.writeCount === 0) {
+      this._deferredBegin = null;
+      return;
+    }
+    // Already published empty — skip sort + attr needsUpdate churn.
+    if (this.writeCount === 0 && this.mesh.count === 0 && !this.mesh.visible) {
+      this._quietEmpty = true;
+      return;
+    }
     this._sortBackToFront();
     if (this.dynamicBufferOwner) {
       commitDynamicBufferOwner(this.dynamicBufferOwner, this.writeCount);
@@ -660,6 +696,7 @@ export class EnergyBoltPool {
       this.variation.needsUpdate = true;
     }
     this.mesh.visible = this.writeCount > 0;
+    this._quietEmpty = this.writeCount === 0 && this.mesh.count === 0 && !this.mesh.visible;
   }
 
   get live() {

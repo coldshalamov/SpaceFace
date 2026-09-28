@@ -171,3 +171,8 @@ export function clearShieldContacts(entityId) {
   if (entityId == null) hits.clear();
   else hits.delete(entityId);
 }
+
+/** O(1) live bag size — weapon-presenter composite quiet-wake reads this. */
+export function shieldContactsActiveCount() {
+  return hits.size;
+}

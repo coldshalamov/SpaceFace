@@ -14,6 +14,14 @@
 export const fractureThresholdWU = 30;
 export const FRACTURE_THRESHOLD_WU = fractureThresholdWU;
 
+// THE FIGHT packet A — gun/bomb overkill fracture shares the slam seam catalog.
+// A kill fractures without a slam note when the hull is driven deep past zero
+// (hull <= -0.5 * hullMax) or the killing blow itself is massive
+// (blow >= 2 * hullMax). Slam threshold above stays 30; these live beside it.
+export const OVERKILL_HULL_FRAC = 0.5;
+export const OVERKILL_BLOW_MULT = 2;
+export const OVERKILL_ORIGIN_KINDS = Object.freeze(['weapon', 'bomb', 'mine']);
+
 /**
  * Authored fracture seams keyed by coarse class: light, medium, heavy.
  * Each class provides 3–5 seams with id, human-readable label, mass fraction,

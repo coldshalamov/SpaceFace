@@ -2483,7 +2483,11 @@ function buildAsteroid(e) {
   }
   if (opticKind) dressOpticCell(g, mesh, e, opticKind, variantIdx);
   g.userData.kind = 'asteroid';
+  // Mirror shipKit: only re-walk far-detail surfaces when the hysteresis band changes.
+  let asteroidLodLevel = null;
   g.userData.updateLod = function updateAsteroidLod(level) {
+    if (level === asteroidLodLevel) return;
+    asteroidLodLevel = level;
     applyProjectedDetailLod(g, level);
   };
   attachLodState(g);

@@ -298,7 +298,7 @@ function stepDrawFlight(body, input, profile, runtime, environment, dt) {
   const accel = add2(motion, environmental);
   const yaw = computeHeadingControl(body, motion.targetHeading, profile, dt, input);
   const demand = resourceDemand(profile, accel, input.boost, dt);
-  const nextRuntime = coolRuntime({ ...runtime, family: profile.family }, profile, demand, dt);
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt);
   return makeResult({
     body, profile, input, runtime: nextRuntime, acceleration: accel,
     angularAcceleration: yaw.angularAcceleration,
@@ -561,7 +561,7 @@ function stepGravimetric(body, input, profile, runtime, environment, dt) {
 
   const yaw = computeYawControl(body, input, profile, dt);
   const demand = resourceDemand(profile, accel, input.boost, dt, positive(profile.resources && profile.resources.idleEnergyPerS, 0));
-  const nextRuntime = coolRuntime({ ...runtime, family: profile.family }, profile, demand, dt);
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt);
 
   return makeResult({
     body,
@@ -673,13 +673,11 @@ function stepPulsePlate(body, input, profile, runtime, environment, dt) {
     heat: baseDemand.heat + chargeHeat + pulseHeat,
     fuel: baseDemand.fuel,
   };
-  const nextRuntime = coolRuntime({
-    ...runtime,
-    family: profile.family,
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt, {
     chargeS,
     pulseCooldownS: firedDv > 0 ? positive(profile.pulseCooldownS, 0.3) : cooldown,
     autoFlipBurn,
-  }, profile, demand, dt);
+  });
 
   return makeResult({
     body,
@@ -749,7 +747,7 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
   const turnBound = vectoringTurnBound(body, input, effective, limits, governor, local.forward, dt);
   const yaw = computeYawControl(body, input, profile, dt, turnBound);
   const demand = resourceDemand(profile, accel, input.boost, dt, spool > 0 ? positive(profile.resources && profile.resources.idleFuelPerS, 0) : 0);
-  const nextRuntime = coolRuntime({ ...runtime, family: profile.family, spool }, profile, demand, dt);
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt, { spool });
   // Same opt-in vectoring as the reaction drive; `limits.forward` carries the spool, so a cold
   // torch vectors as little as it pushes.
   const vectoring = velocityVectoringAcceleration(body, input, effective, limits, governor, dt);
@@ -811,7 +809,7 @@ function stepFieldSail(body, input, profile, runtime, environment, dt) {
 
   const yaw = computeYawControl(body, input, profile, dt);
   const demand = resourceDemand(profile, accel, false, dt, deployed > 0 ? positive(profile.resources && profile.resources.idleEnergyPerS, 0) : 0);
-  const nextRuntime = coolRuntime({ ...runtime, family: profile.family, deployed }, profile, demand, dt);
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt, { deployed });
 
   return makeResult({
     body,
@@ -1188,16 +1186,44 @@ function resourceDemand(profile, acceleration, boosting, dt, idle = 0) {
   };
 }
 
-function coolRuntime(runtime, profile, demand, dt) {
+// Retained next-runtime shell. Callers used to allocate twice per step
+// (`coolRuntime({ ...runtime, spool })` then another `{ ...runtime }` inside). assignPropulsionRuntime
+// Object.assigns immediately, so one module scratch is safe across craft in the same tick.
+const COOL_RUNTIME_SCRATCH = {
+  schemaVersion: PROPULSION_RUNTIME_SCHEMA_VERSION,
+  family: null,
+  heat: 0,
+  energySpent: 0,
+  fuelSpent: 0,
+  boosting: false,
+  chargeS: 0,
+  pulseCooldownS: 0,
+  autoFlipBurn: false,
+  spool: 0,
+  deployed: 0,
+};
+
+function coolRuntime(runtime, profile, demand, dt, patch = null) {
   const cooling = positive(profile.resources && profile.resources.coolingPerS, 0);
-  return {
-    ...runtime,
-    schemaVersion: PROPULSION_RUNTIME_SCHEMA_VERSION,
-    family: profile.family,
-    heat: Math.max(0, finite(runtime.heat, 0) + demand.heat - cooling * dt),
-    energySpent: Math.max(0, finite(runtime.energySpent, 0) + demand.energy),
-    fuelSpent: Math.max(0, finite(runtime.fuelSpent, 0) + demand.fuel),
-  };
+  const out = COOL_RUNTIME_SCRATCH;
+  out.schemaVersion = PROPULSION_RUNTIME_SCHEMA_VERSION;
+  out.family = profile.family;
+  out.heat = Math.max(0, finite(runtime.heat, 0) + demand.heat - cooling * dt);
+  out.energySpent = Math.max(0, finite(runtime.energySpent, 0) + demand.energy);
+  out.fuelSpent = Math.max(0, finite(runtime.fuelSpent, 0) + demand.fuel);
+  out.boosting = !!runtime.boosting;
+  out.chargeS = patch && patch.chargeS != null
+    ? Math.max(0, finite(patch.chargeS, 0))
+    : Math.max(0, finite(runtime.chargeS, 0));
+  out.pulseCooldownS = patch && patch.pulseCooldownS != null
+    ? Math.max(0, finite(patch.pulseCooldownS, 0))
+    : Math.max(0, finite(runtime.pulseCooldownS, 0));
+  out.autoFlipBurn = patch && patch.autoFlipBurn != null
+    ? !!patch.autoFlipBurn
+    : !!runtime.autoFlipBurn;
+  out.spool = patch && patch.spool != null ? clamp(finite(patch.spool, 0), 0, 1) : clamp(finite(runtime.spool, 0), 0, 1);
+  out.deployed = patch && patch.deployed != null ? clamp(finite(patch.deployed, 0), 0, 1) : clamp(finite(runtime.deployed, 0), 0, 1);
+  return out;
 }
 
 function transitionEvents(previous, next, input, profile) {

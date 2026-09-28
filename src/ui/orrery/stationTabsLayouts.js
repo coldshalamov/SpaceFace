@@ -296,7 +296,7 @@ ${T} .sx-fac-network__empty { font-size:12.5px !important; color:rgb(${BONE} / .
 
 /* ================================ INDUSTRY ================================================== */
 ${T} .sx-ind__list { position:relative; }
-${T} .sx-ind-process__head { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; padding-left:26px !important; margin:0 0 6px !important; }
+${T} .sx-ind-process__head { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; padding-left:26px !important; margin:0 0 6px !important; white-space:normal !important; }
 ${T} .sx-ind-process + .sx-ind-process { margin-top:18px !important; }
 ${rail('.sx-ind-process__items', '.sx-ind-process__items .sx-ind-row', '.is-active, [aria-selected="true"]')}
 ${T} .sx-ind-process__items > li { display:block !important; }
@@ -1488,7 +1488,7 @@ ${T} .sx-ind__list { position:relative !important; }
 /* (the spine is the scroller's own background since round 12: it cannot scroll away and shares the cursor's box) */
 ${T} .sx-ind-process__items { background:repeating-linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat !important; }
 /* (the ladder's light cursor rides the one spine again: see ROUND 11) */
-@media (max-width:1280px) { ${T} .sx-ind-process__head { white-space:nowrap !important; } ${T} .sx-ind-process__head .sx-ind-process__count, ${T} .sx-ind-process__head .sx-ind-process__block { margin-left:8px; } }
+@media (max-width:1280px) { ${T} .sx-ind-process__head { white-space:normal !important; } ${T} .sx-ind-process__head .sx-ind-process__count, ${T} .sx-ind-process__head .sx-ind-process__block { margin-left:8px; } }
 
 /* ================================ ROUND 10: BAR ============================================= */
 /* every chosen-row arm on every rail: the kit's individual translate/scale never apply */
@@ -1597,7 +1597,7 @@ ${T} .sx-ct__jobs .sx-job::before { top:var(--ct-row-y, .75em) !important; margi
 
 /* ================================ ROUND 12: INDUSTRY ======================================== */
 /* the spine belongs to the scroller's own box: the cursor maps to the same box, so they share a top and an end */
-${T} .sx-ind__list { background:${SPINE(7, .55)}, ${BAND(7)} !important; }
+${T} .sx-ind__list { background:${SPINE(7, .55)}, ${BAND(7, '0 0 / 100% 100%', .31)} !important; }
 /* the group's shared tier on its header, after the process word */
 ${T} .sx-ind-process__head .sx-ind-process__tier { margin-left:10px; color:rgb(${BONE} / .62) !important; letter-spacing:.12em; }
 ${T} .sx-ind-process__head .sx-ind-process__tier::before { content:"·  "; color:rgb(${BONE} / .4); }
@@ -1650,7 +1650,16 @@ ${T} .sx-ct__hang:is(:hover, :focus-within) > * { background:${SPINE(7, .62)}, $
     linear-gradient(180deg, rgb(${BONE} / .44) 0 1.5px, transparent 1.5px) 4px var(--ct-tick-y, 0px) / 6px 8px repeat-y !important; }
 ${T} .sx-ct__hang:is(:hover, :focus-within) > .sx-ct__yours::before { background:${SPINE(4, .62)}, ${BAND(4, '0 0 / 100% 100%', .38)},
     linear-gradient(180deg, rgb(${BONE} / .44) 0 1.5px, transparent 1.5px) 1px var(--ct-seam-phase, 0px) / 6px 8px repeat-y !important; }
-${T} .sx-ind__list:is(:hover, :focus-within) { background:${SPINE(7, .62)}, ${BAND(7, '0 0 / 100% 100%', .38)} !important; }
+/* Industry: the hovered rung says where the hand is: its name lifts and a light segment stands on the spine beside it */
+${T} .sx-ind-process__items .sx-ind-row:is(:hover, :focus-visible):not(.is-active, [aria-selected="true"]) .sx-ind-row__name { color:rgb(248 244 234 / .9) !important; }
+${T} .sx-ind-process__items .sx-ind-row:is(:hover, :focus-visible):not(.is-active, [aria-selected="true"]) .sx-ind-row__tier { color:rgb(${BONE} / .72) !important; }
+${T} .sx-ind-process__items .sx-ind-row:is(:hover, :focus-visible):not(.is-active, [aria-selected="true"])::before { left:6.5px !important; width:3px !important; top:4px !important; height:calc(100% - 8px) !important; margin:0 !important;
+  background:rgb(${BONE} / .7) !important; box-shadow:0 0 6px rgb(${BONE} / .35) !important; }
+/* a disabled FABRICATE is an unlit lamp: the key's field in bone near a third, the verb in bone on it (lampKey.js;
+   other tabs read the same library rule directly, so no cross-tab selectors here) */
+${T} .sx-fab-foot .orr-lampkey:disabled { color:rgb(${BONE} / .9) !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::before { background:rgb(${BONE} / .3) !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::after { display:none !important; }
 ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)}, ${BAND(3, '0 0 / 100% 100%', .38)} !important; }
 
 `;

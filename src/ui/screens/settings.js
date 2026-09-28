@@ -641,6 +641,11 @@ export const settingsScreen = {
     build.toggle('Gamepad enabled', () => !!gp().enabled, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), enabled: v }));
     build.slider('Stick deadzone', () => gp().deadzone, 0, 0.5, 0.01, (x) => Math.round(x * 100) + '%', (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), deadzone: v }, persist));
     build.toggle('Invert right-stick Y', () => !!gp().invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), invertY: v }));
+    // PQ-164.04: the twin-stick scheme — left stick drives in screen space, right stick aims
+    // and steers the nose. 'Drive' keeps the wheel map (left stick yaw + throttle).
+    build.select('Flight scheme', () => gp().scheme === 'twinstick' ? 'twinstick' : 'drive',
+      [['drive', 'Drive — left stick steers and throttles'], ['twinstick', 'Twin-stick — left stick drives, right stick aims']],
+      (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), scheme: v }));
     // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
     build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, D-pad right bomb, D-pad left cycle bombs, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Guide or Pause for the codex, Start → Pause → Mission Log.');

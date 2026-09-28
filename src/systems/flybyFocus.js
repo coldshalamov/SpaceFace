@@ -13,7 +13,7 @@
 // The chase camera's own damped composition already frames player + attacker continuously.
 import { createTimeEffects } from '../core/timeEffects.js';
 import { isHostileToPlayer } from './scanner.js';
-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const FOCUS_DURATION_S = 3.0;
 const FOCUS_SCALE = 0.5;
@@ -40,6 +40,37 @@ const MAX_SURFACE_MISS = 96;
 const LATCH_SCALE = 2.6;
 const TIME_EFFECT_SOURCE = 'flyby-focus';
 const FOCUS_REQUEST = Object.freeze({ scale: FOCUS_SCALE });
+
+/** Bench A/B: production default ON. Quiet latch skips flybyFocus shipLike
+ * census (pickFlybyTarget) when no closing hostile/training pass remains.
+ * Soft-GPU fps not claimed. Prior pick-only probe looked thin (~0.55 µs); full
+ * update abs is ~7+ µs/call — clears thin-abs band. Fresh near-clock residual
+ * outside pirate-star / bounty / salvage / sanctuary / cones / catch-nets clusters. */
+let FLYBY_FOCUS_EMPTY_QUIET_LATCH = true;
+export function setFlybyFocusEmptyQuietLatchForBench(enabled) {
+  FLYBY_FOCUS_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getFlybyFocusEmptyQuietLatchForBench() {
+  return FLYBY_FOCUS_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const FLYBY_FOCUS_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function publishFlybyFocusQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.flybyFocusRuntime || (state.flybyFocusRuntime = {});
+  rt.emptyQuietLatched = !!latched;
+}
+
+function isQuietWakeCandidate(entity) {
+  if (!entity || entity.alive === false) return false;
+  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+  if (entity.data?.onboardingTraining === true && entity.data?.trainingFocusEligible === true) return true;
+  // Hostile team relative to player team 0 (quiet Ceres / open flight default).
+  return entity.team != null && entity.team !== 0;
+}
+
 
 function finite(v, fb = 0) {
   return Number.isFinite(v) ? v : fb;
@@ -265,7 +296,12 @@ export const flybyFocus = {
     this._targetCooldowns = new Map();
     this._cooldownNow = 0;
     this._isTargetCoolingDown = (id) => this._cooldownNow < (this._targetCooldowns.get(id) || 0);
+    this._pickQuiet = null;
+    this._pickWakeSeq = 0;
     ensureFocus(this.state);
+    if (this.bus && typeof this.bus.on === 'function') {
+      this._unsubs.push(this.bus.on('entity:spawned', (p) => this._onEntitySpawned(p)));
+    }
     const resetOn = (event, reason) => {
       if (!this.bus || typeof this.bus.on !== 'function') return;
       this._unsubs.push(this.bus.on(event, () => this._finish(reason, true, true)));
@@ -283,6 +319,18 @@ export const flybyFocus = {
         this._finish(reason, false, true);
       }));
     }
+  },
+
+  /** External wake when a closing hostile is stamped without a fresh spawn index bump. */
+  noteFlybyWake() {
+    this._pickWakeSeq = (this._pickWakeSeq | 0) + 1;
+    this._pickQuiet = null;
+  },
+
+  _onEntitySpawned(payload) {
+    const entity = payload && payload.entity;
+    if (!isQuietWakeCandidate(entity)) return;
+    this.noteFlybyWake();
   },
 
   destroy() {
@@ -393,11 +441,47 @@ export const flybyFocus = {
     // the acquisition juice for a one-frame lease the cancel path would kill on the next tick.
     if (st.input && (st.input.boost || st.input.fire)) return;
 
+    // Quiet open flight: no closing hostile/training pass still paid a full
+    // shipLike census (pickFlybyTarget kinematics) every tick past cooldown.
+    // Latch when pick stays empty; wake on membership, hostile spawn/tag, or
+    // 0.5 s rescan. Soft-GPU fps not claimed.
+    if (FLYBY_FOCUS_EMPTY_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(st);
+      const tick = st.tick | 0;
+      const wakeSeq = this._pickWakeSeq | 0;
+      const quiet = this._pickQuiet;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && quiet.wakeSeq === wakeSeq
+        && ((tick - (quiet.armedTick | 0)) < FLYBY_FOCUS_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishFlybyFocusQuiet(st, true);
+        return;
+      }
+    } else if (this._pickQuiet) {
+      this._pickQuiet = null;
+    }
+
     const list = indexedShipLikeScan(st);
     this._expireTargetCooldowns(now);
     this._cooldownNow = now;
     const pick = pickFlybyTarget(st, player, list, this._isTargetCoolingDown);
-    if (!pick) return;
+    if (!pick) {
+      if (FLYBY_FOCUS_EMPTY_QUIET_LATCH !== false) {
+        const membership = entityIndexVersion(st);
+        if (membership != null) {
+          this._pickQuiet = {
+            membership,
+            wakeSeq: this._pickWakeSeq | 0,
+            armedTick: st.tick | 0,
+          };
+          publishFlybyFocusQuiet(st, true);
+        }
+      }
+      return;
+    }
+    this._pickQuiet = null;
+    publishFlybyFocusQuiet(st, false);
 
     focus.active = true;
     focus.latchScale = LATCH_SCALE;

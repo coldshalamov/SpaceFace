@@ -452,6 +452,20 @@ export function createGamepad(ctx) {
         }
         this.lastActiveMs = nowMs(); // diagnostic only
         if (bus && bus.emit) bus.emit('gamepad:connected', { id: this.id });
+        // PQ-164.04: offer the twin-stick scheme once per profile on pad connect — a toast,
+        // never a silent default change; 'drive' stays the shipping pad feel until picked.
+        const gpSettings = live && live.settings && live.settings.controls
+          && live.settings.controls.gamepad;
+        if (gpSettings && gpSettings.scheme !== 'twinstick' && gpSettings.schemeSuggested !== true) {
+          gpSettings.schemeSuggested = true;
+          if (bus && bus.emit) {
+            bus.emit('toast', {
+              text: 'Controller connected — twin-stick flight (left stick drives, right stick aims) is available in Settings › Controls › Gamepad.',
+              kind: 'info',
+              ttl: 6,
+            });
+          }
+        }
       }
       if (!pad) {
         // Already zeroed and published — do not reallocate the action map every poll.

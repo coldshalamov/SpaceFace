@@ -332,7 +332,7 @@ test('the three stamps are three structurally different arrangements', () => {
   assert.notDeepEqual(vesta, sker);
 });
 
-test('world.js stamps both new lattices as live colliders in their own sectors', () => {
+test('world.js stamps both new lattices as field-resident bodies in their own sectors', () => {
   const { state, world } = bootWorld(4242);
 
   for (const id of [SKER_GATEMOUTH_WICK_ID, VESTA_FREIGHTER_POCKET_ID]) {
@@ -343,8 +343,11 @@ test('world.js stamps both new lattices as live colliders in their own sectors',
 
     world.enterSector(spec.sectorId);
     const expected = compileOpticStructure(spec);
-    const live = state.entityList.filter((e) => e.alive && e.data && e.data.opticStructureId === id);
-    assert.equal(live.length, expected.length, `${id} live body count`);
+    // Field-resident stamps sit in the compact asteroid field until the decode disc
+    // promotes them; records carry the same pos/radius/data the live body would.
+    const opticRocks = ((state.world.asteroidField && state.world.asteroidField.rocks) || []);
+    const live = opticRocks.filter((e) => e.alive !== false && e.data && e.data.opticStructureId === id);
+    assert.equal(live.length, expected.length, `${id} field-resident body count`);
 
     const origin = sectorGlobalOrigin(spec.sectorId);
     const counts = { stone: 0, metal: 0, diamond: 0 };
@@ -366,8 +369,9 @@ test('world.js stamps both new lattices as live colliders in their own sectors',
   }
 
   // Neither new sector sprouts the Ceres reference layout.
+  const allOpticRocks = (state.world.asteroidField && state.world.asteroidField.rocks) || [];
   assert.equal(
-    state.entityList.filter((e) => e.data && e.data.opticStructureId === CERES_PRISM_GALLERY_ID).length,
+    allOpticRocks.filter((e) => e.data && e.data.opticStructureId === CERES_PRISM_GALLERY_ID).length,
     0,
   );
 });

@@ -1142,6 +1142,35 @@ test('the presentation loop samples the heap once per frame when performance.mem
   }
 });
 
+test('with Tier-1 counters off the presentation loop never reads performance.memory', () => {
+  // Production default: counters off. sampleHeap would discard the value, and the Chromium getter
+  // costs tens of microseconds per frame, so the loop must not touch it at all.
+  const loop = startHeapTestLoop();
+  const tier1 = ensurePerfRuntime(loop.state).tier1;
+  assert.equal(tier1.isEnabled(), false, 'counters are off by default');
+  const originalMemory = Object.getOwnPropertyDescriptor(globalThis.performance, 'memory');
+  let reads = 0;
+  Object.defineProperty(globalThis.performance, 'memory', {
+    configurable: true,
+    get() { reads++; return { usedJSHeapSize: 1_000_000 }; },
+  });
+  try {
+    loop.raf.flushOne(1020);
+    loop.raf.flushOne(1040);
+    loop.raf.flushOne(1060);
+    assert.equal(reads, 0, 'performance.memory must not be read while counters are off');
+    assert.equal(tier1.snapshot().nondeterministic.allocation.samples, 0);
+    tier1.setEnabled(true);
+    loop.raf.flushOne(1080);
+    assert.equal(reads, 1, 'a live capture samples once per frame again');
+    assert.equal(tier1.snapshot().nondeterministic.allocation.samples, 1);
+  } finally {
+    if (originalMemory) Object.defineProperty(globalThis.performance, 'memory', originalMemory);
+    else delete globalThis.performance.memory;
+    loop.controller.destroy();
+  }
+});
+
 test('heap samples stay out of the deterministic counter fields', () => {
   // GC scheduling is at the VM's discretion; a heap figure must never become a bisectable signal.
   for (const field of COUNTER_FIELDS) assert.ok(!/heap/i.test(field), field);

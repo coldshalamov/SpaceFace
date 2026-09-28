@@ -209,6 +209,10 @@ import { createCrucibleGhostPresentation } from './crucibleGhost.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
 import { hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
+import {
+  shouldPresentShieldBubble,
+  updateEntityShieldBubblePresentation,
+} from './weapons/shieldBubblePresentation.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
@@ -453,6 +457,17 @@ const _overheadCuesOptions = { reducedMotion: false, reducedFlash: false, simTim
 // _shadowPolicyOptions only reads .id, so one frozen-shape object replaces the old
 // per-entity `{ type: typeName }` allocation.
 const _shadowFallbackEntity = { id: undefined, type: '' };
+
+// Projection/LOD retain: skip updateLod when hysteresis keeps the same band.
+// Asteroid/station updateLod used to re-traverse every visible frame; ships already self-retain.
+// Bench toggle restores always-call for A/B. Picture-identical while the band is unchanged.
+let SYNC_ENTITY_LOD_RETAIN = true;
+export function setSyncEntityLodRetainForBench(enabled) {
+  SYNC_ENTITY_LOD_RETAIN = enabled !== false;
+}
+export function getSyncEntityLodRetainForBench() {
+  return SYNC_ENTITY_LOD_RETAIN !== false;
+}
 
 // The activity frame publishes every sim tick through one retained record instead of a fresh
 // `{...frame, complete:true}` spread — consumers only read it, and the membership sets inside
@@ -716,6 +731,10 @@ export function collectOpeningEntityRootCandidates(meshes, entities, options = {
     if (scene && mesh.parent !== scene) continue;
     const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
     if (!entity || entity.alive === false || entity._noMesh) continue;
+    const authoredState = mesh.userData && mesh.userData.authoredAssetState;
+    // Boundaries still waiting on authored GLB admission only expose a temporary marker (or
+    // nothing). They must not block the opening submission plan; mid-flight admission owns them.
+    if (authoredState === 'awaiting-authored-admission' || authoredState === 'loading') continue;
     const leaves = collectOpeningSubmissionLeaves(mesh, { camera });
     if (leaves.length === 0) continue;
     candidates.push({
@@ -749,6 +768,8 @@ export function collectOpeningShadowCasterRootCandidates(meshes, entities, optio
     if (scene && root.parent !== scene) continue;
     const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
     if (!entity || entity.alive === false || entity._noMesh) continue;
+    const authoredState = root.userData && root.userData.authoredAssetState;
+    if (authoredState === 'awaiting-authored-admission' || authoredState === 'loading') continue;
     const shadowLeaves = collectOpeningSubmissionLeaves(root, { camera });
     if (!shadowLeaves.some((leaf) => leaf && leaf.castShadow === true)) continue;
     candidates.push({
@@ -2718,12 +2739,8 @@ const SHIELD_POOL_FRAG = /* glsl */`
   }
 `;
 
-const SHIELD_PRESENTATION_EPSILON = 0.015;
-
 /** Shields read on impact instead of coating every healthy ship in a permanent translucent sphere. */
-export function shouldPresentShieldBubble(shield, flash, hasContact = false, collapseTime = 0) {
-  return (Number(shield) > 0 || collapseTime > 0) && (Number(flash) > SHIELD_PRESENTATION_EPSILON || Boolean(hasContact) || collapseTime > 0);
-}
+export { shouldPresentShieldBubble } from './weapons/shieldBubblePresentation.js';
 
 export function createShipAuxPool(scene, options = {}) {
   const pool = {
@@ -9565,8 +9582,21 @@ export const render = {
           || plan.firstPlayablePipelineSet.complete !== true) {
           // Refusing here left New Game on gpu-resources until the 90s playable
           // gate fired. Enter flight and keep admitting behind the first picture.
+          const failRole = Array.isArray(plan && plan.blockingReasons)
+            ? plan.blockingReasons.find((entry) => entry && (
+              entry.role === 'productionBoundary'
+              || entry.role === 'producerResourceIdentityCensus'
+              || entry.role === 'firstPlayablePipelineSet'
+              || (entry.reason && String(entry.reason).includes('no-currently-instantiated'))
+            ))
+            : null;
           recordOpeningCookStep(state.render, 'opening.plan', openingNow(), 'skipped', {
             reason: 'opening-plan-incomplete',
+            fail: failRole
+              ? `${failRole.role || ''}:${String(failRole.reason || '').slice(0, 48)}`
+              : (plan && plan.firstPlayablePipelineSet && plan.firstPlayablePipelineSet.reason)
+                || 'unknown',
+            drawLeaves: plan && Array.isArray(plan.drawLeaves) ? plan.drawLeaves.length : 0,
           });
           return { skipped: true, reason: 'opening-plan-incomplete' };
         }
@@ -12545,6 +12575,8 @@ export const render = {
     }
     mesh.userData.presentationEntityId = entity.id;
     mesh.userData.sfStableEntityKey = stableMeshKeyForEntity(entity);
+    // Fresh bind must re-apply LOD even if a prior owner left the same band stamp.
+    mesh.userData._appliedLodLevel = undefined;
     const lanes = this._persistentSubmitLanes;
     const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
       ? SUBMIT_LANE.TRANSPARENT
@@ -13703,7 +13735,12 @@ export const render = {
       if (userData.lod && userData.updateLod) {
         lodChecked++;
         lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx);
-        userData.updateLod(lodLevel);
+        // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
+        // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
+        if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {
+          userData.updateLod(lodLevel);
+          userData._appliedLodLevel = lodLevel;
+        }
       }
       const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
       // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
@@ -13875,50 +13912,19 @@ export const render = {
       // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
       // frame and is punched up whenever the entity's shield value drops.
       const shieldBubble = userData.shieldBubble;
-      if (entity && shieldBubble && shieldBubble.material && shieldBubble.material.uniforms) {
-        const uniforms = shieldBubble.material.uniforms;
-        const previousShield = shieldBubble.userData._prevShield != null
-          ? shieldBubble.userData._prevShield
-          : entity.shield;
-        // Flash decay rides the time-effects-scaled frame delta: under a hard freeze it is 0,
-        // which holds uFlash still instead of decaying on the wall clock.
-        const dt = Math.min(0.1, presFrameDt);
-        setShieldShellClock(shieldBubble.material, simNow, _worldSiteA11y && _worldSiteA11y.reducedMotion === true);
-
-        const up = entity.shield > 0;
-        let flash = 0;
-
-        if (shieldBubble.userData._collapseTimer == null) {
-          shieldBubble.userData._collapseTimer = 0;
-        }
-
-        if (up) {
-          if (entity.shield < previousShield - 0.5) {
-            uniforms.uFlash.value = Math.min(1.0, uniforms.uFlash.value + 0.8);
-          } else if (entity.shield > previousShield + 1.0) {
-            // Shield capacitor recovery wave
-            uniforms.uFlash.value = Math.max(uniforms.uFlash.value, 0.28);
-          }
-          uniforms.uFlash.value *= Math.pow(0.05, dt);
-          flash = uniforms.uFlash.value;
-          shieldBubble.userData._collapseTimer = 0;
-        } else {
-          // Shield broke this frame or is in collapse sequence
-          if (previousShield > 0) {
-            // Initiate dielectric rupture overload sequence
-            shieldBubble.userData._collapseTimer = 0.32;
-            uniforms.uFlash.value = 2.4; // blinding break flare
-          }
-          if (shieldBubble.userData._collapseTimer > 0) {
-            shieldBubble.userData._collapseTimer -= dt;
-            uniforms.uFlash.value *= Math.pow(0.1, dt);
-            flash = uniforms.uFlash.value;
-          }
-        }
-        shieldBubble.userData._prevShield = entity.shield;
-
-        const visible = shouldPresentShieldBubble(entity.shield, flash, hasShieldContact(entity.id), shieldBubble.userData._collapseTimer);
-        if (shieldBubble.visible !== visible) shieldBubble.visible = visible;
+      if (entity && shieldBubble) {
+        // Per-ship fallback material: same shell clock as the pooled lane, same sim-time source.
+        // Quiet-latches while flash/contact/collapse are cold (see shieldBubblePresentation.js).
+        // simNow already anchors to state.simTime; presFrameDt carries the flash decay so a hard
+        // freeze holds uFlash still instead of decaying on the wall clock.
+        updateEntityShieldBubblePresentation(
+          entity,
+          shieldBubble,
+          now,
+          simNow,
+          _worldSiteA11y && _worldSiteA11y.reducedMotion === true,
+          presFrameDt,
+        );
       }
 
       const hlod = userData.hlod;

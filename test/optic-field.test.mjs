@@ -35,6 +35,21 @@ import {
 import { RESIDENCY_TIER } from '../src/data/sectorCoordinates.js';
 import { projectileHitPayload } from '../src/core/physics.js';
 
+
+function opticGalleryBodies(state, structureId = CERES_PRISM_GALLERY_ID) {
+  const live = (state.entityList || []).filter((entity) => (
+    entity && entity.alive !== false
+    && entity.data && entity.data.opticStructureId === structureId
+  ));
+  const field = state.world && state.world.asteroidField && Array.isArray(state.world.asteroidField.rocks)
+    ? state.world.asteroidField.rocks.filter((rec) => (
+      rec && rec.alive !== false && rec.liveEntityId == null
+      && rec.data && rec.data.opticStructureId === structureId
+    ))
+    : [];
+  return { live, field, total: live.length + field.length };
+}
+
 function bootWorld(seed = 42) {
   const state = createGameState(seed);
   state.mode = 'flight';
@@ -387,53 +402,91 @@ test('each live swarm room has one lattice that clears the player', () => {
   assert.equal(lagrange.bodies.length, 2);
 });
 
-test('the Prism Gallery is live in Ceres and absent from a Helios boot', () => {
+test('the Prism Gallery is stamped on Ceres FULL (field-resident) and absent from a Helios boot', () => {
   const { state, world } = bootWorld(42);
   world.enterSector('sector_helios_prime');
-  const before = state.entityList.filter((entity) => entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
-  assert.equal(before.length, 0);
+  const before = opticGalleryBodies(state);
+  assert.equal(before.total, 0);
   world.enterSector('sector_ceres_belt');
-  const live = state.entityList.filter((entity) => entity.alive && entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
+  const stamped = opticGalleryBodies(state);
   const expected = compileCeresPrismGallery();
-  assert.equal(live.length, expected.length);
+  assert.equal(stamped.total, expected.length);
+  // Quiet entry stays off the combat list; lattice is field-resident until approach.
+  assert.equal(stamped.live.length, 0);
+  assert.equal(stamped.field.length, expected.length);
   const counts = { stone: 0, metal: 0, diamond: 0 };
-  for (const entity of live) {
-    counts[entity.data.opticMaterial] += 1;
-    assert.equal(entity.homeSectorId, 'sector_ceres_belt');
-    assert.equal(entity.collides, true);
+  for (const rec of stamped.field) {
+    counts[rec.data.opticMaterial] += 1;
+    assert.equal(rec.homeSectorId, 'sector_ceres_belt');
+    assert.equal(rec.collides, true);
   }
   for (const body of expected) counts[body.material] -= 1;
   assert.deepEqual(counts, { stone: 0, metal: 0, diamond: 0 });
   world.enterSector('sector_ceres_belt');
-  const again = state.entityList.filter((entity) => entity.alive && entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
-  assert.equal(again.length, expected.length);
+  const again = opticGalleryBodies(state);
+  assert.equal(again.total, expected.length);
 });
 
-test('optic lattices spawn only on FULL residency and leave on eviction', () => {
+test('optic lattices stamp only on FULL residency and leave on eviction', () => {
   const { state, world } = bootWorld(99);
   world._ensureSectorMaterialized('sector_ceres_belt', RESIDENCY_TIER.REDUCED);
-  const reduced = state.entityList.filter((entity) => entity.alive && entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
-  assert.equal(reduced.length, 0);
+  const reduced = opticGalleryBodies(state);
+  assert.equal(reduced.total, 0);
   assert.equal(state.world.sectorContents.sector_ceres_belt.opticStructureIds, undefined);
 
   world._promoteSectorToFull('sector_ceres_belt');
   const expected = compileCeresPrismGallery().length;
-  const full = state.entityList.filter((entity) => entity.alive && entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
-  assert.equal(full.length, expected);
+  const full = opticGalleryBodies(state);
+  assert.equal(full.total, expected);
+  assert.equal(full.live.length, 0);
+  assert.equal(full.field.length, expected);
   assert.equal(state.world.sectorContents.sector_ceres_belt.opticStructureIds.length, expected);
-  for (const entity of full) {
-    assert.equal(entity.homeSectorId, 'sector_ceres_belt');
-    assert.equal(entity.physicsBody && entity.physicsBody.radius, entity.radius);
-    assert.equal(entity.data.masslineTetherable, false);
+  for (const rec of full.field) {
+    assert.equal(rec.homeSectorId, 'sector_ceres_belt');
+    assert.equal(rec.data.masslineTetherable, false);
+    assert.equal(rec.radius, rec.data.size);
   }
 
   world._promoteSectorToFull('sector_ceres_belt');
-  const once = state.entityList.filter((entity) => entity.alive && entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
-  assert.equal(once.length, expected);
+  const once = opticGalleryBodies(state);
+  assert.equal(once.total, expected);
 
   world._demoteSectorToRecordOnly('sector_ceres_belt');
-  const gone = state.entityList.filter((entity) => entity.alive && entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
-  assert.equal(gone.length, 0);
+  const gone = opticGalleryBodies(state);
+  assert.equal(gone.total, 0);
+});
+
+
+
+test('optic lattices promote inside the decode disc and shelve past exit', async () => {
+  const { tickOpticFieldRocks } = await import('../src/world/asteroidField.js');
+  const { state, world } = bootWorld(77);
+  world.enterSector('sector_ceres_belt');
+  const expected = compileCeresPrismGallery().length;
+  let stamped = opticGalleryBodies(state);
+  assert.equal(stamped.field.length, expected);
+  assert.equal(stamped.live.length, 0);
+
+  const sample = stamped.field[0];
+  const player = state.entities.get(state.playerId);
+  player.pos.x = sample.pos.x;
+  player.pos.z = sample.pos.z;
+  const first = tickOpticFieldRocks(state, world.helpers);
+  assert.ok(first.promoted >= 1, `expected promote near gallery, got ${first.promoted}`);
+  stamped = opticGalleryBodies(state);
+  assert.ok(stamped.live.length >= 1, 'approach must lift optic bodies onto the combat list');
+  for (const ent of stamped.live) {
+    assert.equal(ent.physicsBody && ent.physicsBody.radius, ent.radius);
+    assert.equal(ent.data.masslineTetherable, false);
+  }
+
+  player.pos.x = sample.pos.x + 20000;
+  player.pos.z = sample.pos.z + 20000;
+  const second = tickOpticFieldRocks(state, world.helpers);
+  assert.ok(second.shelved >= 1, `expected shelve far from gallery, got ${second.shelved}`);
+  stamped = opticGalleryBodies(state);
+  assert.equal(stamped.live.length, 0);
+  assert.equal(stamped.total, expected);
 });
 
 test('visited diamond keys treat number and string ids as the same surface', () => {

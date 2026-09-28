@@ -19,10 +19,14 @@ import { stationControlAttrs, stationControlLabel } from '../stationBindingMap.j
 import { createChainBeam } from '../../orrery/chainBeam.js';
 import { openGalaxyMap, MAP_FOCUS } from '../../mapAuthority.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
-import { COMMODITY_GLYPHS } from '../../views/commodityGlyphs.js';
+import { industryPictogram } from '../../orrery/industryGlyphs.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { decrypt } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
+import { buildDuration } from '../../../systems/crafting.js';
+
+/** How long FABRICATE is held before the run commits (the process bezel fills over it). */
+export const INDUSTRY_HOLD_MS = 900;
 
 const NAME = new Map();
 for (const c of COMMODITIES) NAME.set('commodity:' + c.id, c.name);
@@ -31,10 +35,9 @@ for (const w of WEAPONS) NAME.set('weapon:' + w.id, w.name);
 for (const s of SHIPS) NAME.set('ship:' + s.id, s.name);
 const CMDTY_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
 const CMDTY_CAT = new Map(COMMODITIES.map((c) => [c.id, c.category]));
-/** The pictogram for a thing on the chain: a commodity by its category, a module as a component. */
+/** The pictogram for a thing on the chain: a filled object for a commodity's family, a module, a weapon or a hull. */
 function glyphFor(id, kind) {
-  const cat = CMDTY_CAT.get(id) || (kind === 'module' ? 'component' : 'refined');
-  return COMMODITY_GLYPHS[cat] || COMMODITY_GLYPHS.component || '';
+  return industryPictogram(CMDTY_CAT.get(id), kind === 'material' ? 'commodity' : kind);
 }
 const STATION_TYPE = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_TYPE.set(s.id, s.type);
@@ -229,15 +232,15 @@ export function createIndustryScreen(ctx) {
         (bp.desc ? `<p class="k-sentence sx-fab-head__desc">${escapeHtml(bp.desc)}</p>` : '') +
         `<div class="sx-fab-heroes">` +
           `<div class="k-hero k-hero--hero sx-fab-out"><span class="k-hero__n">${bp.outputs.qty || 1}</span><span class="k-hero__w">${escapeHtml(bp.outputs.kind)} per run</span></div>` +
-          `<div class="k-hero sx-fab-time"><span class="k-hero__n">${bp.timeS ? bp.timeS : '0'}</span><span class="k-hero__w">seconds</span></div>` +
+          `<div class="k-hero sx-fab-time"><span class="k-hero__n">${buildDuration(bp) || 0}</span><span class="k-hero__w">seconds</span></div>` +
         `</div>` +
         `<p class="k-caps sx-fab-col-k">Needs</p>` +
         (inputs ? `<ul class="k-rows sx-fab-inputs">${inputs}</ul>` : `<p class="k-sentence sx-muted">No inputs.</p>`) +
         (notes.length ? `<ul class="k-words k-words--row sx-fab-notes">${notes.map((n) => `<li class="k-t-fine ${n.ok ? 'k-62' : 'k-bad'} sx-fab-note">${escapeHtml(n.text)}</li>`).join('')}</ul>` : '') +
         (showStatus ? `<p class="k-sentence ${statusClass} sx-fab-status">${status}</p>` : '') +
         `<ul class="k-words k-words--row sx-fab-foot"><li>` +
-          `<button type="button" ${stationControlAttrs('fabricate')} class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? '' : ` disabled aria-disabled="true" aria-label="Fabricate: ${escapeHtml(r.label)}"`}>` +
-            `${queue ? 'Line occupied' : 'Fabricate'}` +
+          `<button type="button" ${stationControlAttrs('fabricate')} class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? ` aria-label="Fabricate: hold to run"` : ` disabled aria-disabled="true" aria-label="Fabricate: ${escapeHtml(r.label)}"`}>` +
+            `${queue ? 'Line occupied' : 'Fabricate'}${canBuild ? '<span class="dp-holdring" aria-hidden="true"></span>' : ''}` +
           `</button>` +
         `</li></ul>` +
       `</div>`;
@@ -273,16 +276,17 @@ export function createIndustryScreen(ctx) {
         return { nameHtml: escapeHtml(matName(id)), have, need, verbHtml, glyph: glyphFor(id, 'material') };
       }),
       process: CAT_LABEL[bp.category] || bp.category,
-      timeLabel: bp.timeS ? `${bp.timeS} s` : 'instant',
+      timeLabel: buildDuration(bp) ? `${buildDuration(bp)} s` : 'instant',
       output: { qty: bp.outputs.qty || 1, unit: 'per run', glyph: glyphFor(bp.outputs.id, bp.outputs.kind) },
       live: !!canBuild,
       // the station's own lack (no refinery, no slot) is drawn on the ring; a shortfall of inputs is already on the nodes
       blocked: !queue && r.state !== 'ready' && r.state !== 'materials' ? { reason: escapeHtml(shortBlockLabel(bp, r)), verbHtml: `<span class="orr-chain__blocknote">Not at this station</span><button type="button" ${stationControlAttrs('find-facility')} class="orr-chain__wayout" data-ind-chart="1">Find a ${bp.stationType === 'fab' ? 'fabricator' : 'refinery'} on the chart</button>` } : null,
-      timeFrac: 1,
+      // the bezel is the hold ring: dark at rest, lit by a held FABRICATE
+      timeFrac: 0,
       progress: queue ? progress : null,
     });
     const build = fab.querySelector('.sx-fab-build[data-build]');
-    if (build) dressLampKey(build);
+    if (build) dressLampKey(build, canBuild ? { hold: true, note: 'hold' } : {});
     for (const stop of stopDecrypt.splice(0)) stop();
     if (reducedMotion()) return;
     const targets = [
@@ -292,10 +296,119 @@ export function createIndustryScreen(ctx) {
     targets.forEach((node, i) => { const text = node.textContent; if (text) stopDecrypt.push(decrypt(node, text, { duration: 240, delay: 30 + i * 40 })); });
   }
 
-  function renderAll(state) { renderList(state); renderStage(state); }
+  // a re-render during a hold (or while a finished run lands) waits for it: rebuilding the chain would drop the run
+  let pendingRender = false;
+  function renderAll(state) {
+    if (hold) { pendingRender = true; return; }
+    pendingRender = false;
+    renderList(state);
+    renderStage(state);
+  }
+
+  // ---- THE SIGNATURE: hold FABRICATE and the chain runs --------------------------------------------------
+  // While the key is held the process bezel fills (it IS the hold ring), one pulse per unit leaves each input
+  // along its beam and the stock gauges drain; at full the run commits through the crafting system (its single
+  // writer), a pulse fires into the product, the product lights and its count rolls in. Let go early and the
+  // run falls back: pulses return, the gauges refill. Pointer, keyboard (Enter/Space) and the pad's A all hold;
+  // a bare activation with nothing held (assistive tech) runs the hold through on its own.
+  let hold = null; // { frac, dir, source, bpId, last, frame, done }
+  const clock = () => (globalThis.performance && performance.now ? performance.now() : Date.now());
+  const buildKey = () => stageEl.querySelector('.sx-fab-build[data-build]:not(:disabled)');
+  function padHeld() {
+    try {
+      const pads = typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : [];
+      for (const p of pads || []) if (p && p.buttons && p.buttons[0] && p.buttons[0].pressed) return true;
+    } catch (_) { /* no pads */ }
+    return false;
+  }
+  function paintHold() {
+    const key = buildKey();
+    const f = hold ? hold.frac : 0;
+    if (key) {
+      const ring = key.querySelector('.dp-holdring');
+      if (ring && ring.style) ring.style.setProperty('--sf-hold-p', String(f));
+      key.classList.toggle('is-holding', !!hold && hold.dir > 0 && !hold.done);
+    }
+    if (chain && hold && !hold.done) chain.run(f);
+  }
+  function endHold() {
+    if (hold && hold.frame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(hold.frame);
+    hold = null;
+    paintHold();
+    if (chain) chain.reset();
+    if (pendingRender) renderAll(ctx.state || {});
+  }
+  function stepHold() {
+    if (!hold) return;
+    hold.frame = 0;
+    const t = clock();
+    const dt = Math.min(64, Math.max(0, t - hold.last));
+    hold.last = t;
+    if (hold.source === 'pad' && hold.dir > 0 && !padHeld()) hold.dir = -1;
+    // filling runs at the hold's pace; a released hold falls back twice as fast
+    hold.frac += (dt / INDUSTRY_HOLD_MS) * (hold.dir > 0 ? 1 : -2);
+    if (hold.frac >= 1) { hold.frac = 1; paintHold(); fireHold(); return; }
+    if (hold.frac <= 0 && hold.dir < 0) { endHold(); return; }
+    paintHold();
+    if (typeof requestAnimationFrame === 'function') hold.frame = requestAnimationFrame(stepHold);
+  }
+  function startHold(source) {
+    const key = buildKey();
+    if (!key) return;
+    if (hold && hold.done) return;
+    if (!hold) hold = { frac: 0, dir: 1, source, bpId: key.getAttribute('data-build'), last: clock(), frame: 0, done: false };
+    else { hold.dir = 1; hold.source = source; }
+    if (!hold.frame && typeof requestAnimationFrame === 'function') { hold.last = clock(); hold.frame = requestAnimationFrame(stepHold); }
+    else if (typeof requestAnimationFrame !== 'function') { hold.frac = 1; fireHold(); }
+  }
+  function releaseHold(source) {
+    if (!hold || hold.done || hold.source === 'auto') return;
+    if (source && hold.source !== source) return;
+    hold.dir = -1;
+    if (!hold.frame && typeof requestAnimationFrame === 'function') { hold.last = clock(); hold.frame = requestAnimationFrame(stepHold); }
+  }
+  function fireHold() {
+    if (!hold || hold.done) return;
+    hold.done = true;
+    const key = buildKey();
+    if (key) { key.classList.remove('is-holding'); const ring = key.querySelector('.dp-holdring'); if (ring && ring.style) ring.style.setProperty('--sf-hold-p', '0'); }
+    const sid = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
+    const crafting = ctx.crafting || (ctx.registry && ctx.registry.get && ctx.registry.get('crafting'));
+    const ok = attemptIndustryBuild({ crafting, bpId: hold.bpId, stationId: sid });
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: ok ? 'ui_accept' : 'ui_back' });
+    // a refused build never plays the landing: the chain falls back and the screen says why
+    if (!ok) { hold = null; if (chain) chain.reset(); renderAll(ctx.state || {}); return; }
+    // the run lands in the product, then the screen shows the hold as it now stands
+    const land = () => setTimeout(() => { hold = null; renderAll(ctx.state || {}); }, reducedMotion() ? 240 : 700);
+    if (chain) chain.complete({ onDone: land }); else land();
+  }
+  // pointer: down arms, up / cancel / leave lets go; the click that follows a pointer hold is the hold's, never a build
+  let pointerAt = -1;
+  let keyAt = -1;
+  const onKey = (ev) => (ev.target && ev.target.closest ? ev.target.closest('.sx-fab-build[data-build]:not(:disabled)') : null);
+  stageEl.addEventListener('pointerdown', (ev) => { if (onKey(ev) && ev.button === 0) { pointerAt = clock(); startHold('pointer'); } });
+  // letting go anywhere (even dragged off the key) falls back; releaseHold only answers a pointer hold
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+    stageEl.addEventListener(type, (ev) => { if (onKey(ev)) pointerAt = clock(); releaseHold('pointer'); }, true);
+  }
+  stageEl.addEventListener('keydown', (ev) => {
+    if (!onKey(ev) || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    ev.preventDefault();
+    keyAt = clock();
+    if (!ev.repeat) startHold('key');
+  });
+  stageEl.addEventListener('keyup', (ev) => {
+    if (!onKey(ev) || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    ev.preventDefault();
+    keyAt = clock();
+    releaseHold('key');
+  });
+  // tabbing away mid-hold falls back instead of firing under a key the player left
+  stageEl.addEventListener('blur', (ev) => { if (onKey(ev)) releaseHold('key'); }, true);
 
   function select(id, focus) {
     if (!id) return;
+    if (hold && !hold.done) endHold();
     selectedId = id;
     const state = ctx.state || {};
     renderAll(state);
@@ -342,11 +455,11 @@ export function createIndustryScreen(ctx) {
       return;
     }
     const b = ev.target.closest('[data-build]'); if (!b || b.disabled) return;
-    const bpId = b.getAttribute('data-build');
-    const sid = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
-    const crafting = ctx.crafting || (ctx.registry && ctx.registry.get && ctx.registry.get('crafting'));
-    attemptIndustryBuild({ crafting, bpId, stationId: sid });
-    setTimeout(() => renderAll(ctx.state || {}), 80);
+    // FABRICATE is held, never clicked: a click after a pointer or key hold belongs to that hold; the pad's A
+    // (a synthetic click) arms a hold that lasts while A stays down; anything else runs the hold through
+    const t = clock();
+    if (t - pointerAt < 1500 || t - keyAt < 1500) return;
+    startHold(padHeld() ? 'pad' : 'auto');
   });
   const onCraftChanged = () => renderAll(ctx.state || {});
   if (ctx.bus && ctx.bus.on) { ctx.bus.on('craft:complete', onCraftChanged); ctx.bus.on('craft:queueChanged', onCraftChanged); }
@@ -370,6 +483,8 @@ export function createIndustryScreen(ctx) {
         ctx.bus.off('craft:queueChanged', onCraftChanged);
       }
       for (const stop of stopDecrypt.splice(0)) stop();
+      if (hold && hold.frame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(hold.frame);
+      hold = null;
       if (chain) { chain.dispose(); chain = null; }
     },
   };

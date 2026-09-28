@@ -59,7 +59,7 @@ import {
   KILL_BURST_VEL_INHERIT,
   SALVAGE_RIGHTS_KIND,
 } from '../data/killRewards.js';
-import { consumePendingSlam, peekPendingSlam, spawnFracturePieces } from './hullFracture.js';
+import { consumeLethalBlow, consumePendingSlam, consumePendingSlamIfFresh, overkillNoteForKill, peekPendingSlam, spawnFracturePieces } from './hullFracture.js';
 import { JETTISONED_CARGO_PAYLOAD_TYPE } from './lootShards.js';
 
 export const MAGNET_RANGE = 800; // wu pull radius for Super-Wide Vacuum Cargo Attractor
@@ -1185,15 +1185,52 @@ export const mining = {
     // salvage pool. The durable owner has already checked entity liveness for this exact marker.
     if (aftermathPlan && aftermathPlan.entityId != null) {
       consumePendingSlam(p.id);
+      consumeLethalBlow(p.id, this.state && this.state.tick);
       return this.state.entities && this.state.entities.get(aftermathPlan.entityId) || null;
     }
 
-    if (peekPendingSlam(p.id) && this.helpers && typeof this.helpers.spawnEntity === 'function') {
-      const pending = consumePendingSlam(p.id);
+    // entity:killed carries no tick, so read the sim clock. The combat:damage note above
+    // landed synchronously inside this same routeDamage stack (window: 2 ticks), and slam
+    // notes land on the physics tick that killed (window: 12 ticks, freshness-checked in
+    // consumePendingSlamIfFresh). Slam fracture wins when both land on the same kill.
+    const killTick = Math.max(0, Math.trunc(Number(this.state && this.state.tick) || 0));
+    // Slam fracture wins over overkill when both land on the same kill tick: consume the slam
+    // note first (fresh only — a stale note must not suppress the arena shard below).
+    const slamNote = peekPendingSlam(p.id)
+      ? consumePendingSlamIfFresh(p.id, killTick)
+      : null;
+    // The overkill note is consumed here against the same kill tick (LETHAL_BLOW window is
+    // 2 ticks; combat:damage and entity:killed fire synchronously in one routeDamage call).
+    // A stale or non-overkill blow falls through to the anonymous wreck below.
+    const victim = (this.state.entities && typeof this.state.entities.get === 'function')
+      ? this.state.entities.get(p.id)
+      : null;
+    let note = slamNote || null;
+    if (!note) {
+      const blow = consumeLethalBlow(p.id, killTick);
+      if (blow) {
+        const snapshot = victim || {
+          id: p.id,
+          type: 'ship',
+          pos: p.pos,
+          vel: p.vel,
+          angVel: p.angVel,
+          mass: p.mass,
+          radius: 7,
+        };
+        note = overkillNoteForKill({ victim: snapshot, blow });
+        if (!note) {
+          // Not an overkill blow: the note is spent, fall through to the anonymous wreck.
+        }
+      }
+    }
+
+    if (note && this.helpers && typeof this.helpers.spawnEntity === 'function') {
       const salvagePool = aftermathPlan && aftermathPlan.spec && aftermathPlan.spec.data
         && aftermathPlan.spec.data.salvagePool
         || this._lootToPool();
-      const fractured = spawnFracturePieces(this, pending, {
+      const fractured = spawnFracturePieces(this, note, {
+        markerId: aftermathPlan && aftermathPlan.markerId,
         salvagePool,
         bindAftermath: aftermathPlan && aftermathOwner
           && typeof aftermathOwner.bindImmediateWreck === 'function'
@@ -1203,9 +1240,6 @@ export const mining = {
       if (fractured && fractured.pieces && fractured.pieces.length >= 2) return fractured.pieces;
     }
 
-    const victim = (this.state.entities && typeof this.state.entities.get === 'function')
-      ? this.state.entities.get(p.id)
-      : null;
     const vx = Number(victim?.vel?.x ?? p?.vel?.x) || 0;
     const vz = Number(victim?.vel?.z ?? p?.vel?.z) || 0;
     const victimAngVel = Number(victim?.angVel ?? p?.angVel);

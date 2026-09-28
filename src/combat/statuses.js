@@ -73,7 +73,10 @@ export function createStatusService(context) {
         delete statuses[statusId];
         changed = true;
         appendCombatTrace(state.combat, tick, 'status.expired', { targetId: targetEntity.id, statusId });
-        if (bus) bus.emit('combat:statusExpired', { targetId: targetEntity.id, statusId });
+        // `data` rides the receipt: owners that keep their own end-of-life clock on status
+        // metadata (tumbleStates' stabilization transition) lose the record the moment the
+        // kernel deletes it, and this event is where their transition must run.
+        if (bus) bus.emit('combat:statusExpired', { targetId: targetEntity.id, statusId, data: active.data || null });
       }
     }
 
