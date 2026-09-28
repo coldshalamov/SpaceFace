@@ -20,6 +20,12 @@ function rendererHarness(options = {}) {
       events.push(`target:${targetName(target)}`);
     },
     getRenderTarget() { return activeTarget; },
+    setViewport() {},
+    getViewport(out) { if (out) { out.x = 0; out.y = 0; out.z = 0; out.w = 0; return out; } return { x: 0, y: 0, z: 0, w: 0 }; },
+    setScissor() {},
+    getScissor(out) { if (out) { out.x = 0; out.y = 0; out.z = 0; out.w = 0; return out; } return { x: 0, y: 0, z: 0, w: 0 }; },
+    setScissorTest() {},
+    getScissorTest() { return false; },
     clear() { events.push(`clear:${targetName(activeTarget)}`); },
     render(scene) {
       if (renderer.autoClear) renderer.clear();

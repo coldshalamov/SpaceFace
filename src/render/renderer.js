@@ -6534,12 +6534,13 @@ export const render = {
       floor: dynFloor,
       apply: (s) => { this.state.render.dynResScale = s; this._applySize(); },
     });
-    // Dynamic resolution is reserved for the SOFTWARE-rendering emergency. Every scale change
-    // reallocates the whole render-target chain (canvas + HDR + bloom pyramid), which measured as
-    // 0.5-1.3s render stalls on this class of hardware (.devshots/perf/hitch-budget-after-lightfix*
-    // vs *-nodynres) — on hardware tiers the controller caused more visible hitching than it
-    // prevented, while steady-state already holds the frame budget at full quality.
-    this._dynResAllowed = gpu.tier === 'software';
+    // Dynamic resolution is allowed for SOFTWARE (emergency) and INTEGRATED (opt-in setting).
+    // Scale changes used to reallocate the whole render-target chain (0.5-1.3s stalls on this
+    // class of hardware — .devshots/perf/hitch-budget-after-lightfix* vs *-nodynres). The bloom
+    // target pool now pre-allocates at max size and renders into viewport sub-rects via
+    // setContentScale — zero realloc on scale change — so integrated can opt in safely.
+    // Discrete stays off: steady-state already holds the frame budget at full quality.
+    this._dynResAllowed = gpu.tier === 'software' || gpu.tier === 'integrated';
     this._adaptive.setEnabled(this._dynResAllowed && !(state.settings && state.settings.video && state.settings.video.dynamicResolution === false));
 
     if (gpu.software) {
@@ -16008,9 +16009,12 @@ export const render = {
   // Shared by onResize (window/setting change) and the dynamic-resolution controller (per-frame load).
   _applySize() {
     const drawSize = applyRendererSize(this.renderer, this.state);
+    // Drawing buffer / RT pool sized at max (no dynResScale). Dyn scale is a content sub-rect.
+    const dyn = finiteInRange(this.state?.render?.dynResScale, 0.2, 1, 1);
     if (this.bloom) {
       const disp = displayPixelFootprint();
       this.bloom.setSize(drawSize.x, drawSize.y, disp.x, disp.y);
+      if (typeof this.bloom.setContentScale === 'function') this.bloom.setContentScale(dyn);
     }
     if (this._renderGraph && this.state?.settings?.video?.renderGraph === true) {
       const video = this.state?.settings?.video || {};
@@ -16317,8 +16321,8 @@ function applyRendererSize(renderer, state) {
   const vd = (state.settings && state.settings.video) || {};
   // Per-tier ceiling on the device pixel ratio. The renderScale 1.0 A/B that set the default
   // quality ran at DPR 1; an integrated GPU on a 200 % display would otherwise shade ~4.7x the
-  // validated pixel count, and dynamic resolution is deliberately off on hardware tiers, so
-  // nothing else would rescue that case. The player's own cap still applies beneath this.
+  // validated pixel count. Dyn-res used to also multiply here (and reallocate bloom targets);
+  // it now only shrinks the bloom content sub-rect via setContentScale — see _applySize.
   const tier = state.render && state.render.gpu && state.render.gpu.tier;
   const tierCap = tier === 'software' ? 1 : tier === 'integrated' ? 1.5 : 4;
   const cap = Math.min(finiteInRange(vd.pixelRatioCap, 0.25, 4, 2), tierCap);
@@ -16328,11 +16332,13 @@ function applyRendererSize(renderer, state) {
   const graphOwnsScale = vd.renderGraph === true
     && state.render?.renderGraphUnavailable !== true;
   const scale = graphOwnsScale ? 1 : finiteInRange(vd.renderScale, 0.5, 2, 1);
-  // Live dynamic-resolution multiplier (adaptiveQuality.js). Defaults to 1 (no effect) until the
-  // controller lowers it under GPU load; kept separate from the persisted renderScale so it recovers.
-  const dyn = finiteInRange(state.render && state.render.dynResScale, 0.2, 1, 1);
+  // dynResScale is intentionally NOT applied to the drawing buffer. Reading it here keeps the
+  // single size entry-point aware of the live multiplier (tests/probes still see the field), but
+  // the pixel ratio stays at the max pool size so bloom/post targets are not reallocated on scale
+  // change. _applySize forwards the multiplier to bloom.setContentScale.
+  void finiteInRange(state.render && state.render.dynResScale, 0.2, 1, 1);
   const base = Math.min(window.devicePixelRatio || 1, cap);
-  renderer.setPixelRatio(Math.max(0.2, base * scale * dyn));
+  renderer.setPixelRatio(Math.max(0.2, base * scale));
   renderer.setSize(window.innerWidth, window.innerHeight);
   return renderer.getDrawingBufferSize(_drawSize);
 }

@@ -64,8 +64,10 @@ export const BUS_EVENTS_TO_COUNT = Object.freeze([
 export const ELECTRON_FIXED_PORT = 41788;
 
 /**
- * Expected draw pixel ratio: min(dpr, cap) * renderScale * dynResScale.
- * Mirrors renderer applyRendererSize (no WebGL).
+ * Expected draw pixel ratio: min(dpr, cap) * renderScale.
+ * Mirrors renderer applyRendererSize (no WebGL). dynResScale is a bloom content
+ * sub-rect (setContentScale), not a drawing-buffer multiplier — ignored here so
+ * the presentation buffer stays at the max target-pool size.
  */
 export function expectedPixelRatio(video, {
   devicePixelRatio = 1,
@@ -74,9 +76,9 @@ export function expectedPixelRatio(video, {
   const vd = video || {};
   const cap = finiteInRange(vd.pixelRatioCap, 0.25, 4, 2);
   const scale = finiteInRange(vd.renderScale, 0.5, 2, 1);
-  const dyn = finiteInRange(dynResScale, 0.2, 1, 1);
+  void finiteInRange(dynResScale, 0.2, 1, 1);
   const base = Math.min(devicePixelRatio || 1, cap);
-  return Math.max(0.2, base * scale * dyn);
+  return Math.max(0.2, base * scale);
 }
 
 export function expectedDrawBuffer(video, {
