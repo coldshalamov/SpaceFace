@@ -508,6 +508,11 @@ export const environmentalMachinery = {
       : null;
     if (!world || typeof world._spawnPlaceProp !== 'function' || !active || !sector) return;
     if (this.state.world.currentSectorId !== machine.sectorId) return;
+    // A bare activeSector (headless harnesses and pre-entry boots hand the default gameState
+    // bag, which carries no dressing table) is not a materialized visit — the mouth prop has no
+    // live sector bag to track, so asking world to place it would orphan the row and crash on
+    // the bag's missing dressing list. Reads below already tolerate the bare shape.
+    if (!Array.isArray(active.dressing)) return;
     const existing = (active.dressing || []).find((row) => row.environmentalMachineryId === machine.id);
     if (existing) {
       this._mouthIds.set(machine.id, existing.id);
