@@ -399,7 +399,6 @@ ship stills (all REVISE — awaiting new remote candidates).
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 27 | VM-SKIPS | Quiet live/empty-skip batch (~15: distortion, hull-scorch, camera-clearance series…) | IMPORT | CLAIMED devin-w3-vm-skips |
 | 28 | VM-HITCH | Hitch/admission batch (~8: hitch-asteroid-cell-key, opening-admission, drain-gate, dynres-target-pool, integrated-quality-preset…) | IMPORT | CLAIMED devin-w3-vm-hitch |
 | 30 | VM-REPORTS | Reports/stills/doc packages (~20: quiet-witness-baseline, cpu/alloc profiles, boot-times, contact sheets — docs-only imports, lowest production value; do after code batches) | IMPORT | OPEN |
 
