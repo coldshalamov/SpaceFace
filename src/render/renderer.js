@@ -2181,6 +2181,28 @@ function syncResolvingMarker(mesh) {
   marker.visible = isAuthoredPendingStatus(mesh.userData.authoredAssetState);
 }
 
+/**
+ * Whether a pending authored boundary owns a readable stand-in that may draw in place of the
+ * hidden seat. The shared resolving marker and the same-envelope geology body both draw shared,
+ * already-linked programs, and the authored commit stages its content off-glass before it ever
+ * swaps in — so a first-arrival body never sits visible-but-undrawn while its authored
+ * composition, link, and upload run serially behind it.
+ *
+ * The latches matter: while the substrate's own `pipelinesPending`/`geometryPending` are
+ * outstanding, drawing the stand-in would still link or upload inside the presented pass — the
+ * exact brick the authored-pending gate exists for — so the hidden seat stays until they clear.
+ * An empty wrap substrate (station/place/ship boundary with its fallback hidden) also keeps the
+ * seat: submitting it would flip root visibility for zero drawables and falsify the
+ * on-screen/missing-frame accounting.
+ */
+function authoredPendingBoundarySubmitsStandIn(mesh) {
+  const userData = mesh && mesh.userData;
+  if (!userData) return false;
+  if (userData.pipelinesPending === true || userData.geometryPending === true) return false;
+  if (userData.authoredResolvingMarker === true || userData.resolvingMarker) return true;
+  return userData.authoredGeologySkin === true;
+}
+
 function kickDecodeRunwayAssets(owner, entities) {
   const state = owner && owner.state;
   const renderer = owner && owner.renderer;
@@ -3577,8 +3599,13 @@ export async function settleSectorPrewarmPopulationFixpoint(record, options = {}
     try {
       await phase();
     } catch (error) {
-      if (error?.preventSectorFallbackRotation === true) throw error;
-      if (!isActive()) return false;
+      if (!isActive()) {
+        // A generation superseded or retired while its phase was in flight withdraws quietly:
+        // whatever the phase failed on belongs to the population census the newer generation
+        // re-verifies on its own pass, not to this stale record. A quarantined teardown is a real
+        // blocked cleanup rather than handoff noise, so it stays loud even on a stale generation.
+        if (error?.code !== 'SPACEFACE_SECTOR_PREWARM_CLEANUP_QUARANTINE') return false;
+      }
       throw error;
     }
     return isActive();
@@ -3665,28 +3692,76 @@ export async function settleSectorPrewarmPopulationFixpoint(record, options = {}
   );
 }
 
-/** Publish exactly one settled boundary snapshot. READY records must all publish successfully;
- * already-LIVE records are idempotent members from an earlier fixpoint pass. Any other state is a
- * fail-closed admission error rather than a silently omitted hidden reservation. */
+/** Publish exactly one settled boundary snapshot. READY (and in-flight PUBLISHING) records must
+ * all publish successfully; already-LIVE records are idempotent members from an earlier fixpoint
+ * pass. A member that already left the claim — superseded by a newer reservation for the same id
+ * or self-aborted on its own stale-before-publish path — is ordinary population churn, not a lost
+ * authored boundary: the fixpoint re-verifies the live census after this phase either way. Any
+ * other non-ready state or a member carrying a real failure stays a fail-closed admission error
+ * rather than a silently omitted hidden reservation. */
 export async function publishSectorBoundaryRecordSnapshot(records, options = {}) {
   if (typeof options.publishRecords !== 'function') {
     throw new TypeError('publishSectorBoundaryRecordSnapshot requires publishRecords');
   }
   const candidates = [];
+  const withdrawn = [];
+  const failed = [];
+  // A member is provably retired when its own record shows the claim is gone, or — when the
+  // caller can answer — a different record now owns the id. In-flight members stay candidates so
+  // the publisher's memoized share can complete them instead of starting a competing reveal.
+  const provablyRetired = (prepared) => !!prepared
+    && (prepared.active !== true
+      || !!prepared.abortReason
+      || (typeof options.currentRecordForId === 'function'
+        && options.currentRecordForId(prepared?.id) !== prepared));
+  const recordFailed = (prepared) => prepared?.cleanupBlocked === true
+    || !!(prepared && (prepared.error || prepared.cleanupError || prepared.restoreError));
   for (const prepared of records || []) {
     if (prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.live) continue;
-    if (prepared?.state !== SECTOR_BOUNDARY_PREPARATION_STATE.ready) {
-      throw failClosedSectorPrewarm(prepared?.cleanupError
-        || prepared?.restoreError
-        || prepared?.error
-        || new Error(`Incoming authored boundary ${prepared?.id ?? 'unknown'} was not ready to publish`));
+    if (recordFailed(prepared)) {
+      failed.push(prepared);
+      continue;
     }
-    candidates.push(prepared);
+    if (prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.ready
+        || prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.publishing) {
+      candidates.push(prepared);
+      continue;
+    }
+    if (provablyRetired(prepared)) {
+      withdrawn.push(prepared);
+      continue;
+    }
+    failed.push(prepared
+      || new Error('unknown prepared boundary'));
+  }
+  if (failed.length > 0) {
+    const prepared = failed[0];
+    throw failClosedSectorPrewarm(prepared?.cleanupError
+      || prepared?.restoreError
+      || prepared?.error
+      || new Error(`Incoming authored boundary ${prepared?.id ?? 'unknown'} was not ready to publish`));
   }
   const published = await options.publishRecords(candidates);
   if (!Array.isArray(published)
-      || published.length !== candidates.length
-      || published.some((value) => value !== true)) {
+      || published.length !== candidates.length) {
+    throw failClosedSectorPrewarm(
+      new Error(`Incoming sector ${options.sectorId ?? 'unknown'} publish returned an incomplete receipt`),
+    );
+  }
+  for (let index = 0; index < candidates.length; index++) {
+    if (published[index] === true) continue;
+    const prepared = candidates[index];
+    if (recordFailed(prepared)
+        || (prepared?.active === true
+          && (prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.ready
+            || prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.publishing))
+        || !provablyRetired(prepared)) {
+      failed.push(prepared);
+    } else {
+      withdrawn.push(prepared);
+    }
+  }
+  if (failed.length > 0) {
     // Per-candidate status at throw time distinguishes a genuine publish loss (still
     // claimed by this generation) from a mid-await supersede/abort rotation.
     const detail = candidates.map((prepared, i) => {
@@ -3698,6 +3773,12 @@ export async function publishSectorBoundaryRecordSnapshot(records, options = {})
     throw failClosedSectorPrewarm(
       new Error(`Incoming sector ${options.sectorId ?? 'unknown'} lost a prepared authored boundary before publish [${detail}]`),
     );
+  }
+  if (withdrawn.length > 0) {
+    return Object.freeze({
+      churned: true,
+      withdrawn: Object.freeze(withdrawn.map((prepared) => prepared?.id)),
+    });
   }
   return true;
 }
@@ -10552,11 +10633,24 @@ export const render = {
           'sector-prewarm-preparation-failed',
         );
         error = promoteSectorPrewarmAbortQuarantine(abortingRecords, abortOutcomes, error);
+        const preInvalidationError = error;
         error = promoteSectorPrewarmGenerationInvalidation(
           prewarm,
           currentSectorPrewarmEnvelope(prewarm),
           error,
         );
+        if (error !== preInvalidationError
+            && preInvalidationError?.preventSectorFallbackRotation !== true) {
+          // A raw rejection that lands after the generation's renderer envelope already moved on
+          // is a stale-generation withdrawal, not an invariant: the newer generation owns the
+          // census, publication, and residency rotation now. Retire any still-claimed record and
+          // resolve quietly — the same terminal state a cleanly declined settle produces — while
+          // a genuine fail-closed failure (e.g. a quarantined teardown) stays loud below.
+          if (prewarm.active === true) {
+            releaseSectorPrewarm(prewarm, 'sector-prewarm-generation-invalidated');
+          }
+          return null;
+        }
         if (error?.preventSectorFallbackRotation !== true) prewarm.boundaryRecords?.clear();
         if (error?.preventSectorFallbackRotation === true) {
           releaseSectorPrewarm(prewarm, 'sector-prewarm-invariant-failed');
@@ -13498,7 +13592,8 @@ export const render = {
       _submitVisibilityOptions.hidden = true;
       _submitVisibilityOptions.snapshotMissing = !posed;
       _submitVisibilityOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
-      _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState);
+      _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState)
+        && !authoredPendingBoundarySubmitsStandIn(mesh);
       _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
       _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
       _submitVisibilityOptions.activityFrame = this._activityFrame;
@@ -13666,7 +13761,8 @@ export const render = {
       _submitVisibilityOptions.allowShadowCast = false;
       _submitVisibilityOptions.snapshotMissing = !posed;
       _submitVisibilityOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
-      _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState);
+      _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState)
+        && !authoredPendingBoundarySubmitsStandIn(mesh);
       _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
       _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
       _submitVisibilityOptions.activityFrame = this._activityFrame;
