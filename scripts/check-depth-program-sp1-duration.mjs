@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-import { MISSION_TUNING, SET_PIECE_MISSIONS } from '../src/data/missions.js';
+import { MISSION_TUNING, SET_PIECE_MISSIONS, WRECK_BOUND_SET_PIECE_OBJECTIVES } from '../src/data/missions.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { buildSetPieceMissionOffers } from '../src/systems/setPieceMissionOffers.js';
@@ -26,6 +26,7 @@ for (const sector of SECTORS) {
 const NATIVE_OBJECTIVE_EVENTS = new Set([
   'sector:enter',
   'scan:completed',
+  'scan:pulse',
   'salvage:completed',
   'dock:docked',
   'entity:killed',
@@ -287,6 +288,20 @@ function driveOrdinaryObjective(state, missionSystem, bus, mission) {
   }
 
   let elapsed = travelToObjective(state, missionSystem, bus, mission);
+  // G1: wreck-bound set-piece scans (the four D13-D16 chain openings) settle through the native
+  // scan-pulse-at-the-placed-hull event — a generic sector pulse is exactly what can no longer
+  // finish them. The live unique-wreck owner fixes the bearing from the pulse at its exact point.
+  if (mission.params && WRECK_BOUND_SET_PIECE_OBJECTIVES.has(mission.params.setPieceObjective)) {
+    const record = state.player.uniqueWrecks
+      && state.player.uniqueWrecks.bearings[mission.params.wreckId];
+    assert.ok(record, `${mission.params.setPieceObjective}: the chain acceptance minted the bearing`);
+    advanceClock(state, missionSystem, MODELED_SCAN_S);
+    elapsed += MODELED_SCAN_S;
+    bus.emit('scan:pulse', { pos: { ...record.exactPos }, source: 'modeled-native-wreck-scan' });
+    assert.equal(record.phase, 'fixed',
+      `${mission.params.setPieceObjective}: scanning the placed hull fixes the bearing`);
+    return elapsed;
+  }
   if (mission.type === 'recon_scan') {
     const count = Math.max(1, Number(mission.objectiveTarget) || 1);
     for (let index = 0; index < count; index += 1) {
@@ -311,18 +326,27 @@ function driveOrdinaryObjective(state, missionSystem, bus, mission) {
   if (mission.params && mission.params.setPieceObjective === 'investigation_recover_box') {
     advanceClock(state, missionSystem, 30);
     elapsed += 30;
-    const wreck = {
-      id: `duration_audit_wreck_${mission.cause.fingerprint}`,
+    // G1: the black box comes out of the chain's OWN placed wreck — the salvage event carries the
+    // authored hull identity, not an anonymous scrap hull.
+    const wreckId = mission.params.wreckId;
+    assert.ok(wreckId, 'the recovery stage is bound to its authored wreck');
+    const placed = [...(state.entityList || [])].find((entity) => entity
+      && entity.alive !== false && entity.data && entity.data.uniqueWreckId === wreckId)
+      || state.entities.get(`authored_${wreckId}`);
+    const hull = placed || {
+      id: `authored_${wreckId}`,
       type: 'wreck',
       alive: true,
       pos: { x: 600, z: 0 },
       vel: { x: 0, z: 0 },
-      data: { salvagePool: { cmdty_salvage_electronics: 1 } },
+      data: { uniqueWreckId: wreckId, salvagePool: { cmdty_salvage_electronics: 1 } },
     };
-    state.entities.set(wreck.id, wreck);
-    state.entityList.push(wreck);
+    if (!placed) {
+      state.entities.set(hull.id, hull);
+      state.entityList.push(hull);
+    }
     bus.emit('salvage:completed', {
-      wreckId: wreck.id,
+      wreckId: hull.id,
       loot: { cmdty_salvage_electronics: 1 },
       source: 'modeled-native-wreck-salvage',
     });

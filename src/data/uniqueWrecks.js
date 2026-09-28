@@ -468,6 +468,123 @@ const RAW_UNIQUE_WRECKS = [
     }),
     followup: { id: 'cassandra_recovered', text: 'CASSANDRA TREATY SURVIVES; CHOIR AND VAEL HARDLINERS DENY THE DRAFT.' },
   }),
+  // ── D13-D16: the four remaining SP1 story chains' authored wrecks. Each chain's opening stage
+  // is bound to its wreck (data/missions.js SET_PIECE_MISSIONS[n].wreckId): the chain offer is the
+  // wreck's live `mission`-channel rumor carrier, the placed hull is the scan target, and the
+  // recovery stage requires THIS hull. `wreckChainId` names the owning SP1 archetype.
+  wreck({
+    id: 'wreck_mts_quadrille', programSlot: 'D13', name: 'Courier MTS Quadrille', victimLabel: 'MTS Quadrille',
+    wreckChainId: 'investigation_chain',
+    wreckClass: 'fresh', sectorId: 'sector_io_reach', factionId: 'faction_mts',
+    scanLabel: 'MTS QUADRILLE · SILENT COURIER WRECK · SEAL LOG PINGING',
+    uniqueDropId: 'unique_quadrille_box_reader',
+    uniqueDrops: [
+      { id: 'unique_quadrille_box_reader', kind: 'module', baseId: 'mod_cargo_scanner_s' },
+      {
+        id: 'unique_quadrille_seal_log', kind: 'story_commodity', name: 'Quadrille Seal-Log',
+        flagKey: 'uniqueWreck.quadrilleSealLog', qty: 1, choices: ['file_public', 'sell_quiet'],
+      },
+    ],
+    bearingSourceRef: 'mission.sp1.investigation_chain.quadrille',
+    rumorSources: [{ id: 'sp1_quadrille_assignment', sourceRef: 'mission.sp1.investigation_chain.quadrille', channelId: 'mission' }],
+    provenance: { lossId: 'loss_mts_quadrille', incidentId: 'incident_quadrille_silent_reach', sourceRef: 'mission.sp1.investigation_chain.quadrille', recordType: 'courier_loss' },
+    hazardContext: { label: 'Io Reach derelict shelf', anchorType: 'sector', anchorId: 'sector_io_reach', zoneId: null, hazardTypes: [], placementRule: 'derelict_shelf', approachGate: null },
+    complications: [{ id: 'quadrille_reactor_leak', kind: 'reactor', trigger: 'wreck_fixed', gentle: true }],
+    reactor: { timerS: 75, damage: 10 },
+    salvagePool: { cmdty_scrap_metal: 2 },
+    bonusCargo: [{ commodityId: 'cmdty_salvage_electronics', qty: 2 }],
+    placement: { anchorLocal: { x: 900, z: -800 }, minRadius: 140, maxRadius: 420, bearingRadiusMin: 280, bearingRadiusMax: 500 },
+    decision: salvageDecision({
+      headline: 'QUADRILLE SEAL-LOG CLAIM', prompt: 'Choose who first reads the corridor count the Quadrille died carrying.',
+      claimLabel: 'KEEP THE SEAL-LOG', claimConsequence: 'Keep the log and the box; the names stay yours to price.',
+      claimTitle: 'QUADRILLE SEAL-LOG CLAIMED', claimDetail: 'The silent courier’s seal-log entered your manifest.',
+      claimStamp: 'CLAIMED UNDER YOUR NAME',
+      handoverLabel: 'FILE THE BOX WITH CONCORD', handoverConsequence: 'Surrender the log for a lawful recovery award and a public docket.',
+      handoverTitle: 'QUADRILLE BOX FILED', handoverDetail: 'Concord accepted the Quadrille seal-log as corridor evidence.',
+      handoverStamp: 'FILED AS CONCORD EVIDENCE',
+      handoverCredits: 6400, claimRepDelta: -8, handoverRepDelta: 12,
+    }),
+    followup: { id: 'quadrille_recovered', text: 'QUADRILLE SEAL-LOG RECOVERED; THE CORRIDOR COUNT NOW HAS A READER.' },
+  }),
+  wreck({
+    id: 'wreck_isc_double_entry', programSlot: 'D14', name: 'ISC Double-Entry', victimLabel: 'ISC Double-Entry',
+    wreckChainId: 'witness_run',
+    wreckClass: 'military', sectorId: 'sector_tethys_junction', factionId: 'faction_scn',
+    scanLabel: 'ISC DOUBLE-ENTRY · DUAL-REGISTRY CUSTOMS WRECK',
+    uniqueDropId: 'unique_double_entry_mask',
+    uniqueDrops: [{ id: 'unique_double_entry_mask', kind: 'module', baseId: 'mod_sensor_scrambler_m' }],
+    bearingSourceRef: 'mission.sp1.witness_run.double_entry',
+    rumorSources: [{ id: 'sp1_double_entry_assignment', sourceRef: 'mission.sp1.witness_run.double_entry', channelId: 'mission' }],
+    provenance: { lossId: 'loss_isc_double_entry', incidentId: 'incident_double_entry_alias_wreck', sourceRef: 'mission.sp1.witness_run.double_entry', recordType: 'dual_registry_loss' },
+    hazardContext: { label: 'Driftmark survey anomaly', anchorType: 'zone', anchorId: null, zoneId: 'zone_tethys_driftmark', hazardTypes: ['anomaly_deep'], placementRule: 'near_driftmark_anomaly', approachGate: null },
+    complications: [{ id: 'double_entry_alias_interference', kind: 'ambient_zone', trigger: 'approach', zoneId: 'zone_tethys_driftmark' }],
+    salvageLaw: CONCORD_RESTRICTED_SALVAGE,
+    salvagePool: { cmdty_scrap_metal: 1 },
+    placement: { anchorLocal: { x: -2050, z: -1370 }, minRadius: 220, maxRadius: 560, bearingRadiusMin: 280, bearingRadiusMax: 500 },
+    decision: salvageDecision({
+      headline: 'DOUBLE-ENTRY REGISTRY CLAIM', prompt: 'Choose whether the second registry stays on your hull or returns to the file.',
+      claimLabel: 'KEEP THE ALIAS MASK', claimConsequence: 'Keep the scrambler that held one hull under two names.',
+      claimTitle: 'DOUBLE-ENTRY MASK CLAIMED', claimDetail: 'The dual-registry mask entered your module inventory.',
+      claimStamp: 'CLAIMED UNDER YOUR NAME',
+      handoverLabel: 'RETURN THE REGISTRY', handoverConsequence: 'File both registries with Concord for the honest finder award.',
+      handoverTitle: 'DOUBLE-ENTRY FILED', handoverDetail: 'Concord reconciled the second registry over your signature.',
+      handoverStamp: 'FILED AS CONCORD EVIDENCE',
+      handoverCredits: 5800, claimRepDelta: -6, handoverRepDelta: 10,
+    }),
+    followup: { id: 'double_entry_recovered', text: 'DOUBLE-ENTRY REGISTRY RECONCILED; THE ALIAS HULL NOW FILES UNDER ONE NAME.' },
+  }),
+  wreck({
+    id: 'wreck_dmc_first_notch', programSlot: 'D15', name: 'DMC First-Notch', victimLabel: 'DMC First-Notch',
+    wreckChainId: 'hearing',
+    wreckClass: 'fresh', sectorId: 'sector_vesta_forge', factionId: 'faction_dmc',
+    scanLabel: 'DMC FIRST-NOTCH · SIEGE EVIDENCE WRECK',
+    uniqueDropId: 'unique_first_notch_marker',
+    uniqueDrops: [{ id: 'unique_first_notch_marker', kind: 'module', baseId: 'mod_triangulation_suite_s' }],
+    bearingSourceRef: 'mission.sp1.hearing.first_notch',
+    rumorSources: [{ id: 'sp1_first_notch_assignment', sourceRef: 'mission.sp1.hearing.first_notch', channelId: 'mission' }],
+    provenance: { lossId: 'loss_dmc_first_notch', incidentId: 'incident_first_notch_siege_evidence', sourceRef: 'mission.sp1.hearing.first_notch', recordType: 'siege_evidence_loss' },
+    hazardContext: { label: 'Vesta siege approach', anchorType: 'zone', anchorId: null, zoneId: 'zone_vesta_forge', hazardTypes: [], placementRule: 'inside_siege_approach', approachGate: null },
+    complications: [{ id: 'first_notch_reactor_leak', kind: 'reactor', trigger: 'wreck_fixed', gentle: true }],
+    reactor: { timerS: 60, damage: 10 },
+    salvagePool: { cmdty_scrap_metal: 1 },
+    placement: { anchorLocal: { x: 400, z: -900 }, minRadius: 160, maxRadius: 440, bearingRadiusMin: 260, bearingRadiusMax: 460 },
+    decision: salvageDecision({
+      headline: 'FIRST-NOTCH EVIDENCE CLAIM', prompt: 'Choose whether the siege’s first kill testifies or goes quietly to the torch.',
+      claimLabel: 'KEEP THE MARKER SUITE', claimConsequence: 'Keep the rangefinders that held the first notch on the hull.',
+      claimTitle: 'FIRST-NOTCH MARKER CLAIMED', claimDetail: 'The siege-evidence rangefinders entered your inventory.',
+      claimStamp: 'TAKEN FROM THE EVIDENCE',
+      handoverLabel: 'ENTER IT INTO EVIDENCE', handoverConsequence: 'File the hull with the hearing for the finder’s award.',
+      handoverTitle: 'FIRST-NOTCH FILED', handoverDetail: 'The hearing accepted the First-Notch as its opening exhibit.',
+      handoverStamp: 'FILED AS HEARING EVIDENCE',
+      handoverCredits: 6800, claimRepDelta: -6, handoverRepDelta: 12,
+    }),
+    followup: { id: 'first_notch_recovered', text: 'FIRST-NOTCH RECOVERED; THE SIEGE’S FIRST KILL NOW HAS A NAMED READER.' },
+  }),
+  wreck({
+    id: 'wreck_mts_regular', programSlot: 'D16', name: 'Liner MTS Regular', victimLabel: 'MTS Regular',
+    wreckChainId: 'blockade_run',
+    wreckClass: 'battlefield', sectorId: 'sector_pallas_drift', factionId: 'faction_mts',
+    scanLabel: 'MTS REGULAR · BLOCKADE GRAVEYARD WRECK',
+    uniqueDropId: 'unique_regular_mass_shifter',
+    uniqueDrops: [{ id: 'unique_regular_mass_shifter', kind: 'module', baseId: 'mod_cargo_compactor_l' }],
+    bearingSourceRef: 'mission.sp1.blockade_run.regular',
+    rumorSources: [{ id: 'sp1_regular_assignment', sourceRef: 'mission.sp1.blockade_run.regular', channelId: 'mission' }],
+    provenance: { lossId: 'loss_mts_regular', incidentId: 'incident_regular_cordon_run', sourceRef: 'mission.sp1.blockade_run.regular', recordType: 'blockade_loss' },
+    hazardContext: { label: 'Drift approach graveyard', anchorType: 'sector', anchorId: 'sector_pallas_drift', zoneId: null, hazardTypes: ['debris'], placementRule: 'drift_approach_graveyard', approachGate: null },
+    salvagePool: { cmdty_scrap_metal: 2 },
+    placement: { anchorLocal: { x: -600, z: -400 }, minRadius: 180, maxRadius: 480, bearingRadiusMin: 280, bearingRadiusMax: 500 },
+    decision: salvageDecision({
+      headline: 'REGULAR GRAVEYARD CLAIM', prompt: 'Choose whether the liner’s mass-shifter finishes the run she started.',
+      claimLabel: 'FINISH THE RUN', claimConsequence: 'Keep the compactor hold that once shifted mass past a cordon.',
+      claimTitle: 'REGULAR HOLD CLAIMED', claimDetail: 'The liner’s mass-shifter entered your inventory mid-run.',
+      claimStamp: 'FINISHED UNDER YOUR NAME',
+      handoverLabel: 'LET DRIFT TOW HER', handoverConsequence: 'Leave the hull to Drift’s recovery crews for a salvage award.',
+      handoverTitle: 'REGULAR TOWED', handoverDetail: 'Drift recovery took the Regular’s hull under your finding name.',
+      handoverStamp: 'FILED WITH DRIFT RECOVERY',
+      handoverCredits: 7200, claimRepDelta: -4, handoverRepDelta: 10,
+    }),
+    followup: { id: 'regular_recovered', text: 'REGULAR GRAVEYARD OPENED; THE CORDON’S LATEST KILL FINISHED HER RUN UNDER A NEW FLAG.' },
+  }),
 ];
 
 export const UNIQUE_WRECKS = deepFreeze(RAW_UNIQUE_WRECKS);
@@ -571,7 +688,7 @@ export function validateUniqueWreckRegistry() {
   const channels = new Set();
   for (const def of UNIQUE_WRECKS) {
     if (!def.id || ids.has(def.id)) errors.push(`duplicate/missing wreck id ${def.id || '<empty>'}`);
-    if (!/^D(?:[1-9]|1[0-2])$/.test(def.programSlot || '') || slots.has(def.programSlot)) errors.push(`duplicate/invalid program slot ${def.programSlot || '<empty>'}`);
+    if (!/^D(?:[1-9]|1[0-6])$/.test(def.programSlot || '') || slots.has(def.programSlot)) errors.push(`duplicate/invalid program slot ${def.programSlot || '<empty>'}`);
     ids.add(def.id);
     slots.add(def.programSlot);
     if (!def.sectorId || !def.wreckClass || !def.uniqueDropId) errors.push(`${def.id}: incomplete authored identity`);
@@ -608,7 +725,7 @@ export function validateUniqueWreckRegistry() {
     if (!placement.anchorLocal || !Number.isFinite(placement.anchorLocal.x) || !Number.isFinite(placement.anchorLocal.z)) errors.push(`${def.id}: invalid placement anchor`);
     if (!def.followup || !def.followup.id || !def.followup.text) errors.push(`${def.id}: missing recovery followup`);
   }
-  if (slots.size !== 12) errors.push(`expected D1-D12, found ${slots.size} slots`);
+  if (slots.size !== 16) errors.push(`expected D1-D16, found ${slots.size} slots`);
   for (const channel of REQUIRED_RUMOR_CHANNELS) if (!channels.has(channel)) errors.push(`missing rumor channel ${channel}`);
   return { ok: errors.length === 0, errors };
 }

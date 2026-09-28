@@ -11,6 +11,9 @@ import {
 } from '../src/data/uniqueWrecks.js';
 import { salvageActions } from '../src/systems/salvageActions.js';
 import { SECTOR_RUMOR_SURFACES, uniqueWrecks } from '../src/systems/uniqueWrecks.js';
+import { missions } from '../src/systems/missions.js';
+import { buildSetPieceMissionOffers } from '../src/systems/setPieceMissionOffers.js';
+import { SET_PIECE_WRECK_SECTORS } from '../src/data/missions.js';
 import { createMarketNews } from '../src/ui/marketNews.js';
 import { uniqueWreckBarRumor } from '../src/ui/uniqueWreckRumorSurface.js';
 
@@ -128,7 +131,7 @@ test(`seed ${META_SEED}: the Vigilant case file rides the news ticker but mints 
   }
 });
 
-test('census: every one of the twelve authored wrecks has a live delivery path', () => {
+test('census: every one of the sixteen authored wrecks has a live delivery path', () => {
   const covered = new Map();
 
   // Sector-entry surfaces: exact authored source + channel, home sector, authored copy present.
@@ -170,6 +173,53 @@ test('census: every one of the twelve authored wrecks has a live delivery path',
     }
   } finally {
     t.dispose();
+  }
+
+  // SP1 chain assignments: D13-D16's `mission`-channel rumor is carried by its own story chain.
+  // Accepting the chain's opening offer is the native mission:accepted carrier (the Lost Coils
+  // precedent): the exact authored source + channel reach the unique-wreck owner's guard and mint
+  // the bearing, which materializes the placed hull on home-sector entry.
+  for (const def of UNIQUE_WRECKS.filter((wreck) => wreck.wreckChainId)) {
+    const archetypeId = def.wreckChainId;
+    assert.equal(SET_PIECE_WRECK_SECTORS[def.id], def.sectorId,
+      `${def.id}: chain-sector table agrees with the wreck registry`);
+    const chain = createSimulation({
+      seed: META_SEED,
+      systems: [salvageActions, uniqueWrecks, missions],
+    });
+    try {
+      const { state } = chain;
+      state.mode = 'flight';
+      const player = chain.spawn({
+        type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+        radius: 10, hull: 100, hullMax: 100, data: { defId: 'ship_kestrel' },
+      });
+      state.playerId = player.id;
+      // The opening stages stake collateral; fund the fresh pilot so the accept is affordable.
+      state.player.credits = 50000;
+      const offer = buildSetPieceMissionOffers(state, {
+        archetypeId,
+        startEpoch: 1,
+        stageIndex: 0,
+        branchId: null,
+        attempt: 0,
+      })[0];
+      assert.ok(offer, `${archetypeId} compiles an opening offer for ${def.id}`);
+      assert.equal(offer.wreckId, def.id);
+      assert.equal(offer.sourceRef, def.bearingSourceRef);
+      assert.equal(offer.channelId, 'mission');
+      state.missions.boards[offer.stationId] = { slots: [offer] };
+      const missionsSystem = chain.registry.get('missions');
+      assert.equal(missionsSystem.acceptMission(offer.id), true, `${archetypeId} accepts`);
+      const record = state.player.uniqueWrecks.bearings[def.id];
+      assert.ok(record, `${archetypeId} acceptance delivers the ${def.id} rumor`);
+      assert.equal(record.channelId, 'mission');
+      assert.equal(record.sourceRef, def.bearingSourceRef);
+      assert.equal(record.phase, 'rumored');
+      covered.set(def.id, `sp1-chain-accept:${archetypeId}`);
+    } finally {
+      chain.dispose();
+    }
   }
 
   for (const def of UNIQUE_WRECKS) {

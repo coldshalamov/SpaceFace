@@ -64,6 +64,7 @@ import {
   STORY_BRANCH_INTRO_MIN_REP,
   STORY_BRANCH_INTRO_TAG,
   SET_PIECE_MISSIONS,
+  WRECK_BOUND_SET_PIECE_OBJECTIVES,
   offerMixWeight,
   offerHistoryTierFor,
   offerHistoryMultiplier,
@@ -3062,6 +3063,7 @@ export const missions = {
     // B4 branch: accepting a faction intro contract sets the story branch.
     this._maybeSetBranch(inst);
     this._startLongReadObjective(inst);
+    this._startWreckBoundStageObjective(inst);
     return true;
   },
 
@@ -4161,6 +4163,14 @@ export const missions = {
       if (!m || m.status !== 'active' || m.type !== 'salvage_retrieval') continue;
       if (!m.params || m.params.setPieceObjective !== 'investigation_recover_box') continue;
       if (this.state.world.currentSectorId !== m.destSectorId) continue;
+      // G1: the black box comes out of the chain's OWN placed wreck. A wreck bound to the offer
+      // must be the authored hull (entity.data.uniqueWreckId); unbound legacy offers keep the
+      // sector-wide rule. Any random scrap wreck no longer settles the story stage.
+      const boundWreckId = m.params.wreckId || m.wreckId || (m.cause && m.cause.wreckId) || null;
+      if (boundWreckId) {
+        const wreckData = wreck && wreck.data;
+        if (!wreckData || wreckData.uniqueWreckId !== boundWreckId) continue;
+      }
       m.params.recoveredWreckId = p.wreckId;
       m.objectiveProgress = m.objectiveTarget;
       this._completeMission(m, i);
@@ -4339,7 +4349,10 @@ export const missions = {
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active' || m.type !== 'recon_scan') continue;
-      if (m.params && m.params.setPieceObjective === 'long_read_rumor_survey') continue;
+      // Wreck-bound set-piece scans (long_read rumor survey + the four D13-D16 chain openings)
+      // are aimed at one placed authored hull. A generic sector pulse must never finish them;
+      // completion arrives from uniqueWreck:bearingFixed when the placed wreck is actually scanned.
+      if (m.params && WRECK_BOUND_SET_PIECE_OBJECTIVES.has(m.params.setPieceObjective)) continue;
       // Authored landmark probes settle only from scanner's exact physical signal result below.
       // A generic sector pulse must never finish a job aimed at one named hull.
       if (m.params && m.params.landmarkProbe) continue;
@@ -4497,6 +4510,45 @@ export const missions = {
     return false;
   },
 
+  /**
+   * G1: reconcile a wreck-bound set-piece stage at accept time. If the chain's hull is already
+   * known (a repeat run over a scanned/salvaged wreck, or a free-roam scan before accepting),
+   * the stage completes against the durable bearing instead of demanding new world work — the
+   * same reconcile precedent long_read's known-bearing opening follows.
+   */
+  _startWreckBoundStageObjective(mission) {
+    const params = mission && mission.params;
+    if (!mission || mission.status !== 'active' || !params) return false;
+    const objective = params.setPieceObjective;
+    const wreckId = params.wreckId || mission.wreckId || (mission.cause && mission.cause.wreckId);
+    if (!wreckId) return false;
+    const own = this.state.player && this.state.player.uniqueWrecks;
+    const bearing = own && own.bearings && own.bearings[wreckId];
+    if (!bearing) return false;
+
+    if (WRECK_BOUND_SET_PIECE_OBJECTIVES.has(objective)) {
+      // Only 'rumored' still owes the scan; fixed/decision/salvaged proves the hull was read.
+      if (bearing.phase === 'rumored') return false;
+      return this._onLongReadBearingFixed({
+        wreckId,
+        sectorId: mission.destSectorId,
+        phase: bearing.phase,
+      });
+    }
+
+    if (objective === 'investigation_recover_box') {
+      // The box already left the hull: decision pending or fully salvaged proves the recovery.
+      if (bearing.phase !== 'decision' && bearing.phase !== 'salvaged') return false;
+      const index = this.state.missions.active.indexOf(mission);
+      if (index < 0) return false;
+      params.recoveredWreckId = wreckId;
+      mission.objectiveProgress = mission.objectiveTarget;
+      this._completeMission(mission, index);
+      return true;
+    }
+    return false;
+  },
+
   _startLongReadObjective(mission) {
     const params = mission && mission.params;
     if (!mission || mission.status !== 'active' || !params) return false;
@@ -4640,8 +4692,10 @@ export const missions = {
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const mission = this.state.missions.active[i];
       const params = mission && mission.params;
+      // G1: every wreck-bound set-piece scan stage (long_read's rumor survey and the four
+      // D13-D16 chain openings) completes when ITS placed wreck's bearing is actually fixed.
       if (!mission || mission.status !== 'active' || !params
-        || params.setPieceObjective !== 'long_read_rumor_survey'
+        || !WRECK_BOUND_SET_PIECE_OBJECTIVES.has(params.setPieceObjective)
         || params.wreckId !== payload.wreckId) continue;
       params.rumorPurchased = true;
       params.bearingFixed = true;
@@ -6470,8 +6524,67 @@ export const missions = {
     return advanceSetPieceMission(this.state, mission, { outcome, reason });
   },
 
+  /**
+   * G2 — the Witness Run / station-contact seam. The run's witnesses ARE Customs bar contacts
+   * ("Filecleaver" Dorin, "Wraith" Kell) whose durable counters (`dorin.trust` -1..1,
+   * `kell.cover` 0..6, authored initial 0) previously had no emitter anywhere. At the run's
+   * TERMINAL settlement the receipt (witness + branch + outcome) becomes canonical
+   * `stationContact:counterDelta` intents; stationContacts stays the sole counter writer.
+   * Mapping, from the branch semantics:
+   *   publish (testimony filed public):  the witness's own record advances — dorin.trust +1 —
+   *     and public files burn the copy desk Kell hides behind — kell.cover -1.
+   *   shelter (record kept unavailable): the desk stays dark and Kell's handoffs held —
+   *     kell.cover +1 — while Dorin watches her massacre proof stay buried — dorin.trust -1.
+   *   terminal failure (any branch):    a botched run draws scrutiny to the customs line —
+   *     kell.cover -1; it earns nobody's trust.
+   * Cover BUILDS from 0 through sheltered runs and erodes through public/burned ones; trust
+   * clamps at ±1. Repeated runs keep moving the bounded counters, so a repeat runner watches
+   * Kell's cover be built and eaten away inside the same save.
+   */
+  _witnessRunCounterDeltas(receipt, cause) {
+    const witnessId = cause && cause.witnessId || null;
+    if (receipt.outcome === 'completed') {
+      if (receipt.branchId === 'publish') {
+        return witnessId === 'kell'
+          ? [{ trackerId: 'kell.cover', delta: -1 }, { trackerId: 'dorin.trust', delta: 1 }]
+          : [{ trackerId: 'dorin.trust', delta: 1 }, { trackerId: 'kell.cover', delta: -1 }];
+      }
+      if (receipt.branchId === 'shelter') {
+        return witnessId === 'kell'
+          ? [{ trackerId: 'kell.cover', delta: 1 }, { trackerId: 'dorin.trust', delta: -1 }]
+          : [{ trackerId: 'dorin.trust', delta: -1 }, { trackerId: 'kell.cover', delta: 1 }];
+      }
+      return [];
+    }
+    return [{ trackerId: 'kell.cover', delta: -1 }];
+  },
+
+  _emitWitnessRunContactSeam(mission, transition) {
+    const cause = setPieceCauseOf(mission);
+    if (!cause || cause.archetypeId !== 'witness_run') return false;
+    // Only the run's terminal settlement is an outcome: stage advances and single-stage retries
+    // are not. advanceSetPieceMission returns status 'completed' for both a finished route and a
+    // terminally failed attempt (retry budget spent), each distinguishable by receipt.outcome.
+    if (transition.status !== 'completed') return false;
+    const receipt = transition.receipt;
+    if (!receipt) return false;
+    const deltas = this._witnessRunCounterDeltas(receipt, cause);
+    if (!deltas.length) return false;
+    const reason = `witness_run:${receipt.branchId || 'common'}:${receipt.outcome}`
+      + `:witness=${cause.witnessId || 'seeded'}`;
+    for (const row of deltas) {
+      this.bus.emit('stationContact:counterDelta', {
+        trackerId: row.trackerId,
+        delta: row.delta,
+        reason: reason.slice(0, 96),
+      });
+    }
+    return true;
+  },
+
   _boardSetPieceTransition(mission, transition) {
     if (!transition || !transition.receipt) return false;
+    this._emitWitnessRunContactSeam(mission, transition);
     for (const offer of transition.offers || []) this._onExternalBoardOffer(offer);
     const receipt = transition.receipt;
     const fields = setPieceEventFields(mission, transition);

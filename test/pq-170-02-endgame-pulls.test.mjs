@@ -179,14 +179,14 @@ function factionsHarness() {
   return { state, events, bus, sys };
 }
 
-test('PQ-170.02 catalog keeps ten authored pieces and adds two heists plus two post-ending heavies', () => {
+test('PQ-170.02 catalog keeps the eleven authored pieces and adds two heists plus two post-ending heavies', () => {
   const authored = validateAuthoredSetPieceCatalog();
   const capital = validateCapitalBossCatalog();
   const endgame = validateEndgamePullCatalog();
   assert.equal(authored.ok, true, authored.errors.join('; '));
   assert.equal(capital.ok, true, capital.errors.join('; '));
   assert.equal(endgame.ok, true, endgame.errors.join('; '));
-  assert.equal(AUTHORED_SET_PIECES.length, 10, 'AUTHORED_SET_PIECES must stay exactly 10');
+  assert.equal(AUTHORED_SET_PIECES.length, 11, 'AUTHORED_SET_PIECES must stay exactly 11');
   assert.equal(MEGA_HEISTS.length, 2);
   assert.ok(MEGA_HEISTS.every((row) => row.methods.length === 2 && MEGA_HEIST_ENCOUNTERS[row.id]));
   assert.ok(CAPITAL_BOSS_TOLLMAN.endgame && CAPITAL_BOSS_ALA.endgame);

@@ -78,7 +78,7 @@ function scanPos(record) {
 }
 
 test('R1 registry pins the two authored wrecks, provenance adapter, and named base-family variants', () => {
-  assert.equal(UNIQUE_WRECKS.length, 12, 'the live D1-D12 reservation program stays fully authored');
+  assert.equal(UNIQUE_WRECKS.length, 16, 'the live D1-D16 reservation program stays fully authored');
   assert.deepEqual(validateUniqueWreckRegistry(), { ok: true, errors: [] });
 
   const teacher = uniqueWreckById(D10);

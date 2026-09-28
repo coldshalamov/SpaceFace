@@ -421,9 +421,24 @@ test('Investigation Chain black-box recovery requires native wreck salvage in th
     'wreck salvage outside the authored sector cannot settle recovery');
 
   state.world.currentSectorId = offer.destSectorId;
+  // G1: the black box comes out of the chain's OWN placed wreck. An anonymous scrap hull in the
+  // right sector is no longer the story — random salvage stays inert; only the authored hull.
   bus.emit('salvage:completed', { wreckId: wreck.id, loot: { cmdty_salvage_electronics: 1 } });
+  assert.equal(state.missions.active[0].id, activeId,
+    'an anonymous wreck in-sector cannot settle the authored recovery');
+
+  const authoredWreck = {
+    id: 'authored_quadrille_hull',
+    type: 'wreck',
+    alive: true,
+    pos: { x: 400, z: 0 },
+    data: { uniqueWreckId: offer.params.wreckId, salvagePool: { cmdty_salvage_electronics: 1 } },
+  };
+  state.entities.set(authoredWreck.id, authoredWreck);
+  state.entityList.push(authoredWreck);
+  bus.emit('salvage:completed', { wreckId: authoredWreck.id, loot: { cmdty_salvage_electronics: 1 } });
   assert.equal(state.missions.active.length, 0,
-    'native wreck salvage in the authored sector settles the black-box stage');
+    'salvaging the authored placed wreck settles the black-box stage');
   assert.equal(state.missions.receipts.filter((receipt) => (
     receipt.causeFingerprint === offer.cause.fingerprint && receipt.outcome === 'completed'
   )).length, 1, 'the native salvage receipt settles exactly once');
