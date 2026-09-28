@@ -103,7 +103,12 @@ function assertNoModal(emitted, label) {
   // the two-day window (its only proximity shapes now sit in zones the parked player correctly
   // refuses); seed 9 schedules ambush_snare in the haven on day 0 with the richest two-day
   // schedule. Floor unchanged.
-  const SOAK_SEED = 9;
+  // 2026-09-28: 9 -> 8. Another catalog wave (the ~340-358 encounter landing plus the
+  // reflex-library/89-spec AI merge) consumed a different number of seeded composition draws and
+  // moved seed 9's haven proximity cover out of the window again — its two-day schedule still
+  // fires eight shapes but all proximity-exempt. Seed 8 schedules ambush_snare in the haven with
+  // the richest scanned two-day schedule (6 fired, seeds 1-24). Floor unchanged.
+  const SOAK_SEED = 8;
   const { sim, state, bus, emitted, voice } = boot(SOAK_SEED, 'sector_sker_haven', havenPos, { cmdty_refined_metals: 12 });
   const referee = [];
   const firedKinds = [];
