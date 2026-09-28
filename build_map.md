@@ -379,7 +379,6 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 1 | ADOPT-FIGHTWORLD | Land the stale fight/world run: ~12 test files + ~14 system hunks uncommitted in the tree (memorial thief, seam mines, thrown-explosive fuse, kill shards, cookoff chains, berth memory, bar desk, bay-7 scan, faction-presence wire, kill replay, set pieces, crucible a-list). Run each focused suite; pathspec-commit green groups. Do **not** revert `536afa04b` (impulseCharges recycled-id fix — already landed). | ADOPT | CLAIMED devin-wave1 |
 | 3 | ADOPT-CAMPAIGN10 | Land or close `devin-campaign-10` residue — re-check tree for leftover hunks after rows 1–2. | ADOPT | CLAIMED devin-wave1 |
 
 ### B. Defect ledger — open rows (ledger: `DEMO_READINESS_2026-09-20.md` §6)
@@ -388,7 +387,6 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 |---|---|---|---|---|
 | 5 | D38 | First-arrival body undrawn while it compiles — ordering landed; residual is the serial compose/link/upload lane | FIX | CLAIMED devin-wave1 |
 | 6 | D46 | `check:all` foreign-red triage from 2026-09-25 — re-run sweep, re-row what is still red, delete the stale snapshot | FIX | CLAIMED devin-wave1 |
-| 7 | D60 | A6 driver teleported the player ~2.25 M-units in one tick — instrumented, unreproduced in 5 clean runs; prove it dead or find it | FIX | CLAIMED devin-wave1 |
 | 8 | D61 | Sector-jump authored-prewarm invariant race in `renderer.js` publish/generation | FIX | CLAIMED devin-wave1 |
 | 10 | D80 | Hauler income band vs honest arbitrage — model fixed; structural balance adjudication owed | FIX | CLAIMED devin-wave1 |
 | 14 | D83 | pq020 Ceres structural-cost digest drift — adjudicate semantically, then re-derive the pin | FIX | CLAIMED devin-graphics |
