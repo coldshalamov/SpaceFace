@@ -1,3 +1,44 @@
+# IMPORT ledger — 20260928 owner-side import (devin-w2-vm-head, board §1C row 19)
+
+Digest head-of-queue batch. Most of the named list was already on master (the #166–#170 head
+packages landed 2026-09-24; the #160–#163 registry latches landed earlier too). Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `perf-heap-sample-gate` (#165) | `747b49e2e` | focused 38/38 (`test/perf-counters.test.mjs`) |
+| `shield-bubble-quiet-latch` (#159) | swept into foreign commits `726c821e8` (renderer.js + module) + `76c03a7d6` (test file) — content verified on HEAD | focused latch 6/6; ship-aux suite 13/14 (1 pre-existing: `vfx-shield-shell-and-field-material` GLSL pin expects `iPivot.z`, source has `floor(iPivot.z)` — stale test, unrelated) |
+| `sync-entity-lod-retain` (#157) | `0ce3ff965` | focused 23/23 |
+
+#159 merge note: `git apply --3way` conflicted on one hunk — master's fallback-bubble block had
+drifted to a freeze-aware `presFrameDt` decay + inline `shouldPresentShieldBubble`. Resolved
+keeping BOTH: the patch's extracted module/latch, and master's freeze contract via a new optional
+`frameDt` arg on `updateEntityShieldBubblePresentation` (null = patch's shipped `now`-derived dt;
+tests exercise that path unchanged).
+
+Already on master before this pass (verified by marker/commit, no re-import):
+
+- `render-package-digest-zero-copy` (#166) — `98477e85c`
+- `embedded-ktx2-single-copy` (#167) — `57761c64e`
+- `glb-body-in-place` (#168) **incl. `patches-after-167`** — `42217a40a` (the +8 hunk into
+  `embeddedKtx2Textures.js` is inside that commit; `parser.glbBodySliceRange` present at
+  `embeddedKtx2Textures.js:151`)
+- `shader-readiness-no-isprogram` (#169) — `a0824bc3d`
+- `retail-gltfloader-vendored-alias` (#170) — `69f471d89`
+- `combat-outcome-quiet-latch` (#163) — `df8e5f3b9`
+- `difficulty-director-quiet-latch` (#162) — `c7067ccc9`
+- `ai-encounter-quiet-latch` (#161) — `a2584c946`
+- `faction-presence-quiet-latch` (#160) — `3b6f2c20f`
+
+Skipped this pass:
+
+- `hull-integrity-quiet-latch` (#164) — its only src hunk edits `src/ui/views/hullIntegrity.js`;
+  `src/ui/**` is the ORRERY-claimed lane (same boundary as the row-21/22 `hud-*`/`massline` skips).
+  Left for a UI-owning sitting.
+- `radar-contacts-still-layer` (#158) — src hunk edits `src/ui/radar.js`; ORRERY-claimed. Left for
+  a UI-owning sitting.
+- `radar-asteroid-still-layer` (#156) — same `src/ui/radar.js`; ORRERY-claimed. Left for a
+  UI-owning sitting.
+
 # IMPORT ledger — 20260928 owner-side import (devin-w2-vm-latcha, board §1C row 22)
 
 Quiet-latch vein A (`hud-*` / `classify-*` / `decode-runway-*` + `overlay-quartet`). Most of the
