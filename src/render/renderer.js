@@ -2179,11 +2179,87 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
     if (!structural) structural = owner._clearanceMeshes = [];
     structural.length = 0;
     for (const mesh of meshes.values()) {
-      const kind = mesh && mesh.userData && mesh.userData.kind;
-      if (CAMERA_CLEARANCE_KINDS.has(kind)) structural.push(mesh);
+      const data = mesh && mesh.userData;
+      const kind = data && data.kind;
+      if (!CAMERA_CLEARANCE_KINDS.has(kind)) continue;
+      // Quiet Ceres: dozens of field rocks can never roof. Keep them off the per-frame
+      // structural walk (rebuild only on _meshesVersion). Scale growth clears the sticky bit.
+      if (CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE
+          && CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT
+          && kind === 'asteroid') {
+        const hint = asteroidClearanceSpanHint(data);
+        if (hint > 0 && hint < CAMERA_CLEARANCE_MIN_SPAN_WU) {
+          const body = data.asteroidBody;
+          data.cameraClearanceNeverRoof = true;
+          data.cameraClearanceNeverRoofScale = body && body.scale
+            ? Math.abs(Number(body.scale.x) || 0) : 0;
+          continue;
+        }
+        data.cameraClearanceNeverRoof = false;
+      }
+      structural.push(mesh);
     }
     owner._clearanceMeshesVersion = owner._meshesVersion;
   }
+  if (CAMERA_CLEARANCE_FLOOR_RETAIN) {
+    // Moving structural kinds (asteroid / wreck) can drift or grow without a
+    // _meshesVersion bump; never retain across them — full walk stays authoritative.
+    // Stations/places are authored-static: cam identity + boxEpoch + a light
+    // authored-stamp check is enough (pending→authored must not return a stale
+    // -Infinity from the empty-substrate frame).
+    let staticStructural = true;
+    for (let i = 0; i < structural.length; i++) {
+      const kind = structural[i] && structural[i].userData && structural[i].userData.kind;
+      if (kind === 'asteroid' || kind === 'wreck') { staticStructural = false; break; }
+    }
+    const cache = owner._clearanceFloorCache || (owner._clearanceFloorCache = {
+      camX: NaN,
+      camZ: NaN,
+      camY: NaN,
+      meshesVersion: -1,
+      boxEpoch: -1,
+      floor: -Infinity,
+    });
+    const qCamX = quantizeClearanceRetainPos(camX);
+    const qCamZ = quantizeClearanceRetainPos(camZ);
+    const qCamY = quantizeClearanceRetainPos(camY);
+    if (staticStructural
+        && cache.camX === qCamX && cache.camZ === qCamZ && cache.camY === qCamY
+        && cache.meshesVersion === owner._clearanceMeshesVersion
+        && cache.boxEpoch === _clearanceBoxEpoch) {
+      // Quiet flight is almost always off-roof (floor === -Infinity). Trust the
+      // quantized cam cell there — spawn/despawn bumps _meshesVersion. Under a
+      // roof, also confirm authored stamps so pending→authored on a station
+      // cannot keep a stale empty floor (PIC-07 style in-place stamp without
+      // map churn). Exact floats still drive the AABB walk below on cell miss.
+      if (cache.floor === -Infinity) return cache.floor;
+      let stampsFresh = true;
+      for (let i = 0; stampsFresh && i < structural.length; i++) {
+        const data = structural[i].userData;
+        const cached = data && data.cameraClearanceBox;
+        if (!cached
+            || cached.assetState !== (data.authoredAssetState || '')
+            || cached.compositionId !== (data.authoredCompositionId || '')) {
+          stampsFresh = false;
+        }
+      }
+      if (stampsFresh) return cache.floor;
+    }
+    const floor = cameraClearanceFloorWalk(structural, camX, camZ, camY);
+    cache.camX = qCamX;
+    cache.camZ = qCamZ;
+    cache.camY = qCamY;
+    cache.meshesVersion = owner._clearanceMeshesVersion;
+    cache.boxEpoch = _clearanceBoxEpoch;
+    cache.floor = floor;
+    return floor;
+  }
+  return cameraClearanceFloorWalk(structural, camX, camZ, camY);
+}
+
+// The structural walk itself — grid-aware box/occupancy lookup shared by the retain and
+// always-walk paths so a bench-off frame is bit-identical to a retained-frame miss.
+function cameraClearanceFloorWalk(structural, camX, camZ, camY) {
   let floor = -Infinity;
   for (let i = 0; i < structural.length; i++) {
     const rec = cameraClearanceBoxForMesh(structural[i]);
