@@ -22,6 +22,7 @@ import {
   SQUAD_RECIPE_PINCER_SWEEP,
   SQUAD_RECIPE_STANDOFF_GUNLINE,
   SQUAD_SOCKET,
+  getSquadRecipe,
 } from '../data/squadChoreography.js';
 import { applyAIFiringIntent, clearAIFiringIntent } from './aiFireIntent.js';
 import {
@@ -838,6 +839,30 @@ function autoRecipeForSquad(members, squadKey, seed) {
     : SQUAD_RECIPE_PINCER_SWEEP;
 }
 
+function incumbentAutoRecipe(members, squadKey) {
+  // Hysteresis: a flight that already carries an auto stamp keeps it while members
+  // stay engaged, so one member's doctrine reassignment (e.g. enemy mind promoting a
+  // striker to shield_breaker) can't re-derive the recipe and reset everyone's frame
+  // mid-fight. Majority wins; lowest recipe id breaks ties deterministically.
+  const counts = new Map();
+  for (const member of members) {
+    const ai = member.data && member.data.ai;
+    if (!ai || ai.autoSquadRecipe !== true) continue;
+    if (typeof ai.squadRecipe !== 'string' || !getSquadRecipe(ai.squadRecipe)) continue;
+    if (typeof ai.squadFrameId !== 'string' || !ai.squadFrameId.startsWith(`${squadKey}#`)) continue;
+    counts.set(ai.squadRecipe, (counts.get(ai.squadRecipe) || 0) + 1);
+  }
+  let best = null;
+  let bestCount = 0;
+  for (const [recipeId, count] of counts) {
+    if (count > bestCount || (count === bestCount && best != null && recipeId < best)) {
+      best = recipeId;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
 function autoSocketsFor(members) {
   const sorted = members.slice().sort((a, b) => {
     const ai = String(a.id);
@@ -897,7 +922,8 @@ export function assignAutoSquadRecipes(state, shipLikeList = indexedShipLikeScan
   let stamped = 0;
   for (const [key, members] of byKey) {
     if (members.length < AUTO_SQUAD_MIN_SIZE) continue;
-    const recipeId = autoRecipeForSquad(members, String(key), seed);
+    const recipeId = incumbentAutoRecipe(members, String(key))
+      || autoRecipeForSquad(members, String(key), seed);
     const sorted = members.slice().sort((a, b) => {
       const ai = String(a.id);
       const bi = String(b.id);
