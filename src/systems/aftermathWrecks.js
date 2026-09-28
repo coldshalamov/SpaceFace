@@ -1192,7 +1192,10 @@ export const aftermathWrecks = {
         if (isArenaWreckSectorId(remembered.sectorId)) {
           this._spawnArenaKillWreck(remembered, payload);
         } else {
-          this._spawnForSector(remembered.sectorId);
+          const playerKill = payload && payload.killerId != null
+            && payload.killerId === this.state.playerId;
+          if (playerKill) this._spawnArenaKillWreck(remembered, payload);
+          else this._spawnForSector(remembered.sectorId);
           this._syncEcologyForSector(remembered.sectorId);
         }
       }
@@ -1296,11 +1299,11 @@ export const aftermathWrecks = {
     return retired;
   },
 
-  // The marker's whole body, at the victim's pose, carrying the momentum it died with. Since
-  // §25 Phase 3 a non-player arena kill also throws one unbound companion shard
-  // (_spawnArenaKillShard) so the death reads as bodies, not one silhouette. A slam kill's body
-  // is hullFracture's two seam pieces — mining spawns them from the same entity:killed event and
-  // binds the remainder to this marker, so a whole wreck here would draw two bodies for one
+  // The marker's whole body, at the victim's pose, carrying the momentum it died with. A
+  // non-player arena kill, and a player kill in adventure, also throws one unbound companion
+  // shard (_spawnArenaKillShard) so the death reads as bodies, not one silhouette. A slam kill's
+  // body is hullFracture's two seam pieces — mining spawns them from the same entity:killed event
+  // and binds the remainder to this marker, so a whole wreck here would draw two bodies for one
   // death; skipIfFracture suppresses the shard too.
   _spawnArenaKillWreck(marker, payload, { skipIfFracture = true } = {}) {
     if (!marker || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
@@ -1333,7 +1336,6 @@ export const aftermathWrecks = {
   _spawnArenaKillShard(marker) {
     if (!marker || !marker.markerId) return null;
     if (isPlayerWreckMarker(marker)) return null;
-    if (!isArenaWreckSectorId(marker.sectorId)) return null;
     if (!this._shards || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
     const existing = this._resolveMarkerShard(marker.markerId);
     if (existing) return existing;
