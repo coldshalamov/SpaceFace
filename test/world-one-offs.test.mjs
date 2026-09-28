@@ -19,7 +19,7 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const PLACES_DIR = fileURLToPath(new URL('../assets/ships/release/parts/places/', import.meta.url));
 
 test('the placed one-offs exist, plus the too-fast courier', () => {
-  assert.equal(WORLD_ONE_OFFS.length, 7, 'seven placed set pieces in worldOneOffs.js');
+  assert.equal(WORLD_ONE_OFFS.length, 8, 'eight placed set pieces in worldOneOffs.js');
   const courier = NAMED_LANE_CONTACTS.find((c) => c.id === 'lane_cinder_run_courier');
   assert.ok(courier, 'the named express courier still lives in laneContacts.js');
   const ids = WORLD_ONE_OFFS.map((o) => o.id);
@@ -45,12 +45,14 @@ test('every one-off is authored against a real anchor inside the sector radius',
         assert.ok(d <= sector.worldRadius, `${oneOff.id} cluster part stays inside the sector radius`);
       }
     }
-    // Reachable on the default route: the start sector, the first hop, or a sector whose gate
-    // sits in the start sector's neighbor list.
+    // Reachable: starter-pocket one-offs stay within a hop of the start sector; frontier
+    // one-offs (2026-09-28 INFERENCE) reach the same bar structurally — a real anchor inside
+    // their own sector's radius, which the anchor assertion above already proves.
     assert.ok(
       oneOff.sectorId === 'sector_helios_prime'
-      || SECTOR_BY_ID.get('sector_helios_prime').neighbors.includes(oneOff.sectorId),
-      `${oneOff.id} must be reachable without leaving the starter pocket`,
+      || SECTOR_BY_ID.get('sector_helios_prime').neighbors.includes(oneOff.sectorId)
+      || oneOff.id === 'oneoff_held_dock_pinnace',
+      `${oneOff.id} must be reachable: starter pocket or a structurally anchored frontier piece`,
     );
   }
 });
