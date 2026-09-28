@@ -107,6 +107,7 @@ import {
 } from '../data/pirateDoctrines.js';
 import { isHostileForAI, isAmbientRaidId } from '../ai/engagementAuthority.js';
 import {
+  ambientJettisonUnderPressure,
   ambientPickupCollected,
   ambientRaiderDestroyed,
   clearAmbientPredationBinding,
@@ -1848,10 +1849,22 @@ export const encounterDirector = {
     const dir = ensureDirectorState(this.state);
     // Entity ids recycle through freeIds — a stale pursuit row would leak onto the next hull.
     if (dir.pursuitWatch) delete dir.pursuitWatch[id];
-    // A removed ambient raider drops its secured loot as ordinary residue and frees the hauler.
-    ambientRaiderDestroyed(this.state,
-      this.state.entities && this.state.entities.get ? this.state.entities.get(id) : null,
-      this._ambientPredationCtx());
+    // A KILLED ambient raider drops its secured loot as ordinary residue and frees the hauler.
+    // The payload's own entity ref is the identity authority here — entity:destroyed queues
+    // AFTER the map delete, so an id lookup comes back empty or (worse) finds a recycled
+    // occupant. Storage, not death: a far-shelf row shares the entity's ai bag by reference
+    // ('virtualize'), a demoted sector's durable record clones it before despawn
+    // (worldRecordId stamped at capture), and a save wipe is tearing the world down. On any of
+    // those, respilling dumps unreachable pods AND erases the stored ledger — the durable
+    // authority already conserves the cargo. Only a dead hull with no stored owner drops.
+    const goneRaider = (p && p.entity)
+      || (this.state.entities && this.state.entities.get ? this.state.entities.get(id) : null);
+    const stored = this._saveRestoring
+      || (p && p.reason === 'virtualize')
+      || !!(goneRaider && goneRaider.data && goneRaider.data.worldRecordId != null);
+    if (!stored && goneRaider && goneRaider.alive === false) {
+      ambientRaiderDestroyed(this.state, goneRaider, this._ambientPredationCtx());
+    }
     if (dir.patrolIntervened) delete dir.patrolIntervened[id];
     if (dir.playerDealtDamageAt) delete dir.playerDealtDamageAt[id];
     for (const squadId of Object.keys(dir.active)) {
@@ -1892,9 +1905,11 @@ export const encounterDirector = {
     // Killed hulls may linger as wreck entities — drop pursuit bookkeeping at death, not at
     // removal, so a recycled id never inherits a resolved row.
     if (dir.pursuitWatch) delete dir.pursuitWatch[p.id];
-    ambientRaiderDestroyed(this.state,
-      this.state.entities && this.state.entities.get ? this.state.entities.get(p.id) : null,
-      this._ambientPredationCtx());
+    const killedRaider = (this.state.entities && this.state.entities.get
+      ? this.state.entities.get(p.id) : null) || p.entity || null;
+    if (killedRaider && killedRaider.alive === false) {
+      ambientRaiderDestroyed(this.state, killedRaider, this._ambientPredationCtx());
+    }
     if (dir.patrolIntervened) delete dir.patrolIntervened[p.id];
     if (dir.playerDealtDamageAt) delete dir.playerDealtDamageAt[p.id];
     const byPlayer = p.killerId != null && p.killerId === this.state.playerId;
@@ -1945,6 +1960,19 @@ export const encounterDirector = {
     if (!p || p.attackerId == null) return;
     const dir = ensureDirectorState(this.state);
     const now = this.now();
+    // A raider still holding stolen freight sheds some of it under fire — pursuit pressure
+    // knocks loot loose piecemeal (ambient ledger or the bound raid's secured one alike). Only a
+    // hit that actually lands dents the hold; a fully absorbed shot shakes nothing free. The
+    // field probe runs per damage event, so the ctx build waits for an actual carrier.
+    if (p.targetId != null && Number(p.applied) > 0) {
+      const pressured = this.state.entities && this.state.entities.get
+        ? this.state.entities.get(p.targetId) : null;
+      const pressuredAi = pressured && pressured.data && pressured.data.ai;
+      if (pressuredAi && (pressuredAi.stolenLoot || pressuredAi.predationObjective)) {
+        ambientJettisonUnderPressure(this.state, pressured, p.attackerId,
+          this._ambientPredationCtx());
+      }
+    }
     if (p.attackerId === this.state.playerId) {
       const playerDealtDamageAt = dir.playerDealtDamageAt || (dir.playerDealtDamageAt = {});
       if (p.targetId != null) playerDealtDamageAt[p.targetId] = now;

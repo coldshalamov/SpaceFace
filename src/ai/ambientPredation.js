@@ -61,6 +61,8 @@ export const AMBIENT_PREDATION = Object.freeze({
   raiderCooldownS: 120,      // per-raider refractory after any cleared raid
   victimCooldownS: 90,       // per-victim refractory — a hauler is not instantly re-raided
   securedCargoCap: 8,        // secured loot lines carried on the objective (bounded)
+  jettisonCooldownS: 4,      // one pressure-ditch per window — a chase knocks loot loose in lumps
+  jettisonFraction: 0.34,    // each pressured ditch sheds about a third of the heaviest line
   laneMarginWu: 500,         // victim may sit just outside a lane disc and still count lane-adjacent
   maxRaidScan: 64,           // sweep cap — malformed states cannot unbound the scan
 });
@@ -337,11 +339,7 @@ function secureAmbientPod(state, raider, pod, objective, raidId, now, ctx) {
         .filter((line) => line.qty > 0 && typeof line.commodityId === 'string');
   if (!Array.isArray(objective.secured)) objective.secured = [];
   for (const line of lines) {
-    objective.secured.push({ commodityId: line.commodityId, qty: line.qty });
-    if (objective.secured.length > AMBIENT_PREDATION.securedCargoCap) {
-      objective.secured.splice(0, objective.secured.length - AMBIENT_PREDATION.securedCargoCap);
-    }
-    objective.securedQty = (objective.securedQty | 0) + line.qty;
+    pushSecuredLine(objective, line);
   }
   if (typeof ctx.removeEntity === 'function') ctx.removeEntity(pod.id, { reason: 'ambient_cargo_secured' });
   else pod.alive = false;
@@ -401,14 +399,27 @@ export function ambientPickupCollected(state, payload) {
   objective.podIds.splice(idx, 1);
   const qty = Math.max(0, Math.floor(Number(p.amount) || 0));
   if (qty > 0) {
-    if (!Array.isArray(objective.secured)) objective.secured = [];
-    objective.secured.push({ commodityId: p.commodityId || null, qty });
-    if (objective.secured.length > AMBIENT_PREDATION.securedCargoCap) {
-      objective.secured.splice(0, objective.secured.length - AMBIENT_PREDATION.securedCargoCap);
-    }
-    objective.securedQty = (objective.securedQty | 0) + qty;
+    pushSecuredLine(objective, { commodityId: p.commodityId || null, qty });
   }
   return true;
+}
+
+/** One secured line in, ledger honest: same-commodity merges, and a cap splice subtracts the
+ *  dropped qty from securedQty so the ledger never counts freight that left the book. */
+function pushSecuredLine(objective, line) {
+  if (!line || typeof line.commodityId !== 'string' || !(Number(line.qty) > 0)) return;
+  if (!Array.isArray(objective.secured)) objective.secured = [];
+  const existing = objective.secured.find((row) => row.commodityId === line.commodityId);
+  if (existing) existing.qty += line.qty;
+  else objective.secured.push({ commodityId: line.commodityId, qty: line.qty });
+  objective.securedQty = (objective.securedQty | 0) + line.qty;
+  if (objective.secured.length > AMBIENT_PREDATION.securedCargoCap) {
+    const droppedLines = objective.secured.splice(0,
+      objective.secured.length - AMBIENT_PREDATION.securedCargoCap);
+    for (const row of droppedLines) {
+      objective.securedQty = Math.max(0, (objective.securedQty | 0) - (Number(row.qty) | 0));
+    }
+  }
 }
 
 /**
@@ -419,23 +430,116 @@ export function ambientRaiderDestroyed(state, entity, ctx = {}) {
   const data = entity && entity.data;
   if (!data) return false;
   const objective = ambientObjective(entity);
+  // Only the raider's own death resolves here — the victim carrier wears the same
+  // predationEncounterId stamp, and releasing it as 'raider_destroyed' would mislabel the
+  // cleared row and strand the real raider's binding (the maintain sweep owns victim deaths
+  // as 'target_destroyed'). A bound raider keeps its role on the objective once the durable
+  // boundary strips data.predation*.
+  const isRaider = !!objective || data.predationRole === 'raider';
   const raidId = objective ? objective.raidId
-    : isAmbientRaidId(data.predationEncounterId) ? data.predationEncounterId : null;
-  if (!raidId) return false;
-  respillAmbientSecured(state, entity, objective, ctx);
-  releaseAmbientRaid(state, raidId, 'raider_destroyed', ctx, { raider: entity });
+    : (isRaider && isAmbientRaidId(data.predationEncounterId))
+      ? data.predationEncounterId : null;
+  const loot = data.ai && data.ai.stolenLoot;
+  const hasLoot = !!(loot && Array.isArray(loot.lines)
+    && loot.lines.some((line) => line && (Number(line.qty) | 0) > 0));
+  if (!raidId && !hasLoot) return false;
+  if (objective) respillAmbientSecured(state, entity, objective, ctx);
+  // A released raider carries its score in ai.stolenLoot — killing it later still drops the
+  // freight it kept. Idempotent with entity:killed/entity:destroyed both routing here: the
+  // first call drains the ledger so the second drops nothing.
+  if (hasLoot) respillStolenLoot(state, entity, ctx);
+  if (raidId) releaseAmbientRaid(state, raidId, 'raider_destroyed', ctx, { raider: entity });
   return true;
 }
 
-function respillAmbientSecured(state, raider, objective, ctx) {
-  if (!objective || (objective.securedQty | 0) <= 0) return 0;
+/**
+ * Sustained fire knocks stolen freight loose: any attacker pressuring a hull that still holds a
+ * live secured ledger (bound raid) or a durable stolenLoot (escaped/released) makes it ditch the
+ * heaviest line as a real pod — a pursuit that lands hits recovers the load piecemeal instead of
+ * all-or-nothing on the kill. One ditch per cooldown window, deterministic.
+ */
+export function ambientJettisonUnderPressure(state, entity, attackerId, ctx = {}) {
+  const data = entity && entity.data;
+  const ai = data && data.ai;
+  if (!ai || attackerId == null || attackerId === entity.id || entity.alive === false) return 0;
+  if (typeof ctx.spawnCargoPod !== 'function' || !entity.pos) return 0;
+  const objective = ambientObjective(entity);
+  const onObjective = !!(objective && Array.isArray(objective.secured)
+    && objective.secured.some((line) => line && (Number(line.qty) | 0) > 0));
+  const loot = !onObjective && ai.stolenLoot && Array.isArray(ai.stolenLoot.lines) ? ai.stolenLoot : null;
+  const lines = onObjective ? objective.secured : (loot && loot.lines) || null;
+  if (!lines || !lines.length) return 0;
+  const now = simNow(state);
+  if (now < (Number(ai.stolenLootNextJettisonAt) || 0)) return 0;
+  // Ditch the heaviest line first — the load it sheds is the load that was slowing it down.
+  let line = null;
+  for (const row of lines) {
+    if (row && typeof row.commodityId === 'string' && (Number(row.qty) | 0) > 0
+        && (!line || row.qty > line.qty
+        || (row.qty === line.qty && String(row.commodityId) < String(line.commodityId)))) line = row;
+  }
+  if (!line) return 0;
+  const dump = Math.min(line.qty, Math.max(1, Math.ceil(line.qty * AMBIENT_PREDATION.jettisonFraction)));
+  const pod = ctx.spawnCargoPod(state, {
+    pos: { x: entity.pos.x, z: entity.pos.z },
+    vel: { x: (entity.vel && entity.vel.x) || 0, z: (entity.vel && entity.vel.z) || 0 },
+    radius: 6,
+    commodityId: line.commodityId,
+    amount: dump,
+    unitMass: 0.8,
+    factionId: entity.factionId || 'faction_reach',
+    ownerId: entity.id,
+  });
+  if (!pod) return 0;
+  // The cooldown binds once the ditch actually exists — a failed spawn doesn't burn the window.
+  ai.stolenLootNextJettisonAt = now + AMBIENT_PREDATION.jettisonCooldownS;
+  const provenanceVictimId = onObjective
+    ? (objective.targetId != null ? objective.targetId : null)
+    : (loot.victimId != null ? loot.victimId : null);
+  const provenanceManifestId = onObjective
+    ? (objective.manifestId || null)
+    : (loot.manifestId || null);
+  if (pod.data) {
+    pod.data.spillCause = 'pressure_jettison';
+    pod.data.attackerId = attackerId;
+    if (provenanceVictimId != null) pod.data.stolenFromId = provenanceVictimId;
+    if (provenanceManifestId != null) pod.data.manifestId = provenanceManifestId;
+  }
+  line.qty -= dump;
+  if (onObjective) {
+    objective.securedQty = Math.max(0, (objective.securedQty | 0) - dump);
+    objective.secured = objective.secured.filter((row) => row && (Number(row.qty) | 0) > 0);
+  } else {
+    loot.lines = loot.lines.filter((row) => row && (Number(row.qty) | 0) > 0);
+    if (!loot.lines.length) delete ai.stolenLoot;
+  }
+  emit(ctx, 'encounter:ambientCargoJettisoned', {
+    raidId: (objective && objective.raidId)
+      || (data && isAmbientRaidId(data.predationEncounterId) ? data.predationEncounterId : null),
+    raiderId: entity.id,
+    attackerId,
+    podId: pod.id,
+    commodityId: line.commodityId,
+    qty: dump,
+    t: now,
+  });
+  return dump;
+}
+
+/** The durable half of the same drop: ai.stolenLoot (post-release cargo kept aboard) returns to
+ *  the world as ordinary jettisoned pods at the raider's position, with victim/manifest
+ *  provenance so the goods still read as what they are — somebody else's freight. */
+function respillStolenLoot(state, raider, ctx) {
+  const ai = raider && raider.data && raider.data.ai;
+  const loot = ai && ai.stolenLoot;
+  const lines = loot && Array.isArray(loot.lines) ? loot.lines : [];
+  if (!lines.length) return 0;
   if (typeof ctx.spawnCargoPod !== 'function' || !raider.pos) {
-    objective.securedQty = 0;
-    objective.secured = [];
+    delete ai.stolenLoot;
     return 0;
   }
-  const lines = Array.isArray(objective.secured) ? objective.secured : [];
   let dropped = 0;
+  const kept = [];
   for (const line of lines) {
     if (!line || typeof line.commodityId !== 'string' || !(Number(line.qty) > 0)) continue;
     const pod = ctx.spawnCargoPod(state, {
@@ -448,10 +552,60 @@ function respillAmbientSecured(state, raider, objective, ctx) {
       factionId: raider.factionId || 'faction_reach',
       ownerId: raider.id,
     });
-    if (pod) dropped += Math.floor(Number(line.qty));
+    if (pod) {
+      if (pod.data) {
+        pod.data.spillCause = 'raider_destroyed';
+        if (loot.victimId != null) pod.data.stolenFromId = loot.victimId;
+        if (loot.manifestId != null) pod.data.manifestId = loot.manifestId;
+      }
+      dropped += Math.floor(Number(line.qty));
+    } else {
+      // A line that couldn't take physical form stays on the ledger for a later drain —
+      // killing a raider never makes cargo evaporate silently.
+      kept.push(line);
+    }
   }
-  objective.securedQty = 0;
-  objective.secured = [];
+  if (kept.length) loot.lines = kept;
+  else delete ai.stolenLoot;
+  return dropped;
+}
+
+function respillAmbientSecured(state, raider, objective, ctx) {
+  if (!objective || (objective.securedQty | 0) <= 0) return 0;
+  if (typeof ctx.spawnCargoPod !== 'function' || !raider.pos) {
+    objective.securedQty = 0;
+    objective.secured = [];
+    return 0;
+  }
+  const lines = Array.isArray(objective.secured) ? objective.secured : [];
+  let dropped = 0;
+  const kept = [];
+  for (const line of lines) {
+    if (!line || typeof line.commodityId !== 'string' || !(Number(line.qty) > 0)) continue;
+    const pod = ctx.spawnCargoPod(state, {
+      pos: { x: raider.pos.x, z: raider.pos.z },
+      vel: { x: (raider.vel && raider.vel.x) || 0, z: (raider.vel && raider.vel.z) || 0 },
+      radius: 6,
+      commodityId: line.commodityId,
+      amount: Math.floor(Number(line.qty)),
+      unitMass: 0.8,
+      factionId: raider.factionId || 'faction_reach',
+      ownerId: raider.id,
+    });
+    if (pod) {
+      if (pod.data) {
+        pod.data.spillCause = 'raider_destroyed';
+        if (objective.targetId != null) pod.data.stolenFromId = objective.targetId;
+        if (objective.manifestId != null) pod.data.manifestId = objective.manifestId;
+      }
+      dropped += Math.floor(Number(line.qty));
+    } else {
+      kept.push(line);
+    }
+  }
+  // Unspawnable lines stay on the objective — the ledger only zeroes what actually left the hull.
+  objective.securedQty = Math.max(0, (objective.securedQty | 0) - dropped);
+  objective.secured = kept;
   return dropped;
 }
 
@@ -518,6 +672,30 @@ export function clearAmbientPredationBinding(state, entity, raidId, reason = 'li
   // Only raiders carry an ambient objective — its presence is itself the raider marker once the
   // data.predationRole stamp has been stripped by the durable-record boundary.
   if ((data.predationRole === 'raider' || objective) && ai) {
+    // The raider keeps what it already stole: the secured ledger moves onto the durable ai bag —
+    // ai survives the far-shelf boundary that strips data.predation* — so a later kill still
+    // drops the goods and pursuit pressure can still knock them loose. Cargo stays in the actual
+    // current owner's hands; releasing the raid never deletes stolen freight.
+    if (objective && (objective.securedQty | 0) > 0 && Array.isArray(objective.secured)) {
+      const incoming = objective.secured
+        .map((line) => ({ commodityId: line.commodityId, qty: Math.floor(Number(line.qty) || 0) }))
+        .filter((line) => line.qty > 0 && typeof line.commodityId === 'string');
+      if (incoming.length) {
+        const loot = ai.stolenLoot && typeof ai.stolenLoot === 'object' ? ai.stolenLoot : null;
+        const lines = loot && Array.isArray(loot.lines) ? loot.lines : [];
+        for (const line of incoming) {
+          const existing = lines.find((row) => row.commodityId === line.commodityId);
+          if (existing) existing.qty += line.qty;
+          else lines.push({ commodityId: line.commodityId, qty: line.qty });
+        }
+        ai.stolenLoot = {
+          lines,
+          victimId: objective.targetId != null ? objective.targetId
+            : (loot && loot.victimId != null ? loot.victimId : null),
+          manifestId: objective.manifestId || (loot && loot.manifestId) || null,
+        };
+      }
+    }
     restoreAmbientRaiderDoctrine(state, entity);
     ai.predationStatus = 'cleared';
     ai.predationEndReason = String(reason || 'lifecycle_boundary');
