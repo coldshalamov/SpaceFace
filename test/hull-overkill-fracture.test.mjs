@@ -17,6 +17,7 @@ import {
   spawnFracturePieces,
 } from '../src/systems/hullFracture.js';
 import { OVERKILL_ORIGIN_KINDS } from '../src/data/hullFractureSeams.js';
+import { resolveAudioCueRecipeId } from '../src/audio/audioSystem.js';
 import { collisionConsequences } from '../src/systems/collisionConsequences.js';
 import { mining } from '../src/systems/mining.js';
 
@@ -137,6 +138,8 @@ describe('overkill fracture wire', () => {
       miner.registry = { get: (id) => (id === 'aftermathWrecks' ? fakeAftermath : null) };
       const fractured = [];
       h.bus.on('hull:fractured', (p) => fractured.push(p));
+      const cues = [];
+      h.bus.on('audio:cue', (p) => cues.push(p));
       const before = new Set(h.state.entityList);
       h.bus.emit('entity:killed', { id: victim.id, killerId: 1, type: 'ship', pos: { ...victim.pos }, victimClass: 'wasp' });
       const pieces = h.state.entityList.filter((e) => e && !before.has(e) && e.type === 'wreck');
@@ -149,6 +152,14 @@ describe('overkill fracture wire', () => {
       for (const piece of pieces) {
         assert.equal(piece.data.fractureOf, 'marker-1', 'both pieces name the marker');
       }
+      // The break voice: hull:fractured has no audioSystem subscriber, so the emitter itself must
+      // place the authored brittle-fracture cue. Silence on a hull tearing apart was the gap.
+      const breakCues = cues.filter((c) => c && c.id === 'presentation.mining.fracture_break');
+      assert.equal(breakCues.length, 1, 'fracture plays exactly one break cue');
+      assert.equal(resolveAudioCueRecipeId('presentation.mining.fracture_break'),
+        'sfx_mining_fracture_break', 'the cue id resolves to an authored recipe');
+      assert.deepEqual(breakCues[0].position, { x: 40, z: 6 }, 'the cue is placed at the seam');
+      assert.equal(breakCues[0].gain, 1, 'an overkill break plays at full gain');
     } finally {
       h.bus.clear();
       resetPendingSlams();

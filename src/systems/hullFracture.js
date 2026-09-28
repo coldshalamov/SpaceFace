@@ -299,6 +299,17 @@ export function spawnFracturePieces(ctx, note, options = {}) {
       pieceIds: pieces.map((piece) => piece.id),
       pieceCount: pieces.length,
     });
+    // The break voice. `hull:fractured` has no audioSystem subscriber of its own, so the seam
+    // splitting a hull was a silent event; this is the existing authored brittle-fracture recipe
+    // (audioSystem AUDIO_CUE_TO_RECIPE 'presentation.mining.fracture_break' ->
+    // sfx_mining_fracture_break) that a world-site structural break already uses - a hull tearing
+    // along a seam is that sound, not a combustion boom. No new recording, and the cue is world
+    // scoped: gain scales down with distance so a far-away kill is felt, not heard in the ear.
+    ctx.bus.emit('audio:cue', {
+      id: 'presentation.mining.fracture_break',
+      position: { x: note.pos.x, z: note.pos.z },
+      gain: note.overkill === true ? 1 : 0.85,
+    });
   }
 
   return { seam, pieces, hullClass: classId };

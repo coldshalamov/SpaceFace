@@ -3,12 +3,12 @@
 // recipe, or a reasoned SILENT. The next audit is a test run, not a grep session.
 //
 // This test never touches the dirty files (vfx.js, audioSystem.js): it asserts against the
-// two clean tables (combatVerbCues, actionVfx) plus the recipe catalog, and documents the
-// one deferred vfx.js subscriber as data the lane owner lands when its hunk clears.
+// two clean tables (combatVerbCues, actionVfx) plus the recipe catalog, and proves each
+// actionVfx row is already a live subscriber via vfx.js's generic ACTION_VFX_EVENTS loop.
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMBAT_VERB_CUES, PLAYER_ACTION_CUES, combatVerbRecipe } from '../src/audio/combatVerbCues.js';
-import { ACTION_VFX_RECIPES } from '../src/render/actionVfx.js';
+import { ACTION_VFX_EVENTS, ACTION_VFX_RECIPES } from '../src/render/actionVfx.js';
 import { RECIPES } from '../src/data/audioRecipes.js';
 
 const RECIPE_IDS = new Set(RECIPES.map((r) => r.id));
@@ -20,7 +20,7 @@ const RECIPE_IDS = new Set(RECIPES.map((r) => r.id));
 // outside actionVfx (named owners). `noVfxRow` = deliberately visual-silent.
 const CENSUS = Object.freeze({
   'bombs:detonated': { audio: 'sfx_bomb_concussion_shove', vfx: true },
-  'hull:fractured': { audio: 'sfx_mining_fracture_break', vfx: true, vfxNeedsSubscriber: true },
+  'hull:fractured': { audio: 'sfx_mining_fracture_break', vfx: true },
   'dock:docked': { audio: 'sfx_dock_clunk', vfxElsewhere: 'docking cradle holo + dock clunk' },
   'dock:undocked': { audio: 'sfx_undock_release', vfxElsewhere: 'docking cradle release' },
   'jump:start': { audioSilent: true, vfxElsewhere: 'semantic journey cue travel.jump.committed' },
@@ -35,19 +35,15 @@ const CENSUS = Object.freeze({
   'tether:snapCatch': { audio: 'sfx_tether_latch_lock' },
 });
 
-// The one-line subscriber the vfx.js lane owner lands when its hunk clears. Kept as data so
-// the deferred wire is reviewable and greppable without touching the dirty file.
+// Presentation is wired, not deferred: vfx.js subscribes every ACTION_VFX_EVENTS key through
+// one generic loop (`for (const name of ACTION_VFX_EVENTS) add(name, ...)`), and
+// ACTION_VFX_EVENTS is Object.keys(ACTION_VFX_RECIPES). So an actionVfx row IS the subscriber —
+// adding a row never needs a vfx.js edit, and a manual add() for the same name would
+// double-subscribe. This table is the payload contract those rows must stay shaped to.
 // Payload fields per src/systems/hullFracture.js emit.
-export const DEFERRED_VFX_SUBSCRIBERS = Object.freeze([
-  Object.freeze({
-    file: 'src/render/vfx.js',
-    anchor: '_subscribe',
-    line: "add('hull:fractured', (p) => this._onActionVfx('hull:fractured', p));",
-    event: 'hull:fractured',
-    handler: '_onActionVfx',
-    payload: ['victimId', 'seamId', 'hullClass', 'closingSpeed', 'pieceIds', 'pieceCount'],
-  }),
-]);
+export const ACTION_VFX_PAYLOADS = Object.freeze({
+  'hull:fractured': Object.freeze(['victimId', 'seamId', 'hullClass', 'closingSpeed', 'pieceIds', 'pieceCount']),
+});
 
 describe('packet C verb-presentation census', () => {
   for (const [verb, expectation] of Object.entries(CENSUS)) {
@@ -72,11 +68,15 @@ describe('packet C verb-presentation census', () => {
     });
   }
 
-  it('documents the deferred vfx.js subscriber without touching vfx.js', () => {
-    assert.equal(DEFERRED_VFX_SUBSCRIBERS.length, 1);
-    const [row] = DEFERRED_VFX_SUBSCRIBERS;
-    assert.equal(row.event, 'hull:fractured');
-    assert.ok(ACTION_VFX_RECIPES[row.event], 'deferred subscriber target must already have an actionVfx recipe');
-    assert.deepEqual(row.payload, ['victimId', 'seamId', 'hullClass', 'closingSpeed', 'pieceIds', 'pieceCount']);
+  it('actionVfx rows are live subscribers, not deferred vfx.js edits', () => {
+    // The wire exists: every recipe key is in ACTION_VFX_EVENTS, which vfx.js loops over.
+    for (const [event, payload] of Object.entries(ACTION_VFX_PAYLOADS)) {
+      assert.ok(ACTION_VFX_RECIPES[event], `${event} must have an actionVfx recipe`);
+      assert.ok(ACTION_VFX_EVENTS.includes(event),
+        `${event} must be an ACTION_VFX_EVENTS key so vfx.js's generic subscribe loop owns it`);
+      assert.deepEqual(payload,
+        ['victimId', 'seamId', 'hullClass', 'closingSpeed', 'pieceIds', 'pieceCount'],
+        `${event} payload contract`);
+    }
   });
 });
