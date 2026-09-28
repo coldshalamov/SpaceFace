@@ -43,10 +43,10 @@ const CSS = `
 .orr-lampkey:not(:disabled):active, .orr-lampkey.is-holding { transform:translateY(1px); }
 /* the key being charged stays the brightest filled shape; the travelling light is bigger than the field's edge */
 .orr-lampkey.is-holding::before { background:var(--dp-hand-hot, #ffd98c) !important; }
-.orr-lampkey:disabled { cursor:default; color:rgb(${BONE} / .76) !important; opacity:1 !important; filter:none !important; }
-/* a disabled key is an unlit lamp: the field's own cut shape filled with bone near a quarter (a body, never a 1px ghost
+.orr-lampkey:disabled { cursor:default; color:rgb(${BONE} / .9) !important; opacity:1 !important; filter:none !important; }
+/* a disabled key is an unlit lamp: the field's own cut shape filled with bone near a third (a body, never a 1px ghost
    outline), the verb in bone on it; no sheen, no amber */
-.orr-lampkey:disabled::before { background:rgb(${BONE} / .23) !important; background-image:none !important; box-shadow:none !important; }
+.orr-lampkey:disabled::before { background:rgb(${BONE} / .3) !important; background-image:none !important; box-shadow:none !important; }
 .orr-lampkey__rim { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; display:none; z-index:1; }
 .orr-lampkey__rim path { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1; stroke-linejoin:miter; }
 .orr-lampkey:disabled .orr-lampkey__track { stroke:rgb(${BONE} / .34); }

@@ -1655,10 +1655,10 @@ ${T} .sx-ind-process__items .sx-ind-row:is(:hover, :focus-visible):not(.is-activ
 ${T} .sx-ind-process__items .sx-ind-row:is(:hover, :focus-visible):not(.is-active, [aria-selected="true"]) .sx-ind-row__tier { color:rgb(${BONE} / .72) !important; }
 ${T} .sx-ind-process__items .sx-ind-row:is(:hover, :focus-visible):not(.is-active, [aria-selected="true"])::before { left:6.5px !important; width:3px !important; top:4px !important; height:calc(100% - 8px) !important; margin:0 !important;
   background:rgb(${BONE} / .7) !important; box-shadow:0 0 6px rgb(${BONE} / .35) !important; }
-/* a disabled FABRICATE is an unlit lamp: the key's field in bone near a quarter, the verb in bone on it (lampKey.js;
+/* a disabled FABRICATE is an unlit lamp: the key's field in bone near a third, the verb in bone on it (lampKey.js;
    other tabs read the same library rule directly, so no cross-tab selectors here) */
-${T} .sx-fab-foot .orr-lampkey:disabled { color:rgb(${BONE} / .76) !important; }
-${T} .sx-fab-foot .orr-lampkey:disabled::before { background:rgb(${BONE} / .23) !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled { color:rgb(${BONE} / .9) !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::before { background:rgb(${BONE} / .3) !important; }
 ${T} .sx-fab-foot .orr-lampkey:disabled::after { display:none !important; }
 ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)}, ${BAND(3, '0 0 / 100% 100%', .38)} !important; }
 

@@ -122,6 +122,8 @@ const CSS = `
 .orr-chain.is-ghost .orr-svg :is(.orr-chain__holdarc, .orr-chain__holdarc-bloom, .orr-chain__upulse, .orr-chain__outpulse) { opacity:.28; }
 html.sf-reduce-motion .orr-svg :is(.orr-chain__upulse, .orr-chain__outpulse) { display:none !important; }
 .orr-chain__ringhit { position:absolute; border-radius:50%; pointer-events:auto; }
+.orr-chain__ringhit:focus { outline:none; }
+.orr-chain__ringhit:focus-visible { outline:2px solid rgb(236 230 216 / .6); outline-offset:5px; }
 .orr-chain__label .orr-chain__reason.is-told { color:rgb(248 244 234) !important; text-shadow:0 0 18px rgb(248 244 234 / .35); transition:color .2s linear, text-shadow .2s linear; }
 .orr-chain__rise { opacity:0; animation:orr-chain-rise .46s var(--dp-ease-out, ease-out) forwards; animation-delay:var(--orr-delay, 0ms); }
 @keyframes orr-chain-rise { to { opacity:1; } }
@@ -195,8 +197,10 @@ export function createChainBeam(host, { onLayout = null } = {}) {
     if (anim && typeof globalThis.cancelAnimationFrame === 'function') globalThis.cancelAnimationFrame(anim);
     anim = 0;
   }
-  // when unit k of `shown` sets out along its beam (fraction of the hold), and how long it travels
-  const unitStart = (k, shown) => 0.06 + 0.6 * (k / Math.max(1, shown));
+  // when a unit sets out along its beam (fraction of the hold), and how long it travels: units are
+  // staged by their GLOBAL index across every input, so all beams carry light through the middle
+  // of the hold instead of each input front-loading its own first unit
+  const unitStartG = (g, total) => 0.06 + 0.56 * (g / Math.max(1, total));
   const TRAVEL = 0.32;
 
   /** Draw a run at `frac` (0..1): the bezel lit to frac, each input's pulses on their beams, its gauge drained. */
@@ -212,14 +216,22 @@ export function createChainBeam(host, { onLayout = null } = {}) {
       holdBloom.setAttribute('d', d);
     }
     const still = reducedMotion();
+    // first pass: each input's global unit base, so staging spreads across the whole chain
+    let gTotal = 0;
+    for (const inp of rig.ins) {
+      const units = ghost ? inp.need : Math.min(inp.need, Math.floor(inp.held));
+      inp._shown = Math.min(units, inp.units.length);
+      inp._units = units;
+      inp._g0 = gTotal;
+      gTotal += inp._shown;
+    }
     for (const inp of rig.ins) {
       // a preview sends what the recipe needs; a real run sends what the hold has (never more than the recipe takes)
-      const units = ghost ? inp.need : Math.min(inp.need, Math.floor(inp.held));
-      const shown = Math.min(units, inp.units.length);
+      const shown = inp._shown;
       if (inp.len == null) { try { inp.len = inp.beam.getTotalLength(); } catch (_) { inp.len = 0; } }
       for (let k = 0; k < inp.units.length; k += 1) {
         const g = inp.units[k];
-        const q = (p - unitStart(k, shown)) / TRAVEL;
+        const q = (p - unitStartG(inp._g0 + Math.min(k, Math.max(0, shown - 1)), gTotal)) / TRAVEL;
         if (k >= shown || still || !inp.len || q <= 0 || q >= 1) { g.style.display = 'none'; continue; }
         let pt = null;
         try { pt = inp.beam.getPointAtLength(q * inp.len); } catch (_) { pt = null; }
@@ -230,7 +242,7 @@ export function createChainBeam(host, { onLayout = null } = {}) {
       if (ghost) continue;
       // each unit leaves its gauge as its pulse sets out; units past the drawn pulses leave with the last one
       let drained = 0;
-      for (let k = 0; k < units; k += 1) drained += Math.max(0, Math.min(1, (p - unitStart(Math.min(k, Math.max(0, shown - 1)), shown)) / 0.05));
+      for (let k = 0; k < inp._units; k += 1) drained += Math.max(0, Math.min(1, (p - unitStartG(inp._g0 + Math.min(k, Math.max(0, shown - 1)), gTotal)) / 0.05));
       inp.paintStock(inp.held - drained);
     }
   }
@@ -524,10 +536,18 @@ export function createChainBeam(host, { onLayout = null } = {}) {
     const ol = label(`is-centre is-below${blocked ? ' is-ghost' : ''}`, xOut - 110, cy + rOut + 10 * scL, `<span class="orr-chain__qty">${data.output && data.output.qty != null ? data.output.qty : ''}</span><span class="orr-chain__unit">${String(data.output && data.output.unit ? data.output.unit : 'per run').split(' · ').join('<br>')}</span>`);
     rig.qty = ol.querySelector('.orr-chain__qty');
     if (arriveNow) { ol.classList.add('orr-chain__rise'); ol.style.setProperty('--orr-delay', '340ms'); }
-    // the ring is a hover target: a chain that cannot run previews its run there
+    // the ring is a hover target: a chain that cannot run previews its run there; keyboard
+    // players get the same lesson through focus (a live chain's ring stays out of the tab order)
     const hit = doc.createElement('div');
     hit.className = 'orr-chain__ringhit';
-    hit.setAttribute('aria-hidden', 'true');
+    if (rig.live) hit.setAttribute('aria-hidden', 'true');
+    else {
+      hit.setAttribute('role', 'button');
+      hit.setAttribute('tabindex', '0');
+      hit.setAttribute('aria-label', 'Preview the chain run');
+      hit.addEventListener('focus', () => preview());
+      hit.addEventListener('blur', () => { if (previewing) reset(); });
+    }
     Object.assign(hit.style, { left: `${f(xProc - rProc)}px`, top: `${f(cy - rProc)}px`, width: `${f(rProc * 2)}px`, height: `${f(rProc * 2)}px` });
     hit.addEventListener('pointerenter', () => preview());
     hit.addEventListener('pointerdown', () => preview());
