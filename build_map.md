@@ -428,7 +428,7 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 52 | CR-TEXTURE-1 | Per-sector surprise coverage — each named place gets one reachable one-off (rumor or skyline) | BUILD | OPEN |
 | 53 | OPTIC-OFFENSE | Offensive half of optic fields: enemies kite pursuers across fuses / bank shots off mirrors (defensive half landed) | BUILD | OPEN |
 | 54 | OPTIC-COST | The required Ceres-entry cost trace for 42 optic bodies was never produced — scatter shipped live regardless; produce the artifact or retire the guard | ACCEPT | OPEN |
-| 55 | SEAM-BASE | `combat:baseDestroyed` — no destructible base entities exist (`economy.js:902`); sim/content seam, reachable without UI | BUILD | OPEN |
+| 55 | SEAM-BASE | `combat:baseDestroyed` — dockless station-typed bases (`data.baseKind`) are real destructible bodies; combat emits the event on kill, economy + sectorSim consequences land, 358 THE PRESS CAMP fields the first one | BUILD | DONE 2026-09-28 — seam closed end-to-end, no UI needed (`receipts/SEAM-BASE-DESTRUCTIBLE-BASES.md`, 8/8 focused + 82/82 encounter batch) |
 | 56 | SEAM-UI | §1B UI-producer seams (setShipAppearance, kurtzInteract, heliosBay7Scan, endingArchiveOpen, factionPresenceService, claim:defenseIgnore) — UI halves are ORRERY's; sim-side gaps may be taken | BUILD | CLAIMED ORRERY-adjacent |
 | 57 | PQ-129.11–.17 | Hitch deferred leaves (7): submit tighten, rigid opaque batching, canopy/plume lanes, tiny-fighter LOD, off-table AI sleep, cheaper bloom, autosave off display callback — take lowest first | BUILD | OPEN |
 | 58 | P7 | Body-scale bars hold across zoom/speed — first slice landed; verify floors at edge zooms | BUILD | OPEN |
@@ -2058,7 +2058,6 @@ here and there in the fixing commit.
 | **GFX-10** | Forge performance pass. Dedupe the shared tile textures in the loader, instance repeated hulls, and record frame p50/p95 and texture MB in §21.4. |
 | **GFX-11** | Runtime attachments on Forge hulls: retro shells on the nozzles, damage hooks shedding, player paint on all 14 hulls. |
 | **GFX-12** | Wave F F3: the pending-body stand-in is the hull's own Forge LOD2. |
-| **GFX-14** | Shipworks dock interiors rebuilt in Forge, keeping the composition check at 0 hits. |
 
 ### Wave D — shelf that beats live
 

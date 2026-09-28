@@ -1,13 +1,12 @@
 """Claim outpost — BASTION (place_claim_outpost_bastion) — Forge rebuild.
 
-Idea: "the claim under armour". The shared anchor ring carries its defence fit: a heavy
-armoured casemate raised over the defence pad — chamfered plate, recessed gun slits with
-red glints — blast-shutter arc panels bolted along the ring rim, two smaller sponson
-casemates on the flanking pads, a fire-control dome on the ops pod, and red station-keeping
-beacons. Reads from above as a fortress ring: pale deck, dark casemates, red eyes.
+Idea: "the claim under armour". The function block OWNS the plan: one big chamfered armoured
+casemate covering most of the deck centre, gun-slit bands with red glints on its flanks, and
+a roof turret with twin barrels reaching up the face. The shared hab hides shrunk on the aft
+rim; the frame rim carries blast-shutter plates. Reads from above as a fortress block —
+unmistakably the bastion.
 
 Same contract as the base (sockets copied live; plan = Blender XZ, front = -Y).
-Live bounds allow the casemate to stand proud (d to ~+12) and the ring to thicken.
 """
 import math
 import os
@@ -23,64 +22,59 @@ COLORS = dict(K.COLORS, **{
 })
 
 
-def casemate(s, name, u, v, w, h, depth, gun_arc=0.0):
-    """Armoured casemate: tapered blockhouse proud of the ring face, dark gun slit band,
-    riveted brow plate, two red gun-port lamps."""
-    K.plan_box(s, name, u, v, 2.0 + depth / 2, w, h, depth, material='paint2',
-               rot=gun_arc, bevel=0.4, taper=0.78)
-    K.plan_box(s, f'{name}Brow', u, v, 3.0 + depth / 2, w * 0.72, h * 0.55, depth * 0.72,
-               material='paint.role', rot=gun_arc, bevel=0.3, taper=0.7)
-    # recessed gun slit across the front face
-    dd = 2.0 + depth + 0.15
-    K.plan_box(s, f'{name}Slit', u, v - h * 0.08, dd, w * 0.6, h * 0.14, 0.4,
-               material='dark', rot=gun_arc, bevel=0.02)
-    for e in (-1, 1):
-        F.light(s, f'{name}Port{e:+d}',
-                K.P(u + math.cos(gun_arc) * e * w * 0.24 - math.sin(gun_arc) * e * 0,
-                    v - h * 0.08, dd + 0.1),
-                'glow_red', size=0.3)
-
-
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
-    K.build_platform(s, {'seed': 23})
+    K.build_platform(s, {'hab': (0.0, -30.0), 'hab_scale': 0.55})
 
-    # --- defence casemate on the defence pad (20,-20) -------------------------------------
-    casemate(s, 'Bastion', 20.0, -20.0, 14.0, 11.0, 9.5)
-    # missile/turret deck on its roof
-    K.plan_box(s, 'BastionRoof', 20.0, -20.0, 12.4, 8.0, 6.0, 1.8, material='paint2',
-               bevel=0.2)
+    # --- the casemate: one chamfered armour block covering most of the deck ------------------
+    cu, cv = 0.0, 2.0
+    K.plan_box(s, 'Casemate', cu, cv, 6.4, 40.0, 30.0, 8.8, material='paint2',
+               bevel=0.5, taper=0.8)
+    # armour brow plate — the role accent
+    K.plan_box(s, 'CasemateBrow', cu, cv, 8.4, 30.0, 21.0, 6.0, material='paint.role',
+               bevel=0.4, taper=0.72)
+    # recessed gun-slit bands on all four flanks + red port lamps
+    for k, (su, sv, w, h) in enumerate(((0.0, 16.6, 26.0, 1.6), (0.0, -12.6, 26.0, 1.6))):
+        K.plan_box(s, f'Slit{k}', su, sv, 7.4, w, h, 4.6, material='dark', bevel=0.02)
+        for e in (-1, 1):
+            F.light(s, f'Port{k}{e:+d}', K.P(su + e * w * 0.28, sv, 9.8), 'glow_red',
+                    size=0.32)
+    for k, e in enumerate((-1, 1)):
+        K.plan_box(s, f'SlitSide{k}', e * 19.6, cv, 7.4, 1.6, 20.0, 4.6, material='dark',
+                   bevel=0.02)
+        F.light(s, f'PortS{k}', K.P(e * 19.6, cv + 4.0, 9.8), 'glow_red', size=0.32)
+
+    # --- roof turret: drum + twin barrels reaching up the face --------------------------------
+    K.plan_cyl(s, 'TurretDrum', cu, cv + 2.0, 10.8, cu, cv + 2.0, 12.2, 8.0,
+               material='paint2', segments=24)
+    K.placed_sphere(s, 'TurretDome', cu, cv + 2.0, 12.2, 8.0, material='paint.role',
+                    segments=20, scale=(1.0, 0.3, 1.0))
     for e in (-1, 1):
-        K.plan_cyl(s, f'Tube{e:+d}', 20.0 + e * 2.2, -20.0, 13.2, 20.0 + e * 2.2, -20.0,
-                   16.4, 0.5, material='gunmetal', segments=10)
-        F.light(s, f'TubeTip{e:+d}', K.P(20.0 + e * 2.2, -20.0, 16.6), 'glow_red',
-                size=0.25)
-    F.sensor_dome(s, 'FireControl', K.P(24.5, -16.0, 12.6), 1.4, material='paint2',
-                  lens='glow_red')
+        K.plan_cyl(s, f'Barrel{e:+d}', cu + e * 2.4, cv + 6.0, 11.6,
+                   cu + e * 2.4, cv + 24.0, 11.6, 0.55, material='gunmetal', segments=10)
+        K.plan_cyl(s, f'BarrelTip{e:+d}', cu + e * 2.4, cv + 23.4, 11.6,
+                   cu + e * 2.4, cv + 24.8, 11.6, 0.75, material='dark', segments=10)
+        F.light(s, f'BarrelLamp{e:+d}', K.P(cu + e * 2.4, cv + 25.0, 11.6), 'glow_red',
+                size=0.3)
+    F.sensor_dome(s, 'FireControl', K.P(cu - 9.0, cv - 8.0, 11.2), 1.5,
+                  material='paint2', lens='glow_red')
 
-    # --- sponson casemates on the two flanking pads ----------------------------------------
-    casemate(s, 'SponsonA', -20.0, -20.0, 10.0, 8.0, 6.5)
-    casemate(s, 'SponsonB', 20.0, 20.0, 10.0, 8.0, 6.5)
-
-    # --- blast-shutter arc panels bolted to the frame chords between the pads --------------
+    # --- blast-shutter plates on the rim between the pads ------------------------------------
     for k, a in enumerate((22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5)):
-        K.ring_slab(s, f'Shutter{k}', K.FRAME_R - 3.5, K.FRAME_R + 1.6, 2.4, 5.2,
-                    material='paint2', arc=(a - 12.0, a + 12.0), segments=5)
-        u2, v2, _ = K.polar_plan(K.FRAME_R + 1.2, a)
-        K.plan_box(s, f'ShutterRib{k}', u2, v2, 4.0, 2.4, 4.0, 5.6, material='paint.role',
-                   rot=math.radians(a), bevel=0.05)
+        K.ring_slab(s, f'Shutter{k}', K.FRAME_R - 3.5, K.FRAME_R + 1.6, 2.4, 4.6,
+                    material='paint2', arc=(a - 11.0, a + 11.0), segments=5)
 
-    # --- extra armour skirt under the frame rim ---------------------------------------------
+    # --- armour skirt under the frame rim ------------------------------------------------------
     K.ring_slab(s, 'ArmourSkirt', K.FRAME_R - 3.0, K.FRAME_R + 0.5, -4.6, -1.8,
                 material='dark', segments=48)
 
-    # --- red station beacons replacing the base pennant ------------------------------------
+    # --- red station beacons --------------------------------------------------------------------
     for k, a in enumerate((12.0, 192.0)):
         u, v, _ = K.polar_plan(K.FRAME_R - 1.0, a)
-        K.plan_cyl(s, f'WarnMast{k}', u, v, 1.6, u, v, 10.0, 0.3, material='paint2',
+        K.plan_cyl(s, f'WarnMast{k}', u, v, 1.6, u, v, 9.0, 0.3, material='paint2',
                    segments=10)
-        F.beacon(s, f'WarnBeacon{k}', K.P(u, v + 10.3, 0.4), finish='glow_red', size=0.55)
+        F.beacon(s, f'WarnBeacon{k}', K.P(u, v + 9.3, 0.4), finish='glow_red', size=0.55)
     return s
 
 

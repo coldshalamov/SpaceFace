@@ -56,7 +56,7 @@ def build():
     for k, ex in enumerate((-8.0, 8.0)):
         F.box(s, f'EndHouse{k}', (ex, 0, 3.0), (1.8, 1.9, 4.2), material='paint2',
               bevel=0.12, taper=0.9)
-        F.box(s, f'EndBand{k}', (ex, 0, 4.6), (1.9, 2.0, 0.5), material='hazard',
+        F.box(s, f'EndBand{k}', (ex, 0, 4.7), (1.92, 0.6, 0.24), material='hazard',
               bevel=0.0)
         F.light(s, f'EndLamp{k}', (ex, -1.0, 5.4), 'glow_amber', size=0.35)
 

@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Lane_Center",
       "nodePath": [
         0,
-        27
+        28
       ],
       "parentNodeId": "sf.render.transponder-gate.root",
       "worldTransform": [
@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7defe563b424345b4d9810efcb1d0a6736f7a3815a3fc95c56e35e60268279ed",
+  "contentHash": "9e8ed9549eb544e349832962ae46a73f0922ffadef84dede9e170e243864710b",
   "dynamicGroups": [
     {
       "id": "sf.render.transponder-gate.mesh.lod0-hook-nav-port.dynamic",
@@ -82,92 +82,92 @@
       "bounds": {
         "max": [
           1.1297587156295776,
-          13.174999237060547,
+          13.274659156799316,
           11.300000190734863
         ],
         "min": [
           -1.1297587156295776,
-          6.875105782455648e-7,
+          0.0003401768335606903,
           -11.300000190734863
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4ac92df09e69a0352f9c97eeb457d6aa2d2fc2dde13875a283aa3669ae815ef",
+      "geometryHash": "d1aed32680eec0a23371a3d5bb9e79716b805a20c5bfbb29b6172ec4d11a5e06",
       "id": "sf.render.transponder-gate.mesh.collision-hull.primitive.0",
-      "indexCount": 810,
+      "indexCount": 900,
       "indexed": true,
       "materialHash": null,
       "materialPipelineKey": "non-render",
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.transponder-gate.mesh.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 624
+      "vertexCount": 679
     },
     {
       "bounds": {
         "max": [
-          0.5003326535224915,
-          13.00064754486084,
+          0.5243385434150696,
+          12.549487113952637,
           10.350000381469727
         ],
         "min": [
-          -0.5003326535224915,
-          0.7993525266647339,
+          -0.5243385434150696,
+          0.800512969493866,
           -10.350000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e77a1c52c6580a559fde6524c9b862cb957265d29eb1cbc3bc0c73c2c18504fb",
+      "geometryHash": "ec3797169a752f372e67a10d13bd02dc9e01e4961fc763a96a7f04f68efa7d99",
       "id": "sf.render.transponder-gate.mesh.lod0-armor-navy.primitive.0",
-      "indexCount": 1692,
+      "indexCount": 2256,
       "indexed": true,
       "materialHash": "e6b48b088d5abe3c3df96f9b593e194074551ba37a028dec47855deee5d70b73",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor_navy",
       "nodeId": "sf.render.transponder-gate.mesh.lod0-armor-navy",
       "primitiveIndex": 0,
-      "vertexCount": 560
+      "vertexCount": 744
     },
     {
       "bounds": {
         "max": [
-          0.3501376509666443,
+          0.9994640946388245,
           11.500301361083984,
           8.880000114440918
         ],
         "min": [
-          -0.3501376509666443,
+          -0.9994640946388245,
           1.6996986865997314,
           -8.880000114440918
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f88be52000df05dfaebdef37f2820655e89e7c7f51534cc104274ecd7aaa2934",
+      "geometryHash": "16d6539116081309d183b6162f14bf43aed46414a1b6718b478d72a12ea7071c",
       "id": "sf.render.transponder-gate.mesh.lod0-armor.primitive.0",
-      "indexCount": 1128,
+      "indexCount": 3384,
       "indexed": true,
       "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.transponder-gate.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 340
+      "vertexCount": 1012
     },
     {
       "bounds": {
         "max": [
           0.1550000011920929,
-          13.174991607666016,
+          13.274991035461426,
           0.1550000011920929
         ],
         "min": [
           -0.1550000011920929,
-          13.027508735656738,
+          13.127508163452148,
           -0.1550000011920929
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d4fd9da5fd4e182afa3bd01a53dda40c2e592dda2f711301ac9d25edd7adcf07",
+      "geometryHash": "444335577662d8ef642088c9673d94b2e9d8464d97ea583f6d7db4ed4c929bd3",
       "id": "sf.render.transponder-gate.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -206,27 +206,27 @@
     {
       "bounds": {
         "max": [
-          0.249562069773674,
-          11.060318946838379,
+          1.069551706314087,
+          12.14981746673584,
           8.850000381469727
         ],
         "min": [
-          -0.249562069773674,
-          1.9496819972991943,
+          -1.069551706314087,
+          1.9501832723617554,
           -8.850000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1bc4e0fa94b0abf5d905f54d4b63a067d981b9dcab60bdd0b4bf4144cb9aaccf",
+      "geometryHash": "266e42852d412d5ad9b1fd5f41c3483f7c9a7eef20bdf70f8563e3adbc7152b6",
       "id": "sf.render.transponder-gate.mesh.lod0-lights-cyan.primitive.0",
-      "indexCount": 468,
+      "indexCount": 828,
       "indexed": true,
       "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Cyan",
       "nodeId": "sf.render.transponder-gate.mesh.lod0-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 312
+      "vertexCount": 552
     },
     {
       "bounds": {
@@ -257,17 +257,17 @@
       "bounds": {
         "max": [
           0.9504318833351135,
-          13.037278175354004,
+          13.136938095092773,
           11.300000190734863
         ],
         "min": [
           -0.9504318833351135,
-          0.00022253120550885797,
+          0.0005620205192826688,
           -11.300000190734863
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8cdaa0c11b91f4e437ded1a53320179feaf452c52207f90e6b8fa638bd943099",
+      "geometryHash": "249ce54bc2aea70f1344151105f5cde5c04020703123af1fc40df449825faa6d",
       "id": "sf.render.transponder-gate.mesh.lod0-mechanical.primitive.0",
       "indexCount": 3324,
       "indexed": true,
@@ -276,132 +276,132 @@
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.transponder-gate.mesh.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1146
+      "vertexCount": 1152
     },
     {
       "bounds": {
         "max": [
           1.129868507385254,
-          13.124834060668945,
+          13.25957202911377,
           10.800000190734863
         ],
         "min": [
           -1.129868507385254,
-          0.0001658949622651562,
+          0.0004272720543667674,
           -10.800000190734863
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e74aac33ad9a8fa0941c936cbe7e41b6cb8e15e34e616ee6e3c3e973e8cc78f3",
+      "geometryHash": "c1c570574ad0215c9baaa17cbb364bb64d6c2e5cab4451efb07a2f9f03243c3d",
       "id": "sf.render.transponder-gate.mesh.lod0-mechanicaldark.primitive.0",
-      "indexCount": 8868,
+      "indexCount": 9576,
       "indexed": true,
       "materialHash": "c73d1b5264f0a58926ed9d980bb0eaa1567e5077355c1d0a7e6f85e5c6918e6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.transponder-gate.mesh.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 3221
+      "vertexCount": 3489
     },
     {
       "bounds": {
         "max": [
           0.5005035400390625,
-          0.724565863609314,
+          0.9703606367111206,
           10
         ],
         "min": [
           -0.5005035400390625,
-          0.37543413043022156,
+          0.3746393322944641,
           -10
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8109c7e53172bbe56b0e05aa616c11c3714ee39f6bb0f32acb40482eaee7840c",
+      "geometryHash": "7db1028e4b1a613cf79d030718173afb9b3a7d2d0781c1992f38e47cfebd679a",
       "id": "sf.render.transponder-gate.mesh.lod0-warning.primitive.0",
-      "indexCount": 1128,
+      "indexCount": 1380,
       "indexed": true,
       "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.transponder-gate.mesh.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 340
+      "vertexCount": 508
     },
     {
       "bounds": {
         "max": [
-          0.49510031938552856,
-          12.995677947998047,
+          0.5206365585327148,
+          12.54411506652832,
           10.346270561218262
         ],
         "min": [
-          -0.49510031938552856,
-          0.8038316965103149,
+          -0.52008455991745,
+          0.8044277429580688,
           -10.346270561218262
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f737591b57243e67e8635604de0a9cc4c91114dce017434396459be77deed7a",
+      "geometryHash": "495e0556bbe5b4ec65f1b790e8f152c068a89a19157aa2185d478e56b492caec",
       "id": "sf.render.transponder-gate.mesh.lod1-armor-navy.primitive.0",
-      "indexCount": 984,
+      "indexCount": 1284,
       "indexed": true,
       "materialHash": "e6b48b088d5abe3c3df96f9b593e194074551ba37a028dec47855deee5d70b73",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor_navy",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-armor-navy",
       "primitiveIndex": 0,
-      "vertexCount": 386
+      "vertexCount": 503
     },
     {
       "bounds": {
         "max": [
-          0.34788933396339417,
-          11.498087882995605,
+          0.9970660209655762,
+          11.496801376342773,
           8.877951622009277
         ],
         "min": [
-          -0.34788933396339417,
-          1.7019147872924805,
+          -0.9970660209655762,
+          1.7027958631515503,
           -8.877951622009277
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b455f46965d4274d586c0764fa0035e8a9fcd37a45d4b1145dabfe77e9fa685",
+      "geometryHash": "2dd53a3e47cb2f8c7d5929cd54cc1c6f3f1ae66be1a3c297b189170d3751915f",
       "id": "sf.render.transponder-gate.mesh.lod1-armor.primitive.0",
-      "indexCount": 216,
+      "indexCount": 1002,
       "indexed": true,
       "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 100
+      "vertexCount": 372
     },
     {
       "bounds": {
         "max": [
-          0.1561693400144577,
-          13.17343521118164,
-          0.15489646792411804
+          0.15609179437160492,
+          13.273428916931152,
+          0.15489739179611206
         ],
         "min": [
-          -0.1561693549156189,
-          13.02819538116455,
-          -0.1550782471895218
+          -0.156056746840477,
+          13.12820053100586,
+          -0.15507915616035461
         ]
       },
       "drawMode": 4,
-      "geometryHash": "785d112e36f819efc4f6e57c9f4dc41b7a0c502f4c0deac1b2c06f4ab53681f5",
+      "geometryHash": "8a6d874eeb2b33a42b77cf41244b951944f56e0dba8b578ba3321462cb420ea8",
       "id": "sf.render.transponder-gate.mesh.lod1-beacon-amber.primitive.0",
-      "indexCount": 126,
+      "indexCount": 120,
       "indexed": true,
       "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 49
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -431,27 +431,27 @@
     {
       "bounds": {
         "max": [
-          0.249562069773674,
-          11.060318946838379,
+          1.069551706314087,
+          12.14981746673584,
           8.850000381469727
         ],
         "min": [
-          -0.249562069773674,
-          1.9496819972991943,
+          -1.069551706314087,
+          1.9501832723617554,
           -8.850000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "35241fc42e9b2584933fa57f6cf6cdcc38bd457d9f9a7b93f667510f31579bec",
+      "geometryHash": "be0150b2b702b9879755716152658f9d31b4fcc53be798b1ebf0105eaee00a9d",
       "id": "sf.render.transponder-gate.mesh.lod1-lights-cyan.primitive.0",
-      "indexCount": 468,
+      "indexCount": 828,
       "indexed": true,
       "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Cyan",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 312
+      "vertexCount": 552
     },
     {
       "bounds": {
@@ -467,157 +467,157 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "96f12372cf2a6d631c1e44caee36282a7dc1c5b4fd8b99d0553d364428651975",
+      "geometryHash": "b6fb6f6119f9864d2ecd0aab844914ba24aea7d343c03368386b8d319ebf3098",
       "id": "sf.render.transponder-gate.mesh.lod1-lights-warm.primitive.0",
-      "indexCount": 684,
+      "indexCount": 618,
       "indexed": true,
       "materialHash": "a95c24dd907809020b9d16211242e92f78d61d142c4dbe010c5b6965dec54340",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Warm",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 222
+      "vertexCount": 202
     },
     {
       "bounds": {
         "max": [
           0.9501966834068298,
-          13.0363130569458,
+          13.135894775390625,
           11.29720401763916
         ],
         "min": [
           -0.9501966834068298,
-          0.00248416094109416,
+          0.002769181504845619,
           -11.29720401763916
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5ea62120011889e4e637ec088b6945e31ae4dd6733898308f55fbae4e1ce95fb",
+      "geometryHash": "f3c9e29a6af41ee8e7dec9db506312b4224ac451c4eee00c25de078359ca195c",
       "id": "sf.render.transponder-gate.mesh.lod1-mechanical.primitive.0",
-      "indexCount": 990,
+      "indexCount": 864,
       "indexed": true,
       "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 448
+      "vertexCount": 398
     },
     {
       "bounds": {
         "max": [
           1.1269495487213135,
-          13.124727249145508,
+          13.259449005126953,
           10.797296524047852
         ],
         "min": [
           -1.1269495487213135,
-          0.0033450776245445013,
+          0.0036232871934771538,
           -10.797296524047852
         ]
       },
       "drawMode": 4,
-      "geometryHash": "00d1a9914ae8a7753d9eef81bef71bde2ebcccda5774fad0fef0a6ea4da67fb6",
+      "geometryHash": "b76e4dfeeab8f502b904680f1c0c129af61834f1afbf77182a98e3afc6a61aa3",
       "id": "sf.render.transponder-gate.mesh.lod1-mechanicaldark.primitive.0",
-      "indexCount": 3444,
+      "indexCount": 3648,
       "indexed": true,
       "materialHash": "c73d1b5264f0a58926ed9d980bb0eaa1567e5077355c1d0a7e6f85e5c6918e6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1733
+      "vertexCount": 1865
     },
     {
       "bounds": {
         "max": [
-          0.49796006083488464,
-          0.7227097749710083,
+          0.49673956632614136,
+          0.9693789482116699,
           9.99795150756836
         ],
         "min": [
-          -0.49796006083488464,
-          0.3785315155982971,
+          -0.49673956632614136,
+          0.3786616623401642,
           -9.99795150756836
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1af12bdbb575ef56f30080619f1b50ba4546be2cbdabb92fffbef1c3944b642c",
+      "geometryHash": "a96a9e00b73152d2576356b48ea468d66ccdc1a7b383c852b5702d15872c7d5e",
       "id": "sf.render.transponder-gate.mesh.lod1-warning.primitive.0",
-      "indexCount": 216,
+      "indexCount": 420,
       "indexed": true,
       "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 248
     },
     {
       "bounds": {
         "max": [
-          0.488574355840683,
-          12.990034103393555,
+          0.5144633650779724,
+          12.54093074798584,
           10.341806411743164
         ],
         "min": [
-          -0.488574355840683,
-          0.8135495185852051,
+          -0.5157089829444885,
+          0.8138836622238159,
           -10.341806411743164
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0768106db7931812c9f3a4d2eafbd756bec04ee46609d3024cd184535de461a7",
+      "geometryHash": "0dde89d9b415ec0e8ec57704330efde87898481e86ac8d10c1444903620e714f",
       "id": "sf.render.transponder-gate.mesh.lod2-armor-navy.primitive.0",
-      "indexCount": 300,
+      "indexCount": 384,
       "indexed": true,
       "materialHash": "e6b48b088d5abe3c3df96f9b593e194074551ba37a028dec47855deee5d70b73",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor_navy",
       "nodeId": "sf.render.transponder-gate.mesh.lod2-armor-navy",
       "primitiveIndex": 0,
-      "vertexCount": 140
+      "vertexCount": 184
     },
     {
       "bounds": {
         "max": [
-          0.34338289499282837,
+          0.9835699200630188,
           11.493476867675781,
           8.873522758483887
         ],
         "min": [
-          -0.34338289499282837,
+          -0.9835699200630188,
           1.7065236568450928,
           -8.873522758483887
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b5aaa883561caf28e0691f9c3f7ec9df55690bfed23a81e69ac18e8e3485588",
+      "geometryHash": "0ae39844f76883633c7b747de2bce08dfb3837357e35ad5d0a477076092d80a1",
       "id": "sf.render.transponder-gate.mesh.lod2-armor.primitive.0",
-      "indexCount": 72,
+      "indexCount": 312,
       "indexed": true,
       "materialHash": "3a3b2f67d6688939e22c4df278b4f1152a6b4376019adfe70f0b87226dbd963d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.transponder-gate.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 48
+      "vertexCount": 178
     },
     {
       "bounds": {
         "max": [
-          0.1574213206768036,
-          13.180164337158203,
-          0.15489475429058075
+          0.15741373598575592,
+          13.280153274536133,
+          0.1548943668603897
         ],
         "min": [
-          -0.15742264688014984,
-          13.028236389160156,
-          -0.16289758682250977
+          -0.15742957592010498,
+          13.12838077545166,
+          -0.16289730370044708
         ]
       },
       "drawMode": 4,
-      "geometryHash": "934f42228bf57ca8e8a12bcbbd4c7f5af3741592c0405fe1f8ef154d3cc95959",
+      "geometryHash": "f170d833399a60ef8d7c588df4ea59e6c2cb4a6e232d215c2aeb0198b0006c82",
       "id": "sf.render.transponder-gate.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -656,6 +656,31 @@
     {
       "bounds": {
         "max": [
+          1.0429824590682983,
+          12.15034294128418,
+          5.15000057220459
+        ],
+        "min": [
+          -1.0429824590682983,
+          5.949658393859863,
+          -5.15000057220459
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6a812c047b0b4089446132a203773a4a325c83d108c970be179dff91b73ef8a2",
+      "id": "sf.render.transponder-gate.mesh.lod2-lights-cyan.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Cyan",
+      "nodeId": "sf.render.transponder-gate.mesh.lod2-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 80
+    },
+    {
+      "bounds": {
+        "max": [
           0.6580587029457092,
           1.523471713066101,
           10.573737144470215
@@ -667,66 +692,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "600303dd1fbf5e92b2e59bccaeea4488df46dfacdb7e1ea177c834370343e439",
+      "geometryHash": "ff2dc2b7e5078803ccad26c203c6d2f51a960db6207e5d8a8fb4b118a8323b70",
       "id": "sf.render.transponder-gate.mesh.lod2-lights-warm.primitive.0",
-      "indexCount": 225,
+      "indexCount": 231,
       "indexed": true,
       "materialHash": "a95c24dd907809020b9d16211242e92f78d61d142c4dbe010c5b6965dec54340",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.transponder-gate.mesh.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 107
+      "vertexCount": 109
     },
     {
       "bounds": {
         "max": [
-          0.9501745700836182,
-          13.036186218261719,
-          11.280569076538086
+          0.9499151110649109,
+          13.135594367980957,
+          11.293855667114258
         ],
         "min": [
-          -0.9501745700836182,
-          0.01879505068063736,
-          -11.280569076538086
+          -0.9499151110649109,
+          0.009118547663092613,
+          -11.293855667114258
         ]
       },
       "drawMode": 4,
-      "geometryHash": "035626840f01c5c0fe6237487f26a519b06f471095159bac89e216f14a3b0d57",
+      "geometryHash": "66ce4dc4b3f3572141557cc66a37aa0ae8e18871801c5a21c135dcf3b04418a9",
       "id": "sf.render.transponder-gate.mesh.lod2-mechanical.primitive.0",
-      "indexCount": 435,
+      "indexCount": 483,
       "indexed": true,
       "materialHash": "486547a174710d4494bcbd4e7ae92b5cd85cc1ed5501e4200118e81b5aad3db6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.transponder-gate.mesh.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 251
+      "vertexCount": 269
     },
     {
       "bounds": {
         "max": [
           1.1209487915039062,
-          13.125104904174805,
+          13.259782791137695,
           10.790284156799316
         ],
         "min": [
           -1.1209487915039062,
-          0.009610164910554886,
+          0.009932031854987144,
           -10.790284156799316
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1dc831b3e2a6244057e7847aa55c882548e0fe8294f588f4f87fc0cdcacc414",
+      "geometryHash": "3b0e1855751781a8c6e7b69e1f38d034a4d84fbe187f69015b643fc39f7459d5",
       "id": "sf.render.transponder-gate.mesh.lod2-mechanicaldark.primitive.0",
-      "indexCount": 1914,
+      "indexCount": 2094,
       "indexed": true,
       "materialHash": "c73d1b5264f0a58926ed9d980bb0eaa1567e5077355c1d0a7e6f85e5c6918e6d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.transponder-gate.mesh.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1240
+      "vertexCount": 1360
     },
     {
       "bounds": {
@@ -2076,6 +2101,55 @@
       ]
     },
     {
+      "id": "sf.render.transponder-gate.mesh.lod2-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Cyan",
+      "nodeName": "LOD2_Lights_Cyan",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.transponder-gate.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transponder-gate.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.transponder-gate.mesh.lod2-lights-warm",
       "localTransform": [
         1,
@@ -2100,7 +2174,7 @@
       "nodeName": "LOD2_Lights_Warm",
       "nodePath": [
         0,
-        23
+        24
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -2149,7 +2223,7 @@
       "nodeName": "LOD2_Mechanical",
       "nodePath": [
         0,
-        24
+        25
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -2198,7 +2272,7 @@
       "nodeName": "LOD2_MechanicalDark",
       "nodePath": [
         0,
-        25
+        26
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -2247,7 +2321,7 @@
       "nodeName": "LOD2_Warning",
       "nodePath": [
         0,
-        26
+        27
       ],
       "parentId": "sf.render.transponder-gate.root",
       "role": "immutable",
@@ -2322,44 +2396,44 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "21bbb7f8c62e6b9973eb87989bcb6a5e270bb1089bb07b5676c0f82bfa14452b"
+      "sha256": "70b2fa53cc3718c0ab3c317e15a8df836873f3b96a7b1a1ae83c9daa2ffcf18b"
     },
     "sourceGlb": {
-      "bytes": 506560,
-      "sha256": "4b742c64ad47addf9686a40f273d7ba975e5d65754b1b58898d5395996239e96",
+      "bytes": 547856,
+      "sha256": "d81f92cccf8b614af090d4e257dec4719ca8243540f91a0bf0ac88832a8beef1",
       "uri": "place_transponder_gate.glb"
     },
     "sourceManifest": {
-      "bytes": 206766,
-      "sha256": "a8ffe0c535bcbca523ec7221e0d2eb2c9dddb4592c00d3ec606a5fe7c1bdac0e",
+      "bytes": 207712,
+      "sha256": "3da1f93acd9a154189315712dc63e87cce13b654ac789819d0c1bd6a02a07b13",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 709572,
-    "sha256": "ec4930a5388169eee0e7f9a216eedc894dd902d057a53c54859bed6fa78f4971",
+    "bytes": 792716,
+    "sha256": "35d546423061e1ec6a999bd6d0f7d4b9c5dc267316d93677109bcf4a85aeb612",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        6.590082512334391,
+        6.640246725684847,
         0
       ],
       "max": [
         1.129868507385254,
-        13.180164337158203,
+        13.280153274536133,
         11.300000190734863
       ],
       "min": [
         -1.129868507385254,
-        6.875105782455648e-7,
+        0.0003401768335606903,
         -11.300000190734863
       ],
       "size": [
         2.259737014770508,
-        13.180163649647625,
+        13.279813097702572,
         22.600000381469727
       ]
     },
@@ -2388,7 +2462,7 @@
           1
         ],
         "name": "SOCKET_Lane_Center",
-        "planIndex": 29,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2413,7 +2487,7 @@
     "materialProfileRoles": {
       "hull": 7,
       "mechanical": 6,
-      "signal": 11,
+      "signal": 12,
       "warning": 3
     },
     "materialProfiles": [
@@ -2540,7 +2614,7 @@
       {
         "allowTextures": true,
         "planIndex": 26,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2550,10 +2624,15 @@
       {
         "allowTextures": true,
         "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
         "role": "warning"
       }
     ],
-    "nodeCount": 30,
+    "nodeCount": 31,
     "primitives": [
       {
         "canopy": false,
@@ -3172,7 +3251,7 @@
           0,
           1
         ],
-        "name": "LOD2_Lights_Warm",
+        "name": "LOD2_Lights_Cyan",
         "planIndex": 25,
         "tags": {
           "canopy": false,
@@ -3199,7 +3278,7 @@
           0,
           1
         ],
-        "name": "LOD2_Mechanical",
+        "name": "LOD2_Lights_Warm",
         "planIndex": 26,
         "tags": {
           "canopy": false,
@@ -3226,7 +3305,7 @@
           0,
           1
         ],
-        "name": "LOD2_MechanicalDark",
+        "name": "LOD2_Mechanical",
         "planIndex": 27,
         "tags": {
           "canopy": false,
@@ -3253,8 +3332,35 @@
           0,
           1
         ],
-        "name": "LOD2_Warning",
+        "name": "LOD2_MechanicalDark",
         "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3265,19 +3371,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_transponder_gate.glb"
   },
-  "runtimeHash": "e34aa87af132f95be4a8d2a2253ae99af22e3a71a902879c85adef4e4f89e7e2",
+  "runtimeHash": "6259091a37ba8cc7560dba69c5b836f473cbe6ffdc2d5d56162de5dd306b66b8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           1.129868507385254,
-          13.180164337158203,
+          13.280153274536133,
           11.300000190734863
         ],
         "min": [
           -1.129868507385254,
-          6.875105782455648e-7,
+          0.0003401768335606903,
           -11.300000190734863
         ]
       },
@@ -3306,6 +3412,7 @@
         "sf.render.transponder-gate.mesh.lod2-armor-navy",
         "sf.render.transponder-gate.mesh.lod2-beacon-amber",
         "sf.render.transponder-gate.mesh.lod2-hook-nav-port",
+        "sf.render.transponder-gate.mesh.lod2-lights-cyan",
         "sf.render.transponder-gate.mesh.lod2-lights-warm",
         "sf.render.transponder-gate.mesh.lod2-mechanical",
         "sf.render.transponder-gate.mesh.lod2-mechanicaldark",

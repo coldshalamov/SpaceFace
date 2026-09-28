@@ -1893,10 +1893,10 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_graffiti.glb",
-      "tris": 13456,
-      "bytes": 20678884,
+      "tris": 3139,
+      "bytes": 471884,
       "textureSize": 1024,
-      "note": "Geology landmark V3 live promotion 2026-07-19 — dry-fractured-regolith-with-nonemissive-prospector-history; authored LOD0/1/2 (9,876 / 2,472 / 1,108 tris), six functional PBR material roles with bound base-color/normal/ORM maps, explicit runtime geology/mechanical/warning roles, recessed fracture seats, preserved pivot and interaction markers, deterministic texture generation, no emission substitute, and dry nonuniform roughness reviewed at close/default/far standalone game-camera assumptions before live-route admission.",
+      "note": "Forge rebuild: graffiti rock — quarried face with modelled miners' paint bands, survey stakes, lamp.",
       "hooks": [],
       "sockets": [
         "SOCKET_Camera_Focus"
@@ -1904,20 +1904,23 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -12.515837669372559,
-          -8.960908889770508,
-          -9.7459135055542
+          -11.472993850708008,
+          -11.5720853805542,
+          -11.27080249786377
         ],
         "max": [
-          12.232428550720215,
-          9.357056617736816,
-          9.92920207977295
+          10.94859504699707,
+          8.357562065124512,
+          9.5546875
         ],
         "dimensionsM": [
-          24.748266220092773,
-          18.317965507507324,
-          19.67511558532715
+          22.421588897705078,
+          19.92964744567871,
+          20.82548999786377
         ]
+      },
+      "tintable": {
+        "mechanical": "Material_Mechanical"
       }
     },
     {
@@ -1925,10 +1928,10 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_a.glb",
-      "tris": 1977,
-      "bytes": 1970132,
+      "tris": 2404,
+      "bytes": 390772,
       "textureSize": 1024,
-      "note": "Accepted Helios Rock A resource asteroid with three authored LODs, distinct rock/warm mineral materials, nonuniform PBR response, and an editable Blender source at assets/ships/m4_helios_hub/blender/helios_rock_a_production.blend. Exact source/release hashes are bound by the SG-04 release manifest and the Rock A closure receipt in assets/ships/m4_helios_hub/evidence/helios_rock_a_build_summary.json. 1977 triangles across the shipped three-LOD source.",
+      "note": "Forge rebuild: Helios metallic rock — faceted boulder cluster, quarried face, dark specular veins.",
       "hooks": [],
       "sockets": [
         "SOCKET_Structure_Core"
@@ -1936,20 +1939,23 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.998377799987793,
-          -6.1530961990356445,
-          -3.9585583209991455
+          -7.66919469833374,
+          -6.032202243804932,
+          -5.641731262207031
         ],
         "max": [
-          8.77209758758545,
-          6.115530490875244,
-          4.299026012420654
+          6.429420471191406,
+          5.67051362991333,
+          5.172295093536377
         ],
         "dimensionsM": [
-          17.770475387573242,
-          12.268626689910889,
-          8.2575843334198
+          14.098615169525146,
+          11.702715873718262,
+          10.814026355743408
         ]
+      },
+      "tintable": {
+        "mechanical": "Material_Mechanical"
       }
     },
     {
@@ -1957,10 +1963,10 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_b.glb",
-      "tris": 1755,
-      "bytes": 1867228,
+      "tris": 2556,
+      "bytes": 257436,
       "textureSize": 1024,
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 688 tris. | M1-SLICEA-VISUAL-001 connected rebuild 2026-07-10 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=9F09141B2841 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=5E8E63BFEC0F",
+      "note": "Forge rebuild: Helios icy rock — faceted core with pale frost caps and ice veins.",
       "hooks": [],
       "sockets": [
         "SOCKET_Structure_Core"
@@ -1968,20 +1974,23 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -3.4405910968780518,
-          -4.221262454986572,
-          -6.7000555992126465
+          -4.3946356773376465,
+          -4.901143550872803,
+          -4.777379989624023
         ],
         "max": [
-          3.8208541870117188,
-          6.885381698608398,
-          6.7857465744018555
+          4.7146525382995605,
+          6.119078159332275,
+          5.088866233825684
         ],
         "dimensionsM": [
-          7.2614452838897705,
-          11.10664415359497,
-          13.485802173614502
+          9.109288215637207,
+          11.020221710205078,
+          9.866246223449707
         ]
+      },
+      "tintable": {
+        "canopy": "Material_Canopy"
       }
     },
     {
@@ -1989,10 +1998,10 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_c.glb",
-      "tris": 3239,
-      "bytes": 2814260,
+      "tris": 2592,
+      "bytes": 259696,
       "textureSize": 1024,
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 584 tris. | M1-SLICEA-VISUAL-001 connected rebuild 2026-07-10 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=8179C93F8853 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=D5DBBB5CD803",
+      "note": "Forge rebuild: Helios crystalline rock — faceted core with a spiked crystal cluster, faint glow.",
       "hooks": [],
       "sockets": [
         "SOCKET_Structure_Core"
@@ -2000,31 +2009,32 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -4.808531761169434,
-          -4.6022186279296875,
-          -4.189250946044922
+          -4.555400371551514,
+          -4.815824508666992,
+          -5.003177642822266
         ],
         "max": [
-          4.904945373535156,
-          5.165618896484375,
-          4.535816192626953
+          5.126271724700928,
+          6.116000175476074,
+          4.405653953552246
         ],
         "dimensionsM": [
-          9.71347713470459,
-          9.767837524414062,
-          8.725067138671875
+          9.681672096252441,
+          10.931824684143066,
+          9.408831596374512
         ]
-      }
+      },
+      "tintable": {}
     },
     {
       "id": "place_asteroid_seamed",
       "category": "places",
       "priority": "P0",
       "file": "places/place_asteroid_seamed.glb",
-      "tris": 3362,
-      "bytes": 18047716,
+      "tris": 8128,
+      "bytes": 714336,
       "textureSize": 1024,
-      "note": "Geology landmark V3 live promotion 2026-07-19 — dry-bedded-regolith-with-surveyed-mineral-fracture; authored LOD0/1/2 (8,340 / 3,552 / 1,448 tris), six functional PBR material roles with bound base-color/normal/ORM maps, explicit runtime geology/mechanical/warning roles, recessed fracture seats, preserved pivot and interaction markers, deterministic texture generation, no emission substitute, and dry nonuniform roughness reviewed at close/default/far standalone game-camera assumptions before live-route admission.",
+      "note": "Forge rebuild: seamed asteroid — banded mineral vein cut across the rock, faint warm seam.",
       "hooks": [],
       "sockets": [
         "SOCKET_Scan_Target"
@@ -2032,20 +2042,23 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.113109588623047,
-          -10.154117584228516,
-          -11.740407943725586
+          -12.036152839660645,
+          -11.16214656829834,
+          -10.1146240234375
         ],
         "max": [
-          14.330972671508789,
-          11.371243476867676,
-          12.095527648925781
+          11.718476295471191,
+          10.621345520019531,
+          10.594304084777832
         ],
         "dimensionsM": [
-          28.444082260131836,
-          21.52536106109619,
-          23.835935592651367
+          23.754629135131836,
+          21.78349208831787,
+          20.708928108215332
         ]
+      },
+      "tintable": {
+        "mechanical": "Material_Mechanical"
       }
     },
     {
@@ -2150,8 +2163,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_ceres_grave_shard.glb",
-      "tris": 4034,
-      "bytes": 501920,
+      "tris": 5768,
+      "bytes": 586908,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2159,7 +2172,7 @@
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"
       },
-      "note": "Forge rebuild: Cathedral grave shard — leaning torn plate with rib arches, tether mast.",
+      "note": "Forge rebuild: Cathedral grave shard â€” leaning torn plate with rib arches, tether mast.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2186,7 +2199,7 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -13.1315336227417,
+          -13.131738662719727,
           -1.600000023841858,
           -6.453981876373291
         ],
@@ -2196,7 +2209,7 @@
           6.453981876373291
         ],
         "dimensionsM": [
-          25.595924377441406,
+          25.596129417419434,
           11.722500443458557,
           12.907963752746582
         ]
@@ -2268,8 +2281,8 @@
         }
       },
       "mount": "origin",
-      "tris": 16812,
-      "bytes": 2184728,
+      "tris": 16840,
+      "bytes": 2173724,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2284,17 +2297,17 @@
         "min": [
           -41.70000076293945,
           -41.70000076293945,
-          -13.3958740234375
+          -13.595873832702637
         ],
         "max": [
           56.5,
           41.70000076293945,
-          15.223259925842285
+          8.519124031066895
         ],
         "dimensionsM": [
           98.20000076293945,
           83.4000015258789,
-          28.619133949279785
+          22.11499786376953
         ]
       },
       "note": "Forge rebuild of the claim anchor: claim rock wrapped by a service ring, four module pads, dock arm, ops pod.",
@@ -2331,8 +2344,8 @@
         }
       },
       "mount": "origin",
-      "tris": 19800,
-      "bytes": 2607032,
+      "tris": 24528,
+      "bytes": 3090108,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2347,17 +2360,17 @@
         "min": [
           -41.70000076293945,
           -41.70000076293945,
-          -17.40907859802246
+          -9
         ],
         "max": [
           56.5,
           41.70000076293945,
-          15.239843368530273
+          8.519124031066895
         ],
         "dimensionsM": [
           98.20000076293945,
           83.4000015258789,
-          32.648921966552734
+          17.519124031066895
         ]
       },
       "note": "Forge rebuild: claim ring with cargo-capture cradle arm and net frame.",
@@ -2468,8 +2481,8 @@
         }
       },
       "mount": "origin",
-      "tris": 26760,
-      "bytes": 3034068,
+      "tris": 26124,
+      "bytes": 2932744,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2482,19 +2495,19 @@
       ],
       "bounds": {
         "min": [
-          -41.705257415771484,
-          -41.70524978637695,
-          -16.72500228881836
+          -41.70516586303711,
+          -41.705169677734375,
+          -14.610429763793945
         ],
         "max": [
           56.5,
-          41.70349884033203,
-          17.018437385559082
+          41.705169677734375,
+          8.527999877929688
         ],
         "dimensionsM": [
-          98.20525741577148,
-          83.40874862670898,
-          33.74343967437744
+          98.20516586303711,
+          83.41033935546875,
+          23.138429641723633
         ]
       },
       "note": "Forge rebuild: claim ring with armoured defence casemate and gun slits.",
@@ -2531,8 +2544,8 @@
         }
       },
       "mount": "origin",
-      "tris": 27624,
-      "bytes": 3150020,
+      "tris": 30728,
+      "bytes": 3299104,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2545,19 +2558,19 @@
       ],
       "bounds": {
         "min": [
-          -51,
           -41.70000076293945,
-          -13.500455856323242
+          -41.70000076293945,
+          -13.569999694824219
         ],
         "max": [
           56.5,
           41.70000076293945,
-          15.484687805175781
+          8.519124031066895
         ],
         "dimensionsM": [
-          107.5,
+          98.20000076293945,
           83.4000015258789,
-          28.985143661499023
+          22.089123725891113
         ]
       },
       "note": "Forge rebuild: claim ring with process tanks, furnace stack and pipe runs.",
@@ -2594,8 +2607,8 @@
         }
       },
       "mount": "origin",
-      "tris": 25448,
-      "bytes": 3057468,
+      "tris": 27256,
+      "bytes": 3179284,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2608,19 +2621,19 @@
       ],
       "bounds": {
         "min": [
-          -43.705806732177734,
-          -45.79999923706055,
-          -13.950000762939453
+          -43.18389129638672,
+          -45.20000076293945,
+          -14.600001335144043
         ],
         "max": [
           56.5,
-          45.79999923706055,
-          16.061492919921875
+          45.20000076293945,
+          8.519124031066895
         ],
         "dimensionsM": [
-          100.20580673217773,
-          91.5999984741211,
-          30.011493682861328
+          99.68389129638672,
+          90.4000015258789,
+          23.119125366210938
         ]
       },
       "note": "Forge rebuild: claim ring with perimeter defence pylons and beam emitters.",
@@ -2657,8 +2670,8 @@
         }
       },
       "mount": "origin",
-      "tris": 22284,
-      "bytes": 2713152,
+      "tris": 22924,
+      "bytes": 2746928,
       "hooks": [],
       "sockets": [
         "SOCKET_Dock_Approach",
@@ -2672,18 +2685,18 @@
       "bounds": {
         "min": [
           -41.70000076293945,
-          -43.33086013793945,
-          -13.3958740234375
+          -42.39116668701172,
+          -11.372177124023438
         ],
         "max": [
           56.5,
-          46.89364242553711,
-          15.862125396728516
+          42.39116668701172,
+          10.5
         ],
         "dimensionsM": [
           98.20000076293945,
-          90.22450256347656,
-          29.257999420166016
+          84.78233337402344,
+          21.872177124023438
         ]
       },
       "note": "Forge rebuild: claim ring with comms mast and dish, doubles as site relay.",
@@ -2974,11 +2987,12 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_dock_interior.glb",
-      "tris": 21912,
-      "bytes": 22969332,
+      "tris": 11128,
+      "bytes": 843476,
       "textureSize": 1024,
       "tintable": {
-        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"
       },
       "factionAccentVariants": {
@@ -3007,32 +3021,33 @@
       "bounds": {
         "min": [
           -26,
-          -4.425000190734863,
-          -18.000000715255737
+          -4.440000057220459,
+          -18
         ],
         "max": [
           26,
-          12.774999618530273,
+          13.960000038146973,
           18
         ],
         "dimensionsM": [
           52,
-          17.199999809265137,
-          36.00000071525574
+          18.40000009536743,
+          36
         ]
       },
-      "note": "H-04 neutral Shipworks service bay — deterministic open-front industrial backdrop with its portal and crane rear-parked outside a 28 m preview aperture, authored PBR surfaces, adaptive preview-mount policy, and LOD0-only runtime export; LOD1/LOD2 remain editable in Blender."
+      "note": "Forge rebuild: shipworks hangar bay — landing deck, gantry cranes, bay walls (LOD0-only for shipPreviewMount)."
     },
     {
       "id": "place_dock_interior_grit",
       "category": "places",
       "priority": "P0",
       "file": "places/place_dock_interior_grit.glb",
-      "tris": 636,
-      "bytes": 105716,
+      "tris": 13784,
+      "bytes": 990936,
       "textureSize": 1024,
       "tintable": {
-        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"
       },
       "factionAccentVariants": {
@@ -3053,9 +3068,7 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
         "SOCKET_Structure_Core"
       ],
@@ -3063,32 +3076,33 @@
       "bounds": {
         "min": [
           -26,
-          -4.425000190734863,
+          -4.440000057220459,
           -18
         ],
         "max": [
           26,
-          13,
+          13.960000038146973,
           18
         ],
         "dimensionsM": [
           52,
-          17.425000190734863,
+          18.40000009536743,
           36
         ]
       },
-      "note": "Black-market grit dock — scuffed plates, dim heat lamps."
+      "note": "Forge rebuild: grit variant — patched civilian yard, rust patches, extra work lamps (LOD0-only)."
     },
     {
       "id": "place_dock_interior_military",
       "category": "places",
       "priority": "P0",
       "file": "places/place_dock_interior_military.glb",
-      "tris": 636,
-      "bytes": 105624,
+      "tris": 13140,
+      "bytes": 949544,
       "textureSize": 1024,
       "tintable": {
-        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"
       },
       "factionAccentVariants": {
@@ -3109,9 +3123,7 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
         "SOCKET_Structure_Core"
       ],
@@ -3119,21 +3131,21 @@
       "bounds": {
         "min": [
           -26,
-          -4.425000190734863,
+          -4.440000057220459,
           -18
         ],
         "max": [
           26,
-          13,
+          13.960000038146973,
           18
         ],
         "dimensionsM": [
           52,
-          17.425000190734863,
+          18.40000009536743,
           36
         ]
       },
-      "note": "Armored military dock — amber warning accents."
+      "note": "Forge rebuild: military variant — clean armoured bay, navy band, red/white deck lines (LOD0-only)."
     },
     {
       "id": "place_drill_platform",
@@ -3521,8 +3533,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_maintenance_gantry.glb",
-      "tris": 8176,
-      "bytes": 964288,
+      "tris": 8248,
+      "bytes": 978300,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",
@@ -3810,7 +3822,7 @@
       "priority": "P2",
       "file": "places/place_radiator_bank.glb",
       "tris": 9252,
-      "bytes": 1029692,
+      "bytes": 1030180,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",
@@ -3824,17 +3836,17 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.949999809265137,
+          -8.960000038146973,
           0,
           -1.2000000476837158
         ],
         "max": [
-          8.949999809265137,
+          8.960000038146973,
           8.660622596740723,
           1.2000000476837158
         ],
         "dimensionsM": [
-          17.899999618530273,
+          17.920000076293945,
           8.660622596740723,
           2.4000000953674316
         ]
@@ -3921,8 +3933,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_slurry_tank.glb",
-      "tris": 8628,
-      "bytes": 943116,
+      "tris": 10524,
+      "bytes": 1104864,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",
@@ -4607,14 +4619,14 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_transponder_gate.glb",
-      "tris": 6000,
-      "bytes": 856856,
+      "tris": 7380,
+      "bytes": 1006240,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical"
       },
-      "note": "Forge rebuild: lane-reader gate — twin pylons, lit crossbar, lane-centre beacon.",
+      "note": "Forge rebuild: lane-reader gate â€” twin pylons, lit crossbar, lane-centre beacon.",
       "hooks": [],
       "sockets": [
         "SOCKET_Lane_Center"
@@ -4628,12 +4640,12 @@
         ],
         "max": [
           1.1299999952316284,
-          13.180163383483887,
+          13.280162811279297,
           11.300000190734863
         ],
         "dimensionsM": [
           2.259999990463257,
-          13.180163383483887,
+          13.280162811279297,
           22.600000381469727
         ]
       },

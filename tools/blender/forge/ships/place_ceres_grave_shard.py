@@ -50,13 +50,17 @@ def build():
                                ((rx, 4.6, 1.2), (rx - 1.6, 4.6, 7.6)),
                                ((rx - 1.6, -4.6, 7.6), (rx - 1.6, 4.6, 7.6))],
                 0.4, material='bare')
-    # ragged teeth along the torn upper edge
+    # ragged teeth straddling the torn upper edge — the wall's high edge runs along y at
+    # world x ~ +7.8, z ~ +8.1 (the leaning plate's +x rim); teeth share the wall's lean and
+    # overlap the plate so nothing floats
     s.detail = 1
-    teeth = []
+    edge_x, edge_z = -1.0 + 10.0 * math.cos(lean), 3.4 + 10.0 * math.sin(lean)
     for i in range(7):
-        teeth.append(((-8.0 + i * 2.6, -5.6 + 0.4 * (i % 2), 8.4 + 0.5 * (i % 3)),
-                      (1.1, 0.5, 0.3), math.radians((i * 37) % 60 - 30)))
-    F.boxes(s, 'EdgeTeeth', teeth, 'bare')
+        ty = -5.2 + i * 1.75
+        F.box(s, f'EdgeTooth{i}', (edge_x - 0.35 + 0.3 * (i % 2), ty,
+                                   edge_z - 0.15 + 0.4 * (i % 3)),
+              (1.3, 1.0, 0.22), material='bare', bevel=0.02,
+              rot=(math.radians((i * 29) % 14 - 7), lean, math.radians(3)))
     s.detail = 0
     # faded livery shard still on the skin
     F.box(s, 'LiveryShard', (5.4, 2.2, 6.4), (4.0, 3.0, 0.35), material='deadmetal.faded',

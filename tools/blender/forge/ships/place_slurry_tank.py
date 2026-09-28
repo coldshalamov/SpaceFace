@@ -13,10 +13,10 @@ import claim_outpost_kit as K  # noqa: E402
 
 SHIP_ID = 'place_slurry_tank'
 COLORS = dict(K.COLORS, **{
-    # slurry domes: toned-down ivory — but on a METALLIC finish. A dielectric dome under the
-    # sector env reads pale no matter the albedo (white F0 spec floor), so the same tone is
-    # carried by the deadmetal finish: full metal, albedo-tinted env reflection, matte roughness — the dome stays mid-value.
-    'deadmetal.dome': '#57513f',
+    # slurry domes: opaque warm-grey — on a METALLIC finish so the sector env can't lift a
+    # dielectric dome to pale glass (white F0 spec floor); full metal, albedo-tinted env,
+    # matte roughness — the tank stays a solid mid-value pressure vessel, not a greenhouse.
+    'deadmetal.dome': '#6e675a',
 })
 
 
@@ -33,8 +33,11 @@ def build():
                   material='paint2', bevel=0.05, taper=0.7)
         # the pressure sphere
         F.sphere(s, f'Tank{k}', (tx, 0, 3.4), 2.05, material='deadmetal.dome', segments=22)
-        # hazard band round the equator (two thin rings)
-        F.cylinder(s, f'TankBand{k}', (tx, -0.25, 3.4), (tx, 0.25, 3.4), 2.12,
+        # graphite banding off-equator + ONE narrow hazard ring at the equator
+        for e in (-1, 1):
+            F.cylinder(s, f'TankGraphite{k}{e:+d}', (tx, e * 1.35, 3.4),
+                       (tx, e * 1.5, 3.4), 1.92, material='paint2', segments=20)
+        F.cylinder(s, f'TankBand{k}', (tx, -0.18, 3.4), (tx, 0.18, 3.4), 2.12,
                    material='hazard', segments=20)
         # valve bonnet on top
         F.cylinder(s, f'Valve{k}', (tx, 0, 5.3), (tx, 0, 6.0), 0.3, material='gunmetal',

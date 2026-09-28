@@ -18470,66 +18470,66 @@
         "center": [
           7.4,
           0,
-          0.913887
+          -2.538429
         ],
         "max": [
           56.5,
           41.703608,
-          15.223635
+          8.520251
         ],
         "min": [
           -41.700001,
           -41.703608,
-          -13.395862
+          -13.59711
         ],
         "size": [
           98.200001,
           83.407216,
-          28.619497
+          22.117361
         ]
       },
-      "bytes": 886076,
+      "bytes": 884464,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_claim_outpost_base",
         "kind": "proxy",
         "outline": [
-          49.292767,
-          20.524918,
-          20.814725,
-          19.715544,
-          13.588524,
-          12.957348,
-          11.538353,
+          49.108299,
+          15.489433,
+          12.495458,
+          11.780559,
+          11.731375,
+          8.911533,
+          8.828653,
+          9.779367,
+          13.19956,
+          15.044569,
+          1.78199,
+          47.301433,
+          49.112118,
+          6.347323,
+          14.515065,
+          15.272309,
           0,
           0,
-          3.900686,
-          12.743829,
-          49.195498,
-          44.238154,
           0,
-          13.030488,
+          1.287238,
+          1.199047,
           0,
-          0,
-          13.183448,
-          0,
-          0,
-          16.309045,
-          0,
-          26.54598,
-          48.862213
+          27.715649,
+          49.056835
         ],
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 5.915132,
+        "toleranceWu": 5.893454,
         "worstSize": null
       },
       "drawOffset": [
         -7.4,
         0,
-        -0.913887
+        2.538429
       ],
       "drawScale": 1,
       "family": "place",
@@ -18639,14 +18639,6 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Stone",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
           "name": "Material_Warning",
           "role": "opaqueHull"
         },
@@ -18661,28 +18653,28 @@
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 37,
-      "nodes": 45,
+      "meshes": 34,
+      "nodes": 42,
       "note": null,
       "opening": null,
       "pivot": [
         7.4,
         0,
-        0.913887
+        -2.538429
       ],
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 5.915132,
+        "cellWu": 5.893454,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 16,
+        "primitiveCount": 20,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -4.056064,
-            "bz": -0.533991,
+            "bx": -4.040823,
+            "bz": -0.531985,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.0375
@@ -18690,17 +18682,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.393201,
-            "bz": -0.577083,
+            "bx": -1.177133,
+            "bz": -0.487584,
             "id": "arm-1",
             "kind": "capsule",
-            "r": 0.223253
+            "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.362897,
-            "bz": -1.045787,
+            "bx": -0.812887,
+            "bz": -0.62375,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.0375
@@ -18708,53 +18700,71 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.882306,
-            "bz": -1.149843,
+            "bx": -0.587483,
+            "bz": -0.765623,
             "id": "arm-3",
-            "kind": "capsule",
-            "r": 0.21445
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.384752,
-            "bz": -0.928874,
-            "id": "arm-4",
-            "kind": "capsule",
-            "r": 0.147805
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.138764,
-            "bz": -1.054017,
-            "id": "arm-5",
             "kind": "capsule",
             "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.111842,
-            "bz": -0.849527,
+            "bx": -0.333257,
+            "bz": -0.804555,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.127604
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.086999,
+            "bz": -0.660826,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.096932
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.090262,
+            "bz": -0.685611,
             "id": "arm-6",
             "kind": "capsule",
-            "r": 0.125505
+            "r": 0.065027
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.240753,
-            "bz": -0.184736,
+            "bx": 0.305489,
+            "bz": -0.737515,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.659469,
+            "bz": -0.859437,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.960935,
+            "bz": -0.737351,
             "id": "arm-9",
             "kind": "capsule",
-            "r": 0.042428
+            "r": 0.063315
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.965749,
-            "bz": -0.400026,
+            "bx": 0.121797,
+            "bz": -0.05045,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.0375
@@ -18762,8 +18772,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 4.048028,
-            "bz": -0.532933,
+            "bx": 3.891539,
+            "bz": -0.512331,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.0375
@@ -18771,8 +18781,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 3.63845,
-            "bz": 0.479011,
+            "bx": 4.041139,
+            "bz": 0.532026,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.0375
@@ -18780,8 +18790,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.848259,
-            "bz": 0.650892,
+            "bx": 0.473282,
+            "bz": 0.19604,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.946409,
+            "bz": 0.726205,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.0375
@@ -18789,26 +18808,35 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.141223,
-            "bz": 1.072698,
-            "id": "arm-17",
+            "bx": 0.76462,
+            "bz": 0.996472,
+            "id": "arm-15",
             "kind": "capsule",
             "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.769484,
-            "bz": 1.002811,
-            "id": "arm-20",
+            "bx": -0.034672,
+            "bz": 0.083706,
+            "id": "arm-19",
             "kind": "capsule",
-            "r": 0.115905
+            "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -2.028376,
-            "bz": 0.840181,
+            "bx": -0.050682,
+            "bz": 0.06605,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -2.118429,
+            "bz": 0.877482,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.0375
@@ -18816,23 +18844,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -4.020492,
-            "bz": 0.529308,
+            "bx": -4.036572,
+            "bz": 0.531425,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.0375
           }
         ],
-        "silhouetteRadius": 49.292767,
-        "toleranceWu": 5.915132
+        "silhouetteRadius": 49.112118,
+        "toleranceWu": 5.893454
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 794,
-        "inwardFaceFraction": 0.4145,
-        "silhouetteRadius": 49.292767,
+        "boundaryEdges": 740,
+        "inwardFaceFraction": 0.41275,
+        "silhouetteRadius": 49.112118,
         "sliceY": 0
       },
       "sockets": [
@@ -18897,80 +18925,80 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 26802,
+      "triangles": 26854,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_claim_outpost_base.glb",
       "worldSize": [
         98.200001,
         83.407216,
-        28.619497
+        22.117361
       ]
     },
     {
       "bounds": {
         "center": [
-          7.397371,
-          -0.000875,
-          0.146654
+          7.397417,
+          0,
+          -3.041215
         ],
         "max": [
           56.5,
-          41.704856,
-          17.018845
+          41.70515,
+          8.527315
         ],
         "min": [
-          -41.705257,
-          -41.706607,
-          -16.725537
+          -41.705166,
+          -41.70515,
+          -14.609745
         ],
         "size": [
-          98.205257,
-          83.411464,
-          33.744382
+          98.205166,
+          83.410301,
+          23.137061
         ]
       },
-      "bytes": 1124924,
+      "bytes": 1097312,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_claim_outpost_bastion",
         "kind": "proxy",
         "outline": [
-          49.231979,
-          11.641873,
-          20.414006,
-          19.05103,
-          12.604594,
-          12.191874,
-          10.771579,
-          10.72044,
-          0,
-          3.413363,
-          6.495464,
-          49.156306,
-          44.251554,
-          18.133273,
-          13.487666,
-          0,
-          10.614373,
-          0,
-          17.255338,
+          49.104081,
+          19.754089,
+          19.040976,
+          15.551479,
+          12.173511,
+          10.99494,
+          10.067243,
           0,
           0,
-          19.558655,
-          33.226035,
-          48.876007
+          0,
+          14.169037,
+          47.260373,
+          49.128343,
+          6.511788,
+          0,
+          15.797355,
+          0,
+          0,
+          0,
+          1.746925,
+          0,
+          0,
+          28.112477,
+          49.100479
         ],
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 5.907837,
+        "toleranceWu": 5.895401,
         "worstSize": null
       },
       "drawOffset": [
-        -7.397371,
+        -7.397417,
         0,
-        -0.146654
+        3.041215
       ],
       "drawScale": 1,
       "family": "place",
@@ -19088,14 +19116,6 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Stone",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
           "name": "Material_Warning",
           "role": "opaqueHull"
         },
@@ -19110,28 +19130,28 @@
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 40,
-      "nodes": 48,
+      "meshes": 37,
+      "nodes": 45,
       "note": null,
       "opening": null,
       "pivot": [
-        7.397371,
-        -0.000875,
-        0.146654
+        7.397417,
+        0,
+        -3.041215
       ],
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 5.907837,
+        "cellWu": 5.895401,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 19,
+        "primitiveCount": 15,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -4.051042,
-            "bz": -0.53333,
+            "bx": -4.040475,
+            "bz": -0.531939,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.0375
@@ -19139,8 +19159,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.880909,
-            "bz": -0.364885,
+            "bx": -1.505469,
+            "bz": -0.623585,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.0375
@@ -19148,71 +19168,53 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.336404,
-            "bz": -1.025459,
+            "bx": -1.143321,
+            "bz": -0.877301,
             "id": "arm-2",
             "kind": "capsule",
-            "r": 0.0375
+            "r": 0.166456
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.852995,
-            "bz": -1.111645,
+            "bx": -0.778782,
+            "bz": -1.014929,
             "id": "arm-3",
             "kind": "capsule",
-            "r": 0.207222
+            "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.395586,
-            "bz": -0.955029,
+            "bx": -0.345517,
+            "bz": -0.834152,
             "id": "arm-4",
             "kind": "capsule",
-            "r": 0.0375
+            "r": 0.132414
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.118023,
-            "bz": -0.896474,
+            "bx": -0.106703,
+            "bz": -0.810491,
             "id": "arm-5",
             "kind": "capsule",
-            "r": 0.132613
+            "r": 0.119594
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.114989,
-            "bz": -0.873428,
+            "bx": 0.102568,
+            "bz": -0.779084,
             "id": "arm-6",
             "kind": "capsule",
-            "r": 0.0375
+            "r": 0.073964
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.305226,
-            "bz": -0.736882,
-            "id": "arm-7",
-            "kind": "capsule",
-            "r": 0.116608
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.212444,
-            "bz": -0.163014,
-            "id": "arm-9",
-            "kind": "capsule",
-            "r": 0.0375
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.484687,
-            "bz": -0.200764,
+            "bx": 1.075476,
+            "bz": -0.445477,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.0375
@@ -19220,8 +19222,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 4.04479,
-            "bz": -0.532507,
+            "bx": 3.888147,
+            "bz": -0.511884,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.0375
@@ -19229,8 +19231,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 3.639557,
-            "bz": 0.479157,
+            "bx": 4.042479,
+            "bz": 0.532203,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.0375
@@ -19238,8 +19240,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 1.380682,
-            "bz": 0.571897,
+            "bx": 0.485944,
+            "bz": 0.201285,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.0375
@@ -19247,44 +19249,26 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.878485,
-            "bz": 0.674085,
-            "id": "arm-14",
+            "bx": 0.791256,
+            "bz": 1.031184,
+            "id": "arm-15",
             "kind": "capsule",
             "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.332117,
-            "bz": 0.801802,
-            "id": "arm-16",
+            "bx": -0.049332,
+            "bz": 0.119098,
+            "id": "arm-19",
             "kind": "capsule",
             "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.185514,
-            "bz": 1.409119,
-            "id": "arm-18",
-            "kind": "capsule",
-            "r": 0.0375
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -1.279854,
-            "bz": 0.982067,
-            "id": "arm-21",
-            "kind": "capsule",
-            "r": 0.0375
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -2.542673,
-            "bz": 1.05321,
+            "bx": -2.148981,
+            "bz": 0.890137,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.0375
@@ -19292,23 +19276,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -4.021631,
-            "bz": 0.529458,
+            "bx": -4.040177,
+            "bz": 0.531899,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.0375
           }
         ],
-        "silhouetteRadius": 49.231979,
-        "toleranceWu": 5.907837
+        "silhouetteRadius": 49.128343,
+        "toleranceWu": 5.895401
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 720,
-        "inwardFaceFraction": 0.428,
-        "silhouetteRadius": 49.231979,
+        "boundaryEdges": 814,
+        "inwardFaceFraction": 0.40975,
+        "silhouetteRadius": 49.128343,
         "sliceY": 0
       },
       "sockets": [
@@ -19373,13 +19357,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 42528,
+      "triangles": 41538,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_claim_outpost_bastion.glb",
       "worldSize": [
-        98.205257,
-        83.411464,
-        33.744382
+        98.205166,
+        83.410301,
+        23.137061
       ]
     },
     {
@@ -19387,66 +19371,66 @@
         "center": [
           7.4,
           0,
-          -1.084311
+          -0.239915
         ],
         "max": [
           56.5,
           41.703608,
-          15.24065
+          8.519249
         ],
         "min": [
           -41.700001,
           -41.703608,
-          -17.409271
+          -8.999079
         ],
         "size": [
           98.200001,
           83.407216,
-          32.649921
+          17.518328
         ]
       },
-      "bytes": 1019900,
+      "bytes": 1143036,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_claim_outpost_catcher",
         "kind": "proxy",
         "outline": [
-          49.156535,
-          24.200725,
-          23.395924,
-          13.864103,
-          11.274627,
-          10.964279,
-          9.541133,
-          9.536998,
+          49.204251,
+          16.47865,
+          13.796161,
+          12.016134,
+          9.88806,
+          8.354641,
+          0,
+          3.507473,
+          0,
+          10.371213,
+          8.143267,
+          49.137235,
+          44.259305,
+          0,
+          13.723097,
           0,
           0,
-          47.266806,
-          49.111597,
-          44.293941,
-          0,
-          14.269096,
-          11.741354,
-          17.213811,
           0,
           0,
           0,
-          15.934877,
-          26.808703,
-          29.913036,
-          49.008337
+          0,
+          0,
+          26.893291,
+          49.000031
         ],
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 5.898784,
+        "toleranceWu": 5.90451,
         "worstSize": null
       },
       "drawOffset": [
         -7.4,
         0,
-        1.084311
+        0.239915
       ],
       "drawScale": 1,
       "family": "place",
@@ -19572,14 +19556,6 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Stone",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
           "name": "Material_Warning",
           "role": "opaqueHull"
         },
@@ -19594,28 +19570,28 @@
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 43,
-      "nodes": 51,
+      "meshes": 40,
+      "nodes": 48,
       "note": null,
       "opening": null,
       "pivot": [
         7.4,
         0,
-        -1.084311
+        -0.239915
       ],
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 5.898784,
+        "cellWu": 5.90451,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 18,
+        "primitiveCount": 14,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -4.044809,
-            "bz": -0.532509,
+            "bx": -4.048751,
+            "bz": -0.533028,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.0375
@@ -19623,17 +19599,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.639262,
-            "bz": -0.679005,
+            "bx": -1.122341,
+            "bz": -0.464889,
             "id": "arm-1",
             "kind": "capsule",
-            "r": 0.263236
+            "r": 0.179241
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.533547,
-            "bz": -1.176732,
+            "bx": -0.89888,
+            "bz": -0.689735,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.0375
@@ -19641,53 +19617,53 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.693182,
-            "bz": -0.903372,
+            "bx": -0.542696,
+            "bz": -0.707256,
             "id": "arm-3",
             "kind": "capsule",
-            "r": 0.0375
+            "r": 0.130702
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.353173,
-            "bz": -0.852635,
+            "bx": -0.282146,
+            "bz": -0.681162,
             "id": "arm-4",
             "kind": "capsule",
-            "r": 0.0375
+            "r": 0.107554
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.106413,
-            "bz": -0.808288,
+            "bx": -0.081733,
+            "bz": -0.620821,
             "id": "arm-5",
             "kind": "capsule",
-            "r": 0.11926
+            "r": 0.090875
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.092954,
-            "bz": -0.706055,
-            "id": "arm-6",
-            "kind": "capsule",
-            "r": 0.103781
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.272412,
-            "bz": -0.657661,
+            "bx": 0.105227,
+            "bz": -0.25404,
             "id": "arm-7",
             "kind": "capsule",
-            "r": 0.103736
+            "r": 0.038151
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 3.623672,
-            "bz": -1.500974,
+            "bx": 0.6127,
+            "bz": -0.470141,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.11281
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.611552,
+            "bz": -0.253313,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.0375
@@ -19695,8 +19671,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 4.041096,
-            "bz": -0.53202,
+            "bx": 4.043214,
+            "bz": -0.532299,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.0375
@@ -19704,8 +19680,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 3.643059,
-            "bz": 0.479618,
+            "bx": 3.640198,
+            "bz": 0.479241,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.0375
@@ -19713,8 +19689,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.930147,
-            "bz": 0.713727,
+            "bx": 0.89405,
+            "bz": 0.686028,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.0375
@@ -19722,44 +19698,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.585494,
-            "bz": 0.763031,
-            "id": "arm-15",
-            "kind": "capsule",
-            "r": 0.0375
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.542575,
-            "bz": 1.309893,
-            "id": "arm-16",
-            "kind": "capsule",
-            "r": 0.0375
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.715546,
-            "bz": 0.932518,
-            "id": "arm-20",
-            "kind": "capsule",
-            "r": 0.173327
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -1.557582,
-            "bz": 1.195174,
-            "id": "arm-21",
-            "kind": "capsule",
-            "r": 0.291603
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -2.287605,
-            "bz": 0.947557,
+            "bx": -2.055115,
+            "bz": 0.851257,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.0375
@@ -19767,23 +19707,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -4.032565,
-            "bz": 0.530897,
+            "bx": -4.031878,
+            "bz": 0.530807,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.0375
           }
         ],
-        "silhouetteRadius": 49.156535,
-        "toleranceWu": 5.898784
+        "silhouetteRadius": 49.204251,
+        "toleranceWu": 5.90451
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 808,
-        "inwardFaceFraction": 0.40525,
-        "silhouetteRadius": 49.156535,
+        "boundaryEdges": 761,
+        "inwardFaceFraction": 0.416,
+        "silhouetteRadius": 49.204251,
         "sliceY": 0
       },
       "sockets": [
@@ -19848,80 +19788,80 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 31504,
+      "triangles": 38977,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_claim_outpost_catcher.glb",
       "worldSize": [
         98.200001,
         83.407216,
-        32.649921
+        17.518328
       ]
     },
     {
       "bounds": {
         "center": [
-          6.397097,
+          6.658054,
           0,
-          1.055139
+          -3.039833
         ],
         "max": [
           56.5,
-          45.802692,
-          16.061383
+          45.198707,
+          8.520715
         ],
         "min": [
-          -43.705807,
-          -45.802692,
-          -13.951106
+          -43.183891,
+          -45.198707,
+          -14.600381
         ],
         "size": [
-          100.205807,
-          91.605384,
-          30.012489
+          99.683891,
+          90.397413,
+          23.121097
         ]
       },
-      "bytes": 1133572,
+      "bytes": 1170012,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_claim_outpost_fence",
         "kind": "proxy",
         "outline": [
-          48.308707,
-          0,
-          20.053769,
-          19.141902,
-          13.779388,
-          13.056801,
-          13.03639,
-          12.023136,
-          0,
-          4.756361,
-          7.762048,
-          50.205653,
-          45.240523,
-          14.556378,
-          13.784957,
-          11.486468,
+          48.358046,
+          14.60939,
+          11.601441,
+          8.20437,
+          6.686718,
+          6.124204,
+          5.360978,
           0,
           0,
-          14.479534,
+          8.762089,
+          10.114435,
+          47.99745,
+          49.867266,
+          7.203715,
+          15.39269,
+          16.153437,
+          0,
+          1.645004,
           0,
           0,
-          22.656275,
-          25.540852,
-          47.857687
+          0,
+          0,
+          27.243367,
+          48.344239
         ],
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 6.024678,
+        "toleranceWu": 5.984072,
         "worstSize": null
       },
       "drawOffset": [
-        -6.397097,
+        -6.658054,
         0,
-        -1.055139
+        3.039833
       ],
       "drawScale": 1,
       "family": "place",
@@ -19943,7 +19883,7 @@
         "lod2": true,
         "outlineDeltaWu": {},
         "overTolerance": false,
-        "toleranceWu": 4.016452
+        "toleranceWu": 4
       },
       "materials": [
         {
@@ -20039,14 +19979,6 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Stone",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
           "name": "Material_Warning",
           "role": "opaqueHull"
         },
@@ -20061,28 +19993,28 @@
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 40,
-      "nodes": 48,
+      "meshes": 37,
+      "nodes": 45,
       "note": null,
       "opening": null,
       "pivot": [
-        6.397097,
+        6.658054,
         0,
-        1.055139
+        -3.039833
       ],
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 6.024678,
+        "cellWu": 5.984072,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 18,
+        "primitiveCount": 17,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -3.974761,
-            "bz": -0.523287,
+            "bx": -3.978837,
+            "bz": -0.523824,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.0375
@@ -20090,8 +20022,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.312588,
-            "bz": -1.007184,
+            "bx": -1.109378,
+            "bz": -0.45952,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.753781,
+            "bz": -0.578396,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.0375
@@ -20099,8 +20040,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.960925,
-            "bz": -1.252302,
+            "bx": -0.406063,
+            "bz": -0.529191,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.0375
@@ -20108,53 +20049,44 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.390044,
-            "bz": -0.94165,
+            "bx": -0.193436,
+            "bz": -0.466995,
             "id": "arm-4",
             "kind": "capsule",
-            "r": 0.149881
+            "r": 0.072588
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.126203,
-            "bz": -0.958607,
+            "bx": -0.064439,
+            "bz": -0.48946,
             "id": "arm-5",
             "kind": "capsule",
-            "r": 0.142021
+            "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.139624,
-            "bz": -1.060548,
+            "bx": 0.05342,
+            "bz": -0.405768,
             "id": "arm-6",
             "kind": "capsule",
-            "r": 0.0375
+            "r": 0.058312
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.341347,
-            "bz": -0.824085,
-            "id": "arm-7",
-            "kind": "capsule",
-            "r": 0.130778
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.301234,
-            "bz": -0.231145,
+            "bx": 0.520202,
+            "bz": -0.399165,
             "id": "arm-9",
             "kind": "capsule",
-            "r": 0.0375
+            "r": 0.095307
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.582202,
-            "bz": -0.241156,
+            "bx": 0.763312,
+            "bz": -0.316174,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.0375
@@ -20162,8 +20094,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 4.131487,
-            "bz": -0.543921,
+            "bx": 3.949045,
+            "bz": -0.519902,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.0375
@@ -20171,8 +20103,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 3.721266,
-            "bz": 0.489914,
+            "bx": 4.10353,
+            "bz": 0.54024,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.0375
@@ -20180,17 +20112,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.993662,
-            "bz": 0.411588,
+            "bx": 0.539216,
+            "bz": 0.22335,
             "id": "arm-13",
             "kind": "capsule",
-            "r": 0.158332
+            "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.898139,
-            "bz": 0.689167,
+            "bx": 1.004431,
+            "bz": 0.770727,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.0375
@@ -20198,8 +20130,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.572564,
-            "bz": 0.74618,
+            "bx": 0.80932,
+            "bz": 1.054726,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.0375
@@ -20207,26 +20139,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.155321,
-            "bz": 1.179781,
-            "id": "arm-18",
+            "bx": 0.015718,
+            "bz": 0.119387,
+            "id": "arm-17",
             "kind": "capsule",
             "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.484647,
-            "bz": 1.13921,
-            "id": "arm-21",
-            "kind": "capsule",
-            "r": 0.0375
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -1.950991,
-            "bz": 0.808127,
+            "bx": -2.082068,
+            "bz": 0.862421,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.0375
@@ -20234,23 +20157,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -3.937497,
-            "bz": 0.518381,
+            "bx": -3.977696,
+            "bz": 0.523674,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.0375
           }
         ],
-        "silhouetteRadius": 50.205653,
-        "toleranceWu": 6.024678
+        "silhouetteRadius": 49.867266,
+        "toleranceWu": 5.984072
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 877,
-        "inwardFaceFraction": 0.42825,
-        "silhouetteRadius": 50.205653,
+        "boundaryEdges": 904,
+        "inwardFaceFraction": 0.428,
+        "silhouetteRadius": 49.867266,
         "sliceY": 0
       },
       "sockets": [
@@ -20315,80 +20238,80 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 40432,
+      "triangles": 43297,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_claim_outpost_fence.glb",
       "worldSize": [
-        100.205807,
-        91.605384,
-        30.012489
+        99.683891,
+        90.397413,
+        23.121097
       ]
     },
     {
       "bounds": {
         "center": [
-          2.75,
+          7.4,
           0,
-          0.992116
+          -2.525574
         ],
         "max": [
           56.5,
-          41.703123,
-          15.488064
+          41.703608,
+          8.51892
         ],
         "min": [
-          -51,
-          -41.703123,
-          -13.503832
+          -41.700001,
+          -41.703608,
+          -13.570067
         ],
         "size": [
-          107.5,
-          83.406246,
-          28.991897
+          98.200001,
+          83.407216,
+          22.088988
         ]
       },
-      "bytes": 1156720,
+      "bytes": 1198268,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_claim_outpost_refinery",
         "kind": "proxy",
         "outline": [
-          53.825099,
-          50.637879,
-          17.116594,
-          16.904616,
-          13.373532,
-          12.277175,
-          11.906831,
-          13.488713,
-          13.446244,
-          6.982779,
-          11.182611,
-          53.842195,
-          48.887777,
-          17.013532,
-          14.50515,
-          0,
-          0,
-          14.034073,
+          49.108562,
+          25.493088,
+          20.846245,
+          8.774883,
+          9.086516,
+          9.900305,
+          10.307805,
+          11.947685,
+          12.485914,
+          12.583292,
+          9.904577,
+          47.302733,
+          49.11174,
+          6.343662,
+          14.5061,
+          15.263138,
           0,
           0,
           0,
-          17.096377,
-          26.54106,
-          44.212713
+          1.273923,
+          1.187727,
+          3.523908,
+          27.710957,
+          49.055958
         ],
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 6.461063,
+        "toleranceWu": 5.893409,
         "worstSize": null
       },
       "drawOffset": [
-        -2.75,
+        -7.4,
         0,
-        -0.992116
+        2.525574
       ],
       "drawScale": 1,
       "family": "place",
@@ -20410,7 +20333,7 @@
         "lod2": true,
         "outlineDeltaWu": {},
         "overTolerance": false,
-        "toleranceWu": 4.307376
+        "toleranceWu": 4
       },
       "materials": [
         {
@@ -20498,14 +20421,6 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Stone",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
           "name": "Material_Warning",
           "role": "opaqueHull"
         },
@@ -20520,28 +20435,28 @@
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 37,
-      "nodes": 45,
+      "meshes": 34,
+      "nodes": 42,
       "note": null,
       "opening": null,
       "pivot": [
-        2.75,
+        7.4,
         0,
-        0.992116
+        -2.525574
       ],
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 6.461063,
+        "cellWu": 5.893409,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 19,
+        "primitiveCount": 21,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -4.430527,
-            "bz": -0.58329,
+            "bx": -4.040845,
+            "bz": -0.531987,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.0375
@@ -20549,8 +20464,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -3.88321,
-            "bz": -1.608478,
+            "bx": -1.947314,
+            "bz": -0.806604,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.0375
@@ -20558,8 +20473,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.118403,
-            "bz": -0.858181,
+            "bx": -1.364981,
+            "bz": -1.047386,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.0375
@@ -20567,62 +20482,62 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.75832,
-            "bz": -0.988262,
+            "bx": -0.435005,
+            "bz": -0.566909,
             "id": "arm-3",
-            "kind": "capsule",
-            "r": 0.183875
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.378791,
-            "bz": -0.914482,
-            "id": "arm-4",
-            "kind": "capsule",
-            "r": 0.145466
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.131366,
-            "bz": -0.997821,
-            "id": "arm-5",
             "kind": "capsule",
             "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.115327,
-            "bz": -0.875998,
+            "bx": -0.259921,
+            "bz": -0.627506,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.098836
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.096351,
+            "bz": -0.731856,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.107687
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.106385,
+            "bz": -0.808076,
             "id": "arm-6",
             "kind": "capsule",
-            "r": 0.129513
+            "r": 0.064768
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.381984,
-            "bz": -0.922192,
+            "bx": 0.374637,
+            "bz": -0.904454,
             "id": "arm-7",
             "kind": "capsule",
-            "r": 0.146719
+            "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.605776,
-            "bz": -0.789463,
+            "bx": 0.623266,
+            "bz": -0.812256,
             "id": "arm-8",
             "kind": "capsule",
-            "r": 0.146257
+            "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.448428,
-            "bz": -0.344091,
+            "bx": 0.818694,
+            "bz": -0.628206,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.0375
@@ -20630,8 +20545,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.845551,
-            "bz": -0.350239,
+            "bx": 0.747155,
+            "bz": -0.309482,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.0375
@@ -20639,8 +20554,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 4.43194,
-            "bz": -0.583476,
+            "bx": 3.891647,
+            "bz": -0.512345,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.0375
@@ -20648,8 +20563,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 4.022604,
-            "bz": 0.529586,
+            "bx": 4.041108,
+            "bz": 0.532022,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.0375
@@ -20657,8 +20572,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 1.294473,
-            "bz": 0.536188,
+            "bx": 0.473,
+            "bz": 0.195923,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.0375
@@ -20666,8 +20581,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.945753,
-            "bz": 0.725702,
+            "bx": 0.945816,
+            "bz": 0.72575,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.0375
@@ -20675,17 +20590,35 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.150476,
-            "bz": 1.142977,
-            "id": "arm-17",
+            "bx": 0.764155,
+            "bz": 0.995866,
+            "id": "arm-15",
             "kind": "capsule",
             "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.117066,
-            "bz": 0.857155,
+            "bx": -0.034248,
+            "bz": 0.082681,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.050108,
+            "bz": 0.065301,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.219753,
+            "bz": 0.168622,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.0375
@@ -20693,8 +20626,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -2.027997,
-            "bz": 0.840024,
+            "bx": -2.118067,
+            "bz": 0.877332,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.0375
@@ -20702,23 +20635,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -3.636348,
-            "bz": 0.478734,
+            "bx": -4.036499,
+            "bz": 0.531415,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.0375
           }
         ],
-        "silhouetteRadius": 53.842195,
-        "toleranceWu": 6.461063
+        "silhouetteRadius": 49.11174,
+        "toleranceWu": 5.893409
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 892,
-        "inwardFaceFraction": 0.424,
-        "silhouetteRadius": 53.842195,
+        "boundaryEdges": 798,
+        "inwardFaceFraction": 0.40375,
+        "silhouetteRadius": 49.11174,
         "sliceY": 0
       },
       "sockets": [
@@ -20783,80 +20716,80 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 43854,
+      "triangles": 48806,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_claim_outpost_refinery.glb",
       "worldSize": [
-        107.5,
-        83.406246,
-        28.991897
+        98.200001,
+        83.407216,
+        22.088988
       ]
     },
     {
       "bounds": {
         "center": [
           7.4,
-          1.782192,
-          1.233595
+          0,
+          -0.43702
         ],
         "max": [
           56.5,
-          46.895245,
-          15.862391
+          42.392898,
+          10.499598
         ],
         "min": [
           -41.700001,
-          -43.33086,
-          -13.395201
+          -42.392898,
+          -11.373638
         ],
         "size": [
           98.200001,
-          90.226105,
-          29.257592
+          84.785797,
+          21.873236
         ]
       },
-      "bytes": 1040664,
+      "bytes": 1057700,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_claim_outpost_relay",
         "kind": "proxy",
         "outline": [
-          49.321858,
-          0,
-          20.988072,
-          19.951302,
-          13.968618,
-          13.277852,
-          11.956686,
-          0,
-          4.128971,
-          0,
-          6.93669,
-          49.216443,
-          44.101191,
-          9.937623,
-          12.849668,
-          16.018672,
-          0,
+          49.191824,
+          22.835796,
+          17.8044,
+          14.875983,
+          12.110943,
+          10.328134,
+          9.618168,
+          9.303244,
+          9.330764,
+          10.243384,
+          9.727879,
+          49.129943,
+          44.265956,
+          9.327617,
+          13.848985,
           0,
           0,
-          11.905627,
           0,
-          23.961766,
-          31.653916,
-          48.858909
+          0,
+          11.497699,
+          0,
+          15.731171,
+          26.957896,
+          49.00066
         ],
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 5.918623,
+        "toleranceWu": 5.903019,
         "worstSize": null
       },
       "drawOffset": [
         -7.4,
         0,
-        -1.233595
+        0.43702
       ],
       "drawScale": 1,
       "family": "place",
@@ -20982,14 +20915,6 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Stone",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": false,
           "name": "Material_Warning",
           "role": "opaqueHull"
         },
@@ -21004,28 +20929,28 @@
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 43,
-      "nodes": 51,
+      "meshes": 40,
+      "nodes": 48,
       "note": null,
       "opening": null,
       "pivot": [
         7.4,
-        1.782192,
-        1.233595
+        0,
+        -0.43702
       ],
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 5.918623,
+        "cellWu": 5.903019,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 17,
+        "primitiveCount": 19,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -4.058468,
-            "bz": -0.534307,
+            "bx": -4.047724,
+            "bz": -0.532893,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.0375
@@ -21033,8 +20958,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.374357,
-            "bz": -1.054581,
+            "bx": -1.742729,
+            "bz": -0.721862,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -1.163876,
+            "bz": -0.893073,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.0375
@@ -21042,53 +20976,71 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.001986,
-            "bz": -1.305813,
+            "bx": -0.66884,
+            "bz": -0.871649,
             "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.161809
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.343782,
+            "bz": -0.829963,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.131733
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.100397,
+            "bz": -0.76259,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.112341
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.093682,
+            "bz": -0.711588,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.104619
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.290305,
+            "bz": -0.700858,
+            "id": "arm-7",
             "kind": "capsule",
             "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.395291,
-            "bz": -0.954317,
-            "id": "arm-4",
-            "kind": "capsule",
-            "r": 0.151939
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.128294,
-            "bz": -0.974487,
-            "id": "arm-5",
-            "kind": "capsule",
-            "r": 0.144426
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.115799,
-            "bz": -0.879579,
-            "id": "arm-6",
-            "kind": "capsule",
-            "r": 0.130055
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.194805,
-            "bz": -0.253875,
+            "bx": 0.424249,
+            "bz": -0.552892,
             "id": "arm-8",
             "kind": "capsule",
-            "r": 0.044912
+            "r": 0.101492
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.518658,
-            "bz": -0.214835,
+            "bx": 0.663996,
+            "bz": -0.509502,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.733551,
+            "bz": -0.303847,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.0375
@@ -21096,8 +21048,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 4.049758,
-            "bz": -0.533161,
+            "bx": 4.042612,
+            "bz": -0.53222,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.0375
@@ -21105,8 +21057,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 3.627134,
-            "bz": 0.477521,
+            "bx": 3.640747,
+            "bz": 0.479313,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.0375
@@ -21114,17 +21066,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.684479,
-            "bz": 0.283521,
+            "bx": 0.702735,
+            "bz": 0.291082,
             "id": "arm-13",
             "kind": "capsule",
-            "r": 0.108093
+            "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.836305,
-            "bz": 0.641719,
+            "bx": 0.902372,
+            "bz": 0.692415,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.0375
@@ -21132,35 +21084,26 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.802483,
-            "bz": 1.045816,
-            "id": "arm-15",
+            "bx": -0.360287,
+            "bz": 0.869809,
+            "id": "arm-19",
             "kind": "capsule",
             "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.341587,
-            "bz": 0.824663,
-            "id": "arm-19",
-            "kind": "capsule",
-            "r": 0.12036
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -1.505219,
-            "bz": 1.154995,
+            "bx": -1.026809,
+            "bz": 0.787898,
             "id": "arm-21",
             "kind": "capsule",
-            "r": 0.12036
+            "r": 0.0375
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -2.421636,
-            "bz": 1.003074,
+            "bx": -2.060089,
+            "bz": 0.853317,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.0375
@@ -21168,23 +21111,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -4.020219,
-            "bz": 0.529272,
+            "bx": -4.03193,
+            "bz": 0.530814,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.0375
           }
         ],
-        "silhouetteRadius": 49.321858,
-        "toleranceWu": 5.918623
+        "silhouetteRadius": 49.191824,
+        "toleranceWu": 5.903019
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 812,
-        "inwardFaceFraction": 0.40525,
-        "silhouetteRadius": 49.321858,
+        "boundaryEdges": 883,
+        "inwardFaceFraction": 0.41975,
+        "silhouetteRadius": 49.191824,
         "sliceY": 0
       },
       "sockets": [
@@ -21249,13 +21192,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 35432,
+      "triangles": 36459,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_claim_outpost_relay.glb",
       "worldSize": [
         98.200001,
-        90.226105,
-        29.257592
+        84.785797,
+        21.873236
       ]
     },
     {
@@ -23606,26 +23549,26 @@
       "bounds": {
         "center": [
           0,
-          4.175,
+          4.759481,
           0
         ],
         "max": [
           26,
-          12.773956,
-          18.000914
+          13.960442,
+          18.000915
         ],
         "min": [
           -26,
-          -4.423957,
+          -4.44148,
           -18.000915
         ],
         "size": [
           52,
-          17.197913,
+          18.401922,
           36.00183
         ]
       },
-      "bytes": 8852620,
+      "bytes": 468528,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -23634,14 +23577,19 @@
         "outline": [
           0,
           0,
-          27.832888,
-          21.283867,
-          18.500761,
-          15.519455,
-          15.519455,
-          17.887971,
-          17.996547,
-          23.857427,
+          0,
+          0,
+          15.448555,
+          0,
+          0,
+          15.448555,
+          0,
+          24.913669,
+          26.22886,
+          23.060323,
+          23.442847,
+          24.684904,
+          17.369894,
           0,
           0,
           0,
@@ -23650,17 +23598,12 @@
           0,
           0,
           0,
-          0,
-          0,
-          21.604121,
-          30.023431,
-          27.312196,
           0
         ],
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 3.602812,
+        "toleranceWu": 3.147463,
         "worstSize": null
       },
       "drawOffset": [
@@ -23695,7 +23638,7 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": true,
+          "doubleSided": false,
           "name": "Material_Accent",
           "role": "opaqueHull"
         },
@@ -23703,47 +23646,71 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Decal",
-          "role": "decal"
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Floor",
+          "doubleSided": false,
+          "name": "Material_Hull_aged",
           "role": "opaqueHull"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Glass",
-          "role": "glass"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Hull",
+          "doubleSided": false,
+          "name": "Material_Hull_deck",
           "role": "opaqueHull"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Hull_VitreousCeramic",
+          "doubleSided": false,
+          "name": "Material_Hull_line_white",
           "role": "opaqueHull"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": true,
+          "doubleSided": false,
           "name": "Material_Mechanical",
           "role": "opaqueHull"
         },
@@ -23751,172 +23718,121 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Mechanical_ShadowEnamel",
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
           "role": "opaqueHull"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Radiator",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Rubber",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Safety",
-          "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": true,
-          "doubleSided": true,
-          "name": "Material_Structure",
+          "doubleSided": false,
+          "name": "Material_Warning",
           "role": "opaqueHull"
         }
       ],
       "measuredProportions": null,
       "meshHash": null,
       "meshes": 12,
-      "nodes": 15,
+      "nodes": 14,
       "note": null,
       "opening": null,
       "pivot": [
         0,
-        4.175,
+        4.759481,
         0
       ],
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 3.602812,
+        "cellWu": 3.147463,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 11,
+        "primitiveCount": 8,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.616455,
-            "bz": -1.24035,
-            "id": "arm-2",
-            "kind": "capsule",
-            "r": 0.302743
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.951482,
-            "bz": -1.239996,
-            "id": "arm-3",
-            "kind": "capsule",
-            "r": 0.231509
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.520957,
-            "bz": -1.257702,
+            "bx": -0.436327,
+            "bz": -1.053385,
             "id": "arm-4",
             "kind": "capsule",
-            "r": 0.201236
+            "r": 0.168037
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.149493,
-            "bz": -1.135515,
-            "id": "arm-5",
-            "kind": "capsule",
-            "r": 0.168808
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.149493,
-            "bz": -1.135515,
-            "id": "arm-6",
-            "kind": "capsule",
-            "r": 0.168808
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.503966,
-            "bz": -1.216682,
+            "bx": 0.436327,
+            "bz": -1.053385,
             "id": "arm-7",
             "kind": "capsule",
-            "r": 0.194571
+            "r": 0.168037
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.902821,
-            "bz": -1.176579,
-            "id": "arm-8",
-            "kind": "capsule",
-            "r": 0.0375
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 1.564058,
-            "bz": -1.200144,
+            "bx": 1.448649,
+            "bz": -1.111587,
             "id": "arm-9",
             "kind": "capsule",
-            "r": 0.0375
+            "r": 0.270991
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.085834,
-            "bz": 1.415086,
-            "id": "arm-20",
+            "bx": 1.775027,
+            "bz": -0.73524,
+            "id": "arm-10",
             "kind": "capsule",
-            "r": 0.0375
+            "r": 0.285296
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.97171,
-            "bz": 1.512946,
-            "id": "arm-21",
+            "bx": 1.677223,
+            "bz": -0.220811,
+            "id": "arm-11",
             "kind": "capsule",
-            "r": 0.0375
+            "r": 0.250831
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.847546,
-            "bz": 0.765279,
-            "id": "arm-22",
+            "bx": 1.704702,
+            "bz": 0.224428,
+            "id": "arm-12",
             "kind": "capsule",
-            "r": 0.29708
+            "r": 0.254992
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.671674,
+            "bz": 0.69243,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.268502
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.015008,
+            "bz": 0.778843,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.188936
           }
         ],
-        "silhouetteRadius": 30.023431,
-        "toleranceWu": 3.602812
+        "silhouetteRadius": 26.22886,
+        "toleranceWu": 3.147463
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
         "boundaryEdges": 0,
-        "inwardFaceFraction": 0.4675,
-        "silhouetteRadius": 30.023431,
+        "inwardFaceFraction": 0.394,
+        "silhouetteRadius": 26.22886,
         "sliceY": 0
       },
       "sockets": [
@@ -23933,12 +23849,12 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 21912,
+      "triangles": 11128,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_dock_interior.glb",
       "worldSize": [
         52,
-        17.197913,
+        18.401922,
         36.00183
       ]
     },
@@ -28423,37 +28339,37 @@
           19.4
         ]
       },
-      "bytes": 520220,
+      "bytes": 528756,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_maintenance_gantry",
         "kind": "proxy",
         "outline": [
-          2.267659,
+          2.26695,
           2.39336,
           1.337923,
-          4.26158,
-          8.15287,
+          4.260916,
+          8.152069,
           9.376469,
           9.376208,
-          8.15287,
-          4.26158,
+          8.152069,
+          4.260916,
           1.337923,
           2.39336,
-          2.267659,
-          2.267659,
+          2.26695,
+          2.26695,
           2.39336,
           1.337923,
-          4.26158,
-          8.15287,
+          4.260916,
+          8.152069,
           9.376469,
           9.376208,
-          8.15287,
-          4.26158,
+          8.152069,
+          4.260916,
           1.337923,
           2.39336,
-          2.267659
+          2.26695
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -28576,8 +28492,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.113887,
-            "bz": -0.014994,
+            "bx": -0.113848,
+            "bz": -0.014988,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.025
@@ -28603,8 +28519,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.137363,
-            "bz": -0.179015,
+            "bx": -0.13734,
+            "bz": -0.178986,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.025
@@ -28612,8 +28528,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.16908,
-            "bz": -0.408194,
+            "bx": -0.169063,
+            "bz": -0.408153,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.025
@@ -28639,8 +28555,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.16908,
-            "bz": -0.408194,
+            "bx": 0.169063,
+            "bz": -0.408153,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.025
@@ -28648,8 +28564,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.137363,
-            "bz": -0.179015,
+            "bx": 0.13734,
+            "bz": -0.178986,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.025
@@ -28675,8 +28591,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.113887,
-            "bz": -0.014994,
+            "bx": 0.113848,
+            "bz": -0.014988,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.025
@@ -28684,8 +28600,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.113887,
-            "bz": 0.014994,
+            "bx": 0.113848,
+            "bz": 0.014988,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.025
@@ -28711,8 +28627,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.137363,
-            "bz": 0.179015,
+            "bx": 0.13734,
+            "bz": 0.178986,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.025
@@ -28720,8 +28636,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.16908,
-            "bz": 0.408194,
+            "bx": 0.169063,
+            "bz": 0.408153,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.025
@@ -28747,8 +28663,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.16908,
-            "bz": 0.408194,
+            "bx": -0.169063,
+            "bz": 0.408153,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.025
@@ -28756,8 +28672,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.137363,
-            "bz": 0.179015,
+            "bx": -0.13734,
+            "bz": 0.178986,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.025
@@ -28783,8 +28699,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.113887,
-            "bz": 0.014994,
+            "bx": -0.113848,
+            "bz": 0.014988,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.025
@@ -28824,7 +28740,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 13066,
+      "triangles": 13166,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_maintenance_gantry.glb",
       "worldSize": [
@@ -33284,33 +33200,33 @@
       "bounds": {
         "center": [
           0,
-          4.330309,
+          4.330277,
           0
         ],
         "max": [
-          8.95,
-          8.660937,
-          1.199744
+          8.96,
+          8.660873,
+          1.19988
         ],
         "min": [
-          -8.95,
+          -8.96,
           -0.00032,
-          -1.199744
+          -1.19988
         ],
         "size": [
-          17.9,
-          8.661257,
-          2.399487
+          17.92,
+          8.661193,
+          2.399761
         ]
       },
-      "bytes": 542876,
+      "bytes": 543192,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_radiator_bank",
         "kind": "proxy",
         "outline": [
-          8.935914,
+          8.935995,
           1.202633,
           0,
           0,
@@ -33321,8 +33237,8 @@
           0,
           0,
           1.202223,
-          8.935914,
-          8.935914,
+          8.935995,
+          8.935995,
           1.202633,
           0,
           0,
@@ -33333,7 +33249,7 @@
           0,
           0,
           1.202223,
-          8.935914
+          8.935995
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -33434,7 +33350,7 @@
       "opening": null,
       "pivot": [
         0,
-        4.330309,
+        4.330277,
         0
       ],
       "proposedSkin": {
@@ -33448,7 +33364,7 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.541324,
+            "bx": -0.541329,
             "bz": -0.071267,
             "id": "arm-0",
             "kind": "capsule",
@@ -33475,7 +33391,7 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.541324,
+            "bx": 0.541329,
             "bz": -0.071267,
             "id": "arm-11",
             "kind": "capsule",
@@ -33484,7 +33400,7 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.541324,
+            "bx": 0.541329,
             "bz": 0.071267,
             "id": "arm-12",
             "kind": "capsule",
@@ -33511,14 +33427,14 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.541324,
+            "bx": -0.541329,
             "bz": 0.071267,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.028125
           }
         ],
-        "silhouetteRadius": 8.935914,
+        "silhouetteRadius": 8.935995,
         "toleranceWu": 2
       },
       "reasons": [
@@ -33527,7 +33443,7 @@
       "shell": {
         "boundaryEdges": 0,
         "inwardFaceFraction": 0.318,
-        "silhouetteRadius": 8.935914,
+        "silhouetteRadius": 8.935995,
         "sliceY": 0
       },
       "sockets": [
@@ -33548,9 +33464,9 @@
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_radiator_bank.glb",
       "worldSize": [
-        17.9,
-        8.661257,
-        2.399487
+        17.92,
+        8.661193,
+        2.399761
       ]
     },
     {
@@ -35459,7 +35375,7 @@
         "center": [
           0,
           3.149,
-          0.211361
+          0.211386
         ],
         "max": [
           5.52,
@@ -35469,45 +35385,45 @@
         "min": [
           -5.52,
           -0.000232,
-          -2.177312
+          -2.177261
         ],
         "size": [
           11.04,
           6.298464,
-          4.777346
+          4.777294
         ]
       },
-      "bytes": 546216,
+      "bytes": 595192,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_slurry_tank",
         "kind": "proxy",
         "outline": [
-          4.668208,
-          5.69178,
-          4.169585,
-          0.612903,
-          2.25701,
-          2.244783,
-          2.246239,
-          2.257249,
-          0.61291,
-          4.16983,
-          5.69178,
-          4.667427,
-          4.646079,
-          5.559638,
-          3.256331,
-          0,
-          1.85686,
-          0.03517,
-          0.038637,
-          1.857613,
-          0,
-          3.256331,
-          5.559638,
-          4.646079
+          4.661918,
+          5.691789,
+          4.169598,
+          2.046816,
+          2.257034,
+          2.244809,
+          2.246264,
+          2.257274,
+          2.046842,
+          4.169843,
+          5.691789,
+          4.66189,
+          4.673006,
+          5.559631,
+          3.256317,
+          1.70954,
+          1.856837,
+          1.286098,
+          1.288679,
+          1.857589,
+          1.709392,
+          3.256317,
+          5.559631,
+          4.673006
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -35518,7 +35434,7 @@
       "drawOffset": [
         0,
         0,
-        -0.211361
+        -0.211386
       ],
       "drawScale": 1,
       "family": "place",
@@ -35633,7 +35549,7 @@
       "pivot": [
         0,
         3.149,
-        0.211361
+        0.211386
       ],
       "proposedSkin": {
         "adopted": true,
@@ -35641,13 +35557,13 @@
         "cellWu": 2,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 20,
+        "primitiveCount": 24,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.221499,
-            "bz": -0.029161,
+            "bx": -0.221187,
+            "bz": -0.02912,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.0225
@@ -35655,7 +35571,7 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.253687,
+            "bx": -0.253688,
             "bz": -0.105081,
             "id": "arm-1",
             "kind": "capsule",
@@ -35664,8 +35580,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.157464,
-            "bz": -0.120826,
+            "bx": -0.157465,
+            "bz": -0.120827,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.0225
@@ -35673,8 +35589,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.012568,
-            "bz": -0.016379,
+            "bx": -0.056214,
+            "bz": -0.073259,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.0225
@@ -35682,8 +35598,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.039359,
-            "bz": -0.095021,
+            "bx": -0.03936,
+            "bz": -0.095023,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.0225
@@ -35692,7 +35608,7 @@
             "ax": 0,
             "az": 0,
             "bx": -0.013345,
-            "bz": -0.101365,
+            "bz": -0.101366,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.0225
@@ -35700,8 +35616,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.013354,
-            "bz": -0.101437,
+            "bx": 0.013355,
+            "bz": -0.101438,
             "id": "arm-6",
             "kind": "capsule",
             "r": 0.0225
@@ -35710,7 +35626,7 @@
             "ax": 0,
             "az": 0,
             "bx": 0.039364,
-            "bz": -0.095033,
+            "bz": -0.095034,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.0225
@@ -35718,8 +35634,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.012568,
-            "bz": -0.016379,
+            "bx": 0.056214,
+            "bz": -0.07326,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.0225
@@ -35736,7 +35652,7 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.253687,
+            "bx": 0.253688,
             "bz": -0.105081,
             "id": "arm-10",
             "kind": "capsule",
@@ -35745,8 +35661,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.22146,
-            "bz": -0.029156,
+            "bx": 0.221186,
+            "bz": -0.02912,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.0225
@@ -35754,8 +35670,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.220402,
-            "bz": 0.029016,
+            "bx": 0.221737,
+            "bz": 0.029192,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.0225
@@ -35772,8 +35688,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.121238,
-            "bz": 0.093029,
+            "bx": 0.121237,
+            "bz": 0.093028,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.0225
@@ -35781,8 +35697,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.031703,
-            "bz": 0.076537,
+            "bx": 0.045947,
+            "bz": 0.05988,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.031702,
+            "bz": 0.076536,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.0225
@@ -35790,8 +35715,26 @@
           {
             "ax": 0,
             "az": 0,
+            "bx": 0.007088,
+            "bz": 0.05384,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.007105,
+            "bz": 0.053968,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
             "bx": -0.031717,
-            "bz": 0.076572,
+            "bz": 0.076571,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.0225
@@ -35799,8 +35742,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.121238,
-            "bz": 0.093029,
+            "bx": -0.045943,
+            "bz": 0.059874,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.121237,
+            "bz": 0.093028,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.0225
@@ -35817,14 +35769,14 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.220402,
-            "bz": 0.029016,
+            "bx": -0.221737,
+            "bz": 0.029192,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.0225
           }
         ],
-        "silhouetteRadius": 5.69178,
+        "silhouetteRadius": 5.691789,
         "toleranceWu": 2
       },
       "reasons": [
@@ -35832,8 +35784,8 @@
       ],
       "shell": {
         "boundaryEdges": 80,
-        "inwardFaceFraction": 0.30525,
-        "silhouetteRadius": 5.69178,
+        "inwardFaceFraction": 0.295,
+        "silhouetteRadius": 5.691789,
         "sliceY": 0
       },
       "sockets": [
@@ -35850,13 +35802,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 13930,
+      "triangles": 16926,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_slurry_tank.glb",
       "worldSize": [
         11.04,
         6.298464,
-        4.777346
+        4.777294
       ]
     },
     {
@@ -37511,26 +37463,26 @@
       "bounds": {
         "center": [
           0,
-          6.590082,
+          6.640247,
           0
         ],
         "max": [
           1.129869,
-          13.180164,
+          13.280153,
           11.3
         ],
         "min": [
           -1.129869,
-          0.000001,
+          0.00034,
           -11.3
         ],
         "size": [
           2.259737,
-          13.180164,
+          13.279813,
           22.6
         ]
       },
-      "bytes": 506560,
+      "bytes": 547856,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -37539,26 +37491,26 @@
         "outline": [
           0,
           0,
-          0,
-          0,
-          0,
-          11.310606,
-          11.310606,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
+          0.406968,
           0,
           0,
           11.310606,
           11.310606,
           0,
           0,
+          0.406968,
           0,
+          0,
+          0,
+          0,
+          0.406968,
+          0,
+          0,
+          11.310606,
+          11.310606,
+          0,
+          0,
+          0.406968,
           0,
           0
         ],
@@ -37679,13 +37631,13 @@
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 27,
-      "nodes": 29,
+      "meshes": 28,
+      "nodes": 30,
       "note": null,
       "opening": null,
       "pivot": [
         0,
-        6.590082,
+        6.640247,
         0
       ],
       "proposedSkin": {
@@ -37694,8 +37646,17 @@
         "cellWu": 2,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 4,
+        "primitiveCount": 8,
         "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.009122,
+            "bz": -0.007,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.025
+          },
           {
             "ax": 0,
             "az": 0,
@@ -37717,6 +37678,24 @@
           {
             "ax": 0,
             "az": 0,
+            "bx": 0.009122,
+            "bz": -0.007,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.025
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.009122,
+            "bz": 0.007,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.025
+          },
+          {
+            "ax": 0,
+            "az": 0,
             "bx": 0.080568,
             "bz": 0.611975,
             "id": "arm-17",
@@ -37731,6 +37710,15 @@
             "id": "arm-18",
             "kind": "capsule",
             "r": 0.025
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.009122,
+            "bz": 0.007,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.025
           }
         ],
         "silhouetteRadius": 11.310606,
@@ -37741,9 +37729,9 @@
       ],
       "shell": {
         "boundaryEdges": 105,
-        "inwardFaceFraction": 0.371,
+        "inwardFaceFraction": 0.348,
         "silhouetteRadius": 11.310606,
-        "sliceY": 0.000001
+        "sliceY": 0.00034
       },
       "sockets": [
         {
@@ -37759,12 +37747,12 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 9720,
+      "triangles": 11908,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_transponder_gate.glb",
       "worldSize": [
         2.259737,
-        13.180164,
+        13.279813,
         22.6
       ]
     },
@@ -52211,57 +52199,57 @@
     {
       "bounds": {
         "center": [
-          -0.141705,
-          0.198074,
-          0.091644
+          -0.261995,
+          -1.607359,
+          -0.858057
         ],
         "max": [
-          12.232429,
-          9.357357,
-          9.929546
+          10.949097,
+          8.358058,
+          9.554874
         ],
         "min": [
-          -12.515838,
-          -8.961209,
-          -9.746258
+          -11.473087,
+          -11.572776,
+          -11.270989
         ],
         "size": [
-          24.748266,
-          18.318566,
-          19.675804
+          22.422184,
+          19.930833,
+          20.825864
         ]
       },
-      "bytes": 20705620,
+      "bytes": 406600,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_asteroid_graffiti",
         "kind": "proxy",
         "outline": [
-          12.259677,
-          11.612621,
-          9.993545,
-          9.166966,
-          9.08734,
-          9.803502,
-          9.937271,
-          10.255171,
-          10.725124,
-          10.728753,
-          12.179386,
-          12.469073,
-          12.193663,
-          11.592079,
-          10.817323,
-          11.39524,
-          10.656184,
-          9.709452,
-          9.390076,
-          9.209387,
-          8.626387,
-          10.095403,
-          12.171777,
-          12.388281
+          11.377763,
+          10.296171,
+          10.102182,
+          8.161219,
+          0,
+          0,
+          10.417005,
+          0,
+          7.339589,
+          0,
+          0,
+          11.523984,
+          0,
+          9.726368,
+          10.027492,
+          11.804758,
+          7.435582,
+          8.263028,
+          7.602342,
+          10.624324,
+          10.20335,
+          0,
+          10.349225,
+          9.719945
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -52270,9 +52258,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.141705,
+        0.261995,
         0,
-        -0.091644
+        0.858057
       ],
       "drawScale": 1,
       "family": "rock-authored",
@@ -52302,7 +52290,31 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_FreshBreak",
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_tag1",
           "role": "opaqueHull"
         },
         {
@@ -52310,7 +52322,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Hardware",
+          "name": "Material_Hull_tag2",
           "role": "opaqueHull"
         },
         {
@@ -52318,7 +52330,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_PaintBone",
+          "name": "Material_Hull_tag3",
           "role": "opaqueHull"
         },
         {
@@ -52326,7 +52338,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_PaintRed",
+          "name": "Material_Mechanical",
           "role": "opaqueHull"
         },
         {
@@ -52334,7 +52346,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Recess",
+          "name": "Material_MechanicalDark",
           "role": "opaqueHull"
         },
         {
@@ -52342,20 +52354,44 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Regolith",
+          "name": "Material_Stone",
           "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Stone_deep",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
         }
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 18,
-      "nodes": 27,
+      "meshes": 34,
+      "nodes": 37,
       "note": null,
       "opening": null,
       "pivot": [
-        -0.141705,
-        0.198074,
-        0.091644
+        -0.261995,
+        -1.607359,
+        -0.858057
       ],
       "proposedSkin": {
         "adopted": true,
@@ -52363,22 +52399,22 @@
         "cellWu": 2,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 24,
+        "primitiveCount": 17,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.747282,
-            "bz": -0.098381,
+            "bx": -0.628493,
+            "bz": -0.082743,
             "id": "arm-0",
             "kind": "capsule",
-            "r": 0.028125
+            "r": 0.092819
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.658993,
-            "bz": -0.272964,
+            "bx": -0.582978,
+            "bz": -0.241477,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.028125
@@ -52386,8 +52422,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.485609,
-            "bz": -0.372621,
+            "bx": -0.490996,
+            "bz": -0.376754,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.028125
@@ -52395,8 +52431,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.341171,
-            "bz": -0.444623,
+            "bx": -0.302905,
+            "bz": -0.394754,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.028125
@@ -52404,26 +52440,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.212565,
-            "bz": -0.513177,
-            "id": "arm-4",
-            "kind": "capsule",
-            "r": 0.028125
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.078344,
-            "bz": -0.595084,
-            "id": "arm-5",
-            "kind": "capsule",
-            "r": 0.028125
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.079436,
-            "bz": -0.603373,
+            "bx": 0.083349,
+            "bz": -0.6331,
             "id": "arm-6",
             "kind": "capsule",
             "r": 0.028125
@@ -52431,17 +52449,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.240497,
-            "bz": -0.58061,
-            "id": "arm-7",
-            "kind": "capsule",
-            "r": 0.028125
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.400456,
-            "bz": -0.521884,
+            "bx": 0.271644,
+            "bz": -0.354014,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.028125
@@ -52449,26 +52458,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.522064,
-            "bz": -0.400594,
-            "id": "arm-9",
-            "kind": "capsule",
-            "r": 0.028125
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.691719,
-            "bz": -0.28652,
-            "id": "arm-10",
-            "kind": "capsule",
-            "r": 0.028125
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.760257,
-            "bz": -0.10009,
+            "bx": 0.701694,
+            "bz": -0.09238,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.028125
@@ -52476,17 +52467,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.743191,
-            "bz": 0.097843,
-            "id": "arm-12",
-            "kind": "capsule",
-            "r": 0.028125
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.657807,
-            "bz": 0.272472,
+            "bx": 0.550076,
+            "bz": 0.227849,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.028125
@@ -52494,8 +52476,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.526456,
-            "bz": 0.403964,
+            "bx": 0.487292,
+            "bz": 0.373912,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.028125
@@ -52503,8 +52485,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.425952,
-            "bz": 0.555111,
+            "bx": 0.441533,
+            "bz": 0.575417,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.028125
@@ -52512,26 +52494,26 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.250088,
-            "bz": 0.603766,
+            "bx": 0.160609,
+            "bz": 0.387743,
             "id": "arm-16",
             "kind": "capsule",
-            "r": 0.028125
+            "r": 0.060659
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.077577,
-            "bz": 0.589256,
+            "bx": 0.06065,
+            "bz": 0.46068,
             "id": "arm-17",
             "kind": "capsule",
-            "r": 0.028125
+            "r": 0.067409
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.074972,
-            "bz": 0.569466,
+            "bx": -0.060387,
+            "bz": 0.458688,
             "id": "arm-18",
             "kind": "capsule",
             "r": 0.028125
@@ -52539,17 +52521,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.215484,
-            "bz": 0.520224,
+            "bx": -0.226921,
+            "bz": 0.547836,
             "id": "arm-19",
             "kind": "capsule",
-            "r": 0.028125
+            "r": 0.086672
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.320604,
-            "bz": 0.417819,
+            "bx": -0.380603,
+            "bz": 0.496012,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.028125
@@ -52557,41 +52539,32 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.490659,
-            "bz": 0.376496,
-            "id": "arm-21",
-            "kind": "capsule",
-            "r": 0.028125
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.69128,
-            "bz": 0.286338,
+            "bx": -0.534024,
+            "bz": 0.2212,
             "id": "arm-22",
             "kind": "capsule",
-            "r": 0.028125
+            "r": 0.084428
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.755251,
-            "bz": 0.099431,
+            "bx": -0.589906,
+            "bz": 0.077663,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.028125
           }
         ],
-        "silhouetteRadius": 12.469073,
+        "silhouetteRadius": 11.804758,
         "toleranceWu": 2
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 28,
-        "inwardFaceFraction": 0.50825,
-        "silhouetteRadius": 12.469073,
+        "boundaryEdges": 88,
+        "inwardFaceFraction": 0.361262,
+        "silhouetteRadius": 11.804758,
         "sliceY": 0
       },
       "sockets": [
@@ -52608,69 +52581,69 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 13456,
+      "triangles": 3139,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_asteroid_graffiti.glb",
       "worldSize": [
-        24.748266,
-        18.318566,
-        19.675804
+        22.422184,
+        19.930833,
+        20.825864
       ]
     },
     {
       "bounds": {
         "center": [
-          -0.11314,
-          -0.018783,
-          0.170234
+          -0.619887,
+          -0.180896,
+          -0.234718
         ],
         "max": [
-          8.772098,
-          6.115494,
-          4.298709
+          6.42942,
+          5.670552,
+          5.172717
         ],
         "min": [
-          -8.998378,
-          -6.153059,
-          -3.958241
+          -7.669195,
+          -6.032345,
+          -5.642153
         ],
         "size": [
-          17.770475,
-          12.268553,
-          8.25695
+          14.098615,
+          11.702897,
+          10.81487
         ]
       },
-      "bytes": 2842204,
+      "bytes": 357728,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_asteroid_rock_a",
         "kind": "proxy",
         "outline": [
-          8.887219,
-          7.469745,
-          5.448191,
-          5.426817,
-          4.154895,
+          4.868921,
+          3.771595,
+          3.785512,
           0,
-          2.969267,
-          3.463997,
-          3.658571,
-          4.951298,
-          7.361744,
-          8.845321,
-          8.889956,
-          6.902224,
-          6.513385,
-          5.484916,
-          4.177464,
-          2.65726,
+          5.879665,
           0,
-          2.956929,
-          3.907954,
-          4.358301,
-          6.139815,
-          8.371907
+          0,
+          4.123783,
+          5.090839,
+          6.997251,
+          6.1298,
+          6.893257,
+          6.82374,
+          6.887532,
+          6.966454,
+          6.132069,
+          0,
+          0,
+          5.109625,
+          3.853269,
+          4.645165,
+          5.75712,
+          7.186243,
+          6.338721
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -52679,9 +52652,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.11314,
+        0.619887,
         0,
-        -0.170234
+        0.234718
       ],
       "drawScale": 1,
       "family": "rock-authored",
@@ -52711,7 +52684,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Rock",
+          "name": "Material_BrushedMetal",
           "role": "opaqueHull"
         },
         {
@@ -52719,20 +52692,44 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Warm",
+          "name": "Material_Mechanical",
           "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Stone",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Stone_deep",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
         }
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 6,
-      "nodes": 9,
+      "meshes": 13,
+      "nodes": 15,
       "note": null,
       "opening": null,
       "pivot": [
-        -0.11314,
-        -0.018783,
-        0.170234
+        -0.619887,
+        -0.180896,
+        -0.234718
       ],
       "proposedSkin": {
         "adopted": true,
@@ -52740,13 +52737,13 @@
         "cellWu": 2,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 22,
+        "primitiveCount": 19,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.574193,
-            "bz": -0.075594,
+            "bx": -0.308599,
+            "bz": -0.040628,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.03
@@ -52754,8 +52751,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.447758,
-            "bz": -0.185467,
+            "bx": -0.219982,
+            "bz": -0.091119,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.03
@@ -52763,8 +52760,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.277578,
-            "bz": -0.212993,
+            "bx": -0.189639,
+            "bz": -0.145515,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.03
@@ -52772,35 +52769,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.212126,
-            "bz": -0.276448,
-            "id": "arm-3",
-            "kind": "capsule",
-            "r": 0.03
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.100898,
-            "bz": -0.24359,
+            "bx": -0.136802,
+            "bz": -0.330269,
             "id": "arm-4",
             "kind": "capsule",
-            "r": 0.03
+            "r": 0.051163
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.024097,
-            "bz": -0.183038,
-            "id": "arm-6",
-            "kind": "capsule",
-            "r": 0.03
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.083272,
-            "bz": -0.201036,
+            "bx": 0.100104,
+            "bz": -0.241673,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.03
@@ -52808,8 +52787,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.140363,
-            "bz": -0.182925,
+            "bx": 0.19849,
+            "bz": -0.258678,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.03
@@ -52817,8 +52796,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.251297,
-            "bz": -0.192827,
+            "bx": 0.359508,
+            "bz": -0.27586,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.03
@@ -52826,8 +52805,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.441106,
-            "bz": -0.182712,
+            "bx": 0.365228,
+            "bz": -0.151282,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.03
@@ -52835,8 +52814,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.571424,
-            "bz": -0.075229,
+            "bx": 0.4424,
+            "bz": -0.058243,
             "id": "arm-11",
             "kind": "capsule",
             "r": 0.03
@@ -52844,8 +52823,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.574374,
-            "bz": 0.075618,
+            "bx": 0.437805,
+            "bz": 0.057638,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.03
@@ -52853,8 +52832,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.412803,
-            "bz": 0.170989,
+            "bx": 0.411898,
+            "bz": 0.170614,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.03
@@ -52862,8 +52841,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.333916,
-            "bz": 0.256223,
+            "bx": 0.357879,
+            "bz": 0.27461,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.03
@@ -52871,35 +52850,26 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.214484,
-            "bz": 0.27952,
+            "bx": 0.226527,
+            "bz": 0.295216,
             "id": "arm-15",
             "kind": "capsule",
-            "r": 0.03
+            "r": 0.05336
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.101474,
-            "bz": 0.24498,
-            "id": "arm-16",
+            "bx": -0.040835,
+            "bz": 0.310169,
+            "id": "arm-18",
             "kind": "capsule",
-            "r": 0.03
+            "r": 0.044463
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.021382,
-            "bz": 0.162416,
-            "id": "arm-17",
-            "kind": "capsule",
-            "r": 0.03
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.070335,
-            "bz": 0.169805,
+            "bx": -0.093203,
+            "bz": 0.225012,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.03
@@ -52907,8 +52877,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.150484,
-            "bz": 0.196114,
+            "bx": -0.180403,
+            "bz": 0.235106,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.03
@@ -52916,8 +52886,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.219933,
-            "bz": 0.168761,
+            "bx": -0.293917,
+            "bz": 0.225531,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.03
@@ -52925,8 +52895,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.365845,
-            "bz": 0.151538,
+            "bx": -0.430296,
+            "bz": 0.178235,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.03
@@ -52934,23 +52904,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.540133,
-            "bz": 0.07111,
+            "bx": -0.405747,
+            "bz": 0.053418,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.03
           }
         ],
-        "silhouetteRadius": 8.889956,
+        "silhouetteRadius": 7.186243,
         "toleranceWu": 2
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 2,
-        "inwardFaceFraction": 0.163885,
-        "silhouetteRadius": 8.889956,
+        "boundaryEdges": 0,
+        "inwardFaceFraction": 0.27579,
+        "silhouetteRadius": 7.186243,
         "sliceY": 0
       },
       "sockets": [
@@ -52967,69 +52937,69 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 1977,
+      "triangles": 2404,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_asteroid_rock_a.glb",
       "worldSize": [
-        17.770475,
-        12.268553,
-        8.25695
+        14.098615,
+        11.702897,
+        10.81487
       ]
     },
     {
       "bounds": {
         "center": [
-          0.190444,
-          1.33212,
-          0.042845
+          0.160008,
+          0.608967,
+          0.155779
         ],
         "max": [
-          3.8212,
-          6.885635,
-          6.785747
+          4.714968,
+          6.119078,
+          5.088932
         ],
         "min": [
-          -3.440312,
-          -4.221395,
-          -6.700056
+          -4.394951,
+          -4.901144,
+          -4.777374
         ],
         "size": [
-          7.261513,
-          11.10703,
-          13.485802
+          9.10992,
+          11.020222,
+          9.866306
         ]
       },
-      "bytes": 2799268,
+      "bytes": 145044,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_asteroid_rock_b",
         "kind": "proxy",
         "outline": [
-          3.584982,
-          3.780944,
-          4.473151,
-          5.03205,
-          6.003987,
-          6.766022,
-          6.537143,
-          6.077261,
-          4.766529,
-          4.123545,
-          3.888841,
-          3.607268,
+          4.019809,
+          4.597217,
+          5.660144,
+          3.09871,
+          2.201619,
+          4.700871,
+          3.98059,
+          5.232015,
+          5.330471,
+          5.517379,
+          4.019217,
           0,
-          3.14316,
-          4.17185,
-          4.776803,
-          5.818233,
-          6.641433,
-          6.745597,
-          6.016,
-          5.373688,
-          4.375145,
-          3.60467,
-          3.523236
+          4.039747,
+          3.202186,
+          4.992427,
+          4.692565,
+          3.595799,
+          4.564223,
+          4.723422,
+          4.433725,
+          3.241974,
+          5.233469,
+          0,
+          0
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -53038,9 +53008,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        -0.190444,
+        -0.160008,
         0,
-        -0.042845
+        -0.155779
       ],
       "drawScale": 1,
       "family": "rock-authored",
@@ -53069,8 +53039,16 @@
           "additive": false,
           "alphaMode": "OPAQUE",
           "depthWrite": true,
+          "doubleSided": true,
+          "name": "Material_Canopy",
+          "role": "glass"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Mechanical",
+          "name": "Material_Ceramic_ice",
           "role": "opaqueHull"
         },
         {
@@ -53078,20 +53056,36 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Rock",
+          "name": "Material_Stone",
           "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Stone_deep",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
         }
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 6,
-      "nodes": 9,
+      "meshes": 13,
+      "nodes": 15,
       "note": null,
       "opening": null,
       "pivot": [
-        0.190444,
-        1.33212,
-        0.042845
+        0.160008,
+        0.608967,
+        0.155779
       ],
       "proposedSkin": {
         "adopted": true,
@@ -53099,22 +53093,22 @@
         "cellWu": 2,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 23,
+        "primitiveCount": 21,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.185458,
-            "bz": -0.024416,
+            "bx": -0.210396,
+            "bz": -0.027699,
             "id": "arm-0",
             "kind": "capsule",
-            "r": 0.025996
+            "r": 0.025
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.183798,
-            "bz": -0.076132,
+            "bx": -0.225694,
+            "bz": -0.093486,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.025
@@ -53122,8 +53116,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.18834,
-            "bz": -0.144518,
+            "bx": -0.240657,
+            "bz": -0.184663,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.025
@@ -53131,8 +53125,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.16342,
-            "bz": -0.212973,
+            "bx": -0.098035,
+            "bz": -0.127761,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.025
@@ -53140,8 +53134,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.123394,
-            "bz": -0.297899,
+            "bx": -0.042555,
+            "bz": -0.102736,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.025
@@ -53149,8 +53143,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.047613,
-            "bz": -0.361658,
+            "bx": -0.032638,
+            "bz": -0.247909,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.025
@@ -53158,8 +53152,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.045954,
-            "bz": -0.349052,
+            "bx": 0.027415,
+            "bz": -0.208236,
             "id": "arm-6",
             "kind": "capsule",
             "r": 0.025
@@ -53167,8 +53161,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.124952,
-            "bz": -0.30166,
+            "bx": 0.106982,
+            "bz": -0.258276,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.025
@@ -53176,8 +53170,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.15444,
-            "bz": -0.201271,
+            "bx": 0.173513,
+            "bz": -0.226126,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.025
@@ -53185,8 +53179,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.172931,
-            "bz": -0.132695,
+            "bx": 0.234364,
+            "bz": -0.179834,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.025
@@ -53194,26 +53188,26 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.189336,
-            "bz": -0.078425,
+            "bx": 0.192198,
+            "bz": -0.079611,
             "id": "arm-10",
             "kind": "capsule",
-            "r": 0.025
+            "r": 0.029145
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.187673,
-            "bz": -0.024708,
-            "id": "arm-11",
+            "bx": 0.211494,
+            "bz": 0.027844,
+            "id": "arm-12",
             "kind": "capsule",
             "r": 0.025
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.151063,
-            "bz": 0.062572,
+            "bx": 0.154092,
+            "bz": 0.063827,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.025
@@ -53221,8 +53215,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.17506,
-            "bz": 0.134328,
+            "bx": 0.211227,
+            "bz": 0.16208,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.025
@@ -53230,8 +53224,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.154788,
-            "bz": 0.201723,
+            "bx": 0.151939,
+            "bz": 0.198011,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.025
@@ -53239,8 +53233,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.119445,
-            "bz": 0.288365,
+            "bx": 0.072195,
+            "bz": 0.174295,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.025
@@ -53248,8 +53242,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.04671,
-            "bz": 0.354796,
+            "bx": 0.031647,
+            "bz": 0.240383,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.025
@@ -53257,8 +53251,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.047465,
-            "bz": 0.360533,
+            "bx": -0.032801,
+            "bz": 0.249151,
             "id": "arm-18",
             "kind": "capsule",
             "r": 0.025
@@ -53266,8 +53260,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.123649,
-            "bz": 0.298516,
+            "bx": -0.09001,
+            "bz": 0.217303,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.025
@@ -53275,8 +53269,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.174975,
-            "bz": 0.228031,
+            "bx": -0.10288,
+            "bz": 0.134076,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.025
@@ -53284,41 +53278,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.18402,
-            "bz": 0.141204,
+            "bx": -0.221851,
+            "bz": 0.170232,
             "id": "arm-21",
-            "kind": "capsule",
-            "r": 0.025
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.17475,
-            "bz": 0.072384,
-            "id": "arm-22",
-            "kind": "capsule",
-            "r": 0.025
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.183045,
-            "bz": 0.024098,
-            "id": "arm-23",
             "kind": "capsule",
             "r": 0.025
           }
         ],
-        "silhouetteRadius": 6.766022,
+        "silhouetteRadius": 5.660144,
         "toleranceWu": 2
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 2,
-        "inwardFaceFraction": 0.023932,
-        "silhouetteRadius": 6.766022,
+        "boundaryEdges": 0,
+        "inwardFaceFraction": 0.320814,
+        "silhouetteRadius": 5.660144,
         "sliceY": 0
       },
       "sockets": [
@@ -53335,69 +53311,69 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 1755,
+      "triangles": 2556,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_asteroid_rock_b.glb",
       "worldSize": [
-        7.261513,
-        11.10703,
-        13.485802
+        9.10992,
+        11.020222,
+        9.866306
       ]
     },
     {
       "bounds": {
         "center": [
-          0.048353,
-          0.2817,
-          0.173283
+          0.285436,
+          0.650128,
+          -0.298762
         ],
         "max": [
-          4.905058,
-          5.165619,
-          4.536062
+          5.126272,
+          6.116081,
+          4.405823
         ],
         "min": [
-          -4.808352,
-          -4.602219,
-          -4.189497
+          -4.5554,
+          -4.815825,
+          -5.003347
         ],
         "size": [
-          9.713411,
-          9.767838,
-          8.72556
+          9.681672,
+          10.931905,
+          9.40917
         ]
       },
-      "bytes": 4127184,
+      "bytes": 136192,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_asteroid_rock_c",
         "kind": "proxy",
         "outline": [
-          4.944231,
-          5.356029,
-          5.51707,
-          5.903487,
-          4.53239,
-          4.296998,
-          4.323567,
-          4.064079,
-          4.177778,
-          4.262858,
-          4.343457,
-          4.021864,
-          4.899116,
-          5.084353,
-          5.063098,
-          4.558778,
-          4.84769,
-          3.895622,
-          4.312153,
-          3.95887,
-          3.719793,
-          3.859079,
-          4.037504,
-          4.019612
+          0,
+          4.665282,
+          3.361398,
+          4.29503,
+          3.409251,
+          3.613215,
+          4.705857,
+          2.607576,
+          3.385119,
+          0,
+          3.391863,
+          4.929498,
+          3.715427,
+          4.668129,
+          4.692236,
+          4.91838,
+          5.287281,
+          3.240341,
+          3.64498,
+          3.677557,
+          5.154229,
+          0,
+          3.947384,
+          0
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -53406,9 +53382,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        -0.048353,
+        -0.285436,
         0,
-        -0.173283
+        0.298762
       ],
       "drawScale": 1,
       "family": "rock-authored",
@@ -53438,7 +53414,23 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Mechanical",
+          "name": "Material_Ceramic_xtal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Stone",
           "role": "opaqueHull"
         },
         {
@@ -53446,28 +53438,28 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Rock",
+          "name": "Material_Stone_deep",
           "role": "opaqueHull"
         },
         {
           "additive": false,
           "alphaMode": "OPAQUE",
-          "depthWrite": true,
+          "depthWrite": false,
           "doubleSided": false,
-          "name": "Material_Warm",
-          "role": "opaqueHull"
+          "name": "other",
+          "role": "other"
         }
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 7,
-      "nodes": 10,
+      "meshes": 13,
+      "nodes": 15,
       "note": null,
       "opening": null,
       "pivot": [
-        0.048353,
-        0.2817,
-        0.173283
+        0.285436,
+        0.650128,
+        -0.298762
       ],
       "proposedSkin": {
         "adopted": true,
@@ -53475,22 +53467,13 @@
         "cellWu": 2,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 24,
+        "primitiveCount": 20,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.470364,
-            "bz": -0.061925,
-            "id": "arm-0",
-            "kind": "capsule",
-            "r": 0.045
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.476355,
-            "bz": -0.197313,
+            "bx": -0.412538,
+            "bz": -0.170879,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.045
@@ -53498,8 +53481,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.421832,
-            "bz": -0.323683,
+            "bx": -0.250811,
+            "bz": -0.192454,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.045
@@ -53507,8 +53490,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.347206,
-            "bz": -0.452488,
+            "bx": -0.24929,
+            "bz": -0.324881,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.045
@@ -53516,8 +53499,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.165793,
-            "bz": -0.400261,
+            "bx": -0.122813,
+            "bz": -0.296496,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.045
@@ -53525,8 +53508,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.053477,
-            "bz": -0.406195,
+            "bx": -0.044551,
+            "bz": -0.338401,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.045
@@ -53534,8 +53517,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.053823,
-            "bz": -0.408829,
+            "bx": 0.058813,
+            "bz": -0.446731,
             "id": "arm-6",
             "kind": "capsule",
             "r": 0.045
@@ -53543,8 +53526,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.147872,
-            "bz": -0.356994,
+            "bx": 0.092134,
+            "bz": -0.222431,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.045
@@ -53552,8 +53535,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.242152,
-            "bz": -0.315578,
+            "bx": 0.193898,
+            "bz": -0.252693,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.045
@@ -53561,17 +53544,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.322328,
-            "bz": -0.247331,
-            "id": "arm-9",
-            "kind": "capsule",
-            "r": 0.045
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.382806,
-            "bz": -0.158563,
+            "bx": 0.29489,
+            "bz": -0.122147,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.045
@@ -53579,26 +53553,26 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.378917,
-            "bz": -0.049885,
+            "bx": 0.449726,
+            "bz": -0.059208,
             "id": "arm-11",
             "kind": "capsule",
-            "r": 0.045
+            "r": 0.064343
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.465891,
-            "bz": 0.061336,
+            "bx": 0.345069,
+            "bz": 0.045429,
             "id": "arm-12",
             "kind": "capsule",
-            "r": 0.045
+            "r": 0.048496
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.451255,
-            "bz": 0.186916,
+            "bx": 0.412801,
+            "bz": 0.170988,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.045
@@ -53606,8 +53580,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.385815,
-            "bz": 0.296047,
+            "bx": 0.356393,
+            "bz": 0.27347,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.045
@@ -53615,8 +53589,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.265346,
-            "bz": 0.345805,
+            "bx": 0.287237,
+            "bz": 0.374334,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.045
@@ -53624,8 +53598,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.177859,
-            "bz": 0.429391,
+            "bx": 0.194682,
+            "bz": 0.470003,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.045
@@ -53633,8 +53607,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.048238,
-            "bz": 0.366401,
+            "bx": 0.039684,
+            "bz": 0.301433,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.045
@@ -53642,8 +53616,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.053674,
-            "bz": 0.407697,
+            "bx": -0.044966,
+            "bz": 0.341551,
             "id": "arm-18",
             "kind": "capsule",
             "r": 0.045
@@ -53651,8 +53625,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.143846,
-            "bz": 0.347274,
+            "bx": -0.13308,
+            "bz": 0.321284,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.045
@@ -53660,8 +53634,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.214271,
-            "bz": 0.279244,
+            "bx": -0.301594,
+            "bz": 0.393045,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.045
@@ -53669,41 +53643,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.290294,
-            "bz": 0.222751,
-            "id": "arm-21",
-            "kind": "capsule",
-            "r": 0.045
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.354539,
-            "bz": 0.146855,
+            "bx": -0.346213,
+            "bz": 0.143406,
             "id": "arm-22",
-            "kind": "capsule",
-            "r": 0.045
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.378693,
-            "bz": 0.049856,
-            "id": "arm-23",
             "kind": "capsule",
             "r": 0.045
           }
         ],
-        "silhouetteRadius": 5.903487,
+        "silhouetteRadius": 5.287281,
         "toleranceWu": 2
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 2,
-        "inwardFaceFraction": 0.061439,
-        "silhouetteRadius": 5.903487,
+        "boundaryEdges": 0,
+        "inwardFaceFraction": 0.333333,
+        "silhouetteRadius": 5.287281,
         "sliceY": 0
       },
       "sockets": [
@@ -53720,69 +53676,69 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 3239,
+      "triangles": 2592,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_asteroid_rock_c.glb",
       "worldSize": [
-        9.713411,
-        9.767838,
-        8.72556
+        9.681672,
+        10.931905,
+        9.40917
       ]
     },
     {
       "bounds": {
         "center": [
-          0.108932,
-          0.608563,
-          0.177201
+          -0.158838,
+          -0.270401,
+          0.23984
         ],
         "max": [
-          14.330973,
-          11.372209,
-          12.095741
+          11.718476,
+          10.620974,
+          10.594747
         ],
         "min": [
-          -14.11311,
-          -10.155083,
-          -11.741339
+          -12.036153,
+          -11.161775,
+          -10.115067
         ],
         "size": [
-          28.444082,
-          21.527292,
-          23.83708
+          23.754629,
+          21.782748,
+          20.709814
         ]
       },
-      "bytes": 15745056,
+      "bytes": 447912,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_asteroid_seamed",
         "kind": "proxy",
         "outline": [
+          10.96666,
+          5.000481,
           0,
-          14.537156,
-          15.546476,
-          15.710662,
-          10.337719,
-          11.300252,
-          8.484409,
-          11.930856,
-          12.569724,
-          16.117314,
-          14.914764,
+          12.848258,
           0,
-          12.840115,
-          12.640837,
-          15.01007,
-          15.633657,
-          13.555306,
-          11.754008,
-          10.665057,
-          9.972174,
-          10.60403,
-          13.771143,
-          13.444952,
-          14.222083
+          8.574855,
+          0,
+          11.888709,
+          9.508254,
+          11.967361,
+          10.194843,
+          8.859018,
+          10.219786,
+          0,
+          0,
+          10.521472,
+          7.865001,
+          8.622368,
+          6.428649,
+          11.748964,
+          9.790048,
+          12.18317,
+          12.956939,
+          11.840326
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -53791,9 +53747,9 @@
         "worstSize": null
       },
       "drawOffset": [
-        -0.108932,
+        0.158838,
         0,
-        -0.177201
+        -0.23984
       ],
       "drawScale": 1,
       "family": "rock-authored",
@@ -53821,9 +53777,17 @@
         {
           "additive": false,
           "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Fracture",
+          "name": "Material_Hull_vein",
           "role": "opaqueHull"
         },
         {
@@ -53831,7 +53795,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Mineral",
+          "name": "Material_Mechanical",
           "role": "opaqueHull"
         },
         {
@@ -53839,7 +53803,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_Regolith",
+          "name": "Material_MechanicalDark",
           "role": "opaqueHull"
         },
         {
@@ -53847,7 +53811,7 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_SurveyAlloy",
+          "name": "Material_Stone",
           "role": "opaqueHull"
         },
         {
@@ -53855,20 +53819,28 @@
           "alphaMode": "OPAQUE",
           "depthWrite": true,
           "doubleSided": false,
-          "name": "Material_SurveyMarking",
-          "role": "decal"
+          "name": "Material_Stone_deep",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
         }
       ],
       "measuredProportions": null,
       "meshHash": null,
-      "meshes": 14,
-      "nodes": 23,
+      "meshes": 19,
+      "nodes": 22,
       "note": null,
       "opening": null,
       "pivot": [
-        0.108932,
-        0.608563,
-        0.177201
+        -0.158838,
+        -0.270401,
+        0.23984
       ],
       "proposedSkin": {
         "adopted": true,
@@ -53876,31 +53848,31 @@
         "cellWu": 2,
         "gapWu": 0,
         "mouthBearingDeg": null,
-        "primitiveCount": 22,
+        "primitiveCount": 19,
         "primitives": [
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.735878,
-            "bz": -0.304811,
+            "bx": -0.593031,
+            "bz": -0.078074,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.025
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.235989,
+            "bz": -0.09775,
             "id": "arm-1",
             "kind": "capsule",
-            "r": 0.025
+            "r": 0.036261
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.676399,
-            "bz": -0.519019,
-            "id": "arm-2",
-            "kind": "capsule",
-            "r": 0.025
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.524572,
-            "bz": -0.683635,
+            "bx": -0.427765,
+            "bz": -0.557474,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.025
@@ -53908,17 +53880,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.21553,
-            "bz": -0.520335,
-            "id": "arm-4",
-            "kind": "capsule",
-            "r": 0.025
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.080493,
-            "bz": -0.611405,
+            "bx": -0.06073,
+            "bz": -0.461289,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.025
@@ -53926,17 +53889,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.060074,
-            "bz": -0.456307,
-            "id": "arm-6",
-            "kind": "capsule",
-            "r": 0.025
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.2494,
-            "bz": -0.602105,
+            "bx": 0.248504,
+            "bz": -0.599942,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.025
@@ -53944,8 +53898,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.418345,
-            "bz": -0.545198,
+            "bx": 0.314806,
+            "bz": -0.410263,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.025
@@ -53953,8 +53907,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.701559,
-            "bz": -0.538325,
+            "bx": 0.518649,
+            "bz": -0.397973,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.025
@@ -53962,8 +53916,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.755259,
-            "bz": -0.312839,
+            "bx": 0.513002,
+            "bz": -0.212492,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.025
@@ -53971,35 +53925,26 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.628694,
-            "bz": 0.082769,
+            "bx": 0.476941,
+            "bz": -0.06279,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.025
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.551893,
+            "bz": 0.072658,
             "id": "arm-12",
             "kind": "capsule",
-            "r": 0.09311
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.638546,
-            "bz": 0.264495,
-            "id": "arm-13",
-            "kind": "capsule",
             "r": 0.025
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.652757,
-            "bz": 0.500878,
-            "id": "arm-14",
-            "kind": "capsule",
-            "r": 0.025
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.521968,
-            "bz": 0.680241,
+            "bx": 0.349073,
+            "bz": 0.454921,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.025
@@ -54007,17 +53952,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.283936,
-            "bz": 0.685483,
+            "bx": 0.150701,
+            "bz": 0.363824,
             "id": "arm-16",
             "kind": "capsule",
-            "r": 0.025
+            "r": 0.057033
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.083783,
-            "bz": 0.636398,
+            "bx": 0.061074,
+            "bz": 0.463906,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.025
@@ -54025,17 +53970,17 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.075887,
-            "bz": 0.576418,
+            "bx": -0.042345,
+            "bz": 0.321644,
             "id": "arm-18",
             "kind": "capsule",
-            "r": 0.025
+            "r": 0.046617
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.207758,
-            "bz": 0.501573,
+            "bx": -0.245533,
+            "bz": 0.59277,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.025
@@ -54043,8 +53988,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.351865,
-            "bz": 0.45856,
+            "bx": -0.324336,
+            "bz": 0.422683,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.025
@@ -54052,8 +53997,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.598151,
-            "bz": 0.458977,
+            "bx": -0.52816,
+            "bz": 0.405272,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.025
@@ -54061,8 +54006,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.679819,
-            "bz": 0.28159,
+            "bx": -0.654771,
+            "bz": 0.271215,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.025
@@ -54070,23 +54015,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.694878,
-            "bz": 0.091482,
+            "bx": -0.641152,
+            "bz": 0.084409,
             "id": "arm-23",
             "kind": "capsule",
-            "r": 0.103131
+            "r": 0.025
           }
         ],
-        "silhouetteRadius": 16.117314,
+        "silhouetteRadius": 12.956939,
         "toleranceWu": 2
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 490,
-        "inwardFaceFraction": 0.370613,
-        "silhouetteRadius": 16.117314,
+        "boundaryEdges": 0,
+        "inwardFaceFraction": 0.42625,
+        "silhouetteRadius": 12.956939,
         "sliceY": 0
       },
       "sockets": [
@@ -54103,13 +54048,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 3362,
+      "triangles": 8128,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_asteroid_seamed.glb",
       "worldSize": [
-        28.444082,
-        21.527292,
-        23.83708
+        23.754629,
+        21.782748,
+        20.709814
       ]
     },
     {
@@ -80075,7 +80020,7 @@
     {
       "bounds": {
         "center": [
-          -0.333571,
+          -0.333674,
           4.26137,
           0
         ],
@@ -80085,45 +80030,45 @@
           6.454638
         ],
         "min": [
-          -13.131534,
+          -13.131739,
           -1.599929,
           -6.454638
         ],
         "size": [
-          25.595924,
+          25.596129,
           11.722599,
           12.909276
         ]
       },
-      "bytes": 423748,
+      "bytes": 452408,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_ceres_grave_shard",
         "kind": "proxy",
         "outline": [
-          12.689498,
-          13.484467,
-          8.787767,
-          6.159961,
+          12.689397,
+          13.485257,
+          8.787186,
+          6.159897,
           0,
-          4.813883,
+          4.813876,
           4.800445,
           0,
-          5.957301,
-          10.216915,
-          10.888444,
-          12.936116,
-          12.239016,
-          11.883983,
-          10.176713,
-          5.957136,
+          5.957323,
+          10.216994,
+          10.88854,
+          12.936218,
+          12.239117,
+          11.884079,
+          10.176799,
+          5.957196,
           0,
           4.800445,
-          4.813883,
+          4.813876,
           0,
-          6.159961,
-          8.787507,
+          6.159897,
+          8.787335,
           0,
           0
         ],
@@ -80134,7 +80079,7 @@
         "worstSize": null
       },
       "drawOffset": [
-        0.333571,
+        0.333674,
         0,
         0
       ],
@@ -80281,7 +80226,7 @@
       "note": null,
       "opening": null,
       "pivot": [
-        -0.333571,
+        -0.333674,
         4.26137,
         0
       ],
@@ -80296,8 +80241,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.442237,
-            "bz": -0.058222,
+            "bx": -0.442234,
+            "bz": -0.058221,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.016071
@@ -80305,8 +80250,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.43833,
-            "bz": -0.181562,
+            "bx": -0.438356,
+            "bz": -0.181573,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.016071
@@ -80314,8 +80259,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.243326,
-            "bz": -0.186711,
+            "bx": -0.24331,
+            "bz": -0.186698,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.016071
@@ -80323,8 +80268,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.129578,
-            "bz": -0.16887,
+            "bx": -0.129577,
+            "bz": -0.168868,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.016071
@@ -80350,7 +80295,7 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.125172,
+            "bx": 0.125173,
             "bz": -0.163128,
             "id": "arm-8",
             "kind": "capsule",
@@ -80359,8 +80304,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.28382,
-            "bz": -0.217783,
+            "bx": 0.283822,
+            "bz": -0.217784,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.016071
@@ -80368,16 +80313,16 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.320626,
-            "bz": -0.132808,
+            "bx": 0.320629,
+            "bz": -0.132809,
             "id": "arm-10",
             "kind": "capsule",
-            "r": 0.050758
+            "r": 0.050759
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.407116,
+            "bx": 0.407119,
             "bz": -0.053598,
             "id": "arm-11",
             "kind": "capsule",
@@ -80386,7 +80331,7 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.426286,
+            "bx": 0.42629,
             "bz": 0.056122,
             "id": "arm-12",
             "kind": "capsule",
@@ -80395,8 +80340,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.385521,
-            "bz": 0.159688,
+            "bx": 0.385524,
+            "bz": 0.159689,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.016071
@@ -80404,8 +80349,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.282681,
-            "bz": 0.216909,
+            "bx": 0.282683,
+            "bz": 0.21691,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.016071
@@ -80413,8 +80358,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.125169,
-            "bz": 0.163123,
+            "bx": 0.12517,
+            "bz": 0.163125,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.016071
@@ -80440,8 +80385,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.129578,
-            "bz": 0.16887,
+            "bx": -0.129577,
+            "bz": 0.168868,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.016071
@@ -80449,14 +80394,14 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.243319,
-            "bz": 0.186705,
+            "bx": -0.243314,
+            "bz": 0.186701,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.016071
           }
         ],
-        "silhouetteRadius": 13.484467,
+        "silhouetteRadius": 13.485257,
         "toleranceWu": 2
       },
       "reasons": [
@@ -80464,8 +80409,8 @@
       ],
       "shell": {
         "boundaryEdges": 0,
-        "inwardFaceFraction": 0.32425,
-        "silhouetteRadius": 13.484467,
+        "inwardFaceFraction": 0.362,
+        "silhouetteRadius": 13.485257,
         "sliceY": 0
       },
       "sockets": [
@@ -80490,11 +80435,11 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 4034,
+      "triangles": 5768,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_ceres_grave_shard.glb",
       "worldSize": [
-        25.595924,
+        25.596129,
         11.722599,
         12.909276
       ]

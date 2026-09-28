@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a54f49e6d7671da25db2f101fd59f0bcab50541b686194279d82124e086bbfab",
+  "contentHash": "3360ca3eadaf7788ecac7d4b12d774d799032ca5a25909b65ab65db27a31ad5e",
   "dynamicGroups": [
     {
       "id": "sf.render.yard-tug.node.lod0-hook-drive-core.dynamic",
@@ -4240,8 +4240,8 @@
       "uri": "yard_tug.glb"
     },
     "sourceManifest": {
-      "bytes": 206766,
-      "sha256": "a8ffe0c535bcbca523ec7221e0d2eb2c9dddb4592c00d3ec606a5fe7c1bdac0e",
+      "bytes": 207712,
+      "sha256": "3da1f93acd9a154189315712dc63e87cce13b654ac789819d0c1bd6a02a07b13",
       "uri": "pilots.json"
     }
   },
@@ -6140,7 +6140,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/yard_tug.glb"
   },
-  "runtimeHash": "8110dbb93e3d2e724d6bb9aa161638bc8dcc3859d97c6169e7348dd00293dcaf",
+  "runtimeHash": "fc253f050172f3c91283f197ac3fd80e65c63f793a014a55535628dcc83e1dac",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

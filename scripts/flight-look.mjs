@@ -137,6 +137,19 @@ try {
         if (token.startsWith('pos:')) {
           const [x, z] = token.slice(4).split('~').map(Number);
           tx = x; tz = z;
+        } else if (token.startsWith('rocknear:')) {
+          // 'rocknear:x~z' — centre on the nearest live asteroid-field rock to (x,z); used
+          // to proof procedural geology bodies that never become entities.
+          const [x, z] = token.slice(9).split('~').map(Number);
+          const rocks = s.world?.asteroidField?.rocks || [];
+          let best = null, bestD = Infinity;
+          for (const r of rocks) {
+            if (!r || r.alive === false) continue;
+            const d = (r.pos.x - x) ** 2 + (r.pos.z - z) ** 2;
+            if (d < bestD) { bestD = d; best = r; }
+          }
+          if (!best) return 'no rock near ' + token;
+          tx = best.pos.x; tz = best.pos.z;
         } else {
           const matches = (e) => {
             const d = e.data || {};
@@ -628,8 +641,8 @@ try {
         }
         continue;
       }
-      if (token.startsWith('pos:')) {
-        const [px, pz] = token.slice(4).split('~').map(Number);
+      if (token.startsWith('pos:') || token.startsWith('rocknear:')) {
+        const [px, pz] = token.split(':')[1].split('~').map(Number);
         const rep = await page.evaluate(({ x, z }) => {
           const world = window.SF.registry?.get?.('world');
           const moved = world && world.relocatePlayerInSector
@@ -638,6 +651,26 @@ try {
           return `pos(${x},${z}) relocated=${moved}`;
         }, { x: px, z: pz });
         console.log('aim', token, rep);
+        if (token.startsWith('rocknear:')) {
+          // Park the player beside the nearest rock, not on it — centreOn then frames the
+          // rock while the hull reads beside it for scale.
+          const off = await page.evaluate(({ x, z }) => {
+            const s = window.SF.state;
+            const rocks = s.world?.asteroidField?.rocks || [];
+            let best = null, bestD = Infinity;
+            for (const r of rocks) {
+              if (!r || r.alive === false) continue;
+              const d = (r.pos.x - x) ** 2 + (r.pos.z - z) ** 2;
+              if (d < bestD) { bestD = d; best = r; }
+            }
+            if (!best) return 'no rock';
+            const world = window.SF.registry?.get?.('world');
+            const dest = { x: best.pos.x + best.radius * 1.6, z: best.pos.z + best.radius * 0.9 };
+            if (world?.relocatePlayerInSector) world.relocatePlayerInSector(dest, { reason: 'flight-look:rocknear' });
+            return `rock@${Math.round(best.pos.x)},${Math.round(best.pos.z)} r=${best.radius} type=${best.data?.typeId || '?'}`;
+          }, { x: px, z: pz });
+          console.log('rocknear', off);
+        }
         // Let dormant dressing rows wake, then issue the authored requests the renderer's
         // spatial prefetch skipped and pump the queue until the area's bodies admit.
         const posWaitMs = Number(args.posWait || 8) * 1000;

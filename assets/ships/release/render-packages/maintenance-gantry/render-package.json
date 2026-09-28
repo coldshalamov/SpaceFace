@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "34daaf236a7888d450c6854884560946689c5a6a0745fd7ab64cc43a3ae4af7c",
+  "contentHash": "6f42ffd793e69bf494441dd5b0218038fbe617f82244db8d3dcedb5c731700e9",
   "dynamicGroups": [
     {
       "id": "sf.render.maintenance-gantry.mesh.lod0-hook-nav-port.dynamic",
@@ -138,7 +138,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "633d97295ebcc78ae1c3d428f8185131c41e9262359821cf0cc32d5bbbe68b92",
+      "geometryHash": "16fe6d60145599d94ea5f55d0ef07c4a7a6a78e2e258677f3c4dc0f01d6b0745",
       "id": "sf.render.maintenance-gantry.mesh.collision-hull.primitive.0",
       "indexCount": 462,
       "indexed": true,
@@ -147,7 +147,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.maintenance-gantry.mesh.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 362
+      "vertexCount": 370
     },
     {
       "bounds": {
@@ -277,52 +277,52 @@
     {
       "bounds": {
         "max": [
-          1.9898606538772583,
-          9.500441551208496,
-          8.402547836303711
+          2.1503584384918213,
+          9.9500732421875,
+          9.699999809265137
         ],
         "min": [
-          -1.6498607397079468,
-          -0.00044196139788255095,
-          -9.002991676330566
+          -2.1503584384918213,
+          -0.00007223241118481383,
+          -9.699999809265137
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be3ff3ad4abffac19a753cf2e6a980aefb24e8967b43d7f8dbf4682f0ee775f2",
+      "geometryHash": "03c1db722ca0b83e70b69fb77805d28672c4e20c4e42c9f8f63e2bd1e5461093",
       "id": "sf.render.maintenance-gantry.mesh.lod0-mechanicaldark.primitive.0",
-      "indexCount": 3504,
+      "indexCount": 3576,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1090
+      "vertexCount": 1138
     },
     {
       "bounds": {
         "max": [
-          2.200091600418091,
-          9.949544906616211,
-          9.699999809265137
+          2.1993284225463867,
+          9.969938278198242,
+          8.949999809265137
         ],
         "min": [
-          -2.200091600418091,
-          0.8004559278488159,
-          -9.699999809265137
+          -2.1993284225463867,
+          0.8000607490539551,
+          -8.949999809265137
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2244f18aa65babced14cff8f5bdba2ab1891a6c58614e04109c517ac8a8bc128",
+      "geometryHash": "d09e1cb18ff168a789e4ab548527d22f028ae0938504c0df8f61159def124df3",
       "id": "sf.render.maintenance-gantry.mesh.lod0-warning.primitive.0",
-      "indexCount": 432,
+      "indexCount": 576,
       "indexed": true,
       "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 288
+      "vertexCount": 384
     },
     {
       "bounds": {
@@ -338,16 +338,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "61be31de2053a9c29f2d747981695ac2405f3b326578462304f96f1537a723d9",
+      "geometryHash": "89dfd6b706ab7f636ae57e0325bba8c1a54b47c9a4c55e85b3ca72e418cad347",
       "id": "sf.render.maintenance-gantry.mesh.lod1-armor.primitive.0",
-      "indexCount": 7182,
+      "indexCount": 7080,
       "indexed": true,
       "materialHash": "7d49b2b274926ec08348a5fd1b2b65dde40272fdfdd68b7ead7c1bc455632e4a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2701
+      "vertexCount": 2673
     },
     {
       "bounds": {
@@ -427,77 +427,77 @@
     {
       "bounds": {
         "max": [
-          1.9973838329315186,
+          1.9973591566085815,
           10.338258743286133,
           9.316023826599121
         ],
         "min": [
-          -1.9974724054336548,
+          -1.9974970817565918,
           5.753180027008057,
           -1.798815131187439
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e92937fcc397c552132cdc1f6474c1b280c74b330985a255db6e668b23a157c0",
+      "geometryHash": "233e6d4599c19e7f0f3a8c312c8227545c8499c88b299100d867a0f8918c9159",
       "id": "sf.render.maintenance-gantry.mesh.lod1-mechanical.primitive.0",
-      "indexCount": 930,
+      "indexCount": 900,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 345
+      "vertexCount": 341
     },
     {
       "bounds": {
         "max": [
-          1.9896979331970215,
-          9.498806953430176,
-          8.402547836303711
+          2.1503584384918213,
+          9.9500732421875,
+          9.699999809265137
         ],
         "min": [
-          -1.64789879322052,
-          0.00004770699888467789,
-          -9.002991676330566
+          -2.1503584384918213,
+          -0.00007223241118481383,
+          -9.699999809265137
         ]
       },
       "drawMode": 4,
-      "geometryHash": "921e31e1c2362dce1db3de9cc883ec615dc3c4b409682387647c7f037bc4dcd5",
+      "geometryHash": "4c3114c3da5365b342f09cf71a423e5adcf9b16def43c3d061e4b8f2f69cbf99",
       "id": "sf.render.maintenance-gantry.mesh.lod1-mechanicaldark.primitive.0",
-      "indexCount": 816,
+      "indexCount": 888,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 345
+      "vertexCount": 393
     },
     {
       "bounds": {
         "max": [
-          2.200091600418091,
-          9.949544906616211,
-          9.699999809265137
+          2.1993284225463867,
+          9.969938278198242,
+          8.949999809265137
         ],
         "min": [
-          -2.200091600418091,
-          0.8004559278488159,
-          -9.699999809265137
+          -2.1993284225463867,
+          0.8000607490539551,
+          -8.949999809265137
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ee88f337ffc5063129ea2b275925fad77b5eaec3eb3c5233811dd68c3c30579",
+      "geometryHash": "297a106136c450952a10bbdc53474cc8df5a359faf15ee6d765488596afaf718",
       "id": "sf.render.maintenance-gantry.mesh.lod1-warning.primitive.0",
-      "indexCount": 432,
+      "indexCount": 576,
       "indexed": true,
       "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 288
+      "vertexCount": 384
     },
     {
       "bounds": {
@@ -627,52 +627,52 @@
     {
       "bounds": {
         "max": [
-          1.6436048746109009,
-          9.495450973510742,
-          8
+          2.1503584384918213,
+          9.9500732421875,
+          9.699999809265137
         ],
         "min": [
-          -1.6436048746109009,
-          0.0000438690185546875,
-          -8
+          -2.1503584384918213,
+          -0.00007223241118481383,
+          -9.699999809265137
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7456c65cf667d329d5eca69bb8794531600073dba4cbf1ecd6f2a7f707355130",
+      "geometryHash": "0715806bc983eb157c4ad63a563026a2421805fbf8b69a620d9e82f27ef01143",
       "id": "sf.render.maintenance-gantry.mesh.lod2-mechanicaldark.primitive.0",
-      "indexCount": 264,
+      "indexCount": 336,
       "indexed": true,
       "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 156
+      "vertexCount": 204
     },
     {
       "bounds": {
         "max": [
-          2.200091600418091,
-          9.949544906616211,
-          9.699999809265137
+          2.1993284225463867,
+          1.0005156993865967,
+          8.949999809265137
         ],
         "min": [
-          -2.200091600418091,
-          0.8004559278488159,
-          -9.699999809265137
+          -2.1993284225463867,
+          0.7994841933250427,
+          -8.949999809265137
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ee88f337ffc5063129ea2b275925fad77b5eaec3eb3c5233811dd68c3c30579",
+      "geometryHash": "6d40bd9d260c9dd9c9b33511d53d2f2e0f2d147eac9eab86e67d2e84d9df00ac",
       "id": "sf.render.maintenance-gantry.mesh.lod2-warning.primitive.0",
-      "indexCount": 432,
+      "indexCount": 360,
       "indexed": true,
       "materialHash": "333a696e723d180dee93b90efb6c4c34d49274edbdda192029e9c864982df429",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.maintenance-gantry.mesh.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 288
+      "vertexCount": 240
     }
   ],
   "hlods": [],
@@ -1962,19 +1962,19 @@
       "sha256": "7bf6f8307924e727109ed5907d04332c338c19ce8cae5ed3ba67c01ba5e7aa5d"
     },
     "sourceGlb": {
-      "bytes": 520220,
-      "sha256": "bfe6a5c0ecbfe1792bdaaf2831e702ed34b345a63e38693b9099b1b23e21ea8b",
+      "bytes": 528756,
+      "sha256": "de73a7eaf6445bcfc8c55e61b169539a9ac2eeedb1b8524d2ac77ccb06a4faff",
       "uri": "place_maintenance_gantry.glb"
     },
     "sourceManifest": {
-      "bytes": 206766,
-      "sha256": "a8ffe0c535bcbca523ec7221e0d2eb2c9dddb4592c00d3ec606a5fe7c1bdac0e",
+      "bytes": 207712,
+      "sha256": "3da1f93acd9a154189315712dc63e87cce13b654ac789819d0c1bd6a02a07b13",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 795276,
-    "sha256": "5f35ddbe024a2a4f258141ebd6fc0688a455b4ca7443fa1e7aa3877330ac63f6",
+    "bytes": 799648,
+    "sha256": "d4b076af5b6d73e97096b153c396ab3d2f2151b5afa56c158c79402e6ac45aac",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2783,7 +2783,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_maintenance_gantry.glb"
   },
-  "runtimeHash": "c00e05a667be02cbc05576b175b3d0bbaa99f5f4627528249d0e184ec3cb6c8b",
+  "runtimeHash": "1e285d3e6e0bfebc35b9a1b9dce384bed5b1190f673cab144c1bbb3d3078863d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

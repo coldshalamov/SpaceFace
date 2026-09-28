@@ -119,7 +119,6 @@ Inspect GLBs with `node tools/blender/forge/glbinfo.cjs <file>`.
 | **GFX-10** | Performance pass on the Forge fleet: `probe-frame-solid` with a crowded Helios; dedupe the shared tile textures across GLBs in the loader (identical images are embedded per GLB today); instance repeated NPC hulls; measure GPU memory. | Consistency made sharing possible; take the win. | Frame p50/p95 and texture MB are recorded before/after in `build_map.md` §21.4. |
 | **GFX-11** | Runtime attachments on Forge hulls: retro-thruster shells (`Retro_Shell_*`), plume sockets, damage hooks (`HOOK_SECONDARY/SENSOR/ARMOR`) shedding in combat, player paint override across all 14 hulls. | Runtime layers were written against the old bodies. | `flight-look` stills per hull show retros on the nozzles and a clean paint swap; a damage run sheds parts. |
 | **GFX-12** | Wave F stand-ins (§13D): the pending-body stand-in is the hull's own Forge LOD2, preloaded. | No box ever. | `probe:frame-solid` rootSwaps 0; no generic marker on a cold New Game. |
-| **GFX-14** | Interior docks: rebuild `place_dock_interior` (+ grit / military) in Forge as the shipworks backdrop, keeping the composition check (0 hits). | Seen on every dock. | The shipworks screen backdrop is Forge. |
 
 **GFX-3 order:**
 1. Opening route: dead hulk, debris chunk, station billboard, lane pin, tally post, claim mark, ash pin, whistle, cold locker, memorial array (as a prop).

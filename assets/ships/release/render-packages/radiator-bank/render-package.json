@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "67d5d11226bfdb0eb53289ce8d4189e3f9dbbb86ac9c876164aefa549668258b",
+  "contentHash": "3385e7cd8f0eb0637a1b0d12c70b59b54cf66df5a09720fd8ab3244bd481f97e",
   "dynamicGroups": [
     {
       "id": "sf.render.radiator-bank.mesh.lod0-hook-nav-port.dynamic",
@@ -81,18 +81,18 @@
     {
       "bounds": {
         "max": [
-          8.949999809265137,
-          8.660409927368164,
-          1.1996338367462158
+          8.960000038146973,
+          8.660873413085938,
+          1.1998803615570068
         ],
         "min": [
-          -8.949999809265137,
-          0.0002126230683643371,
-          -1.1996338367462158
+          -8.960000038146973,
+          -0.00025058683240786195,
+          -1.1998803615570068
         ]
       },
       "drawMode": 4,
-      "geometryHash": "206c2ee2b28a71567a6b7bcd990b7fed0711c225981f58e59f9ec4c8bba9bb54",
+      "geometryHash": "fb49182e2d4d57183ace29c86105ffb623dc4e2ee4039a0c8f51c56c5486cf61",
       "id": "sf.render.radiator-bank.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -101,7 +101,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.radiator-bank.mesh.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 740
+      "vertexCount": 730
     },
     {
       "bounds": {
@@ -231,18 +231,18 @@
     {
       "bounds": {
         "max": [
-          8.949999809265137,
-          8.660937309265137,
-          0.99969482421875
+          8.960000038146973,
+          8.66021728515625,
+          0.30046138167381287
         ],
         "min": [
-          -8.949999809265137,
-          4.349685192108154,
-          -0.99969482421875
+          -8.960000038146973,
+          4.580405235290527,
+          -0.6161291003227234
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ffe6c060c0ef9f6398b8fe5d34d54d6393ee2a3032a3296f97d6ea55091336f3",
+      "geometryHash": "243a95565d24fc9d33042c9524977cd9fdf51b40ff81110d4a02ae35b127e009",
       "id": "sf.render.radiator-bank.mesh.lod0-warning.primitive.0",
       "indexCount": 924,
       "indexed": true,
@@ -381,18 +381,18 @@
     {
       "bounds": {
         "max": [
-          8.949999809265137,
-          8.659199714660645,
-          0.99969482421875
+          8.960000038146973,
+          8.659571647644043,
+          0.2998593747615814
         ],
         "min": [
-          -8.949999809265137,
-          4.350132465362549,
-          -0.99969482421875
+          -8.960000038146973,
+          4.5797600746154785,
+          -0.6145435571670532
         ]
       },
       "drawMode": 4,
-      "geometryHash": "755615b8c4aae9ed65e4b90a94343543929dbf91fc776d71e3e54386931f231b",
+      "geometryHash": "18ff2d9598f754b2b155ea8a4247149bc440592a28a0a263ba2e44fa80295965",
       "id": "sf.render.radiator-bank.mesh.lod1-warning.primitive.0",
       "indexCount": 282,
       "indexed": true,
@@ -531,18 +531,18 @@
     {
       "bounds": {
         "max": [
-          8.949999809265137,
-          8.656608581542969,
-          0.99969482421875
+          8.960000038146973,
+          8.655885696411133,
+          0.3001099228858948
         ],
         "min": [
-          -8.949999809265137,
-          4.349726676940918,
-          -0.99969482421875
+          -8.960000038146973,
+          4.580449104309082,
+          -0.6164805293083191
         ]
       },
       "drawMode": 4,
-      "geometryHash": "29422cc7be9943d675b114429a2a76a749fabd2129b2a7c63ff0c7cdb4738ecf",
+      "geometryHash": "8930fa757b0d7a8587618f77a613790a3cf8d55468f743e88840886081bc7408",
       "id": "sf.render.radiator-bank.mesh.lod2-warning.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -1687,42 +1687,42 @@
       "sha256": "83a1b146ddd503210b295288a69f58dedf60c667f693aa2880509f92efde9b54"
     },
     "sourceGlb": {
-      "bytes": 542876,
-      "sha256": "be07724fc496bb161188faa60275dbb85c025f6b1eb2b7e8486b0d0cace197eb",
+      "bytes": 543192,
+      "sha256": "2bc15be14ad57f1bcafbdd3c567d9ead64c974ea26e0e3707350e08da01d5258",
       "uri": "place_radiator_bank.glb"
     },
     "sourceManifest": {
-      "bytes": 206766,
-      "sha256": "a8ffe0c535bcbca523ec7221e0d2eb2c9dddb4592c00d3ec606a5fe7c1bdac0e",
+      "bytes": 207712,
+      "sha256": "3da1f93acd9a154189315712dc63e87cce13b654ac789819d0c1bd6a02a07b13",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 830984,
-    "sha256": "1f938fc15c61b063741494e420849eb216c13103e4e36d2af1d300d35bc180e2",
+    "bytes": 831116,
+    "sha256": "3cd74a27f7b75a73454cdea5a4a308bed70e3400529a0f4709ff74270123bd35",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        4.330308893477195,
+        4.330276945387595,
         0
       ],
       "max": [
-        8.949999809265137,
-        8.660937309265137,
-        1.199743628501892
+        8.960000038146973,
+        8.660873413085938,
+        1.1998803615570068
       ],
       "min": [
-        -8.949999809265137,
+        -8.960000038146973,
         -0.0003195223107468337,
-        -1.199743628501892
+        -1.1998803615570068
       ],
       "size": [
-        17.899999618530273,
-        8.661256831575884,
-        2.399487257003784
+        17.920000076293945,
+        8.661192935396684,
+        2.3997607231140137
       ]
     },
     "hidden": [
@@ -2371,20 +2371,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_radiator_bank.glb"
   },
-  "runtimeHash": "dc7540e69421a33fb717505d6476ebbf899fdc266ed4d882c3ac241943f46cae",
+  "runtimeHash": "9e3b1a5b0e494a722569c366448e854a67b0e8ef8beeaf1bcadce3b6e64ce1ee",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          8.949999809265137,
-          8.660937309265137,
-          1.199743628501892
+          8.960000038146973,
+          8.660873413085938,
+          1.1998803615570068
         ],
         "min": [
-          -8.949999809265137,
+          -8.960000038146973,
           -0.0003195223107468337,
-          -1.199743628501892
+          -1.1998803615570068
         ]
       },
       "id": "sf.render.radiator-bank.body",

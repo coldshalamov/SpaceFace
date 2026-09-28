@@ -35,8 +35,15 @@ def build():
     for e in (-1, 1):
         F.box(s, f'Rail{e:+d}', (e * 1.7, 0, 9.5), (0.8, 19.4, 0.5), material='paint2',
               bevel=0.03)
-        F.box(s, f'RailLip{e:+d}', (e * 1.7, 0, 9.85), (0.9, 19.4, 0.2), material='hazard',
+        F.box(s, f'RailLip{e:+d}', (e * 1.7, 0, 9.85), (0.9, 19.4, 0.2), material='dark',
               bevel=0.0)
+        # hazard only as short kerb ticks at the rail ends — narrow bands, mid value
+        s.detail = 1
+        for k in range(3):
+            ty = -8.0 + k * 8.0
+            F.box(s, f'RailTick{e:+d}{k}', (e * 1.7, ty, 9.86), (0.92, 0.8, 0.22),
+                  material='hazard', bevel=0.0)
+        s.detail = 0
         # inner work platform half-way up
         for k in range(2):
             py = -4.2 + k * 8.4
