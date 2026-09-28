@@ -976,12 +976,182 @@ export const ECOLOGY_DECK = Object.freeze([
     label: 'Insurance adjustor flagging your hull biofilm history',
     bark: 'Underwriters (automated): "Exposure record exceeds covenant. Premium repriced at next dock."',
     edge: 'insurance' }),
+  // ── Phase 30 / AE-270..AE-284 — O-table barks: the sector talks about the growth in
+  // C bands. Low C reads as rumor; high C reads as the new normal; machine rows fire
+  // only under observed+ protocol (the lattice is already watching you). ──
+  Object.freeze({ shape: 'bark_c_low_1',  minC: 0.10, maxC: 0.35, weight: 2, kind: 'info',
+    label: 'Hauler anecdote on the band',
+    bark: 'Hauler (open): "Pulled a filament out of my intake mesh twice this quarter. Twice."',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_c_low_2',  minC: 0.10, maxC: 0.35, weight: 2, kind: 'info',
+    label: 'Dockhand rumor — quiet berth',
+    bark: 'Dockhand: "They sealed berth nine last month. No citation filed. Nobody asks about berth nine."',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_c_low_3',  minC: 0.10, maxC: 0.35, weight: 1, kind: 'info',
+    label: 'Prospector survey complaint',
+    bark: 'Prospector: "Assay came back organic. Not ore-organic. Moving-organic. I dropped the claim."',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_c_mid_1',  minC: 0.35, maxC: 0.65, weight: 2, kind: 'warn',
+    label: 'Traffic control routing around a bloom',
+    bark: 'Traffic control: "Lane four is closed for the season. Season undefined. File a detour."',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_c_mid_2',  minC: 0.35, maxC: 0.65, weight: 2, kind: 'warn',
+    label: 'Salvager refusal on a clean wreck',
+    bark: 'Salvager: "Hull looked untouched — that is exactly why I left it. Intact means occupied."',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_c_mid_3',  minC: 0.35, maxC: 0.65, weight: 1, kind: 'info',
+    label: 'Choir blessing for a filament hauler',
+    bark: 'Choir relay: "Blessed is the hull that carries the thread without burning it."',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_c_mid_4',  minC: 0.35, maxC: 0.65, weight: 1, kind: 'warn',
+    label: 'Filter vendor pitch, unsolicited',
+    bark: 'Vendor: "Third fouled intake this month? Friend. I sell the gasket for that."',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_c_high_1', minC: 0.65, weight: 2, kind: 'warn',
+    label: 'Local pilot treating blooms as weather',
+    bark: 'Pilot (local): "Spore front swings through at oh-four-hundred. Plan your burn around it, not through it."',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_c_high_2', minC: 0.65, weight: 2, kind: 'warn',
+    label: 'Old-timer misreading a shepherd corridor',
+    bark: 'Old-timer: "The quiet lane stays quiet because the growth respects the lane. Do not ask how it knows."',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_c_high_3', minC: 0.65, weight: 1, kind: 'warn',
+    label: 'Concord officer reciting a dead protocol',
+    bark: 'Concord dispatch: "Protocol VETH-9 on request. The request office closed before I was born."',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_c_high_4', minC: 0.65, weight: 1, kind: 'info',
+    label: 'Childhood memory of clean sky',
+    bark: 'Resident: "My grandmother says the belts used to be empty. Just rocks. Nobody under forty believes her."',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_mach_1',   minC: 0.20, weight: 1, kind: 'info', machine: true,
+    label: 'Scanner anomaly repeating your callsign in pulse code',
+    bark: 'Band anomaly: [your transponder ident, repeated in machine pulse grammar — one beat early].',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_mach_2',   minC: 0.40, weight: 1, kind: 'warn', machine: true,
+    label: 'Lattice directive echo with no transmitter in range',
+    bark: 'Band anomaly: DIRECTIVE LOGGED. COMPLIANCE REVIEW PENDING. (No emitter resolved.)',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_mach_3',   minC: 0.55, weight: 1, kind: 'warn', machine: true,
+    label: 'Listening field replaying an old distress call',
+    bark: 'Band anomaly: [a distress call you do not recognize, timestamped nine hundred years before the sector was charted].',
+    barkKind: 'bark' }),
+  Object.freeze({ shape: 'bark_mach_4',   minC: 0.70, weight: 1, kind: 'info', machine: true,
+    label: 'The machines decline to be interviewed',
+    bark: 'Band anomaly: STATUS QUERY RECEIVED. RESPONSE WINDOW: NEVER. THIS IS A COURTESY REPLY.',
+    barkKind: 'bark' }),
 ]);
+
+// ── Phase 27 / AE-250..AE-259 — L-table evidence ledger: what the player has proven. ──
+// `tier` gates the revelation ladder (T2 needs 3 rows, T3 needs any deep row).
+// `source` names where the row can be earned — a site id, a machine site id, or 'field'.
+export const EVIDENCE_TABLE = Object.freeze({
+  L01: Object.freeze({ tier: 1, source: 'io_listening_field',
+    text: 'The listening array points at a fixed dark — a reference older than every human chart in the sector.' }),
+  L02: Object.freeze({ tier: 1, source: 'charon_star_marker',
+    text: 'A navigation datum your instruments cannot name but every map silently uses.' }),
+  L03: Object.freeze({ tier: 1, source: 'pallas_empty_foundry',
+    text: 'Construction orders cancelled mid-assembly — the foundry still welds to the dead schedule.' }),
+  L04: Object.freeze({ tier: 2, source: 'cinder_nursery',
+    text: 'The nursery was not invaded. It was planted — the barge is a pot, not a victim.' }),
+  L05: Object.freeze({ tier: 2, source: 'veil_containment_ring',
+    text: 'The containment seal failed outward — whatever it held left by appointment, not by force.' }),
+  L06: Object.freeze({ tier: 2, source: 'courier',
+    text: 'A protocol token read mid-transit: the machines file route authority to each other, not to anyone.' }),
+  L07: Object.freeze({ tier: 1, source: 'sker_quiet_dock',
+    text: 'A berth built for a hull four times human scale, never used, never dismantled.' }),
+  L08: Object.freeze({ tier: 2, source: 'ashfall_the_line',
+    text: 'A quarantine line maintained by patrol — the boundary is surveyed, not drawn.' }),
+  L09: Object.freeze({ tier: 3, source: 'charon_broken_shepherd',
+    text: 'The shepherd\'s corridor failed and the growth did not flood in — it waited at the gap. It chose.' }),
+  L10: Object.freeze({ tier: 3, source: 'veil_exception_chamber',
+    text: 'The verdict record is physical: a chamber that adjudicates by proximity. Appeals are locations.' }),
+  // Phase 31 P-table — program mysteries; earned from setpieces and deep play.
+  P01: Object.freeze({ tier: 3, source: 'harvest_deep',
+    text: 'The harvest-deep strata are machined to fold — the deep architecture predates the sectors it lives under.' }),
+  P02: Object.freeze({ tier: 2, source: 'red_snow',
+    text: 'The red snow falls on a schedule. The organisms feed on the fall — a calendar, not a weather report.' }),
+  P03: Object.freeze({ tier: 3, source: 'black_orchard',
+    text: 'The orchard rows are grafted stock, not wild growth — someone cultivates this.' }),
+  P04: Object.freeze({ tier: 2, source: 'sterile_zone',
+    text: 'The sterile kill-zone stays sterile by decision, not by absence. The boundary is a held breath.' }),
+  P05: Object.freeze({ tier: 3, source: 'shepherds_ring',
+    text: 'The ring\'s shepherd orbits were plotted around a mass that is no longer there — the plan survived its object.' }),
+  P06: Object.freeze({ tier: 2, source: 'warm_freighter',
+    text: 'The freighter still runs climate for its cargo — the crew left; the care did not.' }),
+  P07: Object.freeze({ tier: 2, source: 'preserved_cockpit',
+    text: 'The cockpit is preserved, not sealed — maintained for an occupant who has not returned.' }),
+  P08: Object.freeze({ tier: 3, source: 'towed_moonlet',
+    text: 'The moonlet is being towed by the organisms themselves — a world in freight.' }),
+  P09: Object.freeze({ tier: 2, source: 'three_hull_garden',
+    text: 'Three hulls planted in a row. The garden grows between them like they were trellises.' }),
+  P10: Object.freeze({ tier: 3, source: 'veil_exception_chamber',
+    text: 'The chamber issues one verdict per epoch. The last verdict was "hold". The jury is still asleep — waiting.' }),
+});
+
+/** Look up an evidence row id. */
+export function evidenceById(id) {
+  return EVIDENCE_TABLE[id] || null;
+}
+
+// ── Phase 29 / AE-282..AE-290 — N-table setpieces: one-shot authored beats that fire on
+// condition, record evidence, and never refire. `rec.setpieces[id]` is the once-flag. ──
+// trigger: 'approach' (radius), 'close' (radius), 'hold' (seconds inside radius),
+//          'cross' (cross the line), 'exposed' (exposure threshold), 'interact'.
+export const SETPIECE_DEFS = Object.freeze([
+  Object.freeze({ id: 'N01_broken_corridor', siteId: 'charon_broken_shepherd', trigger: 'approach', radius: 700,
+    evidence: 'L09',
+    text: 'The shepherd sweep ends where the filaments begin. The corridor is a scar that never closed.' }),
+  Object.freeze({ id: 'N02_vault_seam', siteId: 'ashfall_black_vault', trigger: 'close', radius: 160, needsProtocol: 'compliant',
+    evidence: null,
+    text: 'The vault seam lights once — acknowledging a compliant signature — then seals again. It is not locked. It is disinterested.' }),
+  Object.freeze({ id: 'N03_pylon_pulse', siteId: 'charon_pylon_field', trigger: 'pulseInside', radius: 360,
+    evidence: null,
+    text: 'A pulse crosses the dead triangle — every organism in the sector flinches at once.' }),
+  Object.freeze({ id: 'N04_containment_breach', siteId: 'veil_containment_ring', trigger: 'close', radius: 180,
+    evidence: 'L05',
+    text: 'Inside the ring the seal is decorative. A tendril bloom greets you from the unsuppressed inner pocket.' }),
+  Object.freeze({ id: 'N05_witness_stands_down', siteId: 'io_listening_field', trigger: 'hold', radius: 300, holdS: 8,
+    evidence: 'L01',
+    text: 'The witness powers down mid-observation — your holding pattern was the answer it was waiting for.' }),
+  Object.freeze({ id: 'N06_foundry_notices', siteId: 'pallas_empty_foundry', trigger: 'hold', radius: 340, holdS: 10,
+    evidence: 'L03',
+    text: 'The mason pauses its weld cycle and turns its arc on your hull. Inspection, not attack. It resumes on schedule.' }),
+  Object.freeze({ id: 'N08_courier_intercept', siteId: 'io_listening_field', trigger: 'interact', machineKind: 'courier', radius: 160,
+    evidence: 'L06',
+    text: 'The courier decelerates and dumps its token before you close — dead letter, protocol-read.' }),
+  Object.freeze({ id: 'N09_line_audit', siteId: 'ashfall_the_line', trigger: 'cross',
+    evidence: 'L08',
+    text: 'The walkers log the crossing in unison. Somewhere a ledger gained a line with your transponder on it.' }),
+  Object.freeze({ id: 'N10_nursery_grief', siteId: 'cinder_nursery', trigger: 'approach', radius: 500, needsSevered: true,
+    evidence: 'L04',
+    text: 'The nursery reads empty the way a room reads after furniture is removed. The severed filaments are still warm.' }),
+  Object.freeze({ id: 'N12_red_snow_kin', siteId: 'red_snow', trigger: 'exposed', radius: 600, exposure: 0.5,
+    evidence: 'P02',
+    text: 'The snowfall fauna read your biofilm signature and go dormant around you. Kin protocol. You are, briefly, one of them.' }),
+  Object.freeze({ id: 'N13_yards_checklist', siteId: 'converted_yards', trigger: 'approach', radius: 500,
+    evidence: null,
+    text: 'The yards broadcast a conversion checklist in machine grammar: HULL STOCK. STRIP. RESHELL. GROW. The fourth step is biological.' }),
+  Object.freeze({ id: 'N14_sterile_horizon', siteId: 'sterile_zone', trigger: 'approach', radius: 500,
+    evidence: 'P04',
+    text: 'Instruments flatten. The dead field is absolute — no returns, no drift, no noise floor. Sterility this clean is a maintained position.' }),
+  Object.freeze({ id: 'N15_deep_chorus', siteId: 'harvest_deep', trigger: 'close', radius: 300, needsRevelation: 3,
+    evidence: 'P01',
+    text: 'At deep-trace sensitivity the strata harmonize — the architecture is not under the sector. The sector is in the architecture.' }),
+]);
+
+/** Setpiece def by id. */
+export function setpieceById(id) {
+  return SETPIECE_DEFS.find((s) => s.id === id) || null;
+}
 
 /** Weighted ecology encounter pick for a zone (deterministic via the caller's rng). */
 export function pickEcologyEncounter(state, sectorId, zoneId, rng) {
   const c = contaminationAt(state, sectorId, zoneId);
-  const eligible = ECOLOGY_DECK.filter((row) => c >= row.minC);
+  const ae = (state && state.world && state.world.alienEcology) || {};
+  const machineKnown = ae.machineProtocol && ae.machineProtocol !== 'unknown';
+  const eligible = ECOLOGY_DECK.filter((row) => c >= row.minC
+    && (row.maxC == null || c < row.maxC)
+    && (!row.machine || machineKnown));
   if (!eligible.length) return null;
   let total = 0;
   for (const row of eligible) total += row.weight * (1 + c);

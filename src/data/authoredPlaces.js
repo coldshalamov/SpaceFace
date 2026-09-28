@@ -191,6 +191,56 @@ export const ZONE_CHARON_PYLON_FIELD = Object.freeze({
   threat: 0,
 });
 
+/** Phase 25 machine structures (AE-242..AE-249). */
+export const ZONE_VEIL_CONTAINMENT_RING = Object.freeze({
+  id: 'zone_veil_containment_ring', name: 'Containment Ring', type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'Five pylons hold a ring seal over something that outgrew it.',
+  center: Object.freeze({ x: -900, z: -1900 }), radius: 560, threat: 0,
+});
+export const ZONE_CHARON_STAR_MARKER = Object.freeze({
+  id: 'zone_charon_star_marker', name: 'Star Marker', type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'A fixed reference older than the sector\'s chart names.',
+  center: Object.freeze({ x: -2200, z: -800 }), radius: 180, threat: 0,
+});
+export const ZONE_SKER_QUIET_DOCK = Object.freeze({
+  id: 'zone_sker_quiet_dock', name: 'Quiet Dock', type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'A dormant drydock berthed for a hull scale nothing human flies.',
+  center: Object.freeze({ x: -1600, z: 800 }), radius: 420, threat: 0,
+});
+export const ZONE_IO_LISTENING_FIELD = Object.freeze({
+  id: 'zone_io_listening_field', name: 'Listening Field', type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'Seven receivers pointed at a coordinate that is not on the chart.',
+  center: Object.freeze({ x: 800, z: -1400 }), radius: 700, threat: 0,
+});
+export const ZONE_PALLAS_EMPTY_FOUNDRY = Object.freeze({
+  id: 'zone_pallas_empty_foundry', name: 'Empty Foundry', type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'A construction frame mid-assembly around nothing.',
+  center: Object.freeze({ x: 1200, z: 900 }), radius: 500, threat: 0,
+});
+export const ZONE_ASHFALL_THE_LINE = Object.freeze({
+  id: 'zone_ashfall_the_line', name: 'The Line', type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'A patrolled quarantine boundary the map refuses to draw.',
+  center: Object.freeze({ x: -800, z: 1600 }), radius: 960, threat: 0,
+});
+export const ZONE_CHARON_BROKEN_SHEPHERD = Object.freeze({
+  id: 'zone_charon_broken_shepherd', name: 'Broken Shepherd', type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'A corridor engine that lost its corridor — growth reads the gap.',
+  center: Object.freeze({ x: 1000, z: 1900 }), radius: 760, threat: 1,
+});
+export const ZONE_VEIL_EXCEPTION_CHAMBER = Object.freeze({
+  id: 'zone_veil_exception_chamber', name: 'Exception Chamber', type: 'anomaly_deep',
+  factionId: 'faction_verge_layers',
+  reason: 'A room that adjudicates by proximity. Approach is a filing.',
+  center: Object.freeze({ x: 1800, z: 1400 }), radius: 360, threat: 0,
+});
+
 /** Quiet Ice — the contaminated mining body (AE-064). */
 export const ZONE_VEIL_QUIET_ICE = Object.freeze({
   id: 'zone_veil_quiet_ice',
@@ -467,23 +517,25 @@ export const AUTHORED_PLACE_ZONES = Object.freeze({
   sector_ceres_belt: Object.freeze([ZONE_CERES_THROUGHLINE, ZONE_CERES_PRISM_GALLERY, ZONE_CERES_CLOSED_REFINERY]),
   sector_tethys_junction: Object.freeze([ZONE_TETHYS_DRIFTMARK, ZONE_TETHYS_ANVIL, ZONE_TETHYS_SPLIT_STATION]),
   sector_vesta_forge: Object.freeze([ZONE_VESTA_RED_CABLE_YARD]),
-  sector_pallas_drift: Object.freeze([ZONE_PALLAS_EMPTY_HABITAT]),
-  sector_io_reach: Object.freeze([ZONE_IO_SHEPHERDS_RING]),
+  sector_pallas_drift: Object.freeze([ZONE_PALLAS_EMPTY_HABITAT, ZONE_PALLAS_EMPTY_FOUNDRY]),
+  sector_io_reach: Object.freeze([ZONE_IO_SHEPHERDS_RING, ZONE_IO_LISTENING_FIELD]),
   sector_charon_expanse: Object.freeze([
     ZONE_CHARON_CINDER_NURSERY, ZONE_CHARON_WARM_FREIGHTER, ZONE_CHARON_HULL_GARDEN,
     ZONE_CHARON_PYLON_FIELD, ZONE_CHARON_PRESERVED_COCKPIT, ZONE_CHARON_EMPTY_SKIN,
+    ZONE_CHARON_STAR_MARKER, ZONE_CHARON_BROKEN_SHEPHERD,
   ]),
   sector_veil_nebula: Object.freeze([
     ZONE_VEIL_QUIET_ICE, ZONE_VEIL_SURVEY_MONOLITH, ZONE_VEIL_NULL_CORRIDOR,
     ZONE_VEIL_REVOKED_GATE, ZONE_VEIL_BLACK_ORCHARD,
+    ZONE_VEIL_CONTAINMENT_RING, ZONE_VEIL_EXCEPTION_CHAMBER,
   ]),
   sector_ashfall_reach: Object.freeze([
     ZONE_ASHFALL_BREATHING_DOCK, ZONE_ASHFALL_GATE_UNDERLAYER, ZONE_ASHFALL_OSSUARY,
     ZONE_ASHFALL_BLACK_VAULT, ZONE_ASHFALL_MAINTENANCE, ZONE_ASHFALL_CONVERTED_YARDS,
-    ZONE_ASHFALL_TOWED_MOONLET, ZONE_ASHFALL_STERILE_ZONE,
+    ZONE_ASHFALL_TOWED_MOONLET, ZONE_ASHFALL_STERILE_ZONE, ZONE_ASHFALL_THE_LINE,
   ]),
   sector_sker_haven: Object.freeze([
-    ZONE_SKER_HARVEST_DEEP, ZONE_SKER_NULL_CAUSEWAY, ZONE_SKER_RED_SNOW,
+    ZONE_SKER_HARVEST_DEEP, ZONE_SKER_NULL_CAUSEWAY, ZONE_SKER_RED_SNOW, ZONE_SKER_QUIET_DOCK,
   ]),
 });
 

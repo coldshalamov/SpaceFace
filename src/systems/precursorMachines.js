@@ -22,6 +22,8 @@ import {
 import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { insertDressingRow } from '../world/dressingTable.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
+import { addCargo, removeCargo } from './cargo.js';
+import { commodityIsBiohazard } from '../data/commodities.js';
 
 // AE-129 (K-table): a salvaged handshake transponder halves the protocol hold window —
 // the machines read your compliance twice as fast.
@@ -196,7 +198,28 @@ export function tickMachineLayer(world, dt) {
             kind: 'machine',
           });
         }
+        // AE-251 (L-table): the site's evidence row files itself on first observation.
+        if (site.evidence) {
+          world.bus.emit('ecology:evidence', { id: site.evidence, sectorId });
+        }
         refreshMachineLabels(world);
+      }
+    }
+
+    // K05 lattice coupler: a fitted coupler echoes the site's standing directive through
+    // comms on first approach even before the site's own line fires — grammar by listening.
+    if (player && player.pos && !rec.couplerEcho
+      && fittedModuleDefs(state).some((d) => d && d.mods && d.mods.latticeCoupler === true)) {
+      const dC = Math.sqrt(dist2(player.pos.x, player.pos.z, g.x, g.z));
+      if (dC < site.radius + 260) {
+        rec.couplerEcho = true;
+        const dir = site.directive && MACHINE_DIRECTIVES[site.directive];
+        world.bus.emit('comms:log', {
+          from: 'Lattice Coupler', kind: 'machine',
+          text: dir
+            ? `Site memory read: standing directive ${site.directive} — ${dir.resolves}.`
+            : 'Site memory read: no standing directive. This site observes only.',
+        });
       }
     }
 
@@ -228,6 +251,21 @@ export function tickMachineLayer(world, dt) {
             rec.directiveResolved = true;
             advanceMachineProtocol(state, 'satisfied');
             if (site.directive === 'WITNESS') grantWitnessMark(state, site.siteId);
+            // K09/K10 (Phase 26): satisfying the exception chamber's witness hold mints
+            // the endgame credentials — route authority and the unbroken lens.
+            if (site.siteId === 'veil_exception_chamber' && !rec.exceptionMinted) {
+              rec.exceptionMinted = true;
+              if (!ae.machineAccess) ae.machineAccess = {};
+              ae.machineAccess.gates_exception = true;
+              advanceMachineProtocol(state, 'excepted');
+              addCargo(state, 'cmdty_unbroken_lens', 1, 'exception_chamber');
+              world.bus.emit('comms:log', {
+                from: site.name, kind: 'machine',
+                text: 'EXCEPTION RECORDED. TRANSIT AUTHORITY RESTORED. THE LENS IS YOURS — DO NOT BREAK IT.',
+              });
+              world.bus.emit('ecology:evidence', { id: 'L10', sectorId });
+              world.bus.emit('ecology:evidence', { id: 'P10', sectorId });
+            }
             if (hasWitnessMark(state) && !rec.witnessToast) {
               rec.witnessToast = true;
               world.bus.emit('comms:log', {
@@ -308,6 +346,281 @@ export function tickMachineLayer(world, dt) {
         }
         break;
       }
+      // ── Phase 24 machine wave B ────────────────────────────────────────────────
+      case 'witness': {
+        // AE-232 (I05): zero motion — it has watched one site for millennia. The only
+        // beat is the slow pupil-track on the player inside observeR.
+        if (player && player.pos) {
+          const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
+          if (d < kind.observeR) {
+            const desired = Math.atan2(player.pos.z - e.pos.z, player.pos.x - e.pos.x);
+            e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+          }
+        }
+        break;
+      }
+      case 'shepherd': {
+        // AE-233 (I06): patrols its corridor between anchor and counter-anchor —
+        // a moving suppression pocket (see shepherdFieldAt).
+        const w = (now / kind.patrolPeriodS + m.phase / TWO_PI) % 1;
+        const t = w < 0.5 ? w * 2 : (1 - w) * 2; // ping-pong
+        const tx = m.anchor.x - 300 + t * 600;
+        const tz = m.anchor.z - 300 + t * 600;
+        const desired = Math.atan2(tz - e.pos.z, tx - e.pos.x);
+        e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+        e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+        e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+        break;
+      }
+      case 'mason': {
+        // AE-234 (I07): orbits its workpiece; the weld cadence emits a ping beat.
+        const w = now * 0.10 + m.phase;
+        const tx = m.anchor.x + Math.cos(w) * kind.orbitR;
+        const tz = m.anchor.z + Math.sin(w) * kind.orbitR;
+        const desired = Math.atan2(tz - e.pos.z, tx - e.pos.x);
+        e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+        e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+        e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+        m.sweepT += dt;
+        if (m.sweepT >= kind.weldPeriodS) {
+          m.sweepT = 0;
+          world.bus.emit('audio:cue', { id: 'scan_resolve' });
+        }
+        break;
+      }
+      case 'executor': {
+        // AE-235 (I08): dormant until the protocol reads a fault — then it shadows the
+        // revoking hull at standoff and runs the quarantine pulse (M09).
+        const fault = ae.machineProtocol === 'revoked' || ae.machineProtocol === 'violation';
+        if (!fault) {
+          m.awakened = false;
+          break;
+        }
+        if (!m.awakened) {
+          m.awakened = true;
+          world.bus.emit('comms:log', {
+            from: 'Verge lattice', kind: 'machine',
+            text: 'ENFORCEMENT FRAME ACTIVE. REMAIN WITHIN COMPLIANCE RADIUS.',
+          });
+        }
+        if (player && player.pos) {
+          const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
+          const desired = Math.atan2(player.pos.z - e.pos.z, player.pos.x - e.pos.x);
+          e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+          if (d > kind.shadowR) {
+            e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+            e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+          }
+          m.sweepT += dt;
+          if (m.sweepT >= kind.pulsePeriodS && d < kind.quarantinePulseR) {
+            m.sweepT = 0;
+            // M09 quarantine pulse: biohazard cargo in radius is scrubbed without sale.
+            const cargo = state.player && state.player.cargo;
+            let scrubbed = 0;
+            if (cargo && cargo.items) {
+              for (const cid of Object.keys(cargo.items)) {
+                if (commodityIsBiohazard(cid) && cargo.items[cid] > 0) {
+                  scrubbed += cargo.items[cid];
+                  removeCargo(state, cid, cargo.items[cid], 'quarantine_pulse');
+                }
+              }
+            }
+            world.bus.emit('comms:log', {
+              from: 'Executor', kind: 'machine',
+              text: scrubbed > 0
+                ? `QUARANTINE PULSE. ${scrubbed} BIOLOGICAL LOT(S) DESTROYED IN TRANSIT.`
+                : 'QUARANTINE PULSE. MANIFEST CLEAN.',
+            });
+            world.bus.emit('ecology:quarantinePulse', { sectorId, scrubbed, t: now });
+          }
+        }
+        break;
+      }
+      case 'courier': {
+        // AE-236 (I09): shuttles a protocol token between the sector's machine sites —
+        // in a single-site sector it runs legs between its siblings' anchors instead.
+        const targets = sites.filter((s) => s.siteId !== m.siteId)
+          .map((s) => world._toGlobal({ x: s.center.x, z: s.center.z }, sectorId));
+        for (const sib of machines) {
+          if (sib !== e && sib.data.machine.siteId === m.siteId && sib.data.machine.anchor) {
+            targets.push(sib.data.machine.anchor);
+          }
+        }
+        if (!targets.length) break;
+        const legIdx = Math.floor(m.t / kind.routePeriodS) % targets.length;
+        const lg = targets[legIdx];
+        const desired = Math.atan2(lg.z - e.pos.z, lg.x - e.pos.x);
+        e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+        e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+        e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+        if (player && player.pos && !m.intercepted
+          && dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z) < 160 * 160) {
+          m.intercepted = true;
+          addCargo(state, 'cmdty_gate_handshake', 1, 'courier_intercept');
+          world.bus.emit('comms:log', {
+            from: 'Courier frame', kind: 'machine',
+            text: 'TOKEN JETTISONED — ROUTE AUTHORITY INSTRUMENT IN YOUR HOLD.',
+          });
+          world.bus.emit('ecology:evidence', { id: 'L06', sectorId });
+          const sRec = machineSiteRec(state, m.siteId);
+          sRec.setpieces = sRec.setpieces || {};
+          sRec.setpieces.N08 = true;
+        }
+        break;
+      }
+      case 'conservator': {
+        // AE-237 (I10): refuses release of what it keeps — a polite denial on approach.
+        if (player && player.pos && !m.refused) {
+          const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
+          if (d < kind.refuseR) {
+            m.refused = true;
+            world.bus.emit('comms:log', {
+              from: 'Conservator', kind: 'machine',
+              text: 'OPEN REQUEST NOTED. RELEASE IS NOT IN SCOPE. PRESERVATION IS.',
+            });
+          }
+        }
+        break;
+      }
+      case 'measure': {
+        // AE-237 (I11): its reading files an instrument anomaly + the K04 datum.
+        if (player && player.pos && !m.read) {
+          const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
+          if (d < kind.readR) {
+            m.read = true;
+            addCargo(state, 'cmdty_inertial_datum', 1, 'measure_engine');
+            world.bus.emit('comms:log', {
+              from: 'Measure engine', kind: 'machine',
+              text: 'REFERENCE FRAME EMITTED. YOUR COORDINATE SYSTEM NOW OWNS A SECOND ZERO.',
+            });
+            world.bus.emit('ecology:evidence', { id: 'L02', sectorId });
+          }
+        }
+        break;
+      }
+      case 'boundary_walker': {
+        // AE-238 (I12): walks the quarantine line; a watched crossing is a violation.
+        const w = (now / 90 + m.phase / TWO_PI) % 1;
+        const t = w < 0.5 ? w * 2 : (1 - w) * 2;
+        const site = MACHINE_SITES[m.siteId];
+        const base = site ? world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId) : m.anchor;
+        const tx = base.x - kind.patrolLen / 2 + t * kind.patrolLen;
+        const tz = base.z;
+        const desired = Math.atan2(tz - e.pos.z, tx - e.pos.x);
+        e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+        e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+        e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+        if (player && player.pos && site) {
+          const insideX = Math.abs(player.pos.x - base.x) < kind.patrolLen / 2;
+          const side = Math.sign(player.pos.z - base.z);
+          const sRec = machineSiteRec(state, site.siteId);
+          const watched = dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z)
+            < kind.watchR * kind.watchR;
+          if (insideX && sRec.lineSide && sRec.lineSide !== side && watched
+            && !sRec.setpieces?.N09) {
+            sRec.setpieces = sRec.setpieces || {};
+            sRec.setpieces.N09 = true;
+            advanceMachineProtocol(state, 'violated');
+            world.bus.emit('comms:log', {
+              from: site.name, kind: 'machine',
+              text: 'BOUNDARY CROSSING LOGGED UNDER OBSERVATION. VIOLATION STANDS.',
+            });
+            world.bus.emit('ecology:evidence', { id: 'L08', sectorId });
+            refreshMachineLabels(world);
+          }
+          if (insideX) sRec.lineSide = side;
+        }
+        break;
+      }
+      case 'appeals_clerk': {
+        // AE-239 (I13): bring tier-3 evidence within range and a revoked verdict flips.
+        if (player && player.pos && ae.machineProtocol === 'revoked') {
+          const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
+          if (d < kind.counterR && !m.appealHeard) {
+            const evidence = ae.evidence || {};
+            const hasDeep = Object.keys(evidence).some((k) => /^L0(9|10)|^P/.test(k));
+            if (hasDeep) {
+              m.appealHeard = true;
+              advanceMachineProtocol(state, 'excepted');
+              world.bus.emit('comms:log', {
+                from: 'Appeals clerk', kind: 'machine',
+                text: 'COUNTER-EVIDENCE ACCEPTED. VERDICT REVISED: EXCEPTION. CARRY THE LENS.',
+              });
+              refreshMachineLabels(world);
+            } else if (!m.appealHinted) {
+              m.appealHinted = true;
+              world.bus.emit('comms:log', {
+                from: 'Appeals clerk', kind: 'machine',
+                text: 'APPEAL FILED. COUNTER-EVIDENCE INSUFFICIENT — BRING A DEEP FINDING.',
+              });
+            }
+          }
+        }
+        break;
+      }
+      case 'debris_sorter': {
+        // AE-240 (I14): drifts to the nearest wreck/pickup and collects it on a delay —
+        // salvage you want is on a timer while the sorter works the field.
+        if (m.collectAt && now >= m.collectAt) {
+          const target = m.collectId != null && state.entities ? state.entities.get(m.collectId) : null;
+          if (target && target.alive !== false) {
+            target.alive = false;
+            world.bus.emit('comms:log', {
+              from: 'Debris sorter', kind: 'machine',
+              text: 'MAINTENANCE WASTE RECOVERED.',
+            });
+          }
+          m.collectId = null;
+          m.collectAt = 0;
+        }
+        if (!m.collectId) {
+          let best = null;
+          let bestD = Infinity;
+          for (const t2 of state.entityList) {
+            if (!t2 || t2.alive === false || !t2.pos) continue;
+            if (t2.homeSectorId !== sectorId) continue;
+            if (t2.type !== 'wreck' && t2.type !== 'pickup' && t2.type !== 'debris') continue;
+            if (t2.data && t2.data.machineClaimed) continue;
+            const dd = dist2(e.pos.x, e.pos.z, t2.pos.x, t2.pos.z);
+            if (dd < kind.sweepR * kind.sweepR && dd < bestD) { bestD = dd; best = t2; }
+          }
+          if (best) {
+            const desired = Math.atan2(best.pos.z - e.pos.z, best.pos.x - e.pos.x);
+            e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+            if (Math.sqrt(bestD) > 60) {
+              e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+              e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+            } else {
+              best.data = best.data || {};
+              best.data.machineClaimed = true;
+              m.collectId = best.id;
+              m.collectAt = now + kind.collectDelayS;
+            }
+          }
+        }
+        break;
+      }
+      case 'sleeping_jury': {
+        // AE-241 (I15): the jury convenes when protocol is at fault AND the player carries
+        // a witness mark AND a revoked-route site was seen anywhere — then it waits for
+        // the chamber's WITNESS hold to mint the exception.
+        if (!m.awake && hasWitnessMark(state)) {
+          const revokedSeen = Object.values(ae.machineSites || {}).some((r) => r && r.seen)
+            && (ae.machineProtocol === 'revoked' || ae.machineProtocol === 'violation');
+          if (revokedSeen) {
+            m.awake = true;
+            world.bus.emit('comms:log', {
+              from: 'Sleeping jury', kind: 'machine',
+              text: 'THE JURY CONVENES. STAND WITNESS OR BE RECORDED IN ABSENTIA.',
+            });
+          }
+        }
+        if (m.awake && player && player.pos) {
+          const desired = Math.atan2(player.pos.z - e.pos.z, player.pos.x - e.pos.x);
+          e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+        }
+        break;
+      }
       default: break;
     }
   }
@@ -324,6 +637,21 @@ export function refreshMachineLabels(world) {
     e.data.scanLabel = label;
     e.data.name = label;
   }
+}
+
+// ── Moving suppression (AE-233/M08) — shepherd engines carry a dead pocket with them. ────
+// Called from alienEcology.js wherever the static suppression field is consulted: if a
+// live shepherd entity is within its suppressionRadius of the point, the point is dead.
+export function shepherdFieldAt(state, sectorId, x, z) {
+  if (!state || !state.entityList) return null;
+  for (const e of state.entityList) {
+    const m = e && e.data && e.data.machine;
+    if (!m || m.kind !== 'shepherd' || e.alive === false || e.homeSectorId !== sectorId) continue;
+    const kind = machineKindById('shepherd');
+    const r = (kind && kind.suppressionRadius) || 400;
+    if (dist2(e.pos.x, e.pos.z, x, z) <= r * r) return e;
+  }
+  return null;
 }
 
 // ── Route gate (AE-108) ───────────────────────────────────────────────────────────────────

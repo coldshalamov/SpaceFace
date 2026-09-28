@@ -101,6 +101,7 @@ const INTEL_MOD_KEYS = Object.freeze({
   hostMapReveal: 'host-hull cartography resolves on entering a colonized field (systems/alienEcology.js hostMap beat)',
   echoRecorder: 'relay pulses logged to the field notebook (systems/alienEcology.js ecology:relayPulse)',
   quietEquation: 'machine directives decode into intent (systems/precursorMachines.js directiveText)',
+  latticeCoupler: 'a site\'s standing directive echoes into comms on approach (systems/precursorMachines.js couplerEcho)',
 });
 
 // ─── Vocabulary: every other known mods key is a SCALAR (percentage / flat stat) ───

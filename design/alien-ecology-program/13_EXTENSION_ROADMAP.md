@@ -830,3 +830,53 @@ itself done — or names exactly what remains.
   are pre-grouped for that reason).
 - When in doubt, the seam is: `src/data/` defines it, `src/systems/` ticks
   it, `src/render/` draws it, `test/` pins it.
+
+---
+
+## Phase 31 landings — acquisition map, pacing audit, closing review
+
+### K-table acquisition map (where each credential comes from)
+
+| Item | Earned by | Spent at |
+|---|---|---|
+| `cmdty_gate_handshake` | Intercepting a **courier** mid-route (io_listening_field) | `_wormholeUnlocked` consumes one on a refused `machine:` route |
+| `cmdty_inertial_datum` | Approaching the **measure** engine inside `readR` (charon_star_marker) | K04 protocol-trade leverage |
+| `cmdty_revocation_beacon` | Stock item only via authored salvage | Declaring yourself revoked-adjacent (carries `restricted` legality risk) |
+| `cmdty_unbroken_lens` | Holding the **WITNESS** directive at veil_exception_chamber until resolved | Proof-of-exception; `ae.machineAccess.gates_exception` mints alongside |
+| `mod_lattice_coupler_s` | Salvage-only module (K05) | Passive: echoes any machine site's standing directive on approach |
+
+### L-table pacing audit (how the ledger discloses)
+
+- **Tier 1 (L01, L02, L03, L07)**: observational — filed by first-approach `seen` beats.
+  Three filed rows of any tier lift `revelation` to 2 (`recordEvidence` threshold).
+- **Tier 2 (L04, L05, L06, L08)**: causal — earned through behavior (severance aftermath,
+  courier intercept, a watched line crossing). These are the revelation-2 scaffolding.
+- **Tier 3 (L09, L10)**: interpretive — the machines' own failure records. A single
+  tier-3 row lifts `revelation` to 3: finding out the lattice *also* failed is the secret.
+- **P-table (P01–P10)**: the ecology's answers — filed by deep setpieces (N12–N15) and
+  the exception chamber. P-rows are what the ledger is *for*: the mystery resolves as
+  evidence, never as exposition.
+
+Terminology check (AE-298 partial): the ledger calls itself `evidence`, the machine
+vocabulary stays procedural (`LOGGED`/`FILED`/`VERDICT`), and no row names a creator or
+assigns intent — the lattice records, it does not explain.
+
+### AE-299 — Program-closing review (cycle 3)
+
+What the closing build holds end-to-end:
+
+- The fungus is a **system** (contamination C → revelation tiers → encounter deck →
+  hazards M01–M10), not a set of props. A pilot's hull accumulates exposure; sites
+  remember severance; dormant sites heat-bloom on the scanner.
+- The lattice is a **bureaucracy** (protocol ladder → directives → faults → appeal):
+  14 machine kinds, 16 sites, a verdict economy where evidence is physical and appeals
+  are locations. Protocol faults are sticky — a see-beat cannot lift a revocation
+  (regression-pinned in `test/machineWaveB.test.mjs`).
+- The two threads cross only at authored seams: suppression fields sterilize growth,
+  the executor scrubs biohazard lots, the chamber mints a lens the growth cannot read.
+
+Open for follow-on agents (post-program): setpieces N07/N11 remain unauthored slots in
+the N-table; the O-table's `machine:true` barks assume `ae.machineProtocol !== 'unknown'`
+as the knowledge gate — a future "lattice language" module could refine that; and the
+P05 (shepherds_ring) mystery still lacks its firing site. The program is otherwise
+self-reporting: every L/P row names the site that files it.

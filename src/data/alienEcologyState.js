@@ -31,6 +31,9 @@ export function createAlienEcologyState() {
     factionConsequences: {},
     // AE-124: live heat lures — transient burn flags, dropped on save/load.
     lures: [],
+    // Phase 27/29/31 — L-table evidence ledger + N-table setpiece once-flags.
+    evidence: {},
+    setpieces: {},
   };
 }
 
@@ -53,6 +56,8 @@ export function ensureAlienEcologyState(state) {
   if (!ae.sectorFlags || typeof ae.sectorFlags !== 'object') ae.sectorFlags = {};
   if (!ae.factionConsequences || typeof ae.factionConsequences !== 'object') ae.factionConsequences = {};
   if (!Array.isArray(ae.lures)) ae.lures = [];
+  if (!ae.evidence || typeof ae.evidence !== 'object') ae.evidence = {};
+  if (!ae.setpieces || typeof ae.setpieces !== 'object') ae.setpieces = {};
   ae.wrenRecognized = ae.wrenRecognized === true;
   return ae;
 }

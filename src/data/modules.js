@@ -269,6 +269,15 @@ const SHIPPED_MODULES = [
     description: 'A Verge-layer decode lattice. Where the machines speak in directive fragments, you read the sentence underneath.',
   },
   {
+    // K05 — lattice coupler: approaching a machine site echoes its last issued directive
+    // on the log, so the player learns grammar from sites that have not spoken yet.
+    id: 'mod_lattice_coupler_s', name: 'Lattice Coupler', slotType: 'utility', size: 'S', tier: 4, mass: 1, price: 0,
+    purchasable: false, unique: true, salvageOnly: true,
+    energyDraw: 1,
+    mods: { latticeCoupler: true },
+    description: 'A two-pin tap into site memory. Approach a machine site and its last issued directive echoes back through your comms.',
+  },
+  {
     id: 'unique_truesight_scanner', baseId: 'mod_cargo_scanner_s', name: 'Truesight Scanner', slotType: 'utility', size: 'S', tier: 1, mass: 1, price: 0,
     energyDraw: 1, purchasable: false, unique: true, salvageOnly: true,
     mods: { revealCargo: true, scanRangeMult: 1.50 },

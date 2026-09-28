@@ -131,10 +131,261 @@ function buildGateAuditor() {
   return g;
 }
 
+// ── Phase 24 wave-B bodies (AE-232..AE-241) — same language: spare, pale, seam-lit. ──────
+
+// Witness: a faceted eye — a hemisphere lens on a ring gimbal. It does not chase.
+function buildWitness() {
+  const g = new THREE.Group();
+  const dome = new THREE.Mesh(geo('wit_dome', () => {
+    const s = new THREE.SphereGeometry(0.7, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    return s;
+  }), metalMat());
+  dome.scale.setScalar(16);
+  dome.rotation.x = -Math.PI / 2;
+  g.add(dome);
+  const iris = new THREE.Mesh(geo('wit_iris', () => new THREE.SphereGeometry(0.2, 12, 8)), lightMat(2.6));
+  iris.scale.setScalar(16);
+  g.add(iris);
+  const gimbal = new THREE.Mesh(geo('wit_gimbal', () => new THREE.TorusGeometry(0.95, 0.05, 6, 40)), seamMat());
+  gimbal.scale.setScalar(16);
+  g.add(gimbal);
+  g.name = 'SF_Machine_witness';
+  return g;
+}
+
+// Shepherd: a long pale fuselage with a fan of corridor vanes — a moving field edge.
+function buildShepherd() {
+  const g = new THREE.Group();
+  const hull = new THREE.Mesh(geo('shp_hull', () => {
+    const s = new THREE.CylinderGeometry(0.28, 0.16, 3.4, 8);
+    s.rotateX(Math.PI / 2);
+    return s;
+  }), metalMat());
+  hull.scale.setScalar(10);
+  g.add(hull);
+  const vane = geo('shp_vane', () => {
+    const s = new THREE.BoxGeometry(2.6, 0.06, 0.7);
+    return s;
+  });
+  for (let i = 0; i < 3; i += 1) {
+    const v = new THREE.Mesh(vane, seamMat());
+    v.position.z = -6 + i * 6;
+    v.scale.setScalar(10);
+    g.add(v);
+  }
+  const fieldTip = new THREE.Mesh(geo('shp_tip', () => new THREE.OctahedronGeometry(0.2, 0)), lightMat(2.2));
+  fieldTip.position.z = 18;
+  fieldTip.scale.setScalar(10);
+  g.add(fieldTip);
+  g.name = 'SF_Machine_shepherd';
+  return g;
+}
+
+// Mason: an assembly cradle — two open gantries holding an empty axis.
+function buildMason() {
+  const g = new THREE.Group();
+  const arm = geo('msn_arm', () => {
+    const s = new THREE.TorusGeometry(1.0, 0.09, 6, 24, Math.PI);
+    return s;
+  });
+  for (let i = 0; i < 2; i += 1) {
+    const a = new THREE.Mesh(arm, metalMat());
+    a.scale.setScalar(14);
+    a.rotation.z = i === 0 ? 0 : Math.PI;
+    a.position.x = i === 0 ? -2 : 2;
+    g.add(a);
+  }
+  const weld = new THREE.Mesh(geo('msn_weld', () => new THREE.SphereGeometry(0.12, 8, 6)), lightMat(2.8));
+  weld.scale.setScalar(14);
+  g.add(weld);
+  g.name = 'SF_Machine_mason';
+  return g;
+}
+
+// Executor: the revocation enforcer — a narrow dark dart with one cold ring aft.
+function buildExecutor() {
+  const g = new THREE.Group();
+  const dart = new THREE.Mesh(geo('exe_dart', () => {
+    const s = new THREE.ConeGeometry(0.4, 3.0, 4);
+    s.rotateX(Math.PI / 2);
+    return s;
+  }), new THREE.MeshStandardMaterial({
+    color: 0x11181a, roughness: 0.5, metalness: 0.9,
+  }));
+  dart.scale.setScalar(9);
+  g.add(dart);
+  const aft = new THREE.Mesh(geo('exe_aft', () => new THREE.TorusGeometry(0.55, 0.07, 6, 24)), lightMat(1.2));
+  aft.position.z = -12;
+  aft.scale.setScalar(9);
+  g.add(aft);
+  const eye = new THREE.Mesh(geo('exe_eye', () => new THREE.SphereGeometry(0.14, 8, 6)), lightMat(2.4));
+  eye.position.z = 10;
+  eye.scale.setScalar(9);
+  g.add(eye);
+  g.name = 'SF_Machine_executor';
+  return g;
+}
+
+// Courier: a fast shuttle sliver — reads as mail, not menace.
+function buildCourier() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(geo('cou_body', () => {
+    const s = new THREE.OctahedronGeometry(1, 0);
+    s.scale(0.5, 0.28, 1.6);
+    return s;
+  }), metalMat());
+  body.scale.setScalar(10);
+  g.add(body);
+  const wake = new THREE.Mesh(geo('cou_wake', () => new THREE.ConeGeometry(0.2, 1.2, 4)), lightMat(1.6));
+  wake.rotation.x = -Math.PI / 2;
+  wake.position.z = -16;
+  wake.scale.setScalar(10);
+  g.add(wake);
+  g.name = 'SF_Machine_courier';
+  return g;
+}
+
+// Conservator: a squat canister with a vacuum intake skirt — the ring's janitor.
+function buildConservator() {
+  const g = new THREE.Group();
+  const can = new THREE.Mesh(geo('con_can', () => new THREE.CylinderGeometry(0.6, 0.75, 1.1, 10)), metalMat());
+  can.scale.setScalar(16);
+  g.add(can);
+  const skirt = new THREE.Mesh(geo('con_skirt', () => {
+    const s = new THREE.CylinderGeometry(0.95, 0.6, 0.5, 10, 1, true);
+    return s;
+  }), seamMat());
+  skirt.position.y = -10;
+  skirt.scale.setScalar(16);
+  g.add(skirt);
+  const lamp = new THREE.Mesh(geo('con_lamp', () => new THREE.SphereGeometry(0.12, 8, 6)), lightMat(1.4));
+  lamp.position.y = 10;
+  lamp.scale.setScalar(16);
+  g.add(lamp);
+  g.name = 'SF_Machine_conservator';
+  return g;
+}
+
+// Measure: a fixed instrument — a needle suspended between two ring rails.
+function buildMeasure() {
+  const g = new THREE.Group();
+  const rail = geo('mea_rail', () => new THREE.TorusGeometry(0.9, 0.05, 6, 36));
+  for (const dz of [-8, 8]) {
+    const r = new THREE.Mesh(rail, metalMat());
+    r.position.z = dz;
+    r.scale.setScalar(12);
+    g.add(r);
+  }
+  const needle = new THREE.Mesh(geo('mea_needle', () => {
+    const s = new THREE.CylinderGeometry(0.04, 0.04, 1.6, 6);
+    s.rotateX(Math.PI / 2);
+    return s;
+  }), lightMat(1.8));
+  needle.scale.setScalar(12);
+  g.add(needle);
+  g.name = 'SF_Machine_measure';
+  return g;
+}
+
+// Boundary Walker: a thin patrol wedge that fences a line nothing crosses cleanly.
+function buildBoundaryWalker() {
+  const g = new THREE.Group();
+  const wedge = new THREE.Mesh(geo('bw_wedge', () => {
+    const s = new THREE.CylinderGeometry(0.12, 0.5, 2.8, 4);
+    s.rotateX(Math.PI / 2);
+    return s;
+  }), metalMat());
+  wedge.scale.setScalar(10);
+  g.add(wedge);
+  const edge = new THREE.Mesh(geo('bw_edge', () => new THREE.BoxGeometry(0.06, 0.06, 2.6)), lightMat(1.6));
+  edge.position.x = 4;
+  edge.scale.setScalar(10);
+  g.add(edge);
+  g.name = 'SF_Machine_boundary_walker';
+  return g;
+}
+
+// Appeals Clerk: a standing lectern-drone — reads bureaucratic, not armed.
+function buildAppealsClerk() {
+  const g = new THREE.Group();
+  const desk = new THREE.Mesh(geo('ac_desk', () => {
+    const s = new THREE.CylinderGeometry(0.4, 0.55, 1.3, 6);
+    return s;
+  }), metalMat());
+  desk.scale.setScalar(12);
+  g.add(desk);
+  const slat = new THREE.Mesh(geo('ac_slat', () => new THREE.BoxGeometry(0.5, 0.7, 0.05)), lightMat(1.0));
+  slat.position.set(0, 6, 7);
+  slat.rotation.x = -0.5;
+  slat.scale.setScalar(12);
+  g.add(slat);
+  g.name = 'SF_Machine_appeals_clerk';
+  return g;
+}
+
+// Debris Sorter: a slow rake — wide intake mouth on a collector spine.
+function buildDebrisSorter() {
+  const g = new THREE.Group();
+  const mouth = new THREE.Mesh(geo('ds_mouth', () => {
+    const s = new THREE.CylinderGeometry(1.0, 0.55, 0.8, 12, 1, true);
+    s.rotateX(-Math.PI / 2);
+    return s;
+  }), seamMat());
+  mouth.scale.setScalar(14);
+  g.add(mouth);
+  const spine = new THREE.Mesh(geo('ds_spine', () => {
+    const s = new THREE.BoxGeometry(0.4, 0.4, 2.2);
+    s.translate(0, 0, -1.0);
+    return s;
+  }), metalMat());
+  spine.scale.setScalar(14);
+  g.add(spine);
+  const eye = new THREE.Mesh(geo('ds_eye', () => new THREE.SphereGeometry(0.1, 8, 6)), lightMat(1.5));
+  eye.position.y = 6;
+  eye.scale.setScalar(14);
+  g.add(eye);
+  g.name = 'SF_Machine_debris_sorter';
+  return g;
+}
+
+// Sleeping Jury: three joined sealed verdict pods — a body that convenes, not fights.
+function buildSleepingJury() {
+  const g = new THREE.Group();
+  const pod = geo('sj_pod', () => {
+    const s = new THREE.SphereGeometry(0.5, 14, 10);
+    s.scale(1, 0.7, 1);
+    return s;
+  });
+  for (let i = 0; i < 3; i += 1) {
+    const a = (i / 3) * Math.PI * 2;
+    const p = new THREE.Mesh(pod, metalMat());
+    p.position.set(Math.cos(a) * 10, 0, Math.sin(a) * 10);
+    p.scale.setScalar(12);
+    g.add(p);
+  }
+  const seal = new THREE.Mesh(geo('sj_seal', () => new THREE.TorusGeometry(1.3, 0.05, 6, 36)), lightMat(0.5));
+  seal.rotation.x = Math.PI / 2;
+  seal.scale.setScalar(12);
+  g.add(seal);
+  g.name = 'SF_Machine_sleeping_jury';
+  return g;
+}
+
 const MACHINE_BUILDERS = {
   surveyor_prism: buildSurveyorPrism,
   custodian: buildCustodian,
   auditor: buildGateAuditor,
+  witness: buildWitness,
+  shepherd: buildShepherd,
+  mason: buildMason,
+  executor: buildExecutor,
+  courier: buildCourier,
+  conservator: buildConservator,
+  measure: buildMeasure,
+  boundary_walker: buildBoundaryWalker,
+  appeals_clerk: buildAppealsClerk,
+  debris_sorter: buildDebrisSorter,
+  sleeping_jury: buildSleepingJury,
 };
 
 export function buildMachineMesh(entity) {
@@ -270,6 +521,61 @@ export function buildMachineProp(placeId, radius = 20) {
         mk.scale.setScalar(r * 0.3);
         g.add(mk);
       }
+      break;
+    }
+    case 'marker': {
+      // AE-243 star marker: a fixed reference needle — thin, untuned, still right.
+      const needle = new THREE.Mesh(geo('mp_needle', () => {
+        const s = new THREE.ConeGeometry(0.1, 3.8, 4);
+        s.translate(0, 1.9, 0);
+        return s;
+      }), metalMat());
+      needle.scale.setScalar(r * 0.5);
+      g.add(needle);
+      const ref = new THREE.Mesh(geo('mp_ref', () => new THREE.TorusGeometry(0.4, 0.05, 6, 24)), lightMat(1.2));
+      ref.position.y = r * 0.4;
+      ref.scale.setScalar(r * 0.5);
+      g.add(ref);
+      break;
+    }
+    case 'dock_arm': {
+      // AE-244 quiet dock arm: a dormant berth clamp, open.
+      const arm = new THREE.Mesh(geo('mp_darm', () => {
+        const s = new THREE.BoxGeometry(0.24, 0.24, 3.0);
+        s.translate(0, 0, 1.2);
+        return s;
+      }), metalMat());
+      arm.scale.setScalar(r * 0.4);
+      g.add(arm);
+      const jaw = new THREE.Mesh(geo('mp_jaw', () => new THREE.TorusGeometry(0.5, 0.09, 6, 16, Math.PI)), seamMat());
+      jaw.position.z = r * 1.05;
+      jaw.scale.setScalar(r * 0.4);
+      g.add(jaw);
+      const pin = new THREE.Mesh(geo('mp_pin', () => new THREE.SphereGeometry(0.12, 8, 6)), lightMat(0.7));
+      pin.position.y = r * 0.3;
+      pin.scale.setScalar(r * 0.4);
+      g.add(pin);
+      break;
+    }
+    case 'gantry': {
+      // AE-246 empty foundry: a construction frame holding an empty axis.
+      const arch = new THREE.Mesh(geo('mp_garch', () => {
+        const s = new THREE.TorusGeometry(1.0, 0.07, 6, 28, Math.PI);
+        return s;
+      }), metalMat());
+      arch.rotation.y = Math.PI / 2;
+      arch.scale.setScalar(r * 0.45);
+      g.add(arch);
+      const axis = new THREE.Mesh(geo('mp_gaxis', () => {
+        const s = new THREE.CylinderGeometry(0.03, 0.03, 2.2, 6);
+        s.rotateX(Math.PI / 2);
+        return s;
+      }), lightMat(0.9));
+      axis.scale.setScalar(r * 0.45);
+      g.add(axis);
+      const cradle = new THREE.Mesh(geo('mp_gcradle', () => new THREE.OctahedronGeometry(0.14, 0)), seamMat());
+      cradle.scale.setScalar(r * 0.45);
+      g.add(cradle);
       break;
     }
     default: {

@@ -65,6 +65,12 @@ export const COMMODITIES = [
   // AE-229 spore catalyst: a consumable — selling it at a station trades the lot for an
   // instant hull-exposure purge (the fee IS the sale price).
   { id: 'cmdty_spore_catalyst',       name: 'Spore Catalyst',         category: 'bioresource', basePrice: 480, volatility: 0.3, elasticity: 0.4,  legality: 'restricted', volPerU: 0.2, massPerU: 0.2, fineMult: 1.0, marketTier: 4, producedBy: [], consumedBy: ['research'],             biohazard: true, noMarketSeed: true },
+  // ── Phase 26 / AE-260..AE-269 — K-table machine credentials. Physical objects the
+  // lattice economy honors; none of them are ever stocked on a market. ──
+  { id: 'cmdty_gate_handshake',       name: 'Gate Handshake Token',   category: 'protocol', basePrice: 2200, volatility: 0.0, elasticity: 0.0,  legality: 'legal',      volPerU: 0.1, massPerU: 0.1, fineMult: 0, marketTier: 4, producedBy: [], consumedBy: [], noMarketSeed: true },
+  { id: 'cmdty_inertial_datum',       name: 'Inertial Datum',         category: 'protocol', basePrice: 3400, volatility: 0.0, elasticity: 0.0,  legality: 'legal',      volPerU: 0.1, massPerU: 0.1, fineMult: 0, marketTier: 4, producedBy: [], consumedBy: [], noMarketSeed: true },
+  { id: 'cmdty_revocation_beacon',    name: 'Revocation Beacon',      category: 'protocol', basePrice: 5200, volatility: 0.0, elasticity: 0.0,  legality: 'restricted', volPerU: 0.3, massPerU: 0.4, fineMult: 0, marketTier: 4, producedBy: [], consumedBy: [], noMarketSeed: true },
+  { id: 'cmdty_unbroken_lens',        name: 'Unbroken Lens',          category: 'protocol', basePrice: 9800, volatility: 0.0, elasticity: 0.0,  legality: 'restricted', volPerU: 0.2, massPerU: 0.2, fineMult: 0, marketTier: 4, producedBy: [], consumedBy: [], noMarketSeed: true },
 
   // --- REFINED ---
   { id: 'cmdty_refined_metals',     name: 'Refined Metals',        category: 'refined',   basePrice: 91,  volatility: 0.205, elasticity: 0.394033, legality: 'legal',      volPerU: 0.5, massPerU: 0.7, fineMult: 0,   producedBy: ['refinery'],                       consumedBy: ['fab','military'] },

@@ -192,6 +192,7 @@ import {
   machineRouteOpen,
 } from './precursorMachines.js'; // Verge-Layer machine layer (doc 07, AE-090..109): same seam
 import { createAlienEcologyState } from '../data/alienEcologyState.js';
+import { removeCargo } from './cargo.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import {
   dropFarActorSector,
@@ -617,6 +618,8 @@ export const world = {
     bus.on('dock:docked', (p) => handleAlienEcologyEvent(this, 'dock:docked', p));
     bus.on('tether:released', (p) => handleAlienEcologyEvent(this, 'tether:released', p));
     bus.on('ecology:factionOutcome', (p) => handleAlienEcologyEvent(this, 'ecology:factionOutcome', p));
+    bus.on('ecology:evidence', (p) => handleAlienEcologyEvent(this, 'ecology:evidence', p));
+    bus.on('ecology:quarantinePulse', (p) => handleAlienEcologyEvent(this, 'ecology:quarantinePulse', p));
     bus.on('pickup:collected', (p) => {
       // cargo's listener (registered earlier) has already written the acceptance receipt, so
       // the objective only fires on a committed, actually-accepted amount of THIS site's pod.
@@ -5321,7 +5324,22 @@ export const world = {
     if (kind === 'tech') return (this.state.player.researchedNodes || []).includes(key);
     if (kind === 'flag') return !!(this.state.story.flags || {})[key];
     // AE-108 revoked routes: machine-protocol standing opens transit the tech tree cannot.
-    if (kind === 'machine') return machineRouteOpen(this.state, key);
+    if (kind === 'machine') {
+      if (machineRouteOpen(this.state, key)) return true;
+      // K01 (Phase 26): a Gate Handshake Token burns once to open a machine-gated route.
+      const cargo = this.state.player && this.state.player.cargo;
+      if (cargo && cargo.items && (cargo.items.cmdty_gate_handshake || 0) > 0) {
+        removeCargo(this.state, 'cmdty_gate_handshake', 1);
+        const ae = this.state.world && this.state.world.alienEcology;
+        if (ae) { if (!ae.machineAccess) ae.machineAccess = {}; ae.machineAccess[key] = true; }
+        this.bus.emit('toast', {
+          text: 'Handshake token accepted — the gate files you as a route-holder.',
+          kind: 'good', ttl: 6,
+        });
+        return true;
+      }
+      return false;
+    }
     return false;
   },
 

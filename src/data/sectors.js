@@ -308,6 +308,7 @@ const CORE_SECTORS = [
         },
       },
       { id: 'poi_pallas_empty_habitat', type: 'anomaly', name: 'The Empty Habitat', pos: { x: 500, z: -1900 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_pallas_empty_foundry', type: 'anomaly', name: 'Empty Foundry', pos: { x: 1200, z: 900 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -346,6 +347,7 @@ const CORE_SECTORS = [
       // V2 §6 / M3: a claimable industrial moon — a body the player can claim and build on.
       { id: 'poi_claim_pallas', type: 'colony', name: 'Pallas Industrial Moon', claimable: true, size: 'M' },
       { id: 'poi_io_shepherds_ring', type: 'anomaly', name: "Shepherd's Ring", pos: { x: -1100, z: 700 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_io_listening_field', type: 'anomaly', name: 'Listening Field', pos: { x: 800, z: -1400 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -390,6 +392,8 @@ const CORE_SECTORS = [
       { id: 'poi_charon_warm_freighter', type: 'anomaly', name: 'Warm Freighter', pos: { x: -2200, z: 900 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
       { id: 'poi_charon_hull_garden', type: 'anomaly', name: 'Three Hull Garden', pos: { x: 800, z: 2400 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
       { id: 'poi_charon_pylon_field', type: 'anomaly', name: 'Unidentified Lattice', pos: { x: 2400, z: 600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_charon_star_marker', type: 'anomaly', name: 'Star Marker', pos: { x: -2200, z: -800 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_charon_broken_shepherd', type: 'anomaly', name: 'Broken Shepherd', pos: { x: 1000, z: 1900 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
       { id: 'poi_charon_preserved_cockpit', type: 'anomaly', name: 'The Preserved Cockpit', pos: { x: 2300, z: 400 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
       { id: 'poi_charon_empty_skin', type: 'anomaly', name: 'The Empty Skin', pos: { x: -900, z: -2200 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
     ],
@@ -449,6 +453,7 @@ const CORE_SECTORS = [
       { id: 'poi_sker_harvest_deep', type: 'anomaly', name: 'The Harvest Deep', pos: { x: -1500, z: -1600 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
       { id: 'poi_sker_null_causeway', type: 'anomaly', name: 'Null Causeway', pos: { x: 600, z: 1400 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
       { id: 'poi_sker_red_snow', type: 'anomaly', name: 'Red Snow', pos: { x: 400, z: -1800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_sker_quiet_dock', type: 'anomaly', name: 'Quiet Dock', pos: { x: -1600, z: 800 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -484,6 +489,8 @@ const CORE_SECTORS = [
       { id: 'poi_veil_survey_monolith', type: 'anomaly', name: 'Pale Spire', pos: { x: -1400, z: 600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
       { id: 'poi_veil_revoked_gate', type: 'anomaly', name: 'Silent Gate', pos: { x: 2100, z: -1600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
       { id: 'poi_veil_black_orchard', type: 'anomaly', name: 'The Black Orchard', pos: { x: -1700, z: -800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_veil_containment_ring', type: 'anomaly', name: 'Containment Ring', pos: { x: -900, z: -1900 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      { id: 'poi_veil_exception_chamber', type: 'anomaly', name: 'Exception Chamber', pos: { x: 1800, z: 1400 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
   {
@@ -556,6 +563,7 @@ const CORE_SECTORS = [
       { id: 'poi_ashfall_converted_yards', type: 'anomaly', name: 'Converted Yards', pos: { x: 800, z: 800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
       { id: 'poi_ashfall_towed_moonlet', type: 'anomaly', name: 'The Towed Moonlet', pos: { x: -200, z: -1500 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
       { id: 'poi_ashfall_sterile_zone', type: 'anomaly', name: 'Old Sterile Zone', pos: { x: 1400, z: -600 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ashfall_the_line', type: 'anomaly', name: 'The Line', pos: { x: -800, z: 1600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
     ],
   },
 ];
