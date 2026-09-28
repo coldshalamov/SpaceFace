@@ -22,6 +22,7 @@ export default defineEncounter(trigger, {
   },
   escort: {
     archetypes: ['reaver_pirate', 'wasp_swarmer'], size: [2, 3], doctrine: 'scavenger',
+    squadRecipe: 'standoff_gunline',
     formation: 'loose', factionId: 'faction_reach', context: 'encounter', team: 2,
   },
   primaryLine: 'CONCORD and Reach are already firing. Both demand your guns.',

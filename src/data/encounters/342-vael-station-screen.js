@@ -39,6 +39,7 @@ export default defineEncounter(trigger, {
     archetypes: ['warden_escort'],
     size: [2, 2],
     doctrine: 'official',
+    squadRecipe: 'picket_wall',
     formation: 'wedge',
   },
   bark: 'ambush_tele',

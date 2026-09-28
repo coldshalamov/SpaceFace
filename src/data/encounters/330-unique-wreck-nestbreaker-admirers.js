@@ -34,6 +34,7 @@ export default defineEncounter(trigger, {
     archetypes: ['corsair_raider', 'pd_screen_escort', 'mine_layer_jackal'],
     size: [2, 3],
     doctrine: 'scavenger',
+    squadRecipe: 'wolfpack_quarter',
     formation: 'wedge',
   },
   bossName: 'NESTBREAKER ADMIRERS',

@@ -38,6 +38,7 @@ export default defineEncounter(trigger, {
     archetypes: ['warden_escort'],
     size: [2, 3],
     doctrine: 'official',
+    squadRecipe: 'feint_pass',
     formation: 'wedge',
   },
   bark: 'toll_demand',

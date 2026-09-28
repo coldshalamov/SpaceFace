@@ -35,6 +35,7 @@ export default defineEncounter(trigger, {
     archetypes: ['pd_screen_escort', 'reaver_pirate'],
     size: [2, 3],
     doctrine: 'scavenger',
+    squadRecipe: 'picket_wall',
     formation: 'wedge',
   },
   bark: 'attack',

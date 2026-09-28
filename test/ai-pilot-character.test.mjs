@@ -1035,3 +1035,18 @@ test('a retreating squad keeps a screen element covering the egress', () => {
   assert.equal(result.directives.get('wing').objective.kind, 'retreat',
     'the rest of the flight actually leaves');
 });
+
+// ── encounter authoring integrity ────────────────────────────────────────────
+
+test('every authored encounter squadRecipe resolves to a real recipe', async () => {
+  const { ENCOUNTER_MODULES } = await import('../src/data/encounters/index.generated.js');
+  const stamped = [];
+  for (const mod of ENCOUNTER_MODULES) {
+    const squad = mod.default && mod.default.squad;
+    const id = squad && squad.squadRecipe;
+    if (id == null) continue;
+    assert.ok(getSquadRecipe(id), `${mod.default.id}: squadRecipe '${id}' does not resolve`);
+    stamped.push([mod.default.id, id]);
+  }
+  assert.ok(stamped.length >= 20, 'the stamp pass must cover a broad slice of the catalogue');
+});

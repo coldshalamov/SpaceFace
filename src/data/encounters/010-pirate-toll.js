@@ -45,6 +45,7 @@ export default defineEncounter(trigger, {
       3
     ],
     "doctrine": "scavenger",
+    "squadRecipe": "harassment_ring",
     "formation": "wedge"
   },
   "bark": "toll_demand",

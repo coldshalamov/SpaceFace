@@ -43,6 +43,7 @@ export default defineEncounter(trigger, {
       6
     ],
     "doctrine": "scavenger",
+    "squadRecipe": "wolfpack_quarter",
     "formation": "wedge"
   },
   "bark": "claim_ping"

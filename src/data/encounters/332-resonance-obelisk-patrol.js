@@ -30,6 +30,7 @@ export default defineEncounter(trigger, {
     archetypes: ['lancer_sniper', 'bruiser_brawler'],
     size: [1, 2],
     doctrine: 'balanced',
+    squadRecipe: 'siege_orbit',
     formation: 'ring',
   },
   bark: 'resonance_obelisk_patrol_hail',

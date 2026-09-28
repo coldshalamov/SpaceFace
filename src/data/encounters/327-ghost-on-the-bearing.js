@@ -35,6 +35,7 @@ export default defineEncounter(trigger, {
     archetypes: ['quiet_ghost', 'lancer_sniper'],
     size: [1, 2],
     doctrine: 'balanced',
+    squadRecipe: 'standoff_gunline',
     formation: 'loose',
   },
   // Demand mode (ambush script): the ghost voices its contract and opens the timed fork —

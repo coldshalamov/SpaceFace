@@ -42,6 +42,7 @@ export default defineEncounter(trigger, {
       2
     ],
     "doctrine": "balanced",
+    "squadRecipe": "hunter_pair",
     "formation": "loose"
   },
   "bark": "bounty_notice"

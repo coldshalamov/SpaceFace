@@ -38,6 +38,7 @@ export default defineEncounter(trigger, {
     archetypes: ['quiet_ghost', 'corsair_raider'],
     size: [2, 3],
     doctrine: 'balanced',
+    squadRecipe: 'hunter_pair',
     formation: 'loose',
   },
   bark: 'bounty_notice',

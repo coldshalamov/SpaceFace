@@ -127,6 +127,7 @@ export default defineEncounter(trigger, {
     minSeparation: 40,
     team: 1,
     doctrine: 'thief',
+    squadRecipe: 'feint_pass',
     formation: 'wedge',
   },
   // Role names only — no `enabled`, so the planner borrows carrierRole/raiderRole

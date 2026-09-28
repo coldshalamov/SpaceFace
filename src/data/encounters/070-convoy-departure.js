@@ -37,6 +37,7 @@ export default defineEncounter(trigger, {
       3
     ],
     "doctrine": "balanced",
+    "squadRecipe": "convoy_column",
     "formation": "column"
   },
   "escort": {

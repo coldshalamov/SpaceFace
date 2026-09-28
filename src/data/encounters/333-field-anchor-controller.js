@@ -38,6 +38,7 @@ export default defineEncounter(trigger, {
     archetypes: ['wasp_swarmer', 'corsair_raider'],
     size: [4, 5],
     doctrine: 'scavenger',
+    squadRecipe: 'shepherd_net',
     formation: 'wedge',
   },
   bark: 'ambush_tele',

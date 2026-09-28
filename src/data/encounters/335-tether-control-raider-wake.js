@@ -44,6 +44,7 @@ export default defineEncounter(trigger, {
     archetypes: ['mine_layer_jackal', 'wasp_swarmer'],
     size: [3, 4],
     doctrine: 'scavenger',
+    squadRecipe: 'harassment_ring',
     formation: 'loose',
   },
   bark: 'ambush_tele',
