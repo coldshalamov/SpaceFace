@@ -1767,15 +1767,23 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       if (holding && !_deathCam) {
         // PQ-159.02 camera hold: freeze distance as well as look-at.
       } else if (directorOwnsComposition) {
-        // A gate, a hostile rope, or a two-ship line asks for a distance. It eases there.
-        // Assigning the distance in one frame was the frantic retake.
-        const desired = finiteOr(_directorFrame.zoom, _dynamicZoom);
-        let nextZoom = damp(_dynamicZoom, desired, ZOOM_LERP, frameDt);
-        const zoomStep = ZOOM_OUT_RATE_MAX_WU_PER_S
-          * Math.min(Math.max(finiteOr(frameDt, 0), 0), ZOOM_OUT_STEP_MAX_FRAME_DT);
-        if (nextZoom > _dynamicZoom) nextZoom = Math.min(nextZoom, _dynamicZoom + zoomStep);
-        else if (nextZoom < _dynamicZoom) nextZoom = Math.max(nextZoom, _dynamicZoom - zoomStep);
-        _dynamicZoom = nextZoom;
+        // A gate, a hostile rope, or a two-ship line asks for a distance.
+        //
+        // The director frame IS the eased composition. It already runs the authored
+        // CAMERA_DIRECTOR_EASE_S (0.35s) from whatever zoom it held on the previous frame, so it
+        // is continuous across a mode switch and cannot snap. Damping toward it here was damping a
+        // motion that was already authored, and the second filter cost real containment: the
+        // picture spent the first ~0.4s of every rope, gate or pair below a fit the director had
+        // already solved. Measured on the 150-unit tether-pair fixture, a 60 WU composed zoom
+        // opened 0.37 WU on frame 0 and was still 32 WU short at t=0.25s, so the attached
+        // hostile sat off-frame (NDC x 2.97 -> 1.09) for 24 consecutive frames before it fit,
+        // and the pair finally settled at t=2.0s instead of the authored 0.35s.
+        //
+        // Focus and look-at have always been adopted straight from the director frame above.
+        // Distance consumes it the same way, so every channel the director writes is the channel
+        // the picture uses. The rate clamp stays on the FOLLOW path, which is where targetZoom
+        // can genuinely jump (player scroll, speed zoom).
+        _dynamicZoom = finiteOr(_directorFrame.zoom, _dynamicZoom);
         if (_deathCam && Math.abs(_pushZoom) > 0.0001) _dynamicZoom *= (1 + _pushZoom);
       } else {
         let nextZoom = damp(_dynamicZoom, targetZoom, ZOOM_LERP, frameDt);
