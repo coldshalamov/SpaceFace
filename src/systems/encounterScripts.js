@@ -644,7 +644,9 @@ const ambush = {
       const tithe = d.takeTithe(amount);
       d.rep('faction_reach', 1, 'wake_tithe_paid');        // pirates respect a payer, slightly
       d.dangerImpulse(live, 'wake_tithe_paid', -0.01);
-      d.say(live, 'bark', 'wake_tithe_paid');
+      // A shape may voice its own paid ack (dart shepherd weighs off bombs, not mines);
+      // undeclared, the wake-tithe line stays the house default.
+      d.say(live, 'bark', ack.paid || 'wake_tithe_paid');
       d.despawnAll(live, 22);                              // they peel off to scoop the tithe
       return d.resolve(live, 'paid', { vars: { ...live.vars, tithe: tithe.label } });
     }
