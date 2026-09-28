@@ -120,6 +120,8 @@ export function nearestVisibleStation(state, range = NEAR_RANGE) {
   let bestD2 = range * range;
   for (const e of list) {
     if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+    // Dockless station bodies run no broadcast desk.
+    if (e.data && e.data.dockless === true) continue;
     const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
     const d2 = dx * dx + dz * dz;
     if (d2 <= bestD2) { bestD2 = d2; best = e; }

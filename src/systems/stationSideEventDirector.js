@@ -132,6 +132,8 @@ export const stationSideEventDirector = {
     let bestD2 = Infinity;
     for (const entity of list) {
       if (!entity || entity.alive === false || entity.type !== 'station' || !entity.pos) continue;
+      // Dockless station bodies (forward camps, hulks) host no ambient service events.
+      if (entity.data && entity.data.dockless === true) continue;
       const dx = entity.pos.x - player.pos.x;
       const dz = entity.pos.z - player.pos.z;
       const d2 = dx * dx + dz * dz;

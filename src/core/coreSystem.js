@@ -701,7 +701,7 @@ function appendEntityIndex(index, e) {
       index.damageables.push(e);
       const data = e.data || {};
       if (data.isGate) index.gates.push(e);
-      else index.dockStations.push(e);
+      else if (data.dockless !== true) index.dockStations.push(e);
       if (data.stationId && !index.byStationId.has(data.stationId)) index.byStationId.set(data.stationId, e);
       break;
     }

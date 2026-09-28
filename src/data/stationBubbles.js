@@ -214,6 +214,9 @@ export const noFireAdvisory = {
       // jurisdiction lookup skips them (engagementAuthority: a gate sanctuary mints a bogus
       // protected volume). "Traffic control" over a wormhole would be a fiction error.
       if (e.data && e.data.isGate) continue;
+      // A dockless station is a body, not a service site — a hostile forward camp does
+      // not run traffic control and mints no no-fire ring around its own guns.
+      if (e.data && e.data.dockless === true) continue;
       out.push(e);
     }
     return out;

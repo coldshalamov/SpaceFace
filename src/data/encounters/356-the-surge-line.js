@@ -136,7 +136,7 @@ export const runtime = Object.freeze({
     const cdata = courier.data || (courier.data = {});
     cdata.jobKind = 'hauler';
     cdata.scanLabel = 'COURIER — HOLDING FOR THE SURGE';
-    cdata.moraleImmune = true; // it chose the lane; it does not bolt the moment guns warm
+    (cdata.ai || (cdata.ai = {})).moraleImmune = true; // it chose the lane; it does not bolt the moment guns warm
     setEntityDoctrine(courier, {
       activity: {
         kind: 'loiter',

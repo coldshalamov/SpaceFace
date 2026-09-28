@@ -701,8 +701,24 @@ export const combat = {
       factionId: t.factionId, factionLawful, bountyCr: (missionOwns || runOwns) ? 0 : (d.bountyCr || 0),
       lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type,
       targetHostileToPlayer,
+      baseKind: d.baseKind || null,
       presentation,
     });
+    // SEAM-BASE: a destructible base entity is an ordinary damageable station carrying
+    // `data.baseKind`; killing it is the only producer of `combat:baseDestroyed`
+    // (economy.onBaseDestroyed consumes it: piracy events tied to its station end and a
+    // contraband shortage is injected when a stationId is set).
+    if (d.baseKind) {
+      bus.emit('combat:baseDestroyed', {
+        type: d.baseKind,
+        stationId: d.stationId || null,
+        stationType: d.stationTypeId || null,
+        factionId: t.factionId || d.factionId || null,
+        sectorId: (state.world && state.world.currentSectorId) || null,
+        killerId,
+        pos: { x: t.pos.x, z: t.pos.z },
+      });
+    }
     // World event, not a player event: this fires for EVERY entity killed, so with no position it hit
     // the player's camera at full 0.5 trauma for a kill anywhere in the sector — three times the
     // amplitude of the destruction-VFX shake. The neighbouring emitters in this file are all

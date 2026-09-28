@@ -523,7 +523,13 @@ export const sectorSim = {
       influence[p.factionId] = p.type === 'station' ? -0.16 : -0.012;
     }
     if (p.type === 'station') {
-      this.injectImpulse({ kind: 'infrastructure_loss', sectorId, danger: 0.11, pricePressure: 0.055, influence });
+      // A pirate base dying is not infrastructure loss: the pocket it raided from loses
+      // danger and the outfit loses a foothold. base_destroyed is the classified kind.
+      if (p.baseKind === 'pirate_base') {
+        this.injectImpulse({ kind: 'base_destroyed', sectorId, danger: -0.05, influence });
+      } else {
+        this.injectImpulse({ kind: 'infrastructure_loss', sectorId, danger: 0.11, pricePressure: 0.055, influence });
+      }
     } else if (p.factionLawful) {
       this.injectImpulse({ kind: 'lawful_kill', sectorId, danger: 0.022, pricePressure: 0.006, influence });
     } else {
