@@ -65,12 +65,12 @@ compose them.
 
 ## 4. Every surface — its mini-app and its signature
 
-Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 15 surfaces. Other scores are critic scores under the owner criteria unless marked "letter" (scored before the criteria existed). Latest critic report per surface: `design/frontend/review/reports/`.
+Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 22 surfaces. Other scores are critic scores under the owner criteria unless marked "letter" (scored before the criteria existed). Latest critic report per surface: `design/frontend/review/reports/`.
 
 | Surface (bench id) | Mini-app | Signature interaction (distinct) | Assets | Status |
 |---|---|---|---|---|
-| Title (`title`) | The emblem orrery behind the name | The Hand follows the pointer round the dial; the rings answer with parallax | — | 8.1 letter; re-score under (a)/(b) owed |
-| Pause (`pause`) | Seven-stop dial over the held world | Rows as stops: the Hand steps row to row, left/right along a row | — | 8.0 letter; re-score under (a)/(b) owed |
+| Title (`title`) | The emblem orrery behind the name | The Hand follows the pointer round the dial; the rings answer with parallax | — | 8.2 NOT PASSED (frontdoor-rs1): (a) yes, (b) signature not built — r2 owed: T-S1 pointer-track + parallax, T-C1/C2 band/ray lift (queued behind crucible r2: shared screenLayouts.js) |
+| Pause (`pause`) | Seven-stop dial over the held world | Rows as stops: the Hand steps row to row, left/right along a row | — | **APPROVED 8.3** (frontdoor-rs1); polish carry-over: 0% gauge weight, 1280 LOCAL MAP touch, brief/RESUME tie |
 | New Game (`new-game`) | The yard: the hull on a turntable ring | **Spin the yard**: drag the ring; each hull's mass sets its swing (heavy drags, light flicks); the stat arcs sweep between hulls; release settles with overshoot; hold LAUNCH runs light down the run's scale into the jump | new backdrop (done), Pelican poster to hero grade | **APPROVED 8.2** (r7, 5d855f9cc + follow-ups) — (a) yes, (b) yes |
 | Loading (`boot`) | The emblem spinning up | Real load stages as ticks lighting round the ring | — | to audit |
 | Settings (`settings`) | Mixer + live HUD preview | Ride a slider and the miniature Cluster/mixer answers live | — | **APPROVED 8.1** (setcr-r3) |
@@ -84,19 +84,19 @@ Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 15 
 | Help (`help`) | The controls rig | **Press anything** + drag the price ring + pin to compare | controller + ship silhouette art | **APPROVED 8.0** (help-r4); r9 follow-ups landed (2ef883624) |
 | Chart (`chart*`, `localmap`, `starmap`) | The galaxy as an orrery | **Lay the line**: drag from your ship; the planner's route previews as the one amber line; release locks the course | 24 sector tokens rendered in Blender (`assets/ui/deckplate/tools/render_sector_tokens.py` → `assets/ui/generated/chart/<sector id>.webp`) | **APPROVED 8.1** (chart-r4); r5 polish landed (849a0a0dd) |
 | Station shell | Tab rail + berth | The needle rides the ruled rail to the tab; UNDOCK the shared verb | — | **APPROVED 8.0** (station3-r1, zero margin); rail .30 + UNDOCK/MUNITIONS fixes owed |
-| Market (`station-market`) | Price dial | Turn the quantity dial; the spin drives the counter, hold arc and price-impact ghost | — | 7.3 station3-r1 — structural rebuild owed (sweep never reached it); bench buyable-at-rest landed (58ba928db) |
-| Missions (`station-contracts`) | Route orrery + tether | Hold-to-charge the route: light runs key → station → berth with the hold, retracts on early release | — | 8.03 missions-r15 — (a) RISK/STANDING sliders, (b) signature not wired; routeOrrery groundwork in tree |
+| Market (`station-market`) | Price dial | Turn the quantity dial; the spin drives the counter, hold arc and price-impact ghost | — | **APPROVED 8.0** (market-r1) |
+| Missions (`station-contracts`) | Route orrery + tether | Hold-to-charge the route: light runs key → station → berth with the hold, retracts on early release | — | **APPROVED 8.2** (missions-r16) |
 | Shipworks (`station-shipworks`) | The jig / the sale disc | Turn the hull on the disc (For Sale); **Exploded Schematic** (Fleet) | posters, Pelican hero grade (D72) | **APPROVED 8.1** (sw-r16); r17 landed (2334d326d), not re-scored |
-| Industry (`station-industry`) | Chain beam | Hold FABRICATE: the bezel IS the hold ring, pulses leave the inputs, stocks drain, the product lights | filled pictograms (`industryGlyphs.js`) | 8.0 industry-r14 — signature + weight fixes in tree, uncommitted |
-| Factions (`station-factions`) | Crest orbit | Turn the orbit to a crest; its relation chords draw | crests (exist) | 8.0 station3-r1 — failed (a) on the sun only; fix landed (9e4a69d99), re-score owed |
-| Bar (`station-bar`) | The conversation | Replies as a dial on the voice arc: focus previews the reply's envelope against her voice | portraits (exist) | 8.1 bar-r15 — failed (b); reply dial + arc groundwork in tree, uncommitted |
+| Industry (`station-industry`) | Chain beam | Hold FABRICATE: the bezel IS the hold ring, pulses leave the inputs, stocks drain, the product lights | filled pictograms (`industryGlyphs.js`) | **APPROVED 8.5** (industry-r16) |
+| Factions (`station-factions`) | Crest orbit | Turn the orbit to a crest; its relation chords draw | crests (exist) | **APPROVED 8.1** (factions-rs1) |
+| Bar (`station-bar`) | The conversation | Replies as a dial on the voice arc: focus previews the reply's envelope against her voice | portraits (exist) | **APPROVED 8.4** (bar-r17) |
 | Ledger (`station-ledger`) | The tape | Scrub the tape; stems rise, the purse sweeps | — | **APPROVED 8.1** (station3-r1) |
-| Crucible door/draft/refit/results | (passed 09-23) | door swing, draft picks, slot jig, death dial | arena art (exist) | 8 letter; re-audit under (a)/(b) owed |
-| THE SHIP (`ship`) | Fleet jig in flight | Explode the jig: sockets pull out along their leaders | posters | wave 2 |
-| Footprint (`footprint`) | Heat / wanted | A heat dial that cools in real time; each source a sector of the dial | — | wave 2 |
-| Range (`range`) | Handling course | Draw your line through the gates; the hull's turn radius previews on the line | — | wave 2 |
-| Automation (`automation`) | The operation | Drones orbit the field on the instrument; income beams flow to the purse | drone/outpost tokens | wave 2 |
-| Replay / Clips (`replay`, `clips`) | Filmstrip + timeline | Scrub the timeline; key moments are beads | — | wave 2 |
+| Crucible door/draft/refit/results | door scales, draft ladder + fit preview, refit slot jig, kill-orrery results | arena Orbit Carousel (owed), fit-preview leader beam, exploded hardpoint schematic, death diagram + run timeline | arena art (exist) | results **APPROVED 8.3** (crucible-rs1); door 7.8 (no signature), draft 7.4 (caps + amber×5), refit 8.0 NOT PASSED (fidelity 6.5 floor: caps + third amber) — r2 owed: kbd stylesheet pass, palette, door carousel + Hand, 1280 restores |
+| THE SHIP (`ship`) | Fleet jig in flight | Pick a slot on the hull, preview compatible hardware | posters | 6.9 FAIL (wave2-audit): 1280 overlap + fold, chips→callouts, wheel relight, Lamp Key — r1 builder running |
+| Footprint (`footprint`) | Heat / wanted | A heat dial that cools in real time; each source a sector of the dial | — | **APPROVED 8.2** (footprint-r2) |
+| Range (`range`) | Handling course | Fly the rehearsal: the course draws as a beam, progress rides the gates | — | 5.8 FAIL (wave2-audit): unbox hero, gates→scales, progress beam, chips→dotted words, fill void — r1 builder running |
+| Automation (`automation`) | The operation | Conduct the machine: asset-flow strip pulses income into the purse | drone/outpost tokens | 6.1 FAIL (wave2-audit): de-card, tabs→rail, bar→gauge, fold, flow strip — r1 builder running |
+| Replay / Clips (`replay`, `clips`) | The tape / the reel | Ride the tape (scrub time); pull a moment open (trim windows) | — | 2.4/2.4 BUILD BRIEF (wave2-audit): surfaces unbuilt — r1 builder running |
 | Asteroid Works / Drill / Base | Machine sites | (per `asteroid-works-rebuild` design) | exist | wave 3 |
 | Flight HUD (`orrery-flight`, `flight`), Power rail, Radials | Cluster, rail, radial | (passed Phase 0a) | — | weight pass must NOT regress frame time; audit |
 | Sandbox (`sandbox`) | dev harness | — | — | last (dev-only) |
@@ -105,11 +105,11 @@ Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 15 
 
 1. **Wave 1 (done 2026-09-28):** all meta screens approved — Settings 8.1, Credits 8.2, Save/Load 8.1,
    Game Over 8.2, Codex 8.1, Mission Log 8.0, Research 8.0, Achievements 8.1 — plus New Game 8.2,
-   Shipworks 8.1, Footprint 8.2, Chart 8.1, Help 8.0, shell 8.0, Ledger 8.1.
+   Shipworks 8.1, Footprint 8.2, Chart 8.1, Help 8.0, shell 8.0, Ledger 8.1 — and the station gates:
+   Missions 8.2, Industry 8.5, Bar 8.4, Factions 8.1, Market 8.0 (the station is fully approved).
 2. **Weight system (§2)** in the library, swept across the station (commits 73b5a87aa…138988b43);
    Market never got the sweep — its structural rebuild is the largest job left.
-3. **Station gates (now):** land Industry/Missions/Bar signature rebuilds (groundwork in tree),
-   Market rebuild, Factions re-score (fix landed), Title/Pause re-scores, Crucible re-audit.
+3. **Station gates (done 2026-09-28).** Remaining: Title/Pause re-scores, Crucible re-audit.
 4. **Wave 2:** THE SHIP, Range, Automation, Replay/Clips.
 5. **Wave 3:** Asteroid Works, Drill, Base, Loading audit, flight HUD weight (perf-gated), Sandbox last.
 6. Approval ledger: every surface's final report and score recorded in §4 here and in the handoff.

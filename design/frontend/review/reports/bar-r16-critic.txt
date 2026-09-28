@@ -1,0 +1,299 @@
+STATION BAR — ROUND 16 CRITIC, scored under the OWNER CRITERIA. Commit 178232330
+(reply dial on the voice arc, focus preview envelope + standing lean, one-band reply spine,
+raised bands, no focus plate) + 10d4692b2 (shell rail margin). Stills (copied to c16-* before
+reading — Read caches by path):
+  - c16-arr1920.png (arrival 1920), c16-arr1280.png (arrival 1280),
+  - c16-focus1920.png (reply 2 'yard' focused, 700ms settle)
+Scripts: scratchpad/c16-m1..m6.cjs + inline probes; crops c16-*.png. Contrast is WCAG from
+linearized RGB; luma is sharp-raw Rec.709. DOM evidence cited from the task brief (3
+.orr-bardial__voice groups, 1 .is-on @ opacity 1 with 1979-char bars path, standing tick
+'orr-voicearc__standing is-warm') — color/position claims below are pixel-verified.
+
+1. VERDICT: NOT PASSED. Overall 8.3 (previous 8.1). All six axes clear 7.0 and (a) passes at
+   the floor, but (b) is one structural fix away: the reply dial EXISTS and works (bone
+   cursor swings 1->2 on the arc, list syncs, per-reply preview swaps, standing tick
+   slides ~50px), yet the preview — the half that makes it TUNING hers rather than PICKING
+   mine — ships on the SAME side as her voice bars, 13% dimmer, same bone hue, interleaved
+   in her gaps. In the still her voice just reads busier; mine-vs-hers does not separate.
+   B1 specified the track's other side. Move it there and this tab passes.
+
+2. AXES (r15 in brackets)
+   Composition        8.0 (7.8)  The dial fills the arc's inner void to y800; the void core
+                                 x620-1000/y690-990 persists (max 23, mean 12.2; was 34/12.5).
+   Hierarchy          8.1 (8.0)  One focus: reply/cursor 249-250; then contact 247, line 244,
+                                 name 243, dim replies 207. Tab rail yields ~18% on focus.
+   Legibility         8.2 (8.1)  Dial numerals 129-140 (~5:1); plateless rows cleaner; 1280
+                                 leads wrap full ("...Ceres / Refinery" + 2,557 cr) — the
+                                 bench's CUT-OFF flags are heuristic noise, confirmed.
+   ORRERY fidelity    8.6 (8.4)  <=9 choices now sit on an arc rail per §3.2; bone cursor;
+                                 the Hand stays the one amber thing on the rail (arm y391-392
+                                 lamp 242,185,80; bead 255,215,138). Bloom-as-geometry on dial.
+   Craft/detail       8.2 (8.1)  Seams gone, plate gone, dial clean (core 168-175, band 74-85,
+                                 ticks ~205). Deductions: arc band still wanders 60-87 (4 rows
+                                 <2:1); is-warm measures zero warmth; ladder ticks vary 162-198.
+   Interaction        8.4 (8.0)  Cursor swings on dial AND list; focus unmistakable (250).
+                                 Capped: the preview/lean feedback is diff-only, not eye-visible.
+
+3. ROUND-15 LIST (B1-B5)
+   B1 Dial + preview + lean: HALF.
+       Dial DONE: inner arc concentric with voice arc, track core 168-175 y585-790
+       (x1067->1140), band 74-85 at 2.2-2.4:1, tick marks ~205, numerals 129-140
+       (~5:1), bone cursor 249 swinging (1074,609)->(~1088,713) with the swing to
+       tick 2; reply list syncs (reply 2 text 206->249, cursor segment 209-250).
+       Preview MECHANISM done, READ not done: reply-2 envelope adds outward bars
+       ~128-133 (bone 136,131,124) at rows 506-539 + 599-635; reply-1 clusters
+       (470-494/551-575/653-671) remove. Per-reply shapes are real. But they sit
+       OUTWARD, interleaved in the voice bars' gaps (voice 146-160, bone
+       157,153,144) — same side, same hue, 13% dimmer. B1 said the track's other
+       side. In crop c16-zenv the two layers do not separate by eye.
+       Lean DONE, warmth NOT: standing tick slides ~50px along the track,
+       (1166-1182,443-463) -> (1186-1202,391-433), luma 131-133 both states
+       (diff-proven, crop c16-zstandDIFF). RGB identical bone both states
+       (R-B 12-13; e.g. 137,131,124 vs 138,133,125): is-warm changes nothing.
+   B2 Kill the focus plate: DONE.
+       No rectangle. Focused-row bg lifts to 14-17 near the spine, decays to 5-6
+       by x810; left edge ramps 8->13 over x616-642; no step anywhere (fine scan
+       x600-690 @y556; col x700 y520-600: 6-12 except glyph rows).
+   B3 Bands off the floor: HALF.
+       Ladder 66-69 -> 90-91 on glass 8 (~2.9:1, core 161): DONE, exceeds target.
+       Arc ends 79-87 (rows 430-530/670-690, 2.3-2.7:1): DONE. Arc middle rows
+       550-650 band 60-71: rows 550/570/610/650 sit at 1.48-1.82 on BOTH sides
+       (inner glass 7-33, outer 11-34); only 590/630 clear 2.0 (2.10 inner).
+       The band itself sags mid-arc; not just brighter glass.
+   B4 One-band reply spine: DONE.
+       Core 177-178 flat across y475-626; old seams read 177/178 with no dip >1
+       (rows 519-530, 571-583 scanned). Band x647-653 at 86-89 on glass 7-8
+       (~2.9:1; the 1.84 in the probe log was edge-pixel contamination, corrected
+       by per-column profile).
+   B5 Lower-centre void: HALF. Dial occupies x1015-1140 to y800 (right edge filled);
+       core x620-1000/y690-990 still max 23/mean 12.2. Non-gate.
+
+4. RANKED FIXES (one structural, then craft)
+   F1 (STRUCTURAL — the (b) pass condition). Move the reply preview envelope to the
+       track's INNER side. Element: .orr-bardial__voice.is-on bars path. Now: outward
+       bars ~130 at x1144-1162, rows 506-539 + 599-635 (reply 2), buried in her
+       146-160 fringe. Change: hang the same per-reply shapes inward, x~1100-1130
+       (verified dark glass 8-16 there), rooting at the track. Hers stays outward,
+       mine answers inward: the eye separates them at a glance. (If it pulses live,
+       cite the animation — the stills freeze motion, so placement must carry the read.)
+   F2 (B3 remainder — the (a) condition). Flatten the arc band to ~80 mid-arc.
+       Track band rows y550-650 sags to 60-62 while ends hold 79-87: uniform band
+       alpha along the path (no mid gradient/falloff). Target: every row >=2:1 both
+       sides; the 4 short rows need +12-18 luma.
+   F3 Standing tick warmth. .orr-voicearc__standing.is-warm shows R-B=13, identical
+       to rest: either shift the leaned tick warm (R-B >= 40, keep clear of lamp
+       242,185,80) or drop the class. 132-luma slide alone is diff-only feedback.
+   F4 Ladder tick brightness spread. Koda row tick 198@x42/y440 vs Kessler 162 /
+       Neve 185 (all static, identical A/F): even the ticks out, or say what the
+       bright one means. Nit.
+   F5 Confirm the focus-dim of the tab rail is deliberate. Band 96->79 / core
+       178->171 across the whole rail x80-840 in the focus shot while header (80),
+       ladder (161) and spine (206) hold exact: reads as intentional chrome-yield
+       (keep it), but if accidental, hold the rail constant. No score impact either way.
+
+5. What would make this tab memorable that nothing here attempts yet: on commit, YOUR
+   preview bars swing round the track and BECOME her next voice bars — the bargain made
+   visible: you hear your words change what she says next.
+
+6. LANDMARKS (r16, 1920 arrival unless marked; focus deltas noted F)
+   Ladder: band x36-42 90-91 (~2.9:1); core x39-40 161; fade-in from ~345; Hand arm
+     y391-392 lamp (242,185,80) x39-70+, bead (255,215,138) x65-70.
+   Reply spine: core x650-651 177-178 continuous y475-626; band x647-653 86-89
+     (~2.9:1); cursor 209-250 over the focused reply's span (reply2: y528-574 F;
+     arrival cursor 193 on reply1).
+   Dial: track core 168-175 from (1067,590) to (1140,785), ends 75@790 / 11@795;
+     band 74-85 (2.2-2.4:1); tick marks ~205; numerals n1 131 / n2 140 / n3 129
+     rest (~5:1 on ~10); bone cursor 249 at tick1 (1074,609) A -> tick2 (~1088,713) F.
+   Voice arc: core 153-162; band 79-87 ends (2.3-2.7) / 60-71 middle (4 rows
+     1.48-1.82 both sides); bars 146-160 outward; glass 5-35.
+   Preview (F): outward bars 128-133 bone at rows 506-539 + 599-635 (reply 2);
+     reply-1 clusters (470-494/551-575/653-671) removed. Same side as voice.
+   Standing tick: ~(1152-1182,443-480) A -> ~(1186-1206,387-433) F; 131-133 bone
+     both; zero color delta.
+   Leader: level y445-446 x1030-1105 mean 87; dot 244@(1020,450); elbow to (1124,465).
+   Tab rail: band 94-101 / core 179-181 A (3.0:1); F dims to 73-81 / 171 region-wide.
+   Header rule y103: 80 (A=F). Words: reply(foc) 250, contact1 247, line 244, name 243.
+   1280: ladder band x36-42 108 on 7; dial cursor 249; arc band 71 (2.14) @y420,
+     118 (4.51) @y460; leads wrap to full two lines.
+   Bench artefacts ignored: TRADE CLEARED toast, CYCLE 0001, frozen motion, CUT-OFF flags.
+
+7. OWNER CRITERIA
+   (a) No thin wireframe, no generic elements: PASS, conditioned on F2.
+       Body everywhere it counts: reply spine 2.9, ladder 2.9, tab rail 3.0 (2.6 in
+       focus), dial 2.2+, leader ~2.7, Hand 2px lamp + bloom, arc ends 2.3-2.7 with
+       bars at 3-4:1. The generic plate is gone; nothing stock remains. Condition:
+       4 mid-arc rows at 1.48-1.82 (F2, +12-18 luma). Tighter than r15's floor pass.
+   (b) Signature interaction: NOT YET — one fix away.
+       The signature now exists: TUNE your reply ON her voice arc — swing the bone
+       cursor between 3 tick positions, watch your envelope preview against hers
+       while her standing tick slides. No other screen aims input along a voice
+       display; the dial/arc pairing is distinct and memorable in concept. But in
+       the still the preview (128-133) dissolves into her fringe (146-160): same
+       side, same hue, 13% dimmer. Tuning requires seeing MINE answer HERS, and
+       that separation is currently measurable only by diffing. F1 (preview to the
+       inner side) is the pass condition. Motion caveat: if the preview breathes or
+       the cursor spring reads live, it helps — but frozen stills are the scored
+       evidence, and placement must carry the read regardless.
+
+================================================================================
+STATION BAR — ROUND 17 CRITIC, scored under the OWNER CRITERIA. Commit b6598c885
++ GEOMETRY CORRECTIONS (r16 mislocated the preview and the standing tick).
+Stills (copied to c17-* before reading — Read caches by path):
+  - c17-arr1920.png (arrival 1920, pre-halo), c17-focus1920.png (reply 2 focused),
+  - c17-focusarc.png (arc crop), c17-cold1920.png (FORCED cold-lean demo, synthetic),
+  - c17-warm2/c17-cold2.png (tick crops), c17-warmcrop/c17-coldcrop.png, c17-arr1280.png
+Scripts: /tmp/c17-m1..m6.cjs + /tmp/c17-r1..r6.cjs (r16's scratchpad/c16-m1..m6 rerun
+verbatim on c17 stills for direct comparison) + /tmp/c17-crop.cjs; crops c17-*.png.
+Contrast is WCAG from linearized RGB; luma is sharp-raw Rec.709. The r16 c16-* stills
+still exist, so r17 is also diffed directly against r16 arrival (r16A vs r17A).
+
+1. VERDICT: PASSED. Overall 8.4 (previous 8.3). All six axes clear 7.0 and both owner
+   gates pass. The geometry corrections check out against the pixels: the preview was
+   always on the INNER (face) side — focus adds +16..+120 at x1152-1175, right of the
+   track core (~x1140 at y520/615) — so r16-F1's x1100-1130 target was her OUTER bar
+   field and moving the preview there would have buried it in her 79-100 bars. r17
+   rightly kept it inner and cut separation instead: a 6px dark root gap (was 2px),
+   wider/longer bars, uniform 129 plateaus. Mine-vs-hers now separates by side + gap
+   + texture at a glance, and the focus move visibly swaps whole ±100-luma clusters.
+   The standing tick was always warm at its true box (r16 sampled envelope bars at
+   y387-480 and called them the tick). No structural work remains; the ranked list is
+   craft. (b) passes: tuning your reply on her voice arc is now eye-visible in stills.
+
+2. AXES (r16 in brackets)
+   Composition        8.0 (8.0)  Unchanged: dial fills to y800; void core x620-1000/
+                                 y690-990 max 24/mean 12.2 (was 23/12.5). Non-gate.
+   Hierarchy          8.2 (8.1)  Focus still leads (reply/cursor 250; contact 247,
+                                 line 244, name 243); focus now carries three synced
+                                 signals (cursor swing + list 207->250 + envelope
+                                 cluster swap), so the +0.1.
+   Legibility         8.2 (8.2)  Numerals n1 131 / n2 140 / n3 129, tick marks 205,
+                                 spine cursor 250 all hold; 1280 leads wrap to full
+                                 two lines. Leader dimmed 87->75 (still crisp).
+   ORRERY fidelity    8.5 (8.6)  Arc rail, bone cursor, one amber Hand (arm y391 lamp
+                                 242,185,80; bead 255,215,138) all hold. -0.1: the
+                                 cold-lean tick spends ice (143,203,255) on a STATIC
+                                 rest state; ice is the motion-only channel (§3.3).
+   Craft/detail       8.5 (8.2)  Band sag gone radially (bloom 95-114 uniform, all
+                                 six rows >=2.9:1 vs adjacent gap glass); root gap
+                                 clean 6px at 9-14; tick verified warm R-B 40-41.
+                                 Deductions: F4 spread still open; leader dim
+                                 unexplained; halo unmeasurable in stills.
+   Interaction        8.8 (8.4)  Cursor swings 1->2 (1074,609)->(1098,707) AND the
+                                 envelope now visibly swaps clusters (upper-inner
+                                 131->12 removed, lower-inner 10->129 added, mid
+                                 extended x1160->x1168). Tuning reads without diffing.
+
+3. ROUND-16 LIST (F1-F5)
+   F1 Preview separation: DONE (in corrected form — boost, not the mislocated move).
+       Verified inner-side: focus adds +16..+120 at x1152-1175 (y506:+116@1168,
+       y539:+100@1152, y599:+118@1160, y615:+120@1172), all RIGHT of track core
+       x1136-1140. r16-F1's x1100-1130 at y520 reads 11-71 = her OUTER bars + glass:
+       the correction is right, a move there would interleave with her 79-100 bars.
+       Separation delivered: root gap 2px->6px (y522: r16 bars ramp from x1144 at
+       61-116; r17 x1142-1147 dark at 13-14, bars start x1148 at 66->129); bars
+       wider (col x1156 >=100-span ~1-2px -> ~3px, 2.2->2.6px claim consistent) and
+       longer (row522 tips x1158 -> x1168); plateaus uniform 129. Halo: NOT
+       measurable — bar backdrops already 9-25 (near-black floor), nothing to cut
+       against at rows 506-640; harmless, keep, but it is not separation evidence
+       until a still shows bars over >50-luma cheek. By-eye: crop c17-zenv2 shows
+       the track, black gap, then a floating uniform fringe — distinct from her
+       ragged outer bars (79-160). The (b) pass condition is met.
+   F2 Arc band flat ~80: DONE (radially; r16-method residuals are reference artifacts).
+       Direct rerun, r16A->r17A medians: 62->70, 62->69, 71->82, 60->70, 71->82,
+       60->69 (glass refs bit-identical between rounds, only the band moved).
+       Radial truth at all six rows: bloom 95-114 adjacent to core 153-167 vs gap
+       glass 6-18 = 2.9-3.3:1, no sag anywhere (the .34->.40 raise worked; isolated
+       pixel 71->82 confirmed at rows 590/630). The 4 remaining r16-method cells
+       <2.0 (550-outer 1.69, 570 both 1.72/1.76, 610-outer 1.89) are artifacts: the
+       x1218-1236 "glass" is her lit cheek (23-34, 80px from the track, not what
+       the band sits against), the y570 inner "glass" (32) is a voice bar crossing,
+       and the cx+4 median pixel now lands in F1's intentional dark gap (13-15).
+       Note for future rounds: F1's gap and F2's ±3,4 median window now overlap —
+       measure bloom at core±1..3 or the two asks will fight forever.
+   F3 Standing tick warmth: DONE (premise was phantom; lean widened as claimed).
+       True box x1204-1218/y348-359: arrival peak 241 rgb(255,240,214) R-B=41,
+       focus 248,233,208 R-B=40 — meets the >=40 ask in BOTH states. Cross-round:
+       r16A already 233,219,194 (R-B 39) at (1211,354) with peak 255,240,214 at
+       (1208,351) — the tick was ALWAYS warm; r16's "R-B 12-13, zero warmth" was
+       sampled at y387-480, which the rerun proves are reply-envelope bars
+       (129-133 bone, swapping with focus). r16's "~50px slide" is retracted: tick
+       is STATIC arrival<->focus (same contact, same standing — correct). Lean is
+       warm-vs-cold, not arrival-vs-focus: cold tick at (1207,346)->(1216,357),
+       194 rgb(143,203,255), rotation spread ~17° (warm ~35°, cold ~52° from
+       horizontal) ≈ claimed 2x9°=18°. No diff block at the tick box A<->F.
+   F4 Ladder tick spread: NOT DONE (left open, acknowledged — uniform rule,
+       unattributed). Bit-identical: Koda row 198, Kessler 162, Neve 185, static
+       A<->F. Still a nit, still the brightest tick unexplained. Non-gate.
+   F5 Focus-dim deliberate: DONE (confirmed keep). Regional dim identical to r16:
+       tab rail band 93->76 / core 178->171 across x40-900, bead 250->216-231,
+       while header rule 80=80, ladder core 161=161, spine 206=206. Chrome-yield.
+
+4. RANKED FIXES (no structural remainder — the (b) condition closed in F1)
+   C1 (F4 remainder). Ladder ticks: Koda row 198@x42/y440 vs Kessler 162 / Neve 185
+       (x36-60 boxes, static both shots). Even the ticks to ~175±8 or attribute the
+       bright one (e.g. barkeep = talkable). One-line or one-rule change. Nit.
+   C2 Cold-lean tick spends ice on a static state. .orr-voicearc__standing cold rest:
+       194 rgb(143,203,255), B-R=112, 14px tick at x1207-1217/y346-357. Ice is the
+       motion-only channel (ORRERY §3.3). Either motivate it (lean transition
+       animates through ice, rest settles bone) or re-tint cold rest to dim bone
+       (~120-140 luma, R-B≈10). Small, keeps the lean encoding honest.
+   C3 Leader level dimmed 87->75 between rounds with no named cause (cross-round
+       diff block 1040,440; A/F agree exactly within each round: r16 87.1/87.1,
+       r17 74.8/74.8). Still 2.2:1 body, crisp, same runs x1030-1105 @y445-446 —
+       confirm intentional or restore; do not let it drift again.
+   C4 Halo is cited separation evidence with no still behind it. Bar backdrops at
+       rows 506-640 read 9-25 (floor); past-tip pixels match arrival to ±1. Keep
+       the halo (harmless, may help live over lit cheek) but the separation case
+       rests on side + gap + texture until a still shows bars over bright cheek.
+   C5 Metrology note (concrete, prevents an r18 wild-goose chase): the r16 band
+       method (median of core±3,4) now samples F1's intentional 13-15 root gap on
+       the inner side. Future band checks: bloom at core±1..3 vs adjacent gap
+       glass; retire the x1218-1236 cheek reference for mid-arc rows.
+
+5. What would make this tab memorable that nothing here attempts yet: on commit, YOUR
+   preview bars swing round the track and BECOME her next voice bars — the bargain made
+   visible: you hear your words change what she says next. (Still unattempted; kept.)
+
+6. LANDMARKS (r17, 1920 arrival unless marked; focus deltas noted F)
+   Ladder: band x36-42 90-91 (2.9:1); core x39-40 161; Hand arm y391 lamp
+     (242,185,80) x42-53+, bead (255,215,138). Ticks: Koda 198 / Neve 185 /
+     Kessler 162 (C1, unchanged).
+   Reply spine: core x650 177-178 continuous y475-626, no seam dip (y519-527 flat
+     177-178; 209-210 = cursor edges); band x647-653 86-89; cursor 250 over
+     focused reply (reply1 y491-515 A; reply2 y531-571 F). No plate: row bg 3-17.
+   Dial: track core 168-175 (1067,590)->(1140,785), ends 75@790 / 11@795; band
+     73-85; ticks 205; numerals 129-140; cursor 249 (1074,609) A -> (1098,707) F.
+   Voice arc: core 153-167; bloom 95-114 uniform all mid rows (2.9-3.3:1 vs gap
+     glass 6-18); outer bars 79-160; glass 5-35 (cheek glow 23-34 at x1218-1236).
+   Preview (F, inner side x1148-1184): plateaus 129; roots x1148-1150 across 6px
+     gap (9-14); tips to x1166-1168 (mid rows). Swap: upper-inner 131->12 removed
+     (y470-488), lower-inner 10->129 added (y599-635), mid extended +6-8px.
+     Hue bone (131,129,123) vs hers (164,159,151).
+   Standing tick: x1204-1218/y348-359, STATIC A<->F; warm 241 (255,240,214) A,
+     234-238 F; cold (forced) 194 ice-blue (143,203,255), ~17° lean spread.
+   Leader: level y445-446 x1030-1105 mean 75 (was 87, C3); dot 244@(1020,450);
+     elbow 101@(1118,460) to (1124,465).
+   Tab rail: band 96/101 / core 179-181 A; F dims 76-79 / 171 region-wide (F5 keep).
+   Header rule y103: 80 (A=F). Words: reply(foc) 250, contact1 247, line 244.
+   1280: ladder band mean 108 on 7; dial cursor 249; arc band 71 (2.14) @y420,
+     118 (4.51) @y460; leads full two-line wraps.
+   Bench artefacts ignored: TRADE CLEARED toast, CYCLE 0001, frozen motion,
+     CUT-OFF flags (rows render fully, confirmed).
+
+7. OWNER CRITERIA
+   (a) No thin wireframe, no generic elements: PASS (unconditional — the r16
+       condition is discharged). Body everywhere, all vs ADJACENT glass: spine
+       2.9, ladder 2.9, tab rail 3.0 (2.6 in focus), dial 2.2+, leader 2.2,
+       arc bloom 2.9-3.3, envelope bars ~5-10:1, tick 241. Nothing hairline-only,
+       nothing stock. The 4 r16-method cells <2.0 are cheek/bar reference
+       artifacts plus the intentional root gap in the median window (shown in F2).
+   (b) Signature interaction: PASS. TUNE your reply ON her voice arc — swing the
+       bone cursor between 3 tick positions while YOUR inner envelope (uniform 129
+       fringe floating off the track across a black gap) answers HER ragged outer
+       voice, and her warm standing tick holds the lean. No other screen aims
+       input along a voice display. What changed since r16: the preview no longer
+       dissolves into her fringe — side + 6px gap + uniform-vs-ragged texture
+       separate them at a glance (crop c17-zenv2), and the focus move swaps whole
+       clusters (±100 luma over 15-30px areas), so tuning reads in stills, not
+       just diffs. Motion caveat retired: placement now carries the read; any live
+       breath/spring is bonus.

@@ -1,0 +1,135 @@
+MARKET TAB — ROUND 1 STRUCTURAL REBUILD (independent critic)
+Commit: 5917a7aab. Stills: gate-mkt-1920d (arrival), gate-mkt-1280d (compact),
+gate-mkt-turned7 (qty 7), gate-mkt-max2 (qty MAX 31), gate-mkt-lens2 (Lens).
+Opened as critmkt-*.png; crops + sharp .raw() probes in C:/tmp/critmkt-*.cjs.
+All coords 1x px in the 1920 arrival shot unless marked. Lum = Rec.709 of
+composited pixels; ratio = WCAG band-vs-adjacent-glass. Bench artefacts not
+scored: TRADE CLEARED toast, CYCLE 0001, frozen motion, tape edge CUT-OFF
+(marquee by design, edge-faded).
+
+1. VERDICT: PASSED, on the line. Overall 8.0 (47.9/6; previous 7.3).
+   No axis under 7.0 (min 7.6 craft). Owner (a) PASS on the line — two named
+   wires (right-edge scale 1.59:1, spread bracket ~1.6:1). Owner (b) PASS —
+   the dial-to-ghost signature is strong and memorable. The r1 rebuild is the
+   structural change station3 asked for, and it landed: 7 of 9 fixes DONE,
+   fix 4 DONE with weight notes, fix 5 HALF, MEMORABLE done.
+
+2. AXES (station3 in brackets)
+   Composition       7.9 (7.6)  ladder left, trace + hero 34 top-right, dial +
+                               cost + key bottom, tape as footer. One hero.
+                               Deduction: four text stripes still stack mid-
+                               screen (stat strip 552, demand 620, contemplated
+                               645, tape 675) and the trace's right 60 px knots
+                               ghost/buy/forecast/bracket together.
+   Hierarchy         8.1 (7.5)  34 (244, ~110 px) leads unambiguously; name
+                               second; dial/cost/key third. The old four-way
+                               type fight is gone.
+   Legibility        8.2 (8.0)  dimmest functional text is the SPREAD caption
+                               (~65 on ~20, 2.4:1) and the contemplated line;
+                               all values >= 6:1. Stat strip tracking is clean.
+   ORRERY fidelity   8.0 (6.7)  rail + spine + ticks + bead + amber arm; Hand =
+                               ladder arm, Lamp Key = BUY; bone rest, no cards/
+                               borders/underlines; pictograms on; Lens reads.
+                               Deductions: stat strip still prose, AVG stub.
+   Craft/detail      7.6 (7.0)  bands well made, arm centred on its row, dial
+                               ticks even, ghost rises with qty. Five small
+                               defects: CIVILIAN clipped mid-word, AVG stub,
+                               bead knot, two sub-2:1 right-edge lines, an
+                               unlabeled "40". First is glance-visible.
+   Interaction       8.1 (7.0)  qty 1/7/31 proves fill + needle + counter (36/
+                               254/1,200 cr) + hold arc (1/7/31 of 40) + ghost
+                               (diff 321/447 px) + key count all move; Lens
+                               ring + reading; tape streams 14 rows. SELL-mode
+                               morph has no still (unverified, not a defect);
+                               filter overflow has no scroll cue (-0.1).
+
+3. STATION3 FIXES 1-9 + MEMORABLE, ITEM BY ITEM
+   1. Ladder rail() spine + pictograms: DONE. Spine x56-62: 7 px band 66-67
+      on 6-7 = 4.1:1, 2 px core 155-157. Amber arm y449-452, x59-87, rgb
+      242,185,80 with hot bead 255,217,140 at the spine, centred on the row
+      text (text y446-454, arm y450). Bone outline pictograms on every row
+      (strokes 129-155, ~8:1); chosen row bone by ruling.
+   2. Banded dial, no dotted ring, lit fill: DONE. Track ~8 px band 67-75
+      (3.4:1) + core 164; minor ticks ~80 (3.6:1), 2 px majors; interior
+      clean (dotted ring deleted). Fill: 3 px 244 core + bloom (111) at qty
+      7 (left arc) and full at MAX; needle bone 244 with bead.
+   3. Delete divider rules: DONE. y348 flat ~13, y581 flat ~6-7, y711 only
+      tape glyphs — no full-width rule anywhere.
+   4. Banded trace + Lens + right-edge beads: DONE, with two weight notes
+      (ranked fix 5). Trace: continuous band 72-76 on ~21 = 2.6:1 under 244
+      dots (7 px pitch). Lens: ring 211 (5.9:1) + hairline + "31 cr - 5 min
+      ago" reading. BUY bead 196 (4.9:1) + SELL bead 74 on a right-edge
+      scale; scale line 40-48 = 1.59:1 (under bar), ghost-end/BUY 7 px apart
+      (ranked fix 4).
+   5. Stats onto the instrument: HALF. Spread -> bracket + "2" DONE; demand
+      -> arc (band 3.5:1, core to 179) + "normal" DONE; galactic avg -> a
+      50 px dash stub (x654-698, then nothing to x1560 — the "full line" is
+      background hull) NOT; trend stays text-only; the LOCAL/SPREAD/SECTOR/
+      TREND strip survives verbatim (dim 130 + bright 244, legible, but
+      prose). Ranked fixes 1-2 finish this.
+   6. Ruled filter stops + scale-line find: DONE, one clip (ranked fix 3).
+      Rail band 67-71 (4.0:1) with bone chosen tick (247 core); find line
+      band 71 + core to 183 (3.25:1), no underline. Last stop "CIVILIAN"
+      cut mid-word at x~500, rail fades 508-552, no scroll cue.
+   7. BUY/SELL Lamp Key + morph: DONE. Amber 45-deg-cut plate, dark verb
+      (21 on 190 = 6.0:1), count morphs BUY 1/7/31 with qty; SELL dim with
+      chevron. SELL-active morph unseen in stills — unverified.
+   8. Hero numeral on the scale's right end: DONE. "34" strokes 244 over
+      dark glass, ~110 px thin display + "YOU PAY - PER UNIT" caption; the
+      name no longer competes. Tie to the scale is loose (250 px gap) but
+      hierarchy is unambiguous.
+   9. Stock column: DONE. Real values everywhere (32u, 414u, ...); no dash
+      column. Stockless-yield behaviour unverified (all rows stocked here).
+   MEMORABLE (spin the dial -> counter rolls, hold fills, ghost shows
+   impact): DONE. All four limbs move with qty (see Interaction); ghost is
+   bone dashes 177-224 + 224 end bead, rising 12 px over 60 px at MAX.
+
+4. RANKED FIXES (r2; the structural one first, then craft)
+   1. [structural] Stat strip (600-1330, y545-575): finish fix 5. Delete the
+      LOCAL/SPREAD duplicates (demand arc + spread bracket carry them); move
+      SECTOR onto the provenance line as "NO CONFLICT" after "This dock buys
+      it.", and TREND onto the trace as a slope tag at the NOW bead. Frees
+      one text stripe and kills the last generic element.
+   2. AVG 14 stub (y472, dies at x~698): extend the dash run full trace
+      width (x650-1530) at the stub's own weight (~107-152, dash 2 px /
+      pitch 7 px). A 50 px reference is a label underline, not a reference.
+   3. CIVILIAN clip (x495-552, y350-365): fit every stop inside the rail —
+      drop stop tracking .10em -> .06em — or add horizontal scroll with a
+      chevron cue. No mid-word cut at 1920.
+   4. Bead knot at the scale head (x1520-1532, y396-410, MAX): ghost-end
+      bead (224 at 1527,400) nearly touches BUY bead (216 at 1530,406).
+      Draw the ghost terminus as a hollow ring (2 px, r5) so solid = market,
+      hollow = your impact; or end the ghost 12 px left of the scale.
+   5. Right-edge scale (x1530, y394-440, 40-48 = 1.59:1) + spread bracket
+      (x1555, y385-447, ~42 = 1.6:1): raise both to bone .30 (~70, ~2.3:1);
+      lift the SELL bead (74, 1.74:1) to >= 110 so the pair reads as a pair.
+   Also noticed (not ranked): dim unlabeled "40" (~655-675, 388-400) orphaned
+   under the provenance line — label it or dock it on the demand arc.
+
+5. MEMORABLE: the ghost is the signature's brain but it has no payoff —
+   pressing BUY should fire a pulse down the ghost into the tape while the
+   stock figure rolls down, so the trade lands physically instead of just
+   re-rendering. Nothing here attempts a commit beat yet.
+
+6. LANDMARKS (r2 re-checks; arrival 1920)
+   ladder band x56-62 y600: 66-67/core 155 | arm y450 x59-87 amber |
+   filter band y377-381: 67-71, chosen tick x100: 247 | find line y321-327:
+   71/183 | trace band y420-425 x952: 73 | NOW bead 1462,412: 244 |
+   ghost-end MAX 1527,400: 224 | dial crown x700 y758-765: 68/164 |
+   hold crown q7 x900 y828-832: 70/132 | key field 190 / verb 21 (6.0:1) |
+   tape top rule y664: 160, bottom ruler y691: 130 + ticks 165 |
+   1280 compact: dial/hero adjacent not overlapping; tape + demand below fold.
+
+7. OWNER CRITERIA
+   (a) PASS, on the line. Every primary instrument carries >= 2:1 body:
+       ladder 4.1, filter 4.0, find 3.25, dial 3.4, trace 2.6, demand 3.5,
+       hold 3.5, tape rule 7.3, key 6.0. Generic widgets are gone (no cards,
+       boxes, sliders, underlined tabs/inputs). Named wires: right-edge
+       scale 1.59:1 and spread bracket ~1.6:1 (small adjuncts — fix 5), plus
+       the surviving prose stat strip (fix 1). Precedent matches the Shell's
+       on-the-line pass (small wires named, not structural).
+   (b) PASS. Signature: turn the quantity dial and the whole machine
+       answers — fill sweeps, needle rides, counter rolls, hold arc fills
+       with a bead, your price impact rises on the trace as a dashed ghost,
+       the key counts up, the tape streams; the Lens reads any sample back.
+       No other tab does this; the ghost-then-commit loop is memorable.

@@ -1,0 +1,90 @@
+FACTIONS TAB — RE-SCORE ROUND 1 (independent critic)
+Stills: crit-fac-rs1-1920.png (= rs-fac-1920b arrival 1920), crit-fac-rs1-1280.png (= rs-fac-1280b
+arrival 1280), crit-fac-rs1-hover.png (= rs-fac-hover, Ascendant Choir row via synthetic pointerover).
+All coordinates are 1x px in the 1920 shot unless marked. Lum = Rec.709 luma of composited pixels
+(sharp .raw()); contrast = WCAG ratio of the band pixel against adjacent glass. Scripts + crops in
+/tmp (facrs1*.mjs, facrs1-crop-*); still copies under .devshots/ui-review/view/crit-fac-rs1-*.
+Bench artefacts not scored: TRADE CLEARED toast, CYCLE 0001, frozen motion.
+Landed since station3: 9e4a69d99 (sun bands, leaders below figures, hover ghost), e0b625ecb (1280
+tier stagger), 10d4692b2 (shell rail margin — not this tab).
+
+1. VERDICT: PASSED. Overall 8.1 (48.7/6; previous 8.0). No axis under 7. Owner (a) now PASSES: the
+   sun's two rings are bands at >=2:1 all round, and every hold (orbit, crest tracks, scale, spine)
+   still measures at or over the bar. Owner (b) holds. Three station3 items carry over (hostile red
+   fills, Vael bead collision, foot void) plus two hover halves (word lift, amber arm) — all craft,
+   none a blocker.
+
+2. AXES (previous in brackets)
+   Composition       8.1 (8.1)  orbit vs standing column still balanced; foot 1020-1880 x 920-990
+                                still empty glass (row y950: 17-56 lum). No change.
+   Hierarchy         8.2 (8.1)  sun now anchors the hero instead of floating in it; Concord crest +
+                                amber arm still lead. +0.1 for the sun's new presence.
+   Legibility        8.1 (8.0)  leaders no longer strike the figures; 1280 tiers stagger without
+                                overprint (SWORN starts x623, unclipped). +0.1.
+   ORRERY fidelity   8.1 (8.1)  hover ghost previews the orbit; held at 8.1 because §6 hostile fills
+                                are still bone and the ghost arm is bone, not amber.
+   Craft/detail      8.0 (7.8)  sun bands clean all round (below); leaders fixed. Bead collision and
+                                missing word lift keep it at 8.0. +0.2.
+   Interaction       8.2 (8.0)  hovering the list now previews the orbit (amber seat ring + brightened
+                                spoke). Word lift absent, so not higher. +0.2.
+
+3. STATION3 FIXES 1-7, ITEM BY ITEM
+   1. Sun rings -> bands >=L70 everywhere: DONE. Outer (r~77 off centre 663,541): band body 76-80
+      all round (0 deg: 77/78/138/140/78/79; 180 deg: 76/78/138/141/79/80; diagonals 78-80), glass
+      6-8; 77 on 7 = 2.39:1, 76 on 8 = 2.33:1. Crown merges into the amber Hand arm (190). Inner
+      (r~63): 5 px band 71/121/120/72 with 38-39 skirts (0/90/270 deg); 71 on 7 = 2.17:1. Diagonal
+      AA skirt pixels dip to 64-67 (~1.95-2.0:1) but the band body there is 106-139. Both rings pass.
+   2. Leaders start below figure baselines: DONE. Scale crop shows elbow leaders dropping from below
+      -149/-29/+150/+400 to RECOVERY WORK, NEUTRAL BOARD, TRUSTED WORK, ALLIED RETAINERS. No leader
+      touches a figure.
+   3. Hostile fills red / above-accepted amber-dim on crest tracks: NOT. Vael track (x786-790,y610)
+      is bone: 83/174/96 core with neutral RGB; the red nearby (x750: 165,54,39) is the chord
+      crossing, not the fill. Reach track (x815,y480-484) bone 70-110. Frontier +40 bone (control OK).
+   4. Vael chord bead clear of track: NOT. Vael crop: the red bead (centre ~757,617) sits on the
+      left tip of Vael's bone track (~777,610); they touch.
+   5. POWERS rail arm to the name's x-height: DONE. Arm is a 2 px 244 row at y341-342; name glyph
+      core ("Solar Concord Navy") is y340-342. Nothing at the old y333. (Not in the landed commits;
+      pixels pass either way.)
+   6. Hover: word to 250 + ghost Hand toward crest: HALF. Ghost seat ring around CHOIR: DONE and
+      beautiful — amber (106,82,39; R/G 1.29, G/B 2.1), ring top y667-674 / bottom y729-734, clearly
+      visible in crop. Spoke x662-665 y644-657 brightens 153 -> 188 but reads warm bone (188,176,151),
+      not the asked 40% amber arm. Word: NOT — Choir row identical in both shots (row y586 px-equal;
+      brightest glyph px 199 at 80,577 in both; box x75-210 y562-582 mean 26.7 both). Spine also
+      static (x39 y560-585 px-equal).
+   7. Foot void / RELATIONS legend: NOT. Row y950 x1050-1850 reads 17-56 (glass + faint truss);
+      RELATIONS · 5 not moved, column not pulled up.
+
+4. RANKED FIXES (the one structural-law item first, then craft)
+   1. Crest standing-track fills (Vael track x780-810 y608-612; Reach track x812-818 y474-486):
+      below-neutral standing still fills bone. Fill Vael/Reach tracks in --dp-danger at .8 and any
+      above-accepted (TRUSTED+) fill in amber-dim, per §6 "red through bone to amber". This is the
+      last ORRERY-letter violation on the tab.
+   2. Vael chord bead (~757,617, crestOrbit): bead overlaps the track tip (~777,610). End the chord
+      ~8 px short so the bead sits clear of the track, as station3 fix 4 asked.
+   3. Hover word lift (POWERS list, Ascendant Choir row x75-230 y575-592): hovered word stays 199.
+      Lift it to 250 with the row tick, completing station3 fix 6.
+   4. Ghost arm hue (spoke x662-665 y644-658): hover brightens bone 153 -> 188. Tint the ghost spoke
+      amber (40% #f2b950 over the spoke) so arm and seat ring read as one Hand preview.
+   5. Foot void (1020-1880 x 920-990, still 17-56 lum glass): move RELATIONS · 5 there as the chord
+      legend (5 beads with names), or pull the standing column up 40 px.
+
+5. MEMORABLE: the ghost ring is a preview with no payoff — committing the crest should feel like a
+   coronation: ring flash, beads travelling out along the re-drawn chords. Nothing here attempts that yet.
+
+6. LANDMARKS (1920, for the next critic)
+   Sun centre (663,541), disc r~54 (edge x609/717, y487/595). Outer band r~77: body 76-80, cores
+   115-161, glass 6-8. Inner band r~63: 5 px, 71/121/120/72, skirts 38-39. Orbit band (row 538):
+   70/133/155/70/70 on 9 (band 2.11:1). Crest track (x830,y548-552): 66/89/148/95/67 on 8 (~2.0:1).
+   POWERS spine (x36-42,y500): 67/68/156/68/67 on 8-9 (2.02:1). Standing scale (x1400,y658-665):
+   104/core 142-163/70 on 14-15 (2.05:1). 1280: tiers stagger HATED/DISLIKED/NEUTRAL/ACCEPTED/ALLIED/
+   HERO upper, HOSTILE/TRUSTED lower; SWORN starts x623; 1920 single row unchanged.
+
+7. OWNER CRITERIA
+   (a) PASS. Every instrument carries body at >= 2:1 against the glass: outer sun ~2.3-2.4:1, inner
+       sun ~2.2:1, orbit 2.11:1, crest tracks ~2.0:1, standing scale 2.05:1, POWERS spine 2.02:1 — all
+       with 2 px lit cores over 5-7 px bands. No hairline-only element and no generic web furniture
+       remain on this tab. (Sub-2:1 pixels exist only as 1 px AA skirts on diagonal ring arcs.)
+   (b) PASS. Signature, unchanged: turn the orbit to a crest and its relation chords draw from the
+       sun — red to rivals, bone to allies — with beads; no other tab does this. The hover ghost
+       (amber seat ring previewing the orbit from the list) strengthens it. Word lift + amber arm
+       (fixes 3-4) would make the preview complete.

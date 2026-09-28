@@ -1,0 +1,253 @@
+WAVE 2 AUDIT CRITIC — five ORRERY surfaces vs the 8.0 bar
+Critic: wave2 audit critic. Stills opened with own eyes (1920 + 1280 each).
+Scoring law: design/frontend/review/CRITIC_BRIEF.md. PASS = overall >= 8.0 AND no axis < 7.0
+AND owner (a) band-weight/generic-element test AND owner (b) signature interaction.
+Axes: Composition / Hierarchy / Legibility / ORRERY fidelity / Craft-detail / Interaction clarity.
+Palette law checked on every surface: one amber Hand + one amber Lamp Key; bone rgb(236 230 216)
+rest light; ice rgb(223 238 255) motion-only; red threat-only; 4.5:1; >=12px; reduced-motion keeps
+info; no key-cap chrome (dotted words current law); bands >=2:1 vs glass or they are wires.
+
+Sources: src/ui/station/screens/shipworks.js (+ styles/station.css), src/ui/screens/range.js,
+src/ui/screens/automationPanel.js, src/ui/screens/replay.js, src/ui/screens/clips.js.
+Px below are in the named shot's own pixels. 1280 shots are 1280x720, 1920 shots are 1920x1080.
+
+================================================================================
+1. SHIP (my ship / Hitch fit screen) — 6.9 — FAIL (fixes owed, no rebuild)
+================================================================================
+Axes: C 7.5 / H 7.5 / L 6.5 / O 6.0 / D 7.0 / I 7.0.
+1920 is the closest thing in Wave 2 to an A-list screen: display title, handling prose, hull with
+leader callouts, stat band, hero readings, right systems rail. It fails on 1280 breakage plus
+ORRERY-fidelity gaps, not on ambition.
+
+Verified with own eyes (1280): CONFIRMED slot-label/prose overlap — the handling prose
+(x~300-460, y~95-270) collides with the Weapon/Cargo/Mining/Utility chips (x~425-510, y~95-275);
+glyphs touch. CONFIRMED bottom stat rows pushed out of view — Agility y~580 and Inertia y~628
+visible, "Top speed 439" half-clipped at y~672-690, Brake + BUILDS + SAVE FIT below the 720 fold.
+Right-rail helper ("Choose a system...") also clipped mid-line at y~625-640.
+
+Owner (a) FAIL: (1) the seven slot chips (1920 x~780-1090, y~335-520) are black filled boxes with
+white text — generic chips, not leader callouts; (2) the systems wheel (1920 x~1610-1770,
+y~130-235) is a near-black disc with ~9px labels — invisible instrument, hairline-only; (3) the
+handling bars (1920 x~355-580, y~728-880) are thin rules whose lit portion must be measured at
+>=2:1 vs glass or thickened — eyeball says the unlit track passes as scale, the fill is fine, but
+the wheel fails outright. Owner (b) HALF: signature is named — "pick a slot on the hull, preview
+compatible hardware" (SELECT A SLOT strip) — and it IS distinct per-screen, but the still shows no
+selection state, no bead/arm on the chosen slot, no preview delta; not yet memorable.
+
+Palette: amber is scattered, not law-abiding — ACTIVE (top-left), TOP SPEED label, S1/S2 region,
+wheel labels? No single Hand arm and no single amber Lamp Key identifiable. SAVE FIT (1920
+x~315-455, y~915-950) and DOCK TO EXTEND (right rail foot) are dark chips; one of them must become
+the Lamp Key. No red seen (good — nothing here is threat). Bone/ice discipline OK on readings.
+
+RANKED FIXES (shipworks.js / station.css):
+S1. 1280 overlap (P0, layout): prose column vs slot chips, 1280 x~300-510 y~95-275. Give the prose
+    max-width ~200px ending by x~300 AND clamp the callout stack to x>=560 at <=1366 widths (or move
+    left-stack chips right of the hull centerline). Re-shoot 1280: zero glyph intersections.
+S2. 1280 fold (P0): stat block 1280 y~560-720+. Compress hero readings + handling bars into a
+    two-column band (Agility/Inertia | Top speed/Brake side by side) so Brake + SAVE FIT sit above
+    y~700 at 1280. Alternatively cap prose height and let the stat band start by y~480.
+S3. Slot chips -> Leader Callouts (ORRERY #7): unbox the seven chips — bone label + OPEN/size line
+    on glass, elbowed 45° leader to the hull dot, chosen slot gets the amber bead + arm (that arm IS
+    the Hand per ruling; right rail rows stay bone). Files: shipworks.js callout renderer, station.css.
+S4. Systems wheel: relight or remove. Either give it a >=2:1 bone band + tick ring + amber Hand to
+    the selected system with >=12px labels, or delete the disc and let the right rail be a Ladder
+    (#9) with spine + ticks + light cursor. A dead black disc must not ship.
+S5. Lamp Key: make SAVE FIT (or DOCK TO EXTEND if that is the commit verb) the ONE amber Lamp Key
+    — amber field, dark ink, 45° cut, sheen. Demote ACTIVE badge and TOP SPEED label to bone.
+S6. Right rail rows (1920 x~1545-1835, y~330-690): add the ladder spine + ticks; chosen row gets
+    bead + arm. Kill the hairline row dividers if they read as box edges.
+S7. Contrast/type sweep: wheel labels and "0/1 fitted" sub-lines are ~9-11px — raise to >=12px and
+    run ui-contrast; every reading >=4.5:1 on composited pixels.
+Memorable if: selecting a slot swung an amber arm from the wheel to the hull point and the stat
+ghosts showed the delta live — nothing here attempts that yet.
+
+================================================================================
+2. RANGE (flight drill room) — 5.8 — FAIL (structural fixes owed)
+================================================================================
+Axes: C 5.5 / H 6.5 / L 7.5 / O 4.5 / D 5.0 / I 6.0.
+Type hierarchy is confident (huge Archivo title, clear sub-copy, 0/9 counter), but the hero
+instrument is unlawful and half the screen is void.
+
+What I see: title + sub (1920 y~95-230), AGAIN / TRY IT EMPTY / NEXT RULE dark chips (y~243-272),
+a big bordered rectangle (1920 x~62-1855, y~330-718) holding the gate diagram (dashed arrow left,
+four vertical gate hairlines at x~600/920/1290/1660 with small amber dots 1-4, a flat grey polygon
+x~845-1015 y~465-600, BRUISER marker x~1190-1260 y~470-520), then the rule rail as two rows of
+underlined words (y~795-890) and RULES/BESTIARY/CLOSE chips (y~935-965). 1280 mirrors it; bottom
+third empty black in both.
+
+Owner (a) FAIL: (1) the hero is a bordered rectangle — ORRERY forbids bordered boxes absolutely;
+(2) the four gate lines are 1px hairlines with no bloom/ticks/weight — wires, not bands, and must
+measure >=2:1 or be rebuilt; (3) the grey polygon is flat placeholder fill, not produced art;
+(4) six dark chips (AGAIN/TRY IT EMPTY/NEXT RULE/RULES/BESTIARY/CLOSE) are key-cap chrome —
+current law is dotted words + one Lamp Key. Owner (b) FAIL as shown: the signature SHOULD be the
+gate-run itself (fly the rehearsal, live progress down the course), but the still shows a static
+diagram with no run state, no progress beam, no timer — a picture of the drill, not the drill.
+
+Palette: amber dots x4 + amber chosen-rule underline + amber BRUISER glyph = ~6 ambers, no Hand,
+no Lamp Key. NEXT RULE (the commit verb: run it) must be the Lamp Key; gate dots go bone with ONE
+amber bead riding the active gate. No red (correct).
+
+RANKED FIXES (range.js + its stylesheet):
+R1. Unbox the hero: delete the rectangle border (all four edges, both shots). Put the course on
+    borderless glass with corner ticks (ORRERY #12) or float it over the world with DOF.
+R2. Gates -> Scales (#8): each gate line becomes a ruled scale with major/minor ticks and a value
+    cursor; bone band >=2:1 with bloom geometry (4-6px under-stroke, no live filters in flight
+    contexts). Amber bead ONLY on the active gate; cleared gates get a ghost tick, not amber dots.
+R3. Progress beam (#6): draw the flown path as a Beam from the dashed arrowhead to the active gate
+    with a travelling ice pulse while running; frozen bone at rest. This is the missing signature
+    made visible.
+R4. Keys: NEXT RULE -> amber Lamp Key (45° cut, sheen). AGAIN / TRY IT EMPTY / RULES / BESTIARY /
+    CLOSE -> dotted words. No dark chips remain.
+R5. Rule rail -> Ladder (#9): one vertical or horizontal scale with spine + ticks + light cursor on
+    the chosen rule; the amber underline becomes the rail cursor. Kills the "row of links" read.
+R6. Polygon: replace flat grey fill with the produced rock render or the run hull's silhouette;
+    until art exists, a bone ring + tick scale around the obstacle reads intentional, grey fill does
+    not. BRUISER marker keeps bone; amber glyph -> bone (amber is the Hand's alone).
+R7. Fill the void: bottom half (1920 y~830-1080) needs the run instrument — best-time Counter,
+    progress arc (GATE n/4 as Arc Gauge), or the rule dossier unfolding from the chosen rule. A
+    drill room must not be 40% empty black.
+Memorable if: the course drew itself as a beam when you pressed the Lamp Key and your ghost's line
+hung in the air behind you — a rehearsal you can see.
+
+================================================================================
+3. AUTOMATION (passive-income empire) — 6.1 — FAIL (de-card + fold fixes owed)
+================================================================================
+Axes: C 6.0 / H 7.0 / L 7.5 / O 4.0 / D 6.0 / I 6.0.
+Information architecture is sound (ops board -> deployed -> purchase tiers, stats strip), copy is
+clear, and PLOT HELIOS SHIPWORKS (1920 x~525-770, y~440-480) is a genuine amber Lamp Key. But the
+screen is a generic web app in a dark theme: cards, tabs, progress bar, chips.
+
+Verified with own eyes: CONFIRMED 1280 scrolls — MK1 visible (y~585-650), MK2/MK3 tiers entirely
+below the 720 fold; at 1920 all three tiers fit (panel x~405-1515, y~140-975).
+
+Owner (a) FAIL — generic inventory: (1) outer panel is a hard-edged card on a blurred backdrop;
+(2) OPERATIONS BOARD inner card with amber left border (1920 x~425-800, y~305-500) is a card with
+an accent bar — stock admin UI; (3) DRONES/TRADERS/OUTPOSTS/FLEET (y~250-270) are underline tabs —
+stock; (4) PASSIVE bar (y~205-218) is a flat progress bar — stock; (5) grey info strip ("No drones
+deployed...", y~560-605) is a boxed notice; (6) three dark RESEARCH chips are key-cap chrome. What
+each needs: panel -> borderless glass w/ corner ticks; ops board -> dossier unfolding from the
+rail (Unfold #24) with a beam to the plotted destination; tabs -> arc rail with the Hand;
+passive bar -> Arc Gauge + rolling Counter; info strip -> leader-note line; chips -> dotted words.
+
+Owner (b) FAIL: no signature interaction. This screen's mini-app should be "conduct the machine" —
+a living flow-map of assets -> outposts -> income with pulses you can watch and throttle. What
+ships is a shop list with disabled buttons. Nothing here is creative or distinct per-screen.
+
+Palette: ambers = title dot + "0 cr/min" + ops-board left border + Lamp Key = 4. Demote title dot
+and border to bone; keep "0 cr/min" bone-ice as a reading; Lamp Key stays the one amber verb; the
+tab rail's chosen item gets the Hand (arm ruling). No red (correct). CLOSE chip -> dotted word.
+
+RANKED FIXES (automationPanel.js + its stylesheet):
+A1. 1280 fold (P0): MK2/MK3 below 720. Compress tier rows to ~90px each (one line of stats, helper
+    on expand) or move tiers into a Ladder with spine so all three + headers fit 140-700 at 1280.
+A2. De-card the panel: remove outer card edges -> Glass #12 (tint + blur, gradient-dissolved edges,
+    corner ticks). Same for ops-board inner card and grey info strip — one glass surface, not three.
+A3. Tabs -> rail: DRONES/TRADERS/OUTPOSTS/FLEET become stations on an arc/ring rail with the amber
+    Hand on the chosen one; bone dotted words for the rest.
+A4. Passive bar -> Arc Gauge (#3) with Counter (#5): "0 -> 113 cr/min" as a gauge + rolling number,
+    ghost delta showing headroom. Kill the flat bar.
+A5. Chips -> dotted words: RESEARCH + L-UTILITY HULL / RESEARCH DRONE SWARM / RESEARCH AUTONOMOUS
+    FLEETS and CLOSE become dotted words (disabled = 1px bone outline of the cut shape per law).
+A6. Ops board: PLOT HELIOS SHIPWORKS keeps Lamp Key status; add the route Beam from here to the
+    plotted berth so the commit has a visible consequence (beam = the relationship).
+A7. Signature seed (to pass (b) next round): an asset-flow strip — owned drones/traders/outposts as
+    node glyphs with ice flow pulses sized by cr/min into the purse Counter. Even static in a still
+    (pulses frozen mid-beam), it makes the screen a machine, not a list.
+Memorable if: the income had a visible pulse — light physically travelling from each asset into
+your purse, faster when the machine is healthy.
+
+================================================================================
+4. REPLAY — 2.4 — FAIL — BUILD BRIEF (surface effectively unbuilt)
+================================================================================
+Axes: C 2.0 / H 3.0 / L 6.0 / O 1.5 / D 2.0 / I 2.0.
+What I see (both shots): REPLAY title (1920 y~100-165), "No replay recorded yet", amber "Exit"
+text (y~275-295), bottom hint "Fly for a while, then pause and open Replay." (y~1045-1060), over
+a dark 3D backdrop (ship on rock, planet). No instrument, no timeline, no transport, no Hand, no
+Lamp Key. Confirmed near-empty. The plumbing exists (replay.js resolves a 30s input-tape
+recording) but there is no interface on it. Scoring detail is pointless; build brief follows.
+
+Owner (a): nothing to weigh — fails by absence. Owner (b): nothing to do — fails by absence.
+
+--- BUILD BRIEF: REPLAY — the instrument is the TAPE ---
+Hero instrument: a 30-second Tracing-Beam timeline — the input tape drawn as a horizontal beam
+(scale with tick marks every 5s, minor ticks every 1s) across the lower third, floating over the
+held world (photo-mode presentation, HUD hidden, world DOF). Event ticks on the scale mark what
+the tape holds: stunt tricks (named glyph tick), kills (red tick — threat channel's only other
+use, earned), damage taken, boost windows. The playhead IS the Hand: an amber arm riding the scale
+with spring overshoot when scrubbed or when playback crosses an event.
+Readings: elapsed/total as thin Archivo Counter numerals (96px class, bone) top-right; seed +
+tick count as small codes (Spline Sans Mono, the one mono allowance) beneath.
+Transport: PLAY/PAUSE is the Lamp Key (amber, 45° cut) centered under the tape; step-frame and
+speed (1x/0.25x) are dotted words flanking it; Exit is a dotted word top-left, never bare amber
+text. Scrub = drag the playhead along the scale (pointer) or arrow keys; gamepad shoulder steps
+between event ticks — THAT is the signature: "ride the tape," no other screen scrubs time.
+Empty state (the shot we have): the SAME instrument, dormant — unlit bone scale with ghost tick
+marks, playhead parked at 0, one line of copy where events will be, and the Lamp Key reading
+FLY TO RECORD (commits to closing + unpausing into flight). An empty Replay must still look like
+an instrument asleep, not a title card. Never an empty black screen again.
+Motion: arrival per ORRERY §3.5 (rings/scales tick in, numerals roll, Hand swings to playhead);
+reduced-motion: full timeline rendered instantly, pulses stopped, seeks instant, all info kept.
+Palette: bone scale + ticks, ONE amber playhead-Hand, ONE amber Lamp Key, ice ONLY in the playback
+pulse travelling the beam, red ONLY on kill/damage ticks. Bands >=2:1. Type >=12px except the
+mono codes (>=11px codes tolerated, keep 12). Contrast >=4.5:1 on composited pixels.
+Builder files: src/ui/screens/replay.js view + its stylesheet, composing src/ui/orrery/
+(Scale, Beam, Counter, Lamp Key, layout solver for event labels). Screenshot gate: populated tape
++ dormant tape, 1920 and 1280, no overlap, nothing below the fold.
+
+================================================================================
+5. CLIPS — 2.4 — FAIL — BUILD BRIEF (surface effectively unbuilt)
+================================================================================
+Axes: C 2.0 / H 3.0 / L 6.0 / O 1.5 / D 2.0 / I 2.0.
+What I see (both shots): CLIPS title, "0 clips", amber "Exit" text, bottom hint ("Land a named
+stunt or a kill, then open Clips."), same dark 3D backdrop. No rail, no filmstrip, no windows, no
+export action visible, no Hand, no Lamp Key. Confirmed near-empty. Plumbing exists (clips.js +
+clip director + export encoders) with no interface. Build brief follows.
+
+Owner (a): fails by absence. Owner (b): fails by absence.
+
+--- BUILD BRIEF: CLIPS — the instrument is the REEL ---
+Hero instrument: the reel — rated moments riding a curved rail (Orbit Carousel #19 / filmstrip on
+a curved rail per ORRERY §6 Save/Load grammar) across the mid-screen, over the held world. Each
+clip is a Tilt Plate (#20): title-card art (or first-frame raster where frames exist), name
+(trick/kill label) as Archivo display, rating as an Arc Gauge (#3) on the plate's corner, window
+bounds (t-x s) as a Beam segment (#6) under the plate showing where it sits in the 30s tape. The
+chosen plate comes forward, others recede and dim; the Hand points at the chosen plate.
+Readings: clip count + total runtime as Counters; each window's bounds as thin numerals.
+Actions: EXPORT is the Lamp Key (amber, 45° cut, Hold Ring where overwrite is destructive);
+PLAY-IN-REPLAY crosses to the Replay tape at the window (dotted word); DELETE is a dotted word
+with hold-to-confirm; Exit dotted word top-left. Export format (GIF/MP4) is a small dial with the
+Hand, not a dropdown.
+Signature interaction — "pull a moment open": drag a clip's window edges along its beam segment to
+re-bound the window (trim in/out points), with the held world behind previewing the edge frame.
+No other screen trims time; that is this mini-app's creative act. Keyboard: [ / ] nudge bounds.
+Empty state (the shot we have): the SAME rail, dormant — three ghost plates (wire outlines WITH
+>=2:1 bone bands + produced ghost art, not hairlines) showing the shapes of moments to come
+("a stunt", "a kill", "a save"), rail cursor parked, Lamp Key reading FLY TO MAKE ONE. Instrument
+asleep, never a title card.
+Motion: plates stagger in (#25), rail settles with spring, Hand swings to chosen; reduced-motion:
+full rail instantly, no tilt/parallax (plates flat, info identical), trims instant.
+Palette: bone rail/plates/rings, ONE amber Hand on the chosen plate, ONE amber EXPORT Lamp Key,
+ice ONLY in the window-beam pulse and the trim preview link, red ONLY on kill-plate rating arcs
+(hostileerytorial? no — kills are player triumphs: keep red OFF clips entirely unless the clip
+IS a death; default bone/amber). Bands >=2:1, type >=12px, 4.5:1, dotted words for all secondary
+verbs. No chips, no cards, no dropdowns.
+Builder files: src/ui/screens/clips.js view (+ clipExport.js bindings) + its stylesheet,
+composing src/ui/orrery/ (carousel, tilt, arc gauge, beam, lamp key, counter). Screenshot gate:
+populated reel (3+ clips) + dormant reel, 1920 and 1280, rail fully above the fold.
+
+================================================================================
+CROSS-SURFACE LAWS OWED (all five)
+================================================================================
+- Key-cap chrome purge: every dark filled chip that is not the Lamp Key becomes a dotted word
+  (range x6, automation x5, ship x2, replay/clips Exit). One amber Lamp Key per screen, period.
+- Amber audit: exactly one Hand + one Lamp Key per screen; everything else amber today (dots,
+  badges, borders, glyphs, labels) goes bone or ice-by-rule.
+- 1280 is a gate, not a shrink: ship and automation both break at 1280x720 (overlap / below-fold).
+  Every builder re-shoots 1280 and proves zero overlap + nothing structural below y=700.
+- Bands >=2:1: wheel (ship), gate lines (range), ghost plates (clips) must be measured on pixels,
+  not eyeballed; hairline-only = wire = owner-(a) fail.
+- Reduced-motion: arrival choreography resolves instantly with all info kept; verify per screen.
+
+Memorable-line summary: ship needs its slot-pick alive; range needs the run made visible; automation
+needs the machine's pulse; replay needs the tape; clips needs the reel. None may ship as a title
+card or a web form.
