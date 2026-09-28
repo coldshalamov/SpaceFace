@@ -417,8 +417,15 @@ function assertFrameWhitelist(frame) {
     assertExactKeys(contact, [
       'alive', 'attachmentId', 'classification', 'confidence', 'disabled', 'exposed', 'id', 'kind',
       'cargoBand', 'hostile', 'massClass', 'mobilityBand', 'objectiveValue', 'operationalMassBand',
-      'ownedBySelf', 'ownerId', 'pos', 'radius', 'sourceSocketId', 'tags', 'targetId',
+      'ownedBySelf', 'ownerId', 'planarRadius', 'pos', 'radius', 'sourceSocketId', 'tags', 'targetId',
       'targetSocketId', 'team', 'tetherabilityBand', 'tethered', 'threat', 'valid', 'vel', 'visible',
+      // `planarRadius` is the MEASURED steering clearance - the radius the collider physics
+      // actually builds, which differs from the gameplay `radius` for a fixed solid carrying a
+      // measured planar skin (aiPorts.steeringPlanarRadius -> modelTruthPlanarRadius). maneuver.js
+      // bodyRadius() reads exactly this field, so it is the AI's own steering contract, not a leak
+      // of entity internals: it is a number, it is derived from published model-truth data, and
+      // withholding it would make every AI ship steer by the wrong radius. It is still bounded by
+      // this whitelist - any NEW key on a contact still fails the row.
     ], 'SensorFrame.contact');
     assertExactKeys(contact.pos, ['x', 'z'], 'SensorFrame.contact.pos');
     assertExactKeys(contact.vel, ['x', 'z'], 'SensorFrame.contact.vel');
