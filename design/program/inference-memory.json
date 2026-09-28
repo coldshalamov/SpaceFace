@@ -74,32 +74,6 @@
   ],
   "units": [
     {
-      "id": "inf-060-refit-controller-focus",
-      "date": "2026-09-21",
-      "wf": "WF-14",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "The Crucible refit answers a controller: rebuilds restore focus and the per-hardpoint chosen spare instead of resetting both, focus moves scroll the row into view, keyboard Up/Down walk the rows, and compare/buy/decline/resume work pad-only or keyboard-only with the owner still gating every refusal.",
-      "fingerprint": "verb=focus,subject=refit-controller-path,sector=crucible,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "07dd7c6be",
-      "verification": "focused_green"
-    },
-    {
-      "id": "endgame-preoffer-gate-card",
-      "date": "2026-09-21",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Mission log pre-offer Deep Reach card taught the retired universal ending gate (100k net worth + 50 branch standing + capital/claim/outpost). Now drives from snapshotEndingFacts: the live shared gate (Deep Reach operation OR ledger custody + 3 career-evidence kinds, Ash Cache desk) with real kind counts, gate-state meta, and a star-map handoff to Ash Cache. Closes the endings packet's named report-only residual. m5-story-public-route 9/9 (3 new), endings family 39/39; baseline 12/15 with the same 3 documented foreign reds.",
-      "fingerprint": "verb=repair,subject=endgame-guidance,sector=ashfall_reach,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "036cf6445",
-      "verification": "focused_green"
-    },
-    {
       "id": "wreck-cargo-residue-pools",
       "date": "2026-09-22",
       "wf": "WF-06",
@@ -1644,6 +1618,19 @@
       "references": [],
       "integration": "live",
       "commit": "c062d7ca3",
+      "verification": "focused_green"
+    },
+    {
+      "id": "dart-shepherd-demand-ambush",
+      "date": "2026-09-28",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A Reach corsair now runs a pack of fused detonator darts on a leash through the ambush lanes: pay the weigh-off, run, or meet three-plus kamikaze bombs whose blasts ignore the roster — kill or shove one inside the pack and the formation chains.",
+      "fingerprint": "verb=shepherd,subject=detonator-dart-pack,sector=ambush-lanes,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "b757bfaf2",
       "verification": "focused_green"
     }
   ],
