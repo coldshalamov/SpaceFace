@@ -73,7 +73,11 @@ function runValidate(validateArgs) {
   };
 
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-  process.exit(validation.ok ? 0 : 1);
+  // exitCode, not process.exit: stdout to a pipe is ASYNC on POSIX, and process.exit abandons
+  // the still-queued remainder of a >sndbuf payload — the captured stream then cuts/splices
+  // mid-JSON (the CI 'Expected double-quoted property name' corruption in check-sg05-runtime /
+  // check-phase0-slice-contract). Natural exit drains the write first. See also runLab below.
+  process.exitCode = validation.ok ? 0 : 1;
 }
 
 function runValidateScenario(scenarioArgs) {
@@ -97,7 +101,7 @@ function runValidateScenario(scenarioArgs) {
   };
   if (!validation.ok) result.stderr = validation.issues.map(formatScenarioIssue).join('\n');
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-  process.exit(validation.ok ? 0 : 1);
+  process.exitCode = validation.ok ? 0 : 1;
 }
 
 function runValidateAsset(assetArgs) {
@@ -111,7 +115,7 @@ function runValidateAsset(assetArgs) {
     result: validation,
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-  process.exit(validation.ok ? 0 : 1);
+  process.exitCode = validation.ok ? 0 : 1;
 }
 
 function runSimCommand(cliCommand, simCommand, simArgs, extra = {}) {
@@ -135,7 +139,7 @@ function runSimCommand(cliCommand, simCommand, simArgs, extra = {}) {
   if (!parsed && child.stdout) result.stdout = child.stdout.trim();
   if (child.stderr) result.stderr = child.stderr.trim();
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-  process.exit(ok ? 0 : (child.status || 1));
+  process.exitCode = ok ? 0 : (child.status || 1);
 }
 
 function normalizeScenarioOrTapeArgs(rawArgs) {
