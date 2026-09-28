@@ -194,7 +194,15 @@ test('Ceres/Ambush theft outside the station ring uses ceresDistressJurisdiction
   assert.equal(accepted[0].kind, 'payload_theft');
   assert.equal(accepted[0].validatedWitnessedTheft, true);
   assert.equal(h.state.player.heat, THEFT_HEAT);
-  assert.equal(h.state.entityList.length, before, 'reportIncident must not spawn a patrol');
+  // The one legitimate spawn is the BOUNTY-tier warrant hunter — PQ-151 posts a contract hunter at
+  // a reserve arrival point (never on the scene), mission-tagged wanted_warrant, not a
+  // jurisdictional patrol. Any other spawn here is the fake-responder class this clause guards.
+  const spawned = h.state.entityList.slice(before);
+  assert.equal(spawned.length, 1, 'only the wanted-warrant hunter may spawn on a theft receipt');
+  assert.equal(spawned[0].data && spawned[0].data.missionTag, 'wanted_warrant',
+    'the spawned entity must be the warrant hunter, not a patrol');
+  assert.notEqual(spawned[0].data.ai && spawned[0].data.ai.motive, 'law_enforcement',
+    'no lawful responder may materialize');
   assert.deepEqual(Object.keys(h.state.lawSecurity.incidents || {}), [],
     'intake must not open the dispatching incident map');
 });
