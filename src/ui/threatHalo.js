@@ -1,4 +1,5 @@
 import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
+import { countermeasureReadiness } from '../systems/countermeasures.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import {
   OCCUPATIONAL_ROLE_IDS,
@@ -183,6 +184,39 @@ const ARC_SPAN_PX = 54;
 const ARC_DEPTH_PX = 18;
 const MISSILE_SIZE_PX = 22;
 
+// The countermeasure read (INF: the defense answer to the inbound-missile telegraph must be
+// readable at the threat itself, not behind a transient toast). It rides the existing missile
+// slots in this file's own token language: a thin currentColor ring (the same --k-signal amber
+// the chevron uses) that is the socket when full and the recharge sweep while refilling, plus a
+// one-word duration read while an effect is live. The extra along-edge room keeps the placement
+// solver honest about the word's footprint.
+const CM_LABEL_ALONG_PX = 64;
+const CM_RING_RADIUS_PX = 13;
+const CM_RING_CIRCUMFERENCE = 2 * Math.PI * CM_RING_RADIUS_PX;
+const CM_EFFECT_WORD = Object.freeze({ chaff: 'CHAFF', decoy: 'DECOY', ecm: 'JAMMING' });
+
+/**
+ * Pure slot-state for the countermeasure read (the DOM applier consumes this; exported so the
+ * focused test can drive the exact numbers). `readiness` is countermeasureReadiness(player)
+ * from systems/countermeasures.js; `threatPresent` is true while an inbound seeker holds a halo
+ * slot. Returns null when the read must not exist (no CM fitted, or no threat) — a contextual
+ * instrument, never a standing lamp — else { mode: 'cooling'|'effect'|'ready', frac, label }.
+ * frac is the recharge fill (1 = ready); label carries the live effect word + seconds ceiling.
+ */
+export function countermeasureSlotState(readiness, threatPresent) {
+  if (!readiness || !threatPresent) return null;
+  const cooldownS = Number(readiness.cooldownS) || 0;
+  const cooldownT = Math.min(Math.max(Number(readiness.cooldownT) || 0, 0), cooldownS > 0 ? cooldownS : Infinity);
+  const effectT = Math.max(Number(readiness.effectT) || 0, 0);
+  const frac = cooldownS > 0 ? clamp(1 - cooldownT / cooldownS, 0, 1) : 1;
+  if (effectT > 0) {
+    const secs = Math.max(1, Math.ceil(effectT - 1e-9));
+    return { mode: 'effect', frac, label: `${CM_EFFECT_WORD[readiness.kind] || 'COUNTERMEASURE'} ${secs}s` };
+  }
+  if (cooldownT > 0) return { mode: 'cooling', frac, label: null };
+  return { mode: 'ready', frac: 1, label: null };
+}
+
 const HOSTILE_OPACITY_BASE = 0.55;
 const HOSTILE_OPACITY_MAX = 0.9;
 const HOSTILE_CLOSING_FOR_MAX = 180;
@@ -270,6 +304,60 @@ function buildMissileGlyph() {
     + '</svg>';
 }
 
+// The CM ring rides the chevron: a faint full circle is the socket ("the answer exists"), the
+// stroke refills from empty as the recharge runs (dashoffset driven per tick by the slot state).
+// Same stroke/token language as the chevron itself — currentColor on the --k-signal amber.
+function buildCmRing() {
+  const el = document.createElement('div');
+  el.className = 'sf-threat-halo__cmring';
+  const r = CM_RING_RADIUS_PX;
+  const c = CM_RING_CIRCUMFERENCE.toFixed(2);
+  el.innerHTML = '<svg viewBox="0 0 30 30" width="30" height="30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+    + `<circle cx="15" cy="15" r="${r}" fill="none" stroke="currentColor" stroke-opacity="0.18" stroke-width="2"/>`
+    + `<circle class="sf-threat-halo__cmring-fill" cx="15" cy="15" r="${r}" fill="none" stroke="currentColor"`
+    + ` stroke-opacity="0.8" stroke-width="2" stroke-linecap="round" transform="rotate(-90 15 15)"`
+    + ` stroke-dasharray="${c}" stroke-dashoffset="0"/></svg>`;
+  const s = el.style;
+  s.position = 'absolute';
+  s.left = '50%';
+  s.top = '50%';
+  s.width = '30px';
+  s.height = '30px';
+  s.margin = '-15px 0 0 -15px';
+  s.color = 'var(--k-signal, #e6b478)';
+  s.filter = 'drop-shadow(0 0 6px color-mix(in srgb, var(--k-signal, #e6b478) 80%, transparent))';
+  return el;
+}
+
+// The filled circle inside the ring SVG. Browsers parse the innerHTML above, so this resolves
+// once and caches; the DOM-mock test harness does not parse HTML, so it degrades to null and the
+// test reads the slot's data-cm-frac attribute instead (same number the circle would draw).
+function cmRingCircle(ring) {
+  if (ring._sfCircle !== undefined) return ring._sfCircle;
+  ring._sfCircle = typeof ring.querySelector === 'function'
+    ? ring.querySelector('.sf-threat-halo__cmring-fill')
+    : null;
+  return ring._sfCircle;
+}
+
+// The live-effect word ('JAMMING 4s'): micro-label in the slot's own amber, positioned per edge
+// by applyCountermeasureRead (toward frame center, where the halo owns the band).
+function buildCmLabel() {
+  const el = document.createElement('div');
+  el.className = 'sf-threat-halo__cmlabel';
+  const s = el.style;
+  s.position = 'absolute';
+  s.left = '50%';
+  s.top = '50%';
+  s.display = 'none';
+  s.whiteSpace = 'nowrap';
+  s.fontSize = '8px';
+  s.letterSpacing = '0.08em';
+  s.color = 'var(--k-signal, #e6b478)';
+  s.textShadow = '0 0 6px color-mix(in srgb, var(--k-signal, #e6b478) 80%, transparent)';
+  return el;
+}
+
 function setDisplay(el, visible, mode = 'block') {
   const next = visible ? mode : 'none';
   if (el._sfDisplay === next) return;
@@ -351,6 +439,13 @@ export function createThreatHalo(root, busOrOpts) {
   const missileSlots = new Array(MISSILE_LIMIT);
   for (let i = 0; i < MISSILE_LIMIT; i++) {
     const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--missile', missileGlyph);
+    slot._sfChev = slot.firstChild || null;
+    const cmRing = buildCmRing();
+    slot.appendChild(cmRing);
+    slot._sfCmRing = cmRing;
+    const cmLabel = buildCmLabel();
+    slot.appendChild(cmLabel);
+    slot._sfCmLabel = cmLabel;
     layer.appendChild(slot);
     missileSlots[i] = slot;
   }
@@ -631,7 +726,7 @@ export function createThreatHalo(root, busOrOpts) {
     return false;
   }
 
-  function resolvePlacement(projectedX, projectedY, missile) {
+  function resolvePlacement(projectedX, projectedY, missile, wide) {
     if (!Number.isFinite(projectedX) || !Number.isFinite(projectedY)) return false;
 
     const centerX = viewportW * 0.5;
@@ -656,8 +751,11 @@ export function createThreatHalo(root, busOrOpts) {
     }
 
     const horizontal = edge === EDGE_TOP || edge === EDGE_BOTTOM;
-    const width = missile ? MISSILE_SIZE_PX : (horizontal ? ARC_SPAN_PX : ARC_DEPTH_PX);
-    const height = missile ? MISSILE_SIZE_PX : (horizontal ? ARC_DEPTH_PX : ARC_SPAN_PX);
+    // A live countermeasure read adds the effect word beside the chevron ALONG the edge, so the
+    // occupancy/reserved-rect solver must see that footprint, not just the 22px glyph.
+    const alongGrow = missile && wide ? CM_LABEL_ALONG_PX : 0;
+    const width = missile ? MISSILE_SIZE_PX + (horizontal ? alongGrow : 0) : (horizontal ? ARC_SPAN_PX : ARC_DEPTH_PX);
+    const height = missile ? MISSILE_SIZE_PX + (horizontal ? 0 : alongGrow) : (horizontal ? ARC_DEPTH_PX : ARC_SPAN_PX);
     const halfAlong = horizontal ? width * 0.5 : height * 0.5;
     const halfCross = horizontal ? height * 0.5 : width * 0.5;
 
@@ -1005,7 +1103,55 @@ export function createThreatHalo(root, busOrOpts) {
     sortMissileCandidates();
   }
 
-  function applySlots() {
+  // The effect word sits between the chevron and the screen's center along the edge — the band
+  // toward the corners carries HUD furniture; toward center is where the halo owns space.
+  function cmLabelTransform(edge, along) {
+    const axisMax = (edge === EDGE_LEFT || edge === EDGE_RIGHT) ? viewportH : viewportW;
+    const towardCenter = along * 2 >= axisMax;
+    if (edge === EDGE_TOP || edge === EDGE_BOTTOM) {
+      return towardCenter ? 'translate(calc(-100% - 15px), -50%)' : 'translate(15px, -50%)';
+    }
+    return towardCenter ? 'translate(-50%, calc(-100% - 15px))' : 'translate(-50%, 15px)';
+  }
+
+  // The countermeasure read, applied to one visible missile slot: socket ring (full = the answer
+  // exists, sweeping back from empty while the recharge runs), dimmed chevron while the answer
+  // is unavailable, and the live-effect word with its seconds ceiling. All writes go through the
+  // cached setters so a settled read costs no DOM traffic.
+  function applyCountermeasureRead(slot, cmState, placement) {
+    setAttr(slot, 'data-cm', cmState ? cmState.mode : null);
+    setAttr(slot, 'data-cm-frac', cmState ? cmState.frac.toFixed(2) : null);
+    if (!cmState) {
+      setDisplay(slot._sfCmRing, false);
+      setDisplay(slot._sfCmLabel, false);
+      if (slot._sfChev) setOpacity(slot._sfChev, '1');
+      return;
+    }
+    setDisplay(slot._sfCmRing, true, 'block');
+    const circle = cmRingCircle(slot._sfCmRing);
+    if (circle) {
+      const offset = Math.round(CM_RING_CIRCUMFERENCE * (1 - clamp(cmState.frac, 0, 1)) * 10);
+      if (circle._sfDash !== offset) {
+        circle._sfDash = offset;
+        circle.setAttribute('stroke-dashoffset', (offset / 10).toFixed(1));
+      }
+    }
+    if (slot._sfChev) setOpacity(slot._sfChev, cmState.mode === 'cooling' ? '0.45' : '1');
+    const label = slot._sfCmLabel;
+    if (cmState.mode === 'effect' && cmState.label) {
+      setDisplay(label, true, 'block');
+      if (label.textContent !== cmState.label) label.textContent = cmState.label;
+      const side = cmLabelTransform(placement.edge, placement.along);
+      if (slot._sfCmSide !== side) {
+        slot._sfCmSide = side;
+        label.style.transform = side;
+      }
+    } else {
+      setDisplay(label, false);
+    }
+  }
+
+  function applySlots(cmState) {
     let shown = 0;
 
     for (let i = 0; i < HOSTILE_LIMIT; i++) {
@@ -1046,13 +1192,14 @@ export function createThreatHalo(root, busOrOpts) {
 
     for (let i = 0; i < MISSILE_LIMIT; i++) {
       const slot = missileSlots[i];
-      if (i >= missileCount || !resolvePlacement(missileX[i], missileY[i], true)) {
+      if (i >= missileCount || !resolvePlacement(missileX[i], missileY[i], true, !!cmState)) {
         setDisplay(slot, false);
         continue;
       }
       setDisplay(slot, true, 'block');
       setEdge(slot, placement.edge);
       setHudTransform(slot, placement.x, placement.y);
+      applyCountermeasureRead(slot, cmState, placement);
       setOpacity(slot, '0.92');
       shown++;
     }
@@ -1095,7 +1242,11 @@ export function createThreatHalo(root, busOrOpts) {
       resetOccupancy();
       collectHostiles(player, state, worldToScreen);
       collectMissiles(player, state, worldToScreen);
-      applySlots();
+      // The countermeasure read is bound to the missile slots: it exists only while an inbound
+      // seeker holds a halo slot AND a CM is fitted (countermeasureReadiness → null otherwise),
+      // so it is a contextual instrument over the exact threat the verb answers.
+      const cmState = countermeasureSlotState(countermeasureReadiness(player), missileCount > 0);
+      applySlots(cmState);
     },
     destroy() {
       if (typeof busUnsub === 'function') {

@@ -20,6 +20,11 @@
 // auto-deploy when a missile is locked onto them or within a close threshold. Effects are timed
 // (durationS) and cooldown-gated (cooldownS) — NOT consumable ammo, keeping the equipment loop simple.
 //
+// A refused press is never a silent drop: _tryDeploy emits countermeasure:denied {kind, reason,
+// readyIn} on every denied branch and, for the player, raises the one-voice alert + shared deny
+// cue (the same channels the weapons/mining vents use). Presentation reads live readiness via
+// countermeasureReadiness() — the sim stays the single writer.
+//
 // Integration: reads e.data.fittings + MODULES to find the equipped countermeasure; reads/writes
 // e.data.combat for the cooldown timer + active-effect state; diverts missiles by rewriting their
 // data.targetId to a decoy; jams by zeroing data.turnRate (read by weapons._steerHoming). Pure sim
@@ -335,14 +340,20 @@ export const countermeasures = {
     state.countermeasureRuntime.quietLatched = false;
   },
 
-  // Attempt to deploy the countermeasure on ship e. No-op if no module equipped, on cooldown, or
-  // docked. On success: breaks attacker locks, spawns the timed effect, starts the cooldown, emits
-  // a bus event for VFX.
+  // Attempt to deploy the countermeasure on ship e. Emits countermeasure:denied and returns false
+  // if no module equipped or on cooldown (never a silent drop). On success: breaks attacker locks,
+  // spawns the timed effect, starts the cooldown, emits a bus event for VFX.
   _tryDeploy(e) {
     const eq = equippedCountermeasure(e.data && e.data.fittings);
-    if (!eq) return false;
+    if (!eq) {
+      this._denyDeploy(e, null, 'no_module', 0);
+      return false;
+    }
     const cm = ensureCm(e);
-    if (cm.cooldownT > 0) return false; // not ready
+    if (cm.cooldownT > 0) {
+      this._denyDeploy(e, eq.cm.kind, 'cooldown', cm.cooldownT);
+      return false; // not ready
+    }
     const cfg = eq.cm;
 
     // Break locks: any ship whose combat.lockTarget is THIS ship loses lockProgress (chaff fully,
@@ -384,6 +395,32 @@ export const countermeasures = {
       this.bus.emit('toast', { text: CM_KIND_WORD[cfg.kind] || 'Countermeasure deployed', kind: 'info', ttl: 2 });
     }
     return true;
+  },
+
+  // A refused deploy is a beat the player must hear, never a silent `return false`: the sim event
+  // names the reason (kind + readyIn on cooldown; no_module otherwise) for any listener, and the
+  // player additionally gets the one-voice alert + shared deny cue — the same channels the
+  // weapons vent / mining vent refusals use. AI auto-deploy gates on fittings + cooldown before
+  // calling _tryDeploy, so in practice only the player lands in the denied branches.
+  _denyDeploy(e, kind, reason, readyIn) {
+    this.bus.emit('countermeasure:denied', {
+      schemaVersion: 1,
+      shipId: e.id,
+      kind: kind || null,
+      reason,
+      readyIn: Math.max(0, Number(readyIn) || 0),
+      tick: this.state.tick,
+    });
+    if (e.id !== this.state.playerId) return;
+    this.bus.emit('alert', {
+      key: 'cm-denied',
+      sev: 'warn',
+      text: reason === 'cooldown'
+        ? `COUNTERMEASURE RECHARGING ${Math.ceil(Math.max(0, Number(readyIn) || 0))}s`
+        : 'NO COUNTERMEASURE FITTED',
+      ttl: 1.6,
+    });
+    this.bus.emit('audio:cue', { id: 'ui_deny' });
   },
 
   // Cheap threat check for AI auto-deploy: is any live missile targeting this ship, or is any ship
@@ -473,6 +510,26 @@ export function chaffDecoyPoint(e) {
   return {
     x: px + Math.cos(back) * CHAFF_DECOY_BACK + Math.cos(side) * CHAFF_DECOY_SIDE,
     z: pz + Math.sin(back) * CHAFF_DECOY_BACK + Math.sin(side) * CHAFF_DECOY_SIDE,
+  };
+}
+
+/**
+ * Read-only presentation seam (the countermeasure must not be a silent keypress): the live
+ * readiness of the countermeasure fitted on `entity` — runtime timers plus the module config
+ * they tick against — or null when nothing is fitted. UI reads this each overlay tick; the sim
+ * stays the single writer of e.data.cm.
+ */
+export function countermeasureReadiness(entity) {
+  const data = entity && entity.data;
+  const eq = equippedCountermeasure(data && data.fittings);
+  if (!eq) return null;
+  const cm = data.cm;
+  return {
+    kind: eq.cm.kind,
+    cooldownT: cm ? Math.max(0, Number(cm.cooldownT) || 0) : 0,
+    cooldownS: Number(eq.cm.cooldownS) || 0,
+    effectT: cm ? Math.max(0, Number(cm.effectT) || 0) : 0,
+    durationS: Number(eq.cm.durationS) || 0,
   };
 }
 
