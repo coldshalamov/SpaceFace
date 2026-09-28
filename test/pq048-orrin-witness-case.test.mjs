@@ -248,7 +248,9 @@ test('destroyed recorder remains terminal across reconcile and Continue', () => 
   const terminal = clone(h.state.world.records.byId[record.recordId]);
 
   h.bus.emit('save:loaded');
-  assert.deepEqual(h.state.world.records.byId[record.recordId], terminal,
+  // clone() both sides: JSON drops the symbol-keyed normalize stamp
+  // (spaceface.worldRecord.normalized), which is bookkeeping, not record content.
+  assert.deepEqual(clone(h.state.world.records.byId[record.recordId]), terminal,
     'reconcile cannot overwrite terminal outcome or position');
   assert.equal(h.state.entityList.some((candidate) => candidate.alive
     && candidate.data && candidate.data.worldRecordId === record.recordId), false);

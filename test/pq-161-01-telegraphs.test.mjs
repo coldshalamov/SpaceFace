@@ -372,7 +372,7 @@ async function realDoctrineDeath(combatDoctrineId, playerX, opts = {}) {
 
 test('PQ-161.01: leftover telegraph kinds resolve without invented cues', () => {
   assert.deepEqual([...LEFTOVER_TELEGRAPH_KINDS], [
-    'engine_flare', 'weapon_charge', 'attach_spool', 'wake_mines',
+    'engine_flare', 'weapon_charge', 'attach_spool', 'wake_mines', 'detonator_fuse',
   ]);
   assert.equal(leftoverTelegraphKind({ kind: 'engine_flare' }), 'engine_flare');
   assert.equal(leftoverTelegraphKind({ kind: 'weapon_charge' }), 'weapon_charge');
@@ -380,6 +380,7 @@ test('PQ-161.01: leftover telegraph kinds resolve without invented cues', () => 
   assert.equal(leftoverTelegraphKind({ kind: MINE_TELEGRAPH_CUE }), 'wake_mines');
   assert.equal(leftoverTelegraphKind({ kind: 'transverse_snare' }), 'attach_spool');
   assert.equal(leftoverTelegraphKind({ doctrineId: 'ranged_disengager' }), 'weapon_charge');
+  assert.equal(leftoverTelegraphKind({ doctrineId: 'detonator_run' }), 'detonator_fuse');
   assert.equal(leftoverTelegraphKind({ kind: 'collision' }), null);
   assert.equal(DOCTRINE_TELEGRAPH_TICKS, TELEGRAPH_CUE_TICKS);
   assert.equal(Math.round(TELEGRAPH_CUE_TICKS * TICK_MS), 500, 'a telegraph lead is 500 ms / 30 frames');
