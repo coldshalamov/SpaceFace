@@ -263,7 +263,7 @@ import {
   updateDockingCradle,
   writeDockingCradleGeometry,
 } from './dockingCradle.js';
-import { shipPitchCandidates } from './shipPitchPresentation.js';
+import { pitchPresentationEpoch, shipPitchCandidates } from './shipPitchPresentation.js';
 import { SelectionSigil, resolveSelectionSigil } from './selectionSigil.js';
 import {
   MOMENTUM_SINK_VFX_COLORS,
@@ -1453,6 +1453,12 @@ export const vfx = {
     // Soft-GPU fps not claimed.
     this._statusAttachedQuietEmpty = false;
     this._statusAttachedQuietSeq = -1;
+    // Quiet settled flight: tumble body-language walked shipPitchCandidates every
+    // tick with zero active tumble/thrownTrail. Latch after first empty walk+empty
+    // cadence; wake on pitchPresentationEpoch (tumble can start without
+    // entityIndexVersion bump). Soft-GPU fps not claimed.
+    this._tumbleBodyQuietEmpty = false;
+    this._tumbleBodyQuietEpoch = -1;
     // Quiet settled flight: empty gas pool still paid resolveVfxAccessibilityProfile
     // + setAccessibility + empty update every tick. Latch after first empty observe
     // (liveCount===0 after update publishes 0); wake on liveCount>0 (emit). Soft-GPU
@@ -2355,12 +2361,12 @@ export const vfx = {
     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
     add('heat:changed', (p) => this._onLawHeatChanged(p));
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('save:restoring', () => this._resetRibbonTrails());
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('world:playerRelocated', () => this._resetRibbonTrails());
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
@@ -13661,12 +13667,28 @@ export const vfx = {
    * a separate actual-velocity thrown-body streak.
    */
   _updateTumbleBodyLanguageVfx(dt) {
-    if (!this._scene || !this.state || this.state.mode !== 'flight') return;
+    if (!this._scene || !this.state || this.state.mode !== 'flight') {
+      this._tumbleBodyQuietEmpty = false;
+      return;
+    }
     if (!this._tumbleVfxCd) this._tumbleVfxCd = new Map();
+    // Quiet latch: after first empty shipLike walk + empty cadence, skip until
+    // pitchPresentationEpoch advances (updateShipPitchPresentation wrote active
+    // tumble/thrown/recover). entityIndexVersion alone is unsafe — tumble can
+    // start on an existing ship without an index bump. Soft-GPU fps not claimed.
+    const epoch = pitchPresentationEpoch();
+    // Require empty cadence too — entity death / inactivity walks must still
+    // retire stale cd keys even if presentation has not bumped the epoch.
+    if (this._tumbleBodyQuietEmpty
+      && epoch === this._tumbleBodyQuietEpoch
+      && this._tumbleVfxCd.size === 0) {
+      return;
+    }
     const reduced = this._isReduced();
     const list = shipPitchCandidates(this.state);
     const cd = this._tumbleVfxCd;
     const frameDt = Math.max(0, dt || 0);
+    let anyActive = false;
     for (const e of list) {
       if (!e) continue;
       if (!e.alive || !e.pos || (e.flags && e.flags.docked)) {
@@ -13696,6 +13718,7 @@ export const vfx = {
         cd.delete(e);
         continue;
       }
+      anyActive = true;
       const thrash = plan.thrash;
       const ribbon = plan.ribbon;
       const hullBlur = plan.hullBlur;
@@ -13812,6 +13835,12 @@ export const vfx = {
         const ent = this.state.entities && this.state.entities.get(id);
         if (!ent || !ent.alive || (key && typeof key === 'object' && ent !== key)) cd.delete(key);
       }
+    }
+    if (!anyActive && cd.size === 0) {
+      this._tumbleBodyQuietEmpty = true;
+      this._tumbleBodyQuietEpoch = epoch;
+    } else {
+      this._tumbleBodyQuietEmpty = false;
     }
   },
 
