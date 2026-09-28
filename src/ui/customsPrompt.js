@@ -169,8 +169,10 @@ export const customsPrompt = {
     if (p && p.source === 'dock') return;
     // A customs-weir read is a gate, not a patrol offer: lawSecurity resolves it
     // synchronously through economy.runScan, so SUBMIT/BRIBE/BREAK RANGE would be
-    // three dead verbs on an already-decided scan.
-    if (p && p.source === 'customs_weir') return;
+    // three dead verbs on an already-decided scan. A bolt-resolved read is the same —
+    // the gate already kept what the beam caught. A jump-gate scan resolves the same
+    // way — synchronous, decided before any verb could act.
+    if (p && (p.source === 'customs_weir' || p.source === 'customs_weir_bolt' || p.source === 'jump')) return;
     // Debounce: the same ping inside the window is ONE panel (no double-hail, deterministic).
     const now = state.simTime || 0;
     if ((now - this._last.t) < DEBOUNCE_S) return;

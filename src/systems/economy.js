@@ -355,6 +355,7 @@ const INDUSTRY_INPUT_FULL = 1.0;        // stock/baseEq at which a fed line runs
 const INDUSTRY_OUTPUT_GLUT = 2.4;       // output stock/baseEq above which the line idles
 const INDUSTRY_BIAS_LO = 0.7;           // deterministic per-station tempo band (below)
 const INDUSTRY_BIAS_SPAN = 0.6;
+const INDUSTRY_STARVED_FILL = 0.3;      // input stock/baseEq below which a yard line is starving
 
 const STATION_INDUSTRY_BOOK = (() => {
   const byType = new Map();
@@ -385,6 +386,35 @@ const STATION_INDUSTRY_BOOK = (() => {
   }
   return byType;
 })();
+
+/**
+ * Live starvation read for one station: the hungriest input leg of its tier-eligible industry
+ * book, or null when nothing is starving. Pure — reads the same stock/baseEq fill the industry
+ * tick throttles on, so a posted shortage is the real hopper, not a rolled event.
+ * Returns { jobId, inputId, fill, deficitUnits } with deficitUnits ≈ what restores full feed.
+ */
+export function starvedIndustryNeedFor(stationType, stationTier, market) {
+  const jobs = STATION_INDUSTRY_BOOK.get(stationType);
+  if (!jobs || !market) return null;
+  const tier = Math.max(0, Number(stationTier) || 0);
+  let worst = null;
+  for (const job of jobs) {
+    if (tier < job.stationTier) continue;
+    for (const [cid] of job.inputs) {
+      const entry = market[cid];
+      if (!entry || !(entry.baseEq > 0)) continue;
+      const fill = entry.stock / entry.baseEq;
+      if (!worst || fill < worst.fill) worst = { jobId: job.id, inputId: cid, fill, entry };
+    }
+  }
+  if (!worst || !(worst.fill < INDUSTRY_STARVED_FILL)) return null;
+  return {
+    jobId: worst.jobId,
+    inputId: worst.inputId,
+    fill: worst.fill,
+    deficitUnits: Math.max(1, Math.ceil((INDUSTRY_INPUT_FULL - worst.fill) * worst.entry.baseEq)),
+  };
+}
 
 // ---- price math ---------------------------------------------------------------------------
 export function priceMult(stock, baseEq, elasticity) {
@@ -940,6 +970,12 @@ export const economy = {
       if (!p) return; const side = (p.vol || 0) >= 0 ? 'sell' : 'buy';
       this.applyStockPressure(p.stationId, p.good || p.commodityId, side, Math.abs(p.vol || 0));
     });
+    // Contract cargo lands in the receiving market — a delivered lot is real goods through the
+    // same stock authority as a sale, so relieving a starved yard physically re-feeds its line.
+    bus.on('cargo:delivered', (p) => {
+      if (!p || !p.stationId || !p.commodityId) return;
+      this.applyStockPressure(p.stationId, p.commodityId, 'sell', Math.abs(Number(p.qty) || 0));
+    });
     // Player cargo-ship kill → salvage → sale. Economy remembers the hull and, once those goods
     // are sold, moves the destination price. Missions owns the board opportunity that follows.
     bus.on('entity:killed', (p) => this._openCargoKillChain(p));
@@ -974,6 +1010,9 @@ export const economy = {
     // ---- contraband scanning (jump-gate use / patrol proximity) ---------------------------
     bus.on('jump:start', (p) => this.runScan({ security: this.currentSecurity(), via: p && p.via, source: 'jump' }));
     bus.on('patrol:proximity', (p) => this.runScan(p || {}));
+    // A hull that broke a customs weir unread is a runner — the gate faction's scanners remember
+    // it through the same hot-until record an evaded scan writes.
+    bus.on('customs:weirBolt', (p) => { if (p && p.factionId) this._markFactionGatesHot(p.factionId); });
     bus.on('contraband:bribe', (p) => this.payBribe(p || {}));
 
     // ---- event injection from other systems (missions, combat) ----------------------------
@@ -2648,6 +2687,22 @@ export const economy = {
     }
   },
 
+  /** The scanner's memory record: a faction's gates stay hot on a hull that slipped or broke a
+   *  read until the window decays. Single writer for customsHotUntil so evaded scans and weir
+   *  bolts share one ledger. */
+  _markFactionGatesHot(factionId) {
+    if (!factionId) return;
+    const state = this.state;
+    if (!state || !state.player) return;
+    if (!state.player.customsHotUntil || typeof state.player.customsHotUntil !== 'object') {
+      state.player.customsHotUntil = {};
+    }
+    state.player.customsHotUntil[factionId] = Math.max(
+      Number(state.player.customsHotUntil[factionId]) || 0,
+      (state.simTime || 0) + HOT_DURATION_S,
+    );
+  },
+
   /** Run a scan check against any contraband in the hold. Emits player:scannedByPatrol + (if found)
    *  contraband:scanned + faction:repDelta. Fines via chargeCredits; confiscates cargo. Standing
    *  still funnels through factions.applyRep (the faction:repDelta listener). The scanned event
@@ -2686,15 +2741,7 @@ export const economy = {
     const pScan = scanChance({ security, cloak, hot });
     const roll = this._rng();
     if (roll > pScan) {
-      if (factionId) {
-        if (!state.player.customsHotUntil || typeof state.player.customsHotUntil !== 'object') {
-          state.player.customsHotUntil = {};
-        }
-        state.player.customsHotUntil[factionId] = Math.max(
-          Number(state.player.customsHotUntil[factionId]) || 0,
-          state.simTime + HOT_DURATION_S,
-        );
-      }
+      if (factionId) this._markFactionGatesHot(factionId);
       return { found: false, evaded: true }; // evaded; this faction's gates remember the run
     }
     // CAUGHT — compute fine, confiscate, rep hit

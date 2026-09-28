@@ -481,7 +481,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 74 | PB-ECON-A | SF-106+120 hauler viability re-measure post-D80 + cohort-vs-live reconciliation instrument | PB | OPEN — CHECK pair |
 | 75 | PB-PERF-A | SF-256 one draw path per material family — kill the instancing/direct shader twin (deep-dive 04; ~half the ship-job GPU gate) | PB | OPEN — seam renderer.js |
 | 76 | PB-SLICE-A | SF-286 first victory becomes the first useful wreck — combat→salvage→upgrade loop closes | PB | DONE — bound-wreck pool reattach + classified-mint idempotence fix; 3/3 focused + 116/116 adjacent; receipt SF-286-FIRST-VICTORY-WRECK.md |
-| 77 | PB-SLICE-B | SF-289+290 customs crossing three honest approaches + refinery shortage solved by visible delivery | PB | OPEN — must-share pair |
+| 77 | PB-SLICE-B | SF-289+290 customs crossing three honest approaches + refinery shortage solved by visible delivery | PB | DONE — weir bolt flags unread transits into the hot-ledger + starved-yard feed run re-feeds the real hopper via cargo:delivered→stock; 12/12 focused + 219/219 adjacent runnable; receipt PB-SLICE-B-WEIR-BOLT-STARVED-YARD.md |
 | 78 | PB-SLICE-C | SF-288+292 bad throw creates a recoverable problem + failed robbery becomes pursuit over real cargo | PB | OPEN — must-share pair |
 | 79 | PB-SLICE-D | SF-291+293 same rope proves two careers + heavy enemy becomes temporary terrain | PB | OPEN |
 | 80 | PB-SLICE-E | SF-294+295 quiet return visit reveals what changed + investigation changes the next physical choice | PB | OPEN |

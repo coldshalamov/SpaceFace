@@ -456,8 +456,9 @@ const patrolScan = {
 
   event(d, live, state, name, p) {
     // routed only while this scan is live; a berth-sourced bust belongs to the checkpoint
-    // that docked the player, not to this patrol's open scan script.
-    if (name === 'contrabandScanned' && !(p && p.source === 'dock')) live.data.scan = p;
+    // that docked the player, a weir-bolt bust belongs to the gate that flagged the runner,
+    // and a jump-gate bust belongs to the jump — none is this patrol's own scan result.
+    if (name === 'contrabandScanned' && !(p && (p.source === 'dock' || p.source === 'customs_weir_bolt' || p.source === 'jump'))) live.data.scan = p;
   },
 };
 

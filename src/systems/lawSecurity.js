@@ -2579,6 +2579,12 @@ export const lawSecurity = {
     if (!weir) {
       if (own.customsWeir && own.customsWeir.seen === true) {
         this._emit('customs:weirPresence', { weirId: own.customsWeir.id, inside: false });
+        // Leaving the sector is still leaving the gate: a hull that jumped out mid-visit
+        // unread bolts exactly like one that crossed the corridor's edge.
+        const priorWeir = customsWeirForSector(own.customsWeir.sectorId);
+        if (priorWeir && priorWeir.id === own.customsWeir.id) {
+          this._weirCrossedUnread(priorWeir, own.customsWeir, state);
+        }
       }
       own.customsWeir = null;
       if (this._weirPodDwell) this._weirPodDwell.clear();
@@ -2588,6 +2594,15 @@ export const lawSecurity = {
       ? state.entities.get(state.playerId)
       : null;
     const inside = !!(player && player.pos && pointInsideCustomsWeir(weir, player.pos));
+    // A stale record from a DIFFERENT weir (e.g. jumped Helios→Tethys mid-visit) is still a
+    // hull that left that gate — flag the old gate's booth before this sector's takes over.
+    if (own.customsWeir && own.customsWeir.id !== weir.id && own.customsWeir.seen === true) {
+      this._emit('customs:weirPresence', { weirId: own.customsWeir.id, inside: false });
+      const priorWeir = customsWeirForSector(own.customsWeir.sectorId);
+      if (priorWeir && priorWeir.id === own.customsWeir.id) {
+        this._weirCrossedUnread(priorWeir, own.customsWeir, state);
+      }
+    }
     const prior = own.customsWeir && own.customsWeir.id === weir.id ? own.customsWeir : null;
     const wasSeen = !!(prior && prior.seen === true);
     // The read survives across ticks only while this visit continues — leaving
@@ -2605,10 +2620,53 @@ export const lawSecurity = {
       readDone,
     };
     if (inside && !wasSeen) this._emit('customs:weirPresence', { weirId: weir.id, inside: true });
-    if (!inside && wasSeen) this._emit('customs:weirPresence', { weirId: weir.id, inside: false });
+    if (!inside && wasSeen) {
+      this._emit('customs:weirPresence', { weirId: weir.id, inside: false });
+      this._weirCrossedUnread(weir, prior, state);
+    }
     if (!(step > 0)) return;
     this._dwellWeirPlayer(step, state, weir, player, inside);
     this._dwellWeirPods(step, state, weir);
+  },
+
+  // Transit through the gate ends one of two ways: the manifest read logs it, or the booth
+  // flags an unread hull. A fast run never feeds the beam but the booth still saw a hull break
+  // the gate; a mid-read bolt is worse — the deeper the beam got, the more it kept. Either way
+  // the faction's gates remember the runner (economy owns the hot-until record).
+  _weirCrossedUnread(weir, prior, state) {
+    if (!prior || prior.readDone === true) return;
+    const readT = Number(prior.readT) || 0;
+    const readDwellS = Number(weir.readDwellS) || 0;
+    const kind = readT > 0 ? 'read_bolt' : 'speed_run';
+    this._lawResponse('weir_bolt', {
+      weirId: weir.id,
+      stationId: weir.stationId || null,
+      factionId: 'faction_scn',
+      kind,
+    });
+    this._say('alert',
+      kind === 'read_bolt'
+        ? 'CUSTOMS GATE: read broken mid-scan — this hull is flagged.'
+        : 'CUSTOMS GATE: unread transit — scanners will remember this hull.',
+      `law:weir-bolt:${weir.id}`, 'faction_scn');
+    this._emit('customs:weirBolt', {
+      weirId: weir.id,
+      stationId: weir.stationId || null,
+      factionId: 'faction_scn',
+      kind,
+    });
+    // A beam mostly finished caught the manifest anyway — bolting does not erase a read that
+    // was nearly done. The gate resolves what it kept through the real scan path.
+    if (readDwellS > 0 && readT >= readDwellS * 0.5) {
+      const economySystem = this._economy();
+      if (economySystem && typeof economySystem.runScan === 'function') {
+        economySystem.runScan({
+          stationId: weir.stationId || null,
+          factionId: 'faction_scn',
+          source: 'customs_weir_bolt',
+        });
+      }
+    }
   },
 
   // The gate reads the reader. A hull inside the weir and slow enough for the
