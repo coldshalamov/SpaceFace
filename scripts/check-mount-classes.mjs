@@ -76,20 +76,36 @@ for (const pkg of COMBAT_LAB_STARTER_PACKAGES) {
 assertFitLanded('47-A wasp', 'ship_wasp', fittingsFromDefaultModules('ship_wasp', ['wpn_pulse_laser_s']), 1);
 assertFitLanded('47-A mule', 'ship_mule', fittingsFromDefaultModules('ship_mule', ['wpn_pulse_laser_s']), 1);
 
-// ---- B. the Crucible draft keeps every weapon card on the draft hulls ----------------------------
+// ---- B. the Crucible draft never offers a card the pilot cannot land ---------------------------
+// The rule is per-hull reachability, not "every card fits every hull". A hull whose only weapon
+// slot is a turret ring is ring-only BY LAW (asserted for the Ironback below), so a launcher or a
+// spinal gun is correctly refused there; the hawser is a second such hull. The defect this section
+// exists to catch is the opposite one: a card with no legal home anywhere in the arc, which would
+// sit in the draft pool forever and be unplayable content.
 const draftHulls = [...new Set(COMBAT_LAB_STARTER_PACKAGES.map((pkg) => pkg.hullId))];
 const draftWeapons = [...new Set(draftCatalogFor('swarm').concat(draftCatalogFor('arc')).map((o) => o.defId))]
   .map(weaponById).filter(Boolean);
+const weaponSlotsFor = (hullId) => buildSlotList(shipById(hullId)).filter((slot) => slot.type === 'weapon');
+const ringOnlyHull = (hullId) => {
+  const slots = weaponSlotsFor(hullId);
+  return slots.length > 0 && slots.every((slot) => hardpointClassOf(slot) === 'ring');
+};
+for (const def of draftWeapons) {
+  const homes = draftHulls.filter((hullId) => weaponSlotsFor(hullId).some((slot) => fits(slot, def)));
+  assert.ok(homes.length > 0,
+    `B: ${def.id} is in the draft pool but lands on no starter hull (${draftHulls.join(', ')})`);
+}
 for (const hullId of draftHulls) {
-  const slots = buildSlotList(shipById(hullId));
-  for (const def of draftWeapons) {
-    const sizeOnly = slots.filter((slot) => slot.type === 'weapon' && sizeFits(slot, def)).length;
-    const legal = slots.filter((slot) => fits(slot, def)).length;
-    if (sizeOnly > 0) {
-      assert.ok(legal > 0, `B: ${def.id} lost its last slot on ${hullId} to the ring rule`);
-    }
+  if (ringOnlyHull(hullId)) {
+    const refused = draftWeapons.filter((w) => weaponSlotsFor(hullId).some((s) => sizeFits(s, w)) && !fits(weaponSlotsFor(hullId)[0], w));
+    log(`  B ${hullId}: ring-only by law, refuses ${refused.length} launcher/spinal cards: ${refused.map((w) => w.id).join(', ') || '(none)'}`);
+    continue;
   }
-  log(`  B ${hullId}: ${draftWeapons.length} draft weapons, none lose their last slot`);
+  // A hull with at least one fixed hardpoint must keep a real choice of guns, or the draft is a
+  // single-card slot with extra steps.
+  const landable = draftWeapons.filter((w) => weaponSlotsFor(hullId).some((s) => fits(s, w)));
+  assert.ok(landable.length > 1, `B: ${hullId} can land only ${landable.length} draft weapon(s)`);
+  log(`  B ${hullId}: ${landable.length}/${draftWeapons.length} draft weapons land here`);
 }
 // Ironback's only weapon slot is its ring: launchers and spinal guns cannot ride the barge (by law).
 const ironback = buildSlotList(shipById('ship_ironback'));
