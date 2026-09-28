@@ -514,6 +514,14 @@ export const miningHud = {
 
   _ensureDom() {
     if (this._dom && this._dom.root.isConnected !== false) return this._dom;
+    // Capability check, not an existence check (masslineHud pattern). update() already bails when
+    // `document` is absent entirely, but headless registry checks legitimately install a PARTIAL
+    // document stub (createElement, never createElementNS), and this instrument is SVG geometry.
+    // Testing only `typeof document === 'undefined'` lets that stub through, and the throw takes
+    // the whole registry step down with it (scripts/check-sg06-live-*.mjs install exactly one).
+    if (typeof document === 'undefined'
+      || typeof document.createElement !== 'function'
+      || typeof document.createElementNS !== 'function') return null;
     const host = document.getElementById('hud') || document.body;
     if (!host) return null;
     if (!document.getElementById('sf-mining-css')) {
