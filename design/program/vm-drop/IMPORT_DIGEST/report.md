@@ -1,3 +1,77 @@
+# IMPORT ledger — 20260928 owner-side import (devin-w2-vm-latchc, board §1C row 24)
+
+Quiet-latch vein C (`field-force` / `fields-*` / `energy-*` / `flight-*` / `gas` /
+`momentum-sink` / `far-*` / `asteroid-field-*` / `track-pulse` / `flyby-focus` /
+`optic-lattice` / `continuous-plume-profile`). Landed this pass:
+
+| Folder | Commit | Check |
+|---|---|---|
+| `fields-idle-quiet-latch` | `26b4e5ff9` | latch 5/5 + fields regression 53/53 |
+| `field-force-quiet-empty-latch` | `86f3beac9` | latch 3/3 |
+| `far-empty-quiet-latch` | `902e0b536` | latch + far-actor suite 21/21 |
+| `optic-field-resident` | `50cc3f2b7` | optic-focused suite 19/19 |
+| `optic-far-quiet-latch` | `2f520206e` | 21/21 |
+| `asteroid-field-interact-still-quiet-latch` | `4aa43250d` | 6/6 |
+| `flyby-focus-empty-quiet-latch` | `b85654a83` | 10/10 |
+| `flight-propulsion-scratch` | `76c03a7d6` | flight suite 55/55 |
+| `continuous-plume-fleet-quiet-asleep` | `e654a81d4` | plume/VP-220 suite 78/81 |
+| `energy-bolt-quiet-begin-commit` | `f410f490f` | weapons/vfx suite 51/53 |
+| `energy-quiet-hide-latch` + `energy-quiet-relevant-skip` + `gas-quiet-empty-latch` | `30d61a3dc` | gas latch 4/4, vfx-field-geometry-sleep 3/3 |
+
+Merge notes:
+
+- `optic-far-quiet-latch`: its `asteroidField.js` source hunks were folded into the preceding
+  `50cc3f2b7` commit during the partial-apply sequence; `2f520206e` carries the test.
+- `fields-idle-quiet-latch`: hand-merged over master's newer seed-lock/inside-ring fields work;
+  quiet fast-return additionally gated on empty `_wellBodies` so deferred well drains still run.
+- `field-force-quiet-empty-latch`: hand-merged over master's `particles` subsystem; latch gated
+  on `particles.live` so a live release burst is never frozen.
+- `optic-field-resident`: intentionally moves Ceres optic lattices from live `entityList` into
+  `state.world.asteroidField.rocks` until decode-disc approach. Six older tests asserting the
+  live-entity contract were adapted to field records (`field.rocks`/`byId`, `opticStructureId`,
+  `opticCell`, `opticMaterial`); behavioral assertions preserved.
+- `flight-propulsion-scratch`: master already carried the equivalent optimization
+  (`bodySnapshotInto` out-param + `stepPropulsion` packet buffers); landed the residual
+  stepTorch `coolRuntime` call-site — the only remaining `{ ...runtime }` spread.
+- `energy-quiet-relevant-skip` depends on `energy-quiet-hide-latch` (`_energyQuietHidden`
+  comment/reset context) — applied in that order.
+- `gas-quiet-empty-latch`: reset-line hunks keyed on ~10 sibling latches absent on master
+  (statusAttached/tumbleBody/trailEmit/projectileTrails/overlayQuartet/wreckWisps/
+  npcJobSignatures) — context-only drift, not a functional dependency. Hand-merged additively:
+  `_gasQuietEmpty` init + `= false` in the three boundary-reset handler lines.
+
+Shared-tree incidents this pass (named, not unpicked, per AGENTS.md):
+
+- `76c03a7d6` index-wide commit swept two foreign staged files
+  (`src/render/weapons/shieldBubblePresentation.js`, `test/shield-bubble-quiet-latch.test.mjs`
+  — devin-w2-vm-head/#159 work); noted in its commit body.
+- During devin-w2-vm-latchd's mid-merge window a `git checkout` accident reverted their
+  UNSTAGED `loot-magnet-quiet-empty-latch` apply in `vfx.js`. It was reconstituted additively
+  from the remote patch (constructor + reset lines + update latch; their untracked
+  test/artifacts left for them). Those restored hunks rode along in `30d61a3dc` — named there.
+- An amend race rewrote a sibling vfx+docking commit's message; corrected at `726c821e8`.
+
+Already on master before this pass (verified by marker/commit, no re-import):
+
+- `flight-dormant-skip` — `2beba5609`
+- `momentum-sink-quiet-empty-latch` — `546f75f78`
+- `fields-npc-plan-cadence` — `95501f84f` + `50298eba1`
+- `far-query-row-scan` — `b535d8a0b` (+ `test/far-query-row-scan.test.mjs`)
+
+Not found on disk (vein names from the brief with no matching package folder):
+`track-pulse`; literal `optic-lattice` — the optic-lattice vein was served by
+`optic-field-resident` + `optic-far-quiet-latch` above.
+
+Baseline: `check:baseline` 15/16. The `pq020-ceres-topology` red is the pre-existing,
+ledger-owned D83 `structuralCostDigest` drift (Forge merge; adjudicate-then-re-pin owned by
+graphics/forge lane — do-not-silently-re-record). The optic-resident import legitimately
+changes Ceres live-entity census and may shift that digest further; flagged for the owning
+lane, pin untouched.
+
+Focused-suite non-blocking reds seen but not caused by these imports (verified by
+revert-rerun): `kestrel-production-thruster-bind` 3 fails (plume visuals, sibling churn);
+`vfx-mach-tracers`/`weapon-source-identity` 2 fails (Mach-tracer/wake, sibling churn).
+
 # IMPORT ledger — 20260928 owner-side import (devin-w2-vm-head, board §1C row 19)
 
 Digest head-of-queue batch. Most of the named list was already on master (the #166–#170 head

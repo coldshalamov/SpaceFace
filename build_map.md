@@ -385,7 +385,6 @@ Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-dro
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 6 | D46 | `check:all` foreign-red triage from 2026-09-25 — re-run sweep, re-row what is still red, delete the stale snapshot | FIX | CLAIMED devin-wave1 |
 | 10 | D80 | Hauler income band vs honest arbitrage — model fixed; structural balance adjudication owed | FIX | CLAIMED devin-wave1 |
 | 14 | D83 | pq020 Ceres structural-cost digest drift — adjudicate semantically, then re-derive the pin | FIX | CLAIMED devin-graphics |
 | 15 | D67 | Market-tab dispatch hang — not reproduced; one quiet-host sweep owed before delete | FIX | PARKED needs quiet host |
@@ -403,7 +402,6 @@ ship stills (all REVISE — awaiting new remote candidates).
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
 | 23 | VM-LATCH-B | Quiet-latch render/HUD wave B | IMPORT | CLAIMED devin-wave2 |
-| 24 | VM-LATCH-C | Quiet-latch render/HUD wave C | IMPORT | CLAIMED devin-wave2 |
 | 25 | VM-LATCH-D | Quiet-latch render/HUD wave D | IMPORT | CLAIMED devin-wave2 |
 | 26 | VM-LATCH-E | Quiet-latch render/HUD wave E | IMPORT | OPEN |
 | 27 | VM-SKIPS | Quiet live/empty-skip batch (~15: distortion, hull-scorch, camera-clearance series…) | IMPORT | OPEN |
@@ -428,11 +426,11 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 41 | CV-EAR-1 | AQ-VOICE — Elementary continuous voices: rope pitch follows load, engine follows throttle, silence at 0 (the CV-EAR signature) | BUILD | OPEN |
 | 42 | CV-THROW-1 | Cut-grade learnability: nothing teaches why one cut was a razor and the next a tow — build the teaching slice on the default route | BUILD | OPEN |
 | 43 | CV-AMMO-1 | Fields are on the keyboard and untaught — teaching moment + verify the opening no longer spreads bodies to gun range | BUILD | OPEN |
-| 44 | CV-DAY-1 | `sectorActivityPockets.js` is Ceres-only — Helios does not yet feel like a job in progress; extend pockets to named sectors | BUILD | OPEN |
+| 44 | CV-DAY-1 | `sectorActivityPockets.js` is Ceres-only — Helios does not yet feel like a job in progress; extend pockets to named sectors | BUILD | CLAIMED devin-boards-3x3 |
 | 45 | CV-MOTION-1 | The campaign's core invention was never built: one living-machine **score** deciding what stays in motion on the glass vs sleeps | BUILD | OPEN |
-| 46 | CV-QUIET-1 | The three minutes between jobs should be a place — detour texture density on the default route | BUILD | OPEN |
+| 46 | CV-QUIET-1 | The three minutes between jobs should be a place — detour texture density on the default route | BUILD | CLAIMED devin-boards-3x3 |
 | 47 | CR-CHAIN-1 | Named rumor-braids not yet built: volatile pod as moving mine, hitch on a working miner, wreck towed through a search, clothesline on existing rocks, planet-well + field-well as one curve — one braid per unit, update count in row | BUILD | OPEN |
-| 48 | CR-FEED-1 | Non-copy kill machines for the remaining named sectors (Vesta, Tethys-adjacent, Veil) | BUILD | OPEN |
+| 48 | CR-FEED-1 | Non-copy kill machines for the remaining named sectors (Vesta, Tethys-adjacent, Veil) | BUILD | CLAIMED devin-boards-3x3 |
 | 49 | CR-CHOIR-1 | Congregation-as-activity: the Choir tend the hurt and remember what you did with their dead — beyond one bar memory | BUILD | OPEN |
 | 50 | CR-ANVIL-1 | Sling variants for Vesta belt / Veil lanes; teach with waiting bodies beyond the Tethys witness | BUILD | OPEN |
 | 51 | CR-HOLLOW-1 | The illegal-pairing payoff: ships that should not be together, docked anyway, with something to steal or join | BUILD | OPEN |
