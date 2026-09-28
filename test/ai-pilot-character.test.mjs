@@ -3,16 +3,26 @@ import assert from 'node:assert/strict';
 
 import { ManeuverKind } from '../src/ai/contracts.js';
 import { ManeuverPlanner } from '../src/ai/maneuver.js';
+import { SquadCommander } from '../src/ai/squad.js';
 import { temperamentFor, TEMPERAMENT_IDENTITY } from '../src/ai/temperament.js';
 import {
   REFLEX_KIND,
   createReflexEngine,
   emptyReflexState,
 } from '../src/ai/reflexes.js';
+import { REFLEX_SPECS, REFLEX_SPEC_BY_KIND } from '../src/data/reflexLibrary.js';
 import { assignAutoSquadRecipes } from '../src/systems/tacticalAI.js';
 import { createSquadFrameDirector, recipeIdFromEntity } from '../src/ai/squadFrame.js';
 import {
   FORMATION_SHAPE_LINE_4,
+  FORMATION_SHAPES,
+  SQUAD_RECIPES,
+  SQUAD_RECIPE_BURNING_PASS,
+  SQUAD_RECIPE_HARASSMENT_RING,
+  SQUAD_RECIPE_HUNTER_PAIR,
+  SQUAD_RECIPE_PICKET_WALL,
+  SQUAD_RECIPE_SHEPHERD_NET,
+  SQUAD_RECIPE_SIEGE_ORBIT,
   SQUAD_RECIPE_STANDOFF_GUNLINE,
   getSquadRecipe,
 } from '../src/data/squadChoreography.js';
@@ -44,8 +54,8 @@ const INTENT = { kind: ManeuverKind.INTERCEPT };
 
 function evalCtx(over = {}) {
   return {
-    entityId: 'e7',
-    tick: 1000,
+    entityId: over.entityId ?? 'e7',
+    tick: over.tick ?? 1000,
     self: { ...BASE_SELF, ...(over.self || {}) },
     contacts: over.contacts || [],
     events: over.events || null,
@@ -71,16 +81,31 @@ test('a hull hit fires a weave burst and cools down', () => {
   const engine = createReflexEngine({ seed: 5 });
   const rs = emptyReflexState();
   rs.lastHull = 1;
-  const out = engine.evaluate(evalCtx({
+  // A hostile in view keeps the sky hot — the hit reads as a combat weave, not
+  // the dead-stick drift a quiet aftermath produces.
+  const scene = {
     reflexState: rs,
     self: { hullFraction: 0.9 },
-  }));
+    contacts: [HOSTILE_WITNESS()],
+  };
+  const out = engine.evaluate(evalCtx(scene));
   assert.equal(out.kind, REFLEX_KIND.HIT_WEAVE);
   const rs2 = { ...rs, burst: null };
-  const quiet = engine.evaluate(evalCtx({ reflexState: rs2, self: { hullFraction: 0.89 } }));
+  const quiet = engine.evaluate(evalCtx({
+    reflexState: rs2,
+    self: { hullFraction: 0.89 },
+    contacts: [HOSTILE_WITNESS()],
+  }));
   assert.ok(quiet == null || quiet.kind !== REFLEX_KIND.HIT_WEAVE,
     'the refractory window stops weaving on every scratch');
 });
+
+function HOSTILE_WITNESS() {
+  return {
+    id: 'hx', kind: 'ship', hostile: true, alive: true, team: 3,
+    pos: { x: 500, z: 0 }, vel: { x: 0, z: 0 }, radius: 12,
+  };
+}
 
 test('a ship marked by a hostile inside sensor range weaves while unhit', () => {
   const engine = createReflexEngine({ seed: 5 });
@@ -189,13 +214,17 @@ test('engaged squads get an auto recipe and a flight id; disengagement releases 
     assert.equal(ship.data.ai.autoSquadRecipe, true);
     assert.equal(ship.data.ai.squadFrameId, 's1#0');
   }
-  // A marksman doctrine mix in a different squad produces the standoff gunline.
+  // A marksman doctrine mix in a different squad anchors a hold-mode ranged recipe
+  // (the seeded draw inside the family picks which wall/line/orbit it is).
   const mixed = [
     mkShip(21, { squadId: 's2', doctrine: 'ranged_disengager' }),
     mkShip(22, { squadId: 's2' }), mkShip(23, { squadId: 's2' }),
   ];
   assignAutoSquadRecipes(state, [...ships, ...mixed], 7);
-  assert.equal(mixed[0].data.ai.squadRecipe, SQUAD_RECIPE_STANDOFF_GUNLINE);
+  const mixedRecipe = getSquadRecipe(mixed[0].data.ai.squadRecipe);
+  assert.ok(mixedRecipe, 'marksman mix must resolve to a real recipe');
+  assert.equal(mixedRecipe.strikeMode, 'hold', 'marksman mixes anchor a hold-mode firing line');
+  assert.equal(mixedRecipe.tokens.close_attack, 0, 'ranged-anchored squads do not close');
   // Weapons-free dropped → the auto stamp releases.
   for (const ship of ships) ship.data.ai.roe = 'hold_fire';
   assignAutoSquadRecipes(state, ships, 7);
@@ -212,15 +241,16 @@ test('an incumbent auto stamp survives a mid-fight doctrine reassignment', () =>
     mkShip(42), mkShip(43), mkShip(44),
   ];
   assignAutoSquadRecipes(state, ships, 7);
-  assert.equal(ships[0].data.ai.squadRecipe, SQUAD_RECIPE_STANDOFF_GUNLINE);
+  const incumbent = ships[0].data.ai.squadRecipe;
+  assert.ok(getSquadRecipe(incumbent), 'marksman mix resolves to a real recipe');
   // The enemy mind promotes the marksman to a specialist role — it must leave the
-  // formation, but the rest of the flight keeps its gunline instead of re-deriving
+  // formation, but the rest of the flight keeps its recipe instead of re-deriving
   // and resetting the choreography mid-fight.
   ships[0].data.ai.combatDoctrineId = 'shield_breaker';
   assignAutoSquadRecipes(state, ships, 7);
   assert.equal(ships[0].data.ai.squadRecipe, undefined, 'a specialist leaves the frame');
   for (const s of ships.slice(1)) {
-    assert.equal(s.data.ai.squadRecipe, SQUAD_RECIPE_STANDOFF_GUNLINE,
+    assert.equal(s.data.ai.squadRecipe, incumbent,
       'surviving members keep the incumbent recipe');
     assert.equal(s.data.ai.squadFrameId, 's1#0');
   }
@@ -475,4 +505,533 @@ test('a hull that takes fire dodges laterally on the live path', () => {
   const lateral = Math.max(0, ...after.map((r) => Math.abs(r.right || 0)));
   assert.ok(lateral > 0.1,
     `hit weave must show up on the lateral thruster channel, got ${lateral}`);
+});
+
+// ── spec-table coverage: every trigger and stance is reachable ───────────────
+// Each entry constructs the smallest scene that satisfies the spec's gates and
+// asserts the trigger fires. The scene isolates the spec: anything sharing the
+// gate set is ruled out by the temperament/state overrides in the same row.
+
+const PILOT = (over = {}) => ({
+  weave: 0.5, dash: 0.5, verve: 0.5, aim: 0.5, poise: 0.5, ...over,
+});
+const HOSTILE = (id, x, z, over = {}) => ({
+  id, kind: 'ship', hostile: true, alive: true, team: 3,
+  pos: { x, z }, vel: { x: 0, z: 0 }, radius: 12, ...over,
+});
+const ALLY = (id, x, z, over = {}) => ({
+  id, kind: 'ship', hostile: false, alive: true, team: 2,
+  pos: { x, z }, vel: { x: 0, z: 0 }, radius: 12, ...over,
+});
+const PROJ = (id, x, z, vx, vz) => ({
+  id, kind: 'projectile', hostile: true, alive: true,
+  pos: { x, z }, vel: { x: vx, z: vz }, radius: 2,
+});
+const HAZARD = (id, x, z) => ({
+  id, kind: 'hazard', hostile: false, alive: true,
+  pos: { x, z }, vel: { x: 0, z: 0 },
+});
+const TETHER_LINE = (id, x, z) => ({
+  id, kind: 'tether', hostile: false, alive: true,
+  pos: { x, z }, vel: { x: 0, z: 0 },
+});
+const HOLD_INTENT = { kind: ManeuverKind.HOLD };
+const SCREEN_INTENT = { kind: ManeuverKind.SCREEN };
+
+// Fires a scene across ticks so seeded-draw gates find a firing bucket; returns
+// the first output of the requested kind, or null.
+function fireSweep(ctxOver, kind, ticks = 1600) {
+  const engine = createReflexEngine({ seed: 5 });
+  const rs = emptyReflexState();
+  const t0 = ctxOver.tick ?? 1000;
+  for (let t = 0; t < ticks; t++) {
+    const out = engine.evaluate(evalCtx({ ...ctxOver, tick: t0 + t, reflexState: rs }));
+    if (out && out.kind === kind) return out;
+  }
+  return null;
+}
+
+test('the reflex table is complete, priority-ordered, and keyed to kinds', () => {
+  assert.equal(REFLEX_SPECS.length, Object.keys(REFLEX_KIND).length,
+    'every declared kind carries a spec');
+  const seenPriorities = new Set();
+  for (const spec of REFLEX_SPECS) {
+    assert.equal(REFLEX_SPEC_BY_KIND[spec.kind], spec, `${spec.kind} lookup`);
+    assert.ok(!seenPriorities.has(spec.priority), `duplicate priority ${spec.priority}`);
+    seenPriorities.add(spec.priority);
+    if (spec.stance !== true) {
+      assert.ok(spec.windowTicks > 0, `${spec.kind} needs a window`);
+    }
+  }
+});
+
+test('damage-state arbiters, damage reactions, and channel shapes', () => {
+  const engine = () => createReflexEngine({ seed: 5 });
+  const kind = (over) => engine().evaluate(evalCtx(over));
+
+  // A broken hull stops fencing — state beats every tactical trigger.
+  let out = engine().evaluate(evalCtx({
+    self: { disabled: true },
+    contacts: [PROJ('p1', 60, 8, -140, 0)],
+  }));
+  assert.equal(out.kind, REFLEX_KIND.DISABLED_DRIFT, 'a disabled hull drifts through a volley');
+  assert.equal(out.settle, true);
+  assert.equal(out.brake, true, 'settle resolves to a brake');
+
+  assert.equal(kind({ self: { tumbling: true } }).kind, REFLEX_KIND.TUMBLE_RIDE);
+  assert.equal(kind({ self: { recovering: true } }).kind, REFLEX_KIND.RECOVER_WOBBLE);
+  out = kind({ self: { tethered: true }, temperament: PILOT({ weave: 0.6 }) });
+  assert.equal(out.kind, REFLEX_KIND.TETHER_SNAP);
+  assert.ok(out.boost === true || Math.abs(out.lateral) > 40,
+    'the tether snap is a violent yaw, not a drift');
+
+  // Damage reactions: panic (jumpy pilot), aftermath (quiet sky), weave (in a fight).
+  out = kind({ self: { hullFraction: 0.88 }, temperament: PILOT({ poise: 0.2 }) });
+  assert.equal(out.kind, REFLEX_KIND.PANIC_SNAP, 'a panicky pilot snap-turns on the hit');
+  out = kind({ self: { hullFraction: 0.88 }, temperament: PILOT({ poise: 0.6 }) });
+  assert.equal(out.kind, REFLEX_KIND.AFTERMATH_DRIFT,
+    'a calm sky turns a hit into dead-stick drift');
+  assert.equal(out.settle, true);
+  out = kind({
+    self: { hullFraction: 0.88 },
+    contacts: [HOSTILE('hx', 500, 0)],
+    temperament: PILOT({ poise: 0.6 }),
+  });
+  assert.equal(out.kind, REFLEX_KIND.HIT_WEAVE,
+    'under threat the same hit reads as a combat weave');
+
+  // Crippled and painted: the ship limps off the firing lane.
+  const rs = emptyReflexState();
+  rs.lastHull = 0.3;
+  out = engine().evaluate(evalCtx({
+    reflexState: rs,
+    self: { hullFraction: 0.3 },
+    contacts: [HOSTILE('h1', 300, 0, { targetId: 'e7' })],
+  }));
+  assert.equal(out.kind, REFLEX_KIND.LOW_HULL_SLIP);
+});
+
+test('incoming fire, hazards, and pursuit geometry each have their own reflex', () => {
+  const engine = createReflexEngine({ seed: 5 });
+  const fire = (over) => engine.evaluate(evalCtx(over));
+
+  let out = fire({ contacts: [PROJ('p1', 60, 8, -140, 0), PROJ('p2', 55, -10, -150, 0)] });
+  assert.equal(out.kind, REFLEX_KIND.SALVO_DODGE, 'a two-round pass dodges harder');
+
+  assert.equal(fire({ contacts: [HAZARD('m1', 180, 20)] }).kind, REFLEX_KIND.MINE_SWERVE);
+  // A belt of rocks — the drift only reads as weaving through debris when there
+  // is more than one close aboard.
+  assert.equal(fire({ contacts: [HAZARD('d1', 150, 20), HAZARD('d2', -60, 170)] }).kind,
+    REFLEX_KIND.DEBRIS_DRIFT);
+  assert.equal(fire({ contacts: [TETHER_LINE('th1', 190, 10)] }).kind,
+    REFLEX_KIND.TETHER_LINE_SIDESTEP);
+
+  // A hostile parked in the rear hemisphere shakes the tail — brake and yaw.
+  out = fire({ contacts: [HOSTILE('h1', -200, 0)] });
+  assert.equal(out.kind, REFLEX_KIND.TAIL_SHAKE);
+  assert.equal(out.brake, true);
+
+  // A hot-running marker gets slipped, not fled.
+  out = fire({
+    contacts: [HOSTILE('h1', 300, 0, { targetId: 'e7', vel: { x: -100, z: 0 } })],
+    target: HOSTILE('h1', 300, 0, { targetId: 'e7', vel: { x: -100, z: 0 } }),
+  });
+  assert.equal(out.kind, REFLEX_KIND.OVERSHOOT_SLIP);
+  assert.equal(out.brake, true);
+});
+
+test('losing a wingmate splits pilots into breakers, avengers, and regroupers', () => {
+  const engine = createReflexEngine({ seed: 5 });
+  const rs = emptyReflexState();
+  rs.lastHull = 0.4; // preseeded — the hull drop is old damage, not a fresh hit
+  rs.seenAllies = new Map([['a1', true]]); // the wingmate was alive on earlier frames
+
+  const ally = ALLY('a1', 150, 0);
+  const downed = { ...ally, alive: false };
+
+  // Damaged hull: break contact and run the egress bearing.
+  let out = engine.evaluate(evalCtx({
+    reflexState: rs,
+    self: { hullFraction: 0.4 },
+    temperament: PILOT({ verve: 0.3, poise: 0.3 }),
+    contacts: [downed, HOSTILE('h1', 600, 0)],
+  }));
+  assert.equal(out.kind, REFLEX_KIND.COVER_BREAK);
+  assert.ok(out.away > 0 && out.awayFrom, 'cover_break must produce a break-off blend');
+
+  // Hot blood: press the attack at the killer.
+  const rs2 = emptyReflexState();
+  rs2.lastHull = 0.9;
+  rs2.seenAllies = new Map([['a1', true]]);
+  const engine2 = createReflexEngine({ seed: 6 });
+  out = engine2.evaluate(evalCtx({
+    reflexState: rs2,
+    self: { hullFraction: 0.9 },
+    temperament: PILOT({ verve: 0.75 }),
+    contacts: [downed],
+    target: HOSTILE('h1', 600, 0),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.VENGEANCE_PRESS);
+  assert.equal(out.boost, true);
+
+  // Composed pilot: pull toward the survivor instead of scattering.
+  const rs3 = emptyReflexState();
+  rs3.lastHull = 0.9;
+  rs3.seenAllies = new Map([['a1', true], ['a2', true]]);
+  const engine3 = createReflexEngine({ seed: 7 });
+  const a2 = ALLY('a2', 120, 50);
+  out = engine3.evaluate(evalCtx({
+    reflexState: rs3,
+    self: { hullFraction: 0.9 },
+    temperament: PILOT({ verve: 0.3, poise: 0.6 }),
+    contacts: [downed, a2],
+  }));
+  assert.equal(out.kind, REFLEX_KIND.REGROUP_PULL);
+  assert.ok(out.pullTo && Math.abs(out.pullTo.x - 120) < 1,
+    'regroup must pull toward the living wingmate');
+
+  // Everyone down, no composure left: scatter.
+  const rs4 = emptyReflexState();
+  rs4.lastHull = 0.9;
+  rs4.seenAllies = new Map([['a1', true]]);
+  const engine4 = createReflexEngine({ seed: 8 });
+  out = engine4.evaluate(evalCtx({
+    reflexState: rs4,
+    self: { hullFraction: 0.9 },
+    temperament: PILOT({ verve: 0.3, poise: 0.3 }),
+    contacts: [downed],
+  }));
+  assert.equal(out.kind, REFLEX_KIND.SCATTER_LOSS);
+  assert.ok(Math.abs(out.lateral) > 0);
+});
+
+test('closing geometry, presence, and seeded-draw triggers all fire', () => {
+  // Brake-check: closure too hot inside the band, drawn per tick-bucket. The draw
+  // is per-pilot — this hull's pilot id sits in a lucky bucket range.
+  let out = fireSweep({
+    entityId: 'e11',
+    self: { id: 'e11' },
+    target: HOSTILE('h1', 300, 0, { vel: { x: -100, z: 0 } }),
+    contacts: [HOSTILE('h1', 300, 0, { vel: { x: -100, z: 0 } })],
+    temperament: PILOT({ dash: 0.8 }),
+  }, REFLEX_KIND.BRAKE_CHECK);
+  assert.ok(out && out.brake === true, 'brake_check must fire within its draw window');
+
+  // Charge slam: even hotter closure reads as a gift to a brave pilot.
+  out = fireSweep({
+    target: HOSTILE('h1', 440, 0, { vel: { x: -160, z: 0 } }),
+    contacts: [HOSTILE('h1', 440, 0, { vel: { x: -160, z: 0 } })],
+    temperament: PILOT({ verve: 0.7 }),
+  }, REFLEX_KIND.CHARGE_SLAM);
+  assert.ok(out && out.boost === true, 'charge_slam slams the throttle');
+
+  // Feint: a hot pilot with a bad gunner stalls the run mid-approach.
+  out = fireSweep({
+    target: HOSTILE('h1', 400, 0),
+    contacts: [HOSTILE('h1', 400, 0)],
+    temperament: PILOT({ verve: 0.7, aim: 0.4 }),
+  }, REFLEX_KIND.FEINT_BRAKE);
+  assert.ok(out && out.brake === true, 'feint_brake stalls the run');
+
+  // Pounce on the fleeing; cripple-press on the disabled.
+  out = fireSweep({
+    target: HOSTILE('h1', 400, 0, { vel: { x: 30, z: 0 } }),
+    contacts: [HOSTILE('h1', 400, 0, { vel: { x: 30, z: 0 } })],
+    temperament: PILOT({ verve: 0.7 }),
+  }, REFLEX_KIND.POUNCE);
+  assert.ok(out && out.boost === true);
+  out = fireSweep({
+    target: HOSTILE('h1', 400, 0, { disabled: true }),
+    contacts: [HOSTILE('h1', 400, 0, { disabled: true })],
+    temperament: PILOT({ verve: 0.7 }),
+  }, REFLEX_KIND.CRIPPLE_PRESS);
+  assert.ok(out && out.boost === true);
+
+  // Harass: a darting hull inside the close band jinks constantly.
+  out = fireSweep({
+    contacts: [HOSTILE('h1', 270, 0)],
+    temperament: PILOT({ dash: 0.8 }),
+  }, REFLEX_KIND.HARASS_JINK);
+  assert.ok(out, 'harass_jink must draw inside its window');
+
+  // Spiral-in: the attack run corkscrews instead of flying a rail.
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    target: HOSTILE('h1', 700, 0),
+    contacts: [HOSTILE('h1', 700, 0)],
+    temperament: PILOT({ dash: 0.7 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.SPIRAL_IN);
+
+  // Ram authority + wake surf + ward screen + flank fade.
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({ self: { ramAuthorized: true } }));
+  assert.equal(out.kind, REFLEX_KIND.RAM_RESOLVE);
+  assert.equal(out.boost, true);
+
+  const wakeEngine = createReflexEngine({ seed: 5 });
+  const wakeRs = emptyReflexState();
+  wakeEngine.evaluate(evalCtx({
+    reflexState: wakeRs,
+    contacts: [HOSTILE('h1', 300, 0, { targetId: 'e7' })],
+  }));
+  out = wakeEngine.evaluate(evalCtx({
+    reflexState: wakeRs,
+    tick: 1001,
+    contacts: [HOSTILE('h1', -350, 0, { targetId: null })],
+  }));
+  assert.equal(out.kind, REFLEX_KIND.WAKE_SURF,
+    'the marker dropping with a hostile behind rides the wake');
+
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    self: { capabilities: ['screen'] },
+    contacts: [ALLY('a1', 120, 0), HOSTILE('h1', 400, 0, { targetId: 'a1' })],
+  }));
+  assert.equal(out.kind, REFLEX_KIND.WARD_SCREEN);
+  assert.ok(out.pullTo && Math.abs(out.pullTo.x - 120) < 1,
+    'a screen hull pulls toward the threatened ward');
+
+  out = createReflexEngine({ seed: 5 }).evaluate(evalCtx({
+    contacts: [HOSTILE('h1', 300, 0, { targetId: 'e7' }), ALLY('a1', 200, -100)],
+    temperament: PILOT({ weave: 0.8 }),
+  }));
+  assert.equal(out.kind, REFLEX_KIND.FLANK_FADE,
+    'an evasive hull folds toward the formation when painted');
+
+  out = fireSweep({
+    contacts: [ALLY('a1', 200, 0)],
+    temperament: PILOT({ weave: 0.8 }),
+  }, REFLEX_KIND.SPOOF_TURN, 1600);
+  assert.ok(out, 'an unmarked hull takes a spoof turn within a few buckets');
+
+  // Different pilot id — the seeded bucket draw is per-entity.
+  out = fireSweep({
+    entityId: 'e8',
+    self: { id: 'e8', energyFraction: 0.2 },
+    temperament: PILOT({ poise: 0.6 }),
+  }, REFLEX_KIND.ENERGY_SAVE, 2400);
+  assert.ok(out && out.speedScale < 1, 'low capacitor saves energy');
+});
+
+test('stances merge as sustained channels and read the whole world state', () => {
+  const fire = (over) => createReflexEngine({ seed: 5 }).evaluate(evalCtx(over));
+
+  // Composed, painted, and holding a bead: steady_press keeps the aim lane.
+  let out = fire({
+    contacts: [HOSTILE('h1', 300, 0, { targetId: 'e7' })],
+    target: HOSTILE('h1', 300, 0, { targetId: 'e7' }),
+    temperament: PILOT({ poise: 0.8, aim: 0.8, weave: 0.5 }),
+  });
+  assert.equal(out.kind, REFLEX_KIND.STEADY_PRESS);
+  assert.equal(out.holdAim, true);
+
+  // Orbiting an approach: a weave-prone hull circles the commit distance.
+  out = fire({
+    target: HOSTILE('h1', 300, 0),
+    contacts: [HOSTILE('h1', 300, 0)],
+    temperament: PILOT({ weave: 0.7, poise: 0.4, aim: 0.4 }),
+  });
+  assert.equal(out.kind, REFLEX_KIND.ORBIT_HOLD);
+
+  // Escort hulls jockey around a ward while anything is close.
+  out = fire({
+    self: { capabilities: ['screen'] },
+    contacts: [ALLY('a1', 140, 0), HOSTILE('h1', 400, 0)],
+    temperament: PILOT({ weave: 0.5, poise: 0.4, aim: 0.4 }),
+  });
+  assert.equal(out.kind, REFLEX_KIND.ESCORT_JOCKEY);
+
+  // Picket line, nobody aboard to jockey for.
+  out = fire({
+    self: { capabilities: ['screen'] },
+    intent: SCREEN_INTENT,
+    contacts: [HOSTILE('h1', 500, 0)],
+    temperament: PILOT({ weave: 0.5, poise: 0.4, aim: 0.4 }),
+  });
+  assert.equal(out.kind, REFLEX_KIND.PICKET_DRIFT);
+
+  // Warm but disciplined.
+  out = fire({ self: { heatFraction: 0.75 }, temperament: PILOT({ poise: 0.6 }) });
+  assert.equal(out.kind, REFLEX_KIND.HOT_DISCIPLINE);
+  assert.ok(out.speedScale < 1);
+
+  // Passive pilot lets the marked fight come to it.
+  out = fire({
+    contacts: [HOSTILE('h1', 300, 0, { targetId: 'e7' })],
+    target: HOSTILE('h1', 300, 0, { targetId: 'e7' }),
+    temperament: PILOT({ verve: 0.2, weave: 0.2, aim: 0.4, poise: 0.4 }),
+  });
+  assert.equal(out.kind, REFLEX_KIND.BAIT_HOLD);
+  assert.equal(out.settle, true);
+
+  // Outnumbered and slippery: circle instead of closing.
+  out = fire({
+    contacts: [HOSTILE('a', 400, 0), HOSTILE('b', 600, 0), HOSTILE('c', 700, 0)],
+    temperament: PILOT({ weave: 0.7, poise: 0.4, aim: 0.4 }),
+  });
+  assert.equal(out.kind, REFLEX_KIND.OUTNUMBERED_CIRCLE);
+
+  // The world moves without the player: patrol legs sway, parked hulls idle.
+  out = fire({
+    intent: HOLD_INTENT,
+    self: { activity: { kind: 'patrol_route' } },
+    temperament: PILOT({ poise: 0.4, aim: 0.4 }),
+  });
+  assert.equal(out.kind, REFLEX_KIND.LANE_WEAVE);
+  out = fire({ intent: HOLD_INTENT, temperament: PILOT({ poise: 0.4, aim: 0.4 }) });
+  assert.equal(out.kind, REFLEX_KIND.IDLE_DRIFT);
+});
+
+// ── choreography recipe coverage ─────────────────────────────────────────────
+
+test('every squad recipe resolves with a full shape set and socket map', () => {
+  const ids = Object.keys(SQUAD_RECIPES);
+  assert.ok(ids.length >= 12, `recipe library should hold a dozen-plus plays, got ${ids.length}`);
+  for (const [id, recipe] of Object.entries(SQUAD_RECIPES)) {
+    assert.equal(recipe.id, id);
+    assert.ok(getSquadRecipe(id), `${id} resolves`);
+    for (const shapeId of Object.values(recipe.shapes)) {
+      assert.ok(FORMATION_SHAPES[shapeId], `${id} references missing shape ${shapeId}`);
+    }
+    for (const [socket, spec] of Object.entries(recipe.sockets)) {
+      assert.ok(spec.role && spec.tokens.length > 0, `${id}:${socket} needs role+tokens`);
+    }
+    assert.ok(Object.keys(recipe.tokens).length > 0, `${id} needs a token mix`);
+  }
+});
+
+function runChoreography(recipeId, memberCount, ticks, collect) {
+  const director = createSquadFrameDirector({ seed: 4 });
+  const members = [];
+  for (let i = 0; i < memberCount; i++) {
+    members.push({
+      id: 'm' + i, alive: true, team: 2,
+      pos: { x: (i % 2) * 30, z: Math.floor(i / 2) * 30 },
+      vel: { x: 0, z: 0 }, radius: 12, hullFraction: 1,
+      data: { ai: { squadRecipe: recipeId } },
+    });
+  }
+  const targetEntity = { id: 't', alive: true, pos: { x: 1400, z: 0 }, vel: { x: -2, z: 0 } };
+  const lookup = () => targetEntity;
+  const squad = { id: 'sq', recipeId, members, targetId: 't' };
+  const track = () => {
+    for (const m of members) {
+      const plan = director.planFor(m.id);
+      if (plan && plan.slot) { m.pos.x = plan.slot.x; m.pos.z = plan.slot.z; }
+    }
+  };
+  for (let tick = 0; tick < ticks; tick++) {
+    director.stepAll(tick, 1 / 60, [squad], lookup);
+    track();
+    const plans = members.map((m) => director.planFor(m.id)).filter(Boolean);
+    if (plans.length) collect(tick, plans);
+  }
+}
+
+test('hold recipes reach a firing hold and publish strikers on the frame', () => {
+  for (const recipeId of [
+    SQUAD_RECIPE_HARASSMENT_RING, SQUAD_RECIPE_PICKET_WALL,
+    SQUAD_RECIPE_SIEGE_ORBIT, SQUAD_RECIPE_SHEPHERD_NET,
+  ]) {
+    const phases = new Set();
+    let strikeFired = 0;
+    let strikeFaced = 0;
+    runChoreography(recipeId, 4, 1600, (tick, plans) => {
+      for (const p of plans) phases.add(p.phase);
+      if (plans[0].phase === 'strike') {
+        strikeFired = Math.max(strikeFired, plans.filter((p) => p.fireAuthorized).length);
+        strikeFaced = Math.max(strikeFaced, plans.filter((p) => p.faceTarget).length);
+      }
+    });
+    assert.ok(phases.has('strike'), `${recipeId} must reach its strike hold`);
+    assert.ok(strikeFired >= 1, `${recipeId} must authorize firing tokens in the hold`);
+    assert.ok(strikeFaced >= 1, `${recipeId} members face the threat through the hold`);
+  }
+});
+
+test('orbit recipes drift their slots instead of parking on rails', () => {
+  for (const recipeId of [SQUAD_RECIPE_HARASSMENT_RING, SQUAD_RECIPE_SIEGE_ORBIT]) {
+    const director = createSquadFrameDirector({ seed: 4 });
+    const members = [];
+    for (let i = 0; i < 4; i++) {
+      members.push({
+        id: 'm' + i, alive: true, team: 2,
+        pos: { x: (i % 2) * 30, z: Math.floor(i / 2) * 30 },
+        vel: { x: 0, z: 0 }, radius: 12, hullFraction: 1,
+        data: { ai: { squadRecipe: recipeId } },
+      });
+    }
+    const targetEntity = { id: 't', alive: true, pos: { x: 1400, z: 0 }, vel: { x: -2, z: 0 } };
+    const squad = { id: 'sq', recipeId, members, targetId: 't' };
+    const slotsByTick = new Map();
+    for (let tick = 0; tick < 1600; tick++) {
+      director.stepAll(tick, 1 / 60, [squad], () => targetEntity);
+      for (const m of members) {
+        const plan = director.planFor(m.id);
+        if (plan && plan.slot) { m.pos.x = plan.slot.x; m.pos.z = plan.slot.z; }
+      }
+      const first = director.planFor('m0');
+      if (first && first.phase === 'strike' && first.slot) {
+        slotsByTick.set(tick, { x: first.slot.x, z: first.slot.z });
+      }
+    }
+    const keys = [...slotsByTick.keys()];
+    assert.ok(keys.length >= 2, `${recipeId} must publish strike slots`);
+    const a = slotsByTick.get(keys[0]);
+    const b = slotsByTick.get(keys[keys.length - 1]);
+    const drift = Math.hypot(b.x - a.x, b.z - a.z);
+    assert.ok(drift > 40, `${recipeId} strike hold must carousel — got drift ${drift}`);
+  }
+});
+
+test('pair and pass recipes run their own shapes', () => {
+  const phases = new Set();
+  runChoreography(SQUAD_RECIPE_HUNTER_PAIR, 2, 1200, (tick, plans) => {
+    for (const p of plans) phases.add(p.phase);
+  });
+  assert.ok(phases.has('strike') || phases.has('extend') || phases.has('telegraph'),
+    'a hunting pair must run its approach sequence');
+  const passPhases = new Set();
+  runChoreography(SQUAD_RECIPE_BURNING_PASS, 4, 1200, (tick, plans) => {
+    for (const p of plans) passPhases.add(p.phase);
+  });
+  assert.ok(passPhases.size >= 3, 'a burning pass passes through more than one phase');
+});
+
+// ── covering retreat ─────────────────────────────────────────────────────────
+
+test('a retreating squad keeps a screen element covering the egress', () => {
+  const commander = new SquadCommander({ seed: 0x47a, config: { minTacticTicks: 0 } });
+  commander.registerSquad({
+    id: 'retreat_wing', doctrine: 'balanced', faction: 'faction_test', formation: 'line',
+    members: [
+      { id: 'lead' },
+      { id: 'escort', capabilities: ['screen'] },
+      { id: 'wing' },
+    ],
+  });
+  const mkPerception = (id) => ({
+    self: {
+      id, team: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 12,
+      hullFraction: 0.8, energyFraction: 1, heatFraction: 0,
+      disabled: false, tethered: false,
+      capabilities: id === 'escort' ? ['screen'] : [],
+      activity: { kind: 'attack_run', reason: 'test', startedTick: 0 },
+      roe: 'weapons_free',
+    },
+    contacts: [{
+      id: 'h', kind: 'ship', team: 0, pos: { x: 400, z: 0 }, vel: { x: 0, z: 0 },
+      radius: 12, alive: true, valid: true, visible: true, confidence: 1,
+      threat: 0.9, hostile: true, tethered: false, disabled: false, tags: [],
+    }],
+    events: [],
+  });
+  const perceptions = new Map(['lead', 'escort', 'wing'].map((id) => [id, mkPerception(id)]));
+  const result = commander.update('retreat_wing', 10, perceptions, {
+    command: { type: 'order_retreat' },
+  });
+  assert.equal(result.tactic, 'fighting_retreat');
+  assert.equal(result.directives.get('escort').objective.kind, 'screen',
+    'the screen element stays between the threat and the egress');
+  assert.equal(result.directives.get('escort').objective.reason, 'covering_retreat');
+  assert.equal(result.directives.get('wing').objective.kind, 'retreat',
+    'the rest of the flight actually leaves');
 });

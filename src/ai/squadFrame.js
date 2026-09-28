@@ -398,7 +398,7 @@ function stepFrame(frame, recipe, target, tick, dt, mutation) {
   advancePhase(frame, recipe, target, tick, step);
   assignTokensAndLanes(frame, recipe, target, tick, mutation);
   integrateFrame(frame, recipe, target, tick, step);
-  writeSlots(frame, recipe, target, tick);
+  writeSlots(frame, recipe, target, tick, step);
   tagFireAndCommitment(frame, recipe, target);
 }
 
@@ -740,11 +740,14 @@ function desiredFrameMotion(frame, recipe, target, maxSpeed) {
     const hold = Number.isFinite(recipe.strikeHoldRange) ? recipe.strikeHoldRange : 380;
     const rangeErr = Math.hypot(target.x - frame.position.x, target.z - frame.position.z) - hold;
     const drift = clamp(rangeErr * 0.5, -16, 30);
+    // Orbiting holds slide the whole frame tangentially so the ring keeps moving.
+    const orbit = Number.isFinite(recipe.strikeOrbitRate) ? recipe.strikeOrbitRate : 0;
+    const tangential = orbit !== 0 ? orbit * Math.min(hold, 400) * 0.5 : 0;
     return {
       x: target.x - dirX * hold,
       z: target.z - dirZ * hold,
-      vx: dirX * drift,
-      vz: dirZ * drift,
+      vx: dirX * drift - dirZ * tangential,
+      vz: dirZ * drift + dirX * tangential,
       heading: Math.atan2(dirZ, dirX),
     };
   }
@@ -773,7 +776,7 @@ function currentSpacing(frame) {
   return hullClearanceSpacing(radii, frame.spacingScale);
 }
 
-function writeSlots(frame, recipe, target, tick) {
+function writeSlots(frame, recipe, target, tick, dt = 1 / 60) {
   const spacing = currentSpacing(frame);
   const shapeA = getFormationShape(frame.morphFromId) || FORMATION_SHAPE_WEDGE_4;
   const shapeB = getFormationShape(frame.morphToId) || shapeA;
@@ -793,10 +796,32 @@ function writeSlots(frame, recipe, target, tick) {
   const volleyTokens = Array.isArray(recipe.volleyTokens) && recipe.volleyTokens.length
     ? recipe.volleyTokens : null;
 
+  // Strike-hold orbit: recipes with strikeOrbitRate carousel the parked shape — each
+  // socket's local offset rotates by its signed `orbit` over the hold's age, so the
+  // firing ring visibly drifts around the target instead of hanging static.
+  const orbitRate = Number.isFinite(recipe.strikeOrbitRate) ? recipe.strikeOrbitRate : 0;
+  const orbitAgeS = strikeHold && orbitRate !== 0 && frame.strikeStartedTick != null
+    ? (tick - frame.strikeStartedTick) * dt
+    : 0;
+
   for (const rec of frame.members.values()) {
     const local = blendedLocal(shapeA, shapeB, rec.socket, u);
     let right = local.right;
     let forward = local.forward;
+    let slotOrbit = 0;
+    if (orbitAgeS > 0) {
+      const slotSpec = (shapeB.slots && shapeB.slots[rec.socket])
+        || (shapeA.slots && shapeA.slots[rec.socket]);
+      slotOrbit = Number.isFinite(slotSpec && slotSpec.orbit) ? slotSpec.orbit : 0;
+      if (slotOrbit !== 0) {
+        const ang = orbitRate * slotOrbit * orbitAgeS;
+        const ca = Math.cos(ang), sa = Math.sin(ang);
+        const r2 = right * ca - forward * sa;
+        const f2 = right * sa + forward * ca;
+        right = r2;
+        forward = f2;
+      }
+    }
     const collapseLanes = mutationSpec() && mutationSpec().laneHysteresis === false;
     if (collapseLanes && attacking && rec.token === SQUAD_TOKEN.CLOSE_ATTACK && target) {
       rec.slot.x = target.x - frame.railDirX * 160;
@@ -850,6 +875,12 @@ function writeSlots(frame, recipe, target, tick) {
     }
     rec.slot.vx = frame.velocity.x - oz * omega + morphVx;
     rec.slot.vz = frame.velocity.z + ox * omega + morphVz;
+    if (slotOrbit !== 0 && orbitAgeS > 0) {
+      // Rotational velocity of the drifting slot around the frame centre.
+      const wo = orbitRate * slotOrbit;
+      rec.slot.vx += -oz * wo;
+      rec.slot.vz += ox * wo;
+    }
     rec.slot.heading = frame.heading;
     rec.slotError = distance2(rec.pos, rec.slot);
     rec.slotReady = true;

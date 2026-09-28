@@ -253,10 +253,9 @@ export class ManeuverPlanner {
         temperament,
         reflexState: runtime.reflex || (runtime.reflex = emptyReflexState()),
       });
-      if (reflex && reflex.lateral) desired = applyReflexToDesired(desired, selfPose, reflex);
+      if (reflex) desired = applyReflexToDesired(desired, selfPose, reflex);
       runtime.lastReflex = reflex ? reflex.kind : null;
     }
-    if (desired.obstacleAvoidance === true) reflex = null; // a rock in the dodge cone owns the hull
 
     if (!(choreo && choreo.coast)) {
       desired = applyFriendlySeparation(desired, selfPose, contactSource.ships, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
@@ -265,6 +264,12 @@ export class ManeuverPlanner {
       }
     }
     desired = applyObstacleAvoidance(desired, selfPose, contactSource.obstacles, intent, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
+    if (desired.obstacleAvoidance === true) {
+      // A rock in the dodge cone owns the hull — including a burst committed earlier.
+      reflex = null;
+      if (runtime.reflex) runtime.reflex.burst = null;
+      runtime.lastReflex = null;
+    }
     const speed = Math.hypot(selfPose.vel.x, selfPose.vel.z);
     const commanded = Math.hypot(desired.x, desired.z);
     const intentionalHold = intent.kind === ManeuverKind.HOLD && formationDistance <= this.config.arrivalRadius;
@@ -1142,33 +1147,81 @@ function stampDesired(source, next) {
 }
 
 /**
- * Displace the desired state sideways by the reflex's signed lateral offset (world units).
- * Tracked desireds shift the setpoint and feed a lateral velocity term so the PD solver
+ * Displace the desired state by the reflex channels (world units):
+ *  - lateral: signed offset perpendicular to the desired direction (jinks/weaves),
+ *  - away + awayFrom: rotate/pull the setpoint off the threat bearing (break-offs),
+ *  - pullTo + pullK: bias the setpoint toward a resolved point (regroup, ward-screen).
+ * Tracked desireds shift the setpoint and feed a matching velocity term so the PD solver
  * actually flies the weave instead of just bending the heading; direction-only desireds
  * rotate by the offset angle.
  */
 function applyReflexToDesired(desired, self, reflex) {
-  if (!desired || !reflex || !Number.isFinite(reflex.lateral) || Math.abs(reflex.lateral) < 0.5) {
-    return desired;
-  }
+  if (!desired || !reflex) return desired;
+  const hasLat = Number.isFinite(reflex.lateral) && Math.abs(reflex.lateral) >= 0.5;
+  const hasAway = reflex.away > 0 && reflex.awayFrom && Number.isFinite(reflex.awayFrom.x);
+  const hasPull = reflex.pullTo && reflex.pullK > 0 && Number.isFinite(reflex.pullTo.x);
+  if (!hasLat && !hasAway && !hasPull) return desired;
   const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
   const perpX = -dir.z;
   const perpZ = dir.x;
-  const lat = reflex.lateral;
+  const mag = Math.hypot(desired.x, desired.z) || 1;
   // desired.x/z is a distance-scaled vector (the solver re-normalizes it), so adding the
   // full lateral term rotates the commanded direction by ~atan(lat / dist) — the jink.
-  const out = { ...desired, x: desired.x + perpX * lat, z: desired.z + perpZ * lat };
+  const lat = hasLat ? reflex.lateral : 0;
+  let x = desired.x + perpX * lat;
+  let z = desired.z + perpZ * lat;
+  let posX = desired.desiredPos ? desired.desiredPos.x + perpX * lat : 0;
+  let posZ = desired.desiredPos ? desired.desiredPos.z + perpZ * lat : 0;
+  let velX = 0;
+  let velZ = 0;
+  const baseVel = desired.desiredVel || ZERO_VEL;
+  velX = baseVel.x + perpX * lat * 1.1;
+  velZ = baseVel.z + perpZ * lat * 1.1;
+  if (hasAway) {
+    const w = clamp(reflex.away, 0, 1);
+    const ax = self.pos.x - reflex.awayFrom.x;
+    const az = self.pos.z - reflex.awayFrom.z;
+    const alen = Math.hypot(ax, az) || 1;
+    const ux = ax / alen, uz = az / alen;
+    // Blend the commanded direction onto the away bearing.
+    const dx = x / mag, dz = z / mag;
+    const bx = dx * (1 - w) + ux * w;
+    const bz = dz * (1 - w) + uz * w;
+    const blen = Math.hypot(bx, bz) || 1;
+    x = (bx / blen) * mag;
+    z = (bz / blen) * mag;
+    if (desired.desiredPos) {
+      const shift = w * Math.min(alen, 220);
+      posX += ux * shift;
+      posZ += uz * shift;
+      velX += ux * shift * 0.4;
+      velZ += uz * shift * 0.4;
+    }
+  }
+  if (hasPull) {
+    const k = clamp(reflex.pullK, 0, 1) * 0.6;
+    if (desired.desiredPos) {
+      posX += (reflex.pullTo.x - posX) * k;
+      posZ += (reflex.pullTo.z - posZ) * k;
+      velX += (reflex.pullTo.x - self.pos.x) * k * 0.2;
+      velZ += (reflex.pullTo.z - self.pos.z) * k * 0.2;
+    } else {
+      const px = reflex.pullTo.x - self.pos.x;
+      const pz = reflex.pullTo.z - self.pos.z;
+      const plen = Math.hypot(px, pz) || 1;
+      const dx = x / mag, dz = z / mag;
+      const bx = dx * (1 - k) + (px / plen) * k;
+      const bz = dz * (1 - k) + (pz / plen) * k;
+      const blen = Math.hypot(bx, bz) || 1;
+      x = (bx / blen) * mag;
+      z = (bz / blen) * mag;
+    }
+  }
+  const out = { ...desired, x, z };
   if (desired.desiredPos) {
     out.control = 'track';
-    out.desiredPos = {
-      x: desired.desiredPos.x + perpX * lat,
-      z: desired.desiredPos.z + perpZ * lat,
-    };
-    const vel = desired.desiredVel || ZERO_VEL;
-    out.desiredVel = {
-      x: vel.x + perpX * lat * 1.1,
-      z: vel.z + perpZ * lat * 1.1,
-    };
+    out.desiredPos = { x: posX, z: posZ };
+    out.desiredVel = { x: velX, z: velZ };
     out.contactSeek = desired.contactSeek;
   }
   return out;

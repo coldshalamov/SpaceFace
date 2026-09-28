@@ -133,7 +133,7 @@ export class SquadCommander {
       const allocationActive = targetAssignments !== null && targetAssignments.has(member.id);
       const assignedTarget = allocationActive ? targetAssignments.get(member.id) : null;
       const objective = objectiveFor(selected.id, role, focus, bestObjective, bestTether, perception,
-        assignedTarget, allocationActive, hostilesPresent, freeze);
+        assignedTarget, allocationActive, hostilesPresent, freeze, squad.members.length);
       const directive = freeze({
         tick,
         squadId,
@@ -472,8 +472,20 @@ function formationSlotFor(squad, leaderPerception, index, count) {
 }
 
 function objectiveFor(tactic, role, focus, objective, tether, perception, assignedTarget = null,
-  allocationActive = false, hostilesPresent = false, freeze = Object.freeze) {
-  if (tactic === 'fighting_retreat') return freezeObjective(ObjectiveKind.RETREAT, null, 'director_or_attrition', freeze);
+  allocationActive = false, hostilesPresent = false, freeze = Object.freeze, memberCount = 0) {
+  if (tactic === 'fighting_retreat') {
+    // Covering retreat: when the wing votes to run and a screen-role member still has
+    // the hull for it, that one hull keeps a SCREEN objective on the focus target while
+    // everyone else disengages — a retreat reads as rearguard action, not a simultaneous
+    // turn-tail. Self-bounding: the coverer takes the retreat objective as soon as its
+    // own hull drops past the same threshold the profile would force anyway.
+    const coverHull = perception && perception.self && Number.isFinite(perception.self.hullFraction)
+      ? perception.self.hullFraction : 0;
+    if (role === SquadRole.SCREEN && memberCount >= 3 && focus && hostilesPresent && coverHull > 0.3) {
+      return freezeObjective(ObjectiveKind.SCREEN, focus.id, 'covering_retreat', freeze);
+    }
+    return freezeObjective(ObjectiveKind.RETREAT, null, 'director_or_attrition', freeze);
+  }
   if (tactic === 'cut_and_scatter') return freezeObjective(role === SquadRole.SUPPORT || role === SquadRole.STRIKER ? ObjectiveKind.COUNTER_TETHER_CUT : ObjectiveKind.SCREEN, tether && tether.id, 'exposed_tether', freeze);
   if (tactic === 'overload_and_break') {
     const selfTethered = !!(perception && perception.self && perception.self.tethered);

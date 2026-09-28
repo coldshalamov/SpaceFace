@@ -50,9 +50,9 @@ const REINFORCEMENT_PACKAGES = Object.freeze({
     doctrine: 'scavenger',
     factionId: 'faction_vael',
     squadPrefix: 'sg06_vael_wing',
-    // Wing pair on a choreographed frame: the reinforcement arrives as a two-ship
-    // pincer rather than two unrelated hunters.
-    squadRecipe: 'pincer_sweep',
+    // Wing pair on a choreographed frame: the reinforcement arrives as a hunting pair
+    // running alternating scissor crosses rather than two unrelated hunters.
+    squadRecipe: 'hunter_pair',
   }),
   scn_interceptor_pair: Object.freeze({
     typeId: 'patrol_lawman',

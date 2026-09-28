@@ -18,9 +18,16 @@ import {
   wrapAngle,
 } from '../ai/contracts.js';
 import {
+  SQUAD_RECIPE_BURNING_PASS,
+  SQUAD_RECIPE_HARASSMENT_RING,
+  SQUAD_RECIPE_HUNTER_PAIR,
   SQUAD_RECIPE_INTERCEPTOR_SCISSORS,
+  SQUAD_RECIPE_PICKET_WALL,
   SQUAD_RECIPE_PINCER_SWEEP,
+  SQUAD_RECIPE_SHEPHERD_NET,
+  SQUAD_RECIPE_SIEGE_ORBIT,
   SQUAD_RECIPE_STANDOFF_GUNLINE,
+  SQUAD_RECIPE_WOLFPACK_QUARTER,
   SQUAD_SOCKET,
   getSquadRecipe,
 } from '../data/squadChoreography.js';
@@ -819,6 +826,9 @@ function autoSquadEligible(entity, state) {
   return autoSquadKeyFor(ai) != null;
 }
 
+// The auto-choreography table: a squad's doctrine mix picks a family, then a seeded draw
+// picks the recipe inside it. Marksman-anchored squads hold walls and orbit; all-fast wings
+// run the passing games; mixed wings quarter, sweep, or herd. Deterministic per squad key.
 function autoRecipeForSquad(members, squadKey, seed) {
   let ranged = 0;
   let fast = 0;
@@ -827,16 +837,27 @@ function autoRecipeForSquad(members, squadKey, seed) {
     if (d === CombatDoctrineId.RANGED_DISENGAGER) ranged += 1;
     else if (AUTO_SQUAD_FAST_DOCTRINES.has(d)) fast += 1;
   }
-  // A marksman on the squad anchors everyone behind the firing line.
-  if (ranged > 0) return SQUAD_RECIPE_STANDOFF_GUNLINE;
-  if (fast === members.length) {
-    return hashUnit(seed, squadKey, 'squad_recipe') < 0.5
-      ? SQUAD_RECIPE_INTERCEPTOR_SCISSORS
-      : SQUAD_RECIPE_PINCER_SWEEP;
+  const mix = hashUnit(seed, squadKey, 'squad_recipe');
+  // Marksman wings anchor everyone behind a firing line — deep marksman benches circle
+  // for a siege, shallower mixes form the gunline or hold the picket wall.
+  if (ranged > 0) {
+    if (ranged >= 2) return mix < 0.5 ? SQUAD_RECIPE_SIEGE_ORBIT : SQUAD_RECIPE_PICKET_WALL;
+    return mix < 0.6 ? SQUAD_RECIPE_STANDOFF_GUNLINE : SQUAD_RECIPE_PICKET_WALL;
   }
-  return hashUnit(seed, squadKey, 'squad_recipe') < 0.35
-    ? SQUAD_RECIPE_INTERCEPTOR_SCISSORS
-    : SQUAD_RECIPE_PINCER_SWEEP;
+  if (fast === members.length) {
+    // Two fast hulls read as a hunting pair, not a flight.
+    if (members.length <= 2) {
+      return mix < 0.7 ? SQUAD_RECIPE_HUNTER_PAIR : SQUAD_RECIPE_INTERCEPTOR_SCISSORS;
+    }
+    return mix < 0.28 ? SQUAD_RECIPE_INTERCEPTOR_SCISSORS
+      : mix < 0.52 ? SQUAD_RECIPE_PINCER_SWEEP
+      : mix < 0.78 ? SQUAD_RECIPE_HARASSMENT_RING
+      : SQUAD_RECIPE_BURNING_PASS;
+  }
+  return mix < 0.32 ? SQUAD_RECIPE_PINCER_SWEEP
+    : mix < 0.56 ? SQUAD_RECIPE_WOLFPACK_QUARTER
+    : mix < 0.78 ? SQUAD_RECIPE_SHEPHERD_NET
+    : SQUAD_RECIPE_INTERCEPTOR_SCISSORS;
 }
 
 function incumbentAutoRecipe(members, squadKey) {
