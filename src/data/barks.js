@@ -2131,6 +2131,87 @@ export function escapeTauntBarkFor(factionId, rng) {
   return typeof line === 'string' && line.length ? line : '...';
 }
 
+// ── Passengers are people — the person a contract is about ───────────────────────────────────
+//
+// A passenger job used to be one sentence: a seat count with a fee. These corpora make the fare a
+// person — a name minted per offer from (seed, offerId), one "why I'm traveling" line printed on
+// the board, and three beats spoken on the existing comms seams (boarding on undock, a mid-run
+// line at the route midpoint, an arrival line quoted in the settlement receipt). Register is the
+// Frontier's: plainspoken, live-and-let-live — a fare talks like a person, not like a faction.
+// Pure data + index selectors, same as every corpus above: the CALLER derives the index from
+// hash32(state seed, mission/offer id) so lines are stable across save/load with no rng spend.
+//
+// Tokens: {name} the passenger (resolved by the caller), {dest} the destination station name.
+export const FRONTIER_FIRST_NAMES = Object.freeze([
+  'Orion', 'Kael', 'Voss', 'Mira', 'Juno', 'Sable', 'Ren', 'Thane', 'Lyra', 'Dax',
+  'Cira', 'Nev', 'Soren', 'Tova', 'Zara', 'Calder', 'Rhea', 'Vek', 'Inara', 'Koda',
+  'Maeve', 'Cassius', 'Lira', 'Draven', 'Ember', 'Tycho', 'Neve', 'Ash', 'Selene', 'Rook',
+  'Brynn', 'Orin', 'Callum', 'Vesper', 'Idris', 'Sully', 'Kira', 'Jace', 'Nova', 'Petra',
+]);
+
+export const FRONTIER_LAST_NAMES = Object.freeze([
+  'Vance', 'Ashford', 'Kellan', 'Revik', 'Solari', 'Morrow', 'Quade', 'Theron',
+  'Aldric', 'Craine', 'Falken', 'Stroud', 'Varek', 'Holden', 'Rennick', 'Deckard',
+  'Torren', 'Briggs', 'Calloway', 'Sagan', 'Tull', 'Graves', 'Huxley', 'Kepler',
+  'Madsen', 'Oakes', 'Stark', 'Merrik', 'Calder', 'Voss',
+]);
+
+// The one-line "why I'm traveling" printed under the board row. {dest} always resolves.
+export const PASSENGER_WHY_LINES = Object.freeze([
+  'Work at {dest} starts when I sign in, and I am already late.',
+  'Family question at {dest}. Thirty cycles of silence, one answer owed.',
+  '{dest} has a med wing that still owes me a scan.',
+  'A name at {dest} remembers me. That is the whole plan.',
+  'Bought a berth at {dest} sight unseen. Sight stays unseen.',
+  'Everything I own is one case, and {dest} is where the case is going.',
+  'The lanes I ran are closed. {dest} is the road that is left.',
+  'I heard {dest} pays debt collectors. I am one, and I am owed.',
+  'Contract at {dest}, three cycles, no extensions. Same as anyone.',
+  'Not running from anything. Ask me again at {dest} and I may answer.',
+]);
+
+// The three riding beats. board: spoken as the umbilical clears. midrun: once, at the route
+// midpoint (or on the destination-sector crossing, whichever lands first). arrive: quoted in
+// the settlement receipt, so the job closes in the fare's words, not the board's.
+export const PASSENGER_BEATS = Object.freeze({
+  board: Object.freeze([
+    'Thanks for the seat. I travel quiet — no stops unless the hull complains.',
+    'I will be in the back with my case. Wake me when the marker turns.',
+    'Paid in full, so the trip stays boring. Boring is the point.',
+    'If anyone hails us, I am cargo. Boring, lawful cargo.',
+    'First lift off this rock in three cycles. Try not to die, hm?',
+    'Couch is fine, the case stays on my knees. Punch it when you are ready.',
+    'You fly, I nap. Wake me for anything louder than a customs ping.',
+    'No stops, no questions, and nobody looks in the case. Deal and deal.',
+  ]),
+  midrun: Object.freeze([
+    'Halfway, by my count. The seat still beats walking.',
+    'You fly steady. That is the whole review.',
+    'I keep watching the marker like it moves. It does not. Keep going.',
+    'Something shifted in the hold. Probably mine. Probably.',
+    'When we land, leave the manifest to me. It is simpler that way.',
+    'Quiet run so far. Do not jinx it by agreeing.',
+    'The old pilot I rode with said lanes feel shorter talking. Talk.',
+  ]),
+  arrive: Object.freeze([
+    'You got me here in one piece. That puts you ahead of my last pilot.',
+    'Keep the hatch quiet and open — I was never on your manifest.',
+    'If anyone asks who flew me: nobody. But it was you, and I am grateful.',
+    'Here is fine. Here is finally fine.',
+    'Tell the board the trip was boring. Best thing a trip can be.',
+    'Good hull, good hands. I will ask for you by name — not mine.',
+  ]),
+});
+
+/** One line from a passenger corpus by numeric index (0..2^32). Deterministic; never empty. */
+export function passengerBeatLine(kind, index) {
+  const pool = PASSENGER_BEATS[kind];
+  if (!Array.isArray(pool) || !pool.length) return '';
+  const i = (Number.isFinite(index) ? Math.abs(Math.trunc(index)) : 0) % pool.length;
+  const line = pool[i];
+  return typeof line === 'string' && line.length ? line : pool[0];
+}
+
 export default {
   BARKS,
   BARK_FACTIONS,
@@ -2142,6 +2223,10 @@ export default {
   PURSUIT_BARKS,
   SURRENDER_BARKS,
   ESCAPE_TAUNT_BARKS,
+  FRONTIER_FIRST_NAMES,
+  FRONTIER_LAST_NAMES,
+  PASSENGER_WHY_LINES,
+  PASSENGER_BEATS,
   barkFor,
   hullRecognitionBarkFor,
   historyBarkFor,
@@ -2149,4 +2234,5 @@ export default {
   pursuitBarkFor,
   surrenderBarkFor,
   escapeTauntBarkFor,
+  passengerBeatLine,
 };

@@ -19,8 +19,19 @@
 // Each trap:
 //   id          — stable trap id
 //   fitsTypes   — offer types this trap can attach to
+//   needsCargoFamily — optional gate on the ACTUAL hauled commodity's moral family
+//                 (COMMODITY_MORAL_TAGS, src/data/commodityMoralTags.js). An arms-class trap
+//                 requires a military hold; the counterfeit lie requires humanitarian relief in
+//                 the hold; the stolen-air lie requires contraband; the grave lie requires
+//                 industrial ore. A trap whose family contradicts the hold is forbidden — the
+//                 lie is about the specific crates aboard, never a generic voice. Passenger
+//                 traps carry no family gate (a person is not a commodity).
 //   revealAt    — when the reveal fires: 'mid_run' (after accept, on first scan/proximity cue)
 //   revealLine  — the one-line comms reveal (the moment of truth)
+//   revealLineNamed / patrolRevealLineNamed / promptNamed — the PASSENGER variant: the same
+//                 moment with {name} interpolated, so the fugitive trap is about the person the
+//                 run made real. attachTrap prefers these when the offer carries a minted
+//                 passenger identity; the static lines stay the no-name fallback.
 //   patrolRevealLine — the WITNESSED variant, spoken when the reveal lands under a live law
 //                 sweep (patrol:proximity — a real cutter alongside running the hold): the
 //                 patrol is inside the fiction, and the fork stands with it there. Falls back
@@ -33,11 +44,15 @@
 //                 channel='contraband' reuses the shipped runScan bust path. A credits channel on a
 //                 'continue' option is never granted upfront — that would double-pay at settlement.
 
+import { COMMODITY_MORAL_TAGS } from './commodityMoralTags.js';
+
 export const MORAL_TRAPS = Object.freeze({
   // Cargo-is-weapons: the "industrial equipment" is arms for a faction the player may not back.
+  // Family gate: the lie only lands on a military-class hold (weapons/munitions/charges).
   cargo_is_weapons: Object.freeze({
     id: 'cargo_is_weapons',
     fitsTypes: Object.freeze(['smuggling_run', 'cargo_delivery']),
+    needsCargoFamily: 'military',
     revealAt: 'mid_run',
     revealLine: 'The manifest was sealed — but the crate shifted, and what you saw wasn\'t industrial equipment. These are weapons.',
     patrolRevealLine: 'Under the patrol\'s sweep the crate shifts again — that is not industrial equipment, and the cutter alongside knows it too.',
@@ -58,13 +73,17 @@ export const MORAL_TRAPS = Object.freeze({
     }),
   }),
 
-  // Passenger-is-fugitive: the "diplomat" is wanted.
+  // Passenger-is-fugitive: the "diplomat" is wanted — and now the lie is about a NAMED person:
+  // the named variants interpolate the offer's minted passenger identity ({name} tokens).
   passenger_is_fugitive: Object.freeze({
     id: 'passenger_is_fugitive',
     fitsTypes: Object.freeze(['passenger_transport']),
     revealAt: 'mid_run',
     revealLine: 'The passenger\'s credentials don\'t scan. The face on the Concord bulletin matches. They\'re a fugitive.',
+    revealLineNamed: '{name}\'s credentials don\'t scan clean. The face on the Concord bulletin is {name}. Your passenger is a fugitive.',
     patrolRevealLine: 'The patrol sweep pings your hull and your passenger\'s forged credentials go pale — the bulletin face is in your hold, and the cutter is alongside.',
+    patrolRevealLineNamed: 'The patrol sweep pings your hull and {name}\'s forged credentials go pale — the bulletin face is in your cabin, and the cutter is alongside.',
+    promptNamed: 'Your passenger {name} is a wanted fugitive. What do you do?',
     choice: Object.freeze({
       prompt: 'Your passenger is a wanted fugitive. What do you do?',
       options: Object.freeze([
@@ -83,9 +102,11 @@ export const MORAL_TRAPS = Object.freeze({
   }),
 
   // Medicine-is-counterfeit: the relief cargo is fake — running it poisons the relief effort.
+  // Family gate: the purity check is a lie only about humanitarian cargo in the hold.
   medicine_is_counterfeit: Object.freeze({
     id: 'medicine_is_counterfeit',
     fitsTypes: Object.freeze(['cargo_delivery', 'smuggling_run']),
+    needsCargoFamily: 'humanitarian',
     revealAt: 'mid_run',
     revealLine: 'You ran the standard purity check. Half these doses are inert filler. The relief cargo is counterfeit.',
     patrolRevealLine: 'While the patrol sweep holds you, you crack a vial on the excuse: half the doses are inert filler. The relief cargo is counterfeit.',
@@ -108,9 +129,11 @@ export const MORAL_TRAPS = Object.freeze({
 
   // Air-is-owed: the sealed atmo canisters are diverted relief. Delivering them poisons the Pit’s ledger.
   // Closes audit II.2 (named beneficiary this cycle): MTS holds the short; the canisters widen it.
+  // Family gate: stolen relief air is a contraband-class hold (narcotics/stolen goods lanes).
   air_is_owed: Object.freeze({
     id: 'air_is_owed',
     fitsTypes: Object.freeze(['smuggling_run', 'cargo_delivery']),
+    needsCargoFamily: 'contraband',
     revealAt: 'mid_run',
     revealLine: 'The canister seals match a Pit relief batch withdrawn three cycles ago. This is rebreathed air sold back to the station that was promised it.',
     patrolRevealLine: 'The patrol\'s sweep rattles the canister racks, and the seals it paints match a Pit relief batch withdrawn three cycles ago — rebreathed air, sold back to the station promised it.',
@@ -133,9 +156,11 @@ export const MORAL_TRAPS = Object.freeze({
 
   // Ore-is-mass-grave: the “refined slurry” is ballast from a shaft collapse that killed nine.
   // Closes audit II.1 (close the arithmetic): the 0.7t moisture-loss column is the cover for the dead.
+  // Family gate: the assay lie only lands on an industrial-class hold (ores/refined/metals).
   ore_is_mass_grave: Object.freeze({
     id: 'ore_is_mass_grave',
     fitsTypes: Object.freeze(['cargo_delivery', 'smuggling_run']),
+    needsCargoFamily: 'industrial',
     revealAt: 'mid_run',
     revealLine: 'The slurry assay reads organic. Two crew from Shaft 7 are still listed as 0.7t moisture loss. This ore is the column that hides them.',
     patrolRevealLine: 'The patrol\'s hold x-ray reads the slurry as organic. Two crew from Shaft 7 are still filed as 0.7t moisture loss — this is the column that hides them, and the cutter is watching you read it.',
@@ -168,6 +193,18 @@ export function trapById(id) {
 /** Does a trap fit an offer type? */
 export function trapFitsOfferType(trap, offerType) {
   return !!(trap && trap.fitsTypes && trap.fitsTypes.includes(offerType));
+}
+
+/**
+ * Does a trap fit the ACTUAL hauled commodity? A trap with needsCargoFamily attaches only when
+ * the hold's commodity carries that moral family (COMMODITY_MORAL_TAGS is the one source of
+ * truth). Untagged cargo is amoral — no cargo-familied trap may lie about it. Traps without a
+ * family gate (the passenger trap — a person is not a commodity) always fit this check.
+ */
+export function trapFitsCargoFamily(trap, cmdtyId) {
+  if (!trap || !trap.needsCargoFamily) return true;
+  if (!cmdtyId) return false;
+  return COMMODITY_MORAL_TAGS[cmdtyId] === trap.needsCargoFamily;
 }
 
 export default MORAL_TRAPS;

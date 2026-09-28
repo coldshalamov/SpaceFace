@@ -58,8 +58,14 @@ test('production init + update order lengths match the live browser baseline', (
   // own buffers, so the update order grows by one pure observer.
   // 161 -> 162 init / 120 -> 121 update: INFERENCE-30 noFireAdvisory — the station no-fire
   // ring watch; an observer whose tick only tracks ring inside/outside so exits re-arm.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 162);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 121);
+  // 162 -> 163 init: wreckChoicePrompt (BP-01.1/PQ-138.04) — event-only prompt-deck adapter,
+  // same posture as impoundPayPrompt/moralTrapPrompt; init order only.
+  // 162 init / 121 -> 122 update: the moralTrapSystem trap-reveal drive — init-only since the
+  // packet landed, now ticking for one bounded purpose: firing a same-sector fork whose short
+  // post-undock delay has elapsed. Every other reveal path stays event-driven; a mission
+  // without a pending reveal makes the tick a two-comparison no-op.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 163);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 122);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -202,7 +208,8 @@ test('browser production system set is unchanged vs production manifest constant
   // 161 with the kill-cam recorder (one system in both orders; reads poses after the
   // kill-replay ring, writes only its own ring buffers).
   // 162 with noFireAdvisory (one system in both orders; the no-fire ring watch — observer).
-  assert.equal(registry.systems.length, 162);
+  // 163 with wreckChoicePrompt (BP-01.1/PQ-138.04; event-only prompt-deck adapter).
+  assert.equal(registry.systems.length, 163);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

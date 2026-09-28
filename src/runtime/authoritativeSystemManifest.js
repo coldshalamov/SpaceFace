@@ -123,6 +123,11 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // noFireAdvisory: the station no-fire ring watch. Its tick only tracks ring inside/outside so an
   // exit re-arms the advisory bark — observer-only, writes nothing the sim consumes.
   'noFireAdvisory',
+  // moralTrapSystem: the trap-reveal drive. Its tick fires only a same-sector fork whose
+  // short post-undock delay has elapsed (m._trapRevealAt); every other path stays event-driven.
+  // A mission without a pending reveal makes it a two-comparison no-op. Sits before
+  // voiceArbiter so a reveal it speaks is collected on the same tick.
+  'moralTrapSystem',
   'voiceArbiter',
   'save',
 ]);

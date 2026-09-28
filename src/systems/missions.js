@@ -107,6 +107,14 @@ import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { attachClauses, attachConditions } from './contractClauses.js';
 import { isFragileCommodity } from './fragileCargo.js';
 import { attachTrap, seedHeliosOfferTrap } from './moralTrap.js';
+// A1 "passengers are people": the passenger corpora (names, why-lines, riding beats) are data;
+// this system mints the per-offer identity and speaks the beats on the existing comms seams.
+import {
+  FRONTIER_FIRST_NAMES,
+  FRONTIER_LAST_NAMES,
+  PASSENGER_WHY_LINES,
+  passengerBeatLine,
+} from '../data/barks.js';
 // PQ-019C — the authored physical capsule heist. The offer and its tuned scalars are data; the run
 // itself is driven by the runtime module below, which consumes PQ-019B's pure arbiter. Both are
 // inert unless an active mission actually carries a `heist` subrecord.
@@ -242,6 +250,23 @@ function stationInfoFor(state, stationId) {
     }
   }
   return STATION_INFO.get(stationId) || null;
+}
+
+/**
+ * A1 "passengers are people": mint one offer's passenger from (world seed, offer id) — a name
+ * and a one-line "why I'm traveling". Never an rng draw and never ambient randomness: the same
+ * offer reproduces the same person across board refresh, save/load, and the fugitive reveal.
+ */
+function passengerIdentityFor(seed, offerId, destName) {
+  const seedU = (Number(seed) || 0) >>> 0;
+  const idStr = String(offerId || '');
+  const nameHash = hash32(seedU, idStr, 'pax-name');
+  const first = FRONTIER_FIRST_NAMES[nameHash % FRONTIER_FIRST_NAMES.length];
+  const last = FRONTIER_LAST_NAMES[(nameHash >>> 8) % FRONTIER_LAST_NAMES.length];
+  const whyHash = hash32(seedU, idStr, 'pax-why');
+  const why = String(PASSENGER_WHY_LINES[whyHash % PASSENGER_WHY_LINES.length])
+    .replace(/\{dest\}/g, destName || 'the destination');
+  return { name: `${first} ${last}`, why };
 }
 
 // Commodities a player can plausibly haul for delivery / be asked to mine / smuggle.
@@ -1179,6 +1204,7 @@ export const missions = {
       this._activateContract47aB1OnDeparture();
       this._activateContract47aB2OnDeparture();
       this._activateContract47aB3OnDeparture();
+      this._onPassengerUndock();
     });
 
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
@@ -1374,6 +1400,7 @@ export const missions = {
     // why a mission could only ever say "counter >= N" or "docked at station X". This is the hook
     // that lets a contract term be a physical state — speed held, line under tension, alongside the
     // berth — instead of an event count.
+    this._drivePassengerBeats(state);
     this._evaluateMissionConditions(dt, state);
     // Story credit/net-worth gates are checked opportunistically (cheap, no per-frame DOM).
     this._checkStoryGates();
@@ -2529,6 +2556,14 @@ export const missions = {
     // placeName stays in params.markPlace — the stamped target keeps spawn-identity fields only.
     const { placeName: _markPlace, ...markStoryTarget } = bountyMark || {};
 
+    // A1 "passengers are people": the board names the fare, not a seat count. Minted from
+    // (world seed, offer id) — never an rng draw — so every other rolled field stays
+    // bit-identical, the same offer reproduces the same person across save/load, and the
+    // passenger_is_fugitive trap can interpolate this exact name at attach time.
+    if (typeId === 'passenger_transport') {
+      params.passenger = passengerIdentityFor(this.state.meta.seed, offerId, dest && dest.name);
+    }
+
     // Economy Pulse: pay the net work budget, not a product of unbounded multipliers.
     const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier:payRiskTier,tier:payTier,distance,params,
       loyaltyMultiplier:this._repOf(info.factionId) >= (cfg.faction.friendlyThreshold || 25)
@@ -2811,7 +2846,9 @@ export const missions = {
       case 'escort': return `Escort a convoy to ${destName}`;
       case 'patrol_clear': return `Clear ${p.clearCount} hostiles near ${destName}`;
       case 'recon_scan': return `Scan ${p.scanTargets} site(s) near ${destName}`;
-      case 'passenger_transport': return `Transport a passenger to ${destName}`;
+      case 'passenger_transport': return p.passenger
+        ? `Take ${p.passenger.name} to ${destName}`
+        : `Transport a passenger to ${destName}`;
       case 'tow_recovery': return `Tow the slag core to ${destName}`;
       case 'demolition': return `Knock down the tower near ${destName}`;
       case 'rescue_under_fire': return `Pull the pods out of ${destName}`;
@@ -2864,7 +2901,9 @@ export const missions = {
         line = `${p.scanTargets} site(s) near ${destName} need a real reading, not a rumor.`;
         break;
       case 'passenger_transport':
-        line = `One passenger to ${destName}. Quiet trip, quiet fee.`;
+        line = p.passenger
+          ? `${p.passenger.name} to ${destName}. ${p.passenger.why}`
+          : `One passenger to ${destName}. Quiet trip, quiet fee.`;
         break;
       case 'tow_recovery':
         line = `Tow the slag core into ${destName}, or sling it in on a clean release.`;
@@ -6359,8 +6398,17 @@ export const missions = {
         return 'Lane report is clean. Hostile signatures cleared, trade traffic can pretend it was always safe.';
       case 'recon_scan':
         return 'Scan packet received. The map is now less wrong where it matters.';
-      case 'passenger_transport':
+      case 'passenger_transport': {
+        // A1: the receipt quotes the fare the run made real, not a seat count.
+        const pax = p.passenger;
+        if (pax && pax.name) {
+          const quote = this._passengerBeatLine(m, 'arrive');
+          return quote
+            ? `${pax.name} stepped off at ${dest}. "${quote}"`
+            : `${pax.name} transferred at ${dest}. The fee cleared.`;
+        }
         return 'Passenger transferred at ' + dest + '. Their name stays boring on the manifest.';
+      }
       case 'tow_recovery':
         return p.completionMethod === 'sling_in'
           ? 'Slag core slung into ' + dest + '. The yard logged the throw, not the dock.'
@@ -8354,6 +8402,7 @@ export const missions = {
     this.spawnTargetsForSector(sectorId);
     this._reconcileLandmarkQuestOffers({ sectorId });
     this._emitSetPieceTravelLine(sectorId);
+    this._onPassengerSectorEnter(sectorId);
     this._refreshNavigation({ preferStory: true });
     this._storyTrigger('sector', { sectorId });
   },
@@ -8380,6 +8429,80 @@ export const missions = {
         text: cause.travelText,
         ...setPieceEventFields(mission),
       });
+    }
+  },
+
+  // =========================================================================================
+  // PASSENGERS ARE PEOPLE (A1) — a fare the run makes real, on existing seams
+  //
+  // The passenger is minted per offer (params.passenger — name + why-line, hash-derived from
+  // the world seed and the offer id, so save/load is stable and no rng draw is spent). They
+  // speak three times: the boarding line on dock:undocked, one mid-run line at the route
+  // midpoint on the sim clock (or sooner if the player crosses into the destination sector),
+  // and an arrival line quoted back in the settlement receipt. Line picks are hash-derived
+  // from (seed, mission id) — never ambient randomness.
+  // =========================================================================================
+
+  /** One beat line for this mission's passenger, deterministically picked and interpolated. */
+  _passengerBeatLine(m, kind) {
+    const pax = m && m.params && m.params.passenger;
+    if (!pax || !pax.name) return '';
+    const seed = (this.state.meta && this.state.meta.seed) || 0;
+    const idx = hash32(seed >>> 0, String(m.id || pax.name), 'pax-beat', kind);
+    return passengerBeatLine(kind, idx)
+      .replace(/\{name\}/g, pax.name)
+      .replace(/\{dest\}/g, this._destName(m));
+  },
+
+  _speakPassenger(m, kind) {
+    const pax = m && m.params && m.params.passenger;
+    const text = this._passengerBeatLine(m, kind);
+    if (!pax || !pax.name || !text) return;
+    this.bus.emit('comms:popup', { sender: pax.name, text, category: 'personal', ttl: 7 });
+  },
+
+  /** Undock: the boarding line, plus the mid-run beat scheduled at the route midpoint. */
+  _onPassengerUndock() {
+    const state = this.state;
+    for (const m of (state.missions && state.missions.active) || []) {
+      if (!m || m.status !== 'active' || m.type !== 'passenger_transport') continue;
+      if (!(m.params && m.params.passenger)) continue;
+      if (!m._paxBoardSpoken) {
+        m._paxBoardSpoken = true;
+        this._speakPassenger(m, 'board');
+      }
+      // Route midpoint at the reference cruise speed, clamped so the line never lands at the
+      // umbilical nor waits out the whole run. A faster player crosses into the destination
+      // sector first and speaks it there (see _onPassengerSectorEnter).
+      if (m._paxMidrunAt == null) {
+        const etaMidS = (Math.max(0, Number(m.distance) || 0) / 2)
+          / (MISSION_TUNING.cruiseSpeedRef || 140);
+        m._paxMidrunAt = (Number(state.simTime) || 0) + Math.min(Math.max(etaMidS, 45), 240);
+      }
+      break; // one passenger voice per undock
+    }
+  },
+
+  /** A destination-sector crossing speaks the mid-run beat early. */
+  _onPassengerSectorEnter(sectorId) {
+    for (const m of (this.state.missions && this.state.missions.active) || []) {
+      if (!m || m.status !== 'active' || m.type !== 'passenger_transport') continue;
+      if (m._paxMidrunSpoken || !(m.params && m.params.passenger)) continue;
+      if (m.destSectorId !== sectorId) continue;
+      m._paxMidrunSpoken = true;
+      this._speakPassenger(m, 'midrun');
+      break;
+    }
+  },
+
+  /** Per-tick: the scheduled mid-run beat for runs that never cross a sector boundary. */
+  _drivePassengerBeats(state) {
+    for (const m of (state.missions && state.missions.active) || []) {
+      if (!m || m.status !== 'active' || m.type !== 'passenger_transport') continue;
+      if (m._paxMidrunAt == null || m._paxMidrunSpoken) continue;
+      if ((Number(state.simTime) || 0) < m._paxMidrunAt) continue;
+      m._paxMidrunSpoken = true;
+      this._speakPassenger(m, 'midrun');
     }
   },
 
