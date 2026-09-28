@@ -4,6 +4,16 @@ import { bodyLife, journalFor, observeAppliedImpulse, angleBetween } from './stu
 
 const pt=p=>({x:p.x,z:p.z});
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
+// Quiet history skip: with no open tracks and an empty projectile lane, the
+// nearby-body history ring only serves needle-gap detection (needs open tracks).
+// Skip the frame alloc + near-body walk while quiet; threat discovery and
+// j.pressure keep master's every-tick cadence. Bench can disable to restore
+// always-record history.
+let _quietHistorySkipEnabled = true;
+export function setStuntFlightHistoryQuietSkipForBench(enabled) {
+  _quietHistorySkipEnabled = enabled !== false;
+}
+
 export function interceptSeconds(relative,velocity,radius) {
   const a=velocity.x**2+velocity.z**2,b=2*(relative.x*velocity.x+relative.z*velocity.z),c=relative.x**2+relative.z**2-radius**2;
   if(c<=0)return 0;
@@ -33,6 +43,13 @@ export class StuntFlightObserver {
     const life=bodyLife(player,state),u=life.cruise,L=life.length,pr=life.radius;
     let incoming=false;const results=[];
     const previous=this.history.at(-1);
+    // entityIndex.projectiles is the live append/remove lane — a zero-length read
+    // is the cheap "empty projectile lane" test the exported package took from its
+    // threat-index lanes (#40). No open tracks + no live projectiles → history is
+    // only needle-gap input, which needs open tracks.
+    const projectileLane=(state.entityIndex&&state.entityIndex.__spacefaceEntityIndexV1===true)
+      ?state.entityIndex.projectiles:null;
+    const quietNoAmmo=this.tracks.size===0&&Array.isArray(projectileLane)&&projectileLane.length===0;
     for(const e of state.entities.values()) {
       if(!e?.pos||!e.vel||e.alive===false||e.id===player.id)continue;
       if(!isThreatCandidateType(e.type))continue;
@@ -96,6 +113,13 @@ export class StuntFlightObserver {
         victimLife:{lifeId:track.lifeId,threatClass:'none',dead:false},
         stuntEvidence:structuredClone({revision:2,root,path:{tick,edges:0,usefulDeltaV:dv,
           momentum:root.kind==='flight'?0:life.mass*Math.hypot(root.dv.x,root.dv.z)},contact:null})});
+    }
+    // Quiet tick after discovery still empty: history unused until a track opens.
+    // Needle-gap needs ~30 prior frames of an open episode; starting history when the
+    // first track opens is within the 0.2–1.2 s stunt window. Re-check tracks.size —
+    // the threat walk above may have just opened one.
+    if(_quietHistorySkipEnabled&&quietNoAmmo&&this.tracks.size===0){
+      return results;
     }
     const frame={tick,pos:pt(player.pos),vel:pt(player.vel),bodies:[]};
     // Squared-range prefilter against the player position held in locals: the witness window is
