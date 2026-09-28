@@ -637,6 +637,7 @@ const DOCTRINE_TELL_KIND = Object.freeze({
   FLYBY: 'flyby',
   TETHER: 'tether',
   CHARGE: 'charge',
+  DETONATOR: 'detonator',
   GENERIC: 'generic',
 });
 // 30 ticks @ 60 Hz = 0.5s; floor keeps a readable window even if payload omits durationTicks.
@@ -8392,18 +8393,15 @@ export const vfx = {
   // target, drawn after the field force surfaces (renderOrder 18 > 16) with depth testing ON.
   // Force surfaces never write depth, so the sigil reads through a Well; hulls and rock do,
   // so real occluders still win. The subject rule lives in targetContour.js; only the art is here.
+  // It also advances the instrument's own clock from `dt`, so this is called every frame it lives.
   _selectionSigil: null,
   _initSelectionSigil() {
     if (!this._scene || this._selectionSigil) return;
     this._selectionSigil = new SelectionSigil(this._scene);
   },
   _resetSelectionSigil() {
-    const sigil = this._selectionSigil;
-    if (!sigil) return;
-    // A teardown hides outright; it must not leave a half-folded instrument in the scene.
-    sigil.clear(1, null);
-    sigil.clear(1, null);
-    sigil.dispose();
+    // Teardown is not a release: dispose outright so no half-folded instrument is left behind.
+    if (this._selectionSigil) this._selectionSigil.dispose();
     this._selectionSigil = null;
   },
   _updateSelectionSigil(dt) {
@@ -9963,6 +9961,7 @@ export const vfx = {
     if (kind === 'engine_flare' || doctrineId === 'interceptor_flyby') return DOCTRINE_TELL_KIND.FLYBY;
     if (kind === 'attach_spool' || doctrineId === 'tether_control_raider') return DOCTRINE_TELL_KIND.TETHER;
     if (kind === 'weapon_charge' || doctrineId === 'ranged_disengager') return DOCTRINE_TELL_KIND.CHARGE;
+    if (kind === 'detonator_fuse' || doctrineId === 'detonator_run') return DOCTRINE_TELL_KIND.DETONATOR;
     return DOCTRINE_TELL_KIND.GENERIC;
   },
 
@@ -9988,6 +9987,15 @@ export const vfx = {
         color0: '#ffb35c', color1: '#ffffff', light: '#ffcc66',
         coreOp: reduced ? 0.55 : 0.80, ringOp: reduced ? 0.48 : 0.65,
         linkOp: reduced ? 0.42 : 0.58, useLight: !reduced,
+      };
+    }
+    if (tellKind === DOCTRINE_TELL_KIND.DETONATOR) {
+      // Fuse-lit kamikaze: hotter core than the CHARGE tell and a saturated danger link —
+      // the line to the target IS the warning ("that fuse is burning toward YOU").
+      return {
+        color0: '#ff3b1f', color1: '#ffd23c', light: '#ff5030',
+        coreOp: reduced ? 0.60 : 0.88, ringOp: reduced ? 0.52 : 0.70,
+        linkOp: reduced ? 0.48 : 0.68, useLight: !reduced,
       };
     }
     return {

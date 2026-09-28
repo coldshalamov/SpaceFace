@@ -19,7 +19,11 @@ const payload={targetId:2,victimId:2,entityId:2,sourceId:1,ownerId:1,wellId:'wel
 test('all action receipts are wired on the live bus; original 19 render finite, retiring geometry',()=>{
   const handlers=new Map(),s=fixture(),scene=new THREE.Scene();
   const system=Object.create(vfx);system.state=s;system._scene=scene;system._subs=[];
-  system.bus={on(name,fn){handlers.set(name,fn);return ()=>{};}};
+  // Keep the FIRST handler registered per name: the ACTION_VFX_EVENTS loop subscribes before the
+  // dedicated adds, and this test asserts the shared action batch answers each receipt. An event
+  // like bombs:detonated legitimately has a second subscriber (_onBombDetonated's own pool), and
+  // a last-wins map would call that handler and never touch _actionVfx.
+  system.bus={on(name,fn){if(!handlers.has(name))handlers.set(name,fn);return ()=>{};}};
   system._combatBeamLocalizer=(x,z,out)=>Object.assign(out,{x,z});system._subscribe();
   for(const name of ACTION_VFX_EVENTS){
     assert.ok(handlers.has(name),name);
