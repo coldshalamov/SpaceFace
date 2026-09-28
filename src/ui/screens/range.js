@@ -152,10 +152,28 @@ html body #screens #sf-range .sf-range__canvas[data-range-canvas] { outline: non
 #sf-range .sf-range__ladder [data-range-check] { color: rgb(236 230 216 / .66); }
 /* Wave 2 R7: the run instrument rides the tabs row — arc gauge + gate count + clock + best. */
 #sf-range .sf-range__tabs { flex: 1 1 100%; }
-#sf-range .sf-range__run { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; padding: 2px 0 2px 18px;
-  font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: rgb(236 230 216 / .85); white-space: nowrap; }
+#sf-range .sf-range__run { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; padding: 2px 0 2px 18px;
+  font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: rgb(236 230 216 / .85); white-space: nowrap; }
 #sf-range .sf-range__run svg { display: block; overflow: visible; }
-#sf-range .sf-range__run .sf-range__run-best { color: rgb(236 230 216 / .6); }
+/* Wave 2 r2 RG1: the best-time Counter — tabular figures at full voice, not a murmur. */
+#sf-range .sf-range__run .sf-range__run-best { color: rgb(252 249 240); font-weight: 600; font-variant-numeric: tabular-nums; }
+#sf-range .sf-range__run .sf-range__run-clock { font-variant-numeric: tabular-nums; }
+/* Wave 2 r2 RG1: the rule dossier — the foot's middle row, ruled top and bottom. */
+#sf-range .sf-range__dossier { display: flex; flex: 0 0 auto; width: 100%; box-sizing: border-box;
+  align-items: baseline; gap: 26px; padding: 10px 2px;
+  border-top: 1px solid rgb(236 230 216 / .4); border-bottom: 1px solid rgb(236 230 216 / .32);
+  font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: rgb(236 230 216 / .8); }
+#sf-range .sf-range__dossier-group { color: rgb(236 230 216 / .6); }
+#sf-range .sf-range__dossier-state { margin-left: auto; color: rgb(236 230 216 / .6); }
+#sf-range .sf-range__dossier-state.is-cleared { color: rgb(252 249 240); }
+/* Wave 2 r2 RG3: foot words carry weight — nothing in the foot sets below 400. */
+#sf-range .sf-range__word { font-weight: 500; }
+#sf-range .sf-range__ladder [data-range-check] { font-weight: 600; }
+/* Wave 2 r2 RG1: the foot stacks tight as a column. (The kit row-wrap plus its 64px
+   gap spread three wrap lines across 300px and halved the hero; the column takes only
+   what its rows need and hands the stage its room back.) */
+#sf-range .k-foot { flex-direction: column; align-items: stretch; justify-content: flex-end; row-gap: 10px; flex-wrap: nowrap; }
+#sf-range .sf-range__tabs { flex: 0 0 auto; width: 100%; }
 #sf-range .sf-range__drawer .k-row { border-top: 0; }
 #sf-range .sf-range__drawer [data-state="cleared"] .k-row__sub { color: rgb(236 230 216 / .66); }
 @media (max-width: 1366px) {
@@ -1258,7 +1276,8 @@ function drawAsteroid(ctx2d, anchor, bounds, width, height, forced, roles) {
   });
   ctx2d.closePath();
   ctx2d.strokeStyle = forced ? 'CanvasText' : ink.paper;
-  ctx2d.lineWidth = 2;
+  // Wave 2 r2 RG4: the body reads at 3px bone; its ring is fully ticked, majors kept.
+  ctx2d.lineWidth = forced ? 2 : 3;
   ctx2d.stroke();
   const ringR = radius * 1.3;
   ctx2d.strokeStyle = forced ? 'CanvasText' : withAlpha(ink.paper, 0.5);
@@ -1269,9 +1288,9 @@ function drawAsteroid(ctx2d, anchor, bounds, width, height, forced, roles) {
   ctx2d.strokeStyle = forced ? 'CanvasText' : withAlpha(ink.paper, 0.6);
   ctx2d.lineWidth = 1.5;
   ctx2d.beginPath();
-  for (let i = 0; i < 12; i += 1) {
-    const angle = (Math.PI * 2 * i) / 12;
-    const len = i % 3 === 0 ? 9 : 4.5;
+  for (let i = 0; i < 48; i += 1) {
+    const angle = (Math.PI * 2 * i) / 48;
+    const len = i % 4 === 0 ? 9 : 4.5;
     ctx2d.moveTo(point.x + Math.cos(angle) * (ringR - len), point.y + Math.sin(angle) * (ringR - len));
     ctx2d.lineTo(point.x + Math.cos(angle) * ringR, point.y + Math.sin(angle) * ringR);
   }
@@ -1406,12 +1425,21 @@ function strokeScaleV(ctx2d, x, y0, y1, { core, bloom, tick, coreWidth = 3, forc
   ctx2d.save();
   ctx2d.lineCap = 'butt';
   if (!forced && bloom) {
+    // Wave 2 r2 RG2: the under-stroke is a struck envelope — a wide dim pass plus a
+    // narrow pass in the same ink — so the shoulders read like the beam's ~8px envelope.
     ctx2d.strokeStyle = bloom;
-    ctx2d.lineWidth = 6;
+    ctx2d.lineCap = 'round';
+    ctx2d.lineWidth = 8;
     ctx2d.beginPath();
     ctx2d.moveTo(x, top);
     ctx2d.lineTo(x, top + span);
     ctx2d.stroke();
+    ctx2d.lineWidth = 5;
+    ctx2d.beginPath();
+    ctx2d.moveTo(x, top);
+    ctx2d.lineTo(x, top + span);
+    ctx2d.stroke();
+    ctx2d.lineCap = 'butt';
   }
   ctx2d.strokeStyle = core;
   ctx2d.lineWidth = forced ? 2 : coreWidth;
@@ -1439,12 +1467,20 @@ function strokeScaleH(ctx2d, y, x0, x1, { core, bloom, tick, coreWidth = 3, forc
   ctx2d.save();
   ctx2d.lineCap = 'butt';
   if (!forced && bloom) {
+    // Wave 2 r2 RG2: the struck envelope, as on the vertical scale.
     ctx2d.strokeStyle = bloom;
-    ctx2d.lineWidth = 6;
+    ctx2d.lineCap = 'round';
+    ctx2d.lineWidth = 8;
     ctx2d.beginPath();
     ctx2d.moveTo(left, y);
     ctx2d.lineTo(left + span, y);
     ctx2d.stroke();
+    ctx2d.lineWidth = 5;
+    ctx2d.beginPath();
+    ctx2d.moveTo(left, y);
+    ctx2d.lineTo(left + span, y);
+    ctx2d.stroke();
+    ctx2d.lineCap = 'butt';
   }
   ctx2d.strokeStyle = core;
   ctx2d.lineWidth = forced ? 2 : coreWidth;
@@ -1806,39 +1842,37 @@ export const rangeScreen = {
       }
     }
     // Wave 2 R7: the run instrument rides the tabs row — arc gauge + gate count + clock + best.
+    // Wave 2 r2 RG1: the needle stands down to a progress arc — the GATE n/4 Arc Gauge.
     const runItem = el('li', 'sf-range__run');
     runItem.setAttribute('data-range-run', '');
     runItem.setAttribute('role', 'status');
     runItem.setAttribute('aria-label', 'Run progress');
     const runSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    runSvg.setAttribute('width', '30');
-    runSvg.setAttribute('height', '30');
-    runSvg.setAttribute('viewBox', '0 0 30 30');
+    runSvg.setAttribute('width', '44');
+    runSvg.setAttribute('height', '44');
+    runSvg.setAttribute('viewBox', '0 0 44 44');
     runSvg.setAttribute('aria-hidden', 'true');
     runSvg.setAttribute('focusable', 'false');
     const runTicks = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     runSvg.appendChild(runTicks);
-    const runRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    runRing.setAttribute('cx', '15');
-    runRing.setAttribute('cy', '15');
-    runRing.setAttribute('r', '11');
-    runRing.setAttribute('fill', 'none');
-    runRing.setAttribute('stroke', 'rgb(236 230 216 / .46)');
-    runRing.setAttribute('stroke-width', '1.5');
-    runSvg.appendChild(runRing);
-    const runNeedle = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    runNeedle.setAttribute('x1', '15');
-    runNeedle.setAttribute('y1', '15');
-    runNeedle.setAttribute('x2', '15');
-    runNeedle.setAttribute('y2', '6');
-    runNeedle.setAttribute('stroke', 'rgb(252 249 240)');
-    runNeedle.setAttribute('stroke-width', '2');
-    runNeedle.setAttribute('stroke-linecap', 'round');
-    runSvg.appendChild(runNeedle);
+    const runTrack = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    runTrack.setAttribute('d', 'M 8.1 30 A 16 16 0 1 1 35.9 30');
+    runTrack.setAttribute('fill', 'none');
+    runTrack.setAttribute('stroke', 'rgb(236 230 216 / .28)');
+    runTrack.setAttribute('stroke-width', '3');
+    runTrack.setAttribute('stroke-linecap', 'round');
+    runSvg.appendChild(runTrack);
+    const runArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    runArc.setAttribute('d', '');
+    runArc.setAttribute('fill', 'none');
+    runArc.setAttribute('stroke', 'rgb(252 249 240)');
+    runArc.setAttribute('stroke-width', '3');
+    runArc.setAttribute('stroke-linecap', 'round');
+    runSvg.appendChild(runArc);
     const runBead = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    runBead.setAttribute('cx', '15');
-    runBead.setAttribute('cy', '15');
-    runBead.setAttribute('r', '2.2');
+    runBead.setAttribute('cx', '22');
+    runBead.setAttribute('cy', '22');
+    runBead.setAttribute('r', '2.4');
     runBead.setAttribute('fill', 'rgb(252 249 240)');
     runSvg.appendChild(runBead);
     runItem.appendChild(runSvg);
@@ -1852,6 +1886,22 @@ export const rangeScreen = {
     runItem.appendChild(runClock);
     runItem.appendChild(runBest);
     drawerWords.appendChild(runItem);
+    // Wave 2 r2 RG1: the rule dossier — the rung's index, group, and cleared state. The
+    // foot's middle row; the dead band above the tabs is its room, not the void's.
+    const dossier = el('div', 'sf-range__dossier', '');
+    dossier.setAttribute('data-range-dossier', '');
+    dossier.setAttribute('role', 'status');
+    dossier.setAttribute('aria-label', 'Current rule');
+    const dossierIndex = el('span', 'sf-range__dossier-index', '');
+    dossierIndex.setAttribute('data-range-dossier-index', '');
+    const dossierGroup = el('span', 'sf-range__dossier-group', '');
+    dossierGroup.setAttribute('data-range-dossier-group', '');
+    const dossierState = el('span', 'sf-range__dossier-state', '');
+    dossierState.setAttribute('data-range-dossier-state', '');
+    dossier.appendChild(dossierIndex);
+    dossier.appendChild(dossierGroup);
+    dossier.appendChild(dossierState);
+    foot.appendChild(dossier);
     foot.appendChild(drawerWords);
     rootEl.appendChild(foot);
 
@@ -1883,10 +1933,13 @@ export const rangeScreen = {
       beamMount,
       runItem,
       runTicks,
-      runNeedle,
+      runArc,
       runGate,
       runClock,
       runBest,
+      dossierIndex,
+      dossierGroup,
+      dossierState,
     };
 
     this._beamFx = createRouteBeam(beamMount, { width: 640, height: 360 });
@@ -2722,9 +2775,9 @@ export const rangeScreen = {
     return sim.verdict && Number.isFinite(sim.endS) ? Math.max(0, sim.endS) : Math.max(0, finite(sim.timeS, 0));
   },
 
-  /** Wave 2 R7: the run instrument — arc gauge needle + gate count + clock + best. Every
+  /** Wave 2 R7: the run instrument — arc gauge + gate count + clock + best. Every
    *  write is guarded, so the frame loop can call this while the run is live; the clock
-   *  freezes at the verdict. */
+   *  freezes at the verdict. Wave 2 r2 RG1: the needle is a progress arc on a 240° track. */
   _syncRun() {
     if (!this._els || !this._els.runItem || !this._sim) return;
     const sim = this._sim;
@@ -2738,10 +2791,10 @@ export const rangeScreen = {
       for (let i = 0; i < n; i += 1) {
         const a = (-120 + (240 * (n === 1 ? 1 : i / (n - 1)))) * (Math.PI / 180);
         const lit = i < Math.round(fraction * n) || (n === 1 && fraction >= 1);
-        const x0 = 15 + Math.sin(a) * 8.2;
-        const y0 = 15 - Math.cos(a) * 8.2;
-        const x1 = 15 + Math.sin(a) * 11;
-        const y1 = 15 - Math.cos(a) * 11;
+        const x0 = 22 + Math.sin(a) * 12.4;
+        const y0 = 22 - Math.cos(a) * 12.4;
+        const x1 = 22 + Math.sin(a) * 16;
+        const y1 = 22 - Math.cos(a) * 16;
         html += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${lit ? 'rgb(252 249 240)' : 'rgb(236 230 216 / .5)'}" stroke-width="${lit ? 2 : 1.2}"/>`;
       }
       ticks.innerHTML = html;
@@ -2754,9 +2807,16 @@ export const rangeScreen = {
         line.setAttribute('stroke-width', lit ? '2' : '1.2');
       });
     }
-    const angle = -120 + 240 * clamp(fraction, 0, 1);
-    const rot = `rotate(${angle.toFixed(1)} 15 15)`;
-    if (this._els.runNeedle.getAttribute('transform') !== rot) this._els.runNeedle.setAttribute('transform', rot);
+    const f = clamp(fraction, 0, 1);
+    let arc = '';
+    if (f > 0.001) {
+      const end = (-120 + 240 * f) * (Math.PI / 180);
+      const x = 22 + Math.sin(end) * 16;
+      const y = 22 - Math.cos(end) * 16;
+      arc = `M 8.1 30 A 16 16 0 ${240 * f > 180 ? 1 : 0} 1 ${x.toFixed(1)} ${y.toFixed(1)}`;
+    }
+    if (this._els.runArc.getAttribute('d') !== arc) this._els.runArc.setAttribute('d', arc);
+    this._syncDossier();
     const gate = this._progressText(sim);
     if (this._els.runGate.textContent !== gate) this._els.runGate.textContent = gate;
     const clock = `${this._runElapsed(sim).toFixed(1)}s`;
@@ -2766,6 +2826,22 @@ export const rangeScreen = {
     if (this._els.runBest.textContent !== bestText) this._els.runBest.textContent = bestText;
     const label = `Run progress. ${gate}. Elapsed ${clock}. ${bestText}.`;
     if (this._els.runItem.getAttribute('aria-label') !== label) this._els.runItem.setAttribute('aria-label', label);
+  },
+
+  /** Wave 2 r2 RG1: the rule dossier — index, group, cleared state. Every write
+   *  guarded; _syncRun calls it per frame so a mid-run clear lands without a rung change. */
+  _syncDossier() {
+    if (!this._els || !this._els.dossierIndex || !this._sim) return;
+    const index = RAIL_INDEX_BY_ID.get(this._sim.id);
+    const row = Number.isInteger(index) ? RAIL_ROWS[index] : null;
+    const at = row ? `Rule ${index + 1} / ${RAIL_ROWS.length}` : '';
+    const group = row ? String(row.group || '') : '';
+    const cleared = this._cleared && this._cleared.has(this._sim.id);
+    const state = cleared ? 'Cleared' : 'Not cleared';
+    if (this._els.dossierIndex.textContent !== at) this._els.dossierIndex.textContent = at;
+    if (this._els.dossierGroup.textContent !== group) this._els.dossierGroup.textContent = group;
+    if (this._els.dossierState.textContent !== state) this._els.dossierState.textContent = state;
+    this._els.dossierState.classList.toggle('is-cleared', !!cleared);
   },
 
   /** The verdict line under the instruction: idle, the because alone at resting strength; on a
@@ -3445,6 +3521,14 @@ export const rangeScreen = {
       const top = mapPoint(sim.bounds, width, height, gate.x, sim.bounds.minZ);
       const bottom = mapPoint(sim.bounds, width, height, gate.x, sim.bounds.maxZ);
       const center = mapPoint(sim.bounds, width, height, gate.x, gate.centerZ);
+      // Wave 2 r2 RG6: pin the last gate's clearance — the drawn scale + numeral keep
+      // >=24px from the right corner ticks however the data drifts. A no-op today (the
+      // data clears ~70px); a visible fail-safe tomorrow, never a silent collision.
+      const pinX = width - BOX_INSET - 24 - 34;
+      if (center.x > pinX) {
+        const shift = center.x - pinX;
+        top.x -= shift; bottom.x -= shift; center.x -= shift;
+      }
       const state = gate.state;
       const active = index === activeIndex;
       // Wave 2 R2: each gate is a ruled scale — bone band, ticked both flanks. Cleared
@@ -3503,11 +3587,12 @@ export const rangeScreen = {
         ctx2d.arc(center.x, center.y, 4, 0, Math.PI * 2);
         ctx2d.stroke();
       }
-      ctx2d.font = canvasFont('600', 12, 'data');
+      // Wave 2 r2 RG3: the numeral's ink — not just its em — clears 12px with margin.
+      ctx2d.font = canvasFont('600', 17, 'data');
       ctx2d.fillStyle = forced ? 'CanvasText' : (active ? ink.paper : withAlpha(ink.paper, 0.78));
       ctx2d.textAlign = 'left';
       ctx2d.textBaseline = 'middle';
-      ctx2d.fillText(String(index + 1), center.x + 13, center.y);
+      ctx2d.fillText(String(index + 1), center.x + 14, center.y);
       ctx2d.restore();
     });
   },
@@ -3567,6 +3652,25 @@ export const rangeScreen = {
         ctx2d.beginPath();
         ctx2d.arc(at.x, at.y, 3.6, 0, Math.PI * 2);
         ctx2d.fill();
+      }
+    } else if (!forced) {
+      // Wave 2 r2 RG5: the frozen pulse keeps its seat in bone — never a mystery bead.
+      // Same seat as the travelling pulse, held where the run stopped, one word beside it.
+      const at = pointAlongPolyline(line, (finite(sim.timeS, 0) * 0.35) % 1);
+      if (at) {
+        ctx2d.fillStyle = withAlpha(ink.paper, 0.14);
+        ctx2d.beginPath();
+        ctx2d.arc(at.x, at.y, 8, 0, Math.PI * 2);
+        ctx2d.fill();
+        ctx2d.fillStyle = withAlpha(ink.paper, 0.92);
+        ctx2d.beginPath();
+        ctx2d.arc(at.x, at.y, 3.6, 0, Math.PI * 2);
+        ctx2d.fill();
+        ctx2d.font = canvasFont('600', 12, 'data');
+        ctx2d.fillStyle = withAlpha(ink.paper, 0.78);
+        ctx2d.textAlign = 'left';
+        ctx2d.textBaseline = 'bottom';
+        ctx2d.fillText('HELD', at.x + 12, at.y - 8);
       }
     }
     ctx2d.restore();

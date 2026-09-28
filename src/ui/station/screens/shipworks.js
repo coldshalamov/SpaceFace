@@ -382,6 +382,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // hull does not jump.
   const POSTER_VIEW = 'hero';
   const poster = createStagePoster(stageEl, { after: canvas, onChange: () => scheduleSpatialProjection() });
+  // Wave 2 r2 SH6: the callout solver measures live glyph ink (the nameplate zone, the
+  // card widths, the S1 clamp column). A pass that runs before the display faces arrive
+  // measures fallback-metric ink and can place a column on the prose; re-project once
+  // the faces settle so the clamped layout always wins. One-shot and harmless.
+  if (typeof document !== 'undefined' && document.fonts && document.fonts.ready
+      && typeof document.fonts.ready.then === 'function') {
+    document.fonts.ready.then(() => scheduleSpatialProjection()).catch(() => {});
+  }
   // The six readings (mass, energy, shield, cargo, thrust, heat) are one strip under the hull
   // (ONE_PHOTOGRAPH 9.3), not a 400 px column standing over the stage's right flank: at 1280 wide
   // that column took half the stage, the hull shrank to a thumbnail and the last reading was cut.
@@ -494,8 +502,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }
     for (const btn of chooserEl.querySelectorAll('[data-buyfit], [data-payload-fit], [data-fit-inv]')) {
       paintKey(btn, btn.hasAttribute('data-fit-slot') || btn.hasAttribute('data-payload-fit') || btn.hasAttribute('data-fit-inv') ? 'primary' : 'small');
-      // the one verb that fits the chosen module is the screen's Lamp Key while choosing
-      if (btn.hasAttribute('data-fit-slot') || btn.hasAttribute('data-payload-fit')) dressLampKey(btn);
+      // the one verb that fits the chosen module is the screen's Lamp Key while choosing —
+      // on the dock. The flight host is read-only: its fit verb is an unavailability note
+      // (a dotted word), never a lamp that cannot light (wave 2 r2 SH2).
+      if ((btn.hasAttribute('data-fit-slot') || btn.hasAttribute('data-payload-fit')) && host !== 'flight') dressLampKey(btn);
     }
     for (const btn of chooserEl.querySelectorAll('[data-payload-buy], [data-payload-sell]')) paintKey(btn, 'small');
     syncKeys(chooserEl);
@@ -2551,7 +2561,21 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     rack.style.cssText = 'position:fixed !important; left:0px !important; top:0px !important; margin:0 !important; z-index:4;';
     const w = rack.offsetWidth || 300;
     const rh = rack.offsetHeight || 29;
-    const cx = sr.left + g.hx * k;
+    let cx = sr.left + g.hx * k;
+    // Wave 2 r2 SH2: on the flight host the view words share the foot band (the dock
+    // seats its verbs under the stats, so only flight collides). Centre the rack in the
+    // band right of the measured view words when it fits there; a wider rack (choosing)
+    // keeps the dial axis — choosing hides the view words, so nothing meets.
+    if (host === 'flight') {
+      const cam = stageEl.querySelector('.sx-sw__camera');
+      const camBox = cam && cam.offsetWidth > 0 && getComputedStyle(cam).visibility !== 'hidden'
+        ? cam.getBoundingClientRect() : null;
+      if (camBox && camBox.width > 0 && camBox.right > sr.left && camBox.left < sr.right) {
+        const bandL = camBox.right + 8;
+        const bandR = sr.right - 8;
+        if (w * k <= bandR - bandL) cx = (bandL + bandR) / 2;
+      }
+    }
     const top = ringShort() && host !== 'dock' ? sr.bottom - (rh - 4) * k : sr.top + verbRowTop(g.W, g.H) * k;
     placeFixed(rack, cx - (w * k) / 2, top);
     // centre the words on the dial, not the box: an empty slot's gap or the last word's tracking must not
@@ -2942,7 +2966,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       let fit = fitHullInk({ region, ...fitArgs });
       if (nameplateZone && fit.inkRect.left < nameplateZone.right && fit.inkRect.right > nameplateZone.left
           && fit.inkRect.top < nameplateZone.bottom && fit.inkRect.bottom > nameplateZone.top) {
-        fit = fitHullInk({ region: { ...region, top: Math.max(region.top, nameplateZone.bottom + 6) }, ...fitArgs });
+        // Wave 2 r2 SH1: the band under the nameplate must hold a hull, not a postage
+        // stamp. At <=1366 widths the prose runs nearly the full stage height, and the
+        // old unconditional refit crushed the poster to ~110x62 — the "missing hull" at
+        // 1280. Take the band only when it keeps a real hull's height; otherwise the
+        // hull stays on the full region behind the prose (which carries its own glass).
+        const bandTop = Math.max(region.top, nameplateZone.bottom + 6);
+        const bandH = region.bottom - bandTop;
+        const regionH = region.bottom - region.top;
+        if (bandH >= 120 && bandH >= regionH * 0.55) {
+          fit = fitHullInk({ region: { ...region, top: bandTop }, ...fitArgs });
+        }
       }
       const ringG = el.classList.contains('sx-sw--buying') ? stageRingGeo() : null;
       if (ringG) {
@@ -3024,6 +3058,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         obstacles,
       });
 
+      let selectedBead = null;
+      const labelRects = [];
       layout.forEach((res) => {
         const { item, isLeft, calloutX, calloutY, leaderD, zIndex } = res;
         const { node, index, x, y } = item;
@@ -3033,6 +3069,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         node.classList.toggle('is-callout-left', isLeft);
         node.style.setProperty('--callout-x', `${calloutX}px`);
         node.style.setProperty('--callout-y', `${calloutY}px`);
+        labelRects.push({
+          left: res.visualCardLeft, top: res.visualCardTop,
+          right: res.visualCardRight, bottom: res.visualCardBottom,
+        });
 
         const leaderPath = node.querySelector('.sx-hardpoint__leader path');
         if (leaderPath) {
@@ -3041,6 +3081,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         }
 
         if (index === selectedSlot) {
+          selectedBead = { x, y };
           const dx = x - cx;
           const dy = y - cy;
           if (focusLine) {
@@ -3050,10 +3091,28 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             focusLine.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
             focusLine.classList.add('is-on');
           }
-          deltaEl.style.left = `${Math.max(16, Math.min(stageRect.width - 270, x + 24))}px`;
-          deltaEl.style.top = `${Math.max(70, Math.min(stageRect.height - 130, y - 18))}px`;
         }
       });
+      // Wave 2 r2 SH2: the proposed-fit line rides by the chosen bead — but never on a
+      // label. At 1280 the bead-anchored spot lands inside the callout column; slide the
+      // line down past whatever label it would cross (a bead-anchored fallback when the
+      // stage has no free rect left).
+      if (selectedBead && deltaEl && !deltaEl.hidden) {
+        const dw = deltaEl.offsetWidth > 4 ? deltaEl.offsetWidth : 260;
+        const dh = deltaEl.offsetHeight > 4 ? deltaEl.offsetHeight : 56;
+        let dx = Math.max(16, Math.min(stageRect.width - dw - 16, selectedBead.x + 24));
+        let dy = Math.max(8, Math.min(stageRect.height - dh - 8, selectedBead.y - 18));
+        for (let round = 0; round < 4; round += 1) {
+          const hit = labelRects.find((r) => dx < r.right + 8 && dx + dw > r.left - 8
+            && dy < r.bottom + 8 && dy + dh > r.top - 8);
+          if (!hit) break;
+          dy = hit.bottom + 8;
+          if (dy + dh > stageRect.height - 8) { dy = 8; break; }
+        }
+        dy = Math.max(8, Math.min(stageRect.height - dh - 8, dy));
+        deltaEl.style.left = `${Math.round(dx)}px`;
+        deltaEl.style.top = `${Math.round(dy)}px`;
+      }
     }
 
     // Scars are placed on the live hull's geometry; the render carries no scar marks, so they

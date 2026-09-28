@@ -1974,3 +1974,119 @@ html body #screens #sf-ship .sx-sw__stats .k-caps { font-size: 12px; }
   html body #screens #sf-ship .sx-sw-rack__verbs { margin-top: 4px; }
   html body #screens #sf-ship .sx-sw__side :is([data-rack-restock], [data-rack-upgrade]) { padding: 2px 0; }
 }
+
+/* ───────────── WAVE 2 r2 — THE SHIP flight host (critic §1, SH2-SH7) ─────────────
+   SH1's poster-band guard is JS (shipworks.js updateSpatialProjection); SH6's settle
+   hook is JS too (document.fonts.ready re-projection). The rest is paint. End state:
+   ONE amber Hand (the chosen slot: hull bead+arm AND rail bead+arm) + ONE amber Lamp
+   Key (SAVE FIT). Everything else bone rgb(236 230 216); red threat-only. */
+/* SH2: the rail row answers the Hand in amber — bead + arm, the hull's own. */
+html body #screens #sf-ship .sx-sw-flow.is-selected::before { background: var(--dp-lamp, #f2b950); }
+html body #screens #sf-ship .sx-sw-flow.is-selected::after {
+  background: var(--dp-lamp, #f2b950); box-shadow: 0 0 0 4px rgb(242 185 80 / .25);
+}
+/* SH2: the chosen slot's bead on the hull — an amber disc with its bloom, not the 4px
+   ink square. (The leader arm went amber in r1.) */
+html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__reticle {
+  left: -4px; top: -4px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--dp-lamp, #f2b950);
+  box-shadow: 0 0 0 4px rgb(242 185 80 / .25), 0 0 10px 2px rgb(242 185 80 / .45);
+}
+/* SH3: the verb strip is words, not pills — bone dotted words on the band's glass. */
+html body #screens #sf-ship .sx-sw-verbs .sx-sw-verb {
+  background: none; background-image: none; border: 0; box-shadow: none;
+  min-height: 0; min-width: 0; padding: 5px 2px;
+  font-size: 12px; letter-spacing: .14em; text-transform: uppercase; text-shadow: none;
+  color: rgb(236 230 216 / .85);
+  text-decoration: underline dotted rgb(236 230 216 / .5); text-underline-offset: 5px;
+}
+html body #screens #sf-ship .sx-sw-verbs .sx-sw-verb:hover {
+  color: rgb(252 249 240); text-decoration-color: rgb(252 249 240 / .8);
+}
+html body #screens #sf-ship .sx-sw-verbs .sx-sw-verb:focus-visible {
+  outline: 1px solid rgb(236 230 216 / .7); outline-offset: 3px; color: rgb(252 249 240);
+}
+html body #screens #sf-ship .sx-sw-verbs .sx-sw-verb[aria-pressed="true"] {
+  color: rgb(252 249 240); text-decoration-style: solid; text-decoration-color: rgb(252 249 240 / .85);
+}
+html body #screens #sf-ship .sx-sw-verbs .sx-sw-verb[disabled] {
+  color: rgb(236 230 216 / .5); text-decoration-color: rgb(236 230 216 / .3);
+}
+/* SH4: the disc's alternative — the dial goes on the flight host; the core number and
+   the ladder rail below it say everything it said. (DOM retained: the shared stage and
+   the checks still query .orr-power; only the flight host's paint stands down.) */
+html body #screens #sf-ship .sx-sw-circuit__core .orr-power { display: none; }
+/* SH5: the stray ambers stand down to bone — the title rule, the module-name rules,
+   and the badge edge. No name is a lamp. */
+html body #screens #sf-ship .sf-entity-link { text-decoration-color: rgb(236 230 216 / .55); }
+html body #screens #sf-ship .sx-sw-row.fh-row.is-selected {
+  background: linear-gradient(90deg, rgb(236 230 216 / .85) 2px, transparent 0),
+    linear-gradient(var(--dp-field-ink, rgb(236 230 216 / .06)) 0 0);
+}
+/* SH7: the stat-bar fills read as light — a 4px bloom under the 2px fill. */
+html body #screens #sf-ship .sx-sw-bar__track > .k-bar__fill {
+  box-shadow: 0 0 4px 1px rgb(255 240 214 / .5);
+}
+/* SH1 follow-through: the restored hull sits behind the prose — the blurb carries its
+   own dissolved-glass pad + halo (the callouts' r1 rule), so the ink holds 4.5:1 over
+   the brightest wing, not just the dark bay. */
+html body #screens #sf-ship .sx-sw__blurb { position: relative; z-index: 0;
+  text-shadow: 0 0 7px rgb(4 6 9 / .9), 0 1px 2px rgb(4 6 9 / .9); }
+html body #screens #sf-ship .sx-sw__blurb::before {
+  content: ""; position: absolute; inset: -8px -14px; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse at center, rgb(6 8 11 / .72) 30%, rgb(6 8 11 / .4) 55%, transparent 75%);
+}
+/* SH2 follow-through: the flight chooser's rows stack in the hang column. The shared
+   row is a flex pair (body + act) that crushes the body to ~13px in 230px, wrapping
+   every name one letter per line; here the act rides under the body, full width. */
+html body #screens #sf-ship .sx-modrow { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+html body #screens #sf-ship .sx-modrow__body { width: auto; min-width: 0; }
+html body #screens #sf-ship .sx-modrow__act { align-items: flex-start; }
+/* SH2 follow-through: the flight fit verb is an unavailability note, not a purchase —
+   a dotted word like its DOCK TO EXTEND twin, never a chip. */
+html body #screens #sf-ship .sx-modrow__buy {
+  background: none; background-image: none; border: 0; box-shadow: none; min-height: 0; height: auto;
+  padding: 3px 0; color: rgb(236 230 216 / .85); text-decoration: underline dotted rgb(236 230 216 / .55);
+  text-underline-offset: 4px; text-transform: uppercase; font-size: 12px; letter-spacing: .14em;
+  text-shadow: none; white-space: normal; min-width: 0; max-width: 100%;
+}
+html body #screens #sf-ship .sx-modrow__buy:is(:hover, :focus-visible) { color: rgb(252 249 240); }
+html body #screens #sf-ship .sx-modrow__buy small { color: rgb(236 230 216 / .7); }
+html body #screens #sf-ship .sx-modrow__buy.orr-lampkey::before,
+html body #screens #sf-ship .sx-modrow__buy.orr-lampkey::after { content: none !important; display: none !important; }
+/* Backstop for a dock-dressed lamp surviving a host switch: the flight note keeps its
+   word size and ink against the lamp module's !important field type. */
+html body #screens #sf-ship .sx-modrow__buy.orr-lampkey {
+  font-size: 12px !important; font-weight: 400 !important; font-stretch: 100% !important;
+  font-variation-settings: normal !important; letter-spacing: .14em !important;
+  min-height: 0 !important; padding: 3px 0 !important; color: rgb(236 230 216 / .85) !important;
+}
+html body #screens #sf-ship .sx-modrow__buy:is(:disabled, [aria-disabled="true"]) {
+  color: rgb(236 230 216 / .55); text-decoration-color: rgb(236 230 216 / .3);
+}
+/* SH2 follow-through: module chips read in the screen's grammar — gains ice, losses
+   dim bone (the dock readouts' rule); red stays threat-only. */
+html body #screens #sf-ship .sx-modrow :is(.k-good, .is-gain, .sx-modrow__chip.is-up) { color: var(--dp-ice, #8fcbff); }
+html body #screens #sf-ship .sx-modrow :is(.k-bad, .is-loss, .sx-modrow__chip.is-down) { color: rgb(146 143 135); }
+/* SH2 follow-through: the live foot shares one band — the view words unbox to compact
+   dotted words (the SH3 rule) so camera + verbs fit 621px; the drag hint retires (the
+   canvas keeps its grab cursor); while choosing, the wide rack owns the band alone. */
+html body #screens #sf-ship .sx-sw__camera { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+html body #screens #sf-ship .sx-sw__camera [data-camera] {
+  background: none; background-image: none; border: 0; box-shadow: none;
+  min-height: 0; min-width: 0; padding: 3px 2px;
+  font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+  text-shadow: 0 0 6px rgb(4 6 9 / .9), 0 1px 2px rgb(4 6 9 / .9);
+  color: rgb(236 230 216 / .7);
+  text-decoration: underline dotted rgb(236 230 216 / .45); text-underline-offset: 4px;
+}
+html body #screens #sf-ship .sx-sw__camera [data-camera].is-current {
+  color: rgb(252 249 240); text-decoration-style: solid; text-decoration-color: rgb(252 249 240 / .8);
+}
+html body #screens #sf-ship .sx-sw__camera [data-camera]:is(:hover, :focus-visible) { color: rgb(252 249 240); }
+html body #screens #sf-ship .sx-sw__dragcue { display: none; }
+html body #screens #sf-ship .sx-sw.is-choosing .sx-sw__camera { display: none; }
+/* SH2 follow-through: the proposed-fit line reads in the screen's grammar — gains ice,
+   losses dim bone (the dock readouts' rule); red stays threat-only. */
+html body #screens #sf-ship .sx-sw__delta :is(.k-good, .is-gain) { color: var(--dp-ice, #8fcbff); }
+html body #screens #sf-ship .sx-sw__delta :is(.k-bad, .is-loss) { color: rgb(146 143 135); }
