@@ -1,0 +1,184 @@
+SHIP + RANGE r3 CRITIC — ORRERY frontend overhaul, build round r3
+Critic: ship-range r3 critic. Stills opened with own eyes + crops measured with sharp.
+Scoring law: design/frontend/review/CRITIC_BRIEF.md (PASS = overall >= 8.0 AND no axis
+< 7.0 AND owner (a) band-weight/generic AND owner (b) signature interaction).
+Axes: Composition / Hierarchy / Legibility / ORRERY fidelity / Craft-detail /
+Interaction clarity. Previous: shiprange-r2-critic.txt (SHIP 7.7 NOT PASSED, RANGE 8.2
+PASSED).
+Px in the named shot's own pixels. 1280 = 1280x720, 1920 = 1920x1080.
+Still IDs: w2r3-ship-1920 / w2r3-ship-1280 / w2r3-ship-selected-1920 (live-click proof)
+/ w2r3-range-1920 / w2r3-range-1280. Bench sources: ship.png == w2r3-ship-1280
+(sha256 B1F3CA62..., same prefix as r2 — bench rest unchanged since r2);
+range.png == w2r3-range-1280 (sha256 4026B5C9...).
+Contrast = WCAG on composited pixels. Bone = rgb(236 230 216), Hand/Lamp = #F2B950.
+
+================================================================================
+1. SHIP (Hitch fit screen) — 8.2 — PASSED (r2 7.7; all r2 fixes SH8-SH11 closed,
+   rest byte-identical to r2)
+================================================================================
+Axes (score, previous, note):
+- Composition 8.0 (was 7.5): choosing-mode cramp resolved — chooser contained to
+  x<=293, 33px+ gap to prose, divider rule no longer spans both columns; rest
+  states unchanged (byte-identical).
+- Hierarchy 8.5 (was 8.0): dimmed prose (text lum 188->134) now sits below the
+  bright chooser; Hand pair (hull + rail) leads unambiguously.
+- Legibility 8.5 (was 8.0): leader crossing gone, deltas unified bone, >=12px
+  held; chooser-over-bare-truss wash (4.64:1, passes) keeps it from higher.
+- ORRERY fidelity 8.5 (was 7.5): blue delta coding purged (zero blue pixels
+  screen-wide), rail wash removed — palette now exact. Solid title underlines
+  the one nit (SH13).
+- Craft/detail 8.0 (was 7.5): wash-box cutoffs gone, rule contained, full delta
+  set in one code; bead+arm both ends.
+- Interaction clarity 8.0 (was 7.5): focus no longer splits to bright prose;
+  signature (pick-slot-on-hull, preview hardware, live delta ghosts) fully
+  readable in the proof.
+
+r2 fixes item by item (SH8-SH11):
+- SH8 choosing-mode columns: DONE. Divider rule y457-459 ends x293 (spec <=300);
+  longest chooser text ("...fabricator", Ion stats) ends x<=292 (spec <=295;
+  brighter pixels beyond are truss scene, verified by crop + lum profiles);
+  prose min x326 (gap >=33px); prose text dimmed 188.4->133.6 mean lum (~29%,
+  block 57.2->28.2). No rule crosses into the prose column.
+- SH9 delta recode: DONE. Blue census = 0 in proposed-fit, chooser stats, band
+  strip, bar rows, summary line; full-screen exact (140,192,242)+-30 = 0.
+  Delta glyphs now bone: mass 219,207,198; proposed-fit 215,210,198; heat
+  234,230,223. r2-vs-r3 proposed-fit crops confirm blue->bone, same layout.
+- SH10 rail wash: DONE. Drive row y356: x1640-1830 all bg 17-19,11-13 except
+  text glyphs; amber only at bead x1620-1630 (242,185,80). No fill, no cut
+  edge. Crop sr3-rail-drive confirms bead+arm+bone carry selection.
+- SH11 leader crossing: DONE. No runs >=80px at lum>70 (nor >=12px at lum>55
+  beyond glyph fragments) anywhere in x590-880 y355-400; delta text band
+  y363-386 fully clear. r2's crossing Cargo leader is gone from the band.
+
+Section 7 — owner criteria, SHIP:
+(a) PASS. No hairline-only instruments (rest identical to r2: bars bloom,
+callouts lawful, verbs unboxed) and no generic web components. BACK plate is a
+small dark key, not a card.
+(b) PASS. Signature = "pick a slot on the hull, preview compatible hardware
+with live delta ghosts" — distinct per-screen, stateful, visible in the proof
+(bead+arm pair, proposed fit, 2 modules, band+bar+summary deltas, all bone).
+Strong; the SH8 polish landed, so it now reads composed, not cramped.
+Palette law: bone exact on leaders/dots/readings/deltas; amber exactly Lamp at
+rest, Lamp + Hand pair (hull + rail) when selected; DOCK TO FIT peak
+246,205,180 (warm bone over orange scene, b~175 — NOT amber); red absent at UI
+level (4120 red px all hangar scene); ice absent. 4.5:1 ✓ (dossier 9.75:1,
+readout 19.1:1, worst chooser title 4.64:1). >=12px ✓. Dotted words for verbs
+(titles use solid underlines — SH13). Reduced-motion: frozen arrival states, no
+info-loss evidence.
+1280 gate: PASS (byte-identical file to r2's PASS: hull 9.2%, S1/S2 hold, zero
+collisions — carries without re-measure).
+
+VERDICT SHIP: PASSED, overall 8.2 (previous 7.7). Math: (8.0+8.5+8.5+8.5+8.0+
+8.0)/6 = 8.25. No axis < 7.0, (a) and (b) pass, palette and 1280 gate clean.
+Every r2 fix SH8-SH11 closed with px evidence; rest states proven unregressed
+by sha256 (579939D1... @1920, B1F3CA62... @1280, both r2==r3).
+
+================================================================================
+2. RANGE (flight drill room) — 8.3 — PASSED, HOLDS APPROVAL (r2 8.2; RG8 closed,
+   RG7 NOT closed — foot moved the wrong way — but it stays non-blocking polish;
+   zero hero/hero-state regression)
+================================================================================
+Axes (score, previous, note):
+- Composition 7.8 (was 8.0): the foot floats HIGHER than r2 (readout y918-930
+  vs r2 y955-963; dead void below grew ~117px -> ~150px). Gauge slightly grown
+  (+40%) softens it. Still >= 7.0.
+- Hierarchy 8.5 (was 8.5): title -> instrument -> ladder -> dossier -> foot;
+  Lamp Key leads. Unchanged.
+- Legibility 8.5 (was 8.0): foot readout 13 rows ink (core 12), dossier 12 rows
+  (was 9/9); contrasts 19.1:1 / 9.75:1. The 9px miss is closed.
+- ORRERY fidelity 8.5 (was 8.5): amber exactly Hand + Lamp (ladder dot bone
+  201,195,184; origin 0), dotted words, zero boxes. Unchanged.
+- Craft/detail 8.0 (was 8.0): gates pixel-identical to r2, beam present, text
+  clean; gauge still bead-on-arc with no n/4 encoding. Unchanged.
+- Interaction clarity 8.5 (was 8.5): run state fully readable (GATE 1/4, 0.8S,
+  BEST, 0/9, NOT CLEARED). Unchanged.
+
+r2 fixes item by item (RG7-RG9):
+- RG7 dock foot + grow gauge: NOT DONE. Foot readout y918-930 (r2: y955-963) —
+  the whole lower stack moved UP ~50px (ladder 807->756, dossier 901->852),
+  the opposite of the y1030-1055 dock; void y980-1080 still 0.00% ink with
+  ~150px dead below the foot (was ~117px). Gauge grew ~36px -> ~50px wide
+  (r3 x1504-1553, bead 252,249,240 @1528,923) and slightly thicker — real but
+  partial: still bead-on-thin-arc, no n/4 progress encoding, not the spec'd
+  x1540-1620 true progress arc. Re-owed below as the screen's top item.
+- RG8 foot/dossier size: DONE. Readout "GATE 1/4 0.8S BEST" caps 13 rows ink
+  (core >=150: 12 rows); dossier "RULE 1/9 MASS" caps 12 rows ink (r2's method;
+  r2 was 9/9). Contrast: readout 19.13:1, dossier 9.75:1 (r2 10.31:1 — no
+  regression). Letterforms clean in 4x crops.
+- RG9 arrowhead: ACCEPTED AS START-GLYPH, no change made — CONFIRMED
+  acceptable, not re-opened. Head still points left (x188-208); reads as the
+  beam's start cap; RG5 origin grammar (ringed+haloed bead, dashed parentage,
+  bone-vs-amber) intact. Optional forever.
+
+No-regression evidence (all r2 invariants re-checked): gate-1 under-stroke
+pixel-identical r2==r3 (17/17 lum values @y450 x590-606, 6px >=2:1 core);
+beam present origin->gate1 (r3 rows y504-509 vs r2 y528-535 — shifted up 24px
+with run state 0.3S->0.8S, legitimately state-dependent, solid to x~612);
+gate4/tick clearance 1920 = 104px (numeral right 1668, ticks 1772), 1280 =
+51px (numeral 1113, ticks 1164; spec >=24px) ✓; ladder wraps 2 rows both
+sizes (as in r2), no collisions; 1280 foot y590-608 of 720, all zones fit.
+
+Section 7 — owner criteria, RANGE:
+(a) PASS. Unchanged: 6px >=2:1 gate scales (re-measured identical), beam an
+envelope, pentagon/ring with body; zero generic components.
+(b) PASS. Signature = the gate-run made visible (origin ring + dashed flown
+trail + solid beam + amber bead + dossier + live state). Distinct, stateful,
+visible. Strong.
+Palette law: EXACTLY one amber Hand (gate-1 bead, 70px) + one amber Lamp (NEXT
+RULE) ✓; bone exact; ladder dot bone; ice absent; red absent; dotted words ✓;
+4.5:1 ✓ (9.75-19:1). Reduced-motion: frozen states, no info-loss evidence.
+1280 gate: PASS. Title + keys + hero + ladder (2 rows) + dossier + foot all fit;
+gate4/tick 51px.
+
+VERDICT RANGE: PASSED, overall 8.3 (previous 8.2). Math: (7.8+8.5+8.5+8.5+8.0+
+8.5)/6 = 8.30. No axis < 7.0, (a) and (b) pass, palette and 1280 gate clean.
+Approval HOLDS: RG8 closed, RG9 accepted, hero unregressed. RG7's miss costs
+Composition 0.2 but it was and remains ranked polish, not a blocker.
+
+================================================================================
+RANKED FIXES (shipworks.js = src/ui/station/screens/shipworks.js; range =
+src/ui/screens/range.js, canvas-rendered via kit)
+================================================================================
+1. (RANGE P1) RG7 re-owed: dock the foot + grow the gauge. Foot readout sits
+  y918-930 (up from r2's y955-963 — wrong direction) above ~150px of 0.00%
+  void. Move foot row to y~1030-1055 and grow the gauge (now x1504-1553,
+  ~50px bead-on-thin-arc) to a true GATE n/4 progress arc at x~1540-1620 with
+  a lit n/4 fraction. File: range.js foot renderer.
+2. (SHIP P2) SH12 chooser scrim (new, non-blocking). Chooser text sits on bare
+  bright truss with no glass: "Fusion Drive M" title 4.64:1 (passes, barely),
+  stats/description lines wash against orange structure (x60-320 y140-760).
+  Add a faint glass/scrim behind the chooser column or dim the scene ~15%
+  while choosing. Files: shipworks.js chooser renderer + css.
+3. (SHIP P3) SH13 title underline code (new, trivial). Module titles ("Ion
+  Thruster M", "Fusion Drive M", ~x78-300) use SOLID underlines while verbs
+  are dotted words — unify titles to dotted or bare. File: shipworks.js
+  chooser renderer.
+4. (RANGE P3, optional, recommended: no action) RG9 origin arrowhead still
+  points left (x188-208); accepted as the start glyph. Close permanently, or
+  move the head to the beam's leading end aimed at the active gate.
+
+Memorable if — SHIP: a small draw-arc under "80 CORE . 0 DRAW" that fills as
+modules preview, making the fit screen a live instrument. Nothing here attempts
+that yet.
+Memorable if — RANGE: your best run's ghost-line hanging in the air behind the
+beam when you press the Lamp Key. Nothing here attempts that yet; it + RG7 is
+the 8.5 screen.
+
+================================================================================
+CROSS-SURFACE
+================================================================================
+- Key-cap purge: complete on both (0 pills/chips; verbs dotted words on glass;
+  BACK is a small dark key, pre-existing).
+- Amber audit: range exactly Hand + Lamp (ladder dot bone 201,195,184); ship
+  exactly Lamp at rest (+ Hand hull/rail pair when selected); DOCK TO FIT warm
+  bone (246,205,180), not amber. Scene/livery ambers excluded as produced art.
+- 1280 gates: both PASS (ship: byte-identical to r2's PASS; range: all zones
+  fit, gate4/tick 51px).
+- Bands >= 2:1 measured: ship bars (r2, rest-identical) ✓, range gates (6px,
+  pixel-identical to r2) ✓, range beam (envelope, present) ✓.
+- Blue coding: zero blue pixels anywhere on ship (full-screen exact scan 0).
+- Reduced-motion: arrival states frozen as designed on both; no info-loss
+  evidence from stills — builders to confirm.
+- Bench drift note: the hangar scene re-renders per shot (rest-vs-selected
+  scene pixels differ), so diff-against-rest isolation is invalid on ship;
+  all SH8/SH11 verdicts above use direct (non-diff) measurement + crops.

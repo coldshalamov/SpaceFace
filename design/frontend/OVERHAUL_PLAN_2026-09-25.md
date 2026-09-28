@@ -65,7 +65,7 @@ compose them.
 
 ## 4. Every surface — its mini-app and its signature
 
-Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 29 surfaces. Other scores are critic scores under the owner criteria unless marked "letter" (scored before the criteria existed). Latest critic report per surface: `design/frontend/review/reports/`.
+Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 31 surfaces. Other scores are critic scores under the owner criteria unless marked "letter" (scored before the criteria existed). Latest critic report per surface: `design/frontend/review/reports/`.
 
 | Surface (bench id) | Mini-app | Signature interaction (distinct) | Assets | Status |
 |---|---|---|---|---|
@@ -92,9 +92,9 @@ Status as of 2026-09-28. **APPROVED** = passed §1 including (a) and (b) — 29 
 | Bar (`station-bar`) | The conversation | Replies as a dial on the voice arc: focus previews the reply's envelope against her voice | portraits (exist) | **APPROVED 8.4** (bar-r17) |
 | Ledger (`station-ledger`) | The tape | Scrub the tape; stems rise, the purse sweeps | — | **APPROVED 8.1** (station3-r1) |
 | Crucible door/draft/refit/results | door scales, draft ladder + fit preview, refit slot jig, kill-orrery results | arena Orbit Carousel, fit-preview leader beam, exploded hardpoint schematic, death diagram + run timeline | arena art (exist) | door **APPROVED 8.2** / draft **APPROVED 8.1** / refit **APPROVED 8.3** (crucible-r2) / results **APPROVED 8.3** (crucible-rs1) — suite fully approved |
-| THE SHIP (`ship`) | Fleet jig in flight | Pick a slot on the hull, preview compatible hardware | posters | 6.8 NOT PASSED (shiprange-r1): S1/S2/S3/S6/S7 closed but hull missing at 1280 + no selection state — r2 owed (SH1-SH7), builder running |
+| THE SHIP (`ship`) | Fleet jig in flight | Pick a slot on the hull, preview compatible hardware | posters | **APPROVED 8.2** (shiprange-r3); carry-over: SH12 chooser divider rule-verb gap, SH13 band delta commas |
 | Footprint (`footprint`) | Heat / wanted | A heat dial that cools in real time; each source a sector of the dial | — | **APPROVED 8.2** (footprint-r2) |
-| Range (`range`) | Handling course | Fly the rehearsal: the course draws as a beam, progress rides the gates | — | 7.6 NOT PASSED (shiprange-r1): R1-R7 closed, (a)+(b) pass — polish owed (foot instrument, blooms, numerals RG1-RG4), r2 builder running |
+| Range (`range`) | Handling course | Fly the rehearsal: the course draws as a beam, progress rides the gates | — | **APPROVED 8.3** (shiprange-r3, holds); RG8 closed; RG7 foot-dock fix landed (padding-bottom 24px, readout y1015-1026) — close-out critic running |
 | Automation (`automation`) | The operation | Conduct the machine: asset-flow strip pulses income into the purse | drone/outpost tokens | **APPROVED 8.0** (automation-r2, on the line); carry-over: flow-link bodies to ~3.1:1, rail follows conducted ring, research-verb contrast margin, tab focus light segment, purse roll |
 | Replay / Clips (`replay`, `clips`) | The tape / the reel | Ride the tape (scrub time); pull a moment open (trim windows) | — | Replay **APPROVED 8.1** / Clips **APPROVED 8.0** (replayclips-r1); carry-over: dormant band to 3.5:1, world exposure, ghost sub to 16px (12 effective), ghost glyph bloom; populated stills when bench can stage |
 | Asteroid Works / Drill / Base | Machine sites | (per `asteroid-works-rebuild` design) | exist | wave 3 |
