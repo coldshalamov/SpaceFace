@@ -456,6 +456,113 @@ ship stills (all REVISE — awaiting new remote candidates).
 | — | L-INSTRUMENT | THE INSTRUMENT — all UI | LANE | CLAIMED ORRERY — do not take |
 | — | L-RELEASE | THE RELEASE — demo path, packaging, store | LANE | PARKED pre-release (owner) |
 
+### G. Planbank — prepared packets (`design/planbank/SpaceFace_Planbank_300/`)
+
+300 pre-considered packets audited against master 2026-09-28 — verdicts and the seam map live in
+`TRIAGE_2026-09-28.md` inside the pack. A PB row is a write-set-coherent batch: do its packets in
+listed order, in the row's commit(s). Before mutating, read the packet `.md` under
+`packets/<domain>/`, its `domains/<domain>.md` guide, and `EXECUTION_CONTRACT.md`. Rules:
+
+- A packet already satisfied on master closes as **already satisfied** — record it; do not rebuild it.
+- A `CHECK` packet reproduces the stated boundary *before* building; if the bug isn't there, close
+  the packet as not-reproducible with the evidence, don't invent the fix.
+- Rows that share a seam tag (e.g. `seam: renderer.js`, `seam: missions.js`, `seam: saveSystem`)
+  are serial inside that seam — the `NOW.md` exact-path claim decides; don't file two live rows on
+  the same seam.
+- `PARKED <lane>` rows are another lane's write-set — route them there; don't work around the claim.
+- State your checks: every packet ships its own focus tests (`mechanism.focus_test`) plus any
+  named shared check.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 72 | PB-MIS-A | SF-136 real crusher in the yard tow-out (deep-dive 01) — private timeout radius becomes real machine law with recoverable result | PB | OPEN — seam missions.js |
+| 73 | PB-JOBS-A | SF-076+089 Ceres handoff: reproduce D89 drop scenario, then repair first missing real transition + stale-pin audit | PB | OPEN — CHECK pair; verify boards-3x3 claim staleness on traffic.js first |
+| 74 | PB-ECON-A | SF-106+120 hauler viability re-measure post-D80 + cohort-vs-live reconciliation instrument | PB | OPEN — CHECK pair |
+| 75 | PB-PERF-A | SF-256 one draw path per material family — kill the instancing/direct shader twin (deep-dive 04; ~half the ship-job GPU gate) | PB | OPEN — seam renderer.js |
+| 76 | PB-SLICE-A | SF-286 first victory becomes the first useful wreck — combat→salvage→upgrade loop closes | PB | OPEN |
+| 77 | PB-SLICE-B | SF-289+290 customs crossing three honest approaches + refinery shortage solved by visible delivery | PB | OPEN — must-share pair |
+| 78 | PB-SLICE-C | SF-288+292 bad throw creates a recoverable problem + failed robbery becomes pursuit over real cargo | PB | OPEN — must-share pair |
+| 79 | PB-SLICE-D | SF-291+293 same rope proves two careers + heavy enemy becomes temporary terrain | PB | OPEN |
+| 80 | PB-SLICE-E | SF-294+295 quiet return visit reveals what changed + investigation changes the next physical choice | PB | OPEN |
+| 81 | PB-SLICE-F | SF-296+297 low-resource dignified recovery + combat pressure clears into audible breathing room | PB | OPEN |
+| 82 | PB-SLICE-Z | SF-300 coherent session capstone — composes after its chosen chain works (integrates prior slice outcomes) | PB | PARKED gated on slice chain |
+| 83 | PB-MIS-B | SF-137+144+148 route-choice trio: liner toll bypass, wrong-convoy ambiguity, shortcut-vs-long-route contract | PB | OPEN — seam missions.js |
+| 84 | PB-MIS-C | SF-141+149+150 unique-wreck trio: warm wreck survivors, three-visit workplace arc, script audit | PB | OPEN — seam missions.js |
+| 85 | PB-MIS-D | SF-140+143+147 heist trio: launch-window depth, counterweight scene, monitored-escape second act | PB | OPEN — seam missions.js |
+| 86 | PB-MIS-E | SF-138+139+142+145 borrowed tug recovery, split manifest incident, quiet berth, race-residual verify | PB | OPEN — seam missions.js |
+| 87 | PB-TAC-A | SF-046+052 cutter commits to geometry + two-specialist offset-commit composition | PB | OPEN — seam specialistCounterplay |
+| 88 | PB-TAC-B | SF-047+048+049 disrupt-window interrupt, ward per-carrier custody, anchor arena telegraph+escape | PB | OPEN |
+| 89 | PB-TAC-C | SF-050+051 baitable sniper committed corridor + brawler mass-commitment redirect | PB | OPEN |
+| 90 | PB-TAC-D | SF-053+054 reinforcement ingress placement + safety-derived breather | PB | OPEN — seam ai director |
+| 91 | PB-TAC-E | SF-055+056+057 wounded cargo tradeoff, retreat-to-cover trigger, bounded-search residual | PB | OPEN |
+| 92 | PB-TAC-F | SF-058+059 lawful-motive verify + terrain-aware orbit ring | PB | OPEN — CHECK pair |
+| 93 | PB-ORD-A | SF-035+036+037 bomb readability trio: denied-vs-recovering, burn commitment, can't-fire vs can't-steer | PB | OPEN — identical write-set |
+| 94 | PB-ORD-B | SF-034+038+039+040 field-family readability: goo edge/recovery, pinning law, bend read, mine breakout (fields.js stale-adoptable) | PB | OPEN — seam fields.js; verify claim staleness first |
+| 95 | PB-ORD-C | SF-041+042+043 mine corridor authoring + deterministic bomb chains + authored ammo route | PB | OPEN |
+| 96 | PB-ORD-D | SF-031+032+033+045 drop-law/wake/leak verify + concussion encounter composition | PB | OPEN — CHECK pair + build |
+| 97 | PB-SWARM-A | SF-061+062 opening-wave physical promise + mass-and-gap wave composition | PB | OPEN — must-share pair |
+| 98 | PB-SWARM-B | SF-064+068 specialist introduction rehearsal + boss-round ammo placement | PB | OPEN — seam swarm planner |
+| 99 | PB-SWARM-C | SF-067+071 fracture-into-usable-cover + arena throw-window modifier | PB | OPEN — must-share pair |
+| 100 | PB-SWARM-D | SF-065+072 draft distinct intentions + build pressure through buildSummary | PB | OPEN |
+| 101 | PB-SWARM-E | SF-070+073+074+075 launch-path verify, chip pending-vs-committed, cash-out surface, rematch causal compare | PB | OPEN — CHECK quartet |
+| 102 | PB-SWARM-F | SF-063+069 pressure-reservoir burst verify + stranded/displaced survivor census | PB | OPEN — CHECK pair |
+| 103 | PB-MASS-A | SF-023+024 cutter warning on the threatened segment + snag becomes a choice | PB | OPEN — seam tetherGameplay; adoptable-claim check first |
+| 104 | PB-MASS-B | SF-027+029 release-space swept-contact delta + salvage-sorting job (route around infer10's mission claims) | PB | OPEN — seam tetherGameplay serial with 103 |
+| 105 | PB-HAND-A | SF-012 swept-hull advisory for hand-flown slides — publish untargeted telemetry | PB | OPEN — seam flightV3 |
+| 106 | PB-HAND-B | SF-015 three proving-ground exercises: slip a gap, brake beside a moving load, orbit-before-release | PB | OPEN — onboarding venue, adoptable-claim check |
+| 107 | PB-ECON-B | SF-096+108+114 graded damaged delivery + stackable sealed-lot eligibility + damage clause | PB | OPEN — seam contractClauses+custody |
+| 108 | PB-ECON-C | SF-112+113 priced hazard/jurisdiction terms — detour-vs-weir-run price + threat-name binding | PB | OPEN |
+| 109 | PB-ECON-D | SF-115+117 per-cycle automation cost breakdown + capability-gated route opportunity | PB | OPEN |
+| 110 | PB-ECON-E | SF-109+116+119 supply-signal story, substitute-remedy flow, guaranteed reachable job | PB | OPEN — CHECK trio |
+| 111 | PB-JOBS-B | SF-085+077 choir relief-berth capacity/arrival rhythm + worker-patient verify | PB | OPEN — clean locus choirReliefBerth.js |
+| 112 | PB-IND-A | SF-091+093+100 receiver speed-window + jam occupancy + damaged-envelope acceptance | PB | OPEN — must-share trio |
+| 113 | PB-IND-B | SF-094+097 physical workaround/bypass on machine live-preconditions | PB | OPEN |
+| 114 | PB-IND-C | SF-102+103 site power-priority choice + inbound repair-parts convoy | PB | OPEN |
+| 115 | PB-IND-D | SF-095+111 lot lineage/provenance legibility at scan | PB | OPEN — custody pair |
+| 116 | PB-IND-E | SF-098+099+104+116 capacity-stall redirect, outage→shortage→remedy contract, kill-machine collateral law | PB | OPEN — CHECK cluster |
+| 117 | PB-BUILD-A | SF-122+123+124+125+133 synergy proof quintet: rammer-truck, control-tug, survey-control, bulk-miner, stale-clear | PB | OPEN — identical 5-file write-set |
+| 118 | PB-BUILD-B | SF-129+134+135 tech-ladder trio: unlock→new physical question, rare capability two homes, first-earned delay trace | PB | OPEN |
+| 119 | PB-BUILD-C | SF-121+127+130+132 starter-identity proofs, charge-after-fit race verify, route-geometry upgrade, drawback management | PB | OPEN |
+| 120 | PB-CONS-A | SF-151+159 witness-validated intake legibility + verdict escalation windows | PB | OPEN — law pair; reproduce first |
+| 121 | PB-CONS-B | SF-156+162 rescued worker returns to work + scavenger occupation switch | PB | OPEN — aftermath pair |
+| 122 | PB-CONS-C | SF-160+163 memorial responds to named loss + uncertain evidence presented as uncertain | PB | OPEN — ledger pair |
+| 123 | PB-CONS-D | SF-153+161+164 restitution repairs something real, chase-end clarity, debt paid through appropriate job | PB | OPEN — custody trio |
+| 124 | PB-CONS-E | SF-152+157+158+165 detection distinction, thief-lead trail, work-pattern change, settle-once audit | PB | OPEN — CHECK quartet |
+| 125 | PB-DISC-A | SF-166+168 wreck-trail navigation + survey feeds a trade decision | PB | OPEN — seam scanReveal+scanner |
+| 126 | PB-DISC-B | SF-171+178 falsifiable anomaly rule + scan that reveals an absence | PB | OPEN — seam scanner |
+| 127 | PB-DISC-C | SF-174+180 capability-gated revisit + discovery memory stale-vs-current | PB | OPEN |
+| 128 | PB-DISC-D | SF-169+177 weir geometry lesson + pocket pick | PB | OPEN — pocket-lane coordination |
+| 129 | PB-DISC-E | SF-170+172+173 dead machine reveals purpose, quiet landmark pass, moved-one-off persistence verify | PB | OPEN |
+| 130 | PB-DISC-F | SF-175+176+179 worker clue to follow, hazard safe-edge, landmark scale pass | PB | OPEN |
+| 131 | PB-VFX-A | SF-197+200+201+205 plume binds achieved work, impact-severity hierarchy, kill→wreck handoff, scar grows from hit | PB | OPEN — seam vfx quartet, family owner/sitting |
+| 132 | PB-VFX-B | SF-203+204+207 bomb presentation family: arming phases, attached-hazard pose fence, meaning-ranked competition | PB | OPEN — seam vfx quartet serial with 131 |
+| 133 | PB-VFX-C | SF-198+199+208 field-edge dodge info, continuous projectile body, ricochet second-path truth | PB | OPEN — seam vfx quartet serial with 131 |
+| 134 | PB-VFX-D | SF-202+206+209+210 release cue, reduced-motion info parity, machinery motion, VFX lifecycle ownership | PB | OPEN — seam vfx quartet serial with 131 |
+| 135 | PB-PIC-A | SF-216+222 dome-edge fix + layered sky sector identity | PB | OPEN — seam tabletopPolicy; one picture sitting at a time |
+| 136 | PB-PIC-B | SF-218+219 attacker-framing camera context + landmark usable during combat (carries D86(b) per §7) | PB | OPEN — seam camera.js serial with 135 |
+| 137 | PB-PIC-C | SF-215+217+221 machine residual life, material hierarchy, convoy readable as working group | PB | OPEN — seam tabletopPolicy serial |
+| 138 | PB-PIC-D | SF-223+225 damaged-ship readability + authored-picture comparison drives a real fix | PB | OPEN — seam camera.js serial |
+| 139 | PB-PERF-B | SF-262+265+268 admission/residency seam: roster prediction, visibility hysteresis, context-safe restore | PB | OPEN — seam renderer.js serial with 75/140 |
+| 140 | PB-PERF-C | SF-263+264+266+269+270 present/loop seam: bounded publish, alloc reduction, spatial scaling, edge-once input, intact-picture gate | PB | OPEN — seam renderer.js serial with 75/139 |
+| 141 | PB-PERF-D | SF-258+259+260 reproduce-gated trio: starvation root cause (D36/D84 surfaces), residual retention (D24), pose-jump attribution (D60 closed — retire or reproduce) | PB | OPEN — CHECK trio |
+| 142 | PB-PERF-E | SF-261 one measured material-key per render contract — residual key noise only after SF-256 lands | PB | PARKED gated on row 75 |
+| 143 | PB-AUD-A | SF-227+230 engine effort under load/brake + field heard through force direction | PB | OPEN — seam audioSystem serial |
+| 144 | PB-AUD-B | SF-231+235 comms yield to the immediate problem + refusal reasons split (ammo vs target) | PB | OPEN — seam audioSystem serial |
+| 145 | PB-AUD-C | SF-232+233+240 machine work-cycle rhythm, anomaly-evidence cue, whole-mix family acceptance | PB | OPEN — seam audioSystem serial |
+| 146 | PB-AUD-D | SF-226+228+229+234+236+237 verify six: release/break distinct, slam separation, bomb phases, encounter arc, origin-shift reset, voice budget | PB | OPEN — CHECK sextet |
+| 147 | PB-UI-A | SF-242+251 capability comparison + draft fit projection — sim halves only; UI surface is ORRERY's | PB | OPEN |
+| 148 | PB-UI-B | SF-243+244+245 custody projection, stable-identity selection, discovery-knowledge model — sim halves | PB | OPEN |
+| 149 | PB-UI-C | SF-241+246 trade-confirm truth residue + mission phase→next-action derivation — sim halves | PB | OPEN |
+| 150 | PB-CONT-A | SF-273+274 interrupted cargo handoff conserves the lot + site reconstruction preserves work | PB | OPEN — seam saveSystem serial |
+| 151 | PB-CONT-B | SF-278+283+285 once-only rewards, no spectacle replay, interrupted failure leads back | PB | OPEN — seam saveSystem serial |
+| 152 | PB-CONT-C | SF-280+281+284 migration template, failed-save visibility, bounds preserve consequences | PB | OPEN — seam saveSystem serial |
+| 153 | PB-CONT-D | SF-271+275+276+279 interleaved-load guard verify, pause-hold ownership, focus-loss release, attachment cleanup | PB | OPEN — non-saveSystem seams; parallel-safe with 150–152 |
+| 154 | PB-CONT-E | SF-272+282 validate-then-restore boundary + one real browser/Electron divergence | PB | OPEN — CHECK pair |
+| 155 | PB-ECO | SF-181–195 Charon Bloom ecology — 15-packet opt-in expansion; SF-181 first if admitted (deep-dive 08), 183–185/189/192/193 chain behind it | PB | PARKED expansion opt-in |
+| 156 | PB-LANE-GRAPHICS | SF-211–214, 220, 224 — authored-hull/LOD/wreck-family/place-state packets; Forge+assets write-sets | PB | PARKED devin-graphics lane |
+| 157 | PB-LANE-ORRERY | SF-128, 239, 247–250, 252–255, 267, 299 — pure-UI packets (sim halves already dispatched as rows 147–149) | PB | PARKED ORRERY lane |
+| 158 | PB-LANE-WORLD | SF-078–084, 086, 087, 090, 287, 298 — npcJobs/traffic/pocket-data packets held by the boards-3x3 claim | PB | PARKED boards-3x3 lane |
+
 Not on the board: **deferred review/capture ceremonies** (retired by owner 2026-09-10 — `PQ-018/.019/.020/.045` H1+review pairs, `PQ-191`, `PQ-167.01`), **vm-drop HOLDs** and the REVISE chase stills, **remote in-flight jobs** (`bloom-cost`, `hold-prefetch-inbound`, `a-list-convergence` — the remote machine owns them), **never-foldered VM jobs** (`residency-budget`, `jump-arrival-spread`, steady-state CPU/GPU, `long-soak-witness`, `moonshot-assessment`, `npc-kit-stills` — remote owns; VM_LANES.md is their door), and **ORRERY-claimed queue units** (`PQ-180.03`, `PQ-181`, `PQ-182`, `PQ-185`, `PQ-187`, `PQ-194`, `PQ-025` calib, `PQ-040` native). The Depth roll-up and Alpha M-rows in `02_REMAINING_WORK.md` are admitted scope not yet decomposed into dispatchable leaves — the owning lane's first sitting turns them into board rows.
 
 ## 2. Product north star
