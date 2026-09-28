@@ -438,9 +438,12 @@ function applyStamp(entity, classified, simTime) {
   if (!rec) {
     rec = makeStamp(classified, simTime);
     attachStamp(entity, rec);
+    // Fresh stamp — physics partition depends on tier/pin; fill cache for classify.
+    refreshPhysicsPartition(entity);
     return rec;
   }
   const prior = rec.simTier;
+  const priorPinned = rec.pinnedExact;
   const wasExact = isExactTier(prior);
   let tier = classified.simTier;
   let nowExact = isExactTier(tier);
@@ -466,6 +469,12 @@ function applyStamp(entity, classified, simTime) {
   rec.lastObservedT = simTime;
   if (classified.nextEventAtT != null) rec.nextEventAtT = classified.nextEventAtT;
   else if (!Number.isFinite(rec.nextEventAtT) || rec.nextEventAtT < 0) rec.nextEventAtT = -1;
+  // entityNeedsPhysics / shouldSync partition follows simTier + pinnedExact. Refresh only
+  // when those flip so quiet revisits read the cached byte (profile shouldSyncPhysicsBodyEntity
+  // + isDynamicPhysicsBodyEntity under classifyWorld).
+  if (prior !== rec.simTier || priorPinned !== rec.pinnedExact || entity._physicsPartition == null) {
+    refreshPhysicsPartition(entity);
+  }
   return rec;
 }
 
@@ -728,6 +737,7 @@ export function admitSameTickProjectiles(state, runtime, membership) {
     const entity = unseen[i];
     runtime.seenEntityIds.add(entity.id);
     runtime.currentEntityIds.add(entity.id);
+    entity._physicsPartition = 2;
     runtime.physicsDynamics.push(entity);
     runtime.exactIds.push(entity.id);
     runtime.counts.physics += 1;
@@ -1049,13 +1059,15 @@ function classifyWorld(state, runtime) {
       runtime.activeTrafficEntities.push(entity);
     }
 
-    if (!entityNeedsPhysics(entity)) continue;
-    if (!shouldSyncPhysicsBodyEntity(entity)) continue;
-    if (isDynamicPhysicsBodyEntity(entity) || entity.type === 'projectile') {
-      dynamics.push(entity);
-    } else {
-      statics.push(entity);
+    // Physics partition cache: 0=skip, 1=static, 2=dynamic. applyStamp refreshes on
+    // tier/pin flips; first touch fills. Avoids re-entering authoredPhysicsBody/defaultDynamic
+    // on every quiet classify revisit.
+    let partition = entity._physicsPartition;
+    if (partition !== 0 && partition !== 1 && partition !== 2) {
+      partition = refreshPhysicsPartition(entity);
     }
+    if (partition === 2) dynamics.push(entity);
+    else if (partition === 1) statics.push(entity);
   }
 
   if (runtime.classifyMode === 'incremental') {
@@ -1267,6 +1279,26 @@ export function entityNeedsPhysics(entity) {
   if (!activity || !activity.simTier) return true;
   if (activity.pinnedExact) return true;
   return isExactTier(activity.simTier);
+}
+
+/**
+ * Cached classify physics partition: 0 = skip, 1 = static sync, 2 = dynamic sync.
+ * Mirrors entityNeedsPhysics + shouldSyncPhysicsBodyEntity + isDynamicPhysicsBodyEntity
+ * (projectile forced dynamic). Quiet revisits read the byte; applyStamp refreshes on
+ * simTier / pinnedExact flips.
+ */
+export function refreshPhysicsPartition(entity) {
+  if (!entity || entity.alive === false) {
+    if (entity) entity._physicsPartition = 0;
+    return 0;
+  }
+  if (!entityNeedsPhysics(entity) || !shouldSyncPhysicsBodyEntity(entity)) {
+    entity._physicsPartition = 0;
+    return 0;
+  }
+  const kind = (isDynamicPhysicsBodyEntity(entity) || entity.type === 'projectile') ? 2 : 1;
+  entity._physicsPartition = kind;
+  return kind;
 }
 
 /**
