@@ -375,6 +375,7 @@ test('VFX prefers nested receipt truth while legacy kill events remain compatibl
   const state = killState();
   const harness = Object.create(vfx);
   harness.state = state;
+  harness.bus = createBus();
   harness._scene = state.render.scene;
   harness._explosions = new PhasedExplosionLifecycle({ capacity: 2 });
   const payload = {
