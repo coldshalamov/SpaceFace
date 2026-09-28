@@ -731,6 +731,10 @@ export function collectOpeningEntityRootCandidates(meshes, entities, options = {
     if (scene && mesh.parent !== scene) continue;
     const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
     if (!entity || entity.alive === false || entity._noMesh) continue;
+    const authoredState = mesh.userData && mesh.userData.authoredAssetState;
+    // Boundaries still waiting on authored GLB admission only expose a temporary marker (or
+    // nothing). They must not block the opening submission plan; mid-flight admission owns them.
+    if (authoredState === 'awaiting-authored-admission' || authoredState === 'loading') continue;
     const leaves = collectOpeningSubmissionLeaves(mesh, { camera });
     if (leaves.length === 0) continue;
     candidates.push({
@@ -764,6 +768,8 @@ export function collectOpeningShadowCasterRootCandidates(meshes, entities, optio
     if (scene && root.parent !== scene) continue;
     const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
     if (!entity || entity.alive === false || entity._noMesh) continue;
+    const authoredState = root.userData && root.userData.authoredAssetState;
+    if (authoredState === 'awaiting-authored-admission' || authoredState === 'loading') continue;
     const shadowLeaves = collectOpeningSubmissionLeaves(root, { camera });
     if (!shadowLeaves.some((leaf) => leaf && leaf.castShadow === true)) continue;
     candidates.push({
@@ -9576,8 +9582,21 @@ export const render = {
           || plan.firstPlayablePipelineSet.complete !== true) {
           // Refusing here left New Game on gpu-resources until the 90s playable
           // gate fired. Enter flight and keep admitting behind the first picture.
+          const failRole = Array.isArray(plan && plan.blockingReasons)
+            ? plan.blockingReasons.find((entry) => entry && (
+              entry.role === 'productionBoundary'
+              || entry.role === 'producerResourceIdentityCensus'
+              || entry.role === 'firstPlayablePipelineSet'
+              || (entry.reason && String(entry.reason).includes('no-currently-instantiated'))
+            ))
+            : null;
           recordOpeningCookStep(state.render, 'opening.plan', openingNow(), 'skipped', {
             reason: 'opening-plan-incomplete',
+            fail: failRole
+              ? `${failRole.role || ''}:${String(failRole.reason || '').slice(0, 48)}`
+              : (plan && plan.firstPlayablePipelineSet && plan.firstPlayablePipelineSet.reason)
+                || 'unknown',
+            drawLeaves: plan && Array.isArray(plan.drawLeaves) ? plan.drawLeaves.length : 0,
           });
           return { skipped: true, reason: 'opening-plan-incomplete' };
         }

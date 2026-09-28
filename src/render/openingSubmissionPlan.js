@@ -252,6 +252,12 @@ function leafContributes(object, root, frustum, options = {}) {
   if (!isDrawable(object) || !isVisibleInProductionGraph(object, root) || !hasDrawableInstance(object)) {
     return false;
   }
+  // Direct-authored admission mounts a temporary resolving marker while the real GLB is still
+  // pending. That marker is not first-picture production identity — counting it as a blocking
+  // opening leaf left soft-GPU plans incomplete (missing content hash) and skipped residency.
+  if (object.userData && object.userData.authoredResolvingMarker === true) {
+    return false;
+  }
   // A real camera's layer mask is part of the first-picture route just like its frustum. Keep the
   // historical fail-closed behavior when either side has no layer contract, but do not admit a
   // drawable that the live camera cannot submit because its layer is masked out.
