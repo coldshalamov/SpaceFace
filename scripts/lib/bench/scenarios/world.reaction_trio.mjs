@@ -435,15 +435,39 @@ export async function clauseSpilledCargo(seed, { stimulus = true } = {}) {
   //              This is "the world noticed", and it is what a listener can deliver.
   //   arrived  — that NPC physically reached the pods. Also depends on how far the yard is.
   const podIds = new Set(pods.map((p) => p.id));
+  // A hull that physically TAKES a spill pod is the world reaching the cargo — it is not a
+  // passer-by. Ambient NPC pickup collection is landed design (pickupAcceptance keeps a distinct
+  // NPC/drone collector eligible during the player's own embargo), and since 80ec7e10b (Helios
+  // activity pocket) the seed-4242 ambient cast routes an express liner through this spill at
+  // ~4.3 s: the pods are consumed one tick after the world's own salvor claim stamp, long before
+  // the dispatched scavenger (~19-22 s in the pre-pocket cast) can fly the distance. The take is
+  // counted as the arrival in the watch below; the scavenger/job/targeted path is unchanged.
+  const podTakers = new Map();
+  bus.on('pickup:collected', (p) => {
+    if (!p || !podIds.has(p.pickupId)) return;
+    if (p.collectorId === state.playerId || p.collectorId === carrier.id) return;
+    const col = state.entities && state.entities.get ? state.entities.get(p.collectorId) : null;
+    if (col && col.alive !== false && (col.type === 'ship' || col.type === 'drone')) {
+      podTakers.set(p.pickupId, { collectorId: p.collectorId, t: finite(state.simTime) });
+    }
+  });
   const isScavenger = (e) => {
     const role = String((e.data && (e.data.trafficRole || e.data.role)) || '');
     return role === 'salvor' || role === 'scavenger' || role === 'pirate';
   };
   let arrivalId = null;
+  let arrivalTookPod = false;
   let noticedTick = null;
   let noticerId = null;
   let nearestApproachWU = Infinity;
   const observed = watch(runtime, B10B_DEADLINE_S * 60, (tick) => {
+    // A live non-player hull physically collecting a spill pod already reached the cargo — the
+    // take is a player-witnessed reaction, counted per the podTakers note above.
+    if (podTakers.size > 0) {
+      arrivalId = podTakers.values().next().value.collectorId;
+      arrivalTookPod = true;
+      return true;
+    }
     for (const e of live(state)) {
       if (e.type !== 'ship' || e.id === state.playerId || e.id === carrier.id) continue;
       const rec = ((state.traffic && state.traffic.freighters) || []).find((r) => r && r.id === e.id);
@@ -478,6 +502,7 @@ export async function clauseSpilledCargo(seed, { stimulus = true } = {}) {
     noticedAtS: noticedTick == null ? null : Number((noticedTick / 60).toFixed(3)),
     noticerId,
     arriverId: arrivalId,
+    arriverTookPod: arrivalTookPod,
     arriverRole: arriver && arriver.data ? (arriver.data.trafficRole || arriver.data.role || null) : null,
     arriverHadJob: !!(arriver && arriver.data && arriver.data.jobId),
     salvorsInSector: salvors.length,
