@@ -672,7 +672,13 @@ export class QuarksVfxSystem {
   }
 
   update(dt, accessibility = null) {
-    if (!this.scene || !Number.isFinite(dt) || dt <= 0) return;
+    if (!this.scene) return;
+    if (!Number.isFinite(dt) || dt <= 0) {
+      // A paused / zero-step frame still counts as an empty observe — the latch may
+      // arm; live particles simply leave it false.
+      if (!this._anyParticleLive()) this._quietEmpty = true;
+      return;
+    }
     // Quiet settled flight: BatchedParticleRenderer.update walked all 11 empty
     // families every frame after the last burst died. Trust particleNum and skip
     // once already observed empty; spawn/_spawnCapped/_emitFlow clear _quietEmpty.
