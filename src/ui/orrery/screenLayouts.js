@@ -271,7 +271,7 @@ html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot 
   background-image:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / 0)) !important; }
 html body #screens > .k-screen.orr-refit .k-foot .sf-cru-kbd { display:inline-grid; place-items:center; margin-left:12px; min-width:26px; height:18px; padding:0 5px; box-sizing:border-box;
   font-family:var(--dp-face-label, "Archivo"); font-size: 12px; font-weight:650; letter-spacing:.08em; vertical-align:3px;
-  color:rgb(236 230 216 / .78); box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42); border-radius:3px; background:none; text-shadow:none; }
+  color:rgb(236 230 216 / .62); background:none; text-shadow:none; border:0; box-shadow:none; border-radius:0; }
 html body #screens > .k-screen.orr-refit > .k-title .sf-cru-note:empty { display:none; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on { position:absolute !important; inset:0 !important; margin:0 !important; padding:0 !important; max-height:none !important;
   overflow:visible !important; z-index:1; grid-area:auto; pointer-events:none;
@@ -346,11 +346,11 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__s
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__track { stroke:rgb(236 230 216 / .25); stroke-width:2; fill:none; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__track-end { stroke:rgb(236 230 216 / .45); stroke-width:1; fill:none; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__tick { stroke:rgb(236 230 216 / .62); stroke-width:1.6; fill:none; }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__tick.is-chosen { stroke:var(--dp-hand-hot, #ffd98c); stroke-width:2.6; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__tick.is-chosen { stroke:rgb(246 241 230); stroke-width:2.6; }
 /* the lit verb carries the key that presses it */
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-act:not(:disabled)::after { content:"Enter"; position:static; display:inline-grid; place-items:center; transform:none;
-  width:auto; height:17px; margin-left:9px; padding:0 5px; background:none !important; box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42) !important; border-radius:3px;
-  font-size: 12px; letter-spacing:.08em; color:rgb(236 230 216 / .78); vertical-align:1px; }
+  width:auto; height:17px; margin-left:9px; padding:0 5px; background:none !important; border:0 !important; box-shadow:none !important; border-radius:0;
+  font-size: 12px; letter-spacing:.08em; color:rgb(236 230 216 / .62); vertical-align:1px; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act::before { display:none !important; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act:disabled { color:rgb(232 226 212 / .26) !important; }
 /* lit: the Hand is on this hardpoint -- its numeral takes the lamp, its words brighten, its verb is the one to press */
@@ -378,7 +378,8 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .o
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figures__rest { grid-column:1 / -1; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figure__w { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:12px; letter-spacing:.24em;
   text-transform:uppercase; color:rgb(236 230 216 / .62); margin-top:6px; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figures__rest { flex-basis:100%; margin:8px 0 0; font-size:12px; color:rgb(236 230 216 / .6); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figures__rest { flex-basis:100%; margin:8px 0 0; font-family:var(--dp-face-numeral, "Archivo"); font-size:15px; font-variant-numeric:tabular-nums lining-nums;
+  letter-spacing:.02em; color:rgb(236 230 216 / .85); }
 /* the round reached lives in the figures and on the dial; no celebration on a death */
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__hero { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .k-title .k-t-title { background-image:linear-gradient(0deg, rgb(236 230 216 / .5) 2px, transparent 0) !important; }
@@ -393,8 +394,8 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial :i
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__build { display:flex !important; position:relative; margin-top:10px !important; padding-top:16px !important; border:0 !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__build::before { content:""; position:absolute; left:5px; right:12%; top:4px; height:1px; background:rgb(236 230 216 / .34); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step { flex:1 1 0; display:block !important; position:relative; border:0 !important; padding:0 12px 0 0 !important; min-height:0 !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step::before { content:""; position:absolute; left:1px; top:-16px; width:9px; height:9px; border-radius:50%; background:#0b0a09;
-  box-shadow:inset 0 0 0 1.5px rgb(236 230 216 / .85); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step::before { content:""; position:absolute; left:1px; top:-16px; width:9px; height:9px; border-radius:50%; background:rgb(236 230 216);
+  box-shadow:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step .k-row__sub { display:block; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:12px; letter-spacing:.2em;
   text-transform:uppercase; color:rgb(236 230 216 / .6); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step .sf-crres__step-verb { display:block; margin:2px 0 0 !important; font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 720, "wdth" 118;
@@ -408,12 +409,13 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial::b
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story { display:flex; flex-direction:column; justify-content:flex-start; justify-content:safe space-evenly; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story > .sf-crres__band + .sf-crres__band { margin-top:0; }
 /* the build: the draft it converged on stands solid */
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step:last-child::before { background:rgb(236 230 216 / .9); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step:last-child::before { background:rgb(246 241 230);
+  box-shadow:0 0 0 2px rgb(246 241 230 / .3), 0 0 12px rgb(236 230 216 / .35); }
 /* the forward key names its key */
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .k-foot .k-word.k-word--primary::after { content:"Enter" !important; position:static !important; display:inline-grid !important; place-items:center;
   transform:none !important; width:auto !important; height:17px !important; margin-left:12px; padding:0 5px; vertical-align:4px;
-  box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42) !important; border-radius:3px; background:none !important;
-  font-family:var(--dp-face-label, "Archivo"); font-size: 12px !important; letter-spacing:.08em; color:rgb(236 230 216 / .78) !important; text-shadow:none; }
+  border:0 !important; box-shadow:none !important; border-radius:0; background:none !important;
+  font-family:var(--dp-face-label, "Archivo"); font-size: 12px !important; letter-spacing:.08em; color:rgb(236 230 216 / .62) !important; text-shadow:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band:is([data-band="kill_chain"], [data-band="last_seconds"]) { position:absolute !important; width:1px; height:1px; overflow:hidden;
   clip:rect(0 0 0 0); white-space:nowrap; margin:0 !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__hero { z-index:3; }
@@ -473,7 +475,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory > .k-ti
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory > .k-title .sf-cru-sub { font-size:14px; color:rgb(236 230 216 / .66); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-cards { display:flex !important; flex-direction:column; gap:0 !important; max-height:calc(100vh - 430px); overflow:hidden auto;
   scrollbar-width:thin; scrollbar-color:rgb(236 230 216 / .25) transparent; padding:4px 10px 4px 0; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card { flex:none !important; display:grid !important; grid-template-columns:18px 88px minmax(0, 1fr) auto; align-items:baseline; column-gap:12px;
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card { flex:none !important; display:grid !important; grid-template-columns:18px 118px minmax(0, 1fr) auto; align-items:baseline; column-gap:12px;
   padding:9px 8px 9px 26px !important; min-height:0 !important; text-align:left; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card::after { display:none !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card::before { top:8px !important; bottom:8px !important; }
@@ -486,7 +488,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card .sf-cru-price { grid-column:4; grid-row:1; margin:0 !important; font-size:15px; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card :is(.sf-cru-blurb, .sf-cru-activation, .sf-cru-slot, .sf-cru-afford) { display:none !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card:disabled .sf-cru-name, html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card:disabled .sf-cru-price { color:rgb(236 230 216 / .45) !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card:is(:hover, :focus-visible):not(:disabled) .sf-cru-price { color:var(--dp-hand-hot, #ffd98c) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card:is(:hover, :focus-visible):not(:disabled) .sf-cru-price { color:rgb(246 241 230) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory::before { background:radial-gradient(ellipse at 58% 46%, rgb(4 6 9 / .62), rgb(4 6 9 / .84) 55%, rgb(4 6 9 / .93) 100%) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading { position:absolute; top:clamp(150px, 20vh, 230px); left:calc(var(--k-margin, 96px) + min(560px, 40vw) + 56px);
   right:var(--k-margin, 64px); max-width:1100px;
@@ -511,12 +513,12 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-ar
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-compare__track { stroke:rgb(236 230 216 / .25); stroke-width:2; fill:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-compare__fill { stroke:rgb(236 230 216 / .55); stroke-width:2; fill:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-compare__fitted { stroke:rgb(236 230 216 / .85); stroke-width:1.5; fill:none; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-compare__mark { stroke:var(--dp-hand-hot, #ffd98c); stroke-width:2.6; fill:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-compare__mark { stroke:rgb(246 241 230); stroke-width:2.6; fill:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-compare__val { font-family:var(--dp-face-numeral, "Archivo"); font-size:14px; font-weight:600; fill:rgb(246 241 230); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-compare__delta { font-size:12px; fill:var(--dp-ice, #8fcbff); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__track { stroke:rgb(236 230 216 / .18); stroke-width:4; fill:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__keep { stroke:rgb(236 230 216 / .8); stroke-width:4; fill:none; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__spend { stroke:var(--dp-hand, #f2b950); stroke-width:4; fill:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__spend { stroke:rgb(246 241 230); stroke-width:4; fill:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__short { stroke:var(--dp-danger, #ff5038); stroke-width:4; fill:none; stroke-dasharray:3 3; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__end { stroke:rgb(236 230 216 / .6); stroke-width:1; fill:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__word { font-size: 12px; font-weight:650; letter-spacing:.16em; fill:rgb(236 230 216 / .7); }
@@ -529,7 +531,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-ar
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__buy:empty { display:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-keycap { display:inline-grid; place-items:center; min-width:18px; height:18px; padding:0 5px; box-sizing:border-box; margin-right:4px;
   font-family:var(--dp-face-label, "Archivo"); font-size: 12px; font-weight:650; letter-spacing:.06em; text-transform:none; font-variation-settings:normal;
-  color:rgb(236 230 216 / .8); box-shadow:inset 0 0 0 1px rgb(236 230 216 / .45); border-radius:3px; }
+  color:rgb(236 230 216 / .62); border:0; box-shadow:none; border-radius:0; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-hintword { margin:0 16px 0 4px; font-size: 12px; letter-spacing:.2em; text-transform:uppercase; color:rgb(236 230 216 / .7); }
 /* the rail: its Hand on the row being read; that row at full bone, the rest quieter; the price only
    on the lit row (the dividers carry it for the rest), and there it says BUY and names its key */
@@ -540,7 +542,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.is-lit::before { left:4px !important; top:50% !important; bottom:auto !important; width:11px !important; height:14px !important;
   transform:translateY(-50%); clip-path:polygon(0 0, 100% 50%, 0 100%, 26% 50%); background:var(--dp-hand, #f2b950) !important; box-shadow:none !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card:not(.is-lit) .sf-cru-price { visibility:hidden; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.is-lit:not(:disabled) .sf-cru-price { color:var(--dp-hand-hot, #ffd98c) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.is-lit:not(:disabled) .sf-cru-price { color:rgb(246 241 230) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.is-lit:not(:disabled) .sf-cru-price::before { content:"Buy "; font-size: 12px; letter-spacing:.2em; text-transform:uppercase; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.is-lit:disabled .sf-cru-price { visibility:visible; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card .sf-cru-name { color:rgb(236 230 216 / .78) !important; }
@@ -549,8 +551,8 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-ra
   font-weight:650; font-size: 12px; letter-spacing:.24em; text-transform:uppercase; color:rgb(236 230 216 / .6); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-divider::after { content:""; flex:1; height:1px; background:linear-gradient(90deg, rgb(236 230 216 / .3), rgb(236 230 216 / 0)); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-wallet { margin:16px 0 4px 16px; display:flex; align-items:center; gap:10px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
-  font-weight:650; font-size: 12px; letter-spacing:.24em; text-transform:uppercase; color:var(--dp-hand, #f2b950); }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-wallet::before, html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-wallet::after { content:""; height:1px; background:rgb(242 185 80 / .6); }
+  font-weight:650; font-size: 12px; letter-spacing:.24em; text-transform:uppercase; color:rgb(236 230 216 / .72); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-wallet::before, html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-wallet::after { content:""; height:1px; background:rgb(236 230 216 / .5); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-wallet::before { width:14px; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-wallet::after { flex:1; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-filters .k-word { font-size: 12px !important; color:rgb(236 230 216 / .7) !important; }
@@ -559,7 +561,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .k-foot
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; text-shadow:0 0 22px rgb(242 185 80 / .5) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .k-foot .sf-cru-kbd { display:inline-grid; place-items:center; margin-left:12px; min-width:26px; height:18px; padding:0 5px; box-sizing:border-box;
   font-family:var(--dp-face-label, "Archivo"); font-size: 12px; font-weight:650; letter-spacing:.08em; vertical-align:3px;
-  color:rgb(236 230 216 / .78); box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42); border-radius:3px; background:none; text-shadow:none; opacity:1; }
+  color:rgb(236 230 216 / .62); border:0; box-shadow:none; border-radius:0; background:none; text-shadow:none; opacity:1; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .k-foot .k-word:not(.k-word--primary) { font-family:var(--dp-face-display, "Archivo") !important; font-variation-settings:"wght" 760, "wdth" 125 !important;
   font-size:clamp(14px, 1.6vh, 17px) !important; letter-spacing:.08em !important; color:rgb(236 230 216 / .72) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-fine { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
@@ -571,10 +573,14 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
   -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent 0, rgb(0 0 0 / .5) 22%, #000 46%), linear-gradient(0deg, transparent 0, #000 22%);
   mask-composite:intersect; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:60% 50%; opacity:0;
-  transition:opacity .6s var(--dp-ease-out, ease-out); filter:saturate(.95) brightness(.92); }
+  transition:opacity .3s var(--dp-ease-out, ease-out); filter:saturate(.95) brightness(.92); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__art.is-on { opacity:1; }
-html.sf-reduce-motion html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__art { transition:none; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__words { position:absolute; right:max(64px, 4vw); bottom:clamp(120px, 15vh, 170px); text-align:right; max-width:36ch; }
+html.sf-reduce-motion body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__art { transition:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__words { position:absolute; right:max(64px, 4vw); bottom:clamp(120px, 15vh, 170px); text-align:right; max-width:36ch;
+  transition:opacity .15s linear, transform .15s var(--dp-ease-out, ease-out); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__words.is-turning { opacity:0; transform:translateY(6px); }
+html.sf-reduce-motion body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__words { transition:none; }
+html.sf-reduce-motion body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__words.is-turning { opacity:1; transform:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__name { margin:0; font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 800, "wdth" 125; font-size:clamp(28px, 3.6vh, 44px);
   letter-spacing:.04em; text-transform:uppercase; color:rgb(246 241 230); text-shadow:0 2px 24px rgb(0 0 0 / .8); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__line { margin:8px 0 0; font-size:15px; line-height:1.45; color:rgb(236 230 216 / .85); text-shadow:0 1px 12px rgb(0 0 0 / .9); }
@@ -596,13 +602,30 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
 /* one amber: Launch rests in bone until the player reaches for it */
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-key--primary { color:rgb(246 241 230) !important; text-shadow:0 0 16px rgb(0 0 0 / .6) !important;
   background-image:linear-gradient(90deg, rgb(236 230 216 / .55), rgb(236 230 216 / 0)) !important; }
-/* a short plate keeps the seed in view: one-line descriptions, tighter blocks */
+/* a short plate keeps the seed in view: one-line descriptions, tighter blocks. Nothing
+   interactive vanishes: the records row and the practice room's line stay above the fold. */
 @media (max-height:800px) {
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings > .k-row { margin-bottom:10px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings > .k-row { margin-bottom:6px !important; }
   html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings .k-sentence { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:46vw; margin:4px 0 0 !important; font-size:13px !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings .k-t-fine { display:none; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-ghost-sub { display:none; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice .k-t-fine { display:block !important; flex:1 1 200px; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0 !important; }
   html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-modes .fh-tile-art img { width:34px !important; height:34px !important; }
   html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-modes .orr-tile, html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .orr-tile { min-height:0 !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-records { margin-top:6px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-records summary { padding:6px 0 !important; }
+}
+/* ...and a shorter plate still keeps the records row above the fold: deeper cuts, same voices */
+@media (max-height:720px) {
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings > .k-row { margin-bottom:3px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings .k-row > .k-row__name { margin-bottom:2px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings .k-sentence { margin-top:2px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) :is(.sf-crd-modes, .sf-crd-hulls, .sf-crd-arenas) .orr-tile { padding-top:4px !important; padding-bottom:4px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-stationrow { padding-bottom:20px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-records { margin-top:4px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-records summary { padding:4px 0 !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-foot :is(.orr-key--hazard, .orr-key--primary) { padding:8px 4px 10px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-foot .orr-key--small { padding:4px 2px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hint { margin-top:0 !important; }
 }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-title .k-t-name { font-size:clamp(56px, 8.5vh, 104px) !important; }
 /* the door's form reads over the dark side of the plate */
@@ -915,6 +938,72 @@ html body #screens .k-screen.orr-newgame .sf-ng-footer .sf-back.k-word::after { 
 html.sf-reduce-motion #screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step::before { transition:none; }
 /* no lone word on the last line of the hull's sentence (1280 left "way." alone) */
 #screens .orr-newgame .orr-ng-caption > .k-sentence { text-wrap:pretty; }
+
+/* ================================ CRUCIBLE r2 ============================================ */
+/* draft: one Hand (the chevron) + one Lamp (BUY). The fit-preview keeps its shape in bone;
+   ice is its motion. These beat the jig's own sheet on specificity, whatever injected first. */
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-slotjig__word { fill:rgb(236 230 216 / .85); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-slotjig__lit { stroke:rgb(246 241 230); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-slotjig__svg circle[r="2.4"] { fill:rgb(246 241 230); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-slotjig__seg.is-target { stroke:rgb(236 230 216 / .8); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-slotjig__svg .orr-hand { stroke:rgb(236 230 216 / .75); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-slotjig__halo { stroke:rgb(223 238 255); }
+html.sf-reduce-motion body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-slotjig__halo { animation:none; opacity:0; }
+/* the hull reads as a lit object: a 5% bone pool behind it, a 5px 22% bloom on its own lines
+   (the poster is transparent, so the shadow follows the drawing), with a denser 3px pass under it
+   so the skirt still clears 60 two pixels out */
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__jig { background:radial-gradient(closest-side, rgb(236 230 216 / .05), rgb(236 230 216 / .02) 55%, transparent 78%); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-slotjig__art { filter:drop-shadow(0 0 3px rgb(236 230 216 / .8)) drop-shadow(0 0 6px rgb(236 230 216 / .22)); }
+/* the row being read lights its hardpoint: an ice pulse travels the leader beam to the node and
+   the node ring pulses. One pass per row change (the screen re-arms the class); still bone at rest */
+@keyframes orr-beam-pulse { 0% { stroke-dasharray:44 320; stroke-dashoffset:180; stroke:rgb(223 238 255); opacity:1; }
+  100% { stroke-dasharray:44 320; stroke-dashoffset:-180; stroke:rgb(223 238 255); opacity:1; } }
+@keyframes orr-node-pulse { 0% { transform:scale(1); } 35% { transform:scale(1.4); } 100% { transform:scale(1); } }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-slotjig.is-pulse .orr-slotjig__svg .orr-hand { animation:orr-beam-pulse .6s linear 1; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-slotjig.is-pulse .orr-slotjig__lit { animation:orr-node-pulse .6s ease-out 1; stroke:rgb(223 238 255);
+  transform-box:fill-box; transform-origin:center; }
+html.sf-reduce-motion body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-slotjig.is-pulse :is(.orr-hand, .orr-slotjig__lit) { animation:none; }
+html.sf-reduce-motion body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-slotjig.is-pulse .orr-slotjig__lit { stroke:rgb(246 241 230); }
+/* a rail clipped to whole rows retires its bottom fade while it sits at the top (the screen owns
+   the class); the fade's job was softening the cut, and the cut is gone */
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-cards.is-clipped { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 18px, #000 100%) !important;
+  mask-image:linear-gradient(180deg, transparent 0, #000 18px, #000 100%) !important; }
+
+/* refit: the fit arc stays bone even on the lit segment; the Hand keeps the hull, the Lamp the commit */
+html body #screens > .k-screen.orr-refit .orr-hull__fitted.is-lit { stroke:rgb(236 230 216 / .8); }
+html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word.k-word--primary.is-lamp { color:var(--dp-hand, #f2b950) !important;
+  text-shadow:0 0 18px rgb(242 185 80 / .35) !important; background-image:none !important; }
+html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word.k-word--primary.is-lamp .sf-cru-label { background-image:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / 0)) !important;
+  background-size:100% 2px !important; background-position:0 100% !important; background-repeat:no-repeat !important; padding-bottom:6px !important; }
+html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word.k-word--primary.is-lamp:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important;
+  text-shadow:0 0 26px rgb(255 217 140 / .6) !important; }
+html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word.k-word--primary.is-lamp:is(:hover, :focus-visible) .sf-cru-label { background-image:linear-gradient(90deg, var(--dp-hand-hot, #ffd98c), rgb(255 217 140 / 0)) !important; }
+/* where the dial drops its fit arc (a narrow plate), the count reads inline under the hull */
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { position:absolute; left:50%; transform:translateX(-50%); bottom:150px; z-index:2; margin:0; padding:0;
+  white-space:nowrap; pointer-events:none; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:12px; letter-spacing:.24em;
+  text-transform:uppercase; color:rgb(236 230 216 / .78); text-shadow:0 1px 0 rgb(0 0 0 / .7), 0 0 10px rgb(0 0 0 / .85); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hull-fitcount[hidden] { display:none; }
+
+/* door: GHOST unreadable-at-1.9 becomes a bone word with a dotted strike when no ghost is on file */
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-tile.sf-crd-ghost.is-unavail { opacity:1; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-tile.sf-crd-ghost.is-unavail .fh-tile-legend { color:rgb(236 230 216 / .8) !important;
+  text-decoration:line-through dotted rgb(236 230 216 / .55); text-underline-offset:3px; }
+/* the door documents its input: one quiet line under the keys */
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-foot { flex-wrap:wrap; row-gap:8px; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hint { flex:0 0 100%; order:9; margin:2px 0 0; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
+  font-weight:650; font-size:12px; letter-spacing:.2em; color:rgb(236 230 216 / .55); }
+
+/* results: the Lamp rule spans the verb's own words, not the key beside them */
+html body #screens > .k-screen.orr-crucible.sf-crucible-results .k-foot .k-word.k-word--primary { background-image:none !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results .k-foot .k-word.k-word--primary .sf-crres-verb { background-image:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / 0)) !important;
+  background-size:100% 2px !important; background-position:0 100% !important; background-repeat:no-repeat !important; padding-bottom:6px !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) .sf-crres-verb { background-image:linear-gradient(90deg, var(--dp-hand-hot, #ffd98c), rgb(255 217 140 / 0)) !important; }
+/* a short plate hides the dial's full hit legend; the abbreviated line stands in its place, same handoff */
+html body #screens > .k-screen.orr-crucible.sf-crucible-results .orr-crres-hitlegend { display:none; margin:6px 0 0; font-family:var(--dp-face-label, "Archivo"); font-size:12px; font-weight:600;
+  letter-spacing:.06em; color:rgb(236 230 216 / .78); text-align:center; white-space:nowrap; }
+@media (max-height:820px) {
+  html body #screens > .k-screen.orr-crucible.sf-crucible-results .orr-crres-hitlegend { display:block; }
+}
 
 `;
 
