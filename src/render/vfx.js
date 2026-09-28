@@ -1496,6 +1496,11 @@ export const vfx = {
     // _updateRibbonTrails when the ribbon map is empty.
     this._trailEmitQuietIdle = false;
     this._trailEmitQuietIndexVersion = -1;
+    // Quiet settled flight: massline swing-trace still paid tether resolve +
+    // a11y + writeMasslineSwingTraceGeometry every tick with no live latch and
+    // empty fade/count. Latch after first empty publish; cheap tether.active
+    // wake. Soft-GPU fps not claimed.
+    this._swingTraceQuietIdle = false;
     // Quiet settled flight: empty gas pool still paid resolveVfxAccessibilityProfile
     // + setAccessibility + empty update every tick. Latch after first empty observe
     // (liveCount===0 after update publishes 0); wake on liveCount>0 (emit). Soft-GPU
@@ -2086,6 +2091,8 @@ export const vfx = {
     this._head = 0;        // round-robin allocation cursor
     this._liveCount = 0;
     this._pDrawMax = 0;
+    // After the first quiet commit(0), skip re-assert/re-commit while live===0.
+    this._particlesPublishedIdle = false;
     this._activeParticles = new Int32Array(cap);
     this._activeParticlePos = new Int32Array(cap);
     this._activeParticlePos.fill(-1);
@@ -2159,6 +2166,9 @@ export const vfx = {
     for (let i = 0; i < SPRITE_CAP; i++) this._freeSprites[i] = SPRITE_CAP - 1 - i;
     this._freeSpriteCount = SPRITE_CAP;
     this._liveSpriteCount = 0;
+    // After the first quiet reset+commit(0) across 4 sprite buckets, skip
+    // re-assert/re-commit while liveSpriteCount===0. Soft-GPU fps not claimed.
+    this._spritesPublishedIdle = false;
 
     // Dedicated soft flame material slot for gaseous thrust (fx_thruster_main.jpg prepared for future use / richer shapes).
     // Currently the overlapping soft-glow puffs + softened point cloud provide the blend; swapping maps here is a one-line follow-up.
@@ -2320,12 +2330,14 @@ export const vfx = {
         );
       }
       commitDynamicBufferOwner(this._particleDynamicBufferOwner, keep);
+      this._particlesPublishedIdle = keep <= 0;
     } else {
       for (const attr of Object.values(geo.attributes)) {
         attr.setUsage(THREE.DynamicDrawUsage);
         attr.needsUpdate = true;
       }
       this._shardMesh.count = keep;
+      this._particlesPublishedIdle = keep <= 0;
     }
     // Tier-1 pool-capacity event: the particle cloud migrated to a new capacity.
     const tier1Grow = this.state && this.state.perfRuntime && this.state.perfRuntime.tier1;
@@ -2915,6 +2927,7 @@ export const vfx = {
     this._alive[i] = 1;
     this._activeParticlePos[i] = this._liveCount;
     this._activeParticles[this._liveCount++] = i;
+    this._particlesPublishedIdle = false;
   },
 
   _retireParticle(i) {
@@ -2942,6 +2955,7 @@ export const vfx = {
   _activateSprite(i) {
     this._activeSpritePos[i] = this._liveSpriteCount;
     this._activeSprites[this._liveSpriteCount++] = i;
+    this._spritesPublishedIdle = false;
   },
 
   _retireSprite(i) {
@@ -8775,6 +8789,7 @@ export const vfx = {
     mesh.visible = false;
     this._scene.add(mesh);
     this._masslineSwingTrace = { mesh, trace, scratch, samplePos: { x: 0, z: 0 } };
+    this._swingTraceQuietIdle = false;
   },
 
   _resetMasslineSwingTrace() {
@@ -8784,11 +8799,32 @@ export const vfx = {
     st.mesh.visible = false;
     st.mesh.material.opacity = 0;
     st.mesh.geometry.setDrawRange(0, 0);
+    this._swingTraceQuietIdle = false;
+  },
+
+  // Cheap dirty wake for quiet swing-trace latch — player/remote tether live only.
+  // False-wake falls through to one full update and re-latches when empty.
+  _swingTraceQuietMaybeAwake() {
+    const player = this.state && this.state.player;
+    if (!player) return false;
+    const pt = player.tether;
+    if (pt && pt.active && pt.targetId != null) return true;
+    const rt = player.remoteMassline;
+    if (rt && rt.active && rt.sourceId != null && rt.targetId != null) return true;
+    return false;
   },
 
   _updateMasslineSwingTrace(dt) {
     const st = this._masslineSwingTrace;
     if (!st) return false;
+    // Quiet settled flight: swing-trace still paid tether resolve + a11y +
+    // writeMasslineSwingTraceGeometry every tick with no live latch and empty
+    // fade/count. Latch after first empty publish; cheap tether.active wake.
+    // Soft-GPU fps not claimed.
+    if (this._swingTraceQuietIdle) {
+      if (!this._swingTraceQuietMaybeAwake()) return false;
+      this._swingTraceQuietIdle = false;
+    }
     const trace = st.trace;
     const state = this.state;
     const playerTether = state && state.player && state.player.tether;
@@ -8844,8 +8880,13 @@ export const vfx = {
         st.mesh.material.opacity = 0;
         st.mesh.geometry.setDrawRange(0, 0);
       }
+      // Fully idle empty (no fade, no samples, no live tether) → quiet latch.
+      if (!(trace.fade > 0) && !(trace.count > 0) && !this._swingTraceQuietMaybeAwake()) {
+        this._swingTraceQuietIdle = true;
+      }
       return false;
     }
+    this._swingTraceQuietIdle = false;
     const positions = geometry.positions;
     for (let vertex = 0; vertex < geometry.indexCount / 6 * 4; vertex += 1) {
       const offset = vertex * 3;
@@ -11555,16 +11596,25 @@ export const vfx = {
     }
     this._tetherWebFx?.update(this.state);
     if (this._combatBeams) {
-      const camDist = cam && cam.position
-        ? Math.hypot(cam.position.x, cam.position.y, cam.position.z)
-        : 144;
-      sub.combatBeams = this._combatBeams.update(
-        this._t,
-        this._combatBeamLocalizer,
-        resolveVfxAccessibilityProfile(this.state && this.state.settings),
-        worldSizeForPixels(camDist, 8, cam && cam.fov, viewportH),
-        this._beamOriginResolver,
-      ) > 0 ? 1 : 0;
+      // Quiet open-flight residual after #91: call site still paid camDist +
+      // resolveVfxAccessibilityProfile + worldSizeForPixels every tick while
+      // activeCount===0 (pool update already early-outs). Skip prep while empty;
+      // upsert/_release keep activeCount truthful so the next live beam wakes.
+      // Soft-GPU fps not claimed.
+      if (!(this._combatBeams.activeCount > 0)) {
+        sub.combatBeams = 0;
+      } else {
+        const camDist = cam && cam.position
+          ? Math.hypot(cam.position.x, cam.position.y, cam.position.z)
+          : 144;
+        sub.combatBeams = this._combatBeams.update(
+          this._t,
+          this._combatBeamLocalizer,
+          resolveVfxAccessibilityProfile(this.state && this.state.settings),
+          worldSizeForPixels(camDist, 8, cam && cam.fov, viewportH),
+          this._beamOriginResolver,
+        ) > 0 ? 1 : 0;
+      }
     } else {
       sub.combatBeams = 0;
     }
@@ -14989,12 +15039,18 @@ export const vfx = {
       if (this._shardMesh) this._shardMesh.count = 0;
       return;
     }
-    assertDynamicBufferOwnerWritable(dynamicOwner);
     if (this._liveCount <= 0) {
       this._pDrawMax = 0;
+      // Quiet settled flight: vfx.update always calls integrate even when live===0.
+      // After one commit(0), mesh.count is already 0 — re-assert + bindings sweep is pure CPU.
+      if (this._particlesPublishedIdle) return;
+      assertDynamicBufferOwnerWritable(dynamicOwner);
       commitDynamicBufferOwner(dynamicOwner, 0);
+      this._particlesPublishedIdle = true;
       return;
     }
+    this._particlesPublishedIdle = false;
+    assertDynamicBufferOwnerWritable(dynamicOwner);
     const pos = this._pPos, col = this._pCol, size = this._pSize, alpha = this._pAlpha;
     const active = this._activeParticles;
     const packedSlots = this._pPackedParticleSlots;
@@ -15081,11 +15137,18 @@ export const vfx = {
   },
 
   _integrateSprites(dt) {
-    resetInstancedSpriteBuckets(this._spriteBatches);
     if (this._liveSpriteCount <= 0) {
+      // Quiet settled flight: vfx.update still calls integrate when live===0.
+      // After one reset+commit(0) across 4 buckets, mesh.count is already 0 —
+      // re-assert + bindings sweep is pure CPU. Soft-GPU fps not claimed.
+      if (this._spritesPublishedIdle) return;
+      resetInstancedSpriteBuckets(this._spriteBatches);
       commitInstancedSpriteBuckets(this._spriteBatches);
+      this._spritesPublishedIdle = true;
       return;
     }
+    this._spritesPublishedIdle = false;
+    resetInstancedSpriteBuckets(this._spriteBatches);
     const st = this._spr, active = this._activeSprites;
     const smokeOrder = this._smokeSpriteOrder;
     let smokeCount = 0;
