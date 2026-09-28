@@ -554,6 +554,7 @@ export function tickAlienEcology(world, dt) {
         // Ecology mission offer — the site emits its hook when the player is committed.
         if (!rec.offerEmitted && site.surveyOfferId) {
           rec.offerEmitted = true;
+          const sector = (state.world.sectors && state.world.sectors[sectorId]) || null;
           emitEcologyOffer(world, site, sector);
         }
       }
